@@ -76,7 +76,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | --- | --- |
 | `var name: T [= expr]` | A machine variable. |
 | `event Name [{ fields }]` | An event the machine accepts from outside. |
-| `initial Name` | The child state entered first. Required when a state has children. |
+| `initial Name` | The child state entered first. Required, once, when a state has children. |
 | `state Name { ... }` | A state. Atomic if it has no children, compound if it does. |
 | `parallel state Name { ... }` | All children are active at once (regions). |
 | `final state Name { ... }` | Ends the enclosing compound state, or the machine at the top level. |
@@ -87,11 +87,11 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | --- | --- |
 | `entry set ... ` / `entry do ...` | Run when the state is entered. |
 | `exit set ...` / `exit do ...` | Run when the state is left. |
-| `on Event ...` | Transition on an external event. `on *` matches any event not handled below. |
+| `on Event ...` | Transition on an external event. `on *` matches any event this state has no `on` for. |
 | `after 30s ...` | Transition after the state has been active for a duration. The delay is an expression. |
 | `always ...` | Transition taken as soon as its guard holds (no event). |
 | `done ...` | Transition taken when a compound state reaches a final child, or every region of a parallel state does. |
-| `invoke name(args) { done ...  fail Err ... }` | Run a task or machine while the state is active. `fail *` matches the declared errors not listed. |
+| `invoke name(args) { done ...  fail Err ... }` | Run a task or machine while the state is active. At most one per state. `fail *` matches the declared errors not listed. |
 | `output expr` / `fail expr` | Final states at the top level only: the machine's result. |
 
 A transition has up to four parts, all optional except that it must do something:
@@ -105,7 +105,9 @@ With no `-> Target` the transition is internal: the state is not left and re-ent
 
 Inside a transition, three names are in scope besides the machine's variables: `event` (in `on`), `result` (in an invoke's `done`) and `error` (in an invoke's `fail`).
 
-A target is resolved like a name in a block-structured language: first among the siblings of the state the transition is written in, then among its parent's siblings, and so on outward. A dotted path such as `Processing.Paying` then descends into a nested state. An unknown target is a compile error, and so is a duplicate state name among siblings.
+A target is resolved like a name in a block-structured language: first among the siblings of the state the transition is written in, then among its parent's siblings, and so on outward. A dotted path such as `Processing.Paying` then descends into a nested state, which is also how a state targets one of its own children. A transition written at machine level resolves among the top-level states. An unknown target is a compile error, and so is a duplicate state name among siblings.
+
+`entry`, `exit`, `on`, `after` and `always` may also be written directly in the machine body, where they apply to the whole machine.
 
 ## Expressions
 
@@ -122,7 +124,7 @@ Expressions are deliberately small. There are no loops, lambdas or string operat
 | Integer and float arithmetic | `+`, `-`, `*` |
 | Logic | `and`, `or`, `not` |
 
-Integer overflow is a runtime error in both runtimes, not a wrap. Anything more involved belongs in a `fn`. The operators exist so that the two most common pieces of flow logic, counters and thresholds, are readable in the chart (`if attempts < 3`) instead of hidden behind a name (`if canRetry`).
+`not` binds more loosely than comparison, so `not a > b` means `not (a > b)`, and the formatter writes the parentheses. Integer overflow is a runtime error in both runtimes, not a wrap. Anything more involved belongs in a `fn`. The operators exist so that the two most common pieces of flow logic, counters and thresholds, are readable in the chart (`if attempts < 3`) instead of hidden behind a name (`if canRetry`).
 
 ## What the compiler checks
 
@@ -132,8 +134,7 @@ Errors (the build fails):
 - Type errors in arguments, assignments, guards, `output` and `fail`.
 - A compound state without `initial`, or an `initial` that is not a child.
 - An `invoke` that does not handle every declared error of the task or machine.
-- A branch that can never be taken because an earlier unguarded branch for the same trigger shadows it.
-- The same trigger written twice in one state. Several branches go in one block, so their order is explicit.
+- The same trigger written twice in one state. Several branches go in one block, where their order is explicit and only the last may be unguarded, so a branch can never be shadowed by an earlier one.
 - A read of a variable that might not be assigned yet. <a id="definite-assignment"></a>
 - A machine that returns `T` with a top-level final state that has no `output` or `fail`.
 - An unguarded cycle of `always` transitions.
@@ -174,48 +175,50 @@ This is what lets host functions take plain non-optional arguments. In xstate th
 
 ```ebnf
 file        = { import | decl } ;
-import      = "import" "{" name { "," name } [ "," ] "}" "from" string ;
+import      = "import" "{" name { "," name } "}" "from" string ;
 decl        = typeDecl | enumDecl | errorDecl | externDecl
             | fnDecl | actionDecl | taskDecl | machineDecl ;
 
 externDecl  = "extern" "type" Upper ;
 typeDecl    = "type" Upper ( "=" type | fields ) ;
-enumDecl    = "enum" Upper "{" Upper { "," Upper } [ "," ] "}" ;
+enumDecl    = "enum" Upper "{" Upper { "," Upper } "}" ;
 errorDecl   = "error" Upper [ fields ] ;
-fields      = "{" [ field { "," field } [ "," ] ] "}" ;
+fields      = "{" [ field { "," field } ] "}" ;
 field       = lower ":" type ;
 type        = ( Upper | "string" | "int" | "float" | "bool" | "duration" | "json" )
               { "[]" | "?" } ;
 
 fnDecl      = "fn" lower params "->" type ;
 actionDecl  = "action" lower params ;
-taskDecl    = "task" lower params "->" type [ errors ] ;
+taskDecl    = "task" lower params [ "->" type ] [ errors ] ;
 params      = "(" [ field { "," field } ] ")" ;
 errors      = "!" Upper { "|" Upper } ;
 
 machineDecl = "machine" Upper params [ "->" type ] [ errors ] "{" { machineItem } "}" ;
-machineItem = varDecl | eventDecl | stateItem ;
+machineItem = varDecl | eventDecl | commonItem ;
 varDecl     = "var" lower ":" type [ "=" expr ] ;
 eventDecl   = "event" Upper [ fields ] ;
 
 stateDecl   = [ "final" | "parallel" ] "state" Upper "{" { stateItem } "}" ;
-stateItem   = "initial" Upper
+stateItem   = commonItem
+            | "done" branches
+            | "invoke" name "(" [ expr { "," expr } ] ")" "{" outcome { outcome } "}"
+            | "output" expr
+            | "fail" expr ;
+commonItem  = "initial" Upper
             | stateDecl
             | "entry" effects
             | "exit" effects
             | "on" ( Upper | "*" ) branches
             | "after" expr branches
-            | "always" branches
-            | "done" branches
-            | "invoke" name "(" [ expr { "," expr } ] ")" "{" { outcome } "}"
-            | "output" expr
-            | "fail" expr ;
+            | "always" branches ;
 outcome     = "done" branches
             | "fail" ( Upper | "*" ) branches ;
 
-branches    = branch
-            | "{" { "if" expr branch } [ "else" branch ] "}" ;
-branch      = [ "if" expr ] [ "->" target ] [ effects ] ;
+branches    = [ "if" expr ] action
+            | "{" "if" expr action { "if" expr action } [ "else" action ] "}" ;
+action      = "->" target [ effects ]
+            | effects ;
 effects     = effect { effect } ;
 effect      = "set" assign { "," assign }
             | "do" call { "," call } ;
@@ -232,7 +235,7 @@ addExpr     = mulExpr { ( "+" | "-" ) mulExpr } ;
 mulExpr     = unary { "*" unary } ;
 unary       = [ "-" ] postfix ;
 postfix     = primary { "." lower } ;
-primary     = number | duration | string | "true" | "false"
+primary     = int | float | duration | string | "true" | "false"
             | call
             | lower
             | Upper [ "." Upper | "{" [ lower ":" expr { "," lower ":" expr } ] "}" ]
@@ -241,11 +244,24 @@ primary     = number | duration | string | "true" | "false"
 name        = Upper | lower ;
 Upper       = /[A-Z][A-Za-z0-9]*/ ;
 lower       = /[a-z][A-Za-z0-9]*/ ;
+int         = /[0-9]+/ ;
+float       = /[0-9]+\.[0-9]+/ ;
 duration    = /[0-9]+(ms|s|m|h)/ ;
+string      = /"([^"\\\n]|\\["\\nt])*"/ ;
 comment     = "//" … end of line ;        doc comment = "///" … end of line ;
 ```
 
-A single-line `branch` and a multi-branch block are told apart by the `{` that follows the trigger. In a final state, `fail expr` is the machine's failure; inside `invoke { }`, `fail Upper` is an outcome. The two never appear in the same position.
+Rules the grammar does not express:
+
+- Every comma-separated list accepts a trailing comma.
+- All keywords are reserved. `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters.
+- A `///` comment documents the declaration, machine, state, event or variable that follows it.
+- A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust.
+- In a final state, `fail expr` is the machine's failure. Inside `invoke { }`, `fail Upper` is an outcome. The two never appear in the same position.
+- Two `after` transitions in one state are the same trigger only if their delays are the same expression.
+- Declaration names are unique across a project, because the IR is keyed by name. A file can use only what it declares or imports.
+
+Most of these rules, the split between `machineItem` and `stateItem`, and the requirement that a branch does something came from writing the spike's parser against the first draft of this grammar. The spike still implements that draft, which accepts everything above and is slightly more lenient.
 
 ## Not in the first version
 

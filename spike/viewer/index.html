@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><!--@TITLE@--></title>
+<style>
+/*@CSS@*/
+</style>
+</head>
+<body class="wm-app" data-initial-machine="<!--@INITIAL@-->">
+<header class="wm-top">
+  <div class="wm-brand">Waymark<small id="wm-source"></small></div>
+  <nav class="wm-tabs" id="wm-tabs" role="tablist" aria-label="Machines"></nav>
+  <div class="wm-tools">
+    <button class="wm-btn" id="wm-zoom-out" type="button" title="Zoom out" aria-label="Zoom out">−</button>
+    <button class="wm-btn" id="wm-zoom-in" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+    <button class="wm-btn" id="wm-fit" type="button" title="Fit the diagram to the view (F)">Fit</button>
+    <button class="wm-btn" id="wm-theme" type="button" title="Colour scheme: follow the system, light or dark">Theme: auto</button>
+  </div>
+</header>
+<div class="wm-machine-head">
+  <button class="wm-btn wm-back" id="wm-back" type="button" hidden></button>
+  <div id="wm-machine-head"></div>
+</div>
+<main class="wm-main">
+  <div class="wm-stage">
+    <div class="wm-canvas" id="wm-canvas">
+      <div class="wm-hint">drag to pan · scroll to zoom · click a state or an arrow</div>
+    </div>
+    <div class="wm-legend" id="wm-legend" aria-label="Legend"></div>
+  </div>
+  <aside class="wm-panel" id="wm-panel" aria-live="polite"></aside>
+</main>
+<script type="application/json" id="wm-ir"><!--@IR@--></script>
+<script>
+/*@ELK@*/
+</script>
+<script>
+/*@JS@*/
+</script>
+</body>
+</html>

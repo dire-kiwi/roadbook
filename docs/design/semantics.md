@@ -61,7 +61,7 @@ An abridged IR for `Checkout` (the spike emits exactly this shape):
 }
 ```
 
-Transitions are in document order. The branches of one block are consecutive and share a `group`. Every expression carries `text`, its canonical source form, so tools can display it without a pretty-printer.
+Transitions are in document order. The branches of one block are consecutive and share a `group`. Expressions are a small tree (`lit`, `ref`, `field`, `call`, `op`, `record`, `enum`), and every node carries `text`, its canonical source form, so tools can display it without a pretty-printer.
 
 ## Execution model
 

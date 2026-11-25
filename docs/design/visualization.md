@@ -2,7 +2,7 @@
 
 `waymark viz` turns charts into HTML with no agent and no service involved. It is a deterministic function of the IR: the same chart always gives the same page.
 
-The spike in [`spike/`](../../spike) already does this for the shop example. The pictures on this page are its output.
+The spike in [`spike/`](../../spike) already does this for the shop example: [`spike/out/shop.html`](../../spike/out/shop.html) is the interactive viewer for both machines.
 
 ![PlaceOrder rendered by the spike](images/place-order.png)
 
@@ -39,9 +39,17 @@ Transitions written on a compound state leave from the container's border, which
 
 ## Layout
 
-Layout is done by ELK's layered algorithm (through `elkjs`), which is the established choice for statecharts because it handles nested containers and edges that cross between levels. It runs in the browser when the page loads and again when a state is collapsed or expanded.
+Layout is done by ELK's layered algorithm (through `elkjs`), which is the established choice for statecharts because it handles nested containers and edges that cross between levels. It runs in the browser when the page loads and again when a state is collapsed or expanded. Transition labels are ELK edge labels placed on their own edge, so a label is never ambiguous about which arrow it belongs to.
 
-The drawing code is a pure function from the IR and a computed layout to SVG. The same function runs in Node to produce static, script-free SVG for places that cannot run scripts, such as a README or an email. The spike generates both forms.
+The drawing code is a pure function from the IR and a computed layout to SVG. The same function runs in Node to produce static, script-free SVG for places that cannot run scripts, such as a README or an email. The spike generates both forms, and the pictures on this page are its static output.
+
+### What the spike showed
+
+- The two example machines lay out with no overlapping boxes or labels and no manual positioning.
+- Width is the constraint. `PlaceOrder` has six final states, which ELK puts in one row, so the whole chart is about 1450 units wide and has to be zoomed to read on a laptop screen. Grouping finals, or wrapping them, is worth trying.
+- A label on a long return edge can end up far from its source state. `after retryDelay(attempts)` in `Checkout` sits on the loop back to `Charging`, not next to `Backoff`.
+- One ELK option that preserves source order crashed `elkjs` 0.11.1 on a larger test chart with parallel regions and self-loops. The spike retries without it. The real viewer needs a layout fallback path and a set of stress charts in its tests.
+- The viewer inlines `elkjs`, which makes each HTML file about 1.6 MB. A project index that shares one copy across machines avoids repeating that.
 
 ## Interaction
 

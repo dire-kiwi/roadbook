@@ -1,0 +1,14 @@
+{
+  "name": "waymark-spike",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Throwaway spike: .way source -> IR JSON -> self-contained HTML visualization",
+  "type": "module",
+  "scripts": {
+    "compile": "cd .. && node spike/compile.mjs examples/shop/place_order.way",
+    "viz": "cd .. && node spike/viz.mjs examples/shop/place_order.way -o spike/out/shop.html && node spike/viz.mjs examples/shop/place_order.way --static --machine PlaceOrder -o spike/out/shop-PlaceOrder.static.html && node spike/viz.mjs examples/shop/place_order.way --static --machine Checkout -o spike/out/shop-Checkout.static.html"
+  },
+  "dependencies": {
+    "elkjs": "^0.11.0"
+  }
+}

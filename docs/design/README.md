@@ -110,8 +110,8 @@ This is a design, with three pieces built to test its riskiest claims.
 
 | Claim | Evidence | Where |
 | --- | --- | --- |
-| The language can be parsed and checked, and the grammar is unambiguous. | A throwaway compiler in JavaScript parses the three example files, resolves imports and targets, and reports errors with locations. | [`spike/compile.mjs`](../../spike/compile.mjs) |
-| A readable diagram can be produced from the IR with no manual layout. | A viewer that renders nested states, invokes, guards and effects for both example machines, interactive and static. | [`spike/out/`](../../spike/out) |
+| The language can be parsed and checked. | A throwaway compiler in JavaScript parses the three example files, resolves imports and targets, and reports errors with locations. Writing it exposed about a dozen gaps in the first grammar, which are now fixed in the language page. | [`spike/compile.mjs`](../../spike/compile.mjs) |
+| A readable diagram can be produced from the IR with no manual layout. | A viewer that renders nested states, invokes, guards and effects for both example machines, interactive and static, checked in a browser. Its limits are listed on the visualization page. | [`spike/out/`](../../spike/out) |
 | The TypeScript API's types work with Effect v4: exact inferred error and requirement types, and compile errors for missing, extra or wrongly typed implementations. | A type-level sketch that passes `tsc` against `effect@4.1.5`. | [`spike/api-ts`](../../spike/api-ts) |
 | The Rust API's shapes compile, including `Send` futures and one struct implementing several charts' handlers. | A hand-expanded sketch that passes `cargo check`. | [`spike/api-rust`](../../spike/api-rust) |
 
