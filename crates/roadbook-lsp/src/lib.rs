@@ -10,9 +10,9 @@
 //!   name, across files;
 //! - document formatting with the canonical formatter, and the outline of a file.
 //!
-//! The compiler does the work: each change compiles the files it can affect (the file, what
-//! imports it and what it imports, transitively) with the unsaved editor buffers laid over the
-//! file system, as `roadbook check` would, and the compiler's
+//! The compiler does the work: each change compiles the files it can affect (every file
+//! connected to it by imports, either way) with the unsaved editor buffers laid over the file
+//! system, as `roadbook check` would, and the compiler's
 //! [symbol index](roadbook_compiler::index) answers the questions about names.
 //!
 //! Which project a file belongs to, its packages and options, come from the caller as a

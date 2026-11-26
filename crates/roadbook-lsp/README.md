@@ -8,8 +8,8 @@ crate is the library behind it.
 - **Diagnostics** on open, change and save: the compiler's errors and warnings, with codes,
   `help` lines, secondary labels as related information, and every machine-applicable fix
   as a quick fix (code action). A change compiles the files it can affect, unsaved buffers
-  laid over the file system: the file, the files that import it and the files it imports,
-  transitively, as `roadbook check` would check them together. Each of those files gets
+  laid over the file system: every file connected to it by imports, either way (what it
+  imports, what imports it, and so on), as `roadbook check` would check them together. Each of those files gets
   its diagnostics published, opened or not, and an empty list once it is clean.
 - **Go to definition** and **find references** for every kind of name: states (in targets,
   each segment of a dotted target, and `initial`), types, aliases, enums and their variants,
