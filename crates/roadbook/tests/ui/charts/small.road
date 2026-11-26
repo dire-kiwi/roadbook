@@ -1,0 +1,15 @@
+// A small chart for tests/ui/missing_method.rs.
+
+fn greeting(name: string) -> string
+action log(line: string)
+
+machine Small(name: string) -> string {
+  initial Start
+
+  state Start {
+    entry do log(name)
+    always -> Done
+  }
+
+  final state Done { output greeting(name) }
+}

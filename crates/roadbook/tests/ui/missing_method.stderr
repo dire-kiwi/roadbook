@@ -1,0 +1,8 @@
+error[E0046]: not all trait items implemented, missing: `log`
+ --> tests/ui/missing_method.rs:7:1
+  |
+3 | roadbook::include!("charts/small.road");
+  | --------------------------------------- `log` from trait
+...
+7 | impl small::Handlers for App {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `log` in implementation

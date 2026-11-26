@@ -1,0 +1,7 @@
+error: roadbook::include!: cannot read `charts/nope.road` (relative to the package directory, CARGO_MANIFEST_DIR): No such file or directory (os error 2)
+ --> tests/ui/missing_file.rs:3:1
+  |
+3 | roadbook::include!("charts/nope.road");
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the macro `roadbook::include` (in Nightly builds, run with -Z macro-backtrace for more info)

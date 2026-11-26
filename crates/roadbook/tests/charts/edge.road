@@ -1,0 +1,106 @@
+// Names and shapes for include_edge.rs: Rust keywords, aliases, extern types, enums passed by
+// value, nested compound states whose enums would collide, and colliding error enum names.
+
+extern type Blob
+
+type Id       = string
+type Count    = int
+type Delays   = duration[]
+type Pair     { move: string, self: Count, blob: Blob, delays: Delays, kind: Kind }
+type Snapshot = Pair
+enum Kind     { Small, Large }
+
+/// Already the name the `probe` task's error enum would have.
+type ProbeError { why: string }
+
+error Gone
+error Broken { match: string }
+
+fn pick(kind: Kind, count: Count, id: Id, maybe: Id?, snapshot: Snapshot, many: Snapshot[]) -> Pair
+fn emptyDelays()                                                                            -> Delays
+fn none()                                                                                   -> Snapshot[]
+fn noKind()                                                                                 -> Kind?
+
+action tick()
+action note(self: string, async: Kind?)
+
+task probe(blob: Blob)          ! Gone | Broken
+task fire()
+task checkout(id: Id)  -> Count ! Gone
+
+/// Nested states whose enums need other names.
+machine Nested(blob: Blob) {
+  var pair: Pair
+
+  initial Outer
+
+  state Outer {
+    initial State
+    entry do tick()
+
+    /// Named like the enum of the machine's states.
+    state State {
+      initial Event
+
+      state Event {
+        initial Kind
+
+        state Kind {
+          invoke probe(blob) {
+            done        -> Fired
+            fail Gone   -> Lost
+            fail Broken -> Lost   do note(error.match, noKind())
+          }
+        }
+
+        state Fired {
+          invoke fire() {
+            done -> Picked  set pair = pick(Kind.Large, 2, "id", "maybe", Pair { move: "m", self: 1, blob: blob, delays: emptyDelays(), kind: Kind.Small }, none())
+          }
+        }
+
+        final state Picked {}
+
+        done -> Done
+      }
+    }
+  }
+
+  state Lost { always -> Done }
+
+  final state Done {}
+}
+
+/// Its error enum and the `checkout` task's would both be `CheckoutError`.
+machine Checkout() -> Count ! Gone {
+  initial Paying
+
+  state Paying {
+    invoke checkout("x") {
+      done      -> Paid
+      fail Gone -> Failed
+    }
+  }
+
+  final state Paid   { output 1 }
+  final state Failed { fail Gone }
+}
+
+/// Returns nothing, fails as the probe does, and has states named like `Result`'s variants.
+machine Probing(blob: Blob) ! Gone | Broken {
+  var broken: Broken
+
+  initial Run
+
+  state Run {
+    invoke probe(blob) {
+      done        -> Ok
+      fail Gone   -> Err
+      fail Broken -> Bad  set broken = error
+    }
+  }
+
+  final state Ok {}
+  final state Err { fail Gone }
+  final state Bad { fail broken }
+}

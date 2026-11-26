@@ -1,0 +1,7 @@
+error: roadbook::include! takes one string literal: the path of a `.road` file, relative to the package directory
+ --> tests/ui/not_a_literal.rs:5:1
+  |
+5 | roadbook::include!(PATH);
+  | ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the macro `roadbook::include` (in Nightly builds, run with -Z macro-backtrace for more info)
