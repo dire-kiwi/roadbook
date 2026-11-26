@@ -468,12 +468,11 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       const idle = () => Queue.sizeUnsafe(queue) - wakes === 0 && snapshot.invokes.length === 0
 
       /**
-       * Stop an idle run that was asked to suspend: close it, cancel its timers through its
-       * timer with no record (they are in the snapshot), write `suspended`. No exit effect runs.
+       * Stop an idle run that was asked to suspend, which the check that found it idle has
+       * closed: cancel its timers through its timer with no record (they are in the snapshot),
+       * write `suspended`. No exit effect runs.
        */
       const stop = Effect.gen(function*() {
-        suspended = true
-        close()
         yield* FiberMap.clear(timers)
         yield* write({ kind: "suspended" })
         // Once more, as a copy `changes` can tell from the others, so that it ends.
@@ -492,8 +491,17 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           yield* carryOut(yield* begun)
           yield* Deferred.succeed(started, undefined)
           while (snapshot.status === "running") {
+            // A cancel that arrived during the step (an interrupt, held while the step ran) is
+            // taken here, before a suspend can stop the run: a run with a cancel request
+            // waiting is not idle.
+            yield* restore(Effect.void)
             const stopping = yield* Effect.sync(() => {
-              if (suspendRequested && idle()) return true
+              // Deciding and closing at once: nothing can be pushed in between and left untaken.
+              if (suspendRequested && idle()) {
+                suspended = true
+                close()
+                return true
+              }
               waiting = true
               return false
             })
@@ -560,7 +568,9 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       }
       return Effect.flatMap(Deferred.await(stopped), (last) => {
         const result = last.result
-        return result !== null && "defect" in result ? Effect.die(new Defect(result.defect)) : Effect.succeed(last)
+        return result !== null && "defect" in result
+          ? Effect.die(new Defect(result.defect))
+          : Effect.succeed(Core.copyJson(last))
       })
     })
 
@@ -569,7 +579,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       ref,
       started,
       loop,
-      save: Effect.sync(() => saved),
+      // A copy each time: host code that changes what it was given changes nothing here.
+      save: Effect.sync(() => Core.copyJson(saved)),
       suspend,
       isLast: (s: Core.Snapshot) => s.status !== "running" || s === last
     }
@@ -653,11 +664,25 @@ const actorOf = <D extends MachineDef>(program: Program, begin: Begin) =>
 export const spawn = <D extends MachineDef>(program: Program, input: unknown) =>
   actorOf<D>(program, { kind: "start", input })
 
+/** What a thrown value says, whatever it is (a null-prototype object has no `toString`). */
+const errorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message
+  try {
+    return String(error)
+  } catch {
+    try {
+      return JSON.stringify(error) ?? typeof error
+    } catch {
+      return typeof error
+    }
+  }
+}
+
 /**
  * Check `saved` against the machine, migrating it if the hashes differ and `options.migrate`
- * is given, then restore it as a new top-level run. Refused before any run starts.
+ * is given. Refused (a `RestoreError`) before any run starts.
  */
-export const restore = <D extends MachineDef>(program: Program, saved: unknown, options?: RestoreOptions) =>
+const check = (program: Program, saved: unknown, options?: RestoreOptions): Effect.Effect<Begin, RestoreError> =>
   Effect.suspend(() => {
     const migrate = options?.migrate
     const checked = Core.checkSaved(
@@ -669,15 +694,24 @@ export const restore = <D extends MachineDef>(program: Program, saved: unknown, 
           // The old snapshot has passed the checks of its shape, so it is a `Saved`.
           return { value: migrate(old as unknown as Core.Saved) as unknown as Core.Json }
         } catch (error) {
-          return { error: error instanceof Error ? error.message : String(error) }
+          return { error: errorMessage(error) }
         }
       }
     )
     if (!checked.ok) return Effect.fail(new RestoreError({ reason: checked.reason, message: checked.message }))
-    return actorOf<D>(program, { kind: "restore", saved: checked.saved, migrated: checked.migrated })
+    return Effect.succeed<Begin>({ kind: "restore", saved: checked.saved, migrated: checked.migrated })
   })
 
-/** Restore, give the run `event` if there is one, and suspend it: the request handler's step. */
+/** Check `saved` (see `check`), then restore it as a new top-level run. */
+export const restore = <D extends MachineDef>(program: Program, saved: unknown, options?: RestoreOptions) =>
+  Effect.flatMap(check(program, saved, options), (begin) => actorOf<D>(program, begin))
+
+/**
+ * Restore, give the run `event` if there is one, and suspend it: the request handler's step.
+ * Everything is checked before anything runs: the snapshot (a `RestoreError`), then the event,
+ * which must be one of the machine's events and encode, as `send` requires (else the caller's
+ * host defect, a die, as from `send`).
+ */
 export const resume = <D extends MachineDef>(
   program: Program,
   saved: unknown,
@@ -685,7 +719,16 @@ export const resume = <D extends MachineDef>(
   options?: RestoreOptions
 ) =>
   Effect.scoped(Effect.gen(function*() {
-    const actor = yield* restore<D>(program, saved, options)
-    if (event !== undefined) yield* actor.send(event as D["event"])
+    const begin = yield* check(program, saved, options)
+    let value: Core.Tagged | undefined
+    if (event !== undefined) {
+      try {
+        value = program.encodeEvent(event)
+      } catch (error) {
+        return yield* Effect.die(new Defect(hostDefect(error)))
+      }
+    }
+    const actor = yield* actorOf<D>(program, begin)
+    if (value !== undefined) push(portOf(actor.handle)!, { kind: "event", value })
     return yield* actor.suspend
   }))

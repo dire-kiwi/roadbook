@@ -70,22 +70,33 @@ fn statuses(c: &LoadedCase) -> Vec<(String, Status)> {
     c.case.top_level_statuses()
 }
 
-/// Every snapshot file is one canonical saved snapshot and a line feed, and
-/// matches the snapshot schema; so does the snapshot of every `restored`
-/// record. The script names exactly the files there are.
+/// Every snapshot file is one saved snapshot and a line feed, and matches the
+/// snapshot schema; so does the snapshot of every `restored` record. A file a
+/// runtime writes or a migration gives is in canonical JSON; one that is only
+/// restored stands for a snapshot from elsewhere, in any JSON form. The script
+/// names exactly the files there are.
 #[test]
 fn snapshots_are_canonical_and_valid() {
     let v = snapshot_validator();
     for c in cases() {
+        let names = c.case.snapshot_names();
         for (name, text) in &c.snapshots {
             let value: Value = serde_json::from_str(text)
                 .unwrap_or_else(|e| panic!("{}: {name}{SNAPSHOT_SUFFIX}: {e}", c.name));
-            assert_eq!(
-                &snapshot_text(&value),
-                text,
-                "{}: {name}{SNAPSHOT_SUFFIX} is not canonical JSON and a line feed",
+            let written = names.iter().any(|(n, current)| n == name && *current);
+            assert!(
+                text.ends_with('\n') && text.lines().count() == 1,
+                "{}: {name}{SNAPSHOT_SUFFIX} is not one line and a line feed",
                 c.name
             );
+            if written {
+                assert_eq!(
+                    &snapshot_text(&value),
+                    text,
+                    "{}: {name}{SNAPSHOT_SUFFIX} is not canonical JSON and a line feed",
+                    c.name
+                );
+            }
             let errors = schema_errors(&v, &value);
             assert!(errors.is_empty(), "{}: {name}: {errors:#?}", c.name);
         }

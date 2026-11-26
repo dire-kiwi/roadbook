@@ -88,7 +88,7 @@ impl fmt::Display for Defect {
 impl std::error::Error for Defect {}
 
 /// A run's result, once it has one.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", deny_unknown_fields)]
 pub enum RunResult {
     /// `{"output": value}`: done, `null` for a machine that returns nothing.
@@ -566,7 +566,7 @@ pub struct SavedTimer {
 ///
 /// Read one with [`Saved::from_json`] or [`Saved::from_value`], which check it against the
 /// schema; restoring checks the rest.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Saved {
     /// The version of the format, `1`.
@@ -605,7 +605,7 @@ impl Saved {
 
     /// `snap` saved, with each timer due at `due(id)`.
     pub fn new(snap: &Snapshot, mut due: impl FnMut(&TimerEntry) -> u64) -> Saved {
-        Saved {
+        let mut saved = Saved {
             snapshot_version: Saved::VERSION,
             machine: snap.machine.clone(),
             run: snap.run.clone(),
@@ -630,7 +630,10 @@ impl Saved {
             next_timer: snap.next_timer,
             next_message: snap.next_message,
             result: snap.result.clone(),
-        }
+        };
+        // Integers in integer form: a float that holds one (`2.0`, `-0.0`) is saved as it.
+        crate::saved::integral_numbers_in(&mut saved);
+        saved
     }
 
     /// The core's snapshot: without the version and the due times, as run `run`.
@@ -673,9 +676,27 @@ impl Saved {
 
     /// Reads a saved snapshot from JSON, checking it against `spec/snapshot.schema.json`: a
     /// document that does not match is refused as `invalid`.
-    pub fn from_value(value: Value) -> Result<Saved, crate::RestoreError> {
+    ///
+    /// A number's form does not matter: an integral one written as a float (`1.0`, `-0.0`) is
+    /// read as the integer. A snapshot of a run that has ended whose result this runtime cannot
+    /// hold (a defect of a kind it does not know, which the schema allows) is refused as
+    /// `ended`, the reason restoring it would give.
+    pub fn from_value(mut value: Value) -> Result<Saved, crate::RestoreError> {
+        crate::saved::integral_numbers(&mut value);
         crate::saved::schema(&value).map_err(crate::RestoreError::invalid)?;
-        serde_json::from_value(value).map_err(|e| crate::RestoreError::invalid(e.to_string()))
+        let status = value["status"].clone();
+        serde_json::from_value(value).map_err(|e| {
+            if status == "running" {
+                crate::RestoreError::invalid(e.to_string())
+            } else {
+                crate::RestoreError::new(
+                    crate::Refusal::Ended,
+                    format!(
+                        "the run has ended ({status}), with a result this runtime cannot read: {e}"
+                    ),
+                )
+            }
+        })
     }
 
     /// Reads a saved snapshot from JSON text ([`Saved::from_value`]).

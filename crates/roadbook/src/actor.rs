@@ -22,6 +22,10 @@ pub enum Stopped<E> {
     Failed(E),
     /// It was cancelled from outside ([`Actor::cancel`]).
     Cancelled,
+    /// It was suspended through its [`crate::RunHandle`] (from [`Config::on_run`]) once idle,
+    /// giving its saved snapshot. It has not ended: it goes on from the snapshot when that is
+    /// restored.
+    Suspended(Box<Saved>),
 }
 
 impl<E: fmt::Display> fmt::Display for Stopped<E> {
@@ -29,6 +33,7 @@ impl<E: fmt::Display> fmt::Display for Stopped<E> {
         match self {
             Stopped::Failed(e) => write!(f, "the machine failed: {e}"),
             Stopped::Cancelled => f.write_str("the machine was cancelled"),
+            Stopped::Suspended(_) => f.write_str("the machine was suspended"),
         }
     }
 }
@@ -137,7 +142,8 @@ impl<Event, State: Clone, Output, Error> Actor<Event, State, Output, Error> {
         .await;
     }
 
-    /// Waits for the run to end. A run that ended with a defect resumes unwinding with its
+    /// Waits for the run to end, or to be suspended through its [`crate::RunHandle`]
+    /// ([`Stopped::Suspended`]). A run that ended with a defect resumes unwinding with its
     /// [`crate::Defect`] here, and so does a result that does not decode as `Output` or
     /// `Error` (a host defect). The future owns the actor: dropping it before it is ready
     /// stops the run, as dropping the actor does.
@@ -149,9 +155,7 @@ impl<Event, State: Clone, Output, Error> Actor<Event, State, Output, Error> {
             RunEnd::Cancelled => Err(Stopped::Cancelled),
             RunEnd::Defect(d) => std::panic::resume_unwind(Box::new(d)),
             // Only host code holding the run's `RunHandle` can suspend it that way.
-            RunEnd::Suspended(_) => std::panic::resume_unwind(Box::new(Defect::host(
-                "the run was suspended through its handle",
-            ))),
+            RunEnd::Suspended(saved) => Err(Stopped::Suspended(saved)),
         }
     }
 

@@ -9,8 +9,8 @@ use std::fmt;
 use roadbook_ir::{Builtin, Field, StateKind, Trigger, TypeDef, TypeRef};
 use serde_json::{Map, Value};
 
-use crate::Saved;
 use crate::program::Program;
+use crate::{RunResult, Saved};
 
 /// Why a saved snapshot was refused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -110,13 +110,17 @@ impl Program {
     /// snapshot to restore and, if `migrate` was called, the hash the snapshot had before.
     /// `machine` is the machine restore was asked to restore, or `None` for the one the
     /// snapshot names. `migrate` is called at most once, and only when the hashes differ;
-    /// its result is checked from the top, without a second migration.
+    /// its result is checked from the top, without a second migration, as a snapshot of the
+    /// same machine: a migration cannot turn it into a snapshot of another (`machine`).
+    /// Numbers are read in any form: an integral one written as a float (`2.0`, `-0.0`) is
+    /// the integer, and the snapshot given back has it in integer form.
     pub fn check_saved(
         &self,
-        saved: Value,
+        mut saved: Value,
         machine: Option<&str>,
         migrate: Option<&mut Migration<'_>>,
     ) -> Result<(Saved, Option<String>), RestoreError> {
+        integral_numbers(&mut saved);
         schema(&saved).map_err(RestoreError::invalid)?;
         let name = saved["machine"].as_str().unwrap_or_default();
         let Some((m, _)) = self.machine(name) else {
@@ -143,10 +147,11 @@ impl Program {
                 ));
             };
             let old = hash.to_owned();
+            let want = machine.unwrap_or(name).to_owned();
             let new = migrate(saved).map_err(|e| {
                 RestoreError::new(Refusal::Migration, format!("the migration failed: {e}"))
             })?;
-            let (saved, _) = self.check_saved(new, machine, None)?;
+            let (saved, _) = self.check_saved(new, Some(&want), None)?;
             return Ok((saved, Some(old)));
         }
         if saved["status"] != "running" {
@@ -171,6 +176,30 @@ impl Program {
         Ok((saved, None))
     }
 
+    /// Checks `event` as an event that host code gives a run of `machine`: one of the events
+    /// the machine accepts, with exactly its fields, each of its type. Gives it with its
+    /// integers in integer form, or says what is wrong.
+    pub fn check_event(&self, machine: &str, mut event: Value) -> Result<Value, String> {
+        let m = self
+            .ir()
+            .machines
+            .get(machine)
+            .ok_or_else(|| format!("the IR has no machine `{machine}`"))?;
+        integral_numbers(&mut event);
+        let tag = event
+            .get("_tag")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let Some(decl) = m.events.get(tag) else {
+            let tag = event.get("_tag").unwrap_or(&Value::Null);
+            return Err(format!("`{machine}` has no event {tag}"));
+        };
+        if !self.fields_fit(machine, Some(tag), &decl.fields, &event) {
+            return Err(format!("{event} is not a `{machine}` event `{tag}`"));
+        }
+        Ok(event)
+    }
+
     /// Whether `ty` is `ref M`, `ref M?` or `ref M[]`, through aliases.
     fn holds_ref(&self, ty: &TypeRef) -> bool {
         match self.resolve(ty) {
@@ -183,6 +212,9 @@ impl Program {
     /// Whether a running snapshot fits its machine (the last `invalid` row of the spec).
     fn fits(&self, s: &Saved) -> Result<(), String> {
         let (m, idx) = self.machine(&s.machine).ok_or("no such machine")?;
+        if s.result.is_some() {
+            return Err("`result` is not null, though the run is running".into());
+        }
         // `active` is a configuration, in document order.
         let mut active = Vec::new();
         for id in &s.active {
@@ -370,6 +402,34 @@ impl Program {
             o.get(&f.name)
                 .is_some_and(|x| self.value_fits(machine, &f.ty, x))
         })
+    }
+}
+
+/// Rewrites every integral number in `v` that a float holds (`2.0`, `-0.0`) as the integer
+/// (`2`, `0`), at any depth: a JSON number's form does not matter, and a saved snapshot always
+/// has its integers in integer form. Numbers outside `i64`, and fractions, stay as they are.
+pub(crate) fn integral_numbers(v: &mut Value) {
+    match v {
+        Value::Number(n) if n.is_f64() => {
+            if let Some(i) = n.as_f64().and_then(|f| integer(&Value::from(f))) {
+                *v = Value::from(i);
+            }
+        }
+        Value::Array(items) => items.iter_mut().for_each(integral_numbers),
+        Value::Object(o) => o.values_mut().for_each(integral_numbers),
+        _ => {}
+    }
+}
+
+/// [`integral_numbers`] in the values of a saved snapshot: its input, variables and result.
+pub(crate) fn integral_numbers_in(saved: &mut Saved) {
+    saved
+        .input
+        .values_mut()
+        .chain(saved.vars.values_mut())
+        .for_each(integral_numbers);
+    if let Some(RunResult::Output(v) | RunResult::Error(v)) = &mut saved.result {
+        integral_numbers(v);
     }
 }
 

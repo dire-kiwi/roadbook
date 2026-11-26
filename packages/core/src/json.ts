@@ -28,3 +28,16 @@ export const canonicalJson = (value: unknown): string => {
       throw new TypeError(`canonical JSON has no form for a value of type ${typeof value}`)
   }
 }
+
+/**
+ * A deep copy of a JSON value: every array and object is new, everything else is as it was.
+ * What a runtime hands host code, and takes from it, is copied so that neither can change
+ * the other's.
+ */
+export const copyJson = <T>(value: T): T => {
+  if (typeof value !== "object" || value === null) return value
+  if (Array.isArray(value)) return value.map(copyJson) as T
+  const copy: Record<string, unknown> = {}
+  for (const key of Object.keys(value)) copy[key] = copyJson((value as Record<string, unknown>)[key])
+  return copy as T
+}

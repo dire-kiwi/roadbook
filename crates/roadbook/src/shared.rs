@@ -113,6 +113,18 @@ impl Shared {
         g.inbox.clear();
     }
 
+    /// Closes the run if its inbox is empty and no cancel was requested, and says whether it
+    /// did: the last check of a run about to suspend, made under the lock that pushing takes,
+    /// so that nothing pushed while the run was open is discarded.
+    pub fn close_if_idle(&self) -> bool {
+        let mut g = self.lock();
+        if !g.inbox.is_empty() || g.cancel {
+            return false;
+        }
+        g.closed = true;
+        true
+    }
+
     /// Subscribes `run` to what this run emits.
     pub fn subscribe(&self, run: Arc<Shared>) {
         self.lock().subscribers.push(run);

@@ -1,0 +1,67 @@
+{
+  "description": "A `snapshot` step saves a top-level run that has ended, of each status but `failed`: its final snapshot, with `status` and `result` saying how it ended: no state is active once it is `done` or `cancelled`, and a `defect` run keeps the configuration it failed in. Saving writes nothing.",
+  "requires": [
+    "snapshots"
+  ],
+  "chart": "charts/saved.road",
+  "machine": "Counter",
+  "input": {
+    "start": 1
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {
+    "count": [
+      {
+        "args": {
+          "what": "added",
+          "n": 5
+        },
+        "defect": "boom"
+      }
+    ]
+  },
+  "script": [
+    {
+      "snapshot": "s1"
+    },
+    {
+      "restore": "s1",
+      "run": "r2",
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Finish"
+      },
+      "run": "r2"
+    },
+    {
+      "snapshot": "done",
+      "run": "r2"
+    },
+    {
+      "restore": "s1",
+      "run": "r3",
+      "status": "cancelled"
+    },
+    {
+      "cancel": true,
+      "run": "r3"
+    },
+    {
+      "snapshot": "cancelled",
+      "run": "r3"
+    },
+    {
+      "event": {
+        "_tag": "Add",
+        "by": 4
+      }
+    },
+    {
+      "snapshot": "defect"
+    }
+  ],
+  "status": "defect"
+}

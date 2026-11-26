@@ -4,7 +4,7 @@
  * them, each refusal with its reason.
  */
 import { type Field, type Ir, type Machine, parseTypeRef, refMachine, type State } from "./ir.ts"
-import type { Json } from "./json.ts"
+import { copyJson, type Json } from "./json.ts"
 import type { Saved, Snapshot } from "./types.ts"
 
 /** The `snapshotVersion` this runtime saves and restores. */
@@ -83,7 +83,8 @@ export const checkSaved = (ir: Ir, machine: string, json: unknown, migrate?: Mig
   }
   const fit = fitIssue(ir, m, saved)
   if (fit !== undefined) return refuse("invalid", `the snapshot does not fit ${machine}: ${fit}`)
-  return { ok: true, saved, migrated: null }
+  // A copy: the run does not share anything with what the caller holds.
+  return { ok: true, saved: copyJson(saved), migrated: null }
 }
 
 // ---- the shape: snapshot.schema.json --------------------------------------------------------
@@ -195,6 +196,9 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
     for (const child of state.states) walk(child, state)
   }
   walk(m.root, undefined)
+
+  // A running run has no result yet.
+  if (saved.result !== null) return "result is not null, though the run is running"
 
   // The configuration.
   const active = new Set(saved.active)

@@ -142,7 +142,9 @@ export interface Actor<D extends MachineDef> {
    * does the same.
    */
   readonly cancel: Effect.Effect<void>
-  /** The run's saved snapshot, as its last step left it. The run carries on. */
+  /**
+   * The run's saved snapshot, as its last step left it, as a copy of its own. The run carries on.
+   */
   readonly save: Effect.Effect<Saved>
   /**
    * Wait until the run is idle (between steps, nothing queued, no invoke running), then stop it
@@ -178,7 +180,10 @@ export interface Implemented<D extends MachineDef, R> extends Runnable<D["input"
   /**
    * The request handler's step: `restore`, `send` the event if there is one, and `suspend`, in
    * a scope of its own. Gives the saved snapshot `suspend` gives, whatever the run's status; dies
-   * with a `Defect` if the run ended with one. Interrupting it cancels the run.
+   * with a `Defect` if the run ended with one. Interrupting it cancels the run. Nothing runs, and
+   * nothing is written, until both inputs pass: a refused snapshot fails with a `RestoreError`,
+   * and an event that is not one of the machine's or does not encode dies with the caller's host
+   * `Defect`, as `send` does.
    */
   readonly resume: (
     saved: Saved,

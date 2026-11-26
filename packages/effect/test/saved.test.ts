@@ -5,7 +5,7 @@
  */
 import { assert, describe, it } from "@effect/vitest"
 import type * as Core from "@roadbook/core"
-import { Cause, Clock, Effect, Exit, Fiber, Schema, Stream } from "effect"
+import { Cause, Clock, Deferred, Effect, Exit, Fiber, Schema, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import * as fs from "node:fs"
 import * as path from "node:path"
@@ -186,6 +186,91 @@ describe("save and restore", () => {
       yield* settle
       assert.deepStrictEqual(rings, [1000])
     }).pipe(Effect.scoped))
+})
+
+describe("saving and restoring, at the edges", () => {
+  /** The `Defect` an exit died with, or `undefined`. */
+  const defectOf = (exit: Exit.Exit<unknown, unknown>) =>
+    Exit.isFailure(exit) ? exit.cause.reasons.find(Cause.isDieReason)?.defect : undefined
+
+  it.effect("a cancel that arrives during a step is taken before a suspend that arrives after it", () =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      const gate = yield* Deferred.make<void>()
+      const Slow = impl("Counter", { actions: { count: () => Deferred.await(gate) } })
+      const actor = yield* Slow.spawn({ start: 0 }).pipe(Effect.provideService(Roadbook.TraceSink, sink))
+      yield* actor.send({ _tag: "Add", by: 1 })
+      yield* settle
+      // The step is waiting for the action; the cancel, then the suspend, arrive meanwhile.
+      const cancelling = yield* Effect.forkChild(actor.cancel)
+      yield* settle
+      const suspending = yield* Effect.forkChild(actor.suspend)
+      yield* settle
+      yield* Deferred.succeed(gate, undefined)
+      yield* Fiber.join(cancelling)
+      const saved = yield* Fiber.join(suspending)
+      assert.strictEqual(saved.status, "cancelled")
+      assert.strictEqual(records.at(-1)?.kind, "cancelled")
+      assert.isFalse(records.some((r) => r.kind === "suspended"))
+    }).pipe(Effect.scoped))
+
+  it.effect("what save, suspend and restore give and take is a copy", () =>
+    Effect.gen(function*() {
+      const actor = yield* CounterLive.spawn({ start: 1 })
+      const saved = yield* actor.save
+      ;(saved.vars as Record<string, Core.Json>)["n"] = 100
+      assert.deepStrictEqual((yield* actor.save).vars, { n: 1 })
+      // The restored run does not share the caller's snapshot either.
+      const restored = yield* CounterLive.restore(yield* actor.save)
+      const given = yield* actor.save
+      const again = yield* CounterLive.restore(given)
+      ;(given.vars as Record<string, Core.Json>)["n"] = 100
+      yield* again.send({ _tag: "Finish" })
+      assert.strictEqual(yield* again.result, 1)
+      const suspended = yield* restored.suspend
+      ;(suspended.vars as Record<string, Core.Json>)["n"] = 100
+      assert.deepStrictEqual((yield* restored.save).vars, { n: 1 })
+    }).pipe(Effect.scoped))
+
+  it.effect("resume checks the event before anything runs: one that does not encode is the caller's defect", () =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      const saved = yield* Effect.scoped(Effect.flatMap(CounterLive.spawn({ start: 1 }), (a) => a.suspend))
+      const resume = (event: unknown) =>
+        Effect.exit(CounterLive.resume(saved, event as never).pipe(Effect.provideService(Roadbook.TraceSink, sink)))
+      for (const event of [{ _tag: "Add", by: "x" }, { _tag: "Nope" }, { _tag: "Add" }, 7]) {
+        const defect = defectOf(yield* resume(event))
+        assert.instanceOf(defect, Roadbook.Defect)
+        assert.strictEqual((defect as Roadbook.Defect).defect.kind, "host")
+      }
+      assert.deepStrictEqual(records, [])
+      // A refused snapshot is refused first, with its reason.
+      const refused = yield* Effect.exit(CounterLive.resume({ ...saved, snapshotVersion: 2 } as never, { _tag: "Nope" } as never))
+      assert.strictEqual(refusal(refused), "invalid")
+      const fine = yield* resume({ _tag: "Add", by: 2 })
+      assert.isTrue(Exit.isSuccess(fine) && fine.value.vars["n"] === 3)
+    }))
+
+  it.effect("refusals at the edges: a migration that throws anything, a running snapshot with a result, an unknown defect", () =>
+    Effect.gen(function*() {
+      const saved = yield* Effect.scoped(Effect.flatMap(CounterLive.spawn({ start: 1 }), (a) => a.save))
+      const old = { ...saved, ir: `sha256:${"0".repeat(64)}` }
+      const restore = (value: unknown, options?: Roadbook.RestoreOptions) =>
+        Effect.exit(Effect.scoped(CounterLive.restore(value as Roadbook.Saved, options)))
+      const throwing = (thrown: unknown) => ({
+        migrate: () => {
+          throw thrown
+        }
+      })
+      assert.strictEqual(refusal(yield* restore(old, throwing(Object.create(null)))), "migration")
+      assert.strictEqual(refusal(yield* restore(old, throwing(undefined))), "migration")
+      // A migration to a snapshot of another machine.
+      const reminder = yield* Effect.scoped(Effect.flatMap(impl("Reminder", { actions: { log: () => Effect.void } }).spawn({}), (a) => a.save))
+      assert.strictEqual(refusal(yield* restore(old, { migrate: () => reminder })), "machine")
+      assert.strictEqual(refusal(yield* restore({ ...saved, result: { output: 1 } })), "invalid")
+      const defect = { ...saved, status: "defect", active: [], result: { defect: { kind: "cosmic", ray: 1 } } }
+      assert.strictEqual(refusal(yield* restore(defect)), "ended")
+    }))
 })
 
 describe("the request handler", () => {

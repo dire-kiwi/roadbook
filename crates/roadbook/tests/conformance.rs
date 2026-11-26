@@ -374,6 +374,15 @@ impl Runner<'_> {
     }
 
     /// The top-level run `id`, which must not have ended.
+    /// The top-level run `id`, ended or not.
+    fn top(&self, id: &str) -> Result<&RunHandle, String> {
+        self.runs
+            .iter()
+            .find(|r| r.id == id)
+            .map(|r| &r.handle)
+            .ok_or_else(|| format!("no top-level run {id}"))
+    }
+
     fn running(&self, id: &str) -> Result<&RunHandle, String> {
         let run = self
             .runs
@@ -630,8 +639,9 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                 runner.settle().map_err(at)?;
             }
             Step::Snapshot(snap) => {
+                // A run that has ended (a defect included) gives its final snapshot.
                 let saved = runner
-                    .running(snap.run())
+                    .top(snap.run())
                     .map_err(at)?
                     .save()
                     .ok_or_else(|| at(format!("{} has no saved snapshot", snap.run())))?;
@@ -679,11 +689,18 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                     });
                 }
                 let id = format!("r{}", runner.runs.len() + 1);
+                // Restored as the machine the snapshot names, if the chart runs it, so that a
+                // migration to a snapshot of another machine is refused (`machine`).
+                let named: Option<String> = serde_json::from_str::<Value>(text)
+                    .ok()
+                    .and_then(|v| v["machine"].as_str().map(str::to_owned))
+                    .filter(|m| program.ir().machines.contains_key(m) && !c.case.is_stubbed(m));
+                let machine = named.unwrap_or_else(|| c.case.machine.clone());
                 let restored = Saved::from_json(text).and_then(|saved| {
                     dynamic::restore(
                         &restore_config.clone().run_id(id.clone()),
                         &program,
-                        None,
+                        Some(&machine),
                         &saved,
                         &host,
                     )
@@ -813,21 +830,36 @@ fn every_case_passes_byte_for_byte() {
 
 /// Restores saved snapshot `name` of case `c` (the file's `text`) as run `x1`, at virtual
 /// time 0, with the case's chart and a scripted host. Gives `false` if it is refused for the
-/// reason it must be (`ended` for a run that ended, `ir` for one saved with another hash), and
-/// `true` once the restored run has gone on: right after restoring it saves the same snapshot
-/// under its new id, its invokes have started again, and each of its timers fires at its saved
-/// deadline and is taken.
-fn restore_and_go_on(c: &LoadedCase, text: &str) -> Result<bool, String> {
+/// reason it must be (the reason a `restore` step of the case without a migration gives, else
+/// `ended` for a run that ended, `ir` for one saved with another hash), and `true` once the
+/// restored run has gone on: right after restoring it saves the same snapshot under its new
+/// id, its invokes have started again, and each of its timers fires at its saved deadline and
+/// is taken. A file only restored may have its numbers in any form; it is restored as the
+/// canonical snapshot it stands for.
+fn restore_and_go_on(c: &LoadedCase, name: &str, text: &str) -> Result<bool, String> {
     let value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
     let errors =
         roadbook_conformance::schema_errors(&roadbook_conformance::snapshot_validator(), &value);
     if !errors.is_empty() {
         return Err(format!("not a saved snapshot: {}", errors.join("; ")));
     }
-    if snapshot_text(&value) != text {
+    let written = c
+        .case
+        .snapshot_names()
+        .iter()
+        .any(|(n, current)| n == name && *current);
+    if written && snapshot_text(&value) != text {
         return Err("not in canonical form".into());
     }
-    let saved = Saved::from_json(text).map_err(|e| e.to_string())?;
+    let must_refuse = c.case.script.iter().find_map(|s| match s {
+        Step::Restore(r) if r.name == name && r.migrate.is_none() => r.refused.clone(),
+        _ => None,
+    });
+    let saved = match (Saved::from_json(text), &must_refuse) {
+        (Ok(saved), _) => saved,
+        (Err(e), Some(reason)) if e.reason() == reason => return Ok(false),
+        (Err(e), _) => return Err(e.to_string()),
+    };
     let ir = c.ir.clone().ok_or("no IR")?;
     let program = Program::new(ir).map_err(|e| e.to_string())?;
     let hash = program
@@ -836,13 +868,13 @@ fn restore_and_go_on(c: &LoadedCase, text: &str) -> Result<bool, String> {
         .get(&saved.machine)
         .map(|m| m.hash.clone())
         .ok_or_else(|| format!("the IR has no machine {}", saved.machine))?;
-    let must_refuse = if saved.status != roadbook::Status::Running {
-        Some("ended")
+    let must_refuse = must_refuse.or(if saved.status != roadbook::Status::Running {
+        Some("ended".to_owned())
     } else if saved.ir != hash {
-        Some("ir")
+        Some("ir".to_owned())
     } else {
         None
-    };
+    });
     let registry = Arc::new(Registry::default());
     let host = CaseHost {
         case: c,
@@ -948,7 +980,7 @@ fn every_saved_snapshot_restores_and_goes_on() {
             },
         };
         for (name, text) in files {
-            match restore_and_go_on(c, &text) {
+            match restore_and_go_on(c, &name, &text) {
                 Ok(true) => restored += 1,
                 Ok(false) => refused += 1,
                 Err(e) => failures.push(format!("{}/{name}: {e}", c.name)),
@@ -1057,7 +1089,11 @@ fn the_saved_snapshot_check_agrees_with_the_schema() {
             }
             for d in docs {
                 let schema = validator.is_valid(&d);
-                let ours = Saved::from_value(d.clone()).is_ok();
+                // Refused as `invalid` exactly when the schema rejects it. (One that matches
+                // the schema may still be refused as `ended`, for a result this runtime cannot
+                // hold: a defect of a kind it does not know.)
+                let ours =
+                    Saved::from_value(d.clone()).map_or_else(|e| e.reason() != "invalid", |_| true);
                 assert_eq!(schema, ours, "the schema says {schema} for {d}");
                 checked += 1;
             }

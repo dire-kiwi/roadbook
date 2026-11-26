@@ -1,0 +1,45 @@
+{
+  "description": "A JSON number's form does not matter: snapshots that write their integers as floats (`1.0`, `2.0`, `-0.0`, `10000.0`), in `snapshotVersion`, the ids, a timer's `index`, `delay` and `due`, the input and the variables, are restored as the integers they are, an event's `int` field written `3.0` is 3, and what is saved again has every integer in integer form. The restored timer keeps its deadline, 10000.",
+  "requires": [
+    "snapshots"
+  ],
+  "chart": "charts/saved.road",
+  "machine": "Counter",
+  "input": {
+    "start": 0
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "restore": "counter",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Add",
+        "by": 3.0
+      },
+      "run": "r2"
+    },
+    {
+      "suspend": "counter-saved",
+      "run": "r2"
+    },
+    {
+      "restore": "reminder",
+      "run": "r3",
+      "status": "running"
+    },
+    {
+      "advance": 10000
+    },
+    {
+      "suspend": "reminder-saved",
+      "run": "r3"
+    }
+  ],
+  "status": "running"
+}
