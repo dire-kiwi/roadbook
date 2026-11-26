@@ -1,0 +1,173 @@
+>import { Order, User, Receipt, CardDeclined, GatewayUnavailable, chargeCard, retryDelay } from "./types.road"
+#^^^^^^ keyword.control.import.roadbook
+#       ^ punctuation.section.braces.roadbook
+#         ^^^^^ entity.name.type.roadbook
+#              ^ punctuation.separator.comma.roadbook
+#                ^^^^ entity.name.type.roadbook
+#                    ^ punctuation.separator.comma.roadbook
+#                      ^^^^^^^ entity.name.type.roadbook
+#                             ^ punctuation.separator.comma.roadbook
+#                               ^^^^^^^^^^^^ entity.name.type.roadbook
+#                                           ^ punctuation.separator.comma.roadbook
+#                                             ^^^^^^^^^^^^^^^^^^ entity.name.type.roadbook
+#                                                               ^ punctuation.separator.comma.roadbook
+#                                                                 ^^^^^^^^^^ variable.other.roadbook
+#                                                                           ^ punctuation.separator.comma.roadbook
+#                                                                             ^^^^^^^^^^ variable.other.roadbook
+#                                                                                        ^ punctuation.section.braces.roadbook
+#                                                                                          ^^^^ keyword.control.import.roadbook
+#                                                                                               ^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#                                                                                                ^^^^^^^^^^^^ string.quoted.double.roadbook
+#                                                                                                            ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+>
+>/// Charge the customer's card, retrying while the payment gateway is down.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>machine Checkout(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUnavailable {
+#^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
+#        ^^^^^^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
+#                ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#                 ^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                      ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                        ^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                             ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                               ^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                   ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                     ^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                         ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                           ^^ meta.declaration.machine.roadbook keyword.operator.arrow.roadbook
+#                                              ^^^^^^^ meta.declaration.machine.roadbook entity.name.type.roadbook
+#                                                      ^ meta.declaration.machine.roadbook keyword.operator.error.roadbook
+#                                                        ^^^^^^^^^^^^ meta.declaration.machine.roadbook entity.name.type.roadbook
+#                                                                     ^ meta.declaration.machine.roadbook keyword.operator.error.roadbook
+#                                                                       ^^^^^^^^^^^^^^^^^^ meta.declaration.machine.roadbook entity.name.type.roadbook
+#                                                                                          ^ punctuation.section.braces.roadbook
+>  var attempts: int = 0
+#  ^^^ storage.type.var.roadbook
+#      ^^^^^^^^ variable.other.definition.roadbook
+#              ^ punctuation.separator.colon.roadbook
+#                ^^^ support.type.primitive.roadbook
+#                    ^ keyword.operator.assignment.roadbook
+#                      ^ constant.numeric.integer.roadbook
+>  var receipt:  Receipt
+#  ^^^ storage.type.var.roadbook
+#      ^^^^^^^ variable.other.definition.roadbook
+#             ^ punctuation.separator.colon.roadbook
+#                ^^^^^^^ entity.name.type.roadbook
+>  var declined: CardDeclined
+#  ^^^ storage.type.var.roadbook
+#      ^^^^^^^^ variable.other.definition.roadbook
+#              ^ punctuation.separator.colon.roadbook
+#                ^^^^^^^^^^^^ entity.name.type.roadbook
+>
+>  initial Charging
+#  ^^^^^^^ keyword.control.initial.roadbook
+#          ^^^^^^^^ entity.name.type.state.roadbook
+>
+>  /// One attempt against the payment gateway.
+#  ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>  state Charging {
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^^^^^ entity.name.type.state.roadbook
+#                 ^ punctuation.section.braces.roadbook
+>    invoke chargeCard(order, user) {
+#    ^^^^^^ keyword.control.invoke.roadbook
+#           ^^^^^^^^^^ entity.name.function.call.roadbook
+#                     ^ punctuation.section.parens.roadbook
+#                      ^^^^^ variable.other.roadbook
+#                           ^ punctuation.separator.comma.roadbook
+#                             ^^^^ variable.other.roadbook
+#                                 ^ punctuation.section.parens.roadbook
+#                                   ^ punctuation.section.braces.roadbook
+>      done                    -> Charged   set receipt = result
+#      ^^^^ keyword.control.done.roadbook
+#                              ^^ keyword.operator.arrow.roadbook
+#                                 ^^^^^^^ entity.name.type.state.roadbook
+#                                           ^^^ keyword.other.effect.roadbook
+#                                               ^^^^^^^ variable.other.roadbook
+#                                                       ^ keyword.operator.assignment.roadbook
+#                                                         ^^^^^^ variable.language.roadbook
+>      fail CardDeclined       -> Declined  set declined = error
+#      ^^^^ keyword.control.fail.roadbook
+#           ^^^^^^^^^^^^ entity.name.type.error.roadbook
+#                              ^^ keyword.operator.arrow.roadbook
+#                                 ^^^^^^^^ entity.name.type.state.roadbook
+#                                           ^^^ keyword.other.effect.roadbook
+#                                               ^^^^^^^^ variable.other.roadbook
+#                                                        ^ keyword.operator.assignment.roadbook
+#                                                          ^^^^^ variable.language.roadbook
+>      fail GatewayUnavailable {
+#      ^^^^ keyword.control.fail.roadbook
+#           ^^^^^^^^^^^^^^^^^^ entity.name.type.error.roadbook
+#                              ^ punctuation.section.braces.roadbook
+>        if attempts < 3       -> Backoff
+#        ^^ keyword.control.if.roadbook
+#           ^^^^^^^^ variable.other.roadbook
+#                    ^ keyword.operator.comparison.roadbook
+#                      ^ constant.numeric.integer.roadbook
+#                              ^^ keyword.operator.arrow.roadbook
+#                                 ^^^^^^^ entity.name.type.state.roadbook
+>        else                  -> GaveUp
+#        ^^^^ keyword.control.else.roadbook
+#                              ^^ keyword.operator.arrow.roadbook
+#                                 ^^^^^^ entity.name.type.state.roadbook
+>      }
+#      ^ punctuation.section.braces.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>
+>  /// Wait before the next attempt. The delay grows with each attempt.
+#  ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>  state Backoff {
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^^^^ entity.name.type.state.roadbook
+#                ^ punctuation.section.braces.roadbook
+>    entry set attempts = attempts + 1
+#    ^^^^^ keyword.control.entry.roadbook
+#          ^^^ keyword.other.effect.roadbook
+#              ^^^^^^^^ variable.other.roadbook
+#                       ^ keyword.operator.assignment.roadbook
+#                         ^^^^^^^^ variable.other.roadbook
+#                                  ^ keyword.operator.arithmetic.roadbook
+#                                    ^ constant.numeric.integer.roadbook
+>    after retryDelay(attempts) -> Charging
+#    ^^^^^ keyword.control.after.roadbook
+#          ^^^^^^^^^^ entity.name.function.call.roadbook
+#                    ^ punctuation.section.parens.roadbook
+#                     ^^^^^^^^ variable.other.roadbook
+#                             ^ punctuation.section.parens.roadbook
+#                               ^^ keyword.operator.arrow.roadbook
+#                                  ^^^^^^^^ entity.name.type.state.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>
+>  final state Charged  { output receipt }
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^^ entity.name.type.state.roadbook
+#                       ^ punctuation.section.braces.roadbook
+#                         ^^^^^^ keyword.control.output.roadbook
+#                                ^^^^^^^ variable.other.roadbook
+#                                        ^ punctuation.section.braces.roadbook
+>  final state Declined { fail declined }
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^^^ entity.name.type.state.roadbook
+#                       ^ punctuation.section.braces.roadbook
+#                         ^^^^ keyword.control.fail.roadbook
+#                              ^^^^^^^^ variable.other.roadbook
+#                                       ^ punctuation.section.braces.roadbook
+>  final state GaveUp   { fail GatewayUnavailable }
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^ entity.name.type.state.roadbook
+#                       ^ punctuation.section.braces.roadbook
+#                         ^^^^ keyword.control.fail.roadbook
+#                              ^^^^^^^^^^^^^^^^^^ entity.name.type.error.roadbook
+#                                                 ^ punctuation.section.braces.roadbook
+>}
+#^ punctuation.section.braces.roadbook

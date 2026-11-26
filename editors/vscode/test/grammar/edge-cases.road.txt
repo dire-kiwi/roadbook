@@ -1,0 +1,36 @@
+// Constructs the examples do not show. Not a `.road` file, so `roadbook check` leaves it alone.
+//// four slashes is an ordinary comment
+/// A doc comment with `code` in it.
+extern type Clock
+enum Level { Low, High }
+type Settings { label: string?, ids: int[]?, peer: ref Worker, ratio: float }
+
+task fetch(
+  url: string,
+  retries: int,
+) -> json ! Timeout | Refused
+
+machine Worker(settings: Settings, peer: ref Worker) {
+  var ratio: float = 0.5
+  var text: string = "tab\t quote\" backslash\\ newline\n bad\q"
+  emits Ready { level: Level }
+
+  parallel state Running {
+    state A {
+      on * -> Running.B
+      always if not (ratio >= 1.25 and ratio != -2.0) or true -> B set ratio = ratio * 2.0
+    }
+    state B {
+      entry do audit("b"), log(ratio)
+      after 250ms -> A
+      after 2h { if ratio < 1.0 -> A else -> B }
+      on peer.Ready if event.level == Level.High -> A emit Ready { level: Level.Low }
+      invoke Child(settings) as child {
+        done -> A send peer.Ping {}
+        fail * -> B
+      }
+    }
+  }
+  final state Broken { fail error }
+}
+"unterminated

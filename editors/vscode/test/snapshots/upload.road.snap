@@ -1,0 +1,304 @@
+>/// A file the browser has started to send, as the upload endpoint describes it.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>type File { name: string, size: int }
+#^^^^ storage.type.type.roadbook
+#     ^^^^ entity.name.type.roadbook
+#          ^ punctuation.section.braces.roadbook
+#            ^^^^ variable.other.property.roadbook
+#                ^ punctuation.separator.colon.roadbook
+#                  ^^^^^^ support.type.primitive.roadbook
+#                        ^ punctuation.separator.comma.roadbook
+#                          ^^^^ variable.other.property.roadbook
+#                              ^ punctuation.separator.colon.roadbook
+#                                ^^^ support.type.primitive.roadbook
+#                                    ^ punctuation.section.braces.roadbook
+>
+>/// Where a stored file can be fetched.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>type Url = string
+#^^^^ storage.type.type.roadbook
+#     ^^^ entity.name.type.roadbook
+#         ^ keyword.operator.assignment.roadbook
+#           ^^^^^^ support.type.primitive.roadbook
+>
+>/// The storage service refused a chunk, or the finished file.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>error UploadFailed { reason: string }
+#^^^^^ storage.type.error.roadbook
+#      ^^^^^^^^^^^^ entity.name.type.error.roadbook
+#                   ^ punctuation.section.braces.roadbook
+#                     ^^^^^^ variable.other.property.roadbook
+#                           ^ punctuation.separator.colon.roadbook
+#                             ^^^^^^ support.type.primitive.roadbook
+#                                    ^ punctuation.section.braces.roadbook
+>
+>/// Store the chunk of `file` that starts at `offset`. Returns the offset after it.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+#                       ^^^^^^ comment.line.documentation.roadbook markup.inline.raw.roadbook
+#                             ^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+#                                             ^^^^^^^^ comment.line.documentation.roadbook markup.inline.raw.roadbook
+#                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>task sendChunk(file: File, offset: int) -> int ! UploadFailed
+#^^^^ meta.declaration.function.roadbook storage.type.task.roadbook
+#     ^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#              ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#               ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                   ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                     ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                         ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                           ^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                 ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                   ^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                                      ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                        ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                           ^^^ meta.declaration.function.roadbook support.type.primitive.roadbook
+#                                               ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
+#                                                 ^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+>
+>/// Ask the storage service to assemble the stored chunks, and return the file's address.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>task finishUpload(file: File) -> Url ! UploadFailed
+#^^^^ meta.declaration.function.roadbook storage.type.task.roadbook
+#     ^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#                 ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#                  ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                      ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                        ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                            ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                              ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                 ^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+#                                     ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
+#                                       ^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+>
+>/// How much of `file` is stored once its first `offset` bytes are, from 0 to 100.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^ comment.line.documentation.roadbook
+#                ^^^^^^ comment.line.documentation.roadbook markup.inline.raw.roadbook
+#                      ^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+#                                                ^^^^^^^^ comment.line.documentation.roadbook markup.inline.raw.roadbook
+#                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>fn percentOf(file: File, offset: int) -> int
+#^^ meta.declaration.function.roadbook storage.type.fn.roadbook
+#   ^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#            ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#             ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                 ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                   ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                       ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                         ^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                               ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                 ^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                                    ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                      ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                         ^^^ meta.declaration.function.roadbook support.type.primitive.roadbook
+>
+>/// Whether the first `offset` bytes are all of `file`.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+#                      ^^^^^^^^ comment.line.documentation.roadbook markup.inline.raw.roadbook
+#                              ^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+#                                                ^^^^^^ comment.line.documentation.roadbook markup.inline.raw.roadbook
+#                                                      ^ comment.line.documentation.roadbook
+>fn complete(file: File, offset: int) -> bool
+#^^ meta.declaration.function.roadbook storage.type.fn.roadbook
+#   ^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#           ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#            ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                  ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                      ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                        ^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                              ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                ^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                                   ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                     ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                        ^^^^ meta.declaration.function.roadbook support.type.primitive.roadbook
+>
+>/// Upload a file in chunks. Can be paused, and reports its progress to whoever invoked it.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>machine Upload(file: File) -> Url ! UploadFailed {
+#^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
+#        ^^^^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
+#              ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#               ^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                   ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                     ^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                         ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                           ^^ meta.declaration.machine.roadbook keyword.operator.arrow.roadbook
+#                              ^^^ meta.declaration.machine.roadbook entity.name.type.roadbook
+#                                  ^ meta.declaration.machine.roadbook keyword.operator.error.roadbook
+#                                    ^^^^^^^^^^^^ meta.declaration.machine.roadbook entity.name.type.roadbook
+#                                                 ^ punctuation.section.braces.roadbook
+>  var offset:  int = 0
+#  ^^^ storage.type.var.roadbook
+#      ^^^^^^ variable.other.definition.roadbook
+#            ^ punctuation.separator.colon.roadbook
+#               ^^^ support.type.primitive.roadbook
+#                   ^ keyword.operator.assignment.roadbook
+#                     ^ constant.numeric.integer.roadbook
+>  var url:     Url
+#  ^^^ storage.type.var.roadbook
+#      ^^^ variable.other.definition.roadbook
+#         ^ punctuation.separator.colon.roadbook
+#               ^^^ entity.name.type.roadbook
+>  var failure: UploadFailed
+#  ^^^ storage.type.var.roadbook
+#      ^^^^^^^ variable.other.definition.roadbook
+#             ^ punctuation.separator.colon.roadbook
+#               ^^^^^^^^^^^^ entity.name.type.roadbook
+>
+>  event Pause
+#  ^^^^^ storage.type.event.roadbook
+#        ^^^^^ entity.name.type.event.roadbook
+>  event Resume
+#  ^^^^^ storage.type.event.roadbook
+#        ^^^^^^ entity.name.type.event.roadbook
+>  emits Progress { percent: int }
+#  ^^^^^ storage.type.emits.roadbook
+#        ^^^^^^^^ entity.name.type.event.roadbook
+#                 ^ punctuation.section.braces.roadbook
+#                   ^^^^^^^ variable.other.property.roadbook
+#                          ^ punctuation.separator.colon.roadbook
+#                            ^^^ support.type.primitive.roadbook
+#                                ^ punctuation.section.braces.roadbook
+>
+>  initial Sending
+#  ^^^^^^^ keyword.control.initial.roadbook
+#          ^^^^^^^ entity.name.type.state.roadbook
+>
+>  /// One chunk at a time, until every byte is stored.
+#  ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>  state Sending {
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^^^^ entity.name.type.state.roadbook
+#                ^ punctuation.section.braces.roadbook
+>    always if complete(file, offset) -> Finishing
+#    ^^^^^^ keyword.control.always.roadbook
+#           ^^ keyword.control.if.roadbook
+#              ^^^^^^^^ entity.name.function.call.roadbook
+#                      ^ punctuation.section.parens.roadbook
+#                       ^^^^ variable.other.roadbook
+#                           ^ punctuation.separator.comma.roadbook
+#                             ^^^^^^ variable.other.roadbook
+#                                   ^ punctuation.section.parens.roadbook
+#                                     ^^ keyword.operator.arrow.roadbook
+#                                        ^^^^^^^^^ entity.name.type.state.roadbook
+>    invoke sendChunk(file, offset) {
+#    ^^^^^^ keyword.control.invoke.roadbook
+#           ^^^^^^^^^ entity.name.function.call.roadbook
+#                    ^ punctuation.section.parens.roadbook
+#                     ^^^^ variable.other.roadbook
+#                         ^ punctuation.separator.comma.roadbook
+#                           ^^^^^^ variable.other.roadbook
+#                                 ^ punctuation.section.parens.roadbook
+#                                   ^ punctuation.section.braces.roadbook
+>      done              -> Sending  set offset = result  emit Progress { percent: percentOf(file, result) }
+#      ^^^^ keyword.control.done.roadbook
+#                        ^^ keyword.operator.arrow.roadbook
+#                           ^^^^^^^ entity.name.type.state.roadbook
+#                                    ^^^ keyword.other.effect.roadbook
+#                                        ^^^^^^ variable.other.roadbook
+#                                               ^ keyword.operator.assignment.roadbook
+#                                                 ^^^^^^ variable.language.roadbook
+#                                                         ^^^^ keyword.other.effect.roadbook
+#                                                              ^^^^^^^^ entity.name.type.event.roadbook
+#                                                                       ^ punctuation.section.braces.roadbook
+#                                                                         ^^^^^^^ variable.other.property.roadbook
+#                                                                                ^ punctuation.separator.colon.roadbook
+#                                                                                  ^^^^^^^^^ entity.name.function.call.roadbook
+#                                                                                           ^ punctuation.section.parens.roadbook
+#                                                                                            ^^^^ variable.other.roadbook
+#                                                                                                ^ punctuation.separator.comma.roadbook
+#                                                                                                  ^^^^^^ variable.language.roadbook
+#                                                                                                        ^ punctuation.section.parens.roadbook
+#                                                                                                          ^ punctuation.section.braces.roadbook
+>      fail UploadFailed -> Failed   set failure = error
+#      ^^^^ keyword.control.fail.roadbook
+#           ^^^^^^^^^^^^ entity.name.type.error.roadbook
+#                        ^^ keyword.operator.arrow.roadbook
+#                           ^^^^^^ entity.name.type.state.roadbook
+#                                    ^^^ keyword.other.effect.roadbook
+#                                        ^^^^^^^ variable.other.roadbook
+#                                                ^ keyword.operator.assignment.roadbook
+#                                                  ^^^^^ variable.language.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>    on Pause -> Paused
+#    ^^ keyword.control.trigger.roadbook
+#       ^^^^^ entity.name.type.event.roadbook
+#             ^^ keyword.operator.arrow.roadbook
+#                ^^^^^^ entity.name.type.state.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>
+>  /// Nothing is sent until the user resumes.
+#  ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>  state Paused { on Resume -> Sending }
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^^^ entity.name.type.state.roadbook
+#               ^ punctuation.section.braces.roadbook
+#                 ^^ keyword.control.trigger.roadbook
+#                    ^^^^^^ entity.name.type.event.roadbook
+#                           ^^ keyword.operator.arrow.roadbook
+#                              ^^^^^^^ entity.name.type.state.roadbook
+#                                      ^ punctuation.section.braces.roadbook
+>
+>  state Finishing {
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^^^^^^ entity.name.type.state.roadbook
+#                  ^ punctuation.section.braces.roadbook
+>    invoke finishUpload(file) {
+#    ^^^^^^ keyword.control.invoke.roadbook
+#           ^^^^^^^^^^^^ entity.name.function.call.roadbook
+#                       ^ punctuation.section.parens.roadbook
+#                        ^^^^ variable.other.roadbook
+#                            ^ punctuation.section.parens.roadbook
+#                              ^ punctuation.section.braces.roadbook
+>      done              -> Done    set url = result
+#      ^^^^ keyword.control.done.roadbook
+#                        ^^ keyword.operator.arrow.roadbook
+#                           ^^^^ entity.name.type.state.roadbook
+#                                   ^^^ keyword.other.effect.roadbook
+#                                       ^^^ variable.other.roadbook
+#                                           ^ keyword.operator.assignment.roadbook
+#                                             ^^^^^^ variable.language.roadbook
+>      fail UploadFailed -> Failed  set failure = error
+#      ^^^^ keyword.control.fail.roadbook
+#           ^^^^^^^^^^^^ entity.name.type.error.roadbook
+#                        ^^ keyword.operator.arrow.roadbook
+#                           ^^^^^^ entity.name.type.state.roadbook
+#                                   ^^^ keyword.other.effect.roadbook
+#                                       ^^^^^^^ variable.other.roadbook
+#                                               ^ keyword.operator.assignment.roadbook
+#                                                 ^^^^^ variable.language.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>
+>  final state Done   { output url }
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^ entity.name.type.state.roadbook
+#                     ^ punctuation.section.braces.roadbook
+#                       ^^^^^^ keyword.control.output.roadbook
+#                              ^^^ variable.other.roadbook
+#                                  ^ punctuation.section.braces.roadbook
+>  final state Failed { fail failure }
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^ entity.name.type.state.roadbook
+#                     ^ punctuation.section.braces.roadbook
+#                       ^^^^ keyword.control.fail.roadbook
+#                            ^^^^^^^ variable.other.roadbook
+#                                    ^ punctuation.section.braces.roadbook
+>}
+#^ punctuation.section.braces.roadbook

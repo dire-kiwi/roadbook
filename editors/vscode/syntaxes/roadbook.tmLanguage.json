@@ -1,0 +1,344 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Roadbook",
+  "scopeName": "source.roadbook",
+  "fileTypes": ["road"],
+  "patterns": [{ "include": "#code" }],
+  "repository": {
+    "code": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#import" },
+        { "include": "#machine-signature" },
+        { "include": "#function-signature" },
+        { "include": "#declarations" },
+        { "include": "#messages" },
+        { "include": "#target" },
+        { "include": "#keywords" },
+        { "include": "#numbers" },
+        { "include": "#calls" },
+        { "include": "#enum-member" },
+        { "include": "#types" },
+        { "include": "#fields" },
+        { "include": "#operators" },
+        { "include": "#names" },
+        { "include": "#punctuation" }
+      ]
+    },
+
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.documentation.roadbook",
+          "begin": "///(?!/)",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.roadbook" } },
+          "end": "$",
+          "patterns": [
+            {
+              "name": "markup.inline.raw.roadbook",
+              "match": "`[^`]*`"
+            }
+          ]
+        },
+        {
+          "name": "comment.line.double-slash.roadbook",
+          "begin": "//",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.roadbook" } },
+          "end": "$"
+        }
+      ]
+    },
+
+    "strings": {
+      "name": "string.quoted.double.roadbook",
+      "begin": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.roadbook" } },
+      "end": "(\")|$",
+      "endCaptures": { "1": { "name": "punctuation.definition.string.end.roadbook" } },
+      "patterns": [
+        { "name": "constant.character.escape.roadbook", "match": "\\\\[\"\\\\nt]" },
+        { "name": "invalid.illegal.unknown-escape.roadbook", "match": "\\\\." }
+      ]
+    },
+
+    "import": {
+      "patterns": [
+        { "match": "\\bimport\\b", "name": "keyword.control.import.roadbook" },
+        { "match": "\\bfrom\\b(?=\\s*\")", "name": "keyword.control.import.roadbook" }
+      ]
+    },
+
+    "machine-signature": {
+      "name": "meta.declaration.machine.roadbook",
+      "begin": "\\b(machine)\\s+([A-Z][A-Za-z0-9]*)",
+      "beginCaptures": {
+        "1": { "name": "storage.type.machine.roadbook" },
+        "2": { "name": "entity.name.type.machine.roadbook" }
+      },
+      "end": "(?=[{}])|$",
+      "patterns": [{ "include": "#signature-rest" }]
+    },
+
+    "function-signature": {
+      "name": "meta.declaration.function.roadbook",
+      "begin": "\\b(fn|action|task)\\s+([a-z][A-Za-z0-9]*)",
+      "beginCaptures": {
+        "1": { "name": "storage.type.$1.roadbook" },
+        "2": { "name": "entity.name.function.roadbook" }
+      },
+      "end": "(?=[{}])|$",
+      "patterns": [{ "include": "#signature-rest" }]
+    },
+
+    "signature-rest": {
+      "patterns": [
+        { "include": "#comments" },
+        {
+          "name": "meta.parameters.roadbook",
+          "begin": "\\(",
+          "beginCaptures": { "0": { "name": "punctuation.definition.parameters.begin.roadbook" } },
+          "end": "\\)",
+          "endCaptures": { "0": { "name": "punctuation.definition.parameters.end.roadbook" } },
+          "patterns": [
+            { "include": "#comments" },
+            {
+              "match": "\\b([a-z][A-Za-z0-9]*)\\s*(:)",
+              "captures": {
+                "1": { "name": "variable.parameter.roadbook" },
+                "2": { "name": "punctuation.separator.colon.roadbook" }
+              }
+            },
+            { "include": "#types" },
+            { "include": "#punctuation" }
+          ]
+        },
+        { "match": "->", "name": "keyword.operator.arrow.roadbook" },
+        { "match": "[!|]", "name": "keyword.operator.error.roadbook" },
+        { "include": "#types" }
+      ]
+    },
+
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(extern)\\s+(type)\\s+([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "storage.modifier.extern.roadbook" },
+            "2": { "name": "storage.type.type.roadbook" },
+            "3": { "name": "entity.name.type.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(type)\\s+([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "storage.type.type.roadbook" },
+            "2": { "name": "entity.name.type.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(enum)\\s+([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "storage.type.enum.roadbook" },
+            "2": { "name": "entity.name.type.enum.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(error)\\s+([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "storage.type.error.roadbook" },
+            "2": { "name": "entity.name.type.error.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(event|emits)\\s+([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "storage.type.$1.roadbook" },
+            "2": { "name": "entity.name.type.event.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(var)\\s+([a-z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "storage.type.var.roadbook" },
+            "2": { "name": "variable.other.definition.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(?:(final|parallel)\\s+)?(state)\\s+([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "storage.modifier.$1.roadbook" },
+            "2": { "name": "storage.type.state.roadbook" },
+            "3": { "name": "entity.name.type.state.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(initial)\\s+([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "keyword.control.initial.roadbook" },
+            "2": { "name": "entity.name.type.state.roadbook" }
+          }
+        }
+      ]
+    },
+
+    "messages": {
+      "patterns": [
+        {
+          "match": "\\b(on)\\s+(?:(\\*)|([a-z][A-Za-z0-9]*)(\\.)([A-Z][A-Za-z0-9]*)|([A-Z][A-Za-z0-9]*))",
+          "captures": {
+            "1": { "name": "keyword.control.trigger.roadbook" },
+            "2": { "name": "keyword.operator.wildcard.roadbook" },
+            "3": { "name": "variable.other.roadbook" },
+            "4": { "name": "punctuation.accessor.roadbook" },
+            "5": { "name": "entity.name.type.event.roadbook" },
+            "6": { "name": "entity.name.type.event.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(send)\\s+([a-z][A-Za-z0-9]*)(\\.)([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "keyword.other.effect.roadbook" },
+            "2": { "name": "variable.other.roadbook" },
+            "3": { "name": "punctuation.accessor.roadbook" },
+            "4": { "name": "entity.name.type.event.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(emit)\\s+([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "keyword.other.effect.roadbook" },
+            "2": { "name": "entity.name.type.event.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(fail)\\s+(?:(\\*)|([A-Z][A-Za-z0-9]*))",
+          "captures": {
+            "1": { "name": "keyword.control.fail.roadbook" },
+            "2": { "name": "keyword.operator.wildcard.roadbook" },
+            "3": { "name": "entity.name.type.error.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(as)\\s+([a-z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "keyword.control.as.roadbook" },
+            "2": { "name": "variable.other.definition.roadbook" }
+          }
+        }
+      ]
+    },
+
+    "target": {
+      "match": "(->)\\s*([A-Z][A-Za-z0-9]*(?:\\.[A-Z][A-Za-z0-9]*)*)",
+      "captures": {
+        "1": { "name": "keyword.operator.arrow.roadbook" },
+        "2": { "name": "entity.name.type.state.roadbook" }
+      }
+    },
+
+    "keywords": {
+      "patterns": [
+        {
+          "match": "\\b(initial|entry|exit|on|after|always|done|invoke|output|fail|if|else)\\b",
+          "name": "keyword.control.$1.roadbook"
+        },
+        { "match": "\\b(set|do|send|emit)\\b", "name": "keyword.other.effect.roadbook" },
+        {
+          "match": "\\b(type|enum|extern|fn|action|task|machine|var|emits|state)\\b",
+          "name": "storage.type.$1.roadbook"
+        },
+        { "match": "\\b(final|parallel)\\b", "name": "storage.modifier.$1.roadbook" },
+        { "match": "\\b(and|or|not)\\b", "name": "keyword.operator.logical.roadbook" },
+        { "match": "\\b(true|false)\\b", "name": "constant.language.boolean.roadbook" },
+        { "match": "\\b(event|error|result)\\b", "name": "variable.language.roadbook" }
+      ]
+    },
+
+    "numbers": {
+      "patterns": [
+        {
+          "match": "\\b([0-9]+)(ms|s|m|h)\\b",
+          "name": "constant.numeric.duration.roadbook",
+          "captures": { "2": { "name": "keyword.other.unit.roadbook" } }
+        },
+        { "match": "\\b[0-9]+\\.[0-9]+\\b", "name": "constant.numeric.float.roadbook" },
+        { "match": "\\b[0-9]+\\b", "name": "constant.numeric.integer.roadbook" }
+      ]
+    },
+
+    "types": {
+      "patterns": [
+        { "match": "\\bref\\b(?=\\s+[A-Z])", "name": "storage.modifier.ref.roadbook" },
+        { "match": "\\b(string|int|float|bool|duration|json)\\b", "name": "support.type.primitive.roadbook" },
+        { "match": "\\b[A-Z][A-Za-z0-9]*\\b", "name": "entity.name.type.roadbook" },
+        { "match": "\\[\\]", "name": "keyword.operator.type.list.roadbook" },
+        { "match": "\\?", "name": "keyword.operator.type.optional.roadbook" }
+      ]
+    },
+
+    "calls": {
+      "patterns": [
+        {
+          "match": "\\b([a-z][A-Za-z0-9]*)\\s*(?=\\()",
+          "captures": { "1": { "name": "entity.name.function.call.roadbook" } }
+        },
+        {
+          "match": "\\b([A-Z][A-Za-z0-9]*)\\s*(?=\\()",
+          "captures": { "1": { "name": "entity.name.type.machine.roadbook" } }
+        }
+      ]
+    },
+
+    "enum-member": {
+      "match": "\\b([A-Z][A-Za-z0-9]*)(\\.)([A-Z][A-Za-z0-9]*)",
+      "captures": {
+        "1": { "name": "entity.name.type.roadbook" },
+        "2": { "name": "punctuation.accessor.roadbook" },
+        "3": { "name": "variable.other.enummember.roadbook" }
+      }
+    },
+
+    "fields": {
+      "match": "\\b([a-z][A-Za-z0-9]*)\\s*(:)",
+      "captures": {
+        "1": { "name": "variable.other.property.roadbook" },
+        "2": { "name": "punctuation.separator.colon.roadbook" }
+      }
+    },
+
+    "operators": {
+      "patterns": [
+        { "match": "->", "name": "keyword.operator.arrow.roadbook" },
+        { "match": "==|!=|<=|>=|<|>", "name": "keyword.operator.comparison.roadbook" },
+        { "match": "=", "name": "keyword.operator.assignment.roadbook" },
+        { "match": "[+\\-*]", "name": "keyword.operator.arithmetic.roadbook" },
+        { "match": "[!|]", "name": "keyword.operator.error.roadbook" }
+      ]
+    },
+
+    "names": {
+      "patterns": [
+        {
+          "match": "(\\.)([a-z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "punctuation.accessor.roadbook" },
+            "2": { "name": "variable.other.property.roadbook" }
+          }
+        },
+        { "match": "\\b[A-Z][A-Za-z0-9]*\\b", "name": "entity.name.type.roadbook" },
+        { "match": "\\b[a-z][A-Za-z0-9]*\\b", "name": "variable.other.roadbook" }
+      ]
+    },
+
+    "punctuation": {
+      "patterns": [
+        { "match": ",", "name": "punctuation.separator.comma.roadbook" },
+        { "match": ":", "name": "punctuation.separator.colon.roadbook" },
+        { "match": "\\.", "name": "punctuation.accessor.roadbook" },
+        { "match": "[{}]", "name": "punctuation.section.braces.roadbook" },
+        { "match": "[()]", "name": "punctuation.section.parens.roadbook" }
+      ]
+    }
+  }
+}

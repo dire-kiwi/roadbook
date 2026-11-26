@@ -1,0 +1,399 @@
+>import {
+#^^^^^^ keyword.control.import.roadbook
+#       ^ punctuation.section.braces.roadbook
+>  OrderDraft, Order, Receipt, User, ApiResponse,
+#  ^^^^^^^^^^ entity.name.type.roadbook
+#            ^ punctuation.separator.comma.roadbook
+#              ^^^^^ entity.name.type.roadbook
+#                   ^ punctuation.separator.comma.roadbook
+#                     ^^^^^^^ entity.name.type.roadbook
+#                            ^ punctuation.separator.comma.roadbook
+#                              ^^^^ entity.name.type.roadbook
+#                                  ^ punctuation.separator.comma.roadbook
+#                                    ^^^^^^^^^^^ entity.name.type.roadbook
+#                                               ^ punctuation.separator.comma.roadbook
+>  Unauthenticated, ValidationFailed, CardDeclined, GatewayUnavailable,
+#  ^^^^^^^^^^^^^^^ entity.name.type.roadbook
+#                 ^ punctuation.separator.comma.roadbook
+#                   ^^^^^^^^^^^^^^^^ entity.name.type.roadbook
+#                                   ^ punctuation.separator.comma.roadbook
+#                                     ^^^^^^^^^^^^ entity.name.type.roadbook
+#                                                 ^ punctuation.separator.comma.roadbook
+#                                                   ^^^^^^^^^^^^^^^^^^ entity.name.type.roadbook
+#                                                                     ^ punctuation.separator.comma.roadbook
+>  authenticate, validateOrder, priceOrder, sendConfirmationEmail, audit,
+#  ^^^^^^^^^^^^ variable.other.roadbook
+#              ^ punctuation.separator.comma.roadbook
+#                ^^^^^^^^^^^^^ variable.other.roadbook
+#                             ^ punctuation.separator.comma.roadbook
+#                               ^^^^^^^^^^ variable.other.roadbook
+#                                         ^ punctuation.separator.comma.roadbook
+#                                           ^^^^^^^^^^^^^^^^^^^^^ variable.other.roadbook
+#                                                                ^ punctuation.separator.comma.roadbook
+#                                                                  ^^^^^ variable.other.roadbook
+#                                                                       ^ punctuation.separator.comma.roadbook
+>  confirmation, invalid, problem
+#  ^^^^^^^^^^^^ variable.other.roadbook
+#              ^ punctuation.separator.comma.roadbook
+#                ^^^^^^^ variable.other.roadbook
+#                       ^ punctuation.separator.comma.roadbook
+#                         ^^^^^^^ variable.other.roadbook
+>} from "./types.road"
+#^ punctuation.section.braces.roadbook
+#  ^^^^ keyword.control.import.roadbook
+#       ^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#        ^^^^^^^^^^^^ string.quoted.double.roadbook
+#                    ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+>import { Checkout } from "./checkout.road"
+#^^^^^^ keyword.control.import.roadbook
+#       ^ punctuation.section.braces.roadbook
+#         ^^^^^^^^ entity.name.type.roadbook
+#                  ^ punctuation.section.braces.roadbook
+#                    ^^^^ keyword.control.import.roadbook
+#                         ^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#                          ^^^^^^^^^^^^^^^ string.quoted.double.roadbook
+#                                         ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+>
+>/// POST /orders: authenticate, validate, price, take payment, confirm.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>/// Every final state is one HTTP response.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>machine PlaceOrder(token: string, draft: OrderDraft) -> ApiResponse {
+#^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
+#        ^^^^^^^^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
+#                  ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#                   ^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                        ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                          ^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                                ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                                  ^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                       ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                         ^^^^^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                                   ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                                     ^^ meta.declaration.machine.roadbook keyword.operator.arrow.roadbook
+#                                                        ^^^^^^^^^^^ meta.declaration.machine.roadbook entity.name.type.roadbook
+#                                                                    ^ punctuation.section.braces.roadbook
+>  var user:    User
+#  ^^^ storage.type.var.roadbook
+#      ^^^^ variable.other.definition.roadbook
+#          ^ punctuation.separator.colon.roadbook
+#               ^^^^ entity.name.type.roadbook
+>  var order:   Order
+#  ^^^ storage.type.var.roadbook
+#      ^^^^^ variable.other.definition.roadbook
+#           ^ punctuation.separator.colon.roadbook
+#               ^^^^^ entity.name.type.roadbook
+>  var receipt: Receipt
+#  ^^^ storage.type.var.roadbook
+#      ^^^^^^^ variable.other.definition.roadbook
+#             ^ punctuation.separator.colon.roadbook
+#               ^^^^^^^ entity.name.type.roadbook
+>  var issues:  string[]
+#  ^^^ storage.type.var.roadbook
+#      ^^^^^^ variable.other.definition.roadbook
+#            ^ punctuation.separator.colon.roadbook
+#               ^^^^^^ support.type.primitive.roadbook
+#                     ^^ keyword.operator.type.list.roadbook
+>
+>  /// The client went away before we finished.
+#  ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>  event Cancel
+#  ^^^^^ storage.type.event.roadbook
+#        ^^^^^^ entity.name.type.event.roadbook
+>
+>  initial Authenticating
+#  ^^^^^^^ keyword.control.initial.roadbook
+#          ^^^^^^^^^^^^^^ entity.name.type.state.roadbook
+>
+>  /// Turn the bearer token into a user.
+#  ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>  state Authenticating {
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^^^^^^^^^^^ entity.name.type.state.roadbook
+#                       ^ punctuation.section.braces.roadbook
+>    invoke authenticate(token) {
+#    ^^^^^^ keyword.control.invoke.roadbook
+#           ^^^^^^^^^^^^ entity.name.function.call.roadbook
+#                       ^ punctuation.section.parens.roadbook
+#                        ^^^^^ variable.other.roadbook
+#                             ^ punctuation.section.parens.roadbook
+#                               ^ punctuation.section.braces.roadbook
+>      done                 -> Processing    set user = result
+#      ^^^^ keyword.control.done.roadbook
+#                           ^^ keyword.operator.arrow.roadbook
+#                              ^^^^^^^^^^ entity.name.type.state.roadbook
+#                                            ^^^ keyword.other.effect.roadbook
+#                                                ^^^^ variable.other.roadbook
+#                                                     ^ keyword.operator.assignment.roadbook
+#                                                       ^^^^^^ variable.language.roadbook
+>      fail Unauthenticated -> Unauthorized
+#      ^^^^ keyword.control.fail.roadbook
+#           ^^^^^^^^^^^^^^^ entity.name.type.error.roadbook
+#                           ^^ keyword.operator.arrow.roadbook
+#                              ^^^^^^^^^^^^ entity.name.type.state.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>
+>  /// Everything that happens once we know who is asking.
+#  ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>  /// Cancel and the 30 second budget apply to every step inside.
+#  ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>  state Processing {
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^^^^^^^ entity.name.type.state.roadbook
+#                   ^ punctuation.section.braces.roadbook
+>    initial Validating
+#    ^^^^^^^ keyword.control.initial.roadbook
+#            ^^^^^^^^^^ entity.name.type.state.roadbook
+>
+>    on Cancel -> Cancelled
+#    ^^ keyword.control.trigger.roadbook
+#       ^^^^^^ entity.name.type.event.roadbook
+#              ^^ keyword.operator.arrow.roadbook
+#                 ^^^^^^^^^ entity.name.type.state.roadbook
+>    after 30s -> TimedOut
+#    ^^^^^ keyword.control.after.roadbook
+#          ^^ constant.numeric.duration.roadbook
+#            ^ constant.numeric.duration.roadbook keyword.other.unit.roadbook
+#              ^^ keyword.operator.arrow.roadbook
+#                 ^^^^^^^^ entity.name.type.state.roadbook
+>
+>    state Validating {
+#    ^^^^^ storage.type.state.roadbook
+#          ^^^^^^^^^^ entity.name.type.state.roadbook
+#                     ^ punctuation.section.braces.roadbook
+>      invoke validateOrder(draft) {
+#      ^^^^^^ keyword.control.invoke.roadbook
+#             ^^^^^^^^^^^^^ entity.name.function.call.roadbook
+#                          ^ punctuation.section.parens.roadbook
+#                           ^^^^^ variable.other.roadbook
+#                                ^ punctuation.section.parens.roadbook
+#                                  ^ punctuation.section.braces.roadbook
+>        done                  -> Pricing  set order = result
+#        ^^^^ keyword.control.done.roadbook
+#                              ^^ keyword.operator.arrow.roadbook
+#                                 ^^^^^^^ entity.name.type.state.roadbook
+#                                          ^^^ keyword.other.effect.roadbook
+#                                              ^^^^^ variable.other.roadbook
+#                                                    ^ keyword.operator.assignment.roadbook
+#                                                      ^^^^^^ variable.language.roadbook
+>        fail ValidationFailed -> Invalid  set issues = error.issues
+#        ^^^^ keyword.control.fail.roadbook
+#             ^^^^^^^^^^^^^^^^ entity.name.type.error.roadbook
+#                              ^^ keyword.operator.arrow.roadbook
+#                                 ^^^^^^^ entity.name.type.state.roadbook
+#                                          ^^^ keyword.other.effect.roadbook
+#                                              ^^^^^^ variable.other.roadbook
+#                                                     ^ keyword.operator.assignment.roadbook
+#                                                       ^^^^^ variable.language.roadbook
+#                                                            ^ punctuation.accessor.roadbook
+#                                                             ^^^^^^ variable.other.property.roadbook
+>      }
+#      ^ punctuation.section.braces.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>
+>    /// Apply the user's prices and discounts.
+#    ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>    state Pricing {
+#    ^^^^^ storage.type.state.roadbook
+#          ^^^^^^^ entity.name.type.state.roadbook
+#                  ^ punctuation.section.braces.roadbook
+>      invoke priceOrder(order, user) {
+#      ^^^^^^ keyword.control.invoke.roadbook
+#             ^^^^^^^^^^ entity.name.function.call.roadbook
+#                       ^ punctuation.section.parens.roadbook
+#                        ^^^^^ variable.other.roadbook
+#                             ^ punctuation.separator.comma.roadbook
+#                               ^^^^ variable.other.roadbook
+#                                   ^ punctuation.section.parens.roadbook
+#                                     ^ punctuation.section.braces.roadbook
+>        done -> Paying  set order = result
+#        ^^^^ keyword.control.done.roadbook
+#             ^^ keyword.operator.arrow.roadbook
+#                ^^^^^^ entity.name.type.state.roadbook
+#                        ^^^ keyword.other.effect.roadbook
+#                            ^^^^^ variable.other.roadbook
+#                                  ^ keyword.operator.assignment.roadbook
+#                                    ^^^^^^ variable.language.roadbook
+>      }
+#      ^ punctuation.section.braces.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>
+>    /// Payment is its own machine: see checkout.road.
+#    ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>    state Paying {
+#    ^^^^^ storage.type.state.roadbook
+#          ^^^^^^ entity.name.type.state.roadbook
+#                 ^ punctuation.section.braces.roadbook
+>      invoke Checkout(order, user) {
+#      ^^^^^^ keyword.control.invoke.roadbook
+#             ^^^^^^^^ entity.name.type.machine.roadbook
+#                     ^ punctuation.section.parens.roadbook
+#                      ^^^^^ variable.other.roadbook
+#                           ^ punctuation.separator.comma.roadbook
+#                             ^^^^ variable.other.roadbook
+#                                 ^ punctuation.section.parens.roadbook
+#                                   ^ punctuation.section.braces.roadbook
+>        done                    -> Confirming     set receipt = result
+#        ^^^^ keyword.control.done.roadbook
+#                                ^^ keyword.operator.arrow.roadbook
+#                                   ^^^^^^^^^^ entity.name.type.state.roadbook
+#                                                  ^^^ keyword.other.effect.roadbook
+#                                                      ^^^^^^^ variable.other.roadbook
+#                                                              ^ keyword.operator.assignment.roadbook
+#                                                                ^^^^^^ variable.language.roadbook
+>        fail CardDeclined       -> PaymentFailed  do audit("card_declined", order)
+#        ^^^^ keyword.control.fail.roadbook
+#             ^^^^^^^^^^^^ entity.name.type.error.roadbook
+#                                ^^ keyword.operator.arrow.roadbook
+#                                   ^^^^^^^^^^^^^ entity.name.type.state.roadbook
+#                                                  ^^ keyword.other.effect.roadbook
+#                                                     ^^^^^ entity.name.function.call.roadbook
+#                                                          ^ punctuation.section.parens.roadbook
+#                                                           ^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#                                                            ^^^^^^^^^^^^^ string.quoted.double.roadbook
+#                                                                         ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+#                                                                          ^ punctuation.separator.comma.roadbook
+#                                                                            ^^^^^ variable.other.roadbook
+#                                                                                 ^ punctuation.section.parens.roadbook
+>        fail GatewayUnavailable -> PaymentFailed  do audit("gateway_down", order)
+#        ^^^^ keyword.control.fail.roadbook
+#             ^^^^^^^^^^^^^^^^^^ entity.name.type.error.roadbook
+#                                ^^ keyword.operator.arrow.roadbook
+#                                   ^^^^^^^^^^^^^ entity.name.type.state.roadbook
+#                                                  ^^ keyword.other.effect.roadbook
+#                                                     ^^^^^ entity.name.function.call.roadbook
+#                                                          ^ punctuation.section.parens.roadbook
+#                                                           ^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#                                                            ^^^^^^^^^^^^ string.quoted.double.roadbook
+#                                                                        ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+#                                                                         ^ punctuation.separator.comma.roadbook
+#                                                                           ^^^^^ variable.other.roadbook
+#                                                                                ^ punctuation.section.parens.roadbook
+>      }
+#      ^ punctuation.section.braces.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>
+>    state Confirming {
+#    ^^^^^ storage.type.state.roadbook
+#          ^^^^^^^^^^ entity.name.type.state.roadbook
+#                     ^ punctuation.section.braces.roadbook
+>      entry do sendConfirmationEmail(user, order, receipt)
+#      ^^^^^ keyword.control.entry.roadbook
+#            ^^ keyword.other.effect.roadbook
+#               ^^^^^^^^^^^^^^^^^^^^^ entity.name.function.call.roadbook
+#                                    ^ punctuation.section.parens.roadbook
+#                                     ^^^^ variable.other.roadbook
+#                                         ^ punctuation.separator.comma.roadbook
+#                                           ^^^^^ variable.other.roadbook
+#                                                ^ punctuation.separator.comma.roadbook
+#                                                  ^^^^^^^ variable.other.roadbook
+#                                                         ^ punctuation.section.parens.roadbook
+>      always -> Confirmed
+#      ^^^^^^ keyword.control.always.roadbook
+#             ^^ keyword.operator.arrow.roadbook
+#                ^^^^^^^^^ entity.name.type.state.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>
+>  final state Confirmed     { output confirmation(order, receipt) }
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^^^^ entity.name.type.state.roadbook
+#                            ^ punctuation.section.braces.roadbook
+#                              ^^^^^^ keyword.control.output.roadbook
+#                                     ^^^^^^^^^^^^ entity.name.function.call.roadbook
+#                                                 ^ punctuation.section.parens.roadbook
+#                                                  ^^^^^ variable.other.roadbook
+#                                                       ^ punctuation.separator.comma.roadbook
+#                                                         ^^^^^^^ variable.other.roadbook
+#                                                                ^ punctuation.section.parens.roadbook
+#                                                                  ^ punctuation.section.braces.roadbook
+>  final state Unauthorized  { output problem(401, "unauthenticated") }
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^^^^^^^ entity.name.type.state.roadbook
+#                            ^ punctuation.section.braces.roadbook
+#                              ^^^^^^ keyword.control.output.roadbook
+#                                     ^^^^^^^ entity.name.function.call.roadbook
+#                                            ^ punctuation.section.parens.roadbook
+#                                             ^^^ constant.numeric.integer.roadbook
+#                                                ^ punctuation.separator.comma.roadbook
+#                                                  ^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#                                                   ^^^^^^^^^^^^^^^ string.quoted.double.roadbook
+#                                                                  ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+#                                                                   ^ punctuation.section.parens.roadbook
+#                                                                     ^ punctuation.section.braces.roadbook
+>  final state Invalid       { output invalid(issues) }
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^^ entity.name.type.state.roadbook
+#                            ^ punctuation.section.braces.roadbook
+#                              ^^^^^^ keyword.control.output.roadbook
+#                                     ^^^^^^^ entity.name.function.call.roadbook
+#                                            ^ punctuation.section.parens.roadbook
+#                                             ^^^^^^ variable.other.roadbook
+#                                                   ^ punctuation.section.parens.roadbook
+#                                                     ^ punctuation.section.braces.roadbook
+>  final state PaymentFailed { output problem(402, "payment_failed") }
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^^^^^^^^ entity.name.type.state.roadbook
+#                            ^ punctuation.section.braces.roadbook
+#                              ^^^^^^ keyword.control.output.roadbook
+#                                     ^^^^^^^ entity.name.function.call.roadbook
+#                                            ^ punctuation.section.parens.roadbook
+#                                             ^^^ constant.numeric.integer.roadbook
+#                                                ^ punctuation.separator.comma.roadbook
+#                                                  ^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#                                                   ^^^^^^^^^^^^^^ string.quoted.double.roadbook
+#                                                                 ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+#                                                                  ^ punctuation.section.parens.roadbook
+#                                                                    ^ punctuation.section.braces.roadbook
+>  final state Cancelled     { output problem(499, "cancelled") }
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^^^^ entity.name.type.state.roadbook
+#                            ^ punctuation.section.braces.roadbook
+#                              ^^^^^^ keyword.control.output.roadbook
+#                                     ^^^^^^^ entity.name.function.call.roadbook
+#                                            ^ punctuation.section.parens.roadbook
+#                                             ^^^ constant.numeric.integer.roadbook
+#                                                ^ punctuation.separator.comma.roadbook
+#                                                  ^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#                                                   ^^^^^^^^^ string.quoted.double.roadbook
+#                                                            ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+#                                                             ^ punctuation.section.parens.roadbook
+#                                                               ^ punctuation.section.braces.roadbook
+>  final state TimedOut      { output problem(504, "timeout") }
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^^^ entity.name.type.state.roadbook
+#                            ^ punctuation.section.braces.roadbook
+#                              ^^^^^^ keyword.control.output.roadbook
+#                                     ^^^^^^^ entity.name.function.call.roadbook
+#                                            ^ punctuation.section.parens.roadbook
+#                                             ^^^ constant.numeric.integer.roadbook
+#                                                ^ punctuation.separator.comma.roadbook
+#                                                  ^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#                                                   ^^^^^^^ string.quoted.double.roadbook
+#                                                          ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+#                                                           ^ punctuation.section.parens.roadbook
+#                                                             ^ punctuation.section.braces.roadbook
+>}
+#^ punctuation.section.braces.roadbook
