@@ -65,6 +65,8 @@ pub enum SymbolKind {
     /// A type parameter of a generic record or alias (`T` in `type Page<T>`); its parent is
     /// the declaration.
     TypeParameter,
+    /// A `children` collection of a machine; its parent is the machine.
+    Children,
 }
 
 impl SymbolKind {
@@ -125,6 +127,7 @@ impl SymbolKind {
             SymbolKind::State => "state",
             SymbolKind::InvokeName => "invoked machine's name",
             SymbolKind::TypeParameter => "type parameter",
+            SymbolKind::Children => "children collection",
         }
     }
 }

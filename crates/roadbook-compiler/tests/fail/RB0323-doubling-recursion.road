@@ -7,4 +7,4 @@ machine M() {
   final state Done {}
 }
 
-// expect: RB0322 at 3:23
+// expect: RB0323 at 3:23

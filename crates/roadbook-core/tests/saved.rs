@@ -83,7 +83,7 @@ fn refusals_come_in_the_spec_order() {
     // The schema and the version first, even for a snapshot of no machine.
     assert_eq!(reason(&p, with(&|v| v["extra"] = json!(1))), "invalid");
     assert_eq!(
-        reason(&p, with(&|v| v["snapshotVersion"] = json!(3))),
+        reason(&p, with(&|v| v["snapshotVersion"] = json!(4))),
         "invalid"
     );
     assert_eq!(
@@ -367,9 +367,9 @@ fn a_migration_cannot_turn_the_snapshot_into_another_machines() {
     // A valid snapshot of `Peer` (whose `ref` would otherwise be refused later, as `ref`).
     let peer_hash = p.ir().machines["Peer"].hash.clone();
     let peer = json!({
-        "snapshotVersion": 1, "machine": "Peer", "run": "r9", "ir": peer_hash,
+        "snapshotVersion": 3, "machine": "Peer", "run": "r9", "ir": peer_hash,
         "status": "running", "active": ["Peer", "Peer.X"], "input": {"other": "r1"},
-        "vars": {}, "invokes": [], "timers": [], "nextInvoke": 1, "nextTimer": 1,
+        "vars": {}, "invokes": [], "history": {}, "spawned": [], "timers": [], "nextInvoke": 1, "nextTimer": 1,
         "nextMessage": 1, "result": null
     });
     for machine in [None, Some("M")] {
@@ -385,7 +385,7 @@ fn a_migration_cannot_turn_the_snapshot_into_another_machines() {
 fn a_number_s_form_does_not_matter() {
     let p = program();
     let mut v = saved(&p);
-    v["snapshotVersion"] = json!(2.0);
+    v["snapshotVersion"] = json!(3.0);
     v["nextTimer"] = json!(3.0);
     v["timers"][0]["due"] = json!(1000.0);
     v["timers"][0]["index"] = json!(0.0);
@@ -505,7 +505,7 @@ fn history_is_checked_against_the_history_states() {
     let c = roadbook_compiler::compile_source("h.road", HISTORY, &Default::default());
     let p = Program::new(c.ir.expect("the chart compiles")).unwrap();
     let base = history_saved(&p);
-    assert_eq!(base["snapshotVersion"], 2);
+    assert_eq!(base["snapshotVersion"], 3);
     assert_eq!(base["history"], json!({}));
     let with = |history: Value| {
         let mut v = base.clone();
@@ -550,24 +550,32 @@ fn history_is_checked_against_the_history_states() {
         assert_eq!(with(history.clone()), want, "{history}");
     }
 
-    // Version 1 has no `history`, version 2 has one.
+    // Version 1 has no `history` and no `spawned`, version 2 has `history`, version 3 both.
     let mut v1 = base.clone();
     v1["snapshotVersion"] = json!(1);
     assert_eq!(reason(&p, v1.clone()), "invalid");
     v1.as_object_mut().unwrap().remove("history");
+    assert_eq!(reason(&p, v1.clone()), "invalid");
+    v1.as_object_mut().unwrap().remove("spawned");
     assert_eq!(reason(&p, v1), "ok");
     let mut v2 = base.clone();
-    v2.as_object_mut().unwrap().remove("history");
-    assert_eq!(reason(&p, v2), "invalid");
+    v2["snapshotVersion"] = json!(2);
+    assert_eq!(reason(&p, v2.clone()), "invalid");
+    v2.as_object_mut().unwrap().remove("spawned");
+    assert_eq!(reason(&p, v2), "ok");
+    let mut v3 = base.clone();
+    v3.as_object_mut().unwrap().remove("history");
+    assert_eq!(reason(&p, v3), "invalid");
 }
 
 #[test]
-fn a_version_1_snapshot_restores_and_is_saved_again_as_version_2() {
+fn a_version_1_snapshot_restores_and_is_saved_again_as_version_3() {
     let c = roadbook_compiler::compile_source("h.road", HISTORY, &Default::default());
     let p = Program::new(c.ir.expect("the chart compiles")).unwrap();
     let mut v1 = history_saved(&p);
     v1["snapshotVersion"] = json!(1);
     v1.as_object_mut().unwrap().remove("history");
+    v1.as_object_mut().unwrap().remove("spawned");
     let (saved, _) = p.check_saved(v1.clone(), None, None).unwrap();
     assert_eq!((saved.snapshot_version, &saved.history), (1, &None));
     let (snap, commands) = p.restore(&saved, "r2", 0, None, &mut no_fns).unwrap();
@@ -581,6 +589,7 @@ fn a_version_1_snapshot_restores_and_is_saved_again_as_version_2() {
     assert_eq!(snapshot.to_value(), v1);
     assert!(snap.history.is_empty());
     let again = Saved::new(&snap, |t| t.delay).to_value();
-    assert_eq!(again["snapshotVersion"], 2);
+    assert_eq!(again["snapshotVersion"], 3);
     assert_eq!(again["history"], json!({}));
+    assert_eq!(again["spawned"], json!([]));
 }

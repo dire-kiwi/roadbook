@@ -22,8 +22,8 @@ module.exports = grammar({
   word: ($) => $.identifier,
 
   // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref`, `sensitive`,
-  // `history`, `deep`, `map` and the built-in type names are not, because they mean something
-  // only where no name can appear.
+  // `history`, `deep`, `children`, `by`, `spawn`, `stop`, `map` and the built-in type names are
+  // not, because they mean something only where no name can appear.
   reserved: {
     global: (_) => [
       'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'var',
@@ -176,7 +176,13 @@ module.exports = grammar({
     machine_body: ($) => seq('{', repeat($._machine_item), '}'),
 
     _machine_item: ($) =>
-      choice($.variable_declaration, $.event_declaration, $.emits_declaration, $._common_item),
+      choice(
+        $.variable_declaration,
+        $.event_declaration,
+        $.emits_declaration,
+        $.children_declaration,
+        $._common_item,
+      ),
 
     variable_declaration: ($) =>
       seq(
@@ -193,6 +199,17 @@ module.exports = grammar({
 
     emits_declaration: ($) =>
       seq('emits', field('name', $.type_identifier), optional(field('fields', $.fields))),
+
+    // `children sessions: Session by SessionId`
+    children_declaration: ($) =>
+      seq(
+        'children',
+        field('name', $.identifier),
+        ':',
+        field('machine', $.type_identifier),
+        'by',
+        field('key', $._type),
+      ),
 
     // ───────────── states ─────────────
 
@@ -232,7 +249,8 @@ module.exports = grammar({
 
     on_transition: ($) => seq('on', field('trigger', $._trigger), $._branches),
 
-    _trigger: ($) => choice($.event_pattern, $._wildcard, $.received_event),
+    _trigger: ($) =>
+      choice($.event_pattern, $._wildcard, $.received_event, $.child_done, $.child_fail),
 
     event_pattern: ($) => field('event', $.type_identifier),
 
@@ -240,6 +258,17 @@ module.exports = grammar({
 
     received_event: ($) =>
       seq(field('from', $.identifier), '.', field('event', $.type_identifier)),
+
+    // `on sessions.done` and `on sessions.fail Lost`: a spawned child of a collection ended.
+    child_done: ($) => seq(field('from', $.identifier), '.', 'done'),
+
+    child_fail: ($) =>
+      seq(
+        field('from', $.identifier),
+        '.',
+        'fail',
+        field('error', choice($.type_identifier, $._wildcard)),
+      ),
 
     after_transition: ($) => seq('after', field('delay', $._expression), $._branches),
 
@@ -300,18 +329,33 @@ module.exports = grammar({
 
     _effects: ($) => repeat1(field('effect', $._effect)),
 
-    _effect: ($) => choice($.set, $.do, $.send, $.emit),
+    _effect: ($) => choice($.set, $.do, $.send, $.emit, $.spawn, $.stop),
 
-    set: ($) => seq('set', commaSep1($.assignment)),
+    // After a comma in a `set` or `do` list, a lower-case name continues the list, as in the
+    // compiler, even `spawn`, `stop` or `children`, which after a trailing comma could also
+    // start the next effect or machine item.
+    set: ($) => prec.right(seq('set', commaSep1($.assignment))),
 
-    assignment: ($) => seq(field('variable', $.identifier), '=', field('value', $._expression)),
+    assignment: ($) =>
+      seq(field('variable', choice($.identifier, $._contextual_name)), '=', field('value', $._expression)),
 
-    do: ($) => seq('do', commaSep1($.call)),
+    do: ($) => prec.right(seq('do', commaSep1(alias($._action_call, $.call)))),
+
+    _action_call: ($) =>
+      seq(field('function', choice($.identifier, $._contextual_name)), field('arguments', $.arguments)),
+
+    _contextual_name: ($) =>
+      choice(
+        alias('spawn', $.identifier),
+        alias('stop', $.identifier),
+        alias('children', $.identifier),
+      ),
 
     send: ($) =>
       seq(
         'send',
         field('to', $.identifier),
+        optional(choice(seq('[', field('key', $._expression), ']'), seq('.', $._wildcard))),
         '.',
         field('event', $.type_identifier),
         optional(field('fields', $.record_body)),
@@ -319,6 +363,21 @@ module.exports = grammar({
 
     emit: ($) =>
       seq('emit', field('event', $.type_identifier), optional(field('fields', $.record_body))),
+
+    spawn: ($) =>
+      seq(
+        'spawn',
+        field('collection', $.identifier),
+        '[',
+        field('key', $._expression),
+        ']',
+        '=',
+        field('machine', $.type_identifier),
+        field('arguments', $.arguments),
+      ),
+
+    stop: ($) =>
+      seq('stop', field('collection', $.identifier), '[', field('key', $._expression), ']'),
 
     record_body: ($) => seq('{', commaSep($.field_value), '}'),
 
@@ -391,13 +450,14 @@ module.exports = grammar({
       ),
 
     // The names in scope inside a transition: the current event, an invoke's result and its
-    // error. `event` and `error` are keywords; `result` is not reserved, so outside an
-    // expression it is an ordinary name.
+    // error, and a spawned child's key. `event` and `error` are keywords; `result` and `key`
+    // are not reserved, so outside an expression they are ordinary names.
     _implicit_name: ($) =>
       choice(
         alias('event', $.implicit_name),
         alias('error', $.implicit_name),
         alias('result', $.implicit_name),
+        alias('key', $.implicit_name),
       ),
 
     // `CardDeclined { reason: "expired" }`, or a bare `GatewayUnavailable` with no fields.

@@ -13,7 +13,7 @@
 import type { Field, Ir, Machine } from "./ir.ts"
 import { expandType, fieldsOf, parseTypeRef, type TypeRef } from "./typeref.ts"
 import type { Json } from "./json.ts"
-import type { CoreRecord, Input, InvokeEntry, Saved } from "./types.ts"
+import type { CoreRecord, Input, InvokeEntry, Saved, SpawnedEntry } from "./types.ts"
 
 /** What a redacted value is written as. */
 export const REDACTED = "<redacted>"
@@ -234,12 +234,31 @@ class Redactor {
     return output === null ? output : REDACTED
   }
 
-  /** The input `input` of a run of `m`, whose running invokes are `invokes`, redacted. */
-  input<I extends Input>(m: Machine, invokes: ReadonlyArray<InvokeEntry>, input: I): I {
-    return this.active ? this.anyInput(m, invokes, input) as I : input
+  /**
+   * The input `input` of a run of `m`, whose running invokes are `invokes` and running spawned
+   * children `spawned`, redacted.
+   */
+  input<I extends Input>(
+    m: Machine,
+    invokes: ReadonlyArray<InvokeEntry>,
+    input: I,
+    spawned: ReadonlyArray<SpawnedEntry> = []
+  ): I {
+    return this.active ? this.anyInput(m, invokes, spawned, input) as I : input
   }
 
-  private anyInput(m: Machine, invokes: ReadonlyArray<InvokeEntry>, input: Input): Input {
+  /** The machine the children of collection `children` of `m` run. */
+  private collection(m: Machine, children: string): Machine | undefined {
+    const decl = own(m.children, children)
+    return decl === undefined ? undefined : own(this.ir.machines, decl.machine)
+  }
+
+  private anyInput(
+    m: Machine,
+    invokes: ReadonlyArray<InvokeEntry>,
+    spawned: ReadonlyArray<SpawnedEntry>,
+    input: Input
+  ): Input {
     switch (input.kind) {
       case "event":
       case "message":
@@ -257,7 +276,15 @@ class Redactor {
         return { ...input, value: REDACTED }
       }
       case "invoke.fail":
+      case "spawn.fail":
         return { ...input, error: this.error(input.error) as typeof input.error }
+      case "spawn.done": {
+        const ch = spawned.find((c) => c.id === input.spawn)
+        const child = ch === undefined ? undefined : this.collection(m, ch.children)
+        if (child !== undefined) return { ...input, value: this.result(child.returns, input.value) }
+        // A stale outcome: the child is no longer in the snapshot, so its type is not known.
+        return { ...input, value: REDACTED }
+      }
       default:
         return input
     }
@@ -289,6 +316,8 @@ class Redactor {
         const params = own(this.ir.tasks, record.src)?.params ?? own(this.ir.machines, record.src)?.params ?? []
         return { ...record, args: this.object(params, record.args) }
       }
+      case "spawn.started":
+        return { ...record, args: this.object(own(this.ir.machines, record.src)?.params ?? [], record.args) }
       case "emitted":
         return { ...record, value: this.event(m, true, record.value) as typeof record.value }
       case "done":
@@ -321,7 +350,14 @@ class Redactor {
     let result = saved.result
     if (result !== null && "output" in result) result = { output: this.result(m.returns, result.output) }
     else if (result !== null && "error" in result) result = { error: this.error(result.error) as typeof result.error }
-    return { ...saved, input: this.object(m.params, saved.input), vars, result }
+    const redacted = { ...saved, input: this.object(m.params, saved.input), vars, result }
+    // A version 1 or 2 snapshot has no `spawned`, and the record holds it as it was given.
+    if (saved.spawned === undefined) return redacted
+    const spawned = saved.spawned.map((ch) => ({
+      ...ch,
+      args: this.object(this.collection(m, ch.children)?.params ?? [], ch.args)
+    }))
+    return { ...redacted, spawned }
   }
 }
 

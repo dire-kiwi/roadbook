@@ -1,0 +1,29 @@
+type Point { x: int, y: int }
+type Name = string
+enum Lane { Fast, Slow }
+
+machine Child() {
+  initial Done
+  final state Done {}
+}
+
+machine M() {
+  event Go
+  children byFloat: Child by float
+  children byPoint: Child by Point
+  children byList:  Child by string[]
+  children byMaybe: Child by string?
+  children byName:  Child by Name
+  children byLane:  Child by Lane
+  initial A
+  state A {
+    on Go spawn byFloat[1.0] = Child()  spawn byPoint[Point { x: 1, y: 2 }] = Child()  spawn byList[nothing()] = Child()  spawn byMaybe["a"] = Child()  spawn byName["a"] = Child()  spawn byLane[Lane.Fast] = Child()
+  }
+}
+
+fn nothing() -> string[]
+
+// expect: RB0319 at 12:30
+// expect: RB0319 at 13:30
+// expect: RB0319 at 14:30
+// expect: RB0319 at 15:30

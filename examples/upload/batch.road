@@ -1,0 +1,41 @@
+import { File, Upload, Url } from "./upload.road"
+
+/// Show a file's progress, by its name.
+action showFileProgress(name: string, percent: int)
+
+/// Link a file to where it was stored.
+action showUploaded(name: string, url: Url)
+
+/// Say that a file could not be uploaded, and why.
+action reportFailure(name: string, reason: string)
+
+/// Upload any number of files at once: one `Upload` per file, keyed by the file's name. The
+/// user can add files while others upload, cancel one, and pause and resume them all.
+machine Batch() -> int {
+  var uploaded: int = 0
+
+  event Add       { file: File }
+  event Cancel    { name: string }
+  event PauseAll
+  event ResumeAll
+  event Close
+
+  /// The uploads running, by file name. Adding a file with the name of one that is still
+  /// uploading starts it again.
+  children uploads: Upload by string
+
+  initial Open
+  state Open {
+    on Add                         spawn uploads[event.file.name] = Upload(event.file)
+    on Cancel                      stop uploads[event.name]
+    on PauseAll                    send uploads.*.Pause
+    on ResumeAll                   send uploads.*.Resume
+    on uploads.Progress            do showFileProgress(key, event.percent)
+    on uploads.done                set uploaded = uploaded + 1  do showUploaded(key, result)
+    on uploads.fail *              do reportFailure(key, error.reason)
+    on Close            -> Closed
+  }
+
+  /// Closing stops the uploads still running.
+  final state Closed { output uploaded }
+}

@@ -9,5 +9,5 @@ machine M(n: Nested<int>, s: Swap<int, string>, t: Tree<int>, e: Even<int>) {
   final state Done {}
 }
 
-// expect: RB0322 at 1:25
-// expect: RB0322 at 2:25
+// expect: RB0323 at 1:25
+// expect: RB0323 at 2:25

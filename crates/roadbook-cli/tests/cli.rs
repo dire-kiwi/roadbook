@@ -134,7 +134,7 @@ fn export_ir_writes_the_fixture() {
     let out = roadbook(&dir, &["export", "ir", "m.road", "-o", "m.ir.json"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let written = std::fs::read_to_string(dir.join("m.ir.json")).unwrap();
-    assert!(written.contains("\"irVersion\": \"0.5\""));
+    assert!(written.contains("\"irVersion\": \"0.6\""));
 }
 
 #[test]
@@ -505,14 +505,11 @@ fn viz_trace_is_embedded_and_opens_in_replay() {
     let dir = out_dir("trace-files");
     std::fs::create_dir_all(&dir).unwrap();
     let other = dir.join("other.jsonl");
-    let recorded = std::fs::read_to_string(repo().join(trace)).unwrap();
-    let first: serde_json::Value = serde_json::from_str(recorded.lines().next().unwrap()).unwrap();
+    let records = std::fs::read_to_string(repo().join(trace)).unwrap();
+    let first: serde_json::Value = serde_json::from_str(records.lines().next().unwrap()).unwrap();
     let hash = first["ir"].as_str().unwrap();
-    std::fs::write(
-        &other,
-        recorded.replace(hash, &format!("sha256:{}", "0".repeat(64))),
-    )
-    .unwrap();
+    let zeros = format!("sha256:{}", "0".repeat(64));
+    std::fs::write(&other, records.replace(hash, &zeros)).unwrap();
     let res = roadbook(
         &repo(),
         &[
@@ -627,7 +624,7 @@ fn viz_names_pages_after_their_entries_and_reports_errors() {
     }
     let index = page_data(&std::fs::read_to_string(out.join("index.html")).unwrap());
     let machines = index["index"]["machines"].as_array().unwrap();
-    assert_eq!(machines.len(), 11);
+    assert_eq!(machines.len(), 12);
     // Who talks to whom (`projectIndex` in packages/viewer/src/project.ts builds the same).
     let at = |name: &str| machines.iter().position(|m| m["name"] == name).unwrap();
     let (order, inventory) = (&machines[at("Order")], at("Inventory"));
@@ -654,10 +651,25 @@ fn viz_names_pages_after_their_entries_and_reports_errors() {
         publish["receives"],
         serde_json::json!([{ "from": upload, "events": ["Progress"] }])
     );
+    // A machine that spawns children: spawns, sends to and receives from them by collection.
+    let batch = &machines[at("Batch")];
+    assert_eq!(batch["invokes"], serde_json::json!([]));
+    assert_eq!(
+        batch["spawns"],
+        serde_json::json!([{ "to": upload, "names": ["uploads"] }])
+    );
+    assert_eq!(
+        batch["sends"],
+        serde_json::json!([{ "to": upload, "events": ["Pause", "Resume"] }])
+    );
+    assert_eq!(
+        batch["receives"],
+        serde_json::json!([{ "from": upload, "events": ["Progress"] }])
+    );
     // A machine of another package is named by its package and its path in it.
     assert_eq!(machines[inventory]["source"], "inventory/inventory.road:19");
     for m in machines {
-        if m["name"] != "Order" && m["name"] != "Publish" {
+        if m["name"] != "Order" && m["name"] != "Publish" && m["name"] != "Batch" {
             assert_eq!(m["sends"], serde_json::json!([]), "{m}");
             assert_eq!(m["receives"], serde_json::json!([]), "{m}");
         }
@@ -988,6 +1000,7 @@ fn viewer_test_charts_are_fresh() {
         ("examples/orders/orders.road", "orders-orders"),
         ("packages/viewer/test/charts/stress.road", "charts-stress"),
         ("packages/viewer/test/charts/edges.road", "charts-edges"),
+        ("packages/viewer/test/charts/spawn.road", "charts-spawn"),
         ("packages/viewer/test/charts/escape.road", "charts-escape"),
         ("packages/viewer/test/charts/history.road", "charts-history"),
     ] {

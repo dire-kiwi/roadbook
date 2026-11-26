@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use roadbook_ir::{Field, Ir, Machine, TypeDef, TypeRef};
 use serde_json::Value;
 
-use crate::{Input, InvokeEntry, Object, Record, Saved};
+use crate::{Input, InvokeEntry, Object, Record, Saved, SpawnedEntry};
 
 /// What a redacted value is written as.
 pub const REDACTED: &str = "<redacted>";
@@ -235,8 +235,15 @@ impl Redactor<'_> {
         self.tagged(decl.into_iter(), v);
     }
 
-    /// Redacts the input `input` of a run of `m`, whose running invokes are `invokes`.
-    pub fn input(&self, m: &Machine, invokes: &[InvokeEntry], input: &mut Input) {
+    /// Redacts the input `input` of a run of `m`, whose running invokes are `invokes` and
+    /// running spawned children `spawned`.
+    pub fn input(
+        &self,
+        m: &Machine,
+        invokes: &[InvokeEntry],
+        spawned: &[SpawnedEntry],
+        input: &mut Input,
+    ) {
         if !self.active() {
             return;
         }
@@ -260,12 +267,32 @@ impl Redactor<'_> {
                     None => redact(value),
                 }
             }
-            Input::InvokeFail { error, .. } => self.error(error),
-            Input::InvokeDefect { .. }
+            Input::InvokeFail { error, .. } | Input::SpawnFail { error, .. } => self.error(error),
+            Input::SpawnDone { spawn, value } => {
+                let child = spawned
+                    .iter()
+                    .find(|c| c.id == *spawn)
+                    .and_then(|c| self.collection(m, &c.children));
+                match child {
+                    Some(c) => self.output(c, value),
+                    // A stale outcome: the child is no longer in the snapshot, so the type of
+                    // the value is not known.
+                    None => redact(value),
+                }
+            }
+            Input::SpawnDefect { .. }
+            | Input::InvokeDefect { .. }
             | Input::After { .. }
             | Input::Cancel
             | Input::Defect { .. } => {}
         }
+    }
+
+    /// The machine the children of collection `children` of `m` run.
+    fn collection(&self, m: &Machine, children: &str) -> Option<&Machine> {
+        m.children
+            .get(children)
+            .and_then(|c| self.ir.machines.get(&c.machine))
     }
 
     fn returns(&self, src: &str) -> Option<&TypeRef> {
@@ -296,6 +323,10 @@ impl Redactor<'_> {
                 };
                 self.object(params.map_or(&[][..], |p| p), args);
             }
+            Record::SpawnStarted { src, args, .. } => {
+                let params = self.ir.machines.get(src.as_str()).map(|m| &m.params);
+                self.object(params.map_or(&[][..], |p| p), args);
+            }
             Record::Emitted { value, .. } => self.event(m, true, value),
             Record::Done { output, .. } => self.output(m, output),
             Record::Failed { error, .. } => self.error(error),
@@ -307,6 +338,7 @@ impl Redactor<'_> {
             | Record::Exited { .. }
             | Record::Transition { .. }
             | Record::InvokeCancelled { .. }
+            | Record::SpawnStopped { .. }
             | Record::TimerStarted { .. }
             | Record::TimerCancelled { .. }
             | Record::Cancelled
@@ -350,6 +382,10 @@ impl Redactor<'_> {
         self.object(&m.params, &mut saved.input);
         for (name, value) in saved.vars.iter_mut() {
             self.var(m, name, value);
+        }
+        for ch in saved.spawned.iter_mut().flatten() {
+            let params = self.collection(m, &ch.children).map(|c| &c.params);
+            self.object(params.map_or(&[][..], |p| p), &mut ch.args);
         }
         match &mut saved.result {
             Some(crate::RunResult::Output(output)) => self.output(m, output),

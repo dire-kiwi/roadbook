@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "spec/conformance/charts/retry.road",
@@ -238,6 +238,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Fetcher",
         "name": "Fetcher",

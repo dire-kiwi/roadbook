@@ -10,14 +10,16 @@ use crate::program::Program;
 /// a host defect.
 pub type Fns<'a> = dyn FnMut(&str, Vec<Value>) -> Result<Value, Defect> + 'a;
 
-/// What an expression can read besides the parameters: the variables, and the implicit name
-/// bound by the transition being tried (`event`, `result` or `error`).
+/// What an expression can read besides the parameters: the variables, the implicit name bound
+/// by the transition being tried (`event`, `result` or `error`), and `key`, the key of the
+/// spawned child the input came from.
 pub(crate) struct Scope<'a> {
     pub program: &'a Program,
     pub machine: &'a roadbook_ir::Machine,
     pub input: &'a Map<String, Value>,
     pub vars: &'a Map<String, Value>,
     pub implicit: Option<(&'static str, &'a Value)>,
+    pub key: Option<&'a Value>,
 }
 
 pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, Defect> {
@@ -106,6 +108,11 @@ pub(crate) fn lookup(name: &str, s: &Scope<'_>) -> Result<Value, Defect> {
         if n == name {
             return Ok(v.clone());
         }
+    }
+    if let Some(k) = s.key
+        && name == "key"
+    {
+        return Ok(k.clone());
     }
     if s.machine.vars.iter().any(|v| v.name == name) {
         return s.vars.get(name).cloned().ok_or_else(|| Defect::Unassigned {

@@ -36,7 +36,7 @@ export interface PipelineDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable.road",
@@ -174,6 +174,7 @@ const ir: unknown = {
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Pipeline",
         "name": "Pipeline",
@@ -663,6 +664,7 @@ const ir: unknown = {
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Parent",
         "name": "Parent",
@@ -762,6 +764,7 @@ const ir: unknown = {
                       "machine": "Pipeline",
                       "state": "Parent.Running"
                     },
+                    "key": null,
                     "event": "Nudge",
                     "value": {
                       "kind": "record",
@@ -1032,6 +1035,7 @@ const ir: unknown = {
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Counter",
         "name": "Counter",
@@ -1213,6 +1217,7 @@ const ir: unknown = {
       "vars": [],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Adder",
         "name": "Adder",
@@ -1280,6 +1285,7 @@ const ir: unknown = {
                       "machine": "Counter",
                       "state": null
                     },
+                    "key": null,
                     "event": "Add",
                     "value": {
                       "kind": "record",

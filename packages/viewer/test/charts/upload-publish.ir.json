@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -382,6 +382,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -512,6 +513,7 @@
                       "machine": "Upload",
                       "state": "Publish.Uploading"
                     },
+                    "key": null,
                     "event": "Pause",
                     "value": {
                       "kind": "record",
@@ -546,6 +548,7 @@
                       "machine": "Upload",
                       "state": "Publish.Uploading"
                     },
+                    "key": null,
                     "event": "Resume",
                     "value": {
                       "kind": "record",
@@ -880,6 +883,7 @@
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Upload",
         "name": "Upload",

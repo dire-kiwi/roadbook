@@ -6,5 +6,5 @@ machine M(t: Tagged<int, string>, id: Id<int>) {
   final state Done {}
 }
 
-// expect: RB0321 at 1:16
-// expect: RB0321 at 2:9
+// expect: RB0322 at 1:16
+// expect: RB0322 at 2:9

@@ -1,0 +1,173 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - children:
+                doc: The sessions.
+                name: sessions
+                machine: Session
+                key:
+                  builtin: string
+            - children:
+                name: children
+                machine: Job
+                key:
+                  builtin: int
+            - transition:
+                trigger:
+                  "on":
+                    name: Connected
+                branches:
+                  single:
+                    guard: ~
+                    target: ~
+                    effects:
+                      - spawn:
+                          children: sessions
+                          key:
+                            field:
+                              - var: event
+                              - id
+                          machine: Session
+                          args:
+                            - field:
+                                - var: event
+                                - socket
+                            - int: 1
+            - transition:
+                trigger:
+                  "on":
+                    name: Gone
+                branches:
+                  single:
+                    guard: ~
+                    target: ~
+                    effects:
+                      - stop:
+                          children: sessions
+                          key:
+                            field:
+                              - var: event
+                              - id
+                      - stop:
+                          children: children
+                          key:
+                            int: 2
+            - transition:
+                trigger:
+                  "on":
+                    name: All
+                branches:
+                  single:
+                    guard: ~
+                    target: ~
+                    effects:
+                      - send:
+                          to: sessions
+                          key:
+                            all: {}
+                          event: Notify
+                          fields:
+                            - name: text
+                              value:
+                                string: hi
+            - transition:
+                trigger:
+                  "on":
+                    name: One
+                branches:
+                  single:
+                    guard: ~
+                    target: ~
+                    effects:
+                      - send:
+                          to: sessions
+                          key:
+                            key:
+                              field:
+                                - var: event
+                                - id
+                          event: Notify
+                          fields:
+                            - name: text
+                              value:
+                                field:
+                                  - var: event
+                                  - text
+            - transition:
+                trigger:
+                  receive:
+                    from: sessions
+                    event: Typing
+                branches:
+                  single:
+                    guard: ~
+                    target: ~
+                    effects:
+                      - do:
+                          name: log
+                          args:
+                            - var: key
+            - transition:
+                trigger:
+                  childDone:
+                    from: sessions
+                branches:
+                  single:
+                    guard: ~
+                    target:
+                      - A
+                    effects:
+                      - set:
+                          var: n
+                          value:
+                            binary:
+                              - "-"
+                              - var: n
+                              - int: 1
+            - transition:
+                trigger:
+                  childFail:
+                    from: sessions
+                    error:
+                      name: Lost
+                branches:
+                  single:
+                    guard: ~
+                    target: ~
+                    effects:
+                      - do:
+                          name: log
+                          args:
+                            - var: key
+            - transition:
+                trigger:
+                  childFail:
+                    from: children
+                    error:
+                      any: {}
+                branches:
+                  single:
+                    guard: ~
+                    target: ~
+                    effects:
+                      - do:
+                          name: log
+                          args:
+                            - var: error
+            - state:
+                kind: normal
+                name: A
+                body: []
+comments:
+  - kind: doc
+    text: /// The sessions.

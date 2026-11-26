@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0317]: `pin` is sensitive, and the key of `kids` is not
+  --> RB0317-sensitive-spawn-key.road:12:22
+   |
+12 |     on Go spawn kids[pin] = Child()
+   |                      ^^^ a trace would show this value
+   |
+   = help: traces show the key of `kids` as it is: carry the value in a field marked `sensitive`, or derive what may be shown with a `fn`

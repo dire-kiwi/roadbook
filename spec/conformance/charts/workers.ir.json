@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "spec/conformance/charts/workers.road",
@@ -75,6 +75,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Logbook",
         "name": "Logbook",
@@ -238,6 +239,7 @@
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Worker",
         "name": "Worker",
@@ -323,6 +325,7 @@
               "machine": "Logbook",
               "state": null
             },
+            "key": null,
             "event": "Note",
             "value": {
               "kind": "record",
@@ -404,6 +407,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Boss",
         "name": "Boss",
@@ -597,6 +601,7 @@
               "machine": "Logbook",
               "state": null
             },
+            "key": null,
             "event": "Note",
             "value": {
               "kind": "record",

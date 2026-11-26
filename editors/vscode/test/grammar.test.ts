@@ -108,6 +108,30 @@ describe('scopes', () => {
     expect(await scopesAt('on upload.Progress -> A', 'upload')).toContain('variable.other.roadbook')
   })
 
+  it('marks keyed spawn only where it is keyed spawn', async () => {
+    const decl = '  children sessions: Session by SessionId'
+    expect(await scopesAt(decl, 'children')).toContain('storage.type.children.roadbook')
+    expect(await scopesAt(decl, 'sessions')).toContain('variable.other.definition.roadbook')
+    expect(await scopesAt(decl, 'Session')).toContain('entity.name.type.machine.roadbook')
+    expect(await scopesAt(decl, 'by')).toContain('keyword.other.by.roadbook')
+    expect(await scopesAt('type T { children: int, by: string }', 'children')).toContain('variable.other.property.roadbook')
+    const spawn = 'on J spawn sessions[event.id] = Session(key)  stop sessions[key]'
+    expect(await scopesAt(spawn, 'spawn')).toContain('keyword.other.effect.roadbook')
+    expect(await scopesAt(spawn, 'stop')).toContain('keyword.other.effect.roadbook')
+    expect(await scopesAt(spawn, 'sessions')).toContain('variable.other.roadbook')
+    expect(await scopesAt(spawn, 'key')).toContain('variable.language.roadbook')
+    expect(await scopesAt('action stop()', 'stop')).toContain('entity.name.function.roadbook')
+    expect(await scopesAt('on X do stop()', 'stop')).toContain('entity.name.function.call.roadbook')
+    expect(await scopesAt('send sessions[key].Notify', 'Notify')).toContain('entity.name.type.event.roadbook')
+    expect(await scopesAt('send sessions.*.Notify', '*')).toContain('keyword.operator.wildcard.roadbook')
+    expect(await scopesAt('send sessions.*.Notify', 'Notify')).toContain('entity.name.type.event.roadbook')
+    expect(await scopesAt('on sessions.done do f(key)', 'done')).toContain('keyword.control.done.roadbook')
+    expect(await scopesAt('on sessions.fail Lost -> A', 'fail')).toContain('keyword.control.fail.roadbook')
+    expect(await scopesAt('on sessions.fail Lost -> A', 'Lost')).toContain('entity.name.type.error.roadbook')
+    expect(await scopesAt('emit E { key: event.text }', 'key')).toContain('variable.other.property.roadbook')
+    expect(await scopesAt('emit E { k: event.key }', 'key')).toContain('variable.other.property.roadbook')
+  })
+
   it('marks literals', async () => {
     expect(await scopesAt('after 30s -> A', '30s')).toContain('constant.numeric.duration.roadbook')
     expect(await scopesAt('set r = 1.5', '1.5')).toContain('constant.numeric.float.roadbook')

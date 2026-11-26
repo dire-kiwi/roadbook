@@ -1,5 +1,6 @@
-; Roadbook locals: a machine's parameters and variables, and the names `invoke … as` gives
-; the machines it runs, which are in scope in the invoking state and the states inside it.
+; Roadbook locals: a machine's parameters, variables and `children` collections, and the
+; names `invoke … as` gives the machines it runs, which are in scope in the invoking state
+; and the states inside it.
 
 (machine_declaration) @local.scope
 
@@ -14,7 +15,10 @@
 (invoke
   alias: (identifier) @local.definition)
 
-; Names read in expressions, assigned, or used as the address of a message.
+(children_declaration
+  name: (identifier) @local.definition)
+
+; Names read in expressions, assigned, or used as the address of a message or a collection.
 (_
   value: (identifier) @local.reference)
 
@@ -33,6 +37,9 @@
 (_
   delay: (identifier) @local.reference)
 
+(_
+  key: (identifier) @local.reference)
+
 (arguments
   (identifier) @local.reference)
 
@@ -46,4 +53,16 @@
   to: (identifier) @local.reference)
 
 (received_event
+  from: (identifier) @local.reference)
+
+(spawn
+  collection: (identifier) @local.reference)
+
+(stop
+  collection: (identifier) @local.reference)
+
+(child_done
+  from: (identifier) @local.reference)
+
+(child_fail
   from: (identifier) @local.reference)

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "spec/conformance/charts/teller.road",
@@ -272,6 +272,7 @@
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Teller",
         "name": "Teller",
@@ -487,6 +488,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Keeper",
         "name": "Keeper",
@@ -538,6 +540,7 @@
                       "machine": "Teller",
                       "state": "Keeper.Asking"
                     },
+                    "key": null,
                     "event": "Ask",
                     "value": {
                       "kind": "record",
@@ -579,6 +582,7 @@
                           "machine": "Teller",
                           "state": "Keeper.Asking"
                         },
+                        "key": null,
                         "event": "Ask",
                         "value": {
                           "kind": "record",
@@ -823,6 +827,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Caller",
         "name": "Caller",
@@ -860,6 +865,7 @@
                   "machine": "Teller",
                   "state": null
                 },
+                "key": null,
                 "event": "Ask",
                 "value": {
                   "kind": "record",
@@ -938,6 +944,7 @@
                       "machine": "Teller",
                       "state": null
                     },
+                    "key": null,
                     "event": "Ask",
                     "value": {
                       "kind": "record",

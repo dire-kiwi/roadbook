@@ -1,0 +1,1324 @@
+{
+  "irVersion": "0.6",
+  "sources": [
+    {
+      "path": "packages/viewer/test/charts/spawn.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "SessionId": {
+      "kind": "alias",
+      "params": [],
+      "type": "string",
+      "doc": "A connection's id.",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 24
+      }
+    },
+    "Lane": {
+      "kind": "enum",
+      "variants": [
+        "Fast",
+        "Slow"
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 25
+      }
+    },
+    "Lost": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "reason",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 32
+      }
+    },
+    "Kicked": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 13
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 12,
+        "endCol": 25
+      }
+    },
+    "note": {
+      "params": [
+        {
+          "name": "id",
+          "type": "SessionId",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "count",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 13,
+        "col": 1,
+        "endLine": 13,
+        "endCol": 39
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Session": {
+      "doc": "One connection.",
+      "span": {
+        "file": 0,
+        "line": 16,
+        "col": 1,
+        "endLine": 31,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "id",
+          "type": "SessionId",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "greeting",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [
+        "Lost",
+        "Kicked"
+      ],
+      "vars": [
+        {
+          "name": "seen",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 21,
+            "col": 3,
+            "endLine": 21,
+            "endCol": 20
+          }
+        }
+      ],
+      "events": {
+        "Notify": {
+          "fields": [
+            {
+              "name": "text",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 32
+          }
+        },
+        "Leave": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 18,
+            "col": 3,
+            "endLine": 18,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {
+        "Typing": {
+          "fields": [
+            {
+              "name": "text",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 19,
+            "col": 3,
+            "endLine": 19,
+            "endCol": 32
+          }
+        }
+      },
+      "children": {},
+      "root": {
+        "id": "Session",
+        "name": "Session",
+        "kind": "compound",
+        "doc": "One connection.",
+        "span": {
+          "file": 0,
+          "line": 16,
+          "col": 1,
+          "endLine": 31,
+          "endCol": 2
+        },
+        "initial": "Session.Open",
+        "states": [
+          {
+            "id": "Session.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 24,
+              "col": 3,
+              "endLine": 28,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Notify"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Session.Open",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "seen",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "seen"
+                          ],
+                          "type": "int",
+                          "text": "seen"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "seen + 1"
+                    }
+                  },
+                  {
+                    "kind": "emit",
+                    "event": "Typing",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "text",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "text"
+                            ],
+                            "type": "string",
+                            "text": "event.text"
+                          }
+                        }
+                      ],
+                      "type": "Typing",
+                      "text": "Typing { text: event.text }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 5,
+                  "endLine": 25,
+                  "endCol": 80
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Leave"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Session.Left",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 26,
+                  "endCol": 22
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 3600000,
+                    "type": "duration",
+                    "text": "1h"
+                  }
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Session.Dropped",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 5,
+                  "endLine": 27,
+                  "endCol": 25
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Session.Left",
+            "name": "Left",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 29,
+              "col": 3,
+              "endLine": 29,
+              "endCol": 38
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "seen"
+              ],
+              "type": "int",
+              "text": "seen"
+            },
+            "fail": null
+          },
+          {
+            "id": "Session.Dropped",
+            "name": "Dropped",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 30,
+              "col": 3,
+              "endLine": 30,
+              "endCol": 55
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "record",
+              "fields": [
+                {
+                  "name": "reason",
+                  "value": {
+                    "kind": "lit",
+                    "value": "idle",
+                    "type": "string",
+                    "text": "\"idle\""
+                  }
+                }
+              ],
+              "type": "Lost",
+              "text": "Lost { reason: \"idle\" }"
+            }
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:1074e49b1f2bba0f657e1ffe300cab2d56e93edb8222c2bb6b6396ff303af144"
+    },
+    "Job": {
+      "doc": "A job with no result.",
+      "span": {
+        "file": 0,
+        "line": 34,
+        "col": 1,
+        "endLine": 38,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "lane",
+          "type": "Lane",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {},
+      "emits": {},
+      "children": {},
+      "root": {
+        "id": "Job",
+        "name": "Job",
+        "kind": "compound",
+        "doc": "A job with no result.",
+        "span": {
+          "file": 0,
+          "line": 34,
+          "col": 1,
+          "endLine": 38,
+          "endCol": 2
+        },
+        "initial": "Job.Running",
+        "states": [
+          {
+            "id": "Job.Running",
+            "name": "Running",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 36,
+              "col": 3,
+              "endLine": 36,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Job.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 36,
+                  "col": 22,
+                  "endLine": 36,
+                  "endCol": 38
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Job.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 37,
+              "col": 3,
+              "endLine": 37,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:54bbde9511b5b0d343d7b77c5fbd0a50f89ea747bc9d1eec054e953f808c71c1"
+    },
+    "Hub": {
+      "doc": "Many sessions, one per connection.",
+      "span": {
+        "file": 0,
+        "line": 41,
+        "col": 1,
+        "endLine": 71,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "open",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 52,
+            "col": 3,
+            "endLine": 52,
+            "endCol": 20
+          }
+        },
+        {
+          "name": "last",
+          "type": "string",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 53,
+            "col": 3,
+            "endLine": 53,
+            "endCol": 24
+          }
+        }
+      ],
+      "events": {
+        "Open": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 42,
+            "col": 3,
+            "endLine": 42,
+            "endCol": 13
+          }
+        },
+        "Connected": {
+          "fields": [
+            {
+              "name": "id",
+              "type": "SessionId",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 43,
+            "col": 3,
+            "endLine": 43,
+            "endCol": 39
+          }
+        },
+        "Disconnected": {
+          "fields": [
+            {
+              "name": "id",
+              "type": "SessionId",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 44,
+            "col": 3,
+            "endLine": 44,
+            "endCol": 39
+          }
+        },
+        "Broadcast": {
+          "fields": [
+            {
+              "name": "text",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 45,
+            "col": 3,
+            "endLine": 45,
+            "endCol": 38
+          }
+        },
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 46,
+            "col": 3,
+            "endLine": 46,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "children": {
+        "sessions": {
+          "machine": "Session",
+          "key": "SessionId",
+          "doc": "The open sessions.",
+          "span": {
+            "file": 0,
+            "line": 49,
+            "col": 3,
+            "endLine": 49,
+            "endCol": 42
+          }
+        },
+        "jobs": {
+          "machine": "Job",
+          "key": "Lane",
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 50,
+            "col": 3,
+            "endLine": 50,
+            "endCol": 37
+          }
+        }
+      },
+      "root": {
+        "id": "Hub",
+        "name": "Hub",
+        "kind": "compound",
+        "doc": "Many sessions, one per connection.",
+        "span": {
+          "file": 0,
+          "line": 41,
+          "col": 1,
+          "endLine": 71,
+          "endCol": 2
+        },
+        "initial": "Hub.Idle",
+        "states": [
+          {
+            "id": "Hub.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 57,
+              "col": 3,
+              "endLine": 57,
+              "endCol": 76
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Open"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Hub.Serving",
+                "effects": [
+                  {
+                    "kind": "spawn",
+                    "children": "jobs",
+                    "machine": "Job",
+                    "key": {
+                      "kind": "enum",
+                      "variant": "Fast",
+                      "type": "Lane",
+                      "text": "Lane.Fast"
+                    },
+                    "args": [
+                      {
+                        "kind": "enum",
+                        "variant": "Fast",
+                        "type": "Lane",
+                        "text": "Lane.Fast"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 57,
+                  "col": 16,
+                  "endLine": 57,
+                  "endCol": 74
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Hub.Serving",
+            "name": "Serving",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 58,
+              "col": 3,
+              "endLine": 69,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "spawn",
+                "children": "jobs",
+                "machine": "Job",
+                "key": {
+                  "kind": "enum",
+                  "variant": "Slow",
+                  "type": "Lane",
+                  "text": "Lane.Slow"
+                },
+                "args": [
+                  {
+                    "kind": "enum",
+                    "variant": "Slow",
+                    "type": "Lane",
+                    "text": "Lane.Slow"
+                  }
+                ]
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Connected"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "open",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "open"
+                          ],
+                          "type": "int",
+                          "text": "open"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "open + 1"
+                    }
+                  },
+                  {
+                    "kind": "spawn",
+                    "children": "sessions",
+                    "machine": "Session",
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "id"
+                      ],
+                      "type": "SessionId",
+                      "text": "event.id"
+                    },
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "id"
+                        ],
+                        "type": "SessionId",
+                        "text": "event.id"
+                      },
+                      {
+                        "kind": "lit",
+                        "value": "hi",
+                        "type": "string",
+                        "text": "\"hi\""
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "children",
+                      "name": "sessions",
+                      "machine": "Session",
+                      "state": null
+                    },
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "id"
+                      ],
+                      "type": "SessionId",
+                      "text": "event.id"
+                    },
+                    "event": "Notify",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "text",
+                          "value": {
+                            "kind": "lit",
+                            "value": "welcome",
+                            "type": "string",
+                            "text": "\"welcome\""
+                          }
+                        }
+                      ],
+                      "type": "Session.Notify",
+                      "text": "Notify { text: \"welcome\" }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 60,
+                  "col": 5,
+                  "endLine": 60,
+                  "endCol": 187
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Disconnected"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "stop",
+                    "children": "sessions",
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "id"
+                      ],
+                      "type": "SessionId",
+                      "text": "event.id"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 61,
+                  "col": 5,
+                  "endLine": 61,
+                  "endCol": 87
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Broadcast"
+                },
+                "group": 2,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "children",
+                      "name": "sessions",
+                      "machine": "Session",
+                      "state": null
+                    },
+                    "key": null,
+                    "event": "Notify",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "text",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "text"
+                            ],
+                            "type": "string",
+                            "text": "event.text"
+                          }
+                        }
+                      ],
+                      "type": "Session.Notify",
+                      "text": "Notify { text: event.text }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 62,
+                  "col": 5,
+                  "endLine": 62,
+                  "endCol": 107
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "children",
+                    "name": "sessions",
+                    "machine": "Session",
+                    "state": null
+                  },
+                  "event": "Typing"
+                },
+                "group": 3,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "last",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "text"
+                      ],
+                      "type": "string",
+                      "text": "event.text"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "key"
+                        ],
+                        "type": "SessionId",
+                        "text": "key"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "open"
+                        ],
+                        "type": "int",
+                        "text": "open"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 63,
+                  "col": 5,
+                  "endLine": 63,
+                  "endCol": 105
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "spawn.done",
+                  "children": "sessions"
+                },
+                "group": 4,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "open",
+                    "value": {
+                      "kind": "op",
+                      "op": "-",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "open"
+                          ],
+                          "type": "int",
+                          "text": "open"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "open - 1"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "key"
+                        ],
+                        "type": "SessionId",
+                        "text": "key"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "result"
+                        ],
+                        "type": "int",
+                        "text": "result"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 64,
+                  "col": 5,
+                  "endLine": 64,
+                  "endCol": 105
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "spawn.fail",
+                  "children": "sessions",
+                  "error": "Lost"
+                },
+                "group": 5,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "error",
+                        "reason"
+                      ],
+                      "type": "string",
+                      "text": "error.reason"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": "idle",
+                      "type": "string",
+                      "text": "\"idle\""
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "error.reason == \"idle\""
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "key"
+                        ],
+                        "type": "SessionId",
+                        "text": "key"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 65,
+                  "col": 5,
+                  "endLine": 65,
+                  "endCol": 75
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "spawn.fail",
+                  "children": "sessions",
+                  "error": "*"
+                },
+                "group": 6,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "key"
+                        ],
+                        "type": "SessionId",
+                        "text": "key"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 66,
+                  "col": 5,
+                  "endLine": 66,
+                  "endCol": 75
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "spawn.done",
+                  "children": "jobs"
+                },
+                "group": 7,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "stop",
+                    "children": "jobs",
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "key"
+                      ],
+                      "type": "Lane",
+                      "text": "key"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 67,
+                  "col": 5,
+                  "endLine": 67,
+                  "endCol": 78
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 8,
+                "guard": null,
+                "target": "Hub.Closed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 68,
+                  "col": 5,
+                  "endLine": 68,
+                  "endCol": 62
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Hub.Closed",
+            "name": "Closed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 70,
+              "col": 3,
+              "endLine": 70,
+              "endCol": 37
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "open"
+              ],
+              "type": "int",
+              "text": "open"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [
+          {
+            "kind": "send",
+            "to": {
+              "kind": "children",
+              "name": "sessions",
+              "machine": "Session",
+              "state": null
+            },
+            "key": null,
+            "event": "Leave",
+            "value": {
+              "kind": "record",
+              "fields": [],
+              "type": "Session.Leave",
+              "text": "Leave"
+            }
+          }
+        ],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:9c7d1ad3e521329e0d1adbea0ec9b54b3225e9d43c9270fb4e48a3c251b9f79f"
+    }
+  }
+}

@@ -9,10 +9,11 @@ import { expandType, fieldsOf, isOptionalType, type TypeRef } from "./typeref.ts
 import type { Saved, Snapshot } from "./types.ts"
 
 /**
- * The `snapshotVersion` this runtime saves. It restores this one and version 1, written before
- * history states, which has no `history`.
+ * The `snapshotVersion` this runtime saves. It restores this one, version 2, written before
+ * keyed spawn, which has no `spawned`, and version 1, written before history states, which has
+ * no `history` either.
  */
-export const SNAPSHOT_VERSION = 2
+export const SNAPSHOT_VERSION = 3
 
 /** Why a saved snapshot was refused. */
 export type RefusalReason = "invalid" | "machine" | "ir" | "migration" | "ended" | "ref"
@@ -43,6 +44,7 @@ export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Sav
   input: snapshot.input,
   vars: snapshot.vars,
   invokes: snapshot.invokes,
+  spawned: snapshot.spawned,
   timers: snapshot.timers.map((t) => ({ ...t, due: due(t.id) })),
   nextInvoke: snapshot.nextInvoke,
   nextTimer: snapshot.nextTimer,
@@ -95,8 +97,8 @@ export const checkSaved = (ir: Ir, machine: string, json: unknown, migrate?: Mig
 // ---- the shape: snapshot.schema.json --------------------------------------------------------
 
 /**
- * Whether `u` matches `snapshot.schema.json`: version 2 with `history`, or version 1 without.
- * Its values are not checked.
+ * Whether `u` matches `snapshot.schema.json`: version 3 with `history` and `spawned`, version 2
+ * with `history` only, or version 1 with neither. Its values are not checked.
  */
 export const isSaved = (u: unknown): u is Saved => shapeIssue(u) === undefined
 
@@ -152,10 +154,14 @@ const shapeIssue = (json: unknown): string | undefined => {
   if (!isObject(json)) return "not a JSON object"
   const version = json["snapshotVersion"]
   if (version === 1 && Object.hasOwn(json, "history")) return "it is version 1 and has history, which version 2 added"
-  const members = membersIssue(json, version === 1 ? MEMBERS : [...MEMBERS, "history"], "it")
+  if (version !== SNAPSHOT_VERSION && Object.hasOwn(json, "spawned")) {
+    return `it is version ${JSON.stringify(version)} and has spawned, which version 3 added`
+  }
+  const expected = version === 1 ? MEMBERS : version === 2 ? [...MEMBERS, "history"] : [...MEMBERS, "history", "spawned"]
+  const members = membersIssue(json, expected, "it")
   if (members !== undefined) return members
-  if (version !== 1 && version !== SNAPSHOT_VERSION) {
-    return `snapshotVersion is ${JSON.stringify(version)}, and this runtime reads 1 and ${SNAPSHOT_VERSION}`
+  if (version !== 1 && version !== 2 && version !== SNAPSHOT_VERSION) {
+    return `snapshotVersion is ${JSON.stringify(version)}, and this runtime reads 1, 2 and ${SNAPSHOT_VERSION}`
   }
   if (!matches(UPPER, json["machine"])) return "machine is not a machine name"
   if (!isRunId(json["run"])) return "run is not a run id"
@@ -176,6 +182,18 @@ const shapeIssue = (json: unknown): string | undefined => {
     if (issue !== undefined) return issue
     if (!isId(inv["id"]) || !matches(STATE_ID, inv["state"]) || !matches(NAME, inv["src"])) return "an invoke is malformed"
   }
+  const spawned = json["spawned"] ?? []
+  if (!Array.isArray(spawned)) return "spawned is not a list"
+  for (const ch of spawned) {
+    if (!isObject(ch)) return "a spawned child is not an object"
+    const issue = membersIssue(ch, ["id", "children", "key", "args"], "a spawned child")
+    if (issue !== undefined) return issue
+    const key = ch["key"]
+    if (
+      !isId(ch["id"]) || !matches(LOWER, ch["children"]) || !(typeof key === "string" || Number.isInteger(key)) ||
+      !isObject(ch["args"]) || !Object.keys(ch["args"]).every((k) => LOWER.test(k))
+    ) return "a spawned child is malformed"
+  }
   const timers = json["timers"]
   if (!Array.isArray(timers)) return "timers is not a list"
   for (const tm of timers) {
@@ -190,7 +208,7 @@ const shapeIssue = (json: unknown): string | undefined => {
   for (const name of ["nextInvoke", "nextTimer", "nextMessage"]) {
     if (!isId(json[name])) return `${name} is not a positive integer`
   }
-  if (version === SNAPSHOT_VERSION) {
+  if (version !== 1) {
     const history = json["history"]
     if (!isObject(history)) return "history is not an object"
     for (const [id, record] of Object.entries(history)) {
@@ -267,6 +285,30 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
     if (invokeIds.has(inv.id)) return `invoke id ${inv.id} is repeated`
     invokeIds.add(inv.id)
     if (inv.id >= saved.nextInvoke) return `invoke id ${inv.id} is not below nextInvoke`
+  }
+  const keys = new Set<string>()
+  for (const ch of saved.spawned ?? []) {
+    const decl = Object.hasOwn(m.children, ch.children) ? m.children[ch.children] : undefined
+    if (decl === undefined) return `spawned child ${ch.id} is of ${ch.children}, which is not a collection of the machine`
+    const keyIssue = valueIssue(ir, decl.key, ch.key, `the key of spawned child ${ch.id}`)
+    if (keyIssue !== undefined) return keyIssue
+    const child = ir.machines[decl.machine]
+    if (child === undefined) return `the machine of ${ch.children} is not in the IR`
+    const names = new Set(child.params.map((p) => p.name))
+    const absent = child.params.find((p) => !Object.hasOwn(ch.args, p.name))
+    if (absent !== undefined) return `spawned child ${ch.id} has no argument ${absent.name}`
+    const other = Object.keys(ch.args).find((k) => !names.has(k))
+    if (other !== undefined) return `spawned child ${ch.id} has an argument ${other}, which is not a parameter`
+    for (const p of child.params) {
+      const issue = valueIssue(ir, p.type, ch.args[p.name] ?? null, `the argument ${p.name} of spawned child ${ch.id}`)
+      if (issue !== undefined) return issue
+    }
+    const key = `${ch.children} ${JSON.stringify(ch.key)}`
+    if (keys.has(key)) return `two spawned children of ${ch.children} have the key ${JSON.stringify(ch.key)}`
+    keys.add(key)
+    if (invokeIds.has(ch.id)) return `invoke id ${ch.id} is repeated`
+    invokeIds.add(ch.id)
+    if (ch.id >= saved.nextInvoke) return `spawned child id ${ch.id} is not below nextInvoke`
   }
   const timerKeys = new Set<string>()
   const timerIds = new Set<number>()

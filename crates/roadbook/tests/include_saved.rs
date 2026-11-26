@@ -465,7 +465,7 @@ async fn a_run_returns_through_its_history_states_and_saves_what_they_recorded()
     first.send(Event::Help).await;
     until(&mut first, State::Help).await;
     let saved = first.save().await;
-    assert_eq!(saved.snapshot_version, 2);
+    assert_eq!(saved.snapshot_version, 3);
     assert_eq!(
         saved.history,
         Some(
@@ -494,15 +494,16 @@ async fn a_run_returns_through_its_history_states_and_saves_what_they_recorded()
     until(&mut copy, review).await;
     copy.cancel().await;
 
-    // A version 1 snapshot, written before history states, restores with no records and is
-    // saved again as version 2.
+    // A version 1 snapshot, written before history states (and keyed spawn), restores with no
+    // records and is saved again as version 3.
     let mut old = saved.to_value();
     old["snapshotVersion"] = json!(1);
     old.as_object_mut().unwrap().remove("history");
+    old.as_object_mut().unwrap().remove("spawned");
     let old = Saved::from_value(old).unwrap();
     let mut copy = hist::editor::restore_with(config, Arc::new(Writer), old).unwrap();
     let again = copy.save().await;
-    assert_eq!(again.snapshot_version, 2);
+    assert_eq!(again.snapshot_version, 3);
     assert_eq!(again.history, Some(Default::default()));
     copy.send(Event::Back).await;
     until(&mut copy, State::Work(Work::Draft)).await;

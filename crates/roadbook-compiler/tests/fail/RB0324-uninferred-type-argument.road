@@ -15,5 +15,5 @@ machine M() {
   }
 }
 
-// expect: RB0323 at 10:42
-// expect: RB0323 at 14:42
+// expect: RB0324 at 10:42
+// expect: RB0324 at 14:42

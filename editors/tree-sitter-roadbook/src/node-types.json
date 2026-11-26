@@ -124,6 +124,14 @@
           {
             "type": "set",
             "named": true
+          },
+          {
+            "type": "spawn",
+            "named": true
+          },
+          {
+            "type": "stop",
+            "named": true
           }
         ]
       },
@@ -181,6 +189,14 @@
           },
           {
             "type": "set",
+            "named": true
+          },
+          {
+            "type": "spawn",
+            "named": true
+          },
+          {
+            "type": "stop",
             "named": true
           }
         ]
@@ -576,6 +592,14 @@
           {
             "type": "set",
             "named": true
+          },
+          {
+            "type": "spawn",
+            "named": true
+          },
+          {
+            "type": "stop",
+            "named": true
           }
         ]
       },
@@ -652,6 +676,112 @@
     }
   },
   {
+    "type": "child_done",
+    "named": true,
+    "fields": {
+      "from": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "child_fail",
+    "named": true,
+    "fields": {
+      "error": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          },
+          {
+            "type": "wildcard",
+            "named": true
+          }
+        ]
+      },
+      "from": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "children_declaration",
+    "named": true,
+    "fields": {
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "builtin_type",
+            "named": true
+          },
+          {
+            "type": "generic_type",
+            "named": true
+          },
+          {
+            "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
+            "named": true
+          },
+          {
+            "type": "optional_type",
+            "named": true
+          },
+          {
+            "type": "ref_type",
+            "named": true
+          },
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
+      "machine": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "do",
     "named": true,
     "fields": {},
@@ -698,6 +828,14 @@
           },
           {
             "type": "set",
+            "named": true
+          },
+          {
+            "type": "spawn",
+            "named": true
+          },
+          {
+            "type": "stop",
             "named": true
           }
         ]
@@ -746,6 +884,14 @@
           },
           {
             "type": "set",
+            "named": true
+          },
+          {
+            "type": "spawn",
+            "named": true
+          },
+          {
+            "type": "stop",
             "named": true
           }
         ]
@@ -836,6 +982,14 @@
           },
           {
             "type": "set",
+            "named": true
+          },
+          {
+            "type": "spawn",
+            "named": true
+          },
+          {
+            "type": "stop",
             "named": true
           }
         ]
@@ -1001,6 +1155,14 @@
           {
             "type": "set",
             "named": true
+          },
+          {
+            "type": "spawn",
+            "named": true
+          },
+          {
+            "type": "stop",
+            "named": true
           }
         ]
       }
@@ -1126,6 +1288,14 @@
           },
           {
             "type": "set",
+            "named": true
+          },
+          {
+            "type": "spawn",
+            "named": true
+          },
+          {
+            "type": "stop",
             "named": true
           }
         ]
@@ -1744,6 +1914,10 @@
           "named": true
         },
         {
+          "type": "children_declaration",
+          "named": true
+        },
+        {
           "type": "emits_declaration",
           "named": true
         },
@@ -2113,6 +2287,14 @@
           {
             "type": "set",
             "named": true
+          },
+          {
+            "type": "spawn",
+            "named": true
+          },
+          {
+            "type": "stop",
+            "named": true
           }
         ]
       },
@@ -2140,6 +2322,14 @@
         "multiple": false,
         "required": true,
         "types": [
+          {
+            "type": "child_done",
+            "named": true
+          },
+          {
+            "type": "child_fail",
+            "named": true
+          },
           {
             "type": "event_pattern",
             "named": true
@@ -2613,6 +2803,72 @@
           }
         ]
       },
+      "key": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "duration",
+            "named": true
+          },
+          {
+            "type": "enum_value",
+            "named": true
+          },
+          {
+            "type": "field_expression",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "negation",
+            "named": true
+          },
+          {
+            "type": "not_expression",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "record_value",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
       "to": {
         "multiple": false,
         "required": true,
@@ -2623,6 +2879,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "wildcard",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -2691,6 +2957,108 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "spawn",
+    "named": true,
+    "fields": {
+      "arguments": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "arguments",
+            "named": true
+          }
+        ]
+      },
+      "collection": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "duration",
+            "named": true
+          },
+          {
+            "type": "enum_value",
+            "named": true
+          },
+          {
+            "type": "field_expression",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "negation",
+            "named": true
+          },
+          {
+            "type": "not_expression",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "record_value",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "machine": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -2786,6 +3154,88 @@
         "types": [
           {
             "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "stop",
+    "named": true,
+    "fields": {
+      "collection": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "duration",
+            "named": true
+          },
+          {
+            "type": "enum_value",
+            "named": true
+          },
+          {
+            "type": "field_expression",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "negation",
+            "named": true
+          },
+          {
+            "type": "not_expression",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "record_value",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           }
         ]
@@ -3258,6 +3708,14 @@
     "named": false
   },
   {
+    "type": "by",
+    "named": false
+  },
+  {
+    "type": "children",
+    "named": false
+  },
+  {
     "type": "comment",
     "named": true,
     "extra": true
@@ -3444,7 +3902,15 @@
     "named": false
   },
   {
+    "type": "spawn",
+    "named": false
+  },
+  {
     "type": "state",
+    "named": false
+  },
+  {
+    "type": "stop",
     "named": false
   },
   {

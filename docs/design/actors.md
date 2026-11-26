@@ -17,7 +17,7 @@ Two questions came up in review of the first draft. Does Roadbook need xstate's 
 | Promise actors | Tasks | In the first draft |
 | `sendTo` a child, `sendParent`, `emit` | `send` and `emit`, checked against the receiver's declared events | **Added here** |
 | References to other actors, passed around in context and events | `ref Machine` parameters: typed, and visible in the signature | **Added here** |
-| `spawn`: any number of children, references kept in context | Keyed `spawn` | Sketched here, built later |
+| `spawn`: any number of children, references kept in context | Keyed `spawn`: a collection declared on the machine, addressed by key | **Added later** ([many children](#many-children)) |
 | Callback and observable actors (event sources) | Host code calls `send` on the handle. A `stream` task kind may follow. | Later |
 | `system` and `systemId`: look up any actor by name | Not adopted. A machine reaches only what it is given. | Rejected |
 
@@ -81,21 +81,43 @@ machine Order(id: string, draft: OrderDraft, inventory: ref Inventory) -> Receip
 
 `ref Inventory` is a type: a handle to some running `Inventory` machine. Which instance is decided by whoever starts `Order`, in host code or in a parent chart. Holding a reference lets a machine `send` the peer's declared events and handle the peer's emitted events with `on inventory.Name`.
 
-A machine cannot conjure a reference. It gets one as a parameter, from `invoke … as`, or (later) from `spawn`. So the project index can draw, from signatures alone, which machines can talk to which.
+A machine cannot conjure a reference. It gets one as a parameter, or names a child it started with `invoke … as` or `spawn`. So the project index can draw, from signatures alone, which machines can talk to which.
 
 ## Many children
 
-`invoke` is one child per state. A dynamic number (one machine per connection, per order, per player) needs `spawn`. The intended shape is a keyed collection declared on the machine, so the children remain typed and visible:
+`invoke` is one child per state. A dynamic number (one machine per connection, per order, per player) needs `spawn`. The children go in a keyed collection declared on the machine, so they remain typed and visible:
 
 ```
 children sessions: Session by SessionId
 
-on Connected     spawn sessions[event.id] = Session(event.socket)
-on Disconnected  stop sessions[event.id]
-on Broadcast     send sessions.*.Notify { text: event.text }
+on Connected       spawn sessions[event.id] = Session(event.socket)
+on Disconnected    stop sessions[event.id]
+on Broadcast       send sessions.*.Notify { text: event.text }
+on sessions.Typing do showTyping(key)
+on sessions.done   do loggedOut(key)
 ```
 
-This is a sketch. It is planned after the first two forms have been used in real charts.
+The [language page](language.md#many-children) has the rules and checks, [`spec/execution.md`](../../spec/execution.md#spawned-children) what happens at run time, and the conformance cases that `require` `spawn` hold both runtimes to it. The parent never holds a reference to a spawned child as a value: it names the collection and a key, so the collection, like an `as` name, cannot be passed on, and what the parent can say to its children is in its chart.
+
+### Decided while implementing
+
+- **The collection belongs to the machine, not to a state.** Children outlive the state that spawned them; they end by themselves, by `stop`, by a `spawn` under their key, or when the parent ends. A per-state collection would be `invoke` with a key, and the use cases (sessions, orders, players) are about the whole machine's life.
+- **A `spawn` under a key in use replaces the child.** The old one is stopped (its cancel step runs) and the new one starts. The alternatives were a defect, which a chart could not avoid because it cannot ask whether a key is in use, and ignoring the spawn, which loses the newer arguments silently. Replacing makes `sessions[k]` always mean the child spawned last.
+- **A spawned child starts when the step has settled**, as an invoke does, and takes its id from the same sequence, so its run is `<parent>.<id>`. A child spawned in a step that ends the parent never starts, so no child runs without a parent to take its outcome. A `send` to it in the step that spawned it is undelivered, as one to an invoked child is in the step that enters its state.
+- **Outcomes are events, not obligations.** `on sessions.done` and `on sessions.fail E` are taken like `on sessions.Typing`, from any active state, with `key` naming the child. Unlike an invoke's, a spawned child's declared errors need not all be handled: the handlers are spread over the states, so exhaustiveness cannot be checked per state, and an unhandled outcome is dropped and traced like any unhandled event.
+- **`key` is an implicit name**, like `event`, in every transition a child's input takes. It cannot name a parameter, variable or collection, but can still name a field.
+- **When the parent ends, its children are stopped after its own exit effects**, each with a `spawn.stopped` record, in the order they were started, so the exit effects still see every child (they can `stop` some themselves), and a child they spawn never starts. They cannot usefully say goodbye: a stop is a cancel request, which goes before what the child has queued, so a message sent in the same step is likely discarded with the child's queue. A parent that wants its children to finish cleanly tells them earlier and waits for their outcomes.
+- **No expressions over collections.** Counting children or listing keys would need operations on maps or lists in the expression language, which has none ([maps and generic types](language.md#maps-and-generic-types)); a chart keeps a count in a variable or has its children emit.
+- **Saving.** A saved snapshot lists the running children with their keys and the arguments they were spawned with (snapshot version 3), and restoring starts each again from the beginning, as it does an invoked child. Suspending waits until no child is running.
+
+### What depends on the open questions
+
+These use the current defaults; the [open questions](#open-questions) may change them.
+
+- **Supervision** (question 4). A spawned child's defect ends its parent, and its declared errors reach the parent as `on name.fail`. A supervising parent that survives a child's defect, or restarts it, would add a third kind of outcome; nothing in the syntax prevents that.
+- **Full queues** (question 2). `send sessions.*.E` queues one message per child; with bounded queues a broadcast would have to choose for each child between waiting and dropping.
+- **Who receives emitted events** (question 3). A parent receives everything its children emit, as an invoker with `as` does; with many children the compiler could skip delivering events the parent has no `on` for.
+- **Asking a peer** (question 1). A request to one child with a reply is a `send sessions[k].E`, an `on sessions.Reply` whose `key` is checked with a guard, and a timeout. A `call` declaration would apply to children as to peers.
 
 ## Semantics
 
@@ -103,7 +125,7 @@ The precise rules are in [`spec/execution.md`](../../spec/execution.md#messages-
 
 - **Sending is queuing.** `send` puts the event in the receiver's queue and continues. The receiver handles it later, by the ordinary one-event-at-a-time rule. A sender never runs the receiver's transitions and never waits for them. A sent event is one of the receiver's own events, so `on Pause` takes it exactly as it would take `Pause` from host code.
 - **Order is preserved per pair.** Two events sent from A to B arrive in the order sent, and so does everything else A queues for B: A's emitted events, and a child's outcome, which comes after everything the child emitted. Nothing orders what two different machines send to a third.
-- **Emitted events arrive as events.** They are queued for the invoker, if it named the child with `as`, and for every machine holding a reference, and are handled by `on name.Event`. An invoker without `as` has no name to handle them under, and is not sent them. With no matching transition they are dropped and traced like any unhandled event.
+- **Emitted events arrive as events.** They are queued for the invoker, if it named the child with `as`, or for the parent that spawned it, and for every machine holding a reference, and are handled by `on name.Event`. An invoker without `as` has no name to handle them under, and is not sent them. With no matching transition they are dropped and traced like any unhandled event.
 - **Holding a reference** means having it among the machine's arguments, from start to end: a machine gets a `ref` only as an argument, so the machines it can hear from are fixed when it starts. `on inventory.Reserved` is taken for an event from whichever machine the parameter or variable `inventory` holds.
 - **A child's emitted events belong to its invoke.** One that arrives after the invoking state was left, or re-entered with a new child, is stale, like an outcome that arrives late: a child cancelled by its parent can still emit from its exit effects, and its parent ignores what it said.
 - **Sending to a machine that is not running** is dropped and traced as `undelivered`: a peer that has ended, or a child that has not started yet or has already finished. The compiler rules out the plain cases for invoked children (a send from the invoking state's own `entry`, `exit` or outcomes, or from a transition that leaves it); what it cannot see, a send from a state inside the invoking state in the step that enters it, before the child starts, or after the child's outcome was taken by a transition that stays, is undelivered at run time. A `strict` machine would make this a failure, once `strict` exists.

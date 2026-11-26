@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "spec/conformance/charts/shop/place_order.road",
@@ -600,6 +600,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "PlaceOrder",
         "name": "PlaceOrder",
@@ -1502,6 +1503,7 @@
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Checkout",
         "name": "Checkout",

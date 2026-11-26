@@ -33,8 +33,10 @@
 //!   of a bare `event`, or of an `emit` value), or a dotted event type, is
 //!   not a type and is skipped.
 //! - `strip` removes every member named `doc`, `span`, `text` or
-//!   `sensitive` from every object, recursively. The only name-keyed maps inside these values are a
-//!   machine's `events` and `emits`, whose keys are upper-case, so no
+//!   `sensitive` from every object, recursively, except the keys of a
+//!   machine's `children` map, which are kept as they are. The other
+//!   name-keyed maps inside these values are a machine's `events` and
+//!   `emits`, whose keys are upper-case, so no
 //!   user-chosen name is ever stripped. A type declaration's `params` is
 //!   removed too when it is `[]`, so a type that is not generic hashes as
 //!   it did before generic types existed.
@@ -199,6 +201,13 @@ impl Walker<'_> {
         for e in m.events.values().chain(m.emits.values()) {
             self.fields(&e.fields)?;
         }
+        for c in m.children.values() {
+            self.type_ref(&c.key)?;
+            if !self.ir.machines.contains_key(&c.machine) {
+                return Err(self.unresolved("machine", &c.machine));
+            }
+            self.pending_machines.push(c.machine.clone());
+        }
         self.state(&m.root)
     }
 
@@ -225,7 +234,11 @@ impl Walker<'_> {
         for t in &s.transitions {
             match &t.trigger {
                 Trigger::After { delay } => self.expr(delay)?,
-                Trigger::InvokeFail { error } if error != "*" => self.type_name(error)?,
+                Trigger::InvokeFail { error } | Trigger::SpawnFail { error, .. }
+                    if error != "*" =>
+                {
+                    self.type_name(error)?
+                }
                 Trigger::Emitted { from, .. } => self.address(from)?,
                 _ => {}
             }
@@ -251,11 +264,19 @@ impl Walker<'_> {
                     self.out.actions.insert(action.clone());
                     args.iter().try_for_each(|a| self.expr(a))?;
                 }
-                Effect::Send { to, value, .. } => {
+                Effect::Send { to, key, value, .. } => {
                     self.address(to)?;
+                    if let Some(k) = key {
+                        self.expr(k)?;
+                    }
                     self.expr(value)?;
                 }
                 Effect::Emit { value, .. } => self.expr(value)?,
+                Effect::Spawn { key, args, .. } => {
+                    self.expr(key)?;
+                    args.iter().try_for_each(|a| self.expr(a))?;
+                }
+                Effect::Stop { key, .. } => self.expr(key)?,
             }
         }
         Ok(())
@@ -368,14 +389,34 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
     Ok(w.out)
 }
 
-/// Removes every `doc`, `span`, `text` and `sensitive` member, recursively.
+/// Removes every `doc`, `span`, `text` and `sensitive` member, recursively, except the keys
+/// of a machine's `children` map, which are names the chart chose (a collection may be named
+/// `text`). Also removes what IR 0.5 added where it says nothing: a machine's empty
+/// `children` and a `send` effect's `null` `key`, so a machine that spawns nothing keeps the
+/// hash it had before keyed spawn.
 fn strip(v: &mut Value) {
     match v {
         Value::Object(m) => {
             for key in ["doc", "span", "text", "sensitive"] {
                 m.remove(key);
             }
-            m.values_mut().for_each(strip);
+            if m.contains_key("root")
+                && m.get("children")
+                    .is_some_and(|c| c.as_object().is_some_and(Map::is_empty))
+            {
+                m.remove("children");
+            }
+            if m.get("kind").and_then(Value::as_str) == Some("send")
+                && m.get("key").is_some_and(Value::is_null)
+            {
+                m.remove("key");
+            }
+            for (key, value) in m.iter_mut() {
+                match value {
+                    Value::Object(named) if key == "children" => named.values_mut().for_each(strip),
+                    value => strip(value),
+                }
+            }
         }
         Value::Array(a) => a.iter_mut().for_each(strip),
         _ => {}

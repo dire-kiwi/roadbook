@@ -1,4 +1,4 @@
-# The Roadbook IR, version 0.5
+# The Roadbook IR, version 0.6
 
 The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with messaging and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
@@ -6,7 +6,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 **Every member is always present.** Nothing is ever omitted. An absent value is `null`, a missing doc comment is `""`, and an empty list or map is `[]` or `{}`. This gives each input exactly one output, which matters because compiled IR is committed and hashed, and it means readers never need to tell a missing member from a null one. Readers reject members this page does not list.
 
-**Order is source order.** Maps keyed by name (`types`, `functions`, `actions`, `tasks`, `machines`, a machine's `events` and `emits`) keep declaration order: the entry file's declarations first, then each imported file's in the order the files were first loaded (depth first: a file's imports, in the order written, are loaded before the next import of the file that imports it). Lists (fields, parameters, variables, states, transitions, effects, arguments) are in the order written, except that a list of effects puts every `set` before the other effects (see [effects](#effects)). A JSON parser that does not keep member order loses nothing a runtime needs, since order in the maps is for readability and diffs only.
+**Order is source order.** Maps keyed by name (`types`, `functions`, `actions`, `tasks`, `machines`, a machine's `events`, `emits` and `children`) keep declaration order: the entry file's declarations first, then each imported file's in the order the files were first loaded (depth first: a file's imports, in the order written, are loaded before the next import of the file that imports it). Lists (fields, parameters, variables, states, transitions, effects, arguments) are in the order written, except that a list of effects puts every `set` before the other effects (see [effects](#effects)). A JSON parser that does not keep member order loses nothing a runtime needs, since order in the maps is for readability and diffs only.
 
 **Names.** Upper-case names (`[A-Z][A-Za-z0-9]*`) are types, errors, events, states and machines. Lower-case names (`[a-z][A-Za-z0-9]*`) are variables, parameters, fields, functions, actions and tasks. Declaration names are unique among the files of a compilation (the entry file and everything it imports), so a name in `types`, `functions`, `actions`, `tasks` or `machines` identifies a declaration on its own.
 
@@ -22,7 +22,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 ```jsonc
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources":   [{ "path": "examples/shop/place_order.road", "package": null },
                 { "path": "examples/shop/types.road", "package": null }],
   "types":     { /* Name: type declaration */ },
@@ -148,6 +148,7 @@ Spans cover the whole declaration.
   "vars": [ /* variables */ ],
   "events": {},
   "emits": {},
+  "children": {},
   "root": { /* state */ },
   "hash": "sha256:…"
 }
@@ -162,12 +163,15 @@ Spans cover the whole declaration.
 | `vars` | Variables, in source order. |
 | `events` | Events the machine accepts, keyed by name, in source order. |
 | `emits` | Events the machine emits (`emits Name { fields }`), keyed by name, in source order, with the shape of `events`. A name is in at most one of `events` and `emits`. |
+| `children` | The machine's collections of spawned children (`children name: Machine by Key`), keyed by name, in source order. See below. |
 | `root` | The machine body as a state. See below. |
 | `hash` | The [machine hash](#the-machine-hash). |
 
 A **variable** is `{"name", "type", "sensitive", "init", "doc", "span"}`. `sensitive` is `true` for `sensitive var`, as for a [field](#fields-and-parameters). `init` is the initial value expression, or `null` if there is none. With no initialiser, a variable of optional type starts as `null` and any other variable starts unassigned (see `spec/execution.md`). The span covers the declaration from `var` to the end of its type or initial value.
 
 An **event** is `{"fields", "doc", "span"}`, keyed by its name, in `events` and in `emits` alike. The span covers the declaration from `event` or `emits` to its end.
+
+A **children collection** is `{"machine", "key", "doc", "span"}`, keyed by its name. `machine` is the machine its children run, a key of `machines`; `key` the type of its keys, a type reference that is `string`, `int` or an enum, or an alias of one of them (never optional or a list). The span covers the declaration from `children` to the end of its key type. A collection's name shares the machine's namespace with its parameters, variables and `as` names. What a runtime does with one is in [`execution.md`](execution.md#spawned-children).
 
 The **root** is a state with `kind` `compound` whose `id` and `name` are the machine's name. Its `doc` and `span` are the machine's. It holds the machine's top-level states, its `initial`, and the `entry`, `exit`, `on`, `after` and `always` items written directly in the machine body.
 
@@ -237,10 +241,10 @@ An address names another running machine: the receiver of a `send`, or the sende
 
 | Member | Meaning |
 | --- | --- |
-| `kind` | `child`: the machine invoked with `invoke Machine(…) as name`. `ref`: the machine held by a parameter or variable of type `ref Machine`. |
-| `name` | The `as` name, or the parameter or variable. |
+| `kind` | `child`: the machine invoked with `invoke Machine(…) as name`. `ref`: the machine held by a parameter or variable of type `ref Machine`. `children`: the spawned children of the collection `name`; which of them is given by the item (a `send`'s `key`, or any of them for an `emitted` trigger). |
+| `name` | The `as` name, the parameter or variable, or the collection. |
 | `machine` | The machine at the other end, a key of `machines`: the invoked machine, or the `ref`'s. Its `events` are what can be sent to it, its `emits` what can be received from it. |
-| `state` | For `child`, the id of the state whose invoke has the `as` name: the innermost state with that name that contains, or is, the state the item is written in. `null` for `ref`. |
+| `state` | For `child`, the id of the state whose invoke has the `as` name: the innermost state with that name that contains, or is, the state the item is written in. `null` for `ref` and `children`. |
 
 A child is addressed only from its invoking state and that state's descendants, which is while it runs: the compiler rejects a `send` to it from the invoking state's own `entry`, `exit` or invoke outcomes, and from a transition that leaves the invoking state (that would reach it after it was stopped). A send the compiler cannot rule out, made while the state has no running invoke, is undelivered at run time ([execution](execution.md#exiting-and-entering-a-state)). A `ref` variable addresses whichever machine it holds when the item runs.
 
@@ -273,13 +277,15 @@ A child is addressed only from its invoking state and that state's descendants, 
 | `kind` | Source | Other members |
 | --- | --- | --- |
 | `event` | `on Name` | `event`: the event's name, a key of the machine's `events`. |
-| `emitted` | `on name.Name` | `from`: the [address](#addresses) of the sender. `event`: the event's name, a key of the sender's `emits`. Taken for an event the addressed machine emitted. `event` is in scope, of type `Machine.Name`. |
+| `emitted` | `on name.Name` | `from`: the [address](#addresses) of the sender. `event`: the event's name, a key of the sender's `emits`. Taken for an event the addressed machine emitted. `event` is in scope, of type `Machine.Name`, and for an address of kind `children`, `key` too. |
 | `any` | `on *` | none. Matches any of the machine's own events (its `events`) for which the state has no `on`. Never an emitted event. |
 | `after` | `after delay` | `delay`: a `duration` expression, evaluated when the state's work starts, after the step that entered it has settled ([execution](execution.md#starting-work)). |
 | `always` | `always` | none. |
 | `done` | `done` in a state | none. The compound state reached a final child, or every region of the parallel state did. |
 | `invoke.done` | `done` inside `invoke { }` | none. The invoked task or machine succeeded. `result` is in scope. |
 | `invoke.fail` | `fail E` inside `invoke { }` | `error`: the error's name, or `"*"` for every declared error not listed. `error` is in scope. |
+| `spawn.done` | `on name.done` | `children`: the collection. A spawned child of it ended `done`. `result` and `key` are in scope. |
+| `spawn.fail` | `on name.fail E` | `children`: the collection. `error`: the error's name, a declared error of the collection's machine, or `"*"` for every declared error the state has no `on name.fail` for. A spawned child of it ended `failed`. `error` and `key` are in scope. |
 
 ## Effects
 
@@ -287,10 +293,12 @@ A child is addressed only from its invoking state and that state's descendants, 
 | --- | --- | --- |
 | `set` | `set var = value` | `var`: a machine variable (not a parameter). `value`: an expression. |
 | `do` | `do action(args)` | `action`: a key of `actions`. `args`: expressions, positional, in parameter order. |
-| `send` | `send name.Name [{ fields }]` | `to`: the receiver's [address](#addresses). `event`: the event's name, a key of the receiver's `events`. `value`: the event, a `record` expression of type `Machine.Name` with every field of the event. |
+| `send` | `send name.Name [{ fields }]`, `send name[key].Name [{ fields }]`, `send name.*.Name [{ fields }]` | `to`: the receiver's [address](#addresses). `key`: for an address of kind `children`, the key expression (`send name[key].Name`), or `null` for every running child of the collection (`send name.*.Name`); `null` for the other kinds. `event`: the event's name, a key of the receiver's `events`. `value`: the event, a `record` expression of type `Machine.Name` with every field of the event. |
 | `emit` | `emit Name [{ fields }]` | `event`: the event's name, a key of the machine's own `emits`. `value`: the event, a `record` expression of type `Name` with every field of the event. |
+| `spawn` | `spawn name[key] = Machine(args)` | `children`: the collection. `machine`: its machine, the one the source names. `key`: the key expression, of the collection's key type. `args`: expressions, positional, in parameter order. |
+| `stop` | `stop name[key]` | `children`: the collection. `key`: the key expression. |
 
-`set a = 1, b = 2` is two `set` effects. Every list of effects (a transition's, an `entry`'s, an `exit`'s) holds all its `set` effects, in the order written, then all its other effects (`do`, `send` and `emit`), in the order written among themselves, because that is the order they run in: `do f(a)  set a = 1` and `set a = 1  do f(a)` give the same list, and the same hash, and so do `send x.E { v: a }  set a = 1` and `set a = 1  send x.E { v: a }`. A runtime runs the list in order. A `send` or `emit` value is evaluated when its effect runs, so it sees every `set` of the list.
+`set a = 1, b = 2` is two `set` effects. Every list of effects (a transition's, an `entry`'s, an `exit`'s) holds all its `set` effects, in the order written, then all its other effects (`do`, `send`, `emit`, `spawn` and `stop`), in the order written among themselves, because that is the order they run in: `do f(a)  set a = 1` and `set a = 1  do f(a)` give the same list, and the same hash, and so do `send x.E { v: a }  set a = 1` and `set a = 1  send x.E { v: a }`. A runtime runs the list in order. A `send` or `emit` value is evaluated when its effect runs, so it sees every `set` of the list.
 
 ## Expressions
 
@@ -302,7 +310,7 @@ Every expression node is an object with `kind`, the kind's own members, then two
 | `kind` | Source | Members |
 | --- | --- | --- |
 | `lit` | `3`, `1.5`, `"hi"`, `true`, `30s` | `value`, see below. `type` is the literal's built-in. |
-| `ref` | `attempts`, `error.issues`, `event.sku` | `path`: a variable, parameter, or one of the implicit names `event`, `result`, `error`, followed by the names of the fields read from it. Never empty. |
+| `ref` | `attempts`, `error.issues`, `event.sku` | `path`: a variable, parameter, or one of the implicit names `event`, `result`, `error`, `key`, followed by the names of the fields read from it. Never empty. |
 | `field` | `confirmation(order, receipt).status` | `of`: the expression whose field is read, when it is not a variable. `name`: the field. |
 | `call` | `retryDelay(attempts)` | `fn`: a key of `functions`. `args`: expressions, positional, in parameter order. |
 | `op` | `a + b`, `not ok`, `-n` | `op`: one of `==` `!=` `<` `<=` `>` `>=` `+` `-` `*` `and` `or` (two `args`, left then right) or `not` `neg` (one `args`). |
@@ -319,7 +327,7 @@ Every expression node is an object with `kind`, the kind's own members, then two
 | `bool` | `true` or `false`. |
 | `duration` | A non-negative JSON integer of milliseconds: `30s` is `30000`, `5m` is `300000`. |
 
-**Types of the implicit names.** `result` in an `invoke.done` transition has the invoked task's or machine's `returns` type. `error` in an `invoke.fail` transition for error `E` has type `E`. `event` in an `on Name` transition has type `Name` (the event, see [type references](#type-references)), in an `emitted` transition type `Machine.Name`, and `event.field` has the field's type.
+**Types of the implicit names.** `result` in an `invoke.done` transition has the invoked task's or machine's `returns` type, and in a `spawn.done` transition the collection's machine's. `error` in an `invoke.fail` or `spawn.fail` transition for error `E` has type `E`. `key`, in a `spawn.done`, `spawn.fail` or `emitted` transition through a `children` address, has the collection's key type. `event` in an `on Name` transition has type `Name` (the event, see [type references](#type-references)), in an `emitted` transition type `Machine.Name`, and `event.field` has the field's type.
 
 ```json
 {
@@ -356,26 +364,26 @@ A machine's `hash` is `"sha256:"` followed by the 64 lowercase hexadecimal digit
 }
 ```
 
-- **M** is the machine itself and every machine it invokes, directly or through other machines. A machine that invokes itself is included once. (Including the whole set, rather than each child's hash, is what makes the hash defined for recursive machines.)
+- **M** is the machine itself and every machine it invokes or spawns (the `machine` of its `children` collections), directly or through other machines. A machine that invokes itself is included once. (Including the whole set, rather than each child's hash, is what makes the hash defined for recursive machines.)
 - **F**, **A** and **K** are the functions called (`call`), the actions run (`do`) and the tasks invoked by the machines in M.
-- **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send` or an `emitted` trigger), or by an event type `Machine.Name`. Only its interface, its `events` and `emits`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts or emits changes, and not when how the peer works inside does. (A child addressed with `as` is invoked, so it is in M whole.)
+- **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send` or an `emitted` trigger), or by an event type `Machine.Name`. Only its interface, its `events` and `emits`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts or emits changes, and not when how the peer works inside does. (A child addressed with `as` is invoked, and a collection's machine is spawned, so they are in M whole.)
 - **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`) whose base, type arguments or map key or value names it, at any depth, by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, or `Machine.Name`), a type parameter inside its declaration, and the machine of a `ref`, are not part of T.
-- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, and the member `params` of a type declaration when it is `[]`. The only name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed.
+- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `children` map, which are kept whatever they are, and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed: `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that spawns nothing has the hash it had before keyed spawn, and a type that is not generic the hash it had before generic types.
 
 So comments, formatting, source positions, file names, packages, declaration order, `sensitive` marks and unused declarations do not change a machine's hash (a run compiled without a peer's marks therefore talks to it all the same, and shows what the peer marks: build the runs that talk to each other from the same charts), and any change to what the machine does, to a type it uses, to a machine it invokes, or to the interface of a machine it talks to does. A declaration copied from another package's compiled IR therefore keeps the hash it had there. In Rust, `roadbook_ir::machine_hash(&ir, name)` computes it, `roadbook_ir::semantic_view` returns the view, and `roadbook_ir::fill_hashes(&mut ir)` sets every machine's `hash`; the compiler calls the last after type checking. Snapshots and traces record the hash, so restoring a snapshot into a changed machine is refused and the viewer can tell when a trace came from another version of a chart.
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.5`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.6`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
 
-## Changes from 0.4
+## Changes from 0.5
 
-Version 0.5 adds maps and generic types ([maps and generic types](../docs/design/language.md#maps-and-generic-types)). Every `record` and `alias` has the new member `params`, so a 0.4 document is not a 0.5 document. The [machine hash](#the-machine-hash) strips `params` when it is `[]`, so a machine that uses no generic type has the hash it had in 0.4, and its saved snapshots still restore.
+Version 0.6 adds maps and generic types ([maps and generic types](../docs/design/language.md#maps-and-generic-types)). Every `record` and `alias` has the new member `params`, so a 0.5 document is not a 0.6 document. The [machine hash](#the-machine-hash) strips `params` when it is `[]`, so a machine that uses no generic type has the hash it had in 0.5, and its saved snapshots still restore.
 
 - [Type references](#type-references) may be `map<K, V>` and `Name<A, B>`, nested.
 - `record` and `alias` declarations have [`params`](#generic-types); inside a generic declaration a bare name may be a parameter.
@@ -383,6 +391,16 @@ Version 0.5 adds maps and generic types ([maps and generic types](../docs/design
 - In the [semantic view](#the-machine-hash), T takes the types named anywhere in a type reference, not only its base.
 
 What a runtime does with the new values is in [`execution.md`](execution.md#values): a map is a JSON object, an instance takes the form of its declaration, and a trace redacts the sensitive fields inside either by their declared types.
+
+## Changes from 0.4
+
+Version 0.5 adds keyed `spawn` ([spawned children](execution.md#spawned-children)). Every machine has the new member `children` and every `send` effect `key`. The [machine hash](#the-machine-hash) leaves out an empty `children` and a `null` `key`, so a machine that spawns nothing has the hash it had in 0.4, and its saved snapshots still restore.
+
+- Machines have [`children`](#machines), the keyed collections of spawned children.
+- The address kind `children`, and `key` on `send` effects (`send name[key].E`, `send name.*.E`).
+- The effect kinds `spawn` and `stop`, and the trigger kinds `spawn.done` and `spawn.fail`.
+- The implicit name `key` in `ref` paths.
+- A collection's machine is in the hash's M.
 
 ## Changes from 0.3
 

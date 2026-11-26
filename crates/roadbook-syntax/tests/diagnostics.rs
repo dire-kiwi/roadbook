@@ -230,7 +230,7 @@ fn rendered_syntax_error() {
         source: &src,
     });
     let expected = "\
-error[RB0017]: a transition must do something: expected `-> Target`, `set`, `do`, `send` or `emit`, found `}`
+error[RB0017]: a transition must do something: expected `-> Target`, `set`, `do`, `send`, `emit`, `spawn` or `stop`, found `}`
  --> m.road:4:3
   |
 3 |     on Go if ready

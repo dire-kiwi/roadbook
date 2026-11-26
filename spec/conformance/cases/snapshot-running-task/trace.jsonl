@@ -12,7 +12,7 @@
 {"kind":"set","parent":"r1","run":"r1.1","t":0,"value":10,"var":"price"}
 {"kind":"entered","parent":"r1","run":"r1.1","state":"Pay.Charging","t":0}
 {"args":{"price":10},"invoke":2,"kind":"invoke.started","parent":"r1","run":"r1.1","src":"charge","state":"Pay.Charging","t":0}
-{"ir":"sha256:d88779f5271ef7275d837f47134eeb23f06425b2d5de61cc65b73d6ee6a335cc","kind":"restored","machine":"Shop","migrated":null,"run":"r2","snapshot":{"active":["Shop","Shop.Paying"],"history":{},"input":{"amount":5},"invokes":[{"id":1,"src":"Pay","state":"Shop.Paying"}],"ir":"sha256:d88779f5271ef7275d837f47134eeb23f06425b2d5de61cc65b73d6ee6a335cc","machine":"Shop","nextInvoke":2,"nextMessage":1,"nextTimer":1,"result":null,"run":"r1","snapshotVersion":2,"status":"running","timers":[],"vars":{"receipt":""}},"t":0}
+{"ir":"sha256:d88779f5271ef7275d837f47134eeb23f06425b2d5de61cc65b73d6ee6a335cc","kind":"restored","machine":"Shop","migrated":null,"run":"r2","snapshot":{"active":["Shop","Shop.Paying"],"history":{},"input":{"amount":5},"invokes":[{"id":1,"src":"Pay","state":"Shop.Paying"}],"ir":"sha256:d88779f5271ef7275d837f47134eeb23f06425b2d5de61cc65b73d6ee6a335cc","machine":"Shop","nextInvoke":2,"nextMessage":1,"nextTimer":1,"result":null,"run":"r1","snapshotVersion":3,"spawned":[],"status":"running","timers":[],"vars":{"receipt":""}},"t":0}
 {"args":{"amount":5},"invoke":1,"kind":"invoke.started","run":"r2","src":"Pay","state":"Shop.Paying","t":0}
 {"event":{"invoke":1,"kind":"invoke.done","value":"c2"},"kind":"event","run":"r2","t":0}
 {"from":"Shop.Paying","index":0,"kind":"transition","run":"r2","t":0,"to":"Shop.Paid"}

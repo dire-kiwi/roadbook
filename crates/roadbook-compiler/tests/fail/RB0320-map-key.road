@@ -9,6 +9,6 @@ machine M(byInt: map<int, string>) {
   final state Done {}
 }
 
-// expect: RB0319 at 5:25
-// expect: RB0319 at 5:53
-// expect: RB0319 at 7:22
+// expect: RB0320 at 5:25
+// expect: RB0320 at 5:53
+// expect: RB0320 at 7:22

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "packages/viewer/test/charts/escape.road",
@@ -159,6 +159,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Escape",
         "name": "Escape",
@@ -206,6 +207,7 @@
                   "machine": "EscapePeer",
                   "state": null
                 },
+                "key": null,
                 "event": "Ping",
                 "value": {
                   "kind": "record",
@@ -458,6 +460,7 @@
                       "machine": "EscapePeer",
                       "state": null
                     },
+                    "key": null,
                     "event": "Ping",
                     "value": {
                       "kind": "record",
@@ -573,6 +576,7 @@
                       "machine": "EscapePeer",
                       "state": "Escape.K"
                     },
+                    "key": null,
                     "event": "Ping",
                     "value": {
                       "kind": "record",
@@ -1106,6 +1110,7 @@
           }
         }
       },
+      "children": {},
       "root": {
         "id": "EscapePeer",
         "name": "EscapePeer",

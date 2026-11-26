@@ -1,0 +1,16 @@
+machine Child() {
+  initial Done
+  final state Done {}
+}
+
+/// A key shows in `spawn.started` and `spawn.stopped`, so it cannot be sensitive.
+machine M(sensitive pin: string) {
+  event Go
+  children kids: Child by string
+  initial A
+  state A {
+    on Go spawn kids[pin] = Child()
+  }
+}
+
+// expect: RB0317 at 12:22

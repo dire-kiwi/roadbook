@@ -1,0 +1,68 @@
+// Every keyed spawn construct, with no diagnostics.
+
+/// A connection's id.
+type SessionId = string
+
+enum Lane { Fast, Slow }
+
+error Lost   { reason: string }
+error Kicked
+
+action log(what: string)
+action note(id: SessionId, count: int)
+
+/// One connection.
+machine Session(id: SessionId, greeting: string) -> int ! Lost | Kicked {
+  event Notify { text: string }
+  event Leave
+  emits Typing { text: string }
+
+  var seen: int = 0
+
+  initial Open
+  state Open {
+    on Notify -> Open     set seen = seen + 1  emit Typing { text: event.text }
+    on Leave  -> Left
+    after 1h  -> Dropped
+  }
+  final state Left    { output seen }
+  final state Dropped { fail Lost { reason: "idle" } }
+}
+
+/// A job with no result.
+machine Job(lane: Lane) {
+  initial Running
+  state Running    { after 1s -> Done }
+  final state Done {}
+}
+
+/// Many sessions, one per connection.
+machine Hub() -> int {
+  event Connected    { id: SessionId }
+  event Disconnected { id: SessionId }
+  event Broadcast    { text: string }
+  event Close
+
+  /// The open sessions.
+  children sessions: Session by SessionId
+  children jobs:     Job     by Lane
+
+  var open: int = 0
+  var last: string = ""
+
+  initial Serving
+  exit send sessions.*.Leave
+  state Serving {
+    entry spawn jobs[Lane.Fast] = Job(Lane.Fast)
+    on Connected                                               set open = open + 1  spawn sessions[event.id] = Session(event.id, "hi")  send sessions[event.id].Notify { text: "welcome" }
+    on Disconnected                                            stop sessions[event.id]
+    on Broadcast                                               send sessions.*.Notify { text: event.text }
+    on sessions.Typing                                         set last = event.text  do note(key, open)
+    on sessions.done                                           set open = open - 1  do note(key, result)
+    on sessions.fail Lost if error.reason == "idle"            do log(key)
+    on sessions.fail *                                         do log(key)
+    on jobs.done                                               stop jobs[key]  spawn jobs[Lane.Slow] = Job(Lane.Slow)
+    on Close                                        -> Closed
+  }
+  final state Closed { output open }
+}

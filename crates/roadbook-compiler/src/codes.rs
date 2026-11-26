@@ -27,7 +27,7 @@ pub const DUPLICATE_DECLARATION: Code = Code(107);
 pub const DUPLICATE_NAME: Code = Code(108);
 /// A declared name used as something it is not, such as an action in `invoke`.
 pub const WRONG_KIND: Code = Code(109);
-/// `event`, `result` or `error` where it is not in scope.
+/// `event`, `result`, `error` or `key` where it is not in scope.
 pub const IMPLICIT_NAME_OUT_OF_SCOPE: Code = Code(110);
 /// An import of a file that cannot be read.
 pub const IMPORT_NOT_FOUND: Code = Code(111);
@@ -51,6 +51,12 @@ pub const NOT_EMITTED: Code = Code(117);
 
 /// `attempt` in a retry's delay, in a machine with a parameter or variable named `attempt`.
 pub const ATTEMPT_SHADOWED: Code = Code(118);
+/// A `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` or `on name.fail` through a
+/// name that is not a `children` collection, or a `send name.E` to a collection with no key.
+pub const NOT_A_COLLECTION: Code = Code(119);
+/// `key`, the implicit name of a spawned child's key, as the name of a machine parameter,
+/// variable, `as` name or collection.
+pub const KEY_AS_NAME: Code = Code(120);
 
 // ───────────── structure ─────────────
 
@@ -105,6 +111,8 @@ pub const RETRY_SHARED_OUTCOME: Code = Code(218);
 
 /// `history H` or `deep history H` in a state with no child states, or in a final state.
 pub const HISTORY_WITHOUT_CHILDREN: Code = Code(219);
+/// A `spawn` of a machine other than its collection's.
+pub const SPAWN_MACHINE_MISMATCH: Code = Code(220);
 
 // ───────────── types ─────────────
 
@@ -155,24 +163,26 @@ pub const SENSITIVE_VALUE: Code = Code(317);
 /// A value whose type has sensitive fields going where `json` is expected, in a place a trace
 /// shows.
 pub const SENSITIVE_INTO_JSON: Code = Code(318);
+/// A `children` key type that is not `string`, `int` or an enum, or an alias of one.
+pub const BAD_KEY_TYPE: Code = Code(319);
 
 /// A `map` whose key type is not `string` or an alias of it.
-pub const MAP_KEY: Code = Code(319);
+pub const MAP_KEY: Code = Code(320);
 
 /// A generic type without its type arguments or with the wrong number of them, or type
 /// arguments on a type that takes none.
-pub const TYPE_ARGUMENT_COUNT: Code = Code(320);
+pub const TYPE_ARGUMENT_COUNT: Code = Code(321);
 
 /// A type parameter its declaration does not use.
-pub const UNUSED_TYPE_PARAMETER: Code = Code(321);
+pub const UNUSED_TYPE_PARAMETER: Code = Code(322);
 
 /// A generic type that refers to itself, directly or through other types, with other type
 /// arguments than its own parameters.
-pub const IRREGULAR_RECURSION: Code = Code(322);
+pub const IRREGULAR_RECURSION: Code = Code(323);
 
 /// A record value of a generic type whose type arguments cannot be told from the expected
 /// type or the field values.
-pub const UNINFERRED_TYPE_ARGUMENT: Code = Code(323);
+pub const UNINFERRED_TYPE_ARGUMENT: Code = Code(324);
 
 // ───────────── analyses ─────────────
 
@@ -205,6 +215,8 @@ pub const NEVER_RECEIVED: Code = Code(907);
 
 /// A history state that no transition targets.
 pub const UNUSED_HISTORY: Code = Code(908);
+/// A `children` collection that no `spawn` fills (warning).
+pub const NEVER_SPAWNED: Code = Code(909);
 
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
@@ -226,6 +238,8 @@ pub const ALL: &[Code] = &[
     NOT_ACCEPTED,
     NOT_EMITTED,
     ATTEMPT_SHADOWED,
+    NOT_A_COLLECTION,
+    KEY_AS_NAME,
     UNKNOWN_TARGET,
     MISSING_INITIAL,
     BAD_INITIAL,
@@ -245,6 +259,7 @@ pub const ALL: &[Code] = &[
     RETRY_NOTHING,
     RETRY_SHARED_OUTCOME,
     HISTORY_WITHOUT_CHILDREN,
+    SPAWN_MACHINE_MISMATCH,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
     BAD_OPERANDS,
@@ -263,6 +278,7 @@ pub const ALL: &[Code] = &[
     REF_NOT_ALLOWED,
     SENSITIVE_VALUE,
     SENSITIVE_INTO_JSON,
+    BAD_KEY_TYPE,
     MAP_KEY,
     TYPE_ARGUMENT_COUNT,
     UNUSED_TYPE_PARAMETER,
@@ -279,6 +295,7 @@ pub const ALL: &[Code] = &[
     RECEIVES_NOTHING,
     NEVER_RECEIVED,
     UNUSED_HISTORY,
+    NEVER_SPAWNED,
 ];
 
 #[cfg(test)]

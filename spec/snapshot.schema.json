@@ -20,11 +20,20 @@
     "nextMessage",
     "result"
   ],
-  "if": { "properties": { "snapshotVersion": { "const": 2 } } },
-  "then": { "required": ["history"] },
-  "else": { "properties": { "history": false } },
+  "allOf": [
+    {
+      "if": { "properties": { "snapshotVersion": { "enum": [2, 3] } } },
+      "then": { "required": ["history"] },
+      "else": { "properties": { "history": false } }
+    },
+    {
+      "if": { "properties": { "snapshotVersion": { "const": 3 } } },
+      "then": { "required": ["spawned"] },
+      "else": { "properties": { "spawned": false } }
+    }
+  ],
   "properties": {
-    "snapshotVersion": { "description": "The version of this format: 2, or 1 for a snapshot written before history states.", "enum": [1, 2] },
+    "snapshotVersion": { "description": "The version of this format: 3, or 2 for a snapshot written before keyed spawn, or 1 for one written before history states.", "enum": [1, 2, 3] },
     "machine": { "description": "The machine's name, a key of the IR's machines.", "$ref": "#/$defs/upperName" },
     "run": {
       "description": "The id the run had when it was saved. A restored run gets a new id.",
@@ -54,6 +63,24 @@
           "id": { "$ref": "#/$defs/id" },
           "state": { "$ref": "#/$defs/stateId" },
           "src": { "$ref": "#/$defs/name" }
+        }
+      }
+    },
+    "spawned": {
+      "description": "The spawned children running when the run was saved, in the order they were started.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "children", "key", "args"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "children": { "description": "The collection, one of the machine's children.", "$ref": "#/$defs/lowerName" },
+          "key": {
+            "description": "The child's key: a string (a string or an enum variant) or an integer.",
+            "oneOf": [{ "type": "string" }, { "type": "integer" }]
+          },
+          "args": { "description": "The arguments it was spawned with.", "$ref": "#/$defs/args" }
         }
       }
     },

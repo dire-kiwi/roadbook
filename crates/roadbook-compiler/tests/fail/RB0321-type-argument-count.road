@@ -8,8 +8,8 @@ machine M(page: Page, two: Page<int, int>, order: Order<int>) {
   final state Done {}
 }
 
-// expect: RB0320 at 4:23
-// expect: RB0320 at 4:36
-// expect: RB0320 at 6:17
-// expect: RB0320 at 6:28
-// expect: RB0320 at 6:51
+// expect: RB0321 at 4:23
+// expect: RB0321 at 4:36
+// expect: RB0321 at 6:17
+// expect: RB0321 at 6:28
+// expect: RB0321 at 6:51

@@ -1,0 +1,59 @@
+{
+  "description": "Redaction in the records of spawned children: a child's sensitive arguments in `spawn.started` and in the `spawned` of a `restored` record's snapshot, its result's sensitive field in the `spawn.done` input, and its error's in `spawn.fail`, are `\"<redacted>\"`; keys are shown as they are. The saved snapshot keeps the real values.",
+  "requires": [
+    "messaging",
+    "snapshots",
+    "spawn"
+  ],
+  "chart": "charts/lockers.road",
+  "machine": "Lockers",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Add",
+        "n": 1,
+        "owner": "ann",
+        "pin": "1111"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Add",
+        "n": 2,
+        "owner": "bob",
+        "pin": "2222"
+      }
+    },
+    {
+      "snapshot": "two"
+    },
+    {
+      "restore": "two",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Try",
+        "n": 1,
+        "pin": "1111"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Jam",
+        "n": 2
+      }
+    },
+    {
+      "event": {
+        "_tag": "Done"
+      }
+    }
+  ],
+  "status": "done"
+}

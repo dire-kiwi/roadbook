@@ -64,17 +64,19 @@ describe('model text', () => {
   it('says who a machine talks to', () => {
     expect(talks(publish, 'Publish')).toEqual({
       invokes: [{ machine: 'Upload', as: 'upload', state: 'Publish.Uploading' }],
+      spawns: [],
       refs: [],
       sends: [{ machine: 'Upload', events: ['Pause', 'Resume'] }],
       receives: [{ machine: 'Upload', events: ['Progress'] }],
     })
     expect(talks(orders, 'Order')).toEqual({
       invokes: [],
+      spawns: [],
       refs: [{ machine: 'Inventory', names: ['inventory'] }],
       sends: [{ machine: 'Inventory', events: ['Reserve', 'Release'] }],
       receives: [{ machine: 'Inventory', events: ['Reserved', 'Rejected'] }],
     })
-    expect(talks(orders, 'Inventory')).toEqual({ invokes: [], refs: [], sends: [], receives: [] })
+    expect(talks(orders, 'Inventory')).toEqual({ invokes: [], spawns: [], refs: [], sends: [], receives: [] })
   })
 })
 

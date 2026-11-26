@@ -1,0 +1,58 @@
+{
+  "description": "A spawned child that fails with a declared error reaches `on sessions.fail *` with `error` and `key`. A spawned child that ends with a defect (a host defect in its action) ends the hub with the same defect, after an `event` record of the `spawn.defect` input; the hub stops its other child with no record, and that child's cancel step runs.",
+  "requires": [
+    "messaging",
+    "spawn"
+  ],
+  "chart": "charts/hub.road",
+  "machine": "Hub",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {
+    "boom": [
+      {
+        "args": {
+          "name": "Bob"
+        },
+        "defect": "boom"
+      }
+    ]
+  },
+  "script": [
+    {
+      "event": {
+        "_tag": "Join",
+        "id": "a",
+        "name": "Ann"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Join",
+        "id": "b",
+        "name": "Bob"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Join",
+        "id": "c",
+        "name": "Cid"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Drop",
+        "id": "a"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Crash",
+        "id": "b"
+      }
+    }
+  ],
+  "status": "defect"
+}

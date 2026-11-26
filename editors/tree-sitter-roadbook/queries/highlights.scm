@@ -22,6 +22,8 @@
   "var"
   "event"
   "emits"
+  "children"
+  "by"
   "state"
   "history"
   "initial"
@@ -40,6 +42,8 @@
   "do"
   "send"
   "emit"
+  "spawn"
+  "stop"
   "ref"
 ] @keyword
 
@@ -146,12 +150,25 @@
 (fail_transition
   error: (type_identifier) @type)
 
+(child_fail
+  error: (type_identifier) @type)
+
 (import
   name: (type_identifier) @type)
 
 ; A machine run by `invoke`.
 (invoke
   callee: (type_identifier) @type)
+
+; A collection's machine and key type, and a machine started by `spawn`.
+(children_declaration
+  machine: (type_identifier) @type)
+
+(children_declaration
+  key: (type_identifier) @type)
+
+(spawn
+  machine: (type_identifier) @type)
 
 ; ─── States and events ───
 
@@ -262,6 +279,21 @@
 (send
   to: (identifier) @variable)
 
+(children_declaration
+  name: (identifier) @variable)
+
+(spawn
+  collection: (identifier) @variable)
+
+(stop
+  collection: (identifier) @variable)
+
+(child_done
+  from: (identifier) @variable)
+
+(child_fail
+  from: (identifier) @variable)
+
 ; A name read in an expression.
 (_
   value: (identifier) @variable)
@@ -280,6 +312,9 @@
 
 (_
   delay: (identifier) @variable)
+
+(_
+  key: (identifier) @variable)
 
 (arguments
   (identifier) @variable)

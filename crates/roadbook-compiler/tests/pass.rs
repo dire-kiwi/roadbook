@@ -58,3 +58,22 @@ fn ir_is_deterministic() {
         assert_eq!(a, b, "{}", case.name);
     }
 }
+
+/// A machine's hash covers its `children` collections whatever they are named, also `text`,
+/// `doc` or `span`, the names the hash strips elsewhere.
+#[test]
+fn the_hash_covers_collections_of_any_name() {
+    let hash = |key: &str, child: &str| {
+        let k = if key == "int" { "1" } else { "\"1\"" };
+        let src = format!(
+            "machine C() {{\n  initial A\n  final state A {{}}\n}}\n\nmachine D() {{\n  initial A\n  final state A {{}}\n}}\n\nmachine M() {{\n  event Go\n  children text: {child} by {key}\n  initial A\n  state A {{\n    on Go spawn text[{k}] = {child}()\n  }}\n}}\n"
+        );
+        let mut loader = roadbook_compiler::MemoryLoader::new().with("m.road", src);
+        let out = compile(&mut loader, "m.road", &Options::default()).unwrap();
+        assert!(!out.has_errors(), "{}", out.render());
+        out.ir.unwrap().machines["M"].hash.clone()
+    };
+    let base = hash("int", "C");
+    assert_ne!(base, hash("string", "C"));
+    assert_ne!(base, hash("int", "D"));
+}

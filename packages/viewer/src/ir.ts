@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.5) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.6) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -87,13 +87,26 @@ export interface Invoke {
 
 /** Another running machine: the receiver of a `send`, the sender of an `emitted` trigger. */
 export interface Address {
-  /** `child`: an `invoke … as name`; `ref`: a parameter or variable of type `ref Machine`. */
-  kind: 'child' | 'ref'
+  /**
+   * `child`: an `invoke … as name`; `ref`: a parameter or variable of type `ref Machine`;
+   * `children`: the spawned children of the collection `name` (which of them, the item says).
+   */
+  kind: 'child' | 'ref' | 'children'
   name: string
   /** The machine at the other end, a key of `machines`. */
   machine: string
-  /** For a child, the id of the invoking state; null for a ref. */
+  /** For a child, the id of the invoking state; null for a ref and for children. */
   state: string | null
+}
+
+/** A collection of spawned children (`children name: Machine by Key`), keyed by its name. */
+export interface ChildrenDecl {
+  /** The machine its children run, a key of `machines`. */
+  machine: string
+  /** The type of its keys. */
+  key: string
+  doc: string
+  span: Span
 }
 
 export type Trigger =
@@ -105,12 +118,21 @@ export type Trigger =
   | { kind: 'done' }
   | { kind: 'invoke.done' }
   | { kind: 'invoke.fail'; error: string }
+  /** `on name.done`: a spawned child of the collection `children` ended with an output. */
+  | { kind: 'spawn.done'; children: string }
+  /** `on name.fail E`: a spawned child of the collection failed with `error`, or `*`. */
+  | { kind: 'spawn.fail'; children: string; error: string }
 
 export type Effect =
   | { kind: 'set'; var: string; value: Expr }
   | { kind: 'do'; action: string; args: Expr[] }
-  | { kind: 'send'; to: Address; event: string; value: Expr }
+  /** `key`: for a `children` address, the key (`send name[key].E`), or null for every child (`send name.*.E`); null otherwise. */
+  | { kind: 'send'; to: Address; key: Expr | null; event: string; value: Expr }
   | { kind: 'emit'; event: string; value: Expr }
+  /** `spawn name[key] = Machine(args)` */
+  | { kind: 'spawn'; children: string; machine: string; key: Expr; args: Expr[] }
+  /** `stop name[key]` */
+  | { kind: 'stop'; children: string; key: Expr }
 
 export interface Transition {
   trigger: Trigger
@@ -147,6 +169,8 @@ export interface Machine {
   events: Record<string, EventDecl>
   /** Events the machine emits (`emits Name { fields }`), to its invoker and every holder of a ref to it. */
   emits: Record<string, EventDecl>
+  /** The collections of spawned children, keyed by name. */
+  children: Record<string, ChildrenDecl>
   root: State
   hash: string
 }
@@ -172,4 +196,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.5'
+export const IR_VERSION = '0.6'

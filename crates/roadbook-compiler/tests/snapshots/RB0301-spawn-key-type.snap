@@ -1,0 +1,40 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0301]: mismatched types: expected `int`, found `string`
+  --> RB0301-spawn-key-type.road:12:29
+   |
+12 |     on Go        spawn kids[event.id] = Child("one")  stop kids["x"]  send kids[true].Nothing
+   |                             ^^^^^^^^ the key of `kids` must be `int`
+
+error[RB0301]: mismatched types: expected `int`, found `string`
+  --> RB0301-spawn-key-type.road:12:47
+   |
+12 |     on Go        spawn kids[event.id] = Child("one")  stop kids["x"]  send kids[true].Nothing
+   |                                               ^^^^^ argument `n` of `Child` must be `int`
+
+error[RB0301]: mismatched types: expected `int`, found `string`
+  --> RB0301-spawn-key-type.road:12:65
+   |
+12 |     on Go        spawn kids[event.id] = Child("one")  stop kids["x"]  send kids[true].Nothing
+   |                                                                 ^^^ the key of `kids` must be `int`
+
+error[RB0301]: mismatched types: expected `int`, found `bool`
+  --> RB0301-spawn-key-type.road:12:81
+   |
+12 |     on Go        spawn kids[event.id] = Child("one")  stop kids["x"]  send kids[true].Nothing
+   |                                                                                 ^^^^ the key of `kids` must be `int`
+
+error[RB0116]: `Child` does not accept the event `Nothing`
+  --> RB0301-spawn-key-type.road:12:87
+   |
+12 |     on Go        spawn kids[event.id] = Child("one")  stop kids["x"]  send kids[true].Nothing
+   |                                                                                       ^^^^^^^ `Child` declares no `event`
+   |
+   = help: declare it in `Child`: `event Nothing`
+
+error[RB0301]: mismatched types: expected `string`, found `int`
+  --> RB0301-spawn-key-type.road:13:30
+   |
+13 |     on kids.done set total = result
+   |                              ^^^^^^ the value assigned to `total` must be `string`

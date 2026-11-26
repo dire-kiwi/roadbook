@@ -67,6 +67,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M(peer: ref Peer, peers: ref Peer[]?) {\n  emits Progress { percent: int }\n  emits Done\n  state A {\n    invoke Upload(file) as upload {\n      done -> B  emit Done\n    }\n    on Pause send upload.Pause\n    on upload.Progress set p = event.percent  emit Progress { percent: p, }\n    on peer.Reserved -> B  send peer.Ack { id: 1 }  do log()\n    entry send peer.Hello {}\n  }\n}\n",
     ),
     (
+        "spawn",
+        "machine M() {\n  /// The sessions.\n  children sessions: Session by string\n  children children: Job by int\n  on Connected spawn sessions[event.id] = Session(event.socket, 1)\n  on Gone stop sessions[event.id]  stop children[2]\n  on All send sessions.*.Notify { text: \"hi\" }\n  on One send sessions[event.id].Notify { text: event.text, }\n  on sessions.Typing do log(key)\n  on sessions.done -> A  set n = n - 1\n  on sessions.fail Lost do log(key)\n  on children.fail * do log(error)\n  state A {}\n}\n",
+    ),
+    (
         "final_states",
         "machine M() -> R ! E {\n  final state Ok { output R { value: 1 } }\n  final state Bad { fail E }\n  final state Worse { fail E { reason: \"x\" } }\n  final state Plain { output receipt }\n}\n",
     ),

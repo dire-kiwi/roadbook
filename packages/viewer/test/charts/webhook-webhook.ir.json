@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "examples/webhook/webhook.road",
@@ -461,6 +461,7 @@
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "PaymentWebhook",
         "name": "PaymentWebhook",

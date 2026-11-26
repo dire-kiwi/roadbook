@@ -262,6 +262,15 @@ impl<'p> Checker<'p> {
                         }
                         self.member(id, SymbolKind::Variable, &v.name, v.span, &v.doc, signature);
                     }
+                    for c in m.body.children() {
+                        let signature = format!(
+                            "children {}: {} by {}",
+                            c.name.name,
+                            c.machine.name,
+                            index::type_text(&c.key)
+                        );
+                        self.member(id, SymbolKind::Children, &c.name, c.span, &c.doc, signature);
+                    }
                     for item in &m.body.items {
                         let (kind, word, e) = match item {
                             ast::Item::Event(e) => (SymbolKind::Event, "event", e),

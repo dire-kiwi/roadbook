@@ -936,6 +936,16 @@ impl Parser<'_> {
             return Ok(Some(Item::History(h)));
         }
         let mut t = self.tok();
+        if self.at_children() {
+            let decl = self.children()?;
+            if kind == BodyKind::State {
+                let d = Diagnostic::error(codes::NOT_IN_STATE, t.span, "`children` is only allowed directly in a machine body")
+                    .with_help("move the `children` to the top of the machine; a collection belongs to the machine, not to a state");
+                self.error(d);
+                return Ok(None);
+            }
+            return Ok(Some(Item::Children(decl)));
+        }
         // `sensitive var`: `sensitive` is not reserved, so it is a modifier only here.
         if self.at_sensitive(T::Keyword(K::Var)) {
             t = self.nth_tok(1);
@@ -943,7 +953,7 @@ impl Parser<'_> {
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
-                    "a machine item (`var`, `event`, `emits`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`) or `}`"
+                    "a machine item (`var`, `event`, `emits`, `children`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`) or `}`"
                 }
                 BodyKind::State => {
                     "a state item (`initial`, `state`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
@@ -966,8 +976,10 @@ impl Parser<'_> {
                 self.bump();
                 let effects = self.effects()?;
                 if effects.is_empty() {
-                    let expected =
-                        format!("`set`, `do`, `send` or `emit` after `{}`", self.text(t));
+                    let expected = format!(
+                        "`set`, `do`, `send`, `emit`, `spawn` or `stop` after `{}`",
+                        self.text(t)
+                    );
                     return Err(self.unexpected(&expected));
                 }
                 let hook = Hook {
@@ -985,9 +997,18 @@ impl Parser<'_> {
                 let trigger = if self.at(T::Lower) && self.nth(1) == T::Punct(P::Dot) {
                     let from = self.bump_ident();
                     self.bump();
-                    let event =
-                        self.upper(&format!("the name of an event `{}` emits", from.name))?;
-                    Trigger::Receive { from, event }
+                    if self.eat_kw(K::Done).is_some() {
+                        Trigger::ChildDone { from }
+                    } else if self.eat_kw(K::Fail).is_some() {
+                        let error = self.pattern("an error name or `*`")?;
+                        Trigger::ChildFail { from, error }
+                    } else {
+                        let event = self.upper(&format!(
+                            "the name of an event `{}` emits, `done` or `fail`",
+                            from.name
+                        ))?;
+                        Trigger::Receive { from, event }
+                    }
                 } else {
                     Trigger::On(self.pattern("an event name, `*` or `name.Event`")?)
                 };
@@ -1073,6 +1094,41 @@ impl Parser<'_> {
             return Ok(None);
         }
         Ok(Some(item))
+    }
+
+    /// `children` is not reserved: it starts a collection only as `children name:`.
+    fn at_children(&self) -> bool {
+        self.at(T::Lower)
+            && self.text(self.tok()) == "children"
+            && self.nth(1) == T::Lower
+            && self.nth(2) == T::Punct(P::Colon)
+    }
+
+    /// `children name: Machine by Key`
+    fn children(&mut self) -> PResult<ChildrenDecl> {
+        let doc = self.take_doc();
+        let start = self.bump().span;
+        let name = self.binding("the name of a children collection")?;
+        self.expect_p(
+            P::Colon,
+            &format!(" and a machine after `children {}`", name.name),
+        )?;
+        let machine = self.upper("the machine of the collection's children")?;
+        if !(self.at(T::Lower) && self.text(self.tok()) == "by") {
+            return Err(self.unexpected(&format!(
+                "`by` and the key type after `children {}: {}`",
+                name.name, machine.name
+            )));
+        }
+        self.bump();
+        let key = self.type_ref()?;
+        Ok(ChildrenDecl {
+            doc,
+            name,
+            machine,
+            key,
+            span: self.since(start),
+        })
     }
 
     /// `Some(deep)` at the start of `history Name` or `deep history`. Both words are
@@ -1307,7 +1363,7 @@ impl Parser<'_> {
         let effects = self.effects()?;
         if target.is_none() && effects.is_empty() {
             let msg = format!(
-                "a transition must do something: expected `-> Target`, `set`, `do`, `send` or `emit`, found {}",
+                "a transition must do something: expected `-> Target`, `set`, `do`, `send`, `emit`, `spawn` or `stop`, found {}",
                 self.found()
             );
             let d = Diagnostic::error(codes::TRANSITION_DOES_NOTHING, self.tok().span, msg)
@@ -1333,18 +1389,70 @@ impl Parser<'_> {
         Ok(Target { path, span })
     }
 
-    /// Zero or more `set …`, `do …`, `send …` and `emit …` clauses.
+    /// Zero or more `set …`, `do …`, `send …`, `emit …`, `spawn …` and `stop …` clauses.
     fn effects(&mut self) -> PResult<Vec<Effect>> {
         let mut out = Vec::new();
         loop {
             if let Some(kw) = self.eat_kw(K::Send) {
                 let to = self.lower("the name of the machine to send to")?;
+                let key = if self.at_p(P::LBracket) {
+                    Some(SendKey::Key(self.key()?))
+                } else if self.at_p(P::Dot) && self.nth(1) == T::Punct(P::Star) {
+                    self.bump();
+                    let star = self.bump();
+                    Some(SendKey::All { span: star.span })
+                } else {
+                    None
+                };
                 self.expect_p(
                     P::Dot,
                     &format!(" and the event to send after `send {}`", to.name),
                 )?;
                 let event = self.upper("an event name")?;
-                out.push(Effect::Send(self.message(kw.span, Some(to), event)?));
+                let mut message = self.message(kw.span, Some(to), event)?;
+                message.key = key;
+                out.push(Effect::Send(message));
+                continue;
+            }
+            if self.at_contextual("spawn") {
+                let kw = self.bump();
+                let children = self.lower("the children collection to spawn into")?;
+                if !self.at_p(P::LBracket) {
+                    return Err(self
+                        .unexpected(&format!("`[` and the key after `spawn {}`", children.name)));
+                }
+                let key = self.key()?;
+                self.expect_p(P::Eq, &format!(" after `spawn {}[…]`", children.name))?;
+                let machine = self.upper("the machine to spawn")?;
+                if !self.at_p(P::LParen) {
+                    return Err(
+                        self.unexpected(&format!("`(` and the arguments of `{}`", machine.name))
+                    );
+                }
+                let (args, _) = self.list(P::LParen, "the argument list", |p| p.expr(false))?;
+                out.push(Effect::Spawn(Spawn {
+                    children,
+                    key,
+                    machine,
+                    args,
+                    span: self.since(kw.span),
+                }));
+                continue;
+            }
+            if self.at_contextual("stop") {
+                let kw = self.bump();
+                let children = self.lower("the children collection to stop a child of")?;
+                if !self.at_p(P::LBracket) {
+                    return Err(
+                        self.unexpected(&format!("`[` and the key after `stop {}`", children.name))
+                    );
+                }
+                let key = self.key()?;
+                out.push(Effect::Stop(Stop {
+                    children,
+                    key,
+                    span: self.since(kw.span),
+                }));
                 continue;
             }
             if let Some(kw) = self.eat_kw(K::Emit) {
@@ -1380,6 +1488,28 @@ impl Parser<'_> {
         }
     }
 
+    /// `spawn` and `stop` are not reserved: they start an effect only where an effect can
+    /// start, followed by a name (`spawn name[`, `stop name[`). No expression or other item
+    /// can go on with a lower-case name there, so a missing `[` is reported as such.
+    fn at_contextual(&self, word: &str) -> bool {
+        self.at(T::Lower) && self.text(self.tok()) == word && self.nth(1) == T::Lower
+    }
+
+    /// `[expr]`: the key of a spawned child.
+    fn key(&mut self) -> PResult<Expr> {
+        let open = self.bump();
+        self.deeper()?;
+        let key = self.expr(false)?;
+        self.depth -= 1;
+        if self.eat_p(P::RBracket).is_none() {
+            if self.at(T::Eof) {
+                return Err(self.unclosed(open, "the key"));
+            }
+            return Err(self.unexpected("`]` after the key"));
+        }
+        Ok(key)
+    }
+
     /// The rest of a `send` or `emit`: the optional record body after the event's name.
     fn message(&mut self, start: Span, to: Option<Ident>, event: Ident) -> PResult<Message> {
         let mut fields = Vec::new();
@@ -1389,6 +1519,7 @@ impl Parser<'_> {
         }
         Ok(Message {
             to,
+            key: None,
             value_span: event.span.to(self.prev()),
             event,
             fields,

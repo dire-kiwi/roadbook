@@ -642,13 +642,13 @@ import { Key, fetch, Locker } from \"vault/vault.road\"
 machine Safe(sensitive pin: int, id: string) {
   var label: string = \"\"
   var leaked: string = \"\"
-  var key: Key
+  var kee: Key
   var blob: json = \"\"
 
   initial Fetching
   state Fetching {
     invoke fetch(id) {
-      done -> Open  set key = result, label = result.label, leaked = result.value, blob = result
+      done -> Open  set kee = result, label = result.label, leaked = result.value, blob = result
     }
   }
   state Open {

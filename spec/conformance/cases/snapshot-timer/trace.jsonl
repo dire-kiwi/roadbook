@@ -7,14 +7,14 @@
 {"kind":"exited","run":"r1","state":"Reminder.Waiting","t":1000}
 {"kind":"entered","run":"r1","state":"Reminder.Ringing","t":1000}
 {"action":"log","args":{"what":"ring"},"kind":"action","run":"r1","t":1000}
-{"ir":"sha256:b26b68226ae24916fb82b7a9bd55153deb0f87ba39cf990c75abacc7fca343d6","kind":"restored","machine":"Reminder","migrated":null,"run":"r2","snapshot":{"active":["Reminder","Reminder.Waiting"],"history":{},"input":{},"invokes":[],"ir":"sha256:b26b68226ae24916fb82b7a9bd55153deb0f87ba39cf990c75abacc7fca343d6","machine":"Reminder","nextInvoke":1,"nextMessage":1,"nextTimer":2,"result":null,"run":"r1","snapshotVersion":2,"status":"running","timers":[{"delay":1000,"due":1000,"id":1,"index":0,"state":"Reminder.Waiting"}],"vars":{}},"t":700}
+{"ir":"sha256:b26b68226ae24916fb82b7a9bd55153deb0f87ba39cf990c75abacc7fca343d6","kind":"restored","machine":"Reminder","migrated":null,"run":"r2","snapshot":{"active":["Reminder","Reminder.Waiting"],"history":{},"input":{},"invokes":[],"ir":"sha256:b26b68226ae24916fb82b7a9bd55153deb0f87ba39cf990c75abacc7fca343d6","machine":"Reminder","nextInvoke":1,"nextMessage":1,"nextTimer":2,"result":null,"run":"r1","snapshotVersion":3,"spawned":[],"status":"running","timers":[{"delay":1000,"due":1000,"id":1,"index":0,"state":"Reminder.Waiting"}],"vars":{}},"t":700}
 {"delay":300,"index":0,"kind":"timer.started","run":"r2","state":"Reminder.Waiting","t":700,"timer":1}
 {"event":{"kind":"after","timer":1},"kind":"event","run":"r2","t":1000}
 {"from":"Reminder.Waiting","index":0,"kind":"transition","run":"r2","t":1000,"to":"Reminder.Ringing"}
 {"kind":"exited","run":"r2","state":"Reminder.Waiting","t":1000}
 {"kind":"entered","run":"r2","state":"Reminder.Ringing","t":1000}
 {"action":"log","args":{"what":"ring"},"kind":"action","run":"r2","t":1000}
-{"ir":"sha256:b26b68226ae24916fb82b7a9bd55153deb0f87ba39cf990c75abacc7fca343d6","kind":"restored","machine":"Reminder","migrated":null,"run":"r3","snapshot":{"active":["Reminder","Reminder.Waiting"],"history":{},"input":{},"invokes":[],"ir":"sha256:b26b68226ae24916fb82b7a9bd55153deb0f87ba39cf990c75abacc7fca343d6","machine":"Reminder","nextInvoke":1,"nextMessage":1,"nextTimer":2,"result":null,"run":"r1","snapshotVersion":2,"status":"running","timers":[{"delay":1000,"due":1000,"id":1,"index":0,"state":"Reminder.Waiting"}],"vars":{}},"t":2000}
+{"ir":"sha256:b26b68226ae24916fb82b7a9bd55153deb0f87ba39cf990c75abacc7fca343d6","kind":"restored","machine":"Reminder","migrated":null,"run":"r3","snapshot":{"active":["Reminder","Reminder.Waiting"],"history":{},"input":{},"invokes":[],"ir":"sha256:b26b68226ae24916fb82b7a9bd55153deb0f87ba39cf990c75abacc7fca343d6","machine":"Reminder","nextInvoke":1,"nextMessage":1,"nextTimer":2,"result":null,"run":"r1","snapshotVersion":3,"spawned":[],"status":"running","timers":[{"delay":1000,"due":1000,"id":1,"index":0,"state":"Reminder.Waiting"}],"vars":{}},"t":2000}
 {"event":{"kind":"after","timer":1},"kind":"event","run":"r3","t":2000}
 {"from":"Reminder.Waiting","index":0,"kind":"transition","run":"r3","t":2000,"to":"Reminder.Ringing"}
 {"kind":"exited","run":"r3","state":"Reminder.Waiting","t":2000}

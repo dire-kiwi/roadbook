@@ -75,17 +75,18 @@ function simulate(c: Case): { sim: Simulation; asked: string[] } | null {
     else if ('event' in s) ok(sim.send(s.event as Tagged))
     else if ('cancel' in s) ok(sim.cancel())
     else if ('task' in s) {
-      const inv = sim.choices().invokes.find((i) => i.src === s.task)
+      const choices = sim.choices()
+      const inv = choices.invokes.find((i) => i.src === s.task) ?? choices.spawned.find((i) => i.src === s.task)
       // A task of a child run: the page runs only the root.
       if (!inv) return null
-      if (inv.srcKind === 'machine' && !c.stub.includes(inv.src)) return null
+      if (('srcKind' in inv ? inv.srcKind === 'machine' : true) && !c.stub.includes(inv.src)) return null
       if ('done' in s) ok(sim.complete(inv.id, { done: s.done as Json }))
       else if ('fail' in s) ok(sim.complete(inv.id, { fail: s.fail as Tagged }))
       else ok(sim.complete(inv.id, { defect: s.defect as string }))
     } else throw new Error(`unknown step ${JSON.stringify(s)}`)
   }
-  // A child machine run from the chart would have written records the page does not.
-  if (sim.records().some((r) => r.kind === 'invoke.started' && own(ir, r.src) && !c.stub.includes(r.src))) return null
+  // A child machine run from the chart, invoked or spawned, would have written records the page does not.
+  if (sim.records().some((r) => (r.kind === 'invoke.started' || r.kind === 'spawn.started') && own(ir, r.src) && !c.stub.includes(r.src))) return null
   return { sim, asked }
 }
 
@@ -303,8 +304,7 @@ describe('replay', () => {
 
   it('warns when the trace was recorded from another version of the chart', () => {
     const ir = chart('shop-place_order')
-    const hash = ir.machines.Checkout!.hash.slice(0, 'sha256:'.length + 4)
-    const text = readTrace('place-order-checkout').replace(`"ir":"${hash}`, '"ir":"sha256:0000')
+    const text = readTrace('place-order-checkout').replace(`"ir":"${ir.machines.Checkout!.hash}"`, '"ir":"sha256:0000"')
     const replay = new Replay(ir, text)
     expect(replay.warnings).toHaveLength(1)
     expect(replay.warnings[0]).toMatch(/^Run r1\.4 was recorded from another version of Checkout: the trace has IR sha256:0000/)
