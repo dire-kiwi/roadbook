@@ -37,6 +37,15 @@ export interface Coverage {
   machines: Record<string, MachineCoverage>
 }
 
+/**
+ * An empty record with no prototype: the keys are state ids, transition ids and machine names
+ * from a chart or a trace, and one such as `constructor` or `__proto__` must be a key like any
+ * other, not something every object inherits.
+ */
+function dict<T>(): Record<string, T> {
+  return Object.create(null) as Record<string, T>
+}
+
 /** Counts every run of `traces` (file name and JSON Lines text) against `ir`. */
 export function coverage(ir: Ir, traces: { name: string; text: string }[]): Coverage {
   const out: Coverage = {
@@ -46,9 +55,9 @@ export function coverage(ir: Ir, traces: { name: string; text: string }[]): Cove
     stale: { runs: 0, records: 0, machines: [] },
     other: { runs: 0, machines: [] },
     problems: [],
-    machines: {},
+    machines: dict(),
   }
-  for (const name of Object.keys(ir.machines)) out.machines[name] = { runs: 0, states: {}, transitions: {} }
+  for (const name of Object.keys(ir.machines)) out.machines[name] = { runs: 0, states: dict(), transitions: dict() }
   for (const t of traces) {
     const { records, problems } = parseTrace(t.text)
     out.problems.push(...problems.map((p) => `${t.name}: ${p}`))
