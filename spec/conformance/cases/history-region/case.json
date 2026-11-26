@@ -1,0 +1,31 @@
+{
+  "description": "The deep history state of a compound state in one region of a parallel state, entered from outside the parallel state. The parallel state is entered, its region `A` down to the recorded `A2`, and the other region `B` by its default entry, `B1`, not where it was (`B2`): `B` has no history state.",
+  "requires": [
+    "parallel",
+    "history"
+  ],
+  "chart": "charts/history-regions.road",
+  "machine": "Region",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Out"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Back"
+      }
+    }
+  ],
+  "status": "running"
+}

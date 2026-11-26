@@ -1,0 +1,68 @@
+// Conformance chart: history states and parallel states. The history states
+// of a parallel state, and of a compound state in one of its regions.
+
+/// History states of a parallel state.
+machine Panels() {
+  event Left
+  event Right
+  event Away
+  event Back
+  event BackShallow
+
+  initial Both
+
+  parallel state Both {
+    deep history Deep
+    history Shallow
+
+    state L {
+      initial L1
+      state L1 { on Left -> L2 }
+      state L2 {}
+    }
+
+    state R {
+      initial R1
+      state R1 { on Right -> R2 }
+      state R2 {
+        initial R3
+        state R3 {}
+      }
+    }
+
+    on Away -> Out
+  }
+
+  state Out {
+    on Back        -> Both.Deep
+    on BackShallow -> Both.Shallow
+  }
+}
+
+/// The history state of a compound state in one region of a parallel state.
+machine Region() {
+  event Go
+  event Out
+  event Back
+
+  initial P
+
+  parallel state P {
+    state A {
+      initial A1
+      deep history H
+      state A1 { on Go -> A2 }
+      state A2 {}
+    }
+
+    state B {
+      initial B1
+      state B1 { on Go -> B2 }
+      state B2 {}
+    }
+
+    on Out -> Away
+  }
+
+  state Away { on Back -> P.A.H }
+}

@@ -1,0 +1,112 @@
+// Conformance chart: history states. What a shallow and a deep history state
+// record when their parent is left, what entering one enters, with and without
+// a record, from outside and from inside the parent, while settling, into a
+// final state, and in saved snapshots. Parallel states are in history-regions.road.
+
+action log(what: string)
+task fetch()
+
+/// Shallow and deep history of one compound state.
+machine Editor() {
+  event Next
+  event Deeper
+  event Edit
+  event Jump
+  event Restart
+  event Help
+  event Back
+  event BackDeep
+
+  initial Work
+
+  state Work {
+    entry do log("enter Work")
+    exit do log("exit Work")
+
+    initial Draft
+    history Shallow
+    deep history Deep
+
+    state Draft {
+      entry do log("enter Draft")
+      exit do log("exit Draft")
+      on Next -> Review
+      on Jump -> Shallow
+    }
+
+    state Review {
+      entry do log("enter Review")
+      exit do log("exit Review")
+
+      initial Read
+
+      state Read { on Deeper -> Comment }
+
+      state Comment {
+        invoke fetch() {
+          done -> Read
+        }
+        after 1s -> Read
+      }
+
+      on Edit -> Draft
+    }
+
+    on Help    -> Help
+    on Restart -> Work.Deep
+  }
+
+  state Help {
+    on Back     -> Work.Shallow
+    on BackDeep -> Work.Deep
+  }
+}
+
+/// A deep history state that restores a final state, completing its parent.
+machine Steps() {
+  var ready: bool = false
+
+  event Finish
+  event Pause
+  event Ready
+  event Resume
+
+  initial Flow
+
+  state Flow {
+    initial S1
+    deep history H
+
+    state S1       { on Finish -> S2 }
+    final state S2 {}
+
+    done if ready -> Finished
+    on Pause      -> Paused
+  }
+
+  state Paused {
+    on Ready             set ready = true
+    on Resume -> Flow.H
+  }
+
+  final state Finished {}
+}
+
+/// A parent left and returned to through its history state while settling.
+machine Bounce() {
+  var n: int = 0
+
+  event Go
+
+  initial P
+
+  state P {
+    initial A
+    history H
+
+    state A { on Go -> B }
+    state B { always if n == 0 -> Q  set n = 1 }
+  }
+
+  state Q { always -> P.H  do log("back") }
+}
