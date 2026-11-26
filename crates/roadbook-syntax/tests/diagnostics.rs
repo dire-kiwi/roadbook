@@ -28,6 +28,7 @@ fn each_syntax_error_has_its_code() {
         ("import { A } from \"\\q\"".into(), "RB0003"),
         (m("  after 5min -> A"), "RB0004"),
         (m("  var x: int = 99999999999999999999"), "RB0005"),
+        (m(&format!("  var x: float = 1{}.0", "0".repeat(400))), "RB0005"),
         ("type Line_item { x: int }".into(), "RB0006"),
         ("type A { x int }".into(), "RB0010"),
         ("machine M() {\n  initial S\n".into(), "RB0011"),

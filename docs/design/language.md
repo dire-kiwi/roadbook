@@ -251,7 +251,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0002` | A string with no closing quote on its line. | `"timeout` |
 | `RB0003` | An escape other than `\"`, `\\`, `\n` and `\t`. | `"a\qb"` |
 | `RB0004` | A number followed by letters that are not a duration unit. | `after 5min`, `after 1.5s` |
-| `RB0005` | An integer that does not fit in an `int`. | `99999999999999999999` |
+| `RB0005` | An integer that does not fit in an `int`, or a float too large to be finite. | `99999999999999999999`, a `float` of 400 digits |
 | `RB0006` | A name containing `_`. | `type Line_item` |
 | `RB0010` | An unexpected token. | `type A { x int }` |
 | `RB0011` | A `{` or `(` that is never closed. | `state A {` at the end of the file |
