@@ -97,7 +97,11 @@ Progress is recorded on each milestone below as it finishes.
 
 *Done.* The tree-sitter grammar (`editors/tree-sitter-roadbook`) parses every chart in the repository, with highlight, locals, fold and indent queries for Neovim, Helix and Zed; `scripts/check-all.sh` checks it. The language server (`roadbook lsp`, `crates/roadbook-lsp`, on a symbol index added to the compiler without changing its output) gives diagnostics with the compiler's fixes as quick fixes, go to definition, references, hover, rename that refuses to capture or clash, formatting and an outline, across files and packages and for unsaved and untitled documents. The VS Code extension (`editors/vscode`) adds the language, highlighting, the server and a live preview that compiles through the server, so it sees every unsaved buffer; its integration test passed in a real VS Code (headless). An independent review found edge cases with packages under `node_modules`, the preview's compilation, rename scoping and workspace trust; all are fixed.
 
-**Later.** History states, keyed `spawn`, retry sugar, a durable driver, generated Rust state machines for hot paths.
+**History states.** `history Name` and `deep history Name`, as in SCXML, built after M8 the way the milestones were: the syntax and semantics first ([language](language.md#history-states), `spec/execution.md`, IR 0.3 and snapshot version 2), then six conformance cases, which a throwaway independent implementation written only from `spec/` reproduced byte for byte, as it did the 30 earlier cases in its scope.
+
+*Done, 27 November 2026.* The compiler (with `RB0215` and `RB0908`), both runtimes (identical traces and saved snapshots for all 56 cases), the viewer's five modes, `export mermaid` and `scxml`, `roadbook paths`, `viz --diff`, the tree-sitter grammar, the VS Code grammar and the language server. Two choices differ from SCXML or extend it, and are written down: which states a transition to a history state leaves never depends on what was recorded, and a history state with no record enters its parent's default entry (SCXML requires a default transition). A machine with no history state keeps its 0.2 hash, so its saved snapshots (version 1) still restore.
+
+**Later.** Keyed `spawn`, retry sugar, a durable driver, generated Rust state machines for hot paths.
 
 M3 and M4 are independent once M1 is done and can run in parallel. M2 depends only on M1.
 
