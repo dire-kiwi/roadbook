@@ -33,8 +33,9 @@
 //!   of a bare `event`, or of an `emit` value), or a dotted event type, is
 //!   not a type and is skipped.
 //! - `strip` removes every member named `doc`, `span` or `text` from every
-//!   object, recursively. The only name-keyed maps inside these values are a
-//!   machine's `events` and `emits`, whose keys are upper-case, so no
+//!   object, recursively. The name-keyed maps inside these values are a
+//!   machine's `events` and `emits`, whose keys are upper-case, and its
+//!   `children`, whose keys are lower-case and are kept as they are, so no
 //!   user-chosen name is ever stripped.
 //!
 //! Comments, formatting, source positions and unused declarations therefore
@@ -363,14 +364,21 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
     Ok(w.out)
 }
 
-/// Removes every `doc`, `span` and `text` member, recursively.
+/// Removes every `doc`, `span` and `text` member, recursively, except the keys of a
+/// machine's `children` map, which are names the chart chose (a collection may be named
+/// `text`).
 fn strip(v: &mut Value) {
     match v {
         Value::Object(m) => {
             for key in ["doc", "span", "text"] {
                 m.remove(key);
             }
-            m.values_mut().for_each(strip);
+            for (key, value) in m.iter_mut() {
+                match value {
+                    Value::Object(named) if key == "children" => named.values_mut().for_each(strip),
+                    value => strip(value),
+                }
+            }
         }
         Value::Array(a) => a.iter_mut().for_each(strip),
         _ => {}

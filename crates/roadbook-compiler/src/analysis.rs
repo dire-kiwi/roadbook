@@ -55,6 +55,21 @@ impl<'a> Tree<'a> {
         out
     }
 
+    /// The states a transition written in `from` with target `to` leaves, among `from` and the
+    /// states containing it: those below the deepest state that strictly contains both.
+    fn left_by(&self, from: &'a str, to: &'a str) -> Vec<&'a str> {
+        let from_anc = self.ancestors(from);
+        let domain = self
+            .ancestors(to)
+            .into_iter()
+            .find(|a| from_anc.contains(a))
+            .unwrap_or(self.root);
+        std::iter::once(from)
+            .chain(from_anc.iter().copied())
+            .take_while(|&s| s != domain && s != self.root)
+            .collect()
+    }
+
     /// `id` and the states entered with it: the initial child of a compound state, every
     /// child of a parallel state, recursively.
     fn enter_down(&self, id: &'a str, out: &mut Vec<&'a str>) {
@@ -172,8 +187,10 @@ pub(crate) fn run(
             message_warnings(doc, m, info, root_file, diags);
         }
 
-        // States entered without waiting: through `always`, `done` and the outcomes of
-        // invokes and spawned children, which can come at once.
+        // States entered without waiting: through `always`, `done` and invoke outcomes,
+        // which can come at once. Only `on` (a spawned child's `on name.done` and
+        // `on name.fail` included: no child exists until something spawned it) and `after`
+        // wait.
         let waits = |t: &ir::Transition| {
             matches!(
                 t.trigger,
@@ -181,6 +198,8 @@ pub(crate) fn run(
                     | Trigger::Emitted { .. }
                     | Trigger::Any
                     | Trigger::After { .. }
+                    | Trigger::SpawnDone { .. }
+                    | Trigger::SpawnFail { .. }
             )
         };
         let eager = tree.reachable(|t| !waits(t));
@@ -198,7 +217,10 @@ pub(crate) fn run(
                 edges.push((inv.src.as_str(), span));
             }
             // A spawn in the `entry` of a state entered without waiting, or in a transition
-            // taken without waiting, starts its machine without waiting too.
+            // taken without waiting, starts its machine without waiting too; so does one in
+            // the `exit` of the state such a transition is written in, or of a state around
+            // it that it leaves. (A transition to a top-level final state ends the run, and
+            // what its exits spawn never starts.)
             if let Some(si) = si {
                 for target in spawned(m, &s.entry) {
                     edges.push((target, si.name_span));
@@ -207,8 +229,26 @@ pub(crate) fn run(
                     if waits(t) {
                         continue;
                     }
-                    if let Some(r) = si.transition_reads.get(i) {
-                        for target in spawned(m, &t.effects) {
+                    let Some(r) = si.transition_reads.get(i) else {
+                        continue;
+                    };
+                    for target in spawned(m, &t.effects) {
+                        edges.push((target, r.span));
+                    }
+                    let Some((&to, _)) = t
+                        .target
+                        .as_deref()
+                        .and_then(|to| tree.states.get_key_value(to))
+                    else {
+                        continue;
+                    };
+                    let ends = tree.parent.get(to) == Some(&tree.root)
+                        && tree.states[to].kind == StateKind::Final;
+                    if ends {
+                        continue;
+                    }
+                    for left in tree.left_by(id, to) {
+                        for target in spawned(m, &tree.states[left].exit) {
                             edges.push((target, r.span));
                         }
                     }

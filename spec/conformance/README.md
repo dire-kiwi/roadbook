@@ -183,5 +183,6 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `spawn-outcomes` | A child's declared failure reaches `on sessions.fail *` with `error` and `key`; a child's defect ends the parent with the same defect, which stops its other child with no record. |
 | `spawn-cancel` | `int` keys; a child's emitted event and failure with no `on` are dropped; a parent cancelled from outside exits its states, then stops its children, then writes `cancelled`. |
 | `spawn-snapshot` | A saved snapshot lists the running spawned children with their keys and arguments; restoring starts each again from the beginning, before the states' work; the restored run suspends once no child runs; a spawned child of no collection is `invalid`. |
+| `spawn-key-forms` | An `int` key given as `1.0` or `-0.0` is the integer, so a stop with `1` or `0` finds its child. |
 | `spawn-suspend` | Suspending waits until no spawned child runs: a stubbed spawned child, ended by a `task` step. |
 | `resume-order` | The request-handler flow: create and suspend, restore and pay (suspend waits for the task the payment started), restore and deliver, and a late payment to a restored order whose deadline passed, which expires first. |

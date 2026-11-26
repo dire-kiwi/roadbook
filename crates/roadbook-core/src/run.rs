@@ -960,7 +960,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     let (to, invoke, value) = match to.kind {
                         AddressKind::Children => {
                             let key = match key {
-                                Some(k) => self.eval(k, implicit)?,
+                                Some(k) => key_form(self.eval(k, implicit)?),
                                 None => Value::Null,
                             };
                             let value = self.eval(value, implicit)?;
@@ -1031,7 +1031,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     key,
                     args,
                 } => {
-                    let key = self.eval(key, implicit)?;
+                    let key = key_form(self.eval(key, implicit)?);
                     let params = &self.program.ir().machines[machine.as_str()].params;
                     let mut obj = Map::new();
                     for (p, a) in params.iter().zip(args) {
@@ -1042,7 +1042,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     self.pending.push((children.clone(), key, obj));
                 }
                 Effect::Stop { children, key } => {
-                    let key = self.eval(key, implicit)?;
+                    let key = key_form(self.eval(key, implicit)?);
                     self.stop_child(children, &key);
                 }
             }
@@ -1298,4 +1298,12 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         self.snap.result = Some(RunResult::Defect(d.clone()));
         self.trace(Record::Defect { defect: d });
     }
+}
+
+/// A key in the one form keys are compared in: an integer written as a float (`1.0`, `-0.0`),
+/// which a host can hand the core in an event or a function's result, as the integer. Keys are
+/// equal when their JSON values are (`spec/execution.md#spawned-children`).
+fn key_form(mut key: Value) -> Value {
+    crate::saved::integral_numbers(&mut key);
+    key
 }

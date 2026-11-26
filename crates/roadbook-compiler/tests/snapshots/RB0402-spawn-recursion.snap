@@ -4,7 +4,7 @@ source: crates/roadbook-compiler/tests/fail.rs
 warning[RB0902]: state `Swarm.A` has no way out
  --> RB0402-spawn-recursion.road:4:9
   |
-4 |   state A {
+4 |   state A { entry spawn more[1] = Swarm() }
   |         ^
   |
   = help: nothing leaves it or a state containing it; add a transition, or make it a `final state`
@@ -12,31 +12,39 @@ warning[RB0902]: state `Swarm.A` has no way out
 error[RB0402]: `Swarm` starts itself without waiting for an event or an `after` (unbounded recursion)
  --> RB0402-spawn-recursion.road:4:9
   |
-4 |   state A {
+4 |   state A { entry spawn more[1] = Swarm() }
   |         ^ entered without waiting
   |
   = help: put an `on` or `after` transition on the way to the state that invokes or spawns it
 
 error[RB0402]: `Wave` starts itself without waiting for an event or an `after` (unbounded recursion)
-  --> RB0402-spawn-recursion.road:14:5
+  --> RB0402-spawn-recursion.road:11:13
    |
-14 |     always -> B  spawn more[1] = Wave()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ entered without waiting
+11 |   state A { always -> B  spawn more[1] = Wave() }
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ entered without waiting
    |
    = help: put an `on` or `after` transition on the way to the state that invokes or spawns it
 
 warning[RB0902]: state `Wave.B` has no way out
-  --> RB0402-spawn-recursion.road:16:9
+  --> RB0402-spawn-recursion.road:12:9
    |
-16 |   state B {
+12 |   state B { on Go spawn more[2] = Wave() }
    |         ^
    |
    = help: nothing leaves it or a state containing it; add a transition, or make it a `final state`
 
 warning[RB0902]: state `Patient.A` has no way out
-  --> RB0402-spawn-recursion.road:25:9
+  --> RB0402-spawn-recursion.road:19:9
    |
-25 |   state A {
+19 |   state A { on Go spawn more[1] = Patient() }
    |         ^
    |
    = help: nothing leaves it or a state containing it; add a transition, or make it a `final state`
+
+error[RB0402]: `Leaver` starts itself without waiting for an event or an `after` (unbounded recursion)
+  --> RB0402-spawn-recursion.road:27:5
+   |
+27 |     always -> T
+   |     ^^^^^^^^^^^ entered without waiting
+   |
+   = help: put an `on` or `after` transition on the way to the state that invokes or spawns it
