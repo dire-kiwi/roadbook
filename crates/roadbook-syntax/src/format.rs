@@ -535,8 +535,13 @@ impl Formatter<'_> {
                     Some(Group::Var),
                 );
             }
-            Item::Event(e) => {
-                let head = format!("event {}", e.name.name);
+            Item::Event(e) | Item::Emits(e) => {
+                let kw = if let Item::Emits(_) = item {
+                    "emits"
+                } else {
+                    "event"
+                };
+                let head = format!("{kw} {}", e.name.name);
                 if e.fields.is_empty() {
                     self.row(whole, indent, vec![head], "", Some(Group::Event));
                 } else if let Some(text) = self.brace_list(
@@ -557,7 +562,10 @@ impl Formatter<'_> {
                 }
                 let rparen = self.find(args_end, Punct::RParen);
                 let open = self.find(rparen.span.end.offset, Punct::LBrace);
-                let head = format!("invoke {}({})", inv.callee.name, exprs(&inv.args));
+                let mut head = format!("invoke {}({})", inv.callee.name, exprs(&inv.args));
+                if let Some(a) = &inv.alias {
+                    head += &format!(" as {}", a.name);
+                }
                 self.row(
                     (whole.0, open.span.end.offset),
                     indent,
@@ -685,7 +693,12 @@ fn inline_item(item: &Item) -> Option<String> {
             };
             join_cells(Some(Group::Transition), &cells)
         }
-        Item::Var(_) | Item::Event(_) | Item::State(_) | Item::Invoke(_) | Item::Transition(_) => {
+        Item::Var(_)
+        | Item::Event(_)
+        | Item::Emits(_)
+        | Item::State(_)
+        | Item::Invoke(_)
+        | Item::Transition(_) => {
             return None;
         }
     })
@@ -707,6 +720,7 @@ fn trigger(t: &Trigger) -> String {
     };
     match t {
         Trigger::On(p) => format!("on {}", pattern(p)),
+        Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
         Trigger::After(e) if bare_record(e) => format!("after ({})", expr(e)),
         Trigger::After(e) => format!("after {}", expr(e)),
         Trigger::Always => "always".into(),
@@ -726,30 +740,63 @@ fn bare_record(e: &Expr) -> bool {
     }
 }
 
-/// Consecutive effects of one kind share a clause; clauses are separated by two spaces.
-/// Every `set` before every `do`, each in the order written: the order they run in.
+/// Consecutive `set`s, and consecutive `do`s, share a clause; clauses are separated by two
+/// spaces. Every `set` comes first, then the `do`, `send` and `emit` effects, each in the
+/// order written: the order they run in. A `send` or `emit` is a clause of its own.
 fn effects(effects: &[Effect]) -> String {
     let mut out = String::new();
-    let mut last: Option<bool> = None;
+    let mut last: Option<&'static str> = None;
     let sets = effects.iter().filter(|e| matches!(e, Effect::Set(_)));
-    let dos = effects.iter().filter(|e| matches!(e, Effect::Do(_)));
-    for e in sets.chain(dos) {
-        let is_set = matches!(e, Effect::Set(_));
-        if last == Some(is_set) {
+    let rest = effects.iter().filter(|e| !matches!(e, Effect::Set(_)));
+    for e in sets.chain(rest) {
+        let kw = match e {
+            Effect::Set(_) => "set",
+            Effect::Do(_) => "do",
+            Effect::Send(_) => "send",
+            Effect::Emit(_) => "emit",
+        };
+        if last == Some(kw) && matches!(kw, "set" | "do") {
             out.push_str(", ");
         } else {
             if last.is_some() {
                 out.push_str("  ");
             }
-            out.push_str(if is_set { "set " } else { "do " });
+            out.push_str(kw);
+            out.push(' ');
         }
         match e {
             Effect::Set(a) => out.push_str(&format!("{} = {}", a.var.name, expr(&a.value))),
             Effect::Do(c) => out.push_str(&call(c)),
+            Effect::Send(m) | Effect::Emit(m) => out.push_str(&message(m)),
         }
-        last = Some(is_set);
+        last = Some(kw);
     }
     out
+}
+
+/// `to.Event { field: value, … }`, or `Event` with no fields.
+fn message(m: &Message) -> String {
+    let mut out = String::new();
+    if let Some(to) = &m.to {
+        out.push_str(&to.name);
+        out.push('.');
+    }
+    out.push_str(&message_value(m));
+    out
+}
+
+/// The event value of a `send` or `emit` as the formatter writes it, without the receiver:
+/// `Reserve { orderId: id }`, or `Pause` with no fields. This is the `text` of its IR value.
+pub fn message_value(m: &Message) -> String {
+    if m.fields.is_empty() {
+        return m.event.name.clone();
+    }
+    let fs: Vec<_> = m
+        .fields
+        .iter()
+        .map(|f| format!("{}: {}", f.name.name, expr(&f.value)))
+        .collect();
+    format!("{} {{ {} }}", m.event.name, fs.join(", "))
 }
 
 fn error_list(errors: &[Ident]) -> String {
@@ -766,6 +813,7 @@ fn ty(t: &TypeRef) -> String {
         TypeKind::Named(n) => n.name.clone(),
         TypeKind::List(t) => format!("{}[]", ty(t)),
         TypeKind::Optional(t) => format!("{}?", ty(t)),
+        TypeKind::Ref(n) => format!("ref {}", n.name),
     }
 }
 

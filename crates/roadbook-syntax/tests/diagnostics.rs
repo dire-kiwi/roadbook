@@ -34,6 +34,21 @@ fn each_syntax_error_has_its_code() {
         ),
         ("type Line_item { x: int }".into(), "RB0006"),
         ("type A { x int }".into(), "RB0010"),
+        ("machine M(p: ref) {}".into(), "RB0010"),
+        ("machine M(p: ref int) {}".into(), "RB0010"),
+        (s("    on Go send upload"), "RB0010"),
+        (s("    on Go send upload.pause"), "RB0012"),
+        (s("    on Go emit progress"), "RB0012"),
+        (
+            s("    invoke U() as Up {\n      done -> S\n    }"),
+            "RB0012",
+        ),
+        (m("  var send: int"), "RB0013"),
+        (m("  var emits: int"), "RB0013"),
+        (
+            s("    invoke U() as result {\n      done -> S\n    }"),
+            "RB0013",
+        ),
         ("machine M() {\n  initial S\n".into(), "RB0011"),
         ("type A { x: int\ntype B = int".into(), "RB0011"),
         ("type order { x: int }".into(), "RB0012"),
@@ -50,6 +65,7 @@ fn each_syntax_error_has_its_code() {
         (m("  output 1"), "RB0014"),
         (s("    var x: int"), "RB0015"),
         (s("    event Go"), "RB0015"),
+        (s("    emits Go"), "RB0015"),
         ("state S {}".into(), "RB0016"),
         (s("    on Go\n    on Stop -> S"), "RB0017"),
         (s("    on Go if ready"), "RB0017"),
@@ -194,7 +210,7 @@ fn rendered_syntax_error() {
         source: &src,
     });
     let expected = "\
-error[RB0017]: a transition must do something: expected `-> Target`, `set` or `do`, found `}`
+error[RB0017]: a transition must do something: expected `-> Target`, `set`, `do`, `send` or `emit`, found `}`
  --> m.road:4:3
   |
 3 |     on Go if ready
@@ -202,7 +218,7 @@ error[RB0017]: a transition must do something: expected `-> Target`, `set` or `d
 4 |   }
   |   ^
   |
-  = help: give it a target (`-> State`), assignments (`set x = …`) or actions (`do f(…)`)
+  = help: give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`) or messages (`send child.Event`, `emit Event`)
 ";
     assert_eq!(out, expected);
 }

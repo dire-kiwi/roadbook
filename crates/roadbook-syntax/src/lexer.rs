@@ -9,8 +9,9 @@ use crate::codes;
 use crate::diagnostic::Diagnostic;
 use crate::span::{FileId, LineIndex, Span};
 
-/// The reserved words. `from` and the built-in type names are not reserved: they are only
-/// meaningful in one position (after an import list, and as a type), where no name can appear.
+/// The reserved words. `from`, `as`, `ref` and the built-in type names are not reserved: they
+/// are only meaningful in one position (after an import list, after an invoke's arguments, and
+/// as a type), where no name can appear.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Keyword {
     Import,
@@ -24,6 +25,7 @@ pub enum Keyword {
     Machine,
     Var,
     Event,
+    Emits,
     Initial,
     State,
     Final,
@@ -41,6 +43,8 @@ pub enum Keyword {
     Else,
     Set,
     Do,
+    Send,
+    Emit,
     And,
     Or,
     Not,
@@ -49,7 +53,7 @@ pub enum Keyword {
 }
 
 impl Keyword {
-    pub const ALL: [Keyword; 33] = [
+    pub const ALL: [Keyword; 36] = [
         Keyword::Import,
         Keyword::Type,
         Keyword::Enum,
@@ -61,6 +65,7 @@ impl Keyword {
         Keyword::Machine,
         Keyword::Var,
         Keyword::Event,
+        Keyword::Emits,
         Keyword::Initial,
         Keyword::State,
         Keyword::Final,
@@ -78,6 +83,8 @@ impl Keyword {
         Keyword::Else,
         Keyword::Set,
         Keyword::Do,
+        Keyword::Send,
+        Keyword::Emit,
         Keyword::And,
         Keyword::Or,
         Keyword::Not,
@@ -98,6 +105,7 @@ impl Keyword {
             Keyword::Machine => "machine",
             Keyword::Var => "var",
             Keyword::Event => "event",
+            Keyword::Emits => "emits",
             Keyword::Initial => "initial",
             Keyword::State => "state",
             Keyword::Final => "final",
@@ -115,6 +123,8 @@ impl Keyword {
             Keyword::Else => "else",
             Keyword::Set => "set",
             Keyword::Do => "do",
+            Keyword::Send => "send",
+            Keyword::Emit => "emit",
             Keyword::And => "and",
             Keyword::Or => "or",
             Keyword::Not => "not",
