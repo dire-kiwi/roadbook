@@ -376,6 +376,7 @@ details.rb-choice[open] > summary { border-style: dashed; margin-bottom: 5px; }
 .rb-advance label { font: 12.5px var(--rb-mono); }
 .rb-active-path { margin: 0; font-size: 12.5px; }
 .rb-vars .rb-vnote { color: var(--rb-muted); font-family: var(--rb-sans); font-size: 11.5px; }
+.rb-redacted { color: var(--rb-muted); font-family: var(--rb-sans); font-style: italic; }
 .rb-file { display: inline-block; }
 .rb-problems summary { cursor: pointer; color: var(--rb-err); font-size: 13px; margin-top: 8px; }
 /* diff and coverage panels */

@@ -12,6 +12,8 @@ export interface Span {
 export interface Field {
   name: string
   type: string
+  /** Marked `sensitive`: traces show its value as "<redacted>". */
+  sensitive: boolean
   doc: string
 }
 
@@ -53,6 +55,8 @@ export interface TaskDecl {
 export interface Var {
   name: string
   type: string
+  /** Marked `sensitive`: traces show its value as "<redacted>". */
+  sensitive: boolean
   init: Expr | null
   doc: string
   span: Span
