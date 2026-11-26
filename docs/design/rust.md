@@ -23,6 +23,8 @@ It expands to a module per machine plus the shared types:
 
 A chart error is a Rust compile error, reported at the macro call with the chart's file and line. Cargo rebuilds when the `.road` file changes. For builds that prefer it, the same generator is available from `build.rs`.
 
+A chart that imports from another crate gets that crate's chart from the crate itself. Each `include!` also exports a hidden macro that hands its IR to the importer's macro, so nothing has to find files in Cargo's caches ([cross-crate probe](../../spike/cross-crate)). A build script cannot call macros, so the `build.rs` route covers charts without cross-crate imports. Supporting them there would need `links` metadata from the owning crate's build script.
+
 ## Implementing a machine
 
 ```rust
