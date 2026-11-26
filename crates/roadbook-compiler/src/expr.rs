@@ -464,7 +464,10 @@ impl Cx<'_, '_> {
                     f.span,
                     format!("`{t}` has no fields, so it has no field `{}`", f.name),
                 )
-                .with_help(format!("declare the field on `{}`, or do not read it", t.to_string().trim_start_matches("event "))),
+                .with_help(format!(
+                    "declare the field on `{}`, or do not read it",
+                    t.to_string().trim_start_matches("event ")
+                )),
             );
             return Ty::Unknown;
         }

@@ -701,7 +701,9 @@ mod tests {
         assert!(errors(&format!("1{}.0", "0".repeat(300))).is_empty());
         assert_eq!(
             errors("99999999999999999999s"),
-            ["RB0005 duration `99999999999999999999s` is too large: its number does not fit in 64 bits"]
+            [
+                "RB0005 duration `99999999999999999999s` is too large: its number does not fit in 64 bits"
+            ]
         );
         assert_eq!(
             errors("snake_case"),
