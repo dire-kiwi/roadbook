@@ -20,7 +20,7 @@ Below, "Roadbook" means `main`, and a feature from one of these tasks is marked 
 - **XState has more ways to write things.** It has internal and delayed events (`raise`, delayed `sendTo`, `cancel`), transitions with several targets, transitions that do not re-enter the source state when they target its child, callback and observable actors, partial wildcards (`mouse.*`), tags and `meta`, `stateIn` checks, and, in v6, choice states, route states, per-state context and state input, and state-level `onError`. Roadbook has none of these.
 - **Roadbook checks and records more.** It has a compiler with static checks (exhaustive errors, definite assignment, unguarded `always` cycles, unbounded recursion, unreachable states, states with no way out), a trace format with a schema that two runtimes write byte for byte, redaction of sensitive values, snapshots that refuse a changed chart unless given a migration, typed messaging between machines, keyed child collections, retry sugar, and (SM-20) request and reply between peers. XState v6 has caught up on some of this: timers in snapshots, snapshot versioning, a durable module, unhandled-event hooks and a CLI that validates and checks properties.
 
-The most useful gaps to close are listed in [what to consider adding](#what-to-consider-adding).
+[The code examples](xstate-examples.md) show the main differences in XState v5, v6 and Roadbook. [What to add](xstate-plan.md) recommends what to close.
 
 ## Side by side
 
@@ -51,7 +51,7 @@ The most useful gaps to close are listed in [what to consider adding](#what-to-c
 | Several targets in one transition | `target: ['.a.x', '.b.y']` | Yes | One target | — |
 | A transition into one region of a parallel state | Resets sibling regions in some cases | Exits and re-enters only that region | SCXML's rule: what is left is decided by the transition's domain; a transition between regions leaves and re-enters the parallel state | ≈ |
 | Wildcard event | `*`, lowest priority | Same | `on *`, tried only in a state with no `on` for the event; never matches outcomes, timers or emitted events | ✅ |
-| Partial wildcards (`mouse.*`) | Yes | Yes | — | — |
+| Partial wildcards (`mouse.*`) | Yes | In `internalEvents` schemas and `enq.listen` patterns | — | — |
 | `always` | Yes | Yes | Yes, and an unguarded `always` cycle is a compile error | ➕ |
 | `after` with a computed delay | Named `delays` | Same, plus duration strings and ISO 8601 | A `duration` expression, evaluated after entry effects | ✅ |
 | A timeout on a state | `after` | `timeout` and `onTimeout`, on a state or an invoke | `after` on the state; an invoke is tied to its state, so the state's `after` is its timeout | ≈ |
@@ -160,7 +160,7 @@ Ordered from most to least likely to matter for program flow, which is what Road
 8. **Several targets in one transition**, to set more than one region of a parallel state at once.
 9. **Data local to a state.** XState v6's state `input` is passed on the transition into a state and is gone when it is left. In Roadbook every variable belongs to the machine; definite assignment makes this safe, but the variable outlives the state that needed it.
 10. **Child machines in snapshots.** XState persists a child machine's snapshot with its parent's. Roadbook restarts a child from the beginning when it restores a snapshot saved while the child ran, and `suspend` waits until no child is running, so a parent with long-lived children cannot be suspended between events. Saving a child run is listed as not yet specified.
-11. **Smaller things:** partial wildcards (`mouse.*`), tags and `meta`, a default target for a history state, route states (for UI navigation, not much use here), reducer actors, and equality on records and lists.
+11. **Smaller things:** partial wildcards (`mouse.*`), tags and `meta`, a default target for a history state, route states (for UI navigation, not much use here), reducer actors, and equality on records, lists and maps.
 
 ## What Roadbook does differently
 
@@ -190,17 +190,6 @@ Ordered from most to least likely to matter for program flow, which is what Road
 - **`strict` machines and `ignore`** (SM-19), so a chart can say which events it ignores on purpose and fail on the rest.
 - **Review tooling:** a drawn diff between revisions with a pull-request recipe, and coverage of transitions from traces.
 
-## What to consider adding
+## What to add
 
-These are the gaps that fit Roadbook's purpose, roughly in order of value for the cost.
-
-| Addition | Why | Size |
-| --- | --- | --- |
-| `on peer.ended` | Holders of a `ref` cannot react to a peer's end today; SM-8 designed it to share a design with keyed spawn's outcomes, which now exist | Medium: language, both cores, conformance |
-| Property checks on the IR (`roadbook check --assert "never Refunded"` or assertions in a file) | Most of the work is in `roadbook paths` already; it turns the diagram into something CI can hold a design to | Small to medium, compiler only |
-| A transition that keeps its source (SCXML `type="internal"`), for a parent targeting its own child | Avoids restarting a parent's invoke and timers, the one common case where Roadbook's default surprises an XState user | Small: a keyword, the domain rule, a conformance case |
-| A task that emits progress, or a `stream` task kind | Covers XState's callback and observable actors, and progress from long tasks, in the chart rather than in host code | Medium |
-| Host code receiving a run's emitted events | XState's `actor.on`; listed as not yet specified | Small |
-| Saving and restoring child machines with their parent | A parent with long-lived children cannot be suspended between events today, and a saved one restarts its children | Large |
-
-Several invokes per state, several targets, `raise`, delayed sends, `stateIn`, tags and route states are left off on purpose: each has a written-out form in Roadbook that the diagram shows, and adding them would make charts harder to read for little gain in program flow.
+[What to add from XState](xstate-plan.md) gives a recommendation for every gap on this page, and the tasks that would close them.
