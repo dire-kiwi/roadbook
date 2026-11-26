@@ -38,17 +38,17 @@ On 27 November 2026 the user approved six additions: reacting to a peer's end, p
 
 ## Proposed tasks
 
-The additions are grouped into tasks by the code they change. Most change the language, the IR and both cores, so they bump the IR version, rewrite the hashes, and touch the same files. SM-18, SM-19 and SM-20 are in that state now, so these tasks wait for them, and the language tasks run one or two at a time rather than all at once.
+The additions are grouped into tasks by the code they change. The six approved ones exist on the board as SM-22 to SM-27, each queued behind the tasks it waits for; the last three rows are not created yet. Most change the language, the IR and both cores, so they bump the IR version, rewrite the hashes, and touch the same files. SM-18, SM-19 and SM-20 are in that state now, so these tasks wait for them, and the language tasks run one or two at a time rather than all at once.
 
 | Task | Covers | Waits for | Size |
 | --- | --- | --- | --- |
-| **Property checks** (approved) | Assertions over the IR's states and transitions, checked by `roadbook check` in CI. Guards are ignored, which over-approximates the paths, so a "never" that passes is proved. A "can reach" that passes may still be blocked by a guard, and the report says so. | Nothing | Medium, compiler and CLI only |
-| **Host code receives emitted events** (approved) | A stream in the Effect driver and a subscription in the Rust driver for a run's emits, specified in `spec/execution.md`. | SM-18 | Small |
-| **Transitions that keep their source** (approved) | `-> .Child`, with SCXML's internal domain rule. Recommended alongside: several targets, and the warning for a transition that resets sibling regions. All three change how targets and domains are computed. | SM-18, SM-19, SM-20 | Small to medium |
-| **`on peer.ended`** (approved) | The trigger for `ref` holders, perhaps with how the peer ended, and how it relates to `on name.done` and `on name.fail` for spawned children and to SM-20's `Unanswered`. | SM-18, SM-19, SM-20 | Medium |
-| **Tasks that emit** (approved) | `task … emits E`, `as` on a task invoke, `on name.E` from a task, stream tasks with no result. Recommended alongside: spawned tasks, and several invokes per state. | Transitions that keep their source | Medium |
-| **Child machines in snapshots** (approved) | A child run's snapshot saved inside its parent's, with its own IR hash, restored without restarting. `suspend` allowed with running children. | `on peer.ended` | Large |
-| **`raise`, internal events and delayed events** | `raise E`, `internal event`, `raise E after d as name`, `cancel name`, and the internal queue in both cores and the trace. | Tasks that emit | Medium |
+| **SM-22: Property checks** (approved) | Assertions over the IR's states and transitions, checked by `roadbook check` in CI. Guards are ignored, which over-approximates the paths, so a "never" that passes is proved. A "can reach" that passes may still be blocked by a guard, and the report says so. | Nothing | Medium, compiler and CLI only |
+| **SM-23: Host code receives emitted events** (approved) | A stream in the Effect driver and a subscription in the Rust driver for a run's emits, specified in `spec/execution.md`. | SM-18 | Small |
+| **SM-24: Transitions that keep their source** (approved) | `-> .Child`, with SCXML's internal domain rule. Recommended alongside: several targets, and the warning for a transition that resets sibling regions. All three change how targets and domains are computed. | SM-18, SM-19, SM-20 | Small to medium |
+| **SM-25: `on peer.ended`** (approved) | The trigger for `ref` holders, perhaps with how the peer ended, and how it relates to `on name.done` and `on name.fail` for spawned children and to SM-20's `Unanswered`. | SM-18, SM-19, SM-20 | Medium |
+| **SM-26: Tasks that emit** (approved) | `task … emits E`, `as` on a task invoke, `on name.E` from a task, stream tasks with no result. Recommended alongside: spawned tasks, and several invokes per state. | SM-24 | Medium |
+| **SM-27: Child machines in snapshots** (approved) | A child run's snapshot saved inside its parent's, with its own IR hash, restored without restarting. `suspend` allowed with running children. | SM-25 | Large |
+| **`raise`, internal events and delayed events** | `raise E`, `internal event`, `raise E after d as name`, `cancel name`, and the internal queue in both cores and the trace. | SM-26 | Medium |
 | **Data local to a state** | `var` in a state, and state parameters with `-> State(args)`. | `raise` | Medium |
 | **Small additions** | `choice` pseudo-states, `in(State)`, `on A \| B`, a history default target, tags and `meta`, and equality on records, lists and maps. | Data local to a state | Medium, many small parts |
 
