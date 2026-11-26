@@ -26,6 +26,10 @@ pub(crate) struct MachineIndex {
     /// For each state, its children's indices.
     pub children: Vec<Vec<usize>>,
     pub by_id: HashMap<String, usize>,
+    /// For each state, its transitions' targets' indices, in order (`None`: no target).
+    pub targets: Vec<Vec<Option<usize>>>,
+    /// For each state, its initial child's index, if it names one.
+    pub initial: Vec<Option<usize>>,
 }
 
 /// Why an IR cannot be run.
@@ -55,8 +59,22 @@ impl Program {
                 parents: Vec::new(),
                 children: Vec::new(),
                 by_id: HashMap::new(),
+                targets: Vec::new(),
+                initial: Vec::new(),
             };
             walk(&m.root, None, &mut Vec::new(), &mut idx);
+            let index = |id: &String| idx.by_id.get(id).copied();
+            for i in 0..idx.paths.len() {
+                let s = idx.state(m, i);
+                let targets = s
+                    .transitions
+                    .iter()
+                    .map(|t| t.target.as_ref().and_then(index))
+                    .collect();
+                let initial = s.initial.as_ref().and_then(index);
+                idx.targets.push(targets);
+                idx.initial.push(initial);
+            }
             machines.insert(name.clone(), idx);
         }
         Ok(Program { ir, machines })
