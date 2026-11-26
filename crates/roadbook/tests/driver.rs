@@ -59,6 +59,29 @@ enum Mode {
     PanicInAction,
     PanicInTask,
     TaskNeverEnds,
+    /// The task never ends, and its future panics when it is dropped.
+    TaskPanicsWhenDropped,
+    /// The task ends, and its future panics when it is dropped afterwards.
+    TaskPanicsWhenDroppedAfterDone,
+}
+
+/// A future that panics when it is dropped.
+struct PanicOnDrop(BoxFuture<'static, Outcome>);
+
+impl std::future::Future for PanicOnDrop {
+    type Output = Outcome;
+    fn poll(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Outcome> {
+        self.0.as_mut().poll(cx)
+    }
+}
+
+impl Drop for PanicOnDrop {
+    fn drop(&mut self) {
+        panic!("dropped a bomb");
+    }
 }
 
 struct TestHost<'p> {
@@ -94,6 +117,13 @@ impl Host for TestHost<'_> {
                     Err(e) => Outcome::Fail(e),
                 }
             }),
+            SrcKind::Task if self.mode == Mode::TaskPanicsWhenDropped => {
+                Box::pin(PanicOnDrop(Box::pin(std::future::pending())))
+            }
+            SrcKind::Task if self.mode == Mode::TaskPanicsWhenDroppedAfterDone => {
+                let n = call.args["n"].clone();
+                Box::pin(PanicOnDrop(Box::pin(async move { Outcome::Done(n) })))
+            }
             SrcKind::Task => Box::pin(async move {
                 tokio::task::yield_now().await;
                 match self.mode {
@@ -270,4 +300,93 @@ async fn json_lines_writes_one_canonical_record_per_line() {
         lines[0]
     );
     assert!(lines[1].starts_with(r#"{"kind":"entered","run":"r9","state":"Main","t":"#));
+}
+
+#[tokio::test]
+async fn a_panic_while_dropping_a_cancelled_task_is_ignored() {
+    let program = program();
+    let host = host(&program, Mode::TaskPanicsWhenDropped);
+    let sink = Arc::new(MemorySink::new());
+    let config = Config::new().sink(sink.clone()).run_id("r1");
+    let (fut, handle) = dynamic::start(&config, &program, "Main", input(3), &host);
+    let stopper = async {
+        tokio::task::yield_now().await;
+        tokio::task::yield_now().await;
+        handle.send(json!({"_tag": "Stop"}));
+    };
+    // Stop cancels the child, whose state is left, which drops the task's future.
+    let (end, ()) = tokio::join!(fut, stopper);
+    assert_eq!(end, RunEnd::Done(json!(3)));
+    let records: Vec<Value> = sink.records().iter().map(|r| r.to_json()).collect();
+    assert_eq!(last_of(&records, "r1.1")["kind"], "cancelled");
+    assert_eq!(last_of(&records, "r1")["kind"], "done");
+
+    // So is one while dropping it in a hard stop, and in the cancel from outside.
+    let (fut, _) = dynamic::start(&config, &program, "Main", input(3), &host);
+    let timed_out = tokio::time::timeout(std::time::Duration::from_millis(20), fut).await;
+    assert!(timed_out.is_err());
+    let (fut, handle) = dynamic::start(&config, &program, "Main", input(3), &host);
+    let canceller = async {
+        tokio::task::yield_now().await;
+        tokio::task::yield_now().await;
+        handle.cancel();
+    };
+    let (end, ()) = tokio::join!(fut, canceller);
+    assert_eq!(end, RunEnd::Cancelled);
+}
+
+#[tokio::test]
+async fn a_panic_while_dropping_a_finished_task_is_its_outcome() {
+    let (end, records) = run_to_end(Mode::TaskPanicsWhenDroppedAfterDone).await;
+    let d = Defect::host("dropped a bomb");
+    assert_eq!(end, RunEnd::Defect(d.clone()));
+    let event = records
+        .iter()
+        .find(|r| r["run"] == "r1.1" && r["kind"] == "event")
+        .unwrap();
+    assert_eq!(
+        event["event"],
+        json!({"kind": "invoke.defect", "invoke": 1, "defect": d.to_value()})
+    );
+}
+
+#[tokio::test]
+async fn a_panic_while_dropping_a_task_whose_outcome_came_from_outside_is_ignored() {
+    let program = program();
+    let host = host(&program, Mode::TaskPanicsWhenDropped);
+    let sink = Arc::new(MemorySink::new());
+    let child = Arc::new(Mutex::new(None));
+    let seen = child.clone();
+    let config = Config::new()
+        .sink(sink.clone())
+        .run_id("r1")
+        .on_run(move |run, h| {
+            if run == "r1.1" {
+                *seen.lock().unwrap() = Some(h);
+            }
+        });
+    let (fut, _) = dynamic::start(&config, &program, "Main", input(3), &host);
+    let feeder = async {
+        let h = loop {
+            tokio::task::yield_now().await;
+            if let Some(h) = child.lock().unwrap().clone() {
+                break h;
+            }
+        };
+        tokio::task::yield_now().await;
+        // The child's `work` is invoke 1; its outcome arrives from outside, and the core
+        // taking it drops the task's future.
+        h.push(vec![roadbook::Input::InvokeDone {
+            invoke: 1,
+            value: json!(3),
+        }]);
+    };
+    let (end, ()) = tokio::join!(fut, feeder);
+    // The child's guard reads `unset`, as in `a_childs_defect_reaches_the_root_unchanged`.
+    assert_eq!(
+        end,
+        RunEnd::Defect(Defect::Unassigned {
+            var: "unset".into()
+        })
+    );
 }

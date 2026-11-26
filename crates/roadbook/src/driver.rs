@@ -61,6 +61,12 @@ fn call_function(host: &dyn Host, name: &str, args: Vec<Value>) -> Result<Value,
     })
 }
 
+/// Drops `x`, catching a panic in its `Drop`. Host futures are dropped this way, so that a
+/// future that panics while it is dropped cannot unwind through the driver.
+fn drop_caught<T>(x: T) -> Result<(), Defect> {
+    catch_unwind(AssertUnwindSafe(move || drop(x))).map_err(defect_from_panic)
+}
+
 fn blank() -> Snapshot {
     Snapshot {
         machine: String::new(),
@@ -179,9 +185,11 @@ impl<'a> Driver<'a> {
                 .program
                 .step(&self.snap, input, &mut |n, a| call_function(host, n, a));
             self.snap = snap;
-            // The core has taken this outcome or expiry: forget its source.
-            if let Some(i) = invoke {
-                self.invokes.remove(&i);
+            // The core has taken this outcome or expiry: forget its source. An invoke still
+            // held here had its outcome queued from outside, so what its future does now is
+            // ignored, as for a cancelled one: a panic while dropping it included.
+            if let Some(slot) = invoke.and_then(|i| self.invokes.remove(&i)) {
+                let _ = drop_caught(slot);
             }
             if let Some(t) = timer {
                 self.timers.remove(&t);
@@ -232,8 +240,14 @@ impl<'a> Driver<'a> {
                 Err(p) => ended.push((id, Outcome::Defect(defect_from_panic(p)))),
             }
         }
-        for (invoke, outcome) in ended {
-            self.invokes.remove(&invoke);
+        for (invoke, mut outcome) in ended {
+            // A future that panics while it is dropped after giving its outcome is host code
+            // failing before its invoke ended: the outcome is that host defect.
+            if let Some(slot) = self.invokes.remove(&invoke) {
+                if let Err(d) = drop_caught(slot) {
+                    outcome = Outcome::Defect(d);
+                }
+            }
             self.queue.push_back(match outcome {
                 Outcome::Done(value) => Input::InvokeDone { invoke, value },
                 Outcome::Fail(error) => Input::InvokeFail { invoke, error },
@@ -285,7 +299,7 @@ impl<'a> Driver<'a> {
                     catch_unwind(AssertUnwindSafe(|| host.action(&action, args)))
                 });
                 let mut fut = created.map_err(defect_from_panic)?;
-                poll_fn(|cx| {
+                let done = poll_fn(|cx| {
                     let polled = with_context(None, || {
                         catch_unwind(AssertUnwindSafe(|| fut.as_mut().poll(cx)))
                     });
@@ -298,7 +312,10 @@ impl<'a> Driver<'a> {
                         Err(p) => Poll::Ready(Err(defect_from_panic(p))),
                     }
                 })
-                .await
+                .await;
+                // A panic while dropping the action's future is the action failing.
+                let dropped = drop_caught(fut);
+                done.and(dropped)
             }
             Command::InvokeStart {
                 invoke,
@@ -353,12 +370,15 @@ impl<'a> Driver<'a> {
 
     /// Stops a running invoke. A task's or stub's future is dropped at once. A child run is
     /// signalled through its token and polled until it reports that its cancel step is
-    /// done; only then is its future dropped.
+    /// done; only then is its future dropped. What a cancelled invoke does is ignored, so a
+    /// panic while dropping its future is caught and ignored.
     async fn cancel_slot(&mut self, mut slot: Slot<'a>) -> Result<(), Defect> {
         let Some(ctx) = slot.ctx.clone() else {
+            let _ = drop_caught(slot);
             return Ok(());
         };
         if !ctx.token.is_claimed() || ctx.token.finished().is_some() {
+            let _ = drop_caught(slot);
             return Ok(());
         }
         ctx.token.request_cancel();
@@ -382,7 +402,7 @@ impl<'a> Driver<'a> {
             }
         })
         .await;
-        drop(slot);
+        let _ = drop_caught(slot);
         match how {
             Finished::Ok => Ok(()),
             Finished::Defect(d) => Err(d),
@@ -423,5 +443,15 @@ impl<'a> Driver<'a> {
             _ => Finished::Ok,
         });
         (end, self.cancel_taken)
+    }
+}
+
+/// A run's future dropped before it ended (a hard stop) drops what it holds; a host future
+/// that panics then is ignored, as for a cancelled invoke.
+impl Drop for Driver<'_> {
+    fn drop(&mut self) {
+        for (_, slot) in std::mem::take(&mut self.invokes) {
+            let _ = drop_caught(slot);
+        }
     }
 }
