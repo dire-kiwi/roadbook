@@ -1,0 +1,33 @@
+import { Ticket, SurveyResult, MailBounced, NotAnsweredYet, sendSurvey, pollSurvey } from "./types.road"
+
+/// Send a satisfaction survey and wait up to a week for the answer.
+machine SatisfactionSurvey(ticket: Ticket) -> SurveyResult {
+  var surveyId: string
+  var polls:    int = 0
+  var score:    int = 0
+
+  initial Sending
+
+  state Sending {
+    invoke sendSurvey(ticket) {
+      done             -> Waiting   set surveyId = result
+      fail MailBounced -> NoAnswer
+    }
+  }
+
+  /// Check for an answer once a day.
+  state Waiting { after 24h -> Polling }
+
+  state Polling {
+    invoke pollSurvey(surveyId) {
+      done                -> Answered  set score = result
+      fail NotAnsweredYet {
+        if polls < 7      -> Waiting   set polls = polls + 1
+        else              -> NoAnswer
+      }
+    }
+  }
+
+  final state Answered { output SurveyResult { answered: true, score: score } }
+  final state NoAnswer { output SurveyResult { answered: false, score: 0 } }
+}

@@ -1,0 +1,29 @@
+// Shared data shapes, errors and host functions for the password reset example.
+
+type UserId = string
+
+/// A reset token that exists and has not expired.
+type ResetToken { tokenId: string, userId: UserId }
+
+/// What the HTTP layer sends back. `body` is any JSON value.
+type ApiResponse { status: int, body: json }
+
+error TokenNotFound
+error TokenExpired
+error UserGone
+
+// Tasks: effectful, fallible, cancellable.
+task findResetToken(token: string)                        -> ResetToken ! TokenNotFound | TokenExpired
+task hashPassword(password: string)                       -> string
+task updatePassword(userId: UserId, passwordHash: string)               ! UserGone
+
+// Actions: effectful, cannot fail.
+action revokeSessions(userId: UserId)
+action sendPasswordChangedEmail(userId: UserId)
+
+// Functions: pure and synchronous.
+fn passwordProblems(password: string) -> string[]
+fn isEmpty(items: string[])           -> bool
+fn noContent()                        -> ApiResponse
+fn weakPassword(problems: string[])   -> ApiResponse
+fn problem(status: int, code: string) -> ApiResponse

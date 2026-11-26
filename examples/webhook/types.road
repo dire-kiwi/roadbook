@@ -1,0 +1,35 @@
+// Shared data shapes, errors and host functions for the payment webhook example.
+
+enum PaymentEventKind { PaymentSucceeded, PaymentFailed, Refunded }
+
+/// A parsed provider event.
+type PaymentEvent {
+  id: string,
+  kind: PaymentEventKind,
+  orderId: string,
+  customerId: string,
+  amountCents: int
+}
+
+/// What the HTTP layer sends back. `body` is any JSON value.
+type ApiResponse { status: int, body: json }
+
+error MalformedPayload { reason: string }
+error DatabaseBusy
+
+// Tasks: effectful, fallible, cancellable.
+task parsePayload(body: string)                       -> PaymentEvent ! MalformedPayload
+task alreadyProcessed(eventId: string)                -> bool
+task markOrderPaid(orderId: string, amountCents: int)                 ! DatabaseBusy
+task recordRefund(orderId: string, amountCents: int)
+task markProcessed(eventId: string)
+
+// Actions: effectful, cannot fail.
+action notifyPaymentFailed(customerId: string, orderId: string)
+action notifyRefunded(customerId: string, orderId: string, amountCents: int)
+
+// Functions: pure and synchronous.
+fn signatureValid(body: string, signature: string, secret: string) -> bool
+fn retryDelay(attempt: int)                                        -> duration
+fn ok()                                                            -> ApiResponse
+fn problem(status: int, code: string)                              -> ApiResponse

@@ -1,0 +1,73 @@
+import {
+  Upload, ImportPlan, ImportSummary,
+  InvalidFile, BatchFailed, ImportCancelled, TransientBatchError,
+  validateUpload, processBatch
+} from "./types.road"
+
+/// A CSV import: validate the file, then import it batch by batch.
+/// The operator can pause, resume and cancel it while it runs.
+machine ImportJob(upload: Upload) -> ImportSummary ! InvalidFile | BatchFailed | ImportCancelled {
+  var plan:           ImportPlan
+  var invalid:        InvalidFile
+  var batch:          int = 0
+  var retries:        int = 0
+  var totalRetries:   int = 0
+  var lastReason:     string = ""
+  var pauseRequested: bool = false
+
+  /// Stop after the batch that is running finishes.
+  event Pause
+  /// Carry on after a pause.
+  event Resume
+  /// Stop now. A running batch is cancelled.
+  event Cancel
+
+  initial Validating
+
+  on Cancel -> Cancelled
+
+  state Validating {
+    invoke validateUpload(upload) {
+      done             -> Importing  set plan = result
+      fail InvalidFile -> Rejected   set invalid = error
+    }
+  }
+
+  /// Batches run one after another until no rows remain.
+  /// A pause takes effect between batches: the running batch is never cancelled by it.
+  state Importing {
+    initial RunningBatch
+
+    on Pause  set pauseRequested = true
+    on Resume set pauseRequested = false
+
+    state RunningBatch {
+      invoke processBatch(upload, plan, batch) {
+        done {
+          if result == 0         -> Completed       set batch = batch + 1, retries = 0
+          if pauseRequested      -> Paused          set batch = batch + 1, retries = 0
+          else                   -> RunningBatch    set batch = batch + 1, retries = 0
+        }
+        fail TransientBatchError {
+          if retries < 3         -> WaitingToRetry  set retries = retries + 1, totalRetries = totalRetries + 1, lastReason = error.reason
+          else                   -> Failed          set lastReason = error.reason
+        }
+      }
+    }
+
+    /// A transient failure: wait, then run the same batch again.
+    state WaitingToRetry {
+      after 10s {
+        if pauseRequested -> Paused
+        else              -> RunningBatch
+      }
+    }
+
+    state Paused { on Resume -> RunningBatch  set pauseRequested = false }
+  }
+
+  final state Completed { output ImportSummary { jobId: upload.jobId, totalRows: plan.totalRows, batches: batch, retries: totalRetries } }
+  final state Rejected  { fail invalid }
+  final state Failed    { fail BatchFailed { batch: batch, reason: lastReason } }
+  final state Cancelled { fail ImportCancelled { batchesDone: batch } }
+}

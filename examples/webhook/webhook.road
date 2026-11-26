@@ -1,0 +1,96 @@
+import {
+  PaymentEventKind, PaymentEvent, ApiResponse,
+  MalformedPayload, DatabaseBusy,
+  parsePayload, alreadyProcessed, markOrderPaid, recordRefund, markProcessed,
+  notifyPaymentFailed, notifyRefunded,
+  signatureValid, retryDelay, ok, problem
+} from "./types.road"
+
+/// The payment provider's webhook: verify, parse, deduplicate, apply, acknowledge.
+/// Every final state is one HTTP response.
+machine PaymentWebhook(body: string, signature: string, secret: string) -> ApiResponse {
+  var payment:  PaymentEvent
+  var attempts: int = 0
+
+  initial Verifying
+
+  /// The signature check is pure, so it is a guard.
+  state Verifying {
+    always {
+      if signatureValid(body, signature, secret) -> Parsing
+      else                                       -> BadSignature
+    }
+  }
+
+  state Parsing {
+    invoke parsePayload(body) {
+      done                  -> CheckingDuplicate  set payment = result
+      fail MalformedPayload -> Malformed
+    }
+  }
+
+  /// Providers redeliver. An event we have already processed is acknowledged and ignored.
+  state CheckingDuplicate {
+    invoke alreadyProcessed(payment.id) {
+      done {
+        if result -> Acknowledged
+        else      -> Applying
+      }
+    }
+  }
+
+  /// Apply the event according to its kind.
+  state Applying {
+    initial Routing
+
+    done -> MarkingProcessed
+
+    state Routing {
+      always {
+        if payment.kind == PaymentEventKind.PaymentSucceeded -> MarkingPaid
+        if payment.kind == PaymentEventKind.PaymentFailed    -> NotifyingFailure
+        else                                                 -> RecordingRefund
+      }
+    }
+
+    state MarkingPaid {
+      invoke markOrderPaid(payment.orderId, payment.amountCents) {
+        done              -> Applied
+        fail DatabaseBusy {
+          if attempts < 5 -> Backoff
+          else            -> Unavailable
+        }
+      }
+    }
+
+    /// Wait before the next attempt. The delay grows with each attempt.
+    state Backoff {
+      entry set attempts = attempts + 1
+      after retryDelay(attempts) -> MarkingPaid
+    }
+
+    state NotifyingFailure {
+      entry do notifyPaymentFailed(payment.customerId, payment.orderId)
+      always -> Applied
+    }
+
+    state RecordingRefund {
+      invoke recordRefund(payment.orderId, payment.amountCents) {
+        done -> Applied  do notifyRefunded(payment.customerId, payment.orderId, payment.amountCents)
+      }
+    }
+
+    final state Applied {}
+  }
+
+  state MarkingProcessed {
+    invoke markProcessed(payment.id) {
+      done -> Acknowledged
+    }
+  }
+
+  final state Acknowledged { output ok() }
+  final state BadSignature { output problem(401, "bad_signature") }
+  final state Malformed    { output problem(400, "malformed_payload") }
+  final state Unavailable  { output problem(503, "database_busy") }
+}

@@ -1,0 +1,268 @@
+import {
+  Priority, Category, CloseReason, Ticket, Classification, SurveyResult, Closure,
+  ClassifierUnavailable, NoAgentAvailable, TrackerUnavailable,
+  classify, routeTicket, fileBug, verifyFix, draftResolution,
+  notifyCustomer, notifyAgent, pageOnCall, sendMessage, addNote,
+  isSpam, isDuplicate, backoff, triageSla, resolutionSla, closure, ratedClosure
+} from "./types.road"
+import { SatisfactionSurvey } from "./survey.road"
+
+/// A support ticket from the moment it arrives until it is closed.
+/// Every top-level final state is one way a ticket can end.
+machine SupportTicket(ticket: Ticket) -> Closure {
+  var classification:   Classification
+  var priority:         Priority = Priority.Normal
+  var category:         Category = Category.Other
+  var agentId:          string
+  var classifyAttempts: int = 0
+  var bugAttempts:      int = 0
+  var retryWait:        duration = 1m
+  var bugId:            string = ""
+  var reopens:          int = 0
+  var resolution:       string
+  var survey:           SurveyResult
+
+  /// An agent claims the ticket by hand.
+  event Assign            { agentId: string }
+  event AgentReplied      { body: string }
+  event CustomerReplied   { body: string }
+  event InternalNote      { text: string }
+  event Hold
+  event Unhold
+  event Escalate
+  event Deescalate
+  event Resolve
+  event FixReleased
+  event CustomerConfirmed
+  event Reopen
+  event CustomerWithdrew
+  event MarkDuplicate
+  event MarkOutOfScope
+  event MergeInto         { ticketId: string }
+  event GiveUp
+
+  initial Intake
+
+  /// Classify the new ticket and screen out spam and duplicates.
+  state Intake {
+    initial Classifying
+
+    done -> Triage
+
+    state Classifying {
+      invoke classify(ticket) {
+        done                       -> Screening        set classification = result, priority = result.priority, category = result.category
+        fail ClassifierUnavailable {
+          if classifyAttempts < 3  -> ClassifyBackoff
+          else                     -> Unclassified
+        }
+      }
+    }
+
+    /// Retry loop: the classifier is down, wait and try again.
+    state ClassifyBackoff {
+      entry set classifyAttempts = classifyAttempts + 1
+      after backoff(classifyAttempts) -> Classifying
+    }
+
+    state Screening {
+      always {
+        if isSpam(classification)      -> Spam
+        if isDuplicate(classification) -> Duplicate
+        else                           -> Accepted
+      }
+    }
+
+    /// The classifier stayed down: carry on with normal priority and no category.
+    final state Unclassified {}
+    final state Accepted     { entry do notifyCustomer(ticket, "received") }
+  }
+
+  /// Find an owner. Unowned past the triage SLA pages the on-call lead.
+  state Triage {
+    initial Routing
+
+    after triageSla(priority)                     do pageOnCall(ticket, 1)
+    on Assign                 -> Triage.Assigned  set agentId = event.agentId
+    on MarkOutOfScope         -> OutOfScope
+    on CustomerWithdrew       -> Withdrawn
+
+    done -> Active
+
+    state Routing {
+      invoke routeTicket(ticket, category) {
+        done                  -> Assigned  set agentId = result
+        fail NoAgentAvailable -> Queued
+      }
+    }
+
+    /// Nobody is free: try again every 15 minutes.
+    state Queued { after 15m -> Routing }
+
+    final state Assigned { entry do notifyAgent(agentId, ticket, "assigned") }
+  }
+
+  /// The ticket has an owner and is being worked.
+  state Active {
+    initial Working
+
+    after resolutionSla(priority)               do pageOnCall(ticket, 2)
+    on InternalNote                             do addNote(ticket, event.text)
+    on CustomerWithdrew           -> Withdrawn
+    on MergeInto                  -> Merged
+
+    state Working {
+      initial WithAgent
+
+      on Escalate -> Escalation
+
+      /// The agent owns the next move. Nudge them after every 2 hours of silence.
+      state WithAgent {
+        after 2h         -> WithAgent          do notifyAgent(agentId, ticket, "nudge")
+        on AgentReplied  -> WaitingOnCustomer  do sendMessage(ticket, event.body)
+        on Hold          -> OnHold
+        on Resolve       -> Resolving
+        on MarkDuplicate -> Duplicate
+      }
+
+      /// The ball is in the customer's court. Two weeks of silence closes the ticket.
+      state WaitingOnCustomer {
+        initial Waiting
+
+        after 336h         -> AutoClosed
+        on CustomerReplied -> WithAgent
+
+        state Waiting { after 72h -> Reminded  do notifyCustomer(ticket, "reminder") }
+
+        state Reminded { after 96h -> LastCall  do notifyCustomer(ticket, "last_call") }
+
+        state LastCall {}
+      }
+
+      /// Parked by the agent, for example while waiting on a third party.
+      state OnHold {
+        on Unhold  -> WithAgent
+        after 168h -> WithAgent  do notifyAgent(agentId, ticket, "hold_expired")
+      }
+    }
+
+    /// Escalation tiers. Each tier has a deadline before it moves up.
+    state Escalation {
+      initial Tier2
+
+      on Deescalate -> Working
+      on Resolve    -> Resolving
+
+      state Tier2 {
+        entry do pageOnCall(ticket, 2)
+        after 8h -> Tier3
+      }
+
+      state Tier3 {
+        entry do pageOnCall(ticket, 3)
+        after 24h -> Engineering
+      }
+
+      /// Engineering owns it: file a bug and wait for the fix.
+      state Engineering {
+        initial FilingBug
+
+        done -> Resolving
+
+        state FilingBug {
+          invoke fileBug(ticket) {
+            done                    -> AwaitingFix  set bugId = result
+            fail TrackerUnavailable {
+              if bugAttempts < 5    -> BugBackoff   set retryWait = error.retryAfter
+              else                  -> AwaitingFix  do notifyAgent(agentId, ticket, "file_bug_by_hand")
+            }
+          }
+        }
+
+        state BugBackoff {
+          entry set bugAttempts = bugAttempts + 1
+          after retryWait -> FilingBug
+        }
+
+        state AwaitingFix {
+          on FixReleased -> FixShipped
+          on GiveUp      -> Unresolvable
+        }
+
+        final state FixShipped {}
+      }
+    }
+
+    /// Two things at once: check the fix holds, and draft the message to the customer.
+    parallel state Resolving {
+      done -> AwaitingConfirmation  do sendMessage(ticket, resolution)
+
+      state FixCheck {
+        initial Verifying
+
+        state Verifying {
+          invoke verifyFix(ticket) {
+            done {
+              if result -> Verified
+              else      -> Working   do notifyAgent(agentId, ticket, "fix_failed")
+            }
+          }
+        }
+
+        final state Verified {}
+      }
+
+      state CustomerNotice {
+        initial Drafting
+
+        state Drafting {
+          invoke draftResolution(ticket) {
+            done -> Drafted  set resolution = result
+          }
+        }
+
+        final state Drafted {}
+      }
+    }
+
+    /// Resolved on our side. The customer confirms, reopens or goes quiet.
+    state AwaitingConfirmation {
+      on CustomerConfirmed -> Closing
+      on Reopen            -> Reopened
+      after 168h           -> Closing
+    }
+
+    /// Reopen loop: back to the agent, or straight to escalation from the third reopen.
+    state Reopened {
+      entry set reopens = reopens + 1
+      always {
+        if reopens < 3 -> Working
+        else           -> Escalation
+      }
+    }
+  }
+
+  /// Ask the customer how we did, then close.
+  state Closing {
+    initial Surveying
+
+    done -> Resolved
+
+    state Surveying {
+      invoke SatisfactionSurvey(ticket) {
+        done -> Surveyed  set survey = result
+      }
+    }
+
+    final state Surveyed {}
+  }
+
+  final state Resolved     { output ratedClosure(ticket, reopens, survey) }
+  final state AutoClosed   { output closure(ticket, CloseReason.AutoClosed, reopens) }
+  final state Spam         { output closure(ticket, CloseReason.Spam, reopens) }
+  final state Duplicate    { output closure(ticket, CloseReason.Duplicate, reopens) }
+  final state Withdrawn    { output closure(ticket, CloseReason.Withdrawn, reopens) }
+  final state OutOfScope   { output closure(ticket, CloseReason.OutOfScope, reopens) }
+  final state Merged       { output closure(ticket, CloseReason.Merged, reopens) }
+  final state Unresolvable { output closure(ticket, CloseReason.Unresolvable, reopens) }
+}
