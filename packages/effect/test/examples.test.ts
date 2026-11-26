@@ -224,6 +224,29 @@ describe("examples/orders", () => {
       const exit = yield* Effect.exit(OrderLive.run({ id: "x", draft: apples(1), inventory: {} as never }))
       assert.isTrue(Exit.isFailure(exit) && Roadbook.isDefect(exit.cause.reasons.find((r) => r._tag === "Die")?.defect))
     }))
+
+  it.effect("a handle to another version of the machine is a host defect, before the run starts", () =>
+    Effect.gen(function*() {
+      // The same Inventory from a chart whose Inventory has another hash.
+      const machines = Inventory.ir.machines
+      const changed = { ...machines["Inventory"]!, hash: `sha256:${"1".repeat(64)}` }
+      const Other = Roadbook.make<InventoryDef>({ ...Inventory.ir, machines: { ...machines, Inventory: changed } }, "Inventory")
+      const other = yield* Other.implement({
+        actions: { releaseStock: () => Effect.void, addStock: () => Effect.void },
+        tasks: { reserveStock: () => Effect.void }
+      }).spawn({ warehouse: "w1" })
+      const { records, sink } = collect()
+      const exit = yield* Effect.exit(
+        OrderLive.run({ id: "x", draft: apples(1), inventory: other.handle }).pipe(
+          Effect.provideService(Roadbook.TraceSink, sink)
+        )
+      )
+      const defect = Exit.isFailure(exit) ? exit.cause.reasons.find(Cause.isDieReason)?.defect : undefined
+      assert.isTrue(Roadbook.isDefect(defect))
+      const found = (defect as Roadbook.Defect).defect
+      assert.match(found.kind === "host" ? found.message : "", /another version of Inventory/)
+      assert.deepStrictEqual(records, [])
+    }).pipe(Effect.scoped))
 })
 
 /** Type-level checks, by `tsc`. Never run. */

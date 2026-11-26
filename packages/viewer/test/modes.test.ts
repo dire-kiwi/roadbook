@@ -35,6 +35,15 @@ const readTrace = (name: string) => fs.readFileSync(path.join(conformance, 'case
 const caseIr = (c: Case) => JSON.parse(fs.readFileSync(path.join(conformance, c.chart.replace(/\.road$/, '.ir.json')), 'utf8')) as Ir
 
 /**
+ * Why the page cannot play a case's script at all, or null: simulate mode runs one run and
+ * offers no way to save, restore or suspend it.
+ */
+const unplayable = (c: Case): string | null =>
+  c.script.some((s) => 'snapshot' in s || 'restore' in s || 'suspend' in s)
+    ? 'its script saves, restores or suspends runs, which simulate mode does not offer'
+    : null
+
+/**
  * Drives a simulation with the case's script, choosing what a reader would choose in the page,
  * and answering the functions from the case's table when the simulation asks. Returns null for
  * a case the page cannot play by hand: one that runs a child machine from the chart, starts
@@ -84,7 +93,13 @@ const lines = (records: unknown[]) => records.map((r) => canonicalJson(r) + '\n'
 
 describe('simulate', () => {
   const played: string[] = []
-  it.each(cases)('%s: the page writes the case’s trace, or the case is not one it plays', (name) => {
+  const skipped = cases.flatMap((name) => {
+    const reason = unplayable(readCase(name))
+    return reason === null ? [] : [[name, reason]]
+  })
+  it.skip.each(skipped)('%s: skipped, %s', () => {})
+  const playable = cases.filter((name) => unplayable(readCase(name)) === null)
+  it.each(playable)('%s: the page writes the case’s trace, or the case is not one it plays', (name) => {
     const c = readCase(name)
     const result = simulate(c)
     if (!result) return
@@ -97,6 +112,8 @@ describe('simulate', () => {
   it('plays at least the cases with a stubbed child machine, timers and asked functions', () => {
     // A child machine treated as a task, a retry loop under virtual time, guards that ask.
     for (const name of ['place-order-checkout-stubbed', 'checkout-retry', 'gate-guards']) expect(played).toContain(name)
+    // Parallel states: regions entered and exited in order, events taken in several regions.
+    for (const name of ['parallel-entry-exit', 'parallel-two-regions', 'parallel-work']) expect(played).toContain(name)
     expect(played.length).toBeGreaterThanOrEqual(8)
   })
 
@@ -168,16 +185,41 @@ describe('simulate', () => {
     expect(sim.current!.records.map((r) => r.kind)).toEqual(['defect'])
   })
 
-  it('refuses a machine with parallel states, as the core does', () => {
-    const ir = chart('charts-stress')
-    const parallel = Object.keys(ir.machines).find((m) => refusal(ir, m))
-    expect(parallel).toBeDefined()
-    const sim = new Simulation(ir, parallel!)
-    const o = sim.start(sampleFields(ir, ir.machines[parallel!]!.params))
-    expect(o.kind).toBe('error')
-    expect(o.kind === 'error' && o.message).toMatch(/parallel state/)
-    expect(refusal(chart('shop-place_order'), 'PlaceOrder')).toBeNull()
+  it('plays a machine with a parallel state: examples/large, both regions of Resolving at once', () => {
+    const ir = chart('large-ticket')
+    expect(refusal(ir, 'SupportTicket')).toBeNull()
+    const sim = new Simulation(ir, 'SupportTicket')
+    // Functions and invokes are answered with sample values of their declared types.
+    const settle = (o: Outcome): Outcome => {
+      while (o.kind === 'ask') {
+        sim.answer(o.ask.fn, o.ask.args, { value: sampleValue(ir, o.ask.decl!.returns) })
+        o = sim.retry()
+      }
+      return o
+    }
+    const complete = (src: string) => {
+      const inv = sim.choices().invokes.find((i) => i.src === src)!
+      expect(settle(sim.complete(inv.id, { done: inv.returns === null ? null : sampleValue(ir, inv.returns) }))).toEqual({ kind: 'ok' })
+    }
+    expect(settle(sim.start(sampleFields(ir, ir.machines.SupportTicket!.params)))).toEqual({ kind: 'ok' })
+    complete('classify')
+    complete('routeTicket')
+    expect(settle(sim.send({ _tag: 'Resolve' }))).toEqual({ kind: 'ok' })
+    const resolving = 'SupportTicket.Active.Resolving'
+    expect(sim.current!.snapshot.active.filter((id) => id.startsWith(resolving))).toEqual([
+      resolving,
+      `${resolving}.FixCheck`,
+      `${resolving}.FixCheck.Verifying`,
+      `${resolving}.CustomerNotice`,
+      `${resolving}.CustomerNotice.Drafting`,
+    ])
+    // Each region's invoke runs, in document order.
+    expect(sim.choices().invokes.map((i) => i.src)).toEqual(['verifyFix', 'draftResolution'])
+    complete('draftResolution')
+    expect(sim.current!.snapshot.active).toContain(`${resolving}.CustomerNotice.Drafted`)
+    expect(sim.current!.snapshot.active).toContain(`${resolving}.FixCheck.Verifying`)
   })
+
 })
 
 describe('values', () => {

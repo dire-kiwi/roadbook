@@ -52,6 +52,22 @@ export interface Snapshot {
   readonly result: RunResult | null
 }
 
+/** A timer of a saved snapshot: the core's entry with the time it is due on the driver's clock. */
+export interface SavedTimer extends TimerEntry {
+  /** When it expires, in integer milliseconds on the driver's clock. */
+  readonly due: number
+}
+
+/**
+ * A saved snapshot (execution.md, "The saved snapshot"): the core's snapshot as a run's last
+ * step left it, with the format version and each timer's due time. Plain JSON, matching
+ * `spec/snapshot.schema.json`; both runtimes save the same run as the same document.
+ */
+export interface Saved extends Omit<Snapshot, "timers"> {
+  readonly snapshotVersion: 1
+  readonly timers: ReadonlyArray<SavedTimer>
+}
+
 /** A tagged record: an event or an error value. */
 export interface Tagged {
   readonly _tag: string
@@ -86,6 +102,14 @@ export type TracedInput = Exclude<Input, { readonly kind: "cancel" } | { readonl
 /** A trace record as the core emits it, without `t`, `run` and `parent`. */
 export type CoreRecord =
   | { readonly kind: "started"; readonly machine: string; readonly ir: string; readonly input: Json }
+  /** `migrated` is the hash the snapshot had before a migration, or `null`. */
+  | {
+    readonly kind: "restored"
+    readonly machine: string
+    readonly ir: string
+    readonly migrated: string | null
+    readonly snapshot: Saved
+  }
   | { readonly kind: "entered"; readonly state: string }
   | { readonly kind: "exited"; readonly state: string }
   | { readonly kind: "event" | "dropped" | "stale"; readonly event: TracedInput }
@@ -116,6 +140,8 @@ export type CoreRecord =
   | { readonly kind: "failed"; readonly state: string; readonly error: Json }
   | { readonly kind: "cancelled" }
   | { readonly kind: "defect"; readonly defect: Defect }
+  /** Written by the driver, not the core, when it stops an idle run it has saved. */
+  | { readonly kind: "suspended" }
 
 /** A trace record as a driver writes it: the core's record with the clock and the run's ids. */
 export type TraceRecord = CoreRecord & {
@@ -140,6 +166,11 @@ export type Command =
   | { readonly kind: "invoke.cancel"; readonly invoke: number }
   | { readonly kind: "timer.start"; readonly timer: number; readonly delay: number }
   | { readonly kind: "timer.cancel"; readonly timer: number }
+  /**
+   * Queue the expiry of timer `timer` on this run's queue at once, without starting a timer.
+   * Only `restore` emits it, for a restored timer that was already due.
+   */
+  | { readonly kind: "timer.fire"; readonly timer: number }
   /**
    * Queue message `message` for run `to`: the child run of this run's invoke `invoke`, or, when
    * `invoke` is `null`, the peer `to`.

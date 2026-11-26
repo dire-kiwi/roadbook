@@ -262,8 +262,11 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
       const s = sims.get(host.current())
       const f = s?.current
       if (!s || !f) return 'Simulate: give the input and start'
-      const leaf = f.snapshot.active[f.snapshot.active.length - 1]
-      return `Simulate · step ${s.at + 1}/${s.frames.length} · t = ${f.now} ms · ${f.snapshot.status}${leaf ? ` · in ${stateName(leaf) || leaf}` : ''}`
+      // The active leaves: one, or one per region of a parallel state.
+      const active = f.snapshot.active
+      const leaves = active.filter((id) => !active.some((other) => other.startsWith(`${id}.`)))
+      const where = leaves.map((leaf) => stateName(leaf) || leaf).join(', ')
+      return `Simulate · step ${s.at + 1}/${s.frames.length} · t = ${f.now} ms · ${f.snapshot.status}${where ? ` · in ${where}` : ''}`
     },
     forward() {
       if (sim().forward()) done()

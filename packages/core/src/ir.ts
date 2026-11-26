@@ -189,31 +189,13 @@ export const loadIr = (json: unknown): Ir => {
   return json as Ir
 }
 
-/**
- * The machine `name` of `ir`, checked to be one this version of the runtime can run. Parallel
- * states (milestone 6) are refused here, before any run starts.
- */
+/** The machine `name` of `ir`. Throws an `IrError` if there is none. */
 export const getMachine = (ir: Ir, name: string): Machine => {
   const machine = Object.hasOwn(ir.machines, name) ? ir.machines[name] : undefined
   if (machine === undefined) {
     throw new IrError(`the IR has no machine ${JSON.stringify(name)}`)
   }
-  const parallel = findParallel(machine.root)
-  if (parallel !== undefined) {
-    throw new IrError(
-      `machine ${name}: state ${parallel} is a parallel state, which this runtime does not run yet (milestone 6)`
-    )
-  }
   return machine
-}
-
-const findParallel = (state: State): string | undefined => {
-  if (state.kind === "parallel") return state.id
-  for (const child of state.states) {
-    const found = findParallel(child)
-    if (found !== undefined) return found
-  }
-  return undefined
 }
 
 /**

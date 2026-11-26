@@ -16,10 +16,12 @@ export type {
   MachineDef,
   NoExtras,
   Requirements,
+  RestoreOptions,
   Runnable,
   Snapshot
 } from "./Machine.ts"
 export { make } from "./make.ts"
+export { RestoreError, Saved } from "./Saved.ts"
 export {
   ClockTimer,
   type RunHandle,

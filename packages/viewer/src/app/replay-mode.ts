@@ -76,7 +76,8 @@ export function replayMode(host: Host, el: HTMLElement, embedded: { name: string
           .join('')}</ul></details>`
       h += `<h3>Runs</h3><ul class="rb-list">${replay.runs
         .map((r) => {
-          const end = replay!.viewAt(replay!.records.length - 1, r.id).status
+          const view = replay!.viewAt(replay!.records.length - 1, r.id)
+          const end = view.suspended ? 'suspended' : view.status
           return `<li><button class="rb-link rb-mono" type="button" data-m-record="${r.first}">${esc(r.id)} ${esc(r.machine)}</button> <span class="rb-cnote">${r.parent ? `child of ${esc(r.parent)}, ` : ''}${r.last - r.first + 1} records, ${esc(end)}</span></li>`
         })
         .join('')}</ul>`

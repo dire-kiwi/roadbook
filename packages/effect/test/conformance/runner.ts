@@ -6,7 +6,8 @@
  * that fires one timer at a time), and the host code (scripted tasks and stubbed machines, the
  * `fns` table, the `actions` table). Every other machine runs from the chart as a child run.
  * `start` steps spawn more top-level runs the same way, with the handles of the runs started
- * before them as their `ref` arguments.
+ * before them as their `ref` arguments, and `restore` steps restore saved snapshots through
+ * `restore`; `snapshot` and `suspend` steps use the actors' `save` and `suspend`.
  *
  * Quiescence. Every fiber runs on a manual `Scheduler` that queues tasks instead of using
  * `setImmediate`, and nothing in a case waits on real time or I/O: scripted invokes wait on the
@@ -16,7 +17,7 @@
  * quiescent".
  */
 import * as Core from "@roadbook/core"
-import { Effect, Exit, type Fiber, References, Scheduler, Scope } from "effect"
+import { Cause, Effect, Exit, type Fiber, References, Scheduler, Scope } from "effect"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { Codec } from "../../src/internal/codec.ts"
@@ -42,6 +43,15 @@ type Step =
     readonly status: Core.Status
   }
   | { readonly together: ReadonlyArray<Step> }
+  | { readonly snapshot: string; readonly run?: string }
+  | {
+    readonly restore: string
+    readonly run?: string
+    readonly migrate?: string
+    readonly status?: Core.Status
+    readonly refused?: Core.RefusalReason
+  }
+  | { readonly suspend: string; readonly run?: string }
 
 export interface Case {
   readonly description: string
@@ -62,7 +72,7 @@ export const conformanceDir = path.resolve(import.meta.dirname, "../../../../spe
  * The features of case.schema.json's `requires` this runtime implements. A case that requires
  * another is skipped, not failed.
  */
-export const supported: ReadonlyArray<string> = ["messaging"]
+export const supported: ReadonlyArray<string> = ["messaging", "parallel", "snapshots"]
 
 /** Whether this runtime implements everything case `name` requires. */
 export const isSupported = (name: string): boolean => {
@@ -285,6 +295,80 @@ export const runCase = (name: string): CaseResult => {
     actors.set(run, actor)
     machineOf.set(run, machine)
   }
+  // Saved snapshots: the files of the case, and the suspend steps still waiting for their run.
+  const readSnapshot = (name: string): string => {
+    const file = path.join(dir, `${name}.snapshot.json`)
+    if (!fs.existsSync(file)) fail(`no snapshot file ${name}.snapshot.json`)
+    return fs.readFileSync(file, "utf8")
+  }
+  const compareSaved = (name: string, saved: Core.Saved) => {
+    const actual = `${Core.canonicalJson(saved)}\n`
+    if (actual !== readSnapshot(name)) fail(`snapshot ${name} differs: ${actual}`)
+  }
+  const pendingSuspends: Array<{ readonly name: string; readonly run: string; readonly fiber: Fiber.Fiber<Core.Saved> }> = []
+  /** Runs being suspended or suspended: no event or cancel step may give them an input. */
+  const suspending = new Set<string>()
+  const suspended = new Set<string>()
+  const checkSuspends = () => {
+    for (const pending of [...pendingSuspends]) {
+      const exit = pending.fiber.pollUnsafe()
+      if (exit === undefined) continue
+      pendingSuspends.splice(pendingSuspends.indexOf(pending), 1)
+      if (Exit.isFailure(exit)) fail(`suspending ${pending.run} failed: ${exit.cause}`)
+      else {
+        if (exit.value.status === "running") suspended.add(pending.run)
+        compareSaved(pending.name, exit.value)
+      }
+    }
+  }
+  const nextRun = () => `r${actors.size + 1}`
+
+  const restoreTop = (step: Extract<Step, { readonly restore: string }>) => {
+    const text = readSnapshot(step.restore)
+    const json = JSON.parse(text) as Core.Json
+    const named = typeof json === "object" && json !== null && !Array.isArray(json)
+      ? (json as { readonly [key: string]: Core.Json })["machine"]
+      : undefined
+    const machine = typeof named === "string" && Object.hasOwn(ir.machines, named) && !spec.stub.includes(named)
+      ? named
+      : spec.machine
+    let calls = 0
+    const options: Roadbook.RestoreOptions = step.migrate === undefined ? {} : {
+      migrate: (old) => {
+        calls += 1
+        if (Core.canonicalJson(old) !== Core.canonicalJson(json)) fail("the migration was not given the snapshot being restored")
+        return JSON.parse(readSnapshot(step.migrate!)) as Core.Saved
+      }
+    }
+    const before = records.length
+    const run = step.run ?? nextRun()
+    const exit = exec(Effect.exit(
+      handleFor(machine).restore(json as never, options).pipe(
+        Scope.provide(scope),
+        Effect.provideService(Roadbook.TraceSink, { write: (record) => records.push(record) }),
+        Effect.provideService(Roadbook.Timer, timer),
+        Effect.provideService(Roadbook.RootRunId, () => run),
+        Effect.provideService(Roadbook.RunObserver, { started: (handle) => runs.set(handle.id, handle) })
+      )
+    ))
+    if (step.migrate !== undefined && calls !== 1) fail(`the migration was called ${calls} times, not once`)
+    if (step.refused !== undefined) {
+      if (Exit.isSuccess(exit)) fail(`restoring ${step.restore} was not refused`)
+      const error = Exit.isFailure(exit) ? exit.cause.reasons.find(Cause.isFailReason)?.error : undefined
+      if (!(error instanceof Roadbook.RestoreError)) fail(`restoring ${step.restore} failed otherwise: ${String(exit)}`)
+      if (error!.reason !== step.refused) fail(`restoring ${step.restore} was refused for ${error!.reason}, not ${step.refused}`)
+      if (records.length !== before) fail(`a refused restore wrote ${records.length - before} records`)
+      return
+    }
+    if (Exit.isFailure(exit)) return fail(`restoring ${step.restore} failed: ${exit.cause}`)
+    const actor = exit.value
+    if (actor.handle.id !== run) fail(`the restored run was not named ${run}`)
+    if (actors.has(run)) fail(`a second run named ${run}`)
+    actors.set(run, actor)
+    machineOf.set(run, machine)
+    statuses.set(run, step.status ?? "running")
+  }
+
   const statusOf = (run: string) => (runs.get(run) ?? fail(`no run ${run}`)).snapshot().status
   const actorOf = (run: string) => actors.get(run) ?? fail(`no top-level run ${run}`)
   const statuses = new Map<string, Core.Status>([["r1", spec.status]])
@@ -349,6 +433,16 @@ export const runCase = (name: string): CaseResult => {
       scheduler.drain()
     } else if ("cancel" in step) {
       exec(Effect.exit(actorOf(step.run ?? "r1").cancel))
+    } else if ("snapshot" in step) {
+      compareSaved(step.snapshot, exec(actorOf(step.run ?? "r1").save))
+    } else if ("restore" in step) {
+      restoreTop(step)
+    } else if ("suspend" in step) {
+      const run = step.run ?? "r1"
+      suspending.add(run)
+      const fiber = Effect.runFork(actorOf(run).suspend, { scheduler })
+      pendingSuspends.push({ name: step.suspend, run, fiber })
+      scheduler.drain()
     } else if ("start" in step) {
       if (actors.has(step.run)) fail(`a second run named ${step.run}`)
       spawnTop(step.start, step.run, step.input)
@@ -389,6 +483,9 @@ export const runCase = (name: string): CaseResult => {
       ? [step.run ?? "r1"]
       : []
 
+  /** Whether the step gives an input to some top-level run, and so needs one that is live. */
+  const givesInput = (step: Step) => "event" in step || "task" in step || "cancel" in step || "together" in step
+
   try {
     spawnTop(spec.machine, "r1", spec.input)
     scheduler.drain()
@@ -396,12 +493,17 @@ export const runCase = (name: string): CaseResult => {
       const what = JSON.stringify(step)
       for (const run of targets(step)) {
         if (statusOf(run) !== "running") fail(`${run} had already ended (${statusOf(run)}) before step ${what}`)
+        if (suspending.has(run)) fail(`${run} is suspended or being suspended before step ${what}`)
       }
-      if (!("start" in step) && [...actors.keys()].every((run) => statusOf(run) !== "running")) {
-        fail(`every top-level run had ended before step ${what}`)
+      if (
+        givesInput(step) && [...actors.keys()].every((run) => statusOf(run) !== "running" || suspended.has(run))
+      ) {
+        fail(`every top-level run had ended or been suspended before step ${what}`)
       }
       carryOut(step)
+      checkSuspends()
     }
+    for (const pending of pendingSuspends) fail(`suspending ${pending.run} never gave snapshot ${pending.name}`)
     for (const [run, status] of statuses) {
       if (statusOf(run) !== status) fail(`the status of ${run} is ${statusOf(run)}, not ${status}`)
     }

@@ -2,7 +2,9 @@
 // each run's records to know, at any record, which states are active, which variables have
 // which values, what is running and which transition was taken last; it checks the records
 // against the chart as it goes, and warns when a run was recorded from another version of its
-// machine (the `ir` of `started` differs from the machine's hash). Pure and DOM-free.
+// machine (the `ir` of `started` differs from the machine's hash). A run restored from a saved
+// snapshot begins with `restored` instead, and goes on from the snapshot's configuration,
+// variables and work; a suspended run ends with `suspended`. Pure and DOM-free.
 
 import type { Json } from '@roadbook/core'
 import type { Ir, Machine, State } from './ir.ts'
@@ -13,10 +15,13 @@ import { allStates } from './model.ts'
 export type Rec = { kind: string; run: string; t: number; parent?: string } & { [member: string]: unknown }
 
 const KINDS = new Set([
-  'started', 'entered', 'exited', 'event', 'dropped', 'stale', 'transition', 'set', 'action', 'sent', 'emitted', 'undelivered',
+  'started', 'restored', 'suspended', 'entered', 'exited', 'event', 'dropped', 'stale', 'transition', 'set', 'action', 'sent', 'emitted', 'undelivered',
   'invoke.started', 'invoke.cancelled', 'timer.started', 'timer.cancelled', 'done', 'failed', 'cancelled', 'defect',
 ])
-const ENDS = new Set(['done', 'failed', 'cancelled', 'defect'])
+/** The records after which a run writes nothing more. */
+const ENDS = new Set(['done', 'failed', 'cancelled', 'defect', 'suspended'])
+/** The records that begin a run. */
+const BEGINS = new Set(['started', 'restored'])
 
 /** The records of a JSON Lines trace, and what could not be read (by line number, from 1). */
 export function parseTrace(text: string): { records: Rec[]; problems: string[] } {
@@ -58,9 +63,9 @@ export interface RunInfo {
   id: string
   parent: string | null
   machine: string
-  /** The `ir` of its `started` record. */
+  /** The `ir` of its `started` or `restored` record. */
   hash: string
-  /** The index of its `started` record, and of its last record. */
+  /** The index of its `started` or `restored` record, and of its last record. */
   first: number
   last: number
 }
@@ -74,8 +79,10 @@ export interface RunView {
   input: { [param: string]: Json }
   /** The variables set so far, by name. */
   vars: { [name: string]: Json }
-  /** `running`, or how the run ended. */
+  /** `running`, or how the run ended. A suspended run is still `running`. */
   status: string
+  /** Whether the run was suspended: stopped and saved, to go on as another run. */
+  suspended: boolean
   /** The output, error or defect of the record that ended it. */
   result: Json
   invokes: { id: number; state: string; src: string }[]
@@ -114,7 +121,7 @@ export class Replay {
     this.records.forEach((r, i) => {
       const info = runs.get(r.run)
       if (info) info.last = i
-      else if (r.kind === 'started') runs.set(r.run, { id: r.run, parent: r.parent ?? null, machine: str(r.machine), hash: str(r.ir), first: i, last: i })
+      else if (BEGINS.has(r.kind)) runs.set(r.run, { id: r.run, parent: r.parent ?? null, machine: str(r.machine), hash: str(r.ir), first: i, last: i })
     })
     this.runs = [...runs.values()].sort((a, b) => compareRunIds(a.id, b.id))
     for (const run of this.runs) {
@@ -144,7 +151,7 @@ export class Replay {
   /** The run `run` after the records up to and including index `at`. */
   viewAt(at: number, run: string): RunView {
     const info = this.runs.find((r) => r.id === run)
-    const view: RunView = { run, machine: info?.machine ?? '', active: [], input: {}, vars: {}, status: 'running', result: null, invokes: [], timers: [], taken: null }
+    const view: RunView = emptyView(run, info?.machine ?? '')
     for (let i = 0; i <= at && i < this.records.length; i++) {
       const r = this.records[i]!
       if (r.run === run) apply(view, r)
@@ -198,14 +205,14 @@ export class Replay {
     this.records.forEach((r, i) => {
       const at = `record ${i + 1} (${r.kind}, run ${r.run})`
       const info = this.runs.find((x) => x.id === r.run)
-      if (r.kind === 'started') {
+      if (BEGINS.has(r.kind)) {
         if (views.has(r.run)) out.push(`${at}: the run started twice`)
         const dot = r.run.lastIndexOf('.')
         const parent = dot < 0 ? undefined : r.run.slice(0, dot)
         if ((r.parent ?? undefined) !== parent) out.push(`${at}: parent should be ${parent ?? 'absent'}`)
       } else if (!views.has(r.run)) return void out.push(`${at}: before the run's started record`)
       if (ended.has(r.run)) return void out.push(`${at}: after the run ended`)
-      const view = views.get(r.run) ?? { run: r.run, machine: info?.machine ?? '', active: [], input: {}, vars: {}, status: 'running', result: null, invokes: [], timers: [], taken: null }
+      const view = views.get(r.run) ?? emptyView(r.run, info?.machine ?? '')
       views.set(r.run, view)
       const m = own(this.ir.machines, view.machine)
       const states = this.stateMap(view.machine)
@@ -256,12 +263,49 @@ export class Replay {
   }
 }
 
+const emptyView = (run: string, machine: string): RunView => ({
+  run,
+  machine,
+  active: [],
+  input: {},
+  vars: {},
+  status: 'running',
+  suspended: false,
+  result: null,
+  invokes: [],
+  timers: [],
+  taken: null,
+})
+
+/** The parts of a saved snapshot (spec/snapshot.schema.json) a `restored` record gives the view. */
+interface SavedView {
+  active?: string[]
+  input?: { [param: string]: Json }
+  vars?: { [name: string]: Json }
+  timers?: { id: number; state: string; index: number; delay: number }[]
+}
+
 /** Follows one record of a run. */
 function apply(view: RunView, r: Rec) {
   switch (r.kind) {
     case 'started':
       view.machine = str(r.machine)
       view.input = (r.input ?? {}) as { [param: string]: Json }
+      break
+    case 'restored': {
+      // The run goes on from the snapshot. Its invokes and the timers not yet due restart in
+      // the records that follow, with the same ids; the timers already due stay until their
+      // expiry is taken.
+      const saved = (r.snapshot ?? {}) as SavedView
+      view.machine = str(r.machine)
+      view.active = [...(saved.active ?? [])]
+      view.input = saved.input ?? {}
+      view.vars = saved.vars ?? {}
+      view.timers = (saved.timers ?? []).map(({ id, state, index, delay }) => ({ id, state, index, delay }))
+      break
+    }
+    case 'suspended':
+      view.suspended = true
       break
     case 'entered':
       if (!view.active.includes(str(r.state))) view.active.push(str(r.state))
@@ -282,7 +326,11 @@ function apply(view: RunView, r: Rec) {
       view.invokes = view.invokes.filter((x) => x.id !== r.invoke)
       break
     case 'timer.started':
-      view.timers = [...view.timers, { id: num(r.timer), state: str(r.state), index: num(r.index), delay: num(r.delay) }]
+      // A restored timer restarts with the id it was saved with: the record replaces it.
+      view.timers = [
+        ...view.timers.filter((x) => x.id !== r.timer),
+        { id: num(r.timer), state: str(r.state), index: num(r.index), delay: num(r.delay) },
+      ]
       break
     case 'timer.cancelled':
       view.timers = view.timers.filter((x) => x.id !== r.timer)
@@ -376,6 +424,12 @@ export function recordText(r: { kind: string; [member: string]: unknown }): stri
   switch (r.kind) {
     case 'started':
       return `started ${str(r.machine)}(${args(r.input)})`
+    case 'restored': {
+      const saved = (r.snapshot ?? {}) as { run?: unknown }
+      return `restored ${str(r.machine)} from the snapshot of run ${str(saved.run)}${r.migrated ? `, migrated from ${short(str(r.migrated))}` : ''}`
+    }
+    case 'suspended':
+      return 'suspended'
     case 'entered':
     case 'exited':
       return `${r.kind} ${stateName(r.state)}`

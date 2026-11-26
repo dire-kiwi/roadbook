@@ -143,6 +143,10 @@ export class Codec {
       const port = portOf(value)
       if (port === undefined) throw new CodecError(`${what} is not a handle to a running ${machine}`)
       if (port.machine !== machine) throw new CodecError(`${what} is a handle to a ${port.machine}, not a ${machine}`)
+      const hash = this.ir.machines[machine]?.hash
+      if (hash !== undefined && port.hash !== hash) {
+        throw new CodecError(`${what} is a handle to another version of ${machine} (${port.hash}, not ${hash})`)
+      }
       this.refs?.set(port.id, value as object)
       return port.id
     }
