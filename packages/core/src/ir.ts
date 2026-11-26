@@ -1,5 +1,5 @@
 /**
- * The Roadbook IR, version 0.2, as `spec/ir.md` describes it. The types mirror the JSON;
+ * The Roadbook IR, version 0.3, as `spec/ir.md` describes it. The types mirror the JSON;
  * {@link loadIr} checks the version before anything else.
  */
 import type { Json } from "./json.ts"
@@ -78,7 +78,8 @@ export interface Machine {
   readonly hash: string
 }
 
-export type StateKind = "atomic" | "compound" | "parallel" | "final"
+/** `history` and `deepHistory` are history pseudo-states (ir.md, "History states"). */
+export type StateKind = "atomic" | "compound" | "parallel" | "final" | "history" | "deepHistory"
 
 export interface State {
   readonly id: string
@@ -165,6 +166,16 @@ export interface Ir {
   readonly tasks: Readonly<Record<string, TaskDecl>>
   readonly machines: Readonly<Record<string, Machine>>
 }
+
+/** Whether `state` is a history pseudo-state: never active, and never one of its parent's children. */
+export const isHistory = (state: State): boolean => state.kind === "history" || state.kind === "deepHistory"
+
+/**
+ * The children of `state` in execution.md's sense: its `states` that are not history states,
+ * in order. A parallel state's regions are these.
+ */
+export const childrenOf = (state: State): ReadonlyArray<State> =>
+  state.states.some(isHistory) ? state.states.filter((c) => !isHistory(c)) : state.states
 
 /** Thrown by {@link loadIr} for a document this package cannot run. */
 export class IrError extends Error {
