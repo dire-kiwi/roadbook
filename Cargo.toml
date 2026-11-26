@@ -13,7 +13,13 @@ rust-version = "1.85"
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# float_roundtrip: parse every float exactly, as JavaScript does, so canonical
+# JSON matches the TypeScript runtime byte for byte.
+serde_json = { version = "1", features = ["float_roundtrip"] }
+indexmap = { version = "2", features = ["serde"] }
+ryu-js = "1"
+sha2 = "0.10"
+jsonschema = { version = "0.33", default-features = false }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
