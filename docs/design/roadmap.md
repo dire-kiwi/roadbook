@@ -41,15 +41,9 @@ editors/
 | `roadbook viz [paths…] [-o dir] [--self-contained] [--watch]` | Write the HTML viewer, a page per entry chart, plus an index. |
 | `roadbook viz --trace <run.jsonl>` | The same, opening the pages that have the trace's machine in replay mode. |
 | `roadbook viz --diff <git range>` | Write a viewer showing what changed between two revisions (`main..HEAD`, `main...HEAD`, or one revision against the working tree), with `summary.md` and `summary.json`. |
-<<<<<<< HEAD
 | `roadbook viz --coverage <traces> [--coverage <traces>…]` | Write the viewer shading each transition and state by how often the traces took it. Each `--coverage` takes one trace file or directory of them; repeat it for more. |
-| `roadbook export mermaid\|scxml\|ir` | Other formats. Mermaid renders inline on GitHub. |
-| `roadbook paths <Machine> [file] [--json] [--max N]` | List the paths through a machine, from its initial state to each final state, each state with no way out and each point where going on would repeat a transition, each loop taken at most once, for test generation and coverage. |
-=======
-| `roadbook viz --coverage <traces…>` | Write the viewer shading each transition and state by how often the traces took it. |
 | `roadbook export mermaid\|scxml\|ir <file> [--machine Name] [-o out]` | Other formats. Mermaid renders inline on GitHub; SCXML is one W3C document per machine; `ir` (no `--machine`) is the compiled IR. |
-| `roadbook paths <Machine> [file] [--json] [--max N]` | List the paths through a machine, from its initial state to each final state and each state with no way out, each loop taken at most once, for test generation and coverage. |
->>>>>>> sm3/scxml
+| `roadbook paths <Machine> [file] [--json] [--max N]` | List the paths through a machine, from its initial state to each final state, each state with no way out and each point where going on would repeat a transition, each loop taken at most once, for test generation and coverage. |
 | `roadbook lsp` | The language server, on standard input and output, for editors: diagnostics, go to definition, references, rename, hover, formatting, outline. |
 
 ## Milestones
