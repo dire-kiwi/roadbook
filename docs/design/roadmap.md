@@ -60,7 +60,7 @@ Progress is recorded on each milestone below as it finishes.
 | M4. Rust runtime | Done, 26 November 2026 |
 | M5. Messaging | Done, 26 November 2026 |
 | M6. Depth | Done, 26 November 2026 |
-| M7. Review tooling | In progress |
+| M7. Review tooling | Done, 26 November 2026 |
 | M8. Editors | In progress |
 
 **M1. Language and IR.** Parser, name resolution, the structural checks, IR and its schema, `check` and `fmt`, in Rust. Covers atomic, compound and final states, events, guards, `invoke`, `after`, `always`. Type checking of expressions and arguments. The shop example compiles, and bad charts produce the diagnostics described in the language page.
@@ -88,6 +88,8 @@ Progress is recorded on each milestone below as it finishes.
 *Done.* Definite assignment (`RB0403`): a forward analysis over the chart, conservative in a few documented places, about 100 ms on a 1,000-state chart; it found two real bugs in a compiler test chart, and the runtime check stays as a backstop. Parallel states and snapshots (`restore`, `save`, `suspend`, `resume`, with the IR hash check and migrations) are specified in `spec/execution.md` and `spec/snapshot.schema.json`, with conformance cases checked by an independent throwaway implementation, and built in both runtimes: they write identical traces and byte-identical snapshot files for all 49 cases, so a snapshot saved by one runtime restores in the other. The viewer has simulate mode (it runs `@roadbook/core` in the page and asks the reader for task outcomes and function results) and replay mode (`roadbook viz --trace`, or a trace dropped on the page). Independent reviews found a suspend/cancel race in each runtime, aliased snapshot objects, and several places the runtimes disagreed on restore; all are fixed, several as new conformance cases.
 
 **M7. Review tooling.** Diff mode and coverage mode in the viewer. A CI recipe that attaches the diff viewer to a pull request.
+
+*Done.* `roadbook viz --diff <range>` draws both revisions of each chart as one diagram, with added, removed, changed and moved states, transitions, machines and declarations marked in text and line style as well as colour, and writes `summary.md` and `summary.json`. Coverage (`roadbook viz --coverage`, or traces dropped on a page) shades each state and transition by how often the traces took it and flags the ones never taken. `roadbook paths` lists the paths through a machine for test generation. `docs/ci/roadbook-diff.yml` is a GitHub Actions recipe that builds the diff pages for a pull request, uploads them and comments a summary; this repository has no remote, so it was checked locally and under Node with a stand-in client but never run on GitHub. An independent review found an argument-parsing bug, unescaped chart text in the pull-request comment, and gaps in matching across files; all are fixed.
 
 **M8. Editors.** Tree-sitter grammar, language server (diagnostics, go to definition, rename), VS Code extension with live preview.
 
