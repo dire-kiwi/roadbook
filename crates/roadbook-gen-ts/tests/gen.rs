@@ -192,6 +192,49 @@ fn rejects_what_it_cannot_express() {
 }
 
 #[test]
+fn rejects_error_fields_an_error_class_cannot_have() {
+    for (field, ty) in [
+        ("name", "bool"),
+        ("message", "int"),
+        ("stack", "string?"),
+        ("name", "R"),
+        ("toString", "string"),
+        ("toJSON", "int"),
+        ("pipe", "int"),
+    ] {
+        let src = format!("type R {{ x: int }}\n\nerror Weird {{ why: string, {field}: {ty} }}\n");
+        let e = error_of(&[("w.road", &src)]);
+        let GenError::ErrorField {
+            file, line, error, ..
+        } = &e
+        else {
+            panic!("{field}: {ty}: {e}");
+        };
+        assert_eq!(
+            (file.as_str(), *line, error.as_str()),
+            ("w.road", 3, "Weird")
+        );
+        let text = e.to_string();
+        assert!(
+            text.starts_with(&format!(
+                "w.road:3: the error type `Weird` cannot have the field `{field}: {ty}` in TypeScript: "
+            )),
+            "{text}"
+        );
+    }
+    // A string (or an enum, or an alias of either) is what `Error` has; other names are free.
+    let ir = ir(
+        &mut MemoryLoader::new().with(
+            "ok.road",
+            "enum Kind { A, B }\ntype Text = string\n\
+             error Fine { name: Text, message: Kind, stack: string, cause: int, constructor: bool }\n",
+        ),
+        "ok.road",
+    );
+    gen_ok(&ir);
+}
+
+#[test]
 fn a_file_with_nothing_to_export() {
     let ir = ir(
         &mut MemoryLoader::new().with("t.road", "task t()\n"),

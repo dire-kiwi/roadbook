@@ -1,5 +1,6 @@
 # The Roadbook project at the repository root, so that `roadbook check` here checks every
-# chart. Keys are documented under "Projects" in docs/design/language.md.
+# chart and `roadbook gen --check` checks every generated module. Keys are documented under
+# "Projects" in docs/design/language.md.
 
 exclude = [
   # Charts that fail on purpose: each must give exactly its diagnostics.
@@ -7,4 +8,13 @@ exclude = [
   "crates/roadbook/tests/ui/charts",
   # The spike implements the first draft of the language, not this one.
   "spike",
+]
+
+# Charts that are compiler, runtime or viewer fixtures, read as IR or by `roadbook::include!`,
+# not through a generated TypeScript module.
+gen-exclude = [
+  "crates/roadbook-compiler/tests/pass",
+  "crates/roadbook/tests/charts",
+  "packages/viewer/test/charts",
+  "spec/conformance/charts",
 ]

@@ -93,6 +93,17 @@ describe("POST /orders", () => {
     expect(await response.json()).toEqual(row.response)
   })
 
+  it("answers a run that ends with a defect with 500", async () => {
+    // qty * 1250 is over 2^53 - 1, which priceOrder's int result cannot be in TypeScript.
+    const response = await fetch(`${base}/orders`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer good" },
+      body: JSON.stringify({ items: [{ sku: "apple", qty: 9007199254740 }] })
+    })
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ code: "internal" })
+  })
+
   it("answers a body that is not JSON with 400", async () => {
     const response = await fetch(`${base}/orders`, {
       method: "POST",

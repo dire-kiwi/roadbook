@@ -27,6 +27,8 @@
 //!   files (the modules would import each other), contains an error type, or reaches an error
 //!   type (whose encoded form differs from its type, which `Schema.suspend` cannot express
 //!   without spelling out the encoded type).
+//! - An `error`'s class extends JavaScript's `Error`, so some field names are taken: see
+//!   [`error_field_conflict`]. Such a field is rejected with [`GenError::ErrorField`].
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
@@ -71,6 +73,21 @@ pub enum GenError {
         /// The name.
         name: String,
     },
+    /// A field of an `error` that its class cannot have: see [`error_field_conflict`].
+    ErrorField {
+        /// The file declaring the error, as in `ir.sources`.
+        file: String,
+        /// The line of the error's declaration.
+        line: u32,
+        /// The error.
+        error: String,
+        /// The field.
+        field: String,
+        /// Its type, as written in Roadbook.
+        ty: String,
+        /// Why it cannot have it.
+        reason: &'static str,
+    },
 }
 
 impl fmt::Display for GenError {
@@ -95,6 +112,18 @@ impl fmt::Display for GenError {
                  (machine `M` also declares `MDef`; an event declared by two machines of the \
                  file is named `<Machine><Event>`; `Schema`, `Duration` and `Roadbook` are \
                  imported names)"
+            ),
+            GenError::ErrorField {
+                file,
+                line,
+                error,
+                field,
+                ty,
+                reason,
+            } => write!(
+                f,
+                "{file}:{line}: the error type `{error}` cannot have the field `{field}: {ty}` in \
+                 TypeScript: {reason}"
             ),
         }
     }
@@ -226,6 +255,43 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
     let mut out = parts.join("\n\n");
     out.push('\n');
     Ok(out)
+}
+
+/// Why an `error` cannot have `field` in TypeScript, if it cannot. Its class extends
+/// `Schema.TaggedError`, and so JavaScript's `Error`, and its instance type is the fields
+/// intersected with that of an `Error`. Checked against `tsc` and `effect@4.1.5`:
+///
+/// - `name`, `message` and `stack` are `string`s on every `Error`. A field with one of these
+///   names must be a `string` or an enum (directly or through aliases): any other type makes
+///   the field's type wrong, and a `bool` makes the whole class `never`, which `tsc` rejects.
+/// - `toString`, `toJSON` and `pipe` are methods of every error instance (Effect's
+///   `Inspectable` and `Pipeable`): a field would get the wrong type and replace the method,
+///   so `String(error)`, `JSON.stringify(error)` or `error.pipe(…)` would break.
+///
+/// Other names, `cause` and `constructor` among them, give the field its declared type.
+pub fn error_field_conflict(ir: &Ir, field: &Field) -> Option<&'static str> {
+    fn stringish(ir: &Ir, t: &TypeRef) -> bool {
+        match t {
+            TypeRef::Builtin(b) => *b == Builtin::String,
+            TypeRef::Named(n) => match ir.types.get(n).map(|d| &d.def) {
+                Some(TypeDef::Enum { .. }) => true,
+                Some(TypeDef::Alias { ty }) => stringish(ir, ty),
+                _ => false,
+            },
+            TypeRef::List(_) | TypeRef::Optional(_) => false,
+        }
+    }
+    match field.name.as_str() {
+        "name" | "message" | "stack" if !stringish(ir, &field.ty) => Some(
+            "every error is a JavaScript `Error`, whose `name`, `message` and `stack` are \
+             strings; give the field the type `string` (or an enum), or rename it",
+        ),
+        "toString" | "toJSON" | "pipe" => Some(
+            "every error instance has the methods `toString`, `toJSON` and `pipe`, which the \
+             field would replace; rename it",
+        ),
+        _ => None,
+    }
 }
 
 struct Gen<'a> {
@@ -420,6 +486,23 @@ impl<'a> Gen<'a> {
                 format!("{schema}\nexport type {name} = typeof {name}.Type")
             }
             TypeDef::Error { fields } => {
+                for field in fields {
+                    if let Some(reason) = error_field_conflict(self.ir, field) {
+                        return Err(GenError::ErrorField {
+                            file: self
+                                .ir
+                                .sources
+                                .get(decl.span.file as usize)
+                                .map(|s| s.path.clone())
+                                .unwrap_or_default(),
+                            line: decl.span.line,
+                            error: name.to_owned(),
+                            field: field.name.clone(),
+                            ty: field.ty.to_string(),
+                            reason,
+                        });
+                    }
+                }
                 self.schema = true;
                 block(
                     &format!(

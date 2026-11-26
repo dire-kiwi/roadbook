@@ -22,9 +22,11 @@ The success type is the chart's output. The error type is the union of the chart
 - For each machine, a definition type listing its input, output, errors, events, state ids (the root's included), and the signature of every function, action, task and child machine it uses.
 - For each machine, a typed handle with the IR embedded: `export const PlaceOrder = Roadbook.make<PlaceOrderDef>(ir, "PlaceOrder", errors)`. `errors` holds every error class the IR declares, imported from the modules that declare them, so that the runtime can hand host code and callers instances of them rather than plain objects.
 
+An error's class extends JavaScript's `Error`, so a few field names are taken. A field named `name`, `message` or `stack` must be a `string` or an enum, as on `Error`; any other type would give the field the wrong type (a `bool` makes the class `never`, which `tsc` rejects). A field named `toString`, `toJSON` or `pipe` would replace a method every error instance has. `roadbook gen` rejects both, naming the file, line and field; rename the field. Records and events have no such restriction.
+
 Declarations of an imported file are not repeated: the module imports them from that file's generated module (`import { Order, User } from "./types.road.js"`). An `extern type` is `unknown` (and `Schema.Unknown`); binding one to a host type in `roadbook.toml` is not implemented yet. The generator is the library crate [`roadbook-gen-ts`](../../crates/roadbook-gen-ts), so other tools can reuse it.
 
-The generated file is committed. Reviewers see type changes in the diff, consumers need no build step, and `roadbook gen --check` in CI fails if it is stale. A Vite plugin that generates on the fly is a later convenience.
+The generated file is committed. Reviewers see type changes in the diff, consumers need no build step, and `roadbook gen --check` in CI fails if one is stale or missing, or left behind by a deleted chart (the project's `gen-exclude` names charts that need none; see [projects](language.md#projects)). A Vite plugin that generates on the fly is a later convenience.
 
 ## Implementing a machine
 
@@ -67,7 +69,7 @@ export const PlaceOrderLive = PlaceOrder.implement({
 
 Each implementation receives the arguments the chart passes, as one object with the declared parameter names. It does not receive the machine's variables or the current event.
 
-Values cross the boundary in their host form: records as plain objects, errors as instances of their tagged error classes, enums as string literals, `duration` as an Effect `Duration`, an optional value as `null`, `int` and `float` as `number`, a machine or task that returns nothing as `void`. The driver converts them to and from the core's JSON form by the IR's types, and a value that is not of its declared type (a negative `Duration`, an `int` outside ±(2^53 − 1), a missing field) is a `host` defect.
+Values cross the boundary in their host form: records as plain objects, errors as instances of their tagged error classes, enums as string literals, `duration` as an Effect `Duration`, an optional value as `null`, `int` and `float` as `number`, a machine or task that returns nothing as `void`. The driver converts them to and from the core's JSON form by the IR's types, and a value that is not of its declared type (a negative `Duration`, an `int` outside ±(2^53 − 1), a missing field) is a `host` defect. A `json` or `extern type` value is copied and must be JSON: `null`, a boolean, a finite number, a string, an array or a plain object of JSON values; `NaN`, `Infinity`, `undefined`, a function, a class instance such as a `Date`, or a cycle is a `host` defect.
 
 The types enforce the contract in both directions:
 
@@ -106,7 +108,7 @@ With Effect's own `HttpApi`, the machine run is the body of the endpoint's handl
 const actor = yield* PlaceOrderLive.spawn(input)      // Effect<Actor, never, R | Scope>, once the run has started
 yield* actor.send({ _tag: "Cancel" })
 const snapshot = yield* actor.snapshot                // status, active states, matches(state), core
-actor.changes                                         // Stream<Snapshot>
+actor.changes                                         // Stream<Snapshot>, ends after the final one
 const response = yield* actor.result                  // Effect<Output, Errors>
 yield* actor.cancel                                   // cancel gracefully and wait
 ```
@@ -122,7 +124,7 @@ A machine with a parallel state cannot run yet (milestone 6): `implement` throws
 | A machine instance | A fiber running the event loop inside a `Scope` |
 | The event queue | One `Queue` per run, which events, invoke fibers and timer fibers all offer to. The run takes one input at a time. |
 | The current snapshot | `SubscriptionRef`, set after each step's commands are carried out, whose `changes` is the stream above |
-| A state's `invoke` | A fiber in a `FiberMap` keyed by invoke id. Removing the key interrupts it and waits for it to end. |
+| A state's `invoke` | A detached fiber in a map keyed by invoke id. Cancelling a task or stub interrupts its fiber without waiting for it to end; cancelling a child run interrupts its fiber and waits for its cancel step ([below](#child-runs-and-cancellation)). |
 | `after` timers | Fibers that sleep through the driver's `Timer` service, in a map keyed by timer id. The default `Timer` sleeps on Effect's `Clock`. |
 | A child machine run from its chart | The invoke's fiber, given an invoke context (a `Context.Reference`) that the child's `run` claims |
 | Cancelling a run | Interruption. Each step runs uninterruptibly and the cancel step (exit effects, the `cancelled` record) in `Effect.onInterrupt`. |
@@ -142,7 +144,8 @@ Effect's structured concurrency is the reason this fits so well. "Leaving a stat
 The rules are in [execution.md](../../spec/execution.md#child-runs); in Effect they come out like this.
 
 - **The invoke context.** The driver runs a machine invoke's implementation in a fiber that has an invoke context (`CurrentInvoke`): a `Context.Reference` holding the trace sink, the timer, the run observer, the parent's run id, the invoke id and a cancel token. `CheckoutLive.run(…)` finds it, claims the token and runs as child run `r1.4`, writing to the parent's sink. A stub such as `() => Effect.fail(…)` never claims it and is treated as a task. Functions, actions and tasks run with no context, and so does everything a child run does, except its own machine invokes.
-- **Cancelling a child.** Leaving the state marks the token cancelled and removes the invoke from the `FiberMap`, which interrupts the fiber and waits for it. The child's `run` finishes its current step, runs its cancel step in `onInterrupt`, and only then lets the interruption complete, so leaving the state waits for the child's exit effects, like an action. A fiber whose token is cancelled queues nothing, whatever its exit.
+- **Cancelling a task or stub.** Leaving the state marks the token cancelled and interrupts the invoke's fiber, without waiting for it to end: whatever it does while being interrupted (its finalizers, an uninterruptible region) runs on detached and is ignored. The same holds for work a run still holds when it ends.
+- **Cancelling a child.** If the token was claimed, leaving the state marks it cancelled, interrupts the fiber and waits for it. The child's `run` finishes its current step, runs its cancel step in `onInterrupt`, and only then lets the interruption complete, so leaving the state waits for the child's exit effects, like an action. A fiber whose token is cancelled queues nothing, whatever its exit.
 - **Defects.** A thrown `Error` becomes a host defect with its `message`, any other value one with `String(value)`; so does a failure in an action, or a task's failure with a value that has no `_tag`. A run that ends with a defect dies with a `Defect` (an `Error` whose `defect` member is the defect object), which the parent's driver passes on unchanged, so a child's defect reaches the root as it was. A defect in a child's cancel step is written into the token by the child, and the parent reads it once the interrupted fiber has ended and ends with that defect; the child's fiber also dies with it.
 - **Cancelling from outside.** Interrupting the fiber of a root `run`, or closing the scope of a `spawn`ed actor, cancels it the same way: exit effects run and the trace ends with `cancelled` before the interruption completes.
 

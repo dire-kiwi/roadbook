@@ -24,6 +24,9 @@ roadbook check
 step "Charts: canonical formatting of the examples and the conformance charts"
 roadbook fmt --check examples spec/conformance/charts
 
+step "Charts: every generated TypeScript module is current, and none is left over"
+roadbook gen --check
+
 step "Conformance: the committed IR and hashes are what the compiler produces now"
 sh spec/conformance/regen-ir.sh >/dev/null
 git diff --exit-code -- spec/conformance

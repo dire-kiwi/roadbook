@@ -8,7 +8,8 @@
 //! `roadbook.toml` may hold `exclude = ["glob", …]`: project paths of files and directories
 //! that a directory walk skips. A glob matches a whole path; `*` matches within one segment,
 //! `**` any number of segments, `?` one character. A file named on the command line is never
-//! excluded. Symbolic links to directories are not followed, so a link loop is harmless.
+//! excluded. `gen-exclude` lists more of them, which only `roadbook gen` skips. Symbolic
+//! links to directories are not followed, so a link loop is harmless.
 
 use std::path::{Component, Path, PathBuf};
 
@@ -21,6 +22,8 @@ pub struct Workspace {
     pub root: PathBuf,
     /// The `exclude` globs of `roadbook.toml`.
     exclude: Vec<String>,
+    /// Its `gen-exclude` globs.
+    gen_exclude: Vec<String>,
 }
 
 impl Workspace {
@@ -45,11 +48,13 @@ impl Workspace {
             if config.is_file() {
                 let text = std::fs::read_to_string(&config)
                     .map_err(|e| format!("cannot read `{}`: {e}", config.display()))?;
-                let exclude =
-                    excludes(&text).map_err(|e| format!("`{}`: {e}", config.display()))?;
+                let list = |key| {
+                    string_list(&text, key).map_err(|e| format!("`{}`: {e}", config.display()))
+                };
                 return Ok(Workspace {
                     root: d.to_path_buf(),
-                    exclude,
+                    exclude: list("exclude")?,
+                    gen_exclude: list("gen-exclude")?,
                 });
             }
             dir = d.parent();
@@ -57,6 +62,7 @@ impl Workspace {
         Ok(Workspace {
             root: cwd,
             exclude: Vec::new(),
+            gen_exclude: Vec::new(),
         })
     }
 
@@ -79,14 +85,40 @@ impl Workspace {
     /// The files to work on: each path given (a directory stands for every `.road` file under
     /// it), or every `.road` file under the root if none is given. Sorted, without duplicates.
     pub fn inputs(&self, paths: &[PathBuf]) -> Result<Vec<String>, String> {
+        self.files(paths, &[], ".road")
+    }
+
+    /// The files `roadbook gen` works on: [`inputs`](Self::inputs), also skipping `gen-exclude`.
+    pub fn gen_inputs(&self, paths: &[PathBuf]) -> Result<Vec<String>, String> {
+        self.files(paths, &self.gen_exclude, ".road")
+    }
+
+    /// The generated modules (`*.road.ts`) under the directories `roadbook gen` would search
+    /// for `paths`; a file named in `paths` stands for none.
+    pub fn gen_outputs(&self, paths: &[PathBuf]) -> Result<Vec<String>, String> {
+        let dirs: Vec<PathBuf> = paths.iter().filter(|p| p.is_dir()).cloned().collect();
+        if !paths.is_empty() && dirs.is_empty() {
+            return Ok(Vec::new());
+        }
+        self.files(&dirs, &self.gen_exclude, ".road.ts")
+    }
+
+    /// The files named `*<suffix>` under each directory given (or the root if none is), skipping
+    /// `extra` as well as `exclude`, and each file given. Sorted, without duplicates.
+    fn files(
+        &self,
+        paths: &[PathBuf],
+        extra: &[String],
+        suffix: &str,
+    ) -> Result<Vec<String>, String> {
         let mut files = Vec::new();
         if paths.is_empty() {
-            self.road_files(&self.root, &mut files);
+            self.walk(&self.root, extra, suffix, &mut files);
         }
         let mut named = Vec::new();
         for p in paths {
             if p.is_dir() {
-                self.road_files(p, &mut files);
+                self.walk(p, extra, suffix, &mut files);
             } else if p.is_file() {
                 named.push(p.clone());
             } else {
@@ -96,7 +128,7 @@ impl Workspace {
         let mut out: Vec<String> = files
             .iter()
             .map(|f| self.project_path(f))
-            .filter(|f| !self.excluded(f))
+            .filter(|f| !self.excluded(f, extra))
             .chain(named.iter().map(|f| self.project_path(f)))
             .collect();
         out.sort();
@@ -109,8 +141,9 @@ impl Workspace {
         self.root.join(project_path)
     }
 
-    /// Whether a project path, or a directory containing it, matches an `exclude` glob.
-    fn excluded(&self, project_path: &str) -> bool {
+    /// Whether a project path, or a directory containing it, matches an `exclude` glob or one
+    /// of `extra`.
+    fn excluded(&self, project_path: &str, extra: &[String]) -> bool {
         let mut prefix = String::new();
         project_path.split('/').any(|seg| {
             if !prefix.is_empty() {
@@ -119,13 +152,14 @@ impl Workspace {
             prefix.push_str(seg);
             self.exclude
                 .iter()
+                .chain(extra)
                 .any(|g| glob(g.trim_end_matches('/'), &prefix))
         })
     }
 
-    /// Every `.road` file under `dir`, sorted, skipping [`SKIPPED`] and excluded directories
-    /// and not following links to directories.
-    fn road_files(&self, dir: &Path, out: &mut Vec<PathBuf>) {
+    /// Every file named `*<suffix>` under `dir`, sorted, skipping [`SKIPPED`] and excluded
+    /// directories and not following links to directories.
+    fn walk(&self, dir: &Path, extra: &[String], suffix: &str, out: &mut Vec<PathBuf>) {
         let Ok(entries) = std::fs::read_dir(dir) else {
             return;
         };
@@ -145,26 +179,27 @@ impl Workspace {
             if p.is_dir() {
                 if !link
                     && !SKIPPED.contains(&name.as_str())
-                    && !self.excluded(&self.project_path(&p))
+                    && !self.excluded(&self.project_path(&p), extra)
                 {
-                    self.road_files(&p, out);
+                    self.walk(&p, extra, suffix, out);
                 }
-            } else if p.extension().is_some_and(|e| e == "road") {
+            } else if name.len() > suffix.len() && name.ends_with(suffix) {
                 out.push(p);
             }
         }
     }
 }
 
-/// The `exclude` list of a `roadbook.toml`: `exclude = ["a", "b/**"]`, on one line or
-/// several. Other keys and tables are left for the tools that read them.
-fn excludes(toml: &str) -> Result<Vec<String>, String> {
+/// The list of strings top-level key `key` of a `roadbook.toml` holds: `exclude = ["a",
+/// "b/**"]`, on one line or several; empty if there is no such key. Other keys and tables are
+/// left for the tools that read them.
+fn string_list(toml: &str, key: &str) -> Result<Vec<String>, String> {
     let mut lines = toml.lines().map(|l| without_comment(l).trim());
     while let Some(line) = lines.next() {
         if line.starts_with('[') {
             break; // a table: `exclude` is a top-level key
         }
-        let Some(rest) = line.strip_prefix("exclude") else {
+        let Some(rest) = line.strip_prefix(key) else {
             continue;
         };
         let Some(rest) = rest.trim_start().strip_prefix('=') else {
@@ -178,15 +213,15 @@ fn excludes(toml: &str) -> Result<Vec<String>, String> {
             }
         }
         let Some(inner) = text.strip_prefix('[').and_then(|t| t.split(']').next()) else {
-            return Err(
-                "`exclude` must be a list of strings, such as `exclude = [\"tests/**\"]`".into(),
-            );
+            return Err(format!(
+                "`{key}` must be a list of strings, such as `{key} = [\"tests/**\"]`"
+            ));
         };
         let mut out = Vec::new();
         for item in inner.split(',').map(str::trim).filter(|i| !i.is_empty()) {
             match item.strip_prefix('"').and_then(|i| i.strip_suffix('"')) {
                 Some(s) => out.push(s.to_string()),
-                None => return Err(format!("`exclude`: `{item}` is not a string")),
+                None => return Err(format!("`{key}`: `{item}` is not a string")),
             }
         }
         return Ok(out);
@@ -289,6 +324,7 @@ mod tests {
 
     #[test]
     fn exclude_lists() {
+        let excludes = |toml| string_list(toml, "exclude");
         assert_eq!(excludes("").unwrap(), Vec::<String>::new());
         assert_eq!(
             excludes("# c\nexclude = [\"a\", \"b/**\"]\n[ts]\nexclude = [\"x\"]").unwrap(),
@@ -300,5 +336,9 @@ mod tests {
         );
         assert!(excludes("exclude = \"a\"").is_err());
         assert!(excludes("exclude = [a]").is_err());
+        let both = "gen-exclude = [\"g\"]\nexclude = [\"e\"]\n";
+        assert_eq!(excludes(both).unwrap(), ["e"]);
+        assert_eq!(string_list(both, "gen-exclude").unwrap(), ["g"]);
+        assert!(string_list("gen-exclude = 1", "gen-exclude").is_err());
     }
 }

@@ -9,7 +9,7 @@ The same charts are served by two applications, which must answer every request 
 
 ## The HTTP interface
 
-`POST /orders` with an `Authorization` header and a JSON body that is an `OrderDraft`: `{"items": [{"sku": "apple", "qty": 2}], "coupon": null}` (`coupon` may be omitted, meaning `null`). The response's status is the chart's `ApiResponse.status` and its JSON body is `ApiResponse.body`. A body that does not decode as an `OrderDraft` is answered `400 {"code": "bad_request"}` without running the machine.
+`POST /orders` with an `Authorization` header and a JSON body that is an `OrderDraft`: `{"items": [{"sku": "apple", "qty": 2}], "coupon": null}` (`coupon` may be omitted, meaning `null`). The response's status is the chart's `ApiResponse.status` and its JSON body is `ApiResponse.body`. A body that does not decode as an `OrderDraft` is answered `400 {"code": "bad_request"}` without running the machine. A run that ends with a defect is answered `500 {"code": "internal"}`.
 
 ## Behaviour of the example services
 

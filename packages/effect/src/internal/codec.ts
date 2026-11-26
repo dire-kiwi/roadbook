@@ -17,6 +17,55 @@ export class CodecError extends Error {
 
 const MAX_INT = Number.MAX_SAFE_INTEGER
 
+/**
+ * A copy of host value `value` that is JSON, for a `json` or `extern` value: `null`, a boolean,
+ * a finite number, a string, an array or a plain object of JSON values. Anything else (`NaN`,
+ * `Infinity`, `undefined`, a function, a `Date`, a cycle) throws a `CodecError`, which makes it
+ * a host defect before it can reach the snapshot or the trace. `ancestors` are the arrays and
+ * objects `value` is inside.
+ */
+const toJson = (value: unknown, what: string, ancestors: Array<object>): Json => {
+  switch (typeof value) {
+    case "string":
+    case "boolean":
+      return value
+    case "number":
+      if (!Number.isFinite(value)) throw new CodecError(`${what} is ${value}, which is not JSON`)
+      return value === 0 ? 0 : value
+    case "object": {
+      if (value === null) return null
+      if (ancestors.includes(value)) throw new CodecError(`${what} contains itself, so it is not JSON`)
+      ancestors.push(value)
+      let out: Json
+      if (Array.isArray(value)) {
+        const items: Array<Json> = []
+        for (let i = 0; i < value.length; i++) items.push(toJson(value[i], `${what}[${i}]`, ancestors))
+        out = items
+      } else {
+        const proto = Object.getPrototypeOf(value)
+        if (proto !== Object.prototype && proto !== null) {
+          throw new CodecError(`${what} is a ${proto?.constructor?.name ?? "class instance"}, not a plain object, so it is not JSON`)
+        }
+        const members: { [key: string]: Json } = {}
+        for (const [key, member] of Object.entries(value)) {
+          // defineProperty, so that a member named `__proto__` stays a member.
+          Object.defineProperty(members, key, {
+            value: toJson(member, `${what}.${key}`, ancestors),
+            enumerable: true,
+            writable: true,
+            configurable: true
+          })
+        }
+        out = members
+      }
+      ancestors.pop()
+      return out
+    }
+    default:
+      throw new CodecError(`${what} is ${typeof value === "undefined" ? "undefined" : `a ${typeof value}`}, which is not JSON`)
+  }
+}
+
 export class Codec {
   readonly ir: Ir
   private readonly errors: Readonly<Record<string, ErrorClass>>
@@ -71,7 +120,7 @@ export class Codec {
         return millis === 0 ? 0 : millis
       }
       case "json":
-        return value as Json
+        return toJson(value, what, [])
     }
     const decl = this.ir.types[base]
     if (decl === undefined) throw new CodecError(`${what} has unknown type ${base}`)
@@ -92,7 +141,7 @@ export class Codec {
         return { _tag: base, ...this.encodeFields(decl.fields, value, what) }
       }
       case "extern":
-        return value as Json
+        return toJson(value, what, [])
     }
   }
 

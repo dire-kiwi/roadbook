@@ -171,9 +171,11 @@ Every command works file by file. `roadbook check` compiles each file it is give
 | Key | Meaning |
 | --- | --- |
 | `exclude = ["glob", …]` | Files and directories that a directory search skips, as globs over project paths: `*` matches within one path segment, `**` across segments and `?` one character. A directory that matches is skipped whole. A file named on the command line is checked even if it matches. |
+| `gen-exclude = ["glob", …]` | More files and directories, as for `exclude`, that only `roadbook gen` skips: charts that need no generated TypeScript module, such as fixtures read as IR. `roadbook check` and the other commands still see them, and a file named on the command line is generated even if it matches. |
 
 ```toml
 exclude = ["crates/roadbook-compiler/tests/fail", "spike"]
+gen-exclude = ["spec/conformance/charts"]
 ```
 
 Other keys, such as the host types bound to `extern type`s, come with the code generators.
