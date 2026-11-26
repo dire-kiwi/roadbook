@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/vault.road",
@@ -450,6 +450,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Vault",
         "name": "Vault",

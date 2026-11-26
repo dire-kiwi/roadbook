@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/cancel.road",
@@ -57,6 +57,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Parent",
         "name": "Parent",
@@ -223,6 +224,7 @@
       "vars": [],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Child",
         "name": "Child",

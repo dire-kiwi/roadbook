@@ -20,6 +20,14 @@ export interface InvokeEntry {
   readonly src: string
 }
 
+/** A running spawned child: its collection, its key and the arguments it was spawned with. */
+export interface SpawnedEntry {
+  readonly id: number
+  readonly children: string
+  readonly key: Json
+  readonly args: { readonly [param: string]: Json }
+}
+
 export interface TimerEntry {
   readonly id: number
   readonly state: string
@@ -44,6 +52,7 @@ export interface Snapshot {
   /** Every variable that has a value. */
   readonly vars: { readonly [name: string]: Json }
   readonly invokes: ReadonlyArray<InvokeEntry>
+  readonly spawned: ReadonlyArray<SpawnedEntry>
   readonly timers: ReadonlyArray<TimerEntry>
   readonly nextInvoke: number
   readonly nextTimer: number
@@ -72,14 +81,17 @@ export interface SavedTimer extends TimerEntry {
  * A saved snapshot (execution.md, "The saved snapshot"): the core's snapshot as a run's last
  * step left it, with the format version and each timer's due time. Plain JSON, matching
  * `spec/snapshot.schema.json`; both runtimes save the same run as the same document. A run is
- * always saved as version 2; version 1, written before history states, has no `history` and
- * restores as if it had `{}`.
+ * always saved as version 3; version 2, written before keyed spawn, has no `spawned` and
+ * restores with no children, and version 1, written before history states, has no `history`
+ * either and restores as if it had `{}`.
  */
-export interface Saved extends Omit<Snapshot, "timers" | "history"> {
-  readonly snapshotVersion: 1 | 2
+export interface Saved extends Omit<Snapshot, "timers" | "history" | "spawned"> {
+  readonly snapshotVersion: 1 | 2 | 3
   readonly timers: ReadonlyArray<SavedTimer>
-  /** Set exactly in version 2. */
+  /** Set exactly in versions 2 and 3. */
   readonly history?: History
+  /** Set exactly in version 3. */
+  readonly spawned?: ReadonlyArray<SpawnedEntry>
 }
 
 /** A tagged record: an event or an error value. */
@@ -94,7 +106,8 @@ export type Input =
   | { readonly kind: "message"; readonly from: string; readonly message: number; readonly value: Tagged }
   /**
    * Run `from` emitted one of its machine's `emits` as its message `message`. `invoke` is the
-   * id of this run's invoke that started `from` when this run is its invoker, else `null`.
+   * id of this run's invoke or spawned child that is `from` when this run is its parent, else
+   * `null`.
    */
   | {
     readonly kind: "emitted"
@@ -106,6 +119,9 @@ export type Input =
   | { readonly kind: "invoke.done"; readonly invoke: number; readonly value: Json }
   | { readonly kind: "invoke.fail"; readonly invoke: number; readonly error: Tagged }
   | { readonly kind: "invoke.defect"; readonly invoke: number; readonly defect: Defect }
+  | { readonly kind: "spawn.done"; readonly spawn: number; readonly value: Json }
+  | { readonly kind: "spawn.fail"; readonly spawn: number; readonly error: Tagged }
+  | { readonly kind: "spawn.defect"; readonly spawn: number; readonly defect: Defect }
   | { readonly kind: "after"; readonly timer: number }
   | { readonly kind: "cancel" }
   | { readonly kind: "defect"; readonly defect: Defect }
@@ -143,6 +159,15 @@ export type CoreRecord =
   }
   | { readonly kind: "invoke.cancelled"; readonly invoke: number; readonly state: string; readonly src: string }
   | {
+    readonly kind: "spawn.started"
+    readonly spawn: number
+    readonly children: string
+    readonly key: Json
+    readonly src: string
+    readonly args: { readonly [param: string]: Json }
+  }
+  | { readonly kind: "spawn.stopped"; readonly spawn: number; readonly children: string; readonly key: Json }
+  | {
     readonly kind: "timer.started"
     readonly timer: number
     readonly state: string
@@ -178,6 +203,18 @@ export type Command =
     readonly args: { readonly [param: string]: Json }
   }
   | { readonly kind: "invoke.cancel"; readonly invoke: number }
+  /**
+   * Start machine `src` as spawned child `spawn`, which delivers what it emits to this run, and
+   * queue its outcome as a `spawn.*` input when it ends.
+   */
+  | {
+    readonly kind: "spawn.start"
+    readonly spawn: number
+    readonly src: string
+    readonly args: { readonly [param: string]: Json }
+  }
+  /** Stop spawned child `spawn` and wait for its cancel step, as `invoke.cancel` does. */
+  | { readonly kind: "spawn.stop"; readonly spawn: number }
   | { readonly kind: "timer.start"; readonly timer: number; readonly delay: number }
   | { readonly kind: "timer.cancel"; readonly timer: number }
   /**
@@ -186,8 +223,8 @@ export type Command =
    */
   | { readonly kind: "timer.fire"; readonly timer: number }
   /**
-   * Queue message `message` for run `to`: the child run of this run's invoke `invoke`, or, when
-   * `invoke` is `null`, the peer `to`.
+   * Queue message `message` for run `to`: the child run of this run's invoke or spawned child
+   * `invoke`, or, when `invoke` is `null`, the peer `to`.
    */
   | {
     readonly kind: "send"
@@ -196,7 +233,7 @@ export type Command =
     readonly message: number
     readonly value: Tagged
   }
-  /** Queue the emitted event for this run's invoker (if it used `as`) and its subscribers. */
+  /** Queue the emitted event for this run's parent (if it used `as` or spawned it) and its subscribers. */
   | { readonly kind: "emit"; readonly message: number; readonly value: Tagged }
 
 /** What the host's function `name` gave: its value, or a host defect. */

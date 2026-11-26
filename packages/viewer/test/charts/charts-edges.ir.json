@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "packages/viewer/test/charts/edges.road",
@@ -78,6 +78,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "OnlyRoot",
         "name": "OnlyRoot",
@@ -225,6 +226,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Note",
         "name": "Note",
@@ -765,6 +767,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Same",
         "name": "Same",
@@ -925,6 +928,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Rows",
         "name": "Rows",

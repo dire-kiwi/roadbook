@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "packages/viewer/test/charts/stress.road",
@@ -101,6 +101,7 @@
       "vars": [],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Ticker",
         "name": "Ticker",
@@ -350,6 +351,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Stress",
         "name": "Stress",

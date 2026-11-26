@@ -59,7 +59,7 @@ describe("compareCodePoints", () => {
 
 describe("loadIr", () => {
   it("refuses another IR version, naming both", () => {
-    expect(() => loadIr({ irVersion: "0.1" })).toThrow(/"0\.1".*0\.4/)
+    expect(() => loadIr({ irVersion: "0.4" })).toThrow(/"0\.4".*0\.5/)
     expect(() => loadIr([])).toThrow(IrError)
   })
   it("refuses a machine the IR does not have", () => {
@@ -227,6 +227,7 @@ describe("history states", () => {
     // A version 1 snapshot in Help has no records.
     const saved = { ...toSaved(steps(ir, "Editor", "Help").snapshot, () => 0), snapshotVersion: 1 } as Record<string, unknown>
     delete saved["history"]
+    delete saved["spawned"]
     const checked = checkSaved(ir, "Editor", saved)
     if (!checked.ok) throw new Error(checked.message)
     const restored = restore(ir, checked.saved, "r2", 0, null, noFns)
@@ -322,9 +323,9 @@ describe("restoring history", () => {
   }
   const withHistory = (history: unknown) => ({ ...helped(), history })
 
-  it("saves version 2 with history, and restores it", () => {
+  it("saves version 3 with history, and restores it", () => {
     const saved = helped()
-    expect(saved.snapshotVersion).toBe(2)
+    expect(saved.snapshotVersion).toBe(3)
     expect(saved.history).toEqual({
       "Editor.Work.Deep": ["Editor.Work.Review.Read"],
       "Editor.Work.Shallow": ["Editor.Work.Review"]
@@ -379,16 +380,21 @@ describe("restoring history", () => {
   })
 
   it("reads version 1 without history, and refuses version 1 with it and version 2 without it", () => {
-    const { history, ...v2 } = helped()
+    const { history, spawned, ...v2 } = helped()
     expect(history).toBeDefined()
+    expect(spawned).toEqual([])
     expect(reason({ ...v2, snapshotVersion: 1 })).toBe("ok")
     expect(reason({ ...v2, snapshotVersion: 1, history })).toBe("invalid")
-    expect(reason(v2)).toBe("invalid")
+    expect(reason({ ...v2, snapshotVersion: 2 })).toBe("invalid")
+    expect(reason({ ...v2, snapshotVersion: 2, history })).toBe("ok")
+    expect(reason({ ...v2, snapshotVersion: 2, history, spawned })).toBe("invalid")
     expect(reason({ ...v2, snapshotVersion: 3, history })).toBe("invalid")
+    expect(reason({ ...v2, snapshotVersion: 3, history, spawned })).toBe("ok")
+    expect(reason({ ...v2, snapshotVersion: 4, history, spawned })).toBe("invalid")
   })
 
-  it("restores a version 1 snapshot with no records, traces it as given and saves it as version 2", () => {
-    const { history: _, ...v2 } = helped()
+  it("restores a version 1 snapshot with no records, traces it as given and saves it as version 3", () => {
+    const { history: _, spawned: __, ...v2 } = helped()
     const v1 = { ...v2, snapshotVersion: 1 }
     const checked = checkSaved(ir, "Editor", v1)
     if (!checked.ok) throw new Error(checked.message)
@@ -399,8 +405,9 @@ describe("restoring history", () => {
     })
     expect(restored.snapshot.history).toEqual({})
     const resaved = toSaved(restored.snapshot, () => 0)
-    expect(resaved.snapshotVersion).toBe(2)
+    expect(resaved.snapshotVersion).toBe(3)
     expect(resaved.history).toEqual({})
+    expect(resaved.spawned).toEqual([])
     expect(reason(resaved)).toBe("ok")
     // A run restored from version 2 keeps its records.
     const fromV2 = checkSaved(ir, "Editor", helped())

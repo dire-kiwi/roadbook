@@ -50,7 +50,7 @@ export interface OrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/orders/orders.road",
@@ -357,6 +357,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -394,6 +395,7 @@ const ir: unknown = {
                   "machine": "Inventory",
                   "state": null
                 },
+                "key": null,
                 "event": "Reserve",
                 "value": {
                   "kind": "record",
@@ -688,6 +690,7 @@ const ir: unknown = {
                       "machine": "Inventory",
                       "state": null
                     },
+                    "key": null,
                     "event": "Release",
                     "value": {
                       "kind": "record",
@@ -985,6 +988,7 @@ const ir: unknown = {
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Inventory",
         "name": "Inventory",

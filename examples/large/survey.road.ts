@@ -45,7 +45,7 @@ export interface SatisfactionSurveyDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/large/survey.road",
@@ -837,6 +837,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "SatisfactionSurvey",
         "name": "SatisfactionSurvey",

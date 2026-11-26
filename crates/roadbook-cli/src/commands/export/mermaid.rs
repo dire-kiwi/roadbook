@@ -26,7 +26,9 @@ use std::fmt::Write as _;
 use std::path::PathBuf;
 
 use roadbook_compiler::Ir;
-use roadbook_ir::{Effect, InvokeKind, Machine, State, StateKind, Transition, Trigger};
+use roadbook_ir::{
+    AddressKind, Effect, InvokeKind, Machine, State, StateKind, Transition, Trigger,
+};
 
 use crate::workspace::Workspace;
 use crate::{Exit, report};
@@ -336,8 +338,29 @@ fn effect(e: &Effect) -> String {
             let args: Vec<&str> = args.iter().map(|a| a.text.as_str()).collect();
             format!("do {action}({})", args.join(", "))
         }
-        Effect::Send { to, value, .. } => format!("send {}.{}", to.name, value.text),
+        Effect::Send { to, key, value, .. } => {
+            let which = match (to.kind, key) {
+                (AddressKind::Children, Some(k)) => format!("[{}]", k.text),
+                (AddressKind::Children, None) => ".*".into(),
+                _ => String::new(),
+            };
+            format!("send {}{which}.{}", to.name, value.text)
+        }
         Effect::Emit { value, .. } => format!("emit {}", value.text),
+        Effect::Spawn {
+            children,
+            machine,
+            key,
+            args,
+        } => {
+            let args: Vec<&str> = args.iter().map(|a| a.text.as_str()).collect();
+            format!(
+                "spawn {children}[{}] = {machine}({})",
+                key.text,
+                args.join(", ")
+            )
+        }
+        Effect::Stop { children, key } => format!("stop {children}[{}]", key.text),
     }
 }
 
@@ -350,6 +373,8 @@ fn trigger(t: &Trigger) -> String {
         Trigger::Always => "always".into(),
         Trigger::Done | Trigger::InvokeDone => "done".into(),
         Trigger::InvokeFail { error } => format!("fail {error}"),
+        Trigger::SpawnDone { children } => format!("{children}.done"),
+        Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
     }
 }
 
@@ -397,7 +422,10 @@ fn description(s: &State) -> Vec<String> {
     out.extend(s.exit.iter().map(|e| format!("exit {}", effect(e))));
     for t in s.transitions.iter().filter(|t| t.target.is_none()) {
         let head = match &t.trigger {
-            Trigger::Event { .. } | Trigger::Emitted { .. } => {
+            Trigger::Event { .. }
+            | Trigger::Emitted { .. }
+            | Trigger::SpawnDone { .. }
+            | Trigger::SpawnFail { .. } => {
                 format!("on {}", trigger(&t.trigger))
             }
             other => trigger(other),

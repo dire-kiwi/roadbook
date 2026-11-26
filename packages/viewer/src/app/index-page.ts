@@ -1,4 +1,4 @@
-// The project index page: the graph of which machine invokes and talks to which, and a table of machines.
+// The project index page: the graph of which machine invokes, spawns and talks to which, and a table of machines.
 
 import type { ElkLike } from '../layout.ts'
 import type { Measure } from '../model.ts'
@@ -20,7 +20,7 @@ export async function mountIndex(index: ProjectIndex, elk: ElkLike, measure: Mea
 </header>
 <main class="rb-index-main">
   ${index.diff ? diffSummaryHtml(index) : ''}
-  <section><h2>Which machine invokes and talks to which</h2><div class="rb-graph" id="rb-graph"><p class="rb-empty">Laying out…</p></div>${renderIndexLegend()}</section>
+  <section><h2>Which machine invokes, spawns and talks to which</h2><div class="rb-graph" id="rb-graph"><p class="rb-empty">Laying out…</p></div>${renderIndexLegend()}</section>
   <section><h2>Machines</h2>${renderIndexTable(index)}</section>
 </main>`
   setupTheme($(document.body, '#rb-theme'))

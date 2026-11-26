@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/crash.road",
@@ -59,6 +59,7 @@
       "vars": [],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Crash",
         "name": "Crash",
@@ -324,6 +325,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Child",
         "name": "Child",

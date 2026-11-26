@@ -78,7 +78,8 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | --- | --- |
 | `var name: T [= expr]` | A machine variable. `sensitive var` keeps its value out of traces (see [sensitive values](#sensitive-values)). |
 | `event Name [{ fields }]` | An event the machine accepts from outside. |
-| `emits Name [{ fields }]` | An event the machine emits, to whoever invoked it and every machine holding a reference to it. |
+| `emits Name [{ fields }]` | An event the machine emits, to whoever invoked or spawned it and every machine holding a reference to it. |
+| `children name: Machine by Key` | A keyed collection of child machines, started with `spawn` (see [many children](#many-children)). |
 | `initial Name` | The child state entered first. Required, once, in a state that has children, except a `parallel state`, which has none: all its children are entered. |
 | `state Name { ... }` | A state. Atomic if it has no children, compound if it does. |
 | `parallel state Name { ... }` | All children are active at once (regions). A region may be any kind of state. |
@@ -92,7 +93,8 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | `entry set ... ` / `entry do ...` | Run when the state is entered. |
 | `exit set ...` / `exit do ...` | Run when the state is left. |
 | `on Event ...` | Transition on an external event. `on *` matches any of the machine's own events this state has no `on` for. |
-| `on name.Event ...` | Transition on an event emitted by the machine `name` addresses: an invoked child (`invoke … as name`) or a `ref` parameter or variable. |
+| `on name.Event ...` | Transition on an event emitted by the machine `name` addresses: an invoked child (`invoke … as name`), a `ref` parameter or variable, or any child of a `children` collection. |
+| `on name.done ...` / `on name.fail Err ...` | Transition when a spawned child of the collection `name` ends (see [many children](#many-children)). |
 | `after 30s ...` | Transition after the state has been active for a duration. The delay is an expression. |
 | `always ...` | Transition taken as soon as its guard holds (no event). |
 | `done ...` | Transition taken when a compound state reaches a final child, or every region of a parallel state does. |
@@ -107,9 +109,9 @@ on Submit if isValid(order) -> Paying  set attempts = 0  do audit("submitted", o
    ^trigger ^guard             ^target ^assignments      ^actions
 ```
 
-With no `-> Target` the transition is internal: the state is not left and re-entered. The effects are `set` assignments, `do` actions, and the messages `send name.Event { … }` and `emit Event { … }` (see [messages between machines](#messages-between-machines)). `set` assignments run first: every `set`, in the order written, then the `do`, `send` and `emit` effects, in the order written among themselves, wherever they are written, so an action or a message sees the values its transition's `set`s assign. The same goes for `entry` and `exit`. The formatter writes every `set` clause before the others, so the source shows the order they run in.
+With no `-> Target` the transition is internal: the state is not left and re-entered. The effects are `set` assignments, `do` actions, the messages `send name.Event { … }` and `emit Event { … }` (see [messages between machines](#messages-between-machines)), and `spawn` and `stop` (see [many children](#many-children)). `set` assignments run first: every `set`, in the order written, then the other effects, in the order written among themselves, wherever they are written, so an action or a message sees the values its transition's `set`s assign. The same goes for `entry` and `exit`. The formatter writes every `set` clause before the others, so the source shows the order they run in.
 
-Inside a transition, three names are in scope besides the machine's variables: `event` (in `on`, also `on name.Event`), `result` (in an invoke's `done`) and `error` (in an invoke's `fail`).
+Inside a transition, these names are in scope besides the machine's variables: `event` (in `on`, also `on name.Event`), `result` (in an invoke's `done` and in `on name.done`), `error` (in an invoke's `fail` and in `on name.fail`) and `key` (in `on name.Event`, `on name.done` and `on name.fail` through a `children` collection).
 
 A target is resolved like a name in a block-structured language: first among the siblings of the state the transition is written in, then among its parent's siblings, and so on outward. A dotted path such as `Processing.Paying` then descends into a nested state, which is also how a state targets one of its own children. A transition written at machine level resolves among the top-level states. An unknown target is a compile error, and so is a duplicate state name among siblings.
 
@@ -259,7 +261,41 @@ state Uploading {
 - **Two namespaces of triggers.** The events a machine accepts are its own: `on Cancel`. The events it receives from others are named through their sender: `on upload.Cancel` is a different trigger from `on Cancel`, and from `on other.Cancel`. `on *` matches only the machine's own events, never an emitted one.
 - **A `ref` variable** addresses whichever machine it holds when the `send` runs or the event arrives.
 
-Keyed `spawn` (`children … by …`) is not part of the language yet.
+### Many children
+
+`invoke` runs one child per state. A dynamic number of children (one per connection, per order, per player) are **spawned** into a keyed collection declared on the machine, so they stay typed and visible in the chart:
+
+```
+machine Hub() {
+  event Connected    { id: SessionId, socket: Socket }
+  event Disconnected { id: SessionId }
+  event Broadcast    { text: string }
+
+  children sessions: Session by SessionId
+
+  initial Serving
+  state Serving {
+    on Connected       spawn sessions[event.id] = Session(event.socket)
+    on Disconnected    stop sessions[event.id]
+    on Broadcast       send sessions.*.Notify { text: event.text }
+    on sessions.Typing do showTyping(key)
+    on sessions.done   do logOut(key)
+    on sessions.fail * do report(key, error)
+  }
+}
+```
+
+- **`children name: Machine by Key`** declares a collection. `Key` is `string`, `int` or an enum, or an alias of one. A collection belongs to the machine, not to a state: its children keep running whatever states the machine moves through.
+- **`spawn name[key] = Machine(args)`** starts a child under `key`. `Machine` must be the collection's machine, and the arguments are checked as for `invoke`. A child already running under that key is stopped first, so a key always names the child spawned last. Like an invoke, the child starts once the step has settled.
+- **`stop name[key]`** stops the child with that key, if there is one: it is cancelled, and its `exit` effects run before anything after the `stop`. Nothing happens if the key has no child.
+- **`send name[key].Event { fields }`** sends to one child. It is `undelivered` if no child has that key, including one spawned in the same step, which has not started yet. **`send name.*.Event { fields }`** sends to every running child of the collection.
+- **`on name.Event`** is taken for an event any child of the collection emits; `key` is that child's key. **`on name.done`** is taken when a child ends with an output (`result`, `key`), **`on name.fail E`** or **`on name.fail *`** when it fails (`error`, `key`). An outcome nothing takes is dropped: unlike an invoke's, a spawned child's errors need not all be handled.
+- **A child's defect** (a host failure, not a declared error) ends the parent with the same defect, as for an invoke.
+- **When the machine ends**, finished or cancelled, its remaining children are stopped, after its own `exit` effects. A message those effects send a child is likely never taken, since a stop goes ahead of what the child has queued: to let children finish cleanly, tell them before the machine's last step and wait for their `on name.done`.
+- There are no expressions over a collection: a chart cannot count its children or list their keys. Keep a count in a variable, or have the children emit what the parent needs.
+- **Names.** A collection's name shares the machine's namespace with its parameters, variables and `as` names. `key` is an implicit name, like `event`, so it cannot name a parameter, variable, `as` name or collection.
+
+The rules at run time are in [`spec/execution.md`](../../spec/execution.md#spawned-children).
 
 ## History states
 
@@ -321,7 +357,7 @@ machine Vault(login: Credentials, sensitive pin: int) -> Profile ! Locked {
 - **Where.** On any field of a record, error, event or emitted event; any parameter of a machine, task, action or function; any `var`. The mark is part of the declaration, so it holds wherever the declaration is used: through aliases, in other files and in other packages.
 - **What it does.** Every trace record shows the value of a marked field, parameter or variable as the string `"<redacted>"`, at any depth: a `Credentials` in a list in an optional shows `{"user": "ada", "password": "<redacted>"}` there. A variable marked `sensitive` is shown `"<redacted>"` whole. The records keep their form; only their values change. The rules, which both runtimes follow byte for byte, are in [`spec/trace.md`](../../spec/trace.md#redaction).
 - **What it does not.** Nothing but traces changes. The machine, host code and **saved snapshots see and keep the real values**: a restored run goes on with them, so a stored snapshot needs the protection the data needs. Types do not change either, in the generated TypeScript and Rust or anywhere else. On a function's parameter the mark changes nothing, since function calls are not traced; it can still say what the function handles. A marked field does not change a machine's [hash](../../spec/ir.md#the-machine-hash), so marking one later does not invalidate saved snapshots.
-- **Keeping it marked.** A runtime redacts a value by its declared type. So a value read from a sensitive place (`password`, `event.pin`, a field of a sensitive variable) can only go to a place that is also sensitive, or that no trace shows: a guard, a function's argument. Assigning it to a variable that is not sensitive, passing it to an action, task or machine parameter that is not, putting it in a field that is not, or making it an `output`, a `fail`, an `after` delay or a retry's delay is an error (`RB0317`). So is an operator's result with a sensitive operand: `pin + 0`, `not flag` and `pin == 1234` are sensitive too. A value whose type has sensitive fields cannot go where `json` is expected, since `json` has no fields to redact by (`RB0318`), unless that place is itself sensitive. A function's result is not sensitive: a `fn` is how a chart derives what may be shown (`last4(card)`), on purpose.
+- **Keeping it marked.** A runtime redacts a value by its declared type. So a value read from a sensitive place (`password`, `event.pin`, a field of a sensitive variable) can only go to a place that is also sensitive, or that no trace shows: a guard, a function's argument. Assigning it to a variable that is not sensitive, passing it to an action, task or machine parameter that is not, putting it in a field that is not, or making it an `output`, a `fail`, an `after` delay, a retry's delay or a spawned child's key is an error (`RB0317`). So is an operator's result with a sensitive operand: `pin + 0`, `not flag` and `pin == 1234` are sensitive too. A value whose type has sensitive fields cannot go where `json` is expected, since `json` has no fields to redact by (`RB0318`), unless that place is itself sensitive. A function's result is not sensitive: a `fn` is how a chart derives what may be shown (`last4(card)`), on purpose.
 - **What is never covered.** A host defect's message is whatever host code raised, and the trace shows it as it is: a function that is given a sensitive value should not put it in an exception (`JSON.parse` quotes its input). And a run redacts by the IR it was built from: runs that talk to each other should be built from the same charts, since a mark does not change the hash their handles are checked by.
 
 ## Projects
@@ -384,9 +420,10 @@ Errors (the build fails):
 - A `done` transition in a state with no child states: it waits for a final child, so it could never be taken. (An invoke's `done` goes inside `invoke { }`.)
 - A history state in a state with no child states, or in a final state, and an `initial` that names a history state.
 - An unguarded cycle of `always` transitions: states each with an `always` whose first branch has no `if` (an `else` counts as guarded, since it runs only when the guards before it fail), each leading to the next, where entering a state also enters its `initial` chain (and every region of a parallel state), and a transition to a state's own ancestor leaves and re-enters it. A transition to a history state counts as entering any state it could restore: every child of its parent with that child's default entry for a shallow one, every state below the parent for a deep one. An unguarded `always` with no target is the shortest such cycle. So is an unguarded `always` written in the machine body, whatever its target, unless that target is a top-level final state: the machine itself is never left, so its `always` would be taken again after every step.
+- `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` and `on name.fail` through a name that is not a `children` collection, and a `send name.E` to a collection with no `[key]` or `.*`; a `spawn` of a machine other than the collection's; a key of the wrong type; a collection whose key type is not `string`, `int` or an enum, or whose machine is not a machine; `key` as the name of a parameter, variable, `as` or collection; `on name.fail E` for an error the collection's machine does not declare.
 - `send`, `emit` and `on name.Event` that do not match a declaration: an unknown or out-of-scope `name`, or one that is not a `ref` (a `ref` that is optional or a list cannot be sent to); an event the receiver does not declare with `event`, or the sender with `emits`; a missing, extra or wrongly typed field. A `send` to an invoked child where it is not running. An `as` on a task, or one that clashes with a variable, parameter or enclosing `as`. A `ref` to something that is not a machine, or in a field or a result.
 - A sensitive value going where a trace would show it as it is, and a value with sensitive fields going where `json` is expected (see [sensitive values](#sensitive-values)).
-- A machine that invokes itself, directly or through other machines, without an `after` or event in between (unbounded recursion). Precisely: machine `M` *starts* machine `N` if a state of `M` that invokes `N` can be entered from `M`'s initial states by taking only `always`, `done` and invoke outcome transitions, whatever their guards. Only `on` and `after` transitions count as waiting; an invoke's outcome does not, since a task can finish at once. A transition to a history state counts as entering its parent's default entry: what a history state restores was entered before. A cycle of *starts* is an error.
+- A machine that invokes itself, directly or through other machines, without an `after` or event in between (unbounded recursion). Precisely: machine `M` *starts* machine `N` if a state of `M` that invokes `N` can be entered from `M`'s initial states by taking only `always`, `done` and invoke outcome transitions, whatever their guards; or if a `spawn` of `N` is in the `entry` of such a state, in the effects of such a transition taken in such a state, or in the `exit` of the state such a transition is written in or of a state around it that the transition leaves (a transition to a top-level final state ends the run, so what it spawns never starts). An `on name.done` or `on name.fail` is an `on`, and counts as waiting: a supervisor that spawns a child again when it fails is fine. Only `on` and `after` transitions count as waiting; an invoke's outcome does not, since a task can finish at once. A transition to a history state counts as entering its parent's default entry: what a history state restores was entered before. A cycle of *starts* is an error.
 
 Warnings:
 
@@ -395,6 +432,7 @@ Warnings:
 - Events, functions, actions or tasks that are declared but never used: an event no `on` of its machine names, or a function, action or task that nothing in the compilation calls, runs or invokes (a use in a `send` or `emit` counts). Only declarations in the files being checked are reported, and a use from any file checked at the same time counts, so checking a file of shared declarations on its own reports everything only other files use; check them together (`roadbook check` with no paths checks the whole project).
 - A state with an `invoke` and no timeout anywhere above it: neither the state nor any state containing it has an `after` (off by default; `roadbook check --warn invoke-timeout`).
 - An `emits E` that no `emit E` of its machine sends, and an `on name.E` for an `E` its sender declares but never emits, which can never be taken.
+- A `children` collection that no `spawn` fills.
 - An `emits E` that no `on name.E` in the checked files receives. As for unused declarations, a receiver in any file checked at the same time counts; host code holding a handle may still receive it.
 - A history state that no transition targets.
 
@@ -501,7 +539,7 @@ Both runtimes keep reading an unassigned variable as a runtime error (`unassigne
 The layout, as implemented in `roadbook-syntax`. The example files and the charts on these pages are written in it.
 
 - **Lines.** Two-space indentation, one item per line, and no line wrapping. A file with syntax errors is not formatted.
-- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses. A `retry` clause is written `retry 3 on A | B after delay`, one space between its parts. In a transition the target and each `set`, `do`, `send` or `emit` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Every `set` comes first, then the other clauses in the order written; consecutive clauses of one kind are merged for `set` and `do`: `do f()  set a = 1  set b = 2` is written `set a = 1, b = 2  do f()`. Each `send` and `emit` is a clause of its own, and an empty body is dropped: `send upload.Pause {}` is written `send upload.Pause`.
+- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses. A `retry` clause is written `retry 3 on A | B after delay`, one space between its parts. In a transition the target and each `set`, `do`, `send` or `emit` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Every `set` comes first, then the other clauses in the order written; consecutive clauses of one kind are merged for `set` and `do`: `do f()  set a = 1  set b = 2` is written `set a = 1, b = 2  do f()`. Each `send`, `emit`, `spawn` and `stop` is a clause of its own, and an empty body is dropped: `send upload.Pause {}` is written `send upload.Pause`. No space goes inside the brackets of a key: `sessions[event.id]`, `sessions.*`.
 - **Blank lines** between items are kept, at most one. There are none at the start or end of a block or file.
 - **Lists.** No trailing commas. A list in a declaration (import names, fields, enum variants, parameters) with a line break right after its opening bracket stays multi-line: its elements are indented one level, keep the author's line breaks between them, and the closing bracket goes on its own line. Every other list is printed on one line.
 - **One-line states.** A state whose body is empty, or is a single item other than a state, an `invoke` or a block of branches, and contains no comment, is written on one line: `final state Charged { output receipt }`. Every other state is written as a block. A history state is written on a line of its own: `history Previous`, `deep history Previous`.
@@ -511,6 +549,7 @@ The layout, as implemented in `roadbook-syntax`. The example files and the chart
   - one-line `type`, `enum`, `error` and `extern type` declarations: what follows the name (`{` or `=`);
   - one-line `fn`, `action` and `task` declarations: `->` and `!`;
   - `var` lines: the type;
+  - `children` lines: the machine, and `by`;
   - `event` and `emits` lines, together: the field list;
   - one-line states: the `{`;
   - transitions and invoke outcomes, together with the header, branches and closing `}` of a block of branches among them: `->` and the first `set` or `do`, at the same column for nested branches as for the lines around them.
@@ -559,7 +598,7 @@ The compiler's codes:
 | `RB0107` | Two declarations with the same name in one compilation, or an event named like a type, error or machine. | `type Order` in two files, `event Order` |
 | `RB0108` | Two fields, parameters, variants, variables, events or sibling states with the same name, or a name imported twice. | `state A {}` twice in one parent, `import { B, B }` |
 | `RB0109` | A name used as something it is not. | `invoke audit(x)` where `audit` is an action |
-| `RB0110` | `event`, `result` or `error` where it is not in scope. | `entry set n = result` |
+| `RB0110` | `event`, `result`, `error` or `key` where it is not in scope. | `entry set n = result` |
 | `RB0111` | An import of a file that cannot be read. | `import { A } from "./missing.road"` |
 | `RB0112` | An import of a name the file does not declare. | `import { Ordr } from "./types.road"` |
 | `RB0113` | An enum variant that does not exist. | `Role.Admn` |
@@ -568,6 +607,8 @@ The compiler's codes:
 | `RB0116` | A `send` of an event the receiving machine does not declare with `event`. | `send upload.Stop` |
 | `RB0117` | An `emit` of an event the machine does not declare with `emits`, or an `on name.E` of one its sender does not. | `emit Progres`, `on upload.Pause` |
 | `RB0118` | `attempt` in a retry delay of a machine with a parameter or variable named `attempt`. | `retry 3 after backoff(attempt)` with `var attempt: int` |
+| `RB0119` | A `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` or `on name.fail` through a name that is not a `children` collection, or a `send name.E` to a collection without a key or `*`. | `stop upload[1]`, `send sessions.Notify` |
+| `RB0120` | `key` as the name of a machine parameter, variable, `as` name or collection. | `var key: string` |
 | `RB0201` | A transition target that does not resolve, or a path through a history state. | `-> Dne`, `-> Working.Previous.Editing` |
 | `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }`, `machine M() { initial A }` |
 | `RB0203` | An `initial` that is not a child state, is written twice, or is in a state without children. | `initial Strat`, `initial Previous` for `history Previous` |
@@ -587,6 +628,7 @@ The compiler's codes:
 | `RB0217` | A `retry` that retries nothing, or names an error twice. | `retry 0`, `retry 2` of a task that declares no errors, `retry 2 on Busy \| Busy` |
 | `RB0218` | A retried error handled by a `fail *` that also handles an error not retried. | `retry 2 on Busy` with only `fail * -> Failed` for `! Busy \| Gone` |
 | `RB0219` | A history state in a state with no child states, or in a final state. | `state A { history H }` |
+| `RB0220` | A `spawn` of a machine that is not its collection's. | `spawn sessions[id] = Upload(f)` for `children sessions: Session by string` |
 | `RB0301` | A value of the wrong type. | `var ratio: float = 1` |
 | `RB0302` | The wrong number of arguments. | `retryDelay(1, 2)` |
 | `RB0303` | An operator on operands it is not defined on. | `attempts + 1.5`, `order == other` |
@@ -605,8 +647,9 @@ The compiler's codes:
 | `RB0316` | A `ref` in a field of a record, error or event, or in what a function, task or machine returns. | `type Holder { peer: ref Peer }` |
 | `RB0317` | A value read from a sensitive field, parameter or variable (or computed from one by an operator), going where a trace shows it: a variable, a parameter of an action, task or machine, or a field that is not `sensitive`, or an `output`, a `fail`, an `after` delay or a retry's delay. | `set note = event.password` for `var note: string` |
 | `RB0318` | A value whose type has `sensitive` fields, going where `json` is expected in a place a trace shows. | `do log(creds)` for `action log(what: json)` |
+| `RB0319` | A `children` key type that is not `string`, `int` or an enum (or an alias of one). | `children s: Session by float` |
 | `RB0401` | An unguarded cycle of `always` transitions. | `A { always -> B }`, `B { always -> A }` |
-| `RB0402` | A machine that invokes itself without waiting. | `state A { invoke M() { … } }` as `M`'s initial state |
+| `RB0402` | A machine that invokes or spawns itself without waiting. | `state A { invoke M() { … } }` as `M`'s initial state |
 | `RB0403` | A read of a variable that might not be assigned yet. | `entry do log(n)` in the initial state, for `var n: int` |
 | `RB0901` | A state that can never be entered (warning). | a state nothing targets |
 | `RB0902` | A non-final state with no way out (warning). | `state Stuck {}` |
@@ -616,6 +659,7 @@ The compiler's codes:
 | `RB0906` | An `on name.E` for an event its sender never emits (warning). | `on upload.Progress` when `Upload` has no `emit Progress` |
 | `RB0907` | An `emits` that nothing in the checked files receives (warning). | `emits Progress` with no `on upload.Progress` anywhere |
 | `RB0908` | A history state that no transition targets (warning). | `history Previous` with no `-> Working.Previous` |
+| `RB0909` | A `children` collection that no `spawn` fills (warning). | `children sessions: Session by string` with no `spawn sessions[…]` |
 
 ## Grammar
 
@@ -642,10 +686,11 @@ params      = "(" [ field { "," field } ] ")" ;
 errors      = "!" Upper { "|" Upper } ;
 
 machineDecl = "machine" Upper params [ "->" type ] [ errors ] "{" { machineItem } "}" ;
-machineItem = varDecl | eventDecl | emitsDecl | commonItem ;
+machineItem = varDecl | eventDecl | emitsDecl | childrenDecl | commonItem ;
 varDecl     = [ "sensitive" ] "var" lower ":" type [ "=" expr ] ;
 eventDecl   = "event" Upper [ fields ] ;
 emitsDecl   = "emits" Upper [ fields ] ;
+childrenDecl = "children" lower ":" Upper "by" type ;
 
 stateDecl   = [ "final" | "parallel" ] "state" Upper "{" { stateItem } "}" ;
 stateItem   = commonItem
@@ -659,7 +704,7 @@ commonItem  = "initial" Upper
             | stateDecl
             | "entry" effects
             | "exit" effects
-            | "on" ( Upper | "*" | lower "." Upper ) branches
+            | "on" ( Upper | "*" | lower "." ( Upper | "done" | "fail" ( Upper | "*" ) ) ) branches
             | "after" expr branches
             | "always" branches ;
 retry       = "retry" int [ "on" Upper { "|" Upper } ] [ "after" expr ] ;
@@ -673,8 +718,10 @@ action      = "->" target [ effects ]
 effects     = effect { effect } ;
 effect      = "set" assign { "," assign }
             | "do" call { "," call }
-            | "send" lower "." Upper [ recordBody ]
-            | "emit" Upper [ recordBody ] ;
+            | "send" lower [ "[" expr "]" | "." "*" ] "." Upper [ recordBody ]
+            | "emit" Upper [ recordBody ]
+            | "spawn" lower "[" expr "]" "=" Upper "(" [ expr { "," expr } ] ")"
+            | "stop" lower "[" expr "]" ;
 recordBody  = "{" [ lower ":" expr { "," lower ":" expr } ] "}" ;
 assign      = lower "=" expr ;
 call        = lower "(" [ expr { "," expr } ] ")" ;
@@ -708,7 +755,7 @@ comment     = "//" … end of line ;        doc comment = "///" … end of line 
 Rules the grammar does not express:
 
 - Every comma-separated list accepts a trailing comma.
-- All keywords are reserved: `import type enum error extern fn action task machine var event emits initial state final parallel entry exit on after always done invoke output fail if else set do send emit and or not true false`. `from`, `as`, `retry`, `ref`, `sensitive`, `history`, `deep` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), and at the start of an item of a state body (`history`, `deep`). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters.
+- All keywords are reserved: `import type enum error extern fn action task machine var event emits initial state final parallel entry exit on after always done invoke output fail if else set do send emit and or not true false`. `from`, `as`, `retry`, `ref`, `sensitive`, `history`, `deep`, `children`, `by`, `spawn`, `stop` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), at the start of an item of a state body (`history`, `deep`), in `children name:` at the start of a machine item, after a collection's machine, and in `spawn name[` and `stop name[` at the start of an effect (so `action stop()` is still a valid action). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field.
 - A `///` comment documents the declaration, machine, state, history state, event or variable that follows it. A `///` anywhere else is an error: use `//`.
 - A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust, and so must one in a retry's delay, which the invoke's `{` follows. A `{` after the event of a `send` or `emit` is always its record body.
 - `on name.Event` is told from `on Event` by the lower-case name and the `.` after it.
@@ -733,5 +780,4 @@ Most of these rules, the split between `machineItem` and `stateItem`, and the re
 
 Each of these has a planned shape, and the grammar leaves room for it.
 
-- **Keyed `spawn`.** A dynamic number of children, sketched on the [actors and messaging](actors.md#many-children) page. `send`, `emit`, `ref` and `invoke … as` are in the language (see [messages between machines](#messages-between-machines)); both runtimes run them, with identical traces across the conformance cases.
 - **Generic types and maps.** `map<string, T>` and user-defined generics.

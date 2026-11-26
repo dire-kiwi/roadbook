@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/nest.road",
@@ -137,6 +137,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Nest",
         "name": "Nest",

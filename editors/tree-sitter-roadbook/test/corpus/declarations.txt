@@ -248,9 +248,9 @@ Sensitive fields, parameters and variables, and `sensitive` as a name
 
 type Login { user: string, sensitive password: string, sensitive: bool }
 task check(sensitive pin: int) -> bool
-machine M(sensitive key: string) {
+machine M(sensitive pin: string) {
   /// The session.
-  sensitive var token: string = key
+  sensitive var token: string = pin
   var sensitive: int = 0
 }
 

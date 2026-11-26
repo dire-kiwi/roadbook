@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/history.road",
@@ -148,6 +148,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Editor",
         "name": "Editor",
@@ -692,6 +693,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Steps",
         "name": "Steps",
@@ -995,6 +997,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Bounce",
         "name": "Bounce",

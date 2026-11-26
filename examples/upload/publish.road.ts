@@ -54,7 +54,7 @@ export interface PublishDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -433,6 +433,7 @@ const ir: unknown = {
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -563,6 +564,7 @@ const ir: unknown = {
                       "machine": "Upload",
                       "state": "Publish.Uploading"
                     },
+                    "key": null,
                     "event": "Pause",
                     "value": {
                       "kind": "record",
@@ -597,6 +599,7 @@ const ir: unknown = {
                       "machine": "Upload",
                       "state": "Publish.Uploading"
                     },
+                    "key": null,
                     "event": "Resume",
                     "value": {
                       "kind": "record",
@@ -931,6 +934,7 @@ const ir: unknown = {
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Upload",
         "name": "Upload",

@@ -227,7 +227,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -1383,6 +1383,7 @@ const ir: unknown = {
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "SupportTicket",
         "name": "SupportTicket",
@@ -4516,6 +4517,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "SatisfactionSurvey",
         "name": "SatisfactionSurvey",

@@ -20,7 +20,7 @@ export interface OverflowDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "packages/effect/test/charts/runtime.road",
@@ -113,6 +113,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Overflow",
         "name": "Overflow",
@@ -214,6 +215,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Settle",
         "name": "Settle",
@@ -389,6 +391,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Early",
         "name": "Early",
@@ -468,6 +471,7 @@ const ir: unknown = {
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Leftover",
         "name": "Leftover",
@@ -630,6 +634,7 @@ const ir: unknown = {
       "vars": [],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Payload",
         "name": "Payload",

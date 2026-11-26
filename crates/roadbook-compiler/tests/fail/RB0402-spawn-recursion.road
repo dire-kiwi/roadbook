@@ -1,0 +1,53 @@
+machine Swarm() {
+  children more: Swarm by int
+  initial A
+  state A { entry spawn more[1] = Swarm() }
+}
+
+machine Wave() {
+  event Go
+  children more: Wave by int
+  initial A
+  state A { always -> B  spawn more[1] = Wave() }
+  state B { on Go spawn more[2] = Wave() }
+}
+
+machine Patient() {
+  event Go
+  children more: Patient by int
+  initial A
+  state A { on Go spawn more[1] = Patient() }
+}
+
+machine Leaver() {
+  children more: Leaver by int
+  initial S
+  state S {
+    exit spawn more[1] = Leaver()
+    always -> T
+  }
+  state T { after 1s -> S }
+}
+
+error Crashed
+
+/// Restarting a failed child waits for its failure: no recursion.
+machine Supervisor() ! Crashed {
+  event Start
+  event Crash
+  children subs: Supervisor by int
+  initial Run
+  state Run {
+    on Start                      spawn subs[1] = Supervisor()
+    on subs.fail Crashed          spawn subs[key] = Supervisor()
+    on Crash             -> Dead
+  }
+  final state Dead { fail Crashed }
+}
+
+// expect: RB0902 at 4:9
+// expect: RB0402 at 4:9
+// expect: RB0402 at 11:13
+// expect: RB0902 at 12:9
+// expect: RB0902 at 19:9
+// expect: RB0402 at 27:5

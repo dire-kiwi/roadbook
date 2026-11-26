@@ -115,6 +115,20 @@ pub struct InvokeEntry {
     pub src: String,
 }
 
+/// A running spawned child in a snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpawnedEntry {
+    /// Its id within the run, from the sequence invokes take theirs from.
+    pub id: u64,
+    /// Its collection.
+    pub children: String,
+    /// Its key: a string or an integer.
+    pub key: Value,
+    /// The arguments it was spawned with, keyed by parameter name.
+    pub args: Object,
+}
+
 /// A running `after` timer in a snapshot.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -149,6 +163,8 @@ pub struct Snapshot {
     pub vars: Object,
     /// The running invokes, in the order they were started.
     pub invokes: Vec<InvokeEntry>,
+    /// The running spawned children, in the order they were started.
+    pub spawned: Vec<SpawnedEntry>,
     /// The running timers, in the order they were started.
     pub timers: Vec<TimerEntry>,
     /// The id the next invoke will get.
@@ -188,8 +204,8 @@ pub enum Input {
     Emitted {
         /// The sender's run id.
         from: String,
-        /// The id of this run's invoke that started the sender, when this run invoked it;
-        /// `null` when this run holds a `ref` to it.
+        /// The id of this run's invoke or spawned child that is the sender, when this run is
+        /// its parent; `null` when this run holds a `ref` to it.
         invoke: Option<u64>,
         /// The message's id in the sender.
         message: u64,
@@ -220,6 +236,30 @@ pub enum Input {
         /// The defect.
         defect: Defect,
     },
+    /// A spawned child ended `done`.
+    #[serde(rename = "spawn.done")]
+    SpawnDone {
+        /// The spawned child's id.
+        spawn: u64,
+        /// Its output, `null` for a machine that returns nothing.
+        value: Value,
+    },
+    /// A spawned child failed with an error, a tagged record.
+    #[serde(rename = "spawn.fail")]
+    SpawnFail {
+        /// The spawned child's id.
+        spawn: u64,
+        /// The error.
+        error: Value,
+    },
+    /// A spawned child ended with a defect.
+    #[serde(rename = "spawn.defect")]
+    SpawnDefect {
+        /// The spawned child's id.
+        spawn: u64,
+        /// The defect.
+        defect: Defect,
+    },
     /// A timer expired.
     #[serde(rename = "after")]
     After {
@@ -244,6 +284,16 @@ impl Input {
             Input::InvokeDone { invoke, .. }
             | Input::InvokeFail { invoke, .. }
             | Input::InvokeDefect { invoke, .. } => Some(*invoke),
+            _ => None,
+        }
+    }
+
+    /// The id of the spawned child whose outcome this is, if it is one.
+    pub fn spawn_id(&self) -> Option<u64> {
+        match self {
+            Input::SpawnDone { spawn, .. }
+            | Input::SpawnFail { spawn, .. }
+            | Input::SpawnDefect { spawn, .. } => Some(*spawn),
             _ => None,
         }
     }
@@ -310,6 +360,23 @@ pub enum Command {
         /// The invoke's id.
         invoke: u64,
     },
+    /// Start machine `src` as a spawned child, which delivers what it emits to this run; queue
+    /// its outcome as a `spawn.*` input when it ends.
+    #[serde(rename = "spawn.start")]
+    SpawnStart {
+        /// The spawned child's id.
+        spawn: u64,
+        /// The machine's name.
+        src: String,
+        /// Its arguments, keyed by parameter name.
+        args: Object,
+    },
+    /// Stop the spawned child and wait until it has stopped, as `invoke.cancel` does.
+    #[serde(rename = "spawn.stop")]
+    SpawnStop {
+        /// The spawned child's id.
+        spawn: u64,
+    },
     /// Start a timer that queues `{"kind": "after", "timer": id}` after `delay` milliseconds.
     #[serde(rename = "timer.start")]
     TimerStart {
@@ -332,7 +399,7 @@ pub enum Command {
         timer: u64,
     },
     /// Queue a message for run `to` without waiting for it: for the child run of this run's
-    /// invoke `invoke`, or, when `invoke` is `None`, for the peer `to`.
+    /// invoke or spawned child `invoke`, or, when `invoke` is `None`, for the peer `to`.
     #[serde(rename = "send")]
     Send {
         /// The receiver's run id.
@@ -344,8 +411,8 @@ pub enum Command {
         /// The event, a tagged record.
         value: Value,
     },
-    /// Queue the emitted event for this run's invoker (if it invoked this run with `as`) and
-    /// for every run that holds a `ref` to this run, without waiting for them.
+    /// Queue the emitted event for this run's parent (if it invoked this run with `as`, or
+    /// spawned it) and for every run that holds a `ref` to this run, without waiting for them.
     #[serde(rename = "emit")]
     Emit {
         /// The message's id in this run.
@@ -489,6 +556,30 @@ pub enum Record {
         /// The task's or machine's name.
         src: String,
     },
+    /// A spawned child was started.
+    #[serde(rename = "spawn.started")]
+    SpawnStarted {
+        /// Its id.
+        spawn: u64,
+        /// Its collection.
+        children: String,
+        /// Its key.
+        key: Value,
+        /// Its machine.
+        src: String,
+        /// Its arguments.
+        args: Object,
+    },
+    /// A running spawned child was stopped.
+    #[serde(rename = "spawn.stopped")]
+    SpawnStopped {
+        /// Its id.
+        spawn: u64,
+        /// Its collection.
+        children: String,
+        /// Its key.
+        key: Value,
+    },
     /// An `after` timer was started.
     #[serde(rename = "timer.started")]
     TimerStarted {
@@ -575,7 +666,8 @@ pub struct SavedTimer {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Saved {
-    /// The version of the format: `2`, or `1` for one written before history states.
+    /// The version of the format: `3`, or `2` or `1` for one written before keyed spawn or
+    /// history states.
     pub snapshot_version: u64,
     /// The machine's name.
     pub machine: String,
@@ -593,6 +685,10 @@ pub struct Saved {
     pub vars: Object,
     /// The running invokes, in the order they were started.
     pub invokes: Vec<InvokeEntry>,
+    /// The running spawned children, in the order they were started. `None` only in a
+    /// version 1 or 2 snapshot, which has no `spawned` member and restores with no children.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spawned: Option<Vec<SpawnedEntry>>,
     /// The running timers, in the order they were started, with their due times.
     pub timers: Vec<SavedTimer>,
     /// The id the next invoke will get.
@@ -610,8 +706,8 @@ pub struct Saved {
 }
 
 impl Saved {
-    /// The version of the format this runtime writes. It reads this one and version 1.
-    pub const VERSION: u64 = 2;
+    /// The version of the format this runtime writes. It reads this one and versions 1 and 2.
+    pub const VERSION: u64 = 3;
 
     /// `snap` saved, with each timer due at `due(id)`.
     pub fn new(snap: &Snapshot, mut due: impl FnMut(&TimerEntry) -> u64) -> Saved {
@@ -625,6 +721,7 @@ impl Saved {
             input: snap.input.clone(),
             vars: snap.vars.clone(),
             invokes: snap.invokes.clone(),
+            spawned: Some(snap.spawned.clone()),
             timers: snap
                 .timers
                 .iter()
@@ -648,7 +745,8 @@ impl Saved {
     }
 
     /// The core's snapshot: without the version and the due times, as run `run`, with an
-    /// empty `history` for a version 1 snapshot.
+    /// empty `history` for a version 1 snapshot and no spawned children for a version 1 or 2
+    /// one.
     pub fn to_snapshot(&self, run: &str) -> Snapshot {
         Snapshot {
             machine: self.machine.clone(),
@@ -659,6 +757,7 @@ impl Saved {
             input: self.input.clone(),
             vars: self.vars.clone(),
             invokes: self.invokes.clone(),
+            spawned: self.spawned.clone().unwrap_or_default(),
             timers: self
                 .timers
                 .iter()

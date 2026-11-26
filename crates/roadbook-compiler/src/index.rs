@@ -62,6 +62,8 @@ pub enum SymbolKind {
     State,
     /// The name of `invoke Machine(…) as name`; its parent is the invoking state.
     InvokeName,
+    /// A `children` collection of a machine; its parent is the machine.
+    Children,
 }
 
 impl SymbolKind {
@@ -120,6 +122,7 @@ impl SymbolKind {
             SymbolKind::EmittedEvent => "emitted event",
             SymbolKind::State => "state",
             SymbolKind::InvokeName => "invoked machine's name",
+            SymbolKind::Children => "children collection",
         }
     }
 }

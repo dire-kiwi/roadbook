@@ -1,5 +1,5 @@
 // Simulate mode's panel: start the machine drawn with an input, then choose what happens next
-// (an event, an invoke's outcome, a timer, the clock, a cancel), answer the functions the core
+// (an event, an invoke's or a spawned child's outcome, a timer, the clock, a cancel), answer the functions the core
 // calls, and step back and forward through the choices. The model is src/sim.ts; this file
 // only draws it and wires up the forms.
 
@@ -9,8 +9,8 @@ import { own } from '../ir.ts'
 import { findState, triggerText } from '../model.ts'
 import { stateName } from '../replay.ts'
 import { esc } from '../render.ts'
-import { Simulation, refusal } from '../sim.ts'
-import type { Outcome } from '../sim.ts'
+import { Simulation, refusal, spawnedText } from '../sim.ts'
+import type { Outcome, SpawnChoice } from '../sim.ts'
 import { checkFields, checkTagged, checkValue, parseJson, sampleFields, sampleTagged, sampleValue } from '../values.ts'
 import { activeHtml, pretty, recordsHtml, scrollWithin, variablesHtml } from './modes.ts'
 import type { Controller, Highlight, Host } from './modes.ts'
@@ -83,7 +83,7 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
     const m = s.def
     const refused = refusal(ir, s.machine)
     let h = `<div class="rb-mode-head"><h2>Simulate <span class="rb-mono">${esc(s.machine)}</span></h2>${s.current ? `<span class="rb-chip rb-status-${esc(s.current.snapshot.status)}">${esc(s.current.snapshot.status)}</span>` : ''}</div>`
-    h += `<p class="rb-mode-note">Runs <code>@roadbook/core</code> in this page, on a virtual clock. You are the host: you give the input, events, the outcome of each task and child machine, and the results of functions. Actions do nothing; <code>send</code> and <code>emit</code> show as records only.</p>`
+    h += `<p class="rb-mode-note">Runs <code>@roadbook/core</code> in this page, on a virtual clock. You are the host: you give the input, events, the outcome of each task, child machine and spawned child, and the results of functions. Actions do nothing; <code>send</code> and <code>emit</code> show as records only.</p>`
     if (refused) {
       h += `<div class="rb-refusal" role="alert"><strong>Cannot simulate ${esc(s.machine)}.</strong> The core refused it: ${esc(refused)}. Explore and Replay still work for this chart.</div>`
       el.innerHTML = h
@@ -191,6 +191,7 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
       h += `<div class="rb-choice">${button(k(`defect:${inv.id}`), `${inv.src} has a defect`, () => s.complete(inv.id, { defect: `${inv.src} failed` }), 'End it with a host defect: the run ends with a defect too')}</div>`
       for (const e of inv.emits) h += tagged(k(`emit:${inv.id}:${e.name}`), `${inv.as ?? inv.src} emits ${e.name}`, e.name, e.fields, (v) => s.emitFromChild(inv.id, v))
     }
+    for (const child of c.spawned) h += spawnedHtml(s, child, k)
     if (c.timers.length) {
       h += '<h4>Timers</h4>'
       for (const t of c.timers) {
@@ -205,7 +206,25 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
       return s.advance(ms)
     }, 'Move the clock on, firing the timers due on the way')}</div>`
     h += `<div class="rb-choice">${button(k('cancel'), 'Cancel the run', () => s.cancel(), 'Cancel from outside: every state is exited')}</div>`
-    if (!c.events.length && !c.invokes.length && !c.timers.length) h += `<p class="rb-empty">${esc(m.root.name)} waits for nothing: no event, invoke or timer can move it.</p>`
+    if (!c.events.length && !c.invokes.length && !c.spawned.length && !c.timers.length) h += `<p class="rb-empty">${esc(m.root.name)} waits for nothing: no event, invoke or timer can move it.</p>`
+    return h
+  }
+
+  /** A running spawned child: like a machine invoke, its outcome given by hand, and what it can emit. */
+  function spawnedHtml(s: Simulation, c: SpawnChoice, k: (x: string) => string): string {
+    const name = spawnedText(c)
+    let h = `<h4>spawned ${c.id}: <code>${esc(name)}</code> <span class="rb-h-note">${esc(c.src)}</span></h4>`
+    h += `<p class="rb-cnote rb-task-note">A child of ${esc(c.children)}, treated as a task: its run is not started, and you give its outcome by hand.${own(ir.machines, c.src) ? ` To step through ${esc(c.src)} itself, open its tab and simulate it there.` : ''}</p>`
+    const returns = c.returns
+    if (returns === null) h += `<div class="rb-choice">${button(k(`done:${c.id}`), `${name} done`, () => s.complete(c.id, { done: null }))}</div>`
+    else
+      h +=
+        `<details class="rb-choice"><summary>${esc(name)} done …</summary>` +
+        form(k(`done:${c.id}`), `${name} done`, sampleValue(ir, returns), (v) => checkValue(ir, returns, v, 'result'), (v) => s.complete(c.id, { done: v })) +
+        `</details>`
+    for (const e of c.errors) h += tagged(k(`fail:${c.id}:${e.name}`), `${name} fails ${e.name}`, e.name, e.fields, (v) => s.complete(c.id, { fail: v }))
+    h += `<div class="rb-choice">${button(k(`defect:${c.id}`), `${name} has a defect`, () => s.complete(c.id, { defect: `${c.src} failed` }), 'End it with a host defect: the run ends with a defect too')}</div>`
+    for (const e of c.emits) h += tagged(k(`emit:${c.id}:${e.name}`), `${name} emits ${e.name}`, e.name, e.fields, (v) => s.emitFromChild(c.id, v))
     return h
   }
 

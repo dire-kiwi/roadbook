@@ -1,0 +1,22 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0207]: `Child` does not declare the error `Gone`
+  --> RB0207-spawn-fail-undeclared.road:15:18
+   |
+ 4 | machine Child() ! Lost {
+   |         ----- declared as `! Lost`
+...
+15 |     on kids.fail Gone -> A
+   |                  ^^^^
+
+error[RB0207]: `Child` does not declare the error `Lsot`
+  --> RB0207-spawn-fail-undeclared.road:16:18
+   |
+ 4 | machine Child() ! Lost {
+   |         ----- declared as `! Lost`
+...
+16 |     on kids.fail Lsot -> A
+   |                  ^^^^
+   |
+   = help: did you mean `Lost`?

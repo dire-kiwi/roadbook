@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/orders.road",
@@ -408,6 +408,7 @@
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Inventory",
         "name": "Inventory",
@@ -894,6 +895,7 @@
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -931,6 +933,7 @@
                   "machine": "Inventory",
                   "state": null
                 },
+                "key": null,
                 "event": "Reserve",
                 "value": {
                   "kind": "record",
@@ -1225,6 +1228,7 @@
                       "machine": "Inventory",
                       "state": null
                     },
+                    "key": null,
                     "event": "Release",
                     "value": {
                       "kind": "record",

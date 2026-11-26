@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/pair.road",
@@ -68,6 +68,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Receiver",
         "name": "Receiver",
@@ -247,6 +248,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Sender",
         "name": "Sender",
@@ -310,6 +312,7 @@
                       "machine": "Receiver",
                       "state": null
                     },
+                    "key": null,
                     "event": "First",
                     "value": {
                       "kind": "record",
@@ -326,6 +329,7 @@
                       "machine": "Receiver",
                       "state": null
                     },
+                    "key": null,
                     "event": "Second",
                     "value": {
                       "kind": "record",

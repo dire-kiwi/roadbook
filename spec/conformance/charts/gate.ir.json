@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/gate.road",
@@ -147,6 +147,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Gate",
         "name": "Gate",

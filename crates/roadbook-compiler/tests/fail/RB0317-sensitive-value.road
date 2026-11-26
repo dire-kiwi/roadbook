@@ -18,18 +18,18 @@ machine Peer() {
   state A { on Hello -> A }
 }
 
-machine M(sensitive key: string, creds: Creds, peer: ref Peer) -> string ! Refused {
+machine M(sensitive pin: string, creds: Creds, peer: ref Peer) -> string ! Refused {
   event Submit { sensitive password: string, user: string }
   emits Seen { sensitive password: string, user: string }
-  sensitive var kept: string = key
-  var leaked: string = key
+  sensitive var kept: string = pin
+  var leaked: string = pin
   sensitive var count: int = 0
   var shown: int = -count + 1
-  var few: bool = strong(key) and count < 3
+  var few: bool = strong(pin) and count < 3
   var copy: Creds = creds
   var note: Note
   var why: Refused
-  sensitive var hidden: Refused = Refused { why: key, code: 2 }
+  sensitive var hidden: Refused = Refused { why: pin, code: 2 }
 
   initial A
   state A {
@@ -38,19 +38,19 @@ machine M(sensitive key: string, creds: Creds, peer: ref Peer) -> string ! Refus
       do log(event.password), keep(event.password), log(creds.user)
       send peer.Hello { token: event.password, plain: event.password }
       emit Seen { password: event.password, user: event.password }
-    after ttl(key) -> B
+    after ttl(pin) -> B
     after copy.ttl -> B
   }
   state B {
     invoke check(creds.user, creds.password) {
       done {
         if result -> C
-        else      -> D  set why = Refused { why: key, code: 1 }
+        else      -> D  set why = Refused { why: pin, code: 1 }
       }
     }
   }
   state C {
-    invoke Child(key, key) { done -> E }
+    invoke Child(pin, pin) { done -> E }
     after 1s -> F
   }
   final state D { fail why }

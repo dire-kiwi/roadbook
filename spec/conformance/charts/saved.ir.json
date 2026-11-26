@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/saved.road",
@@ -213,6 +213,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Counter",
         "name": "Counter",
@@ -413,6 +414,7 @@
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Shop",
         "name": "Shop",
@@ -598,6 +600,7 @@
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Pay",
         "name": "Pay",
@@ -821,6 +824,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Reminder",
         "name": "Reminder",
@@ -1032,6 +1036,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Order",
         "name": "Order",

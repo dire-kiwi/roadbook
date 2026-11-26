@@ -90,7 +90,7 @@ export interface PlaceOrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/shop/place_order.road",
@@ -685,6 +685,7 @@ const ir: unknown = {
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "PlaceOrder",
         "name": "PlaceOrder",
@@ -1587,6 +1588,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Checkout",
         "name": "Checkout",

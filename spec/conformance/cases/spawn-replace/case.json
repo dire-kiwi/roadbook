@@ -1,0 +1,70 @@
+{
+  "description": "A spawn under a key in use stops the running child (its cancel step's emitted event is stale) and starts the new one. A send to a child spawned in the same step finds it not started yet and is undelivered with `to` null, as is a send to a key with no child; a stop of a key with no child does nothing. Two spawns under one key in a step start only the second. A spawn in the step that ends the hub never starts, and the children still running are stopped in the order they started.",
+  "requires": [
+    "messaging",
+    "spawn"
+  ],
+  "chart": "charts/hub.road",
+  "machine": "Hub",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Join",
+        "id": "a",
+        "name": "Ann"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Join",
+        "id": "a",
+        "name": "Ada"
+      }
+    },
+    {
+      "event": {
+        "_tag": "JoinTell",
+        "id": "b",
+        "name": "Bob",
+        "text": "hello"
+      }
+    },
+    {
+      "event": {
+        "_tag": "JoinTwice",
+        "id": "c"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Tell",
+        "id": "zz",
+        "text": "x"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Kick",
+        "id": "zz"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Tell",
+        "id": "c",
+        "text": "yo"
+      }
+    },
+    {
+      "event": {
+        "_tag": "CloseJoin",
+        "id": "d"
+      }
+    }
+  ],
+  "status": "done"
+}

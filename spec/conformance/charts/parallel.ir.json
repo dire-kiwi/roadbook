@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/parallel.road",
@@ -119,6 +119,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Regions",
         "name": "Regions",
@@ -578,6 +579,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Fork",
         "name": "Fork",
@@ -1153,6 +1155,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Clash",
         "name": "Clash",
@@ -1506,6 +1509,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Escape",
         "name": "Escape",
@@ -1828,6 +1832,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Finish",
         "name": "Finish",
@@ -2172,6 +2177,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Jobs",
         "name": "Jobs",
@@ -2557,6 +2563,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Shell",
         "name": "Shell",

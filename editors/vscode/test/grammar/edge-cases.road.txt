@@ -47,4 +47,17 @@ machine Worker(settings: Settings, peer: ref Worker) {
   }
   final state Broken { fail error }
 }
+
+machine Hub(children: int) {
+  children sessions: Session by string
+  initial A
+  exit send sessions.*.Leave
+  state A {
+    on Join             spawn sessions[event.id] = Session(event.name)  send sessions[event.id].Notify { key: key }
+    on Kick             stop sessions[event.id]  do stop(), spawn(children)
+    on sessions.done    do log(key, result, event.key)
+    on sessions.fail *  -> A
+    on sessions.fail Lost -> A
+  }
+}
 "unterminated

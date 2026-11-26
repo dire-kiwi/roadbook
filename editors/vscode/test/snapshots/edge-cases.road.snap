@@ -326,6 +326,124 @@
 #                                  ^ punctuation.section.braces.roadbook
 >}
 #^ punctuation.section.braces.roadbook
+>
+>machine Hub(children: int) {
+#^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
+#        ^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
+#           ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#            ^^^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                    ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                      ^^^ meta.declaration.machine.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                         ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                           ^ punctuation.section.braces.roadbook
+>  children sessions: Session by string
+#  ^^^^^^^^ storage.type.children.roadbook
+#           ^^^^^^^^ variable.other.definition.roadbook
+#                   ^ punctuation.separator.colon.roadbook
+#                     ^^^^^^^ entity.name.type.machine.roadbook
+#                             ^^ keyword.other.by.roadbook
+#                                ^^^^^^ support.type.primitive.roadbook
+>  initial A
+#  ^^^^^^^ keyword.control.initial.roadbook
+#          ^ entity.name.type.state.roadbook
+>  exit send sessions.*.Leave
+#  ^^^^ keyword.control.exit.roadbook
+#       ^^^^ keyword.other.effect.roadbook
+#            ^^^^^^^^ variable.other.roadbook
+#                    ^ punctuation.accessor.roadbook
+#                     ^ keyword.operator.wildcard.roadbook
+#                      ^ punctuation.accessor.roadbook
+#                       ^^^^^ entity.name.type.event.roadbook
+>  state A {
+#  ^^^^^ storage.type.state.roadbook
+#        ^ entity.name.type.state.roadbook
+#          ^ punctuation.section.braces.roadbook
+>    on Join             spawn sessions[event.id] = Session(event.name)  send sessions[event.id].Notify { key: key }
+#    ^^ keyword.control.trigger.roadbook
+#       ^^^^ entity.name.type.event.roadbook
+#                        ^^^^^ keyword.other.effect.roadbook
+#                              ^^^^^^^^ variable.other.roadbook
+#                                      ^ punctuation.section.brackets.roadbook
+#                                       ^^^^^ variable.language.roadbook
+#                                            ^ punctuation.accessor.roadbook
+#                                             ^^ variable.other.property.roadbook
+#                                               ^ punctuation.section.brackets.roadbook
+#                                                 ^ keyword.operator.assignment.roadbook
+#                                                   ^^^^^^^ entity.name.type.machine.roadbook
+#                                                          ^ punctuation.section.parens.roadbook
+#                                                           ^^^^^ variable.language.roadbook
+#                                                                ^ punctuation.accessor.roadbook
+#                                                                 ^^^^ variable.other.property.roadbook
+#                                                                     ^ punctuation.section.parens.roadbook
+#                                                                        ^^^^ keyword.other.effect.roadbook
+#                                                                             ^^^^^^^^ variable.other.roadbook
+#                                                                                     ^ punctuation.section.brackets.roadbook
+#                                                                                      ^^^^^ variable.language.roadbook
+#                                                                                           ^ punctuation.accessor.roadbook
+#                                                                                            ^^ variable.other.property.roadbook
+#                                                                                              ^ punctuation.section.brackets.roadbook
+#                                                                                               ^ punctuation.accessor.roadbook
+#                                                                                                ^^^^^^ entity.name.type.event.roadbook
+#                                                                                                       ^ punctuation.section.braces.roadbook
+#                                                                                                         ^^^ variable.other.property.roadbook
+#                                                                                                            ^ punctuation.separator.colon.roadbook
+#                                                                                                              ^^^ variable.language.roadbook
+#                                                                                                                  ^ punctuation.section.braces.roadbook
+>    on Kick             stop sessions[event.id]  do stop(), spawn(children)
+#    ^^ keyword.control.trigger.roadbook
+#       ^^^^ entity.name.type.event.roadbook
+#                        ^^^^ keyword.other.effect.roadbook
+#                             ^^^^^^^^ variable.other.roadbook
+#                                     ^ punctuation.section.brackets.roadbook
+#                                      ^^^^^ variable.language.roadbook
+#                                           ^ punctuation.accessor.roadbook
+#                                            ^^ variable.other.property.roadbook
+#                                              ^ punctuation.section.brackets.roadbook
+#                                                 ^^ keyword.other.effect.roadbook
+#                                                    ^^^^ entity.name.function.call.roadbook
+#                                                        ^ punctuation.section.parens.roadbook
+#                                                         ^ punctuation.section.parens.roadbook
+#                                                          ^ punctuation.separator.comma.roadbook
+#                                                            ^^^^^ entity.name.function.call.roadbook
+#                                                                 ^ punctuation.section.parens.roadbook
+#                                                                  ^^^^^^^^ variable.other.roadbook
+#                                                                          ^ punctuation.section.parens.roadbook
+>    on sessions.done    do log(key, result, event.key)
+#    ^^ keyword.control.trigger.roadbook
+#       ^^^^^^^^ variable.other.roadbook
+#               ^ punctuation.accessor.roadbook
+#                ^^^^ keyword.control.done.roadbook
+#                        ^^ keyword.other.effect.roadbook
+#                           ^^^ entity.name.function.call.roadbook
+#                              ^ punctuation.section.parens.roadbook
+#                               ^^^ variable.language.roadbook
+#                                  ^ punctuation.separator.comma.roadbook
+#                                    ^^^^^^ variable.language.roadbook
+#                                          ^ punctuation.separator.comma.roadbook
+#                                            ^^^^^ variable.language.roadbook
+#                                                 ^ punctuation.accessor.roadbook
+#                                                  ^^^ variable.other.property.roadbook
+#                                                     ^ punctuation.section.parens.roadbook
+>    on sessions.fail *  -> A
+#    ^^ keyword.control.trigger.roadbook
+#       ^^^^^^^^ variable.other.roadbook
+#               ^ punctuation.accessor.roadbook
+#                ^^^^ keyword.control.fail.roadbook
+#                     ^ keyword.operator.wildcard.roadbook
+#                        ^^ keyword.operator.arrow.roadbook
+#                           ^ entity.name.type.state.roadbook
+>    on sessions.fail Lost -> A
+#    ^^ keyword.control.trigger.roadbook
+#       ^^^^^^^^ variable.other.roadbook
+#               ^ punctuation.accessor.roadbook
+#                ^^^^ keyword.control.fail.roadbook
+#                     ^^^^ entity.name.type.error.roadbook
+#                          ^^ keyword.operator.arrow.roadbook
+#                             ^ entity.name.type.state.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>}
+#^ punctuation.section.braces.roadbook
 >"unterminated
 #^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
 # ^^^^^^^^^^^^ string.quoted.double.roadbook

@@ -276,6 +276,9 @@ pub struct Machine {
     /// Events the machine emits (`emits Name { fields }`), keyed by name, in
     /// source order. No name is both in `events` and in `emits`.
     pub emits: IndexMap<String, EventDecl>,
+    /// The keyed collections of spawned children (`children name: Machine by
+    /// Key`), keyed by name, in source order.
+    pub children: IndexMap<String, ChildrenDecl>,
     /// The root state. Its `id` and `name` are the machine's name, it is
     /// `compound`, and it holds the `entry`, `exit`, `on`, `after` and
     /// `always` items written directly in the machine body.
@@ -312,6 +315,20 @@ pub struct EventDecl {
     /// Doc comment, `""` if none.
     pub doc: String,
     /// The whole declaration.
+    pub span: Span,
+}
+
+/// `children name: Machine by Key`: a keyed collection of spawned children.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChildrenDecl {
+    /// The machine the children run, a key of [`Ir::machines`].
+    pub machine: String,
+    /// The key type: `string`, `int` or an enum, or an alias of one.
+    pub key: TypeRef,
+    /// Doc comment, `""` if none.
+    pub doc: String,
+    /// From `children` to the end of the key type.
     pub span: Span,
 }
 
@@ -404,7 +421,7 @@ pub struct Invoke {
     pub span: Span,
 }
 
-/// Whether an [`Address`] names an invoked child or a `ref` value.
+/// Whether an [`Address`] names an invoked child, a `ref` value or a children collection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AddressKind {
@@ -412,6 +429,8 @@ pub enum AddressKind {
     Child,
     /// A parameter or variable of type `ref Machine`.
     Ref,
+    /// The spawned children of a `children` collection.
+    Children,
 }
 
 /// Another running machine, as a `send` names its receiver and an
@@ -421,12 +440,13 @@ pub enum AddressKind {
 pub struct Address {
     /// A child or a ref.
     pub kind: AddressKind,
-    /// The `as` name, or the parameter or variable.
+    /// The `as` name, the parameter or variable, or the collection.
     pub name: String,
     /// The machine at the other end, a key of [`Ir::machines`].
     pub machine: String,
     /// For a child, the id of the state whose invoke is named `name`: the
-    /// innermost such state containing the item. `None` for a ref.
+    /// innermost such state containing the item. `None` for a ref or a
+    /// collection.
     pub state: Option<String>,
 }
 
@@ -496,6 +516,21 @@ pub enum Trigger {
         /// The error's name, or `"*"` for the declared errors not listed.
         error: String,
     },
+    /// `on name.done`: a spawned child of the collection ended `done`.
+    #[serde(rename = "spawn.done")]
+    SpawnDone {
+        /// The collection, a key of [`Machine::children`].
+        children: String,
+    },
+    /// `on name.fail E`: a spawned child of the collection failed with `E`.
+    #[serde(rename = "spawn.fail")]
+    SpawnFail {
+        /// The collection, a key of [`Machine::children`].
+        children: String,
+        /// The error's name, or `"*"` for the declared errors the state has
+        /// no `on name.fail` for.
+        error: String,
+    },
 }
 
 /// An effect, run by an `entry`, an `exit` or a transition.
@@ -520,6 +555,10 @@ pub enum Effect {
     Send {
         /// The receiver.
         to: Address,
+        /// For a collection, the key of the child (`send name[key].Event`), or
+        /// `None` for every running child (`send name.*.Event`). `None` for
+        /// the other kinds of address.
+        key: Option<Expr>,
         /// The event's name, a key of the receiver's [`Machine::events`].
         event: String,
         /// The event's value: a `record` expression whose type is
@@ -534,16 +573,38 @@ pub enum Effect {
         /// event's bare name.
         value: Expr,
     },
+    /// `spawn name[key] = Machine(args)`: start a child in a collection.
+    Spawn {
+        /// The collection, a key of [`Machine::children`].
+        children: String,
+        /// Its machine.
+        machine: String,
+        /// The child's key.
+        key: Expr,
+        /// Arguments, positional, in parameter order.
+        args: Vec<Expr>,
+    },
+    /// `stop name[key]`: stop a spawned child.
+    Stop {
+        /// The collection, a key of [`Machine::children`].
+        children: String,
+        /// The child's key.
+        key: Expr,
+    },
 }
 
 impl Machine {
     /// The first use of messaging in the machine, described for a "not supported" message:
-    /// an `emits`, a `ref` type, an `invoke … as`, an `on name.Event`, a `send` or an `emit`.
+    /// an `emits`, a `children` collection, a `ref` type, an `invoke … as`, an `on name.Event`,
+    /// a `send`, an `emit`, a `spawn` or a `stop`.
     /// `None` if it uses none. A reader that does not implement messaging refuses a machine
     /// for which this is `Some`.
     pub fn messaging(&self) -> Option<String> {
         if let Some(e) = self.emits.keys().next() {
             return Some(format!("`emits {e}`"));
+        }
+        if let Some(c) = self.children.keys().next() {
+            return Some(format!("`children {c}`"));
         }
         let has_ref = |t: &TypeRef| t.ref_base().is_some();
         if let Some(p) = self.params.iter().find(|p| has_ref(&p.ty)) {
@@ -561,6 +622,8 @@ fn state_messaging(s: &State) -> Option<String> {
         effects.iter().find_map(|e| match e {
             Effect::Send { to, event, .. } => Some(format!("`send {}.{event}`", to.name)),
             Effect::Emit { event, .. } => Some(format!("`emit {event}`")),
+            Effect::Spawn { children, .. } => Some(format!("`spawn {children}[…]`")),
+            Effect::Stop { children, .. } => Some(format!("`stop {children}[…]`")),
             _ => None,
         })
     };

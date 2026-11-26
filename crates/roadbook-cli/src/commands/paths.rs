@@ -578,6 +578,8 @@ fn trigger_text(t: &Trigger) -> String {
         Trigger::Always => "always".into(),
         Trigger::Done | Trigger::InvokeDone => "done".into(),
         Trigger::InvokeFail { error } => format!("fail {error}"),
+        Trigger::SpawnDone { children } => format!("{children}.done"),
+        Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
     }
 }
 

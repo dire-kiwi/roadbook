@@ -26,6 +26,7 @@ import {
   parentState,
   signatureText,
   sourceText,
+  spawnSites,
   talks,
   triggerKind,
   triggerSource,
@@ -33,8 +34,8 @@ import {
   typeDeclText,
   walkStates,
 } from './model.ts'
-import type { EventRef, MessageSite } from './model.ts'
-import { esc, paramsHtml, typeHtml } from './render.ts'
+import type { EventRef, MessageSite, SpawnSite } from './model.ts'
+import { childrenHtml, esc, paramsHtml, typeHtml } from './render.ts'
 
 export type Selection =
   | { type: 'state'; id: string }
@@ -83,21 +84,43 @@ function gotoLink(machine: string, sel: Exclude<Selection, null>, label: string)
   return `<button class="rb-link rb-mono" type="button" data-goto="${esc(JSON.stringify([machine, sel]))}">${esc(label)}</button>`
 }
 
-/** `the child upload (invoked in Uploading)`, `the ref inventory` */
-function addressText(ctx: PanelContext, a: Address): string {
-  return a.kind === 'child' ? `the child ${a.name}${a.state ? `, invoked in ${shortId(ctx, a.state)}` : ''}` : `the ref ${a.name}`
+/**
+ * `the child upload, invoked in Uploading`, `the ref inventory`, for a collection of spawned
+ * children `the child of sessions with key event.id` (a send's `key`), `every running child of
+ * sessions` (a send without one), `a child of sessions` (a sender).
+ */
+function addressText(ctx: PanelContext, a: Address, key?: { text: string } | null): string {
+  switch (a.kind) {
+    case 'child':
+      return `the child ${a.name}${a.state ? `, invoked in ${shortId(ctx, a.state)}` : ''}`
+    case 'ref':
+      return `the ref ${a.name}`
+    case 'children':
+      if (key === undefined) return `a child of ${a.name}`
+      return key ? `the child of ${a.name} with key ${key.text}` : `every running child of ${a.name}`
+  }
 }
 
-/** An effect as HTML: a `send` or `emit` links to its event and says where it goes. */
+/**
+ * An effect as HTML: a `send` or `emit` links to its event and says where it goes, a `spawn`
+ * links to the child's machine.
+ */
 function effectHtml(ctx: PanelContext, e: Effect): string {
+  if (e.kind === 'spawn') {
+    return (
+      `<span class="rb-spawn-kw">spawn</span> <button class="rb-link rb-mono" type="button" data-open-machine="${esc(e.machine)}" data-via="spawn" title="Open machine ${esc(e.machine)}">${esc(effectText(e).slice('spawn '.length))}</button>` +
+      `<span class="rb-sub rb-note">starts a child of ${esc(e.children)} under the key once the step has settled, stopping the one already under it</span>`
+    )
+  }
+  if (e.kind === 'stop') return `<span class="rb-spawn-kw">stop</span> ${esc(effectText(e).slice('stop '.length))}<span class="rb-sub rb-note">stops the child of ${esc(e.children)} under the key, if there is one</span>`
   const ev = effectEvent(ctx.machine, e)
   if (!ev) return esc(effectText(e))
   const kw = e.kind === 'send' ? 'send' : 'emit'
   const text = effectText(e).slice(kw.length + 1)
   const where =
     e.kind === 'send'
-      ? `to ${esc(e.to.machine)}, ${esc(addressText(ctx, e.to))}`
-      : `to whoever invoked ${esc(ctx.machine)} and every machine holding a ref to it`
+      ? `to ${esc(e.to.machine)}, ${esc(addressText(ctx, e.to, e.key))}`
+      : `to whoever invoked or spawned ${esc(ctx.machine)} and every machine holding a ref to it`
   return (
     `<span class="rb-msg-kw">${kw}</span> <button class="rb-link rb-mono" type="button" data-open-event="${esc(eventKey(ev))}" title="Event ${esc(eventKey(ev))}">${esc(text)}</button>` +
     `<span class="rb-sub rb-note">${where}</span>`
@@ -163,6 +186,15 @@ function invokeSection(ctx: PanelContext, state: State): string {
   return section(`Invokes ${inv.kind}`, s) + section('Types involved', typesOf(ir, decl))
 }
 
+/** The machines of the IR that spawn `name`, as `[machine, collection]`. */
+export function spawnersOf(ir: Ir, name: string): [string, string][] {
+  const out: [string, string][] = []
+  for (const [other, m] of Object.entries(ir.machines)) {
+    for (const [children, c] of Object.entries(m.children)) if (c.machine === name) out.push([other, children])
+  }
+  return out
+}
+
 /** The machines of the IR that invoke `name`, as `[machine, state id]`. */
 export function callersOf(ir: Ir, name: string): [string, string][] {
   const out: [string, string][] = []
@@ -181,11 +213,12 @@ function eventLinks(machine: string, events: string[]): string {
 
 const rel = (text: string, msg = false) => `<span class="rb-rel${msg ? ' rb-t-msg' : ''}">${esc(text)}</span>`
 
-/** Which machines this one invokes, holds a ref to, sends to and receives from. */
+/** Which machines this one invokes, spawns, holds a ref to, sends to and receives from. */
 function talksToSection(ctx: PanelContext): string {
   const t = talks(ctx.ir, ctx.machine)
   const items: string[] = []
   for (const i of t.invokes) items.push(`${rel('invokes')} ${machineLink(i.machine)}${i.as ? ` ${rel('as')} ${esc(i.as)}` : ''} ${rel('in')} ${stateLink(ctx, i.state)}`)
+  for (const x of t.spawns) items.push(`${rel('spawns')} ${machineLink(x.machine)} ${rel('into')} ${esc(x.names.join(', '))}`)
   for (const r of t.refs) items.push(`${rel('holds a ref to')} ${machineLink(r.machine)} ${rel('in')} ${esc(r.names.join(', '))}`)
   for (const x of t.sends) items.push(`${rel('sends', true)} ${eventLinks(x.machine, x.events)} ${rel('to')} ${machineLink(x.machine)}`)
   for (const x of t.receives) items.push(`${rel('handles', true)} ${eventLinks(x.machine, x.events)} ${rel('emitted by')} ${machineLink(x.machine)}`)
@@ -207,6 +240,29 @@ function talkedToBySection(ctx: PanelContext): string {
   return items.length ? `<ul class="rb-talks">${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : ''
 }
 
+/** Where a machine spawns or stops a child, in it: `Serving: on Join`, `Serving (entry)`. */
+function spawnSiteLink(ctx: PanelContext, m: Machine, site: SpawnSite): string {
+  const short = shortId(ctx, site.state)
+  if (typeof site.at !== 'number') return stateLink(ctx, site.state, `${short} (${site.at})`)
+  const t = findState(m, site.state)?.transitions[site.at]
+  const label = t ? `${short}: ${triggerSource(t.trigger)}` : short
+  return `<button class="rb-link rb-mono" type="button" data-select-transition="${esc(JSON.stringify([site.state, site.at]))}">${esc(label)}</button>`
+}
+
+/** A machine's collections of spawned children, each with where it is spawned and stopped. */
+function childrenSection(ctx: PanelContext, m: Machine): string {
+  const sites = spawnSites(m)
+  return list(
+    Object.entries(m.children).map(([name, c]) => {
+      const where = sites
+        .filter((x) => x.children === name)
+        .map((x) => `<span class="rb-sub">${rel(x.op === 'spawn' ? 'spawned' : 'stopped')} ${spawnSiteLink(ctx, m, x)}</span>`)
+        .join('')
+      return `${childrenHtml(ctx.ir, name, c)}${c.doc ? `<span class="rb-sub rb-note">${esc(c.doc)}</span>` : ''}${where}`
+    }),
+  )
+}
+
 function eventItems(machine: string, events: Record<string, EventDecl>): string {
   return list(
     Object.entries(events).map(
@@ -221,6 +277,7 @@ export function machinePanel(ctx: PanelContext): string {
   const tree = (s: State): string =>
     `<li>${stateLink(ctx, s.id, s.name)} <span class="rb-chip">${esc(kindText(s))}${ctx.collapsed.has(s.id) ? ', collapsed' : ''}</span>${s.states.length ? `<ul>${s.states.map(tree).join('')}</ul>` : ''}</li>`
   const callers = callersOf(ir, ctx.machine).map(([name, id]) => `<button class="rb-link rb-mono" type="button" data-open-machine="${esc(name)}">${esc(id)}</button>`)
+  const spawners = spawnersOf(ir, ctx.machine).map(([name, children]) => `${machineLink(name)} ${rel('into')} ${esc(children)}`)
   return (
     head(esc(ctx.machine), 'machine', false) +
     `<p class="rb-path">${esc(sourceText(ir, m.span))}</p>` +
@@ -232,9 +289,11 @@ export function machinePanel(ctx: PanelContext): string {
     ) +
     section('Events it accepts', eventItems(ctx.machine, m.events)) +
     section('Events it emits', eventItems(ctx.machine, m.emits)) +
+    section('Children it spawns', childrenSection(ctx, m)) +
     section('Talks to', talksToSection(ctx)) +
     section('States', `<ul class="rb-tree">${m.root.states.map(tree).join('')}</ul>`) +
     section('Invoked by', list(callers)) +
+    section('Spawned by', list(spawners)) +
     section('Talked to by', talkedToBySection(ctx)) +
     section('Types involved', typesOf(ir, m)) +
     `<h3>Tip</h3><p class="rb-empty">Click a state or an arrow for its details. <kbd>/</kbd> searches, <kbd>f</kbd> fits the diagram to the view.</p>`
@@ -329,7 +388,7 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
     case 'emitted': {
       const from = t.trigger.from
       const ref = { machine: from.machine, event: t.trigger.event }
-      what = `${from.machine} emitted ${t.trigger.event}: ${addressText(ctx, from)}.`
+      what = `${from.machine} emitted ${t.trigger.event}: ${addressText(ctx, from)}.${from.kind === 'children' ? " The child's key is available as key." : ''}`
       const found = eventDecl(ir, ref)
       extra = section(
         `Event of ${from.machine}`,
@@ -359,6 +418,29 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
       const td = own(ir.types, err)
       if (td) extra = section('Error', code(typeDeclText(err, td)) + docHtml(td.doc))
       break
+    }
+    case 'spawn.done':
+      what = `A child of ${t.trigger.children} finished; its value is available as result, its key as key.`
+      break
+    case 'spawn.fail': {
+      const err = t.trigger.error
+      what = `A child of ${t.trigger.children} failed with ${err === '*' ? `a declared error no other on ${t.trigger.children}.fail names` : err}; the error is available as error, the child's key as key.`
+      const td = own(ir.types, err)
+      if (td) extra = section('Error', code(typeDeclText(err, td)) + docHtml(td.doc))
+      break
+    }
+  }
+  if (t.trigger.kind === 'spawn.done' || t.trigger.kind === 'spawn.fail') {
+    const c = own(m.children, t.trigger.children)
+    const child = c && own(ir.machines, c.machine)
+    if (c && child) {
+      extra += section(
+        'Spawned machine',
+        code(signatureText('machine', c.machine, child)) +
+          `<p class="rb-path">${esc(sourceText(ir, child.span))}</p>` +
+          docHtml(child.doc) +
+          `<p><button class="rb-btn" type="button" data-open-machine="${esc(c.machine)}" data-via="spawn">Open machine ${esc(c.machine)} →</button></p>`,
+      )
     }
   }
   if (decl && inv && t.trigger.kind.startsWith('invoke.')) {
@@ -390,7 +472,7 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
 }
 
 /** `Order · Reserving (entry)`, `Publish · Uploading: on PauseClicked → (stays)` */
-function siteLink(ir: Ir, machine: string, site: MessageSite): string {
+function siteLink(ir: Ir, machine: string, site: { state: string; at: MessageSite['at'] }): string {
   const m = own(ir.machines, machine)
   const short = (id: string) => id.slice(machine.length + 1) || id
   if (typeof site.at !== 'number') return gotoLink(machine, { type: 'state', id: site.state }, `${machine} · ${short(site.state)} (${site.at})`)
@@ -434,7 +516,7 @@ export function eventPanel(ctx: PanelContext, name: string): string {
     docHtml(decl.doc) +
     section('Declaration', code(eventDeclText(name, decl, emitted)) + `<p class="rb-empty">${
       emitted
-        ? `${esc(ctx.machine)} emits it to the machine that invoked it and to every machine holding a ref to it.`
+        ? `${esc(ctx.machine)} emits it to the machine that invoked or spawned it and to every machine holding a ref to it.`
         : `${esc(ctx.machine)} accepts it: another machine sends it with <code>send name.${esc(name)}</code>, or host code through the machine's handle.`
     }</p>`) +
     section('Fields', list(decl.fields.map((f) => `${f.sensitive ? 'sensitive ' : ''}${esc(f.name)}: ${esc(f.type)}${f.doc ? `<span class="rb-sub rb-note">${esc(f.doc)}</span>` : ''}`))) +

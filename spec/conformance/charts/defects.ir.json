@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/defects.road",
@@ -136,6 +136,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Main",
         "name": "Main",
@@ -452,6 +453,7 @@
       "vars": [],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Sub",
         "name": "Sub",

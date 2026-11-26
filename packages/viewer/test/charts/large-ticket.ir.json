@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -1155,6 +1155,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "SupportTicket",
         "name": "SupportTicket",
@@ -4288,6 +4289,7 @@
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "SatisfactionSurvey",
         "name": "SatisfactionSurvey",

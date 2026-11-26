@@ -1,0 +1,39 @@
+{
+  "description": "A pool keyed by `int`. Its children's emitted events and a failure it has no `on slots.fail` for are dropped. Cancelled from outside, it exits its states, then stops the child still running, then writes `cancelled`.",
+  "requires": [
+    "messaging",
+    "spawn"
+  ],
+  "chart": "charts/hub.road",
+  "machine": "Pool",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Open",
+        "n": 1,
+        "name": "x"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Open",
+        "n": 2,
+        "name": "y"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Drop",
+        "n": 1
+      }
+    },
+    {
+      "cancel": true
+    }
+  ],
+  "status": "cancelled"
+}

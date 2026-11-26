@@ -9,9 +9,10 @@ use crate::codes;
 use crate::diagnostic::Diagnostic;
 use crate::span::{FileId, LineIndex, Span};
 
-/// The reserved words. `from`, `as`, `ref` and the built-in type names are not reserved: they
-/// are only meaningful in one position (after an import list, after an invoke's arguments, and
-/// as a type), where no name can appear.
+/// The reserved words. `from`, `as`, `ref`, `children`, `by`, `spawn`, `stop` and the built-in
+/// type names are not reserved: they are only meaningful in one position (after an import list,
+/// after an invoke's arguments, as a type, at the start of a machine item or of an effect, after
+/// a collection's machine), where no name can appear.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Keyword {
     Import,

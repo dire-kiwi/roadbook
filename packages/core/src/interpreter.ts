@@ -26,6 +26,7 @@ import type {
   RunResult,
   Saved,
   Snapshot,
+  SpawnedEntry,
   Status,
   Stepped,
   Tagged,
@@ -57,6 +58,7 @@ export const start = (
     input,
     vars: {},
     invokes: [],
+    spawned: [],
     timers: [],
     nextInvoke: 1,
     nextTimer: 1,
@@ -137,6 +139,7 @@ export const restore = (
     input: saved.input,
     vars: saved.vars,
     invokes: saved.invokes.map(({ id, src, state }) => ({ id, state, src })),
+    spawned: (saved.spawned ?? []).map(({ args, children, id, key }) => ({ id, children, key, args })),
     timers: saved.timers.map(({ delay, id, index, state }) => ({ id, state, index, delay })),
     nextInvoke: saved.nextInvoke,
     nextTimer: saved.nextTimer,
@@ -257,6 +260,14 @@ interface Bindings {
   readonly event?: Json
   readonly result?: Json
   readonly error?: Json
+  readonly key?: Json
+}
+
+/** A child spawned during this macrostep that has not started yet. */
+interface PendingSpawn {
+  readonly children: string
+  readonly key: Json
+  readonly args: { readonly [param: string]: Json }
 }
 
 const NO_BINDINGS: Bindings = {}
@@ -275,6 +286,7 @@ class Macrostep {
   active: Array<string>
   readonly vars: Record<string, Json>
   invokes: Array<InvokeEntry>
+  spawned: Array<SpawnedEntry>
   timers: Array<TimerEntry>
   nextInvoke: number
   nextTimer: number
@@ -286,6 +298,8 @@ class Macrostep {
   private readonly entered = new Set<string>()
   /** Compound states that reached a final child and have not been exited since. */
   private completions: Array<string> = []
+  /** The children spawned during this macrostep, in order, not started yet. */
+  private pending: Array<PendingSpawn> = []
 
   private readonly ir: Ir
   private readonly index: MachineIndex
@@ -301,6 +315,7 @@ class Macrostep {
     this.active = [...snapshot.active]
     this.vars = { ...snapshot.vars }
     this.invokes = [...snapshot.invokes]
+    this.spawned = [...snapshot.spawned]
     this.timers = [...snapshot.timers]
     this.nextInvoke = snapshot.nextInvoke
     this.nextTimer = snapshot.nextTimer
@@ -321,6 +336,7 @@ class Macrostep {
         input: s.input,
         vars: this.vars,
         invokes: this.invokes,
+        spawned: this.spawned,
         timers: this.timers,
         nextInvoke: this.nextInvoke,
         nextTimer: this.nextTimer,
@@ -342,14 +358,14 @@ class Macrostep {
   }
 
   take(input: Exclude<Input, { readonly kind: "defect" }>) {
-    // The input as its record shows it, redacted while the invoke it may be the outcome of is
-    // still in the snapshot.
+    // The input as its record shows it, redacted while the invoke or spawned child it may be
+    // the outcome of is still in the snapshot.
     if (input.kind === "cancel") {
       this.cancelRun()
       return
     }
     const r = redactor(this.ir)
-    const shown = r.active ? r.input(this.index.machine, this.invokes, input) : input
+    const shown = r.active ? r.input(this.index.machine, this.invokes, input, this.spawned) : input
     let selected: ReadonlyArray<Selected> = []
     let bindings: Bindings = NO_BINDINGS
     switch (input.kind) {
@@ -379,6 +395,38 @@ class Macrostep {
         }
         break
       }
+      case "spawn.done":
+      case "spawn.fail":
+      case "spawn.defect": {
+        const ch = this.spawned.find((c) => c.id === input.spawn)
+        if (ch === undefined) {
+          this.trace({ kind: "stale", event: shown })
+          return
+        }
+        this.spawned = this.spawned.filter((c) => c !== ch)
+        if (input.kind === "spawn.defect") {
+          this.trace({ kind: "event", event: shown })
+          this.failWithDefect(input.defect)
+          return
+        }
+        const machine = this.collectionMachine(ch.children)
+        if (input.kind === "spawn.fail" && !this.declaredErrors(machine).includes(input.error._tag)) {
+          throw new Abort({ kind: "undeclared", error: input.error._tag })
+        }
+        if (input.kind === "spawn.done") {
+          bindings = { result: input.value, key: ch.key }
+          const isDone = (t: Transition) => t.trigger.kind === "spawn.done" && t.trigger.children === ch.children
+          selected = this.selectByWalks(() => isDone, bindings)
+        } else {
+          bindings = { error: input.error, key: ch.key }
+          const isFail = (name: string) => (t: Transition) =>
+            t.trigger.kind === "spawn.fail" && t.trigger.children === ch.children && t.trigger.error === name
+          const named = isFail(input.error._tag)
+          const any = isFail("*")
+          selected = this.selectByWalks((state) => (state.transitions.some(named) ? named : any), bindings)
+        }
+        break
+      }
       case "after": {
         const tm = this.timers.find((t) => t.id === input.timer)
         if (tm === undefined) {
@@ -395,11 +443,12 @@ class Macrostep {
         selected = this.selectEvent(input.value, bindings)
         break
       case "emitted": {
-        if (input.invoke !== null && !this.invokes.some((i) => i.id === input.invoke)) {
+        const child = input.invoke === null ? undefined : this.spawned.find((c) => c.id === input.invoke)
+        if (input.invoke !== null && child === undefined && !this.invokes.some((i) => i.id === input.invoke)) {
           this.trace({ kind: "stale", event: shown })
           return
         }
-        bindings = { event: input.value }
+        bindings = child === undefined ? { event: input.value } : { event: input.value, key: child.key }
         selected = this.selectEmitted(input, bindings)
         break
       }
@@ -412,6 +461,13 @@ class Macrostep {
     this.microstep(selected, bindings)
     this.settle()
     if (this.status === "running") this.startWork()
+  }
+
+  /** The machine the children of collection `children` run. */
+  private collectionMachine(children: string): string {
+    const decl = this.index.machine.children[children]
+    if (decl === undefined) throw new Error(`no collection ${children} in machine ${this.index.machine.root.id}`)
+    return decl.machine
   }
 
   private declaredErrors(src: string): ReadonlyArray<string> {
@@ -524,6 +580,9 @@ class Macrostep {
   private namesSender(address: Address, input: Extract<Input, { readonly kind: "emitted" }>): boolean {
     if (address.kind === "child") {
       return input.invoke !== null && this.invokes.find((i) => i.id === input.invoke)?.state === address.state
+    }
+    if (address.kind === "children") {
+      return input.invoke !== null && this.spawned.find((c) => c.id === input.invoke)?.children === address.name
     }
     if (input.invoke !== null) return false
     // A parameter, or a variable with a value; one with no value names no sender.
@@ -748,12 +807,36 @@ class Macrostep {
           break
         }
         case "send": {
+          if (effect.to.kind === "children" && effect.key === null) {
+            // `send name.*.E`: the value once, then a message of its own to every running child.
+            const value = this.eval(effect.value, bindings) as Tagged
+            const name = effect.to.name
+            for (const ch of this.spawned.filter((c) => c.children === name)) {
+              const message = this.nextMessage
+              this.nextMessage += 1
+              const to = `${this.snapshot.run}.${ch.id}`
+              this.trace({ kind: "sent", message, to, value })
+              this.commands.push({ kind: "send", to, invoke: ch.id, message, value })
+            }
+            break
+          }
           const message = this.nextMessage
           this.nextMessage += 1
           let to: string
           let invoke: number | null
           let value: Tagged
-          if (effect.to.kind === "child") {
+          if (effect.to.kind === "children") {
+            const key = this.eval(effect.key!, bindings)
+            value = this.eval(effect.value, bindings) as Tagged
+            const name = effect.to.name
+            const ch = this.spawned.find((c) => c.children === name && c.key === key)
+            if (ch === undefined) {
+              this.trace({ kind: "undelivered", message, to: null, value })
+              break
+            }
+            to = `${this.snapshot.run}.${ch.id}`
+            invoke = ch.id
+          } else if (effect.to.kind === "child") {
             const state = effect.to.state
             const inv = this.invokes.find((i) => i.state === state)
             value = this.eval(effect.value, bindings) as Tagged
@@ -782,8 +865,49 @@ class Macrostep {
           this.commands.push({ kind: "emit", message, value })
           break
         }
+        case "spawn": {
+          const key = this.eval(effect.key, bindings)
+          const params = this.ir.machines[effect.machine]?.params ?? []
+          const args: Record<string, Json> = {}
+          effect.args.forEach((arg, i) => {
+            args[params[i]?.name ?? String(i)] = this.eval(arg, bindings)
+          })
+          this.stopChild(effect.children, key)
+          this.pending.push({ children: effect.children, key, args })
+          break
+        }
+        case "stop":
+          this.stopChild(effect.children, this.eval(effect.key, bindings))
+          break
       }
     }
+  }
+
+  /** Stop the child of `children` with `key`: a running one with a record, a pending one silently. */
+  private stopChild(children: string, key: Json) {
+    this.pending = this.pending.filter((p) => !(p.children === children && p.key === key))
+    const ch = this.spawned.find((c) => c.children === children && c.key === key)
+    if (ch === undefined) return
+    this.spawned = this.spawned.filter((c) => c !== ch)
+    this.trace({ kind: "spawn.stopped", spawn: ch.id, children, key })
+    this.commands.push({ kind: "spawn.stop", spawn: ch.id })
+  }
+
+  /** When the run finishes or is cancelled, after every exit: stop every child still running. */
+  private stopChildren() {
+    for (const ch of this.spawned) {
+      this.trace({ kind: "spawn.stopped", spawn: ch.id, children: ch.children, key: ch.key })
+      this.commands.push({ kind: "spawn.stop", spawn: ch.id })
+    }
+    this.spawned = []
+    this.pending = []
+  }
+
+  /** Trace and start spawned child `ch`. */
+  private startChild(ch: SpawnedEntry) {
+    const src = this.collectionMachine(ch.children)
+    this.trace({ kind: "spawn.started", spawn: ch.id, children: ch.children, key: ch.key, src, args: ch.args })
+    this.commands.push({ kind: "spawn.start", spawn: ch.id, src, args: ch.args })
   }
 
   // ---- settling, work, finishing ----
@@ -805,6 +929,13 @@ class Macrostep {
   }
 
   startWork() {
+    for (const p of this.pending) {
+      const ch: SpawnedEntry = { id: this.nextInvoke, children: p.children, key: p.key, args: p.args }
+      this.nextInvoke += 1
+      this.spawned.push(ch)
+      this.startChild(ch)
+    }
+    this.pending = []
     for (const id of [...this.active]) {
       if (!this.entered.has(id)) continue
       const state = this.index.state(id)
@@ -856,6 +987,7 @@ class Macrostep {
    * already due, the earliest first.
    */
   restartWork(saved: Saved, now: number) {
+    for (const ch of this.spawned) this.startChild(ch)
     for (const id of this.active) {
       const state = this.index.state(id)
       const inv = this.invokes.find((i) => i.state === id)
@@ -880,6 +1012,7 @@ class Macrostep {
       value = this.eval(final.fail, NO_BINDINGS)
     }
     for (const state of this.innermostFirst()) this.exitState(state)
+    this.stopChildren()
     this.result = status === "done" ? { output: value } : { error: value }
     this.status = status
     this.completions = []
@@ -889,14 +1022,18 @@ class Macrostep {
 
   private cancelRun() {
     for (const state of this.innermostFirst()) this.exitState(state)
+    this.stopChildren()
     this.status = "cancelled"
     this.trace({ kind: "cancelled" })
   }
 
   failWithDefect(defect: Defect) {
     for (const inv of this.invokes) this.commands.push({ kind: "invoke.cancel", invoke: inv.id })
+    for (const ch of this.spawned) this.commands.push({ kind: "spawn.stop", spawn: ch.id })
     for (const tm of this.timers) this.commands.push({ kind: "timer.cancel", timer: tm.id })
     this.invokes = []
+    this.spawned = []
+    this.pending = []
     this.timers = []
     this.status = "defect"
     this.result = { defect }

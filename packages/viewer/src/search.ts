@@ -29,6 +29,7 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
       for (const e of list) {
         if (e.kind === 'do') out.push({ kind: 'action', name: e.action, label: `${effectText(e)}: ${where}`, machine, target })
         if (e.kind === 'send' || e.kind === 'emit') out.push({ kind: 'event', name: e.event, label: `${effectText(e)}: ${where}`, machine, target })
+        if (e.kind === 'spawn') out.push({ kind: 'machine', name: e.machine, label: `${effectText(e)}: ${where}`, machine, target })
       }
     }
     walkStates(m.root, (s, _parent, depth) => {
@@ -52,7 +53,7 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
         const where = `${machine}.${short(s.id)} → ${t.target ? short(t.target) : '(stays)'}`
         const target = { type: 'transition' as const, state: s.id, index }
         if (t.trigger.kind === 'event' || t.trigger.kind === 'emitted') out.push({ kind: 'event', name: t.trigger.event, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
-        if (t.trigger.kind === 'invoke.fail') out.push({ kind: 'error', name: t.trigger.error, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
+        if (t.trigger.kind === 'invoke.fail' || t.trigger.kind === 'spawn.fail') out.push({ kind: 'error', name: t.trigger.error, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
         effects(t.effects, where, target)
       })
     })

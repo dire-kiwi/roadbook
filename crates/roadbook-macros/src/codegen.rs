@@ -773,6 +773,9 @@ impl<'a> Gen<'a> {
                 uses.expr(e);
             }
         }
+        // A collection's children run its machine through the same handler as an invoke of it.
+        uses.invokes
+            .extend(m.children.values().map(|c| c.machine.clone()));
         uses.state(&m.root);
         let ir = self.ir;
         let mut methods = Vec::new();
@@ -1540,7 +1543,7 @@ impl<'a> Gen<'a> {
 struct Uses {
     functions: HashSet<String>,
     actions: HashSet<String>,
-    /// Tasks and machines it invokes.
+    /// Tasks and machines it invokes or spawns.
     invokes: HashSet<String>,
 }
 
@@ -1575,7 +1578,16 @@ impl Uses {
                 self.actions.insert(action.clone());
                 args.iter().for_each(|a| self.expr(a));
             }
-            Effect::Send { value, .. } | Effect::Emit { value, .. } => self.expr(value),
+            Effect::Send { key, value, .. } => {
+                key.iter().for_each(|k| self.expr(k));
+                self.expr(value);
+            }
+            Effect::Emit { value, .. } => self.expr(value),
+            Effect::Spawn { key, args, .. } => {
+                self.expr(key);
+                args.iter().for_each(|a| self.expr(a));
+            }
+            Effect::Stop { key, .. } => self.expr(key),
         }
     }
 

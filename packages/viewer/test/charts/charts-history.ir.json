@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "packages/viewer/test/charts/history.road",
@@ -105,6 +105,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Histories",
         "name": "Histories",

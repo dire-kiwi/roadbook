@@ -43,7 +43,7 @@ use serde_json::Value;
 
 /// The features of `spec/conformance/case.schema.json`'s `requires` this runtime
 /// implements.
-const SUPPORTED: &[&str] = &["messaging", "parallel", "snapshots", "history"];
+const SUPPORTED: &[&str] = &["messaging", "parallel", "snapshots", "history", "spawn"];
 
 // ---- the executor ------------------------------------------------------------------------
 
@@ -917,11 +917,13 @@ fn restore_and_go_on(c: &LoadedCase, name: &str, text: &str) -> Result<bool, Str
         flag: Arc::new(Flag::default()),
     };
     runner.settle()?;
-    // Saved again as the current version: a version 1 snapshot gains an empty `history`.
+    // Saved again as the current version: a version 1 snapshot gains an empty `history`, and
+    // a version 1 or 2 one an empty `spawned`.
     let mut expected = saved.clone();
     expected.run = "x1".into();
     expected.snapshot_version = Saved::VERSION;
     expected.history.get_or_insert_default();
+    expected.spawned.get_or_insert_default();
     let again = handle.save().ok_or("no saved snapshot after restoring")?;
     if again.to_canonical() != expected.to_canonical() {
         return Err(format!(
@@ -1081,6 +1083,28 @@ fn the_saved_snapshot_check_agrees_with_the_schema() {
         ),
         ("snapshotVersion", serde_json::json!(1)),
         ("snapshotVersion", serde_json::json!(3)),
+        ("snapshotVersion", serde_json::json!(4)),
+        ("spawned", serde_json::json!({})),
+        (
+            "spawned",
+            serde_json::json!([{"id": 1, "children": "c", "key": 1}]),
+        ),
+        (
+            "spawned",
+            serde_json::json!([{"id": 0, "children": "c", "key": 1, "args": {}}]),
+        ),
+        (
+            "spawned",
+            serde_json::json!([{"id": 1, "children": "C", "key": 1, "args": {}}]),
+        ),
+        (
+            "spawned",
+            serde_json::json!([{"id": 1, "children": "c", "key": 1.5, "args": {}}]),
+        ),
+        (
+            "spawned",
+            serde_json::json!([{"id": 1, "children": "c", "key": true, "args": {}}]),
+        ),
         ("history", serde_json::json!({})),
         ("history", serde_json::json!([])),
         ("history", serde_json::json!({"A.H": ["A.B"]})),
