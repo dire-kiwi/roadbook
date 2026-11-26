@@ -232,7 +232,7 @@ The Rust macro does not look for files: it receives the owning crate's compiled 
 | `[packages]` | A table of `name = "directory"`: the directory of each package charts import from, relative to the root. A scoped name is quoted: `"@shop/inventory" = "packages/inventory"`. It comes after the keys above. |
 
 ```toml
-exclude = ["crates/roadbook-compiler/tests/fail", "spike"]
+exclude = ["crates/roadbook-compiler/tests/fail", "crates/roadbook/tests/ui/charts"]
 gen-exclude = ["spec/conformance/charts"]
 
 [packages]
@@ -589,7 +589,7 @@ Most of these rules, the split between `machineItem` and `stateItem`, and the re
 
 Each of these has a planned shape, and the grammar leaves room for it.
 
-- **Keyed `spawn`.** A dynamic number of children, sketched on the [actors and messaging](actors.md#many-children) page. `send`, `emit`, `ref` and `invoke … as` are in the language (see [messages between machines](#messages-between-machines)); the TypeScript runtime runs them, the Rust runtime not yet.
+- **Keyed `spawn`.** A dynamic number of children, sketched on the [actors and messaging](actors.md#many-children) page. `send`, `emit`, `ref` and `invoke … as` are in the language (see [messages between machines](#messages-between-machines)); both runtimes run them, with identical traces across the conformance cases.
 - **History states.** `history` and `deep history` pseudo-states, as in SCXML.
 - **Generic types and maps.** `map<string, T>` and user-defined generics.
 - **Retry sugar.** `invoke chargeCard(order) retry 3` as shorthand for the `Backoff` pattern above. The explicit states stay available and are what the diagram shows either way.

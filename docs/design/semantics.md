@@ -18,7 +18,7 @@ Because both runtimes interpret the same IR the viewer draws, the picture cannot
 
 The IR is fully resolved: state ids are absolute (`PlaceOrder.Processing.Paying`), targets are ids, names are checked, every expression carries its type, and every declaration, state, variable, event, invoke and transition carries its source span and doc comment. It is versioned (`irVersion`) and has a published JSON Schema, so third-party tools can read it and a runtime can refuse an IR it does not understand. The field-by-field reference is [`spec/ir.md`](../../spec/ir.md) and the schema is [`spec/ir.schema.json`](../../spec/ir.schema.json).
 
-An abridged IR for `Checkout` (`/* … */` marks what is left out; the spike emits an earlier draft of this shape, without `type` on expressions, end positions in spans or the hash):
+An abridged IR for `Checkout` (`/* … */` marks what is left out):
 
 ```jsonc
 {
