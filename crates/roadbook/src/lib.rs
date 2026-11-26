@@ -51,8 +51,8 @@ pub use env::{
 };
 pub use handle::Ref;
 pub use roadbook_core::{
-    Defect, Input, InvokeEntry, Program, Record, Refusal, RestoreError, RunResult, Saved,
-    SavedTimer, Status,
+    Defect, Input, InvokeEntry, Program, RUN_ID_PATTERN, Record, Refusal, RestoreError, RunResult,
+    Saved, SavedTimer, Status, is_run_id,
 };
 pub use roadbook_macros::include;
 pub use shared::RunHandle;

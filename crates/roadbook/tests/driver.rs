@@ -286,6 +286,21 @@ async fn dropping_a_root_run_is_a_hard_stop() {
     }
 }
 
+#[test]
+fn a_root_run_id_must_be_a_run_id() {
+    // Ids the snapshot schema accepts.
+    for id in ["order-42", "o_1", "r1.4"] {
+        let _ = Config::new().run_id(id);
+    }
+    // `order:42` would save a snapshot that `restore` refuses: the setter refuses it.
+    for id in ["order:42", "", "a b", "r1.0", "r1."] {
+        let refused = std::panic::catch_unwind(|| Config::new().run_id(id)).unwrap_err();
+        let message = refused.downcast_ref::<String>().unwrap();
+        assert!(message.contains("is not a run id"), "{message}");
+        assert!(!roadbook::is_run_id(id), "{id}");
+    }
+}
+
 #[tokio::test]
 async fn json_lines_writes_one_canonical_record_per_line() {
     let program = program();

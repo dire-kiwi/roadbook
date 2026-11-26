@@ -475,7 +475,7 @@ pub(crate) fn schema(v: &Value) -> Result<(), String> {
         ));
     }
     string(&o["machine"], "machine", upper_name)?;
-    string(&o["run"], "run", run_id)?;
+    string(&o["run"], "run", is_run_id)?;
     string(&o["ir"], "ir", hash)?;
     let status = o["status"].as_str().unwrap_or_default();
     if !["running", "done", "failed", "cancelled", "defect"].contains(&status) {
@@ -595,8 +595,13 @@ fn state_id(s: &str) -> bool {
     s.split('.').all(upper_name)
 }
 
-/// `^[A-Za-z0-9_-]+(\.[1-9][0-9]*)*$`
-fn run_id(s: &str) -> bool {
+/// The snapshot schema's pattern for a run id: the id of a root run, then the invoke ids of
+/// child runs. [`is_run_id`] checks it.
+pub const RUN_ID_PATTERN: &str = r"^[A-Za-z0-9_-]+(\.[1-9][0-9]*)*$";
+
+/// Whether `s` is a run id ([`RUN_ID_PATTERN`]). A root run named anything else would save a
+/// snapshot that `restore` refuses as `invalid`.
+pub fn is_run_id(s: &str) -> bool {
     let mut parts = s.split('.');
     let first = parts.next().unwrap_or_default();
     !first.is_empty()
@@ -626,11 +631,19 @@ mod tests {
 
     #[test]
     fn patterns() {
-        assert!(run_id("r1") && run_id("r1.4.10") && run_id("order-7_x"));
-        assert!(!run_id("") && !run_id("r1.0") && !run_id("r1.") && !run_id("a b"));
+        assert!(is_run_id("r1") && is_run_id("r1.4.10") && is_run_id("order-7_x"));
+        assert!(!is_run_id("") && !is_run_id("r1.0") && !is_run_id("r1.") && !is_run_id("a b"));
         assert!(state_id("A.B") && !state_id("A.b") && !state_id("A..B") && !state_id(""));
         assert!(hash(&format!("sha256:{}", "0a".repeat(32))));
         assert!(!hash(&format!("sha256:{}", "0A".repeat(32))));
         assert!(lower_name("n2") && !lower_name("N") && !lower_name("a_b"));
+        assert!(!is_run_id("order:42"));
+    }
+
+    #[test]
+    fn the_run_id_pattern_is_the_schemas() {
+        let schema: serde_json::Value =
+            serde_json::from_str(include_str!("../../../spec/snapshot.schema.json")).unwrap();
+        assert_eq!(schema["$defs"]["runId"]["pattern"], RUN_ID_PATTERN);
     }
 }

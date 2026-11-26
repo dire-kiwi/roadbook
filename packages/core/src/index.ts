@@ -10,10 +10,12 @@ export { compareCodePoints, restore, SETTLE_LIMIT, start, step } from "./interpr
 export {
   checkSaved,
   type Checked,
+  isRunId,
   isSaved,
   type Migrate,
   type Refusal,
   type RefusalReason,
+  RUN_ID_PATTERN,
   SNAPSHOT_VERSION,
   toSaved,
   valueIssue

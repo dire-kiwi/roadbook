@@ -20,7 +20,7 @@ The path is relative to the package's directory (`CARGO_MANIFEST_DIR`); the char
 - A `Handlers` trait: one method per function, action, task and child machine the chart uses.
 - `State`, `Event` and `Emitted` enums: the states, the events the machine accepts and the events it `emits`. Compound states carry their active child: `State::Processing(Processing::Paying)`. A child enum whose name is taken is prefixed with the names of the states above it. A parallel state's variant carries nothing (`State::Busy`): a run inside one is in all its regions at once, and `actor.state()` names the outermost parallel state it is in.
 - `Ref`, a handle to a run of the machine (`roadbook::Ref<Event>`): the Rust type of `ref Machine`, in `run` and `spawn` parameters and in `Handlers` methods that take one (by reference, `&inventory::Ref`).
-- `run` and `spawn` functions, and `run_with` and `spawn_with`, which take a `roadbook::Config` (trace sink, timer, root run id, migration).
+- `run` and `spawn` functions, and `run_with` and `spawn_with`, which take a `roadbook::Config` (trace sink, timer, root run id, migration). A root run id given with `Config::run_id` must be a run id as the snapshot schema writes one, `roadbook::RUN_ID_PATTERN` (letters, digits, `_` and `-`, optionally followed by `.` and an invoke id): `Config::run_id` panics on any other, since a run named `order:42` would save a snapshot that `restore` refuses as `invalid`. `roadbook::is_run_id` checks an id from outside first.
 - `restore` and `resume` functions, and `restore_with` and `resume_with` ([saving and restoring](#saving-and-restoring)), and `HASH`, the machine's hash in the IR: what a saved snapshot of it records as `ir`.
 - The IR, embedded as a constant.
 

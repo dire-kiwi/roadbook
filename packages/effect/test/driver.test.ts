@@ -55,6 +55,29 @@ describe("run", () => {
       assert.deepStrictEqual(last("root.1"), { kind: "cancelled", t: 1000, run: "root.1", parent: "root" })
     }))
 
+  it.effect("a root run id that is not a run id is a host defect before the run starts", () =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      for (const id of ["order:42", "", "r1.0"]) {
+        const named = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+          effect.pipe(
+            Effect.provideService(Roadbook.TraceSink, sink),
+            Effect.provideService(Roadbook.RootRunId, () => id)
+          )
+        for (const exit of [yield* Effect.exit(named(ParentLive.run({}))), yield* Effect.exit(named(ParentLive.spawn({})))]) {
+          const die = Exit.isFailure(exit) ? exit.cause.reasons.find((r) => r._tag === "Die") : undefined
+          const defect = (die as { defect: Roadbook.Defect } | undefined)?.defect.defect
+          assert.strictEqual(defect?.kind, "host")
+          assert.match((defect as { message: string }).message, /is not a run id/)
+        }
+      }
+      assert.deepStrictEqual(records, [])
+      // The schema's ids are fine.
+      const fiber = yield* ParentLive.run({}).pipe(Effect.provideService(Roadbook.RootRunId, () => "order-42"), Effect.forkChild)
+      yield* TestClock.adjust(5000)
+      assert.strictEqual(yield* Fiber.join(fiber), undefined)
+    }).pipe(Effect.scoped))
+
   it.effect("a child that finishes ends its parent through the parent's chart", () =>
     Effect.gen(function*() {
       const fiber = yield* ParentLive.run({}).pipe(Effect.forkChild)

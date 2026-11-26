@@ -134,10 +134,24 @@ interface Env {
   readonly invoker: { readonly invoke: number; readonly port: Port } | undefined
 }
 
+/**
+ * A root run's environment. Its id comes from `RootRunId` and must be a run id: one that is not
+ * would save a snapshot that `restore` refuses, so the run dies with a host defect before it
+ * starts (no record, no snapshot).
+ */
 const rootEnv: Effect.Effect<Env> = Effect.gen(function*() {
   const nextId = yield* RootRunId
+  const runId = nextId()
+  if (!Core.isRunId(runId)) {
+    return yield* Effect.die(
+      new Defect({
+        kind: "host",
+        message: `RootRunId gave ${JSON.stringify(runId)}, which is not a run id: it must match ${Core.RUN_ID_PATTERN}`
+      })
+    )
+  }
   return {
-    runId: nextId(),
+    runId,
     parent: undefined,
     sink: yield* TraceSink,
     timer: yield* Timer,

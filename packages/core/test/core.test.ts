@@ -1,7 +1,18 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { describe, expect, it } from "vitest"
-import { canonicalJson, compareCodePoints, type Fns, getMachine, IrError, loadIr, start, step } from "../src/index.ts"
+import {
+  canonicalJson,
+  compareCodePoints,
+  type Fns,
+  getMachine,
+  IrError,
+  isRunId,
+  loadIr,
+  RUN_ID_PATTERN,
+  start,
+  step
+} from "../src/index.ts"
 
 const charts = path.resolve(import.meta.dirname, "../../../spec/conformance/charts")
 const readIr = (file: string) => loadIr(JSON.parse(fs.readFileSync(path.join(charts, file), "utf8")))
@@ -15,6 +26,15 @@ describe("canonicalJson", () => {
   })
   it("refuses non-finite numbers", () => {
     expect(() => canonicalJson(Number.NaN)).toThrow()
+  })
+})
+
+describe("run ids", () => {
+  it("are the snapshot schema's", () => {
+    const schema = JSON.parse(fs.readFileSync(path.join(charts, "../../snapshot.schema.json"), "utf8"))
+    expect(RUN_ID_PATTERN).toBe(schema.$defs.runId.pattern)
+    for (const id of ["r1", "r1.4.10", "order-7_x"]) expect(isRunId(id)).toBe(true)
+    for (const id of ["", "r1.0", "r1.", "a b", "order:42", 7]) expect(isRunId(id)).toBe(false)
   })
 })
 

@@ -96,7 +96,14 @@ const UPPER = /^[A-Z][A-Za-z0-9]*$/
 const LOWER = /^[a-z][A-Za-z0-9]*$/
 const NAME = /^[A-Za-z][A-Za-z0-9]*$/
 const STATE_ID = /^[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)*$/
-const RUN_ID = /^[A-Za-z0-9_-]+(\.[1-9][0-9]*)*$/
+/**
+ * The snapshot schema's pattern for a run id: the id of a root run, then the invoke ids of child
+ * runs. A root run named anything else would save a snapshot that `restore` refuses as `invalid`.
+ */
+export const RUN_ID_PATTERN = "^[A-Za-z0-9_-]+(\\.[1-9][0-9]*)*$"
+const RUN_ID = new RegExp(RUN_ID_PATTERN)
+/** Whether `id` is a run id (`RUN_ID_PATTERN`). */
+export const isRunId = (id: unknown): boolean => typeof id === "string" && RUN_ID.test(id)
 const HASH = /^sha256:[0-9a-f]{64}$/
 const STATUSES = ["running", "done", "failed", "cancelled", "defect"]
 const MEMBERS = [
@@ -141,7 +148,7 @@ const shapeIssue = (json: unknown): string | undefined => {
     return `snapshotVersion is ${JSON.stringify(json["snapshotVersion"])}, and this runtime reads ${SNAPSHOT_VERSION}`
   }
   if (!matches(UPPER, json["machine"])) return "machine is not a machine name"
-  if (!matches(RUN_ID, json["run"])) return "run is not a run id"
+  if (!isRunId(json["run"])) return "run is not a run id"
   if (!matches(HASH, json["ir"])) return "ir is not a sha256 hash"
   if (!STATUSES.includes(json["status"] as string)) return "status is not a status"
   const active = json["active"]
