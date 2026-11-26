@@ -116,7 +116,7 @@ Spans cover the whole declaration.
 | `root` | The machine body as a state. See below. |
 | `hash` | The [machine hash](#the-machine-hash). |
 
-A **variable** is `{"name", "type", "init", "doc", "span"}`. `init` is the initial value expression, or `null` if the variable starts unassigned. The span covers the declaration from `var` to the end of its type or initial value.
+A **variable** is `{"name", "type", "init", "doc", "span"}`. `init` is the initial value expression, or `null` if there is none. With no initialiser, a variable of optional type starts as `null` and any other variable starts unassigned (see `spec/execution.md`). The span covers the declaration from `var` to the end of its type or initial value.
 
 An **event** is `{"fields", "doc", "span"}`, keyed by its name. The span covers the declaration from `event` to its end.
 

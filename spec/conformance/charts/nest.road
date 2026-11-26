@@ -20,11 +20,11 @@ machine Nest() {
 
   state Outer {
     // `do` is written before `set` on purpose: assignments still run first.
-    entry do log("enter Outer", n)  set n = n + 1
+    entry set n = n + 1  do log("enter Outer", n)
     exit do log("exit Outer", n)
 
     on Again -> Outer  do log("again", n)
-    on Bump            do log("bump", n)  set n = n + 10
+    on Bump            set n = n + 10  do log("bump", n)
     on Leave -> Away   set n = n + 100  do log("leave", n)
 
     initial Middle
