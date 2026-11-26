@@ -392,7 +392,7 @@ impl Parser<'_> {
                 };
                 self.diags.push(
                     Diagnostic::error(codes::DOC_COMMENT_DOCUMENTS_NOTHING, c.span, "this doc comment does not document anything")
-                        .with_help("`///` documents the declaration, machine, state, event or variable that follows it; use `//` for other comments")
+                        .with_help("`///` documents the declaration, machine, state, history state, event or variable that follows it; use `//` for other comments")
                         .with_fix("make it a plain comment", slashes, "//"),
                 );
             }
@@ -794,13 +794,28 @@ impl Parser<'_> {
     /// left out of the tree.
     fn item(&mut self, kind: BodyKind) -> PResult<Option<Item>> {
         let t = self.tok();
+        if let Some(deep) = self.at_history() {
+            let h = self.history(deep)?;
+            if kind == BodyKind::Machine {
+                let word = if deep { "deep history" } else { "history" };
+                let d = Diagnostic::error(
+                    codes::NOT_IN_MACHINE_BODY,
+                    h.span,
+                    format!("`{word}` is only allowed in a state with child states, not directly in a machine body"),
+                )
+                .with_help("the machine is never left, so it has nothing to return to; put the history state in the state it returns to");
+                self.error(d);
+                return Ok(None);
+            }
+            return Ok(Some(Item::History(h)));
+        }
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
                     "a machine item (`var`, `event`, `emits`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`) or `}`"
                 }
                 BodyKind::State => {
-                    "a state item (`initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
+                    "a state item (`initial`, `state`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
                 }
             };
             return Err(self.unexpected(expected));
@@ -927,6 +942,37 @@ impl Parser<'_> {
             return Ok(None);
         }
         Ok(Some(item))
+    }
+
+    /// `Some(deep)` at the start of `history Name` or `deep history`. Both words are
+    /// contextual: no name can start an item, so they are not reserved.
+    fn at_history(&self) -> Option<bool> {
+        if !self.at(T::Lower) {
+            return None;
+        }
+        match self.text(self.tok()) {
+            "history" if self.nth(1) == T::Upper => Some(false),
+            "deep" if matches!(self.nth(1), T::Lower | T::Upper) => Some(true),
+            _ => None,
+        }
+    }
+
+    fn history(&mut self, deep: bool) -> PResult<History> {
+        let doc = self.take_doc();
+        let start = self.bump().span;
+        if deep {
+            if !(self.at(T::Lower) && self.text(self.tok()) == "history") {
+                return Err(self.unexpected("`history` after `deep`"));
+            }
+            self.bump();
+        }
+        let name = self.upper("the name of the history state")?;
+        Ok(History {
+            doc,
+            deep,
+            name,
+            span: self.since(start),
+        })
     }
 
     fn var(&mut self) -> PResult<Var> {

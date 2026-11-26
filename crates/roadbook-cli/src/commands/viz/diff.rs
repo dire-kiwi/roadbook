@@ -807,6 +807,8 @@ fn kind_text(k: StateKind) -> String {
         StateKind::Compound => "compound",
         StateKind::Parallel => "parallel",
         StateKind::Final => "final",
+        StateKind::History => "history",
+        StateKind::DeepHistory => "deep history",
     }
     .into()
 }

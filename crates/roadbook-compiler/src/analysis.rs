@@ -69,7 +69,7 @@ impl<'a> Tree<'a> {
                 }
             }
             StateKind::Parallel => {
-                for c in &s.states {
+                for c in s.states.iter().filter(|c| !c.kind.is_history()) {
                     self.enter_down(&c.id, out);
                 }
             }
@@ -81,6 +81,9 @@ impl<'a> Tree<'a> {
     /// deepest state that strictly contains both (the machine root at most), down to `to`,
     /// with the other regions of any parallel state on the way, then `to`'s initial chain. A
     /// transition to the state itself or to an ancestor leaves and re-enters it.
+    ///
+    /// A transition to a history state enters its parent's default entry: a history state
+    /// only restores states that were entered before.
     fn entry_set(&self, from: &'a str, to: &'a str) -> Vec<&'a str> {
         let from_anc = self.ancestors(from);
         let domain = self
@@ -88,6 +91,19 @@ impl<'a> Tree<'a> {
             .into_iter()
             .find(|a| from_anc.contains(a))
             .unwrap_or(self.root);
+        let to = if self.states[to].kind.is_history() {
+            let parent = self.parent[to];
+            if parent == domain {
+                // From inside the parent, which is not left: its default entry, below it.
+                let mut out = vec![parent];
+                self.enter_down(parent, &mut out);
+                out.drain(..2);
+                return out;
+            }
+            parent
+        } else {
+            to
+        };
         let mut path = vec![to];
         let mut cur = to;
         while let Some(&p) = self.parent.get(cur) {
@@ -103,7 +119,7 @@ impl<'a> Tree<'a> {
             if let Some(&parent) = self.parent.get(p)
                 && self.states[parent].kind == StateKind::Parallel
             {
-                for c in &self.states[parent].states {
+                for c in self.states[parent].states.iter().filter(|c| !c.kind.is_history()) {
                     if c.id != p {
                         self.enter_down(&c.id, &mut out);
                     }
@@ -399,12 +415,33 @@ fn warnings(
             .iter()
             .any(|t| t.target.is_some() && !matches!(t.trigger, Trigger::Done))
     };
+    let targeted: HashSet<&str> = tree
+        .order
+        .iter()
+        .flat_map(|id| &tree.states[id].transitions)
+        .filter_map(|t| t.target.as_deref())
+        .collect();
     for &id in &tree.order[1..] {
         let s = tree.states[id];
         let Some(si) = info.states.get(id) else {
             continue;
         };
         let parent = tree.parent[id];
+        if s.kind.is_history() {
+            // Never entered itself: only whether anything goes to it matters.
+            if !targeted.contains(id) {
+                let word = if s.kind == StateKind::DeepHistory { "deep history" } else { "history" };
+                diags.push(
+                    Diagnostic::warning(
+                        codes::UNUSED_HISTORY,
+                        si.name_span,
+                        format!("{word} state `{id}` is never used"),
+                    )
+                    .with_help(format!("no transition targets it; a transition to it returns to where `{parent}` was when it was last left")),
+                );
+            }
+            continue;
+        }
         if !reach.contains(id) {
             if reach.contains(parent) {
                 diags.push(

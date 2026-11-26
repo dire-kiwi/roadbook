@@ -84,6 +84,9 @@ pub const CHILD_NOT_RUNNING: Code = Code(213);
 /// `invoke task(…) as name`: only an invoked machine has a name to send to.
 pub const ALIAS_ON_TASK: Code = Code(214);
 
+/// `history H` or `deep history H` in a state with no child states, or in a final state.
+pub const HISTORY_WITHOUT_CHILDREN: Code = Code(215);
+
 // ───────────── types ─────────────
 
 /// A value of the wrong type.
@@ -153,6 +156,9 @@ pub const RECEIVES_NOTHING: Code = Code(906);
 /// An `emits E` that no `on name.E` in the checked charts receives.
 pub const NEVER_RECEIVED: Code = Code(907);
 
+/// A history state that no transition targets.
+pub const UNUSED_HISTORY: Code = Code(908);
+
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
     UNKNOWN_TYPE,
@@ -186,6 +192,7 @@ pub const ALL: &[Code] = &[
     DONE_WITHOUT_CHILDREN,
     CHILD_NOT_RUNNING,
     ALIAS_ON_TASK,
+    HISTORY_WITHOUT_CHILDREN,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
     BAD_OPERANDS,
@@ -212,6 +219,7 @@ pub const ALL: &[Code] = &[
     NEVER_EMITTED,
     RECEIVES_NOTHING,
     NEVER_RECEIVED,
+    UNUSED_HISTORY,
 ];
 
 #[cfg(test)]

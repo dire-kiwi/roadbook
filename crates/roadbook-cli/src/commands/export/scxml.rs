@@ -275,6 +275,9 @@ impl Writer<'_> {
             StateKind::Atomic | StateKind::Compound => "state",
             StateKind::Parallel => "parallel",
             StateKind::Final => "final",
+            StateKind::History | StateKind::DeepHistory => {
+                unreachable!("history states are written by `history`")
+            }
         };
         let mut attrs = vec![("id", xml_id(&s.id))];
         if let Some(initial) = &s.initial {
@@ -363,7 +366,11 @@ impl Writer<'_> {
             self.transition(s, t, d);
         }
         for c in &s.states {
-            self.state(c, d);
+            if c.kind.is_history() {
+                self.history(s, c, d);
+            } else {
+                self.state(c, d);
+            }
         }
         if let Some(output) = &s.output {
             self.open(d, "donedata", &[], false);
@@ -371,6 +378,34 @@ impl Writer<'_> {
             self.close(d, "donedata");
         }
         self.close(depth, tag);
+    }
+
+    /// `<history>`, with the default transition SCXML requires: the parent's default entry,
+    /// which is what Roadbook enters when the history state has recorded nothing.
+    fn history(&mut self, parent: &State, h: &State, depth: usize) {
+        self.comment(depth, &h.doc);
+        let ty = if h.kind == StateKind::DeepHistory {
+            "deep"
+        } else {
+            "shallow"
+        };
+        self.open(
+            depth,
+            "history",
+            &[("id", xml_id(&h.id)), ("type", ty.to_string())],
+            false,
+        );
+        let targets: Vec<String> = match &parent.initial {
+            Some(initial) => vec![xml_id(initial)],
+            None => parent
+                .states
+                .iter()
+                .filter(|c| !c.kind.is_history())
+                .map(|c| xml_id(&c.id))
+                .collect(),
+        };
+        self.open(depth + 1, "transition", &[("target", targets.join(" "))], true);
+        self.close(depth, "history");
     }
 
     fn transition(&mut self, s: &State, t: &Transition, depth: usize) {

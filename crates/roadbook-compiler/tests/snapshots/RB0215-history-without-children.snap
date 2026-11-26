@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0215]: `history H`: `M.A` has no child states
+ --> RB0215-history-without-children.road:5:5
+  |
+5 |     history H
+  |     ^^^^^^^^^
+  |
+  = help: a history state returns to the child states its parent was in when it was last left; put it in a state that has child states

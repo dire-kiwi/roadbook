@@ -5,7 +5,7 @@
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.2"
+export const IR_VERSION = "0.3"
 
 export interface Span {
   readonly file: number

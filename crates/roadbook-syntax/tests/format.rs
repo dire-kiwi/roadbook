@@ -27,6 +27,12 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  state A {\n    on Go -> B\n  }\n  state B { entry do f() always -> A }\n  state C {\n  }\n}\n",
         "machine M() {\n  state A { on Go -> B }\n  state B {\n    entry do f()\n    always -> A\n  }\n  state C {}\n}\n",
     ),
+    // A history state keeps a line of its own, documented or not; `history` and `deep` are
+    // still names elsewhere.
+    (
+        "machine M() {\n  var history: int = 0\n  var deep: int = 0\n  state A {\n    initial B\n    /// Back.\n    history   H\n    deep  history D\n    state B {}\n  }\n  state C { deep history E }\n}\n",
+        "machine M() {\n  var history: int = 0\n  var deep:    int = 0\n  state A {\n    initial B\n    /// Back.\n    history H\n    deep history D\n    state B {}\n  }\n  state C {\n    deep history E\n  }\n}\n",
+    ),
     // `error E {}` is `error E`; a record value with no fields is the bare name.
     ("error E {}\n\nfn f() -> E\n", "error E\n\nfn f() -> E\n"),
     (

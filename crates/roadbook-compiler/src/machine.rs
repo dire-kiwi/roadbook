@@ -134,7 +134,14 @@ struct Node<'p> {
     name_span: Span,
     id: String,
     parent: Option<usize>,
+    /// The child states, history states not among them.
     children: Vec<usize>,
+    /// The history states, in source order.
+    histories: Vec<usize>,
+    /// Every child, history states among them, in source order: the IR's `states`.
+    order: Vec<usize>,
+    /// `Some(deep)` for a history state.
+    history: Option<&'p ast::History>,
     body: &'p Body,
     /// `None` for the machine's root.
     state: Option<&'p State>,
@@ -357,6 +364,9 @@ pub(crate) fn lower<'p>(
         id: name.clone(),
         parent: None,
         children: Vec::new(),
+        histories: Vec::new(),
+        order: Vec::new(),
+        history: None,
         body: &m.body,
         state: None,
         depth: 0,
@@ -415,7 +425,15 @@ impl<'p> Cx<'_, 'p> {
     fn build_tree(&mut self, parent: usize) {
         let body = self.nodes[parent].body;
         let mut seen: HashMap<&str, Span> = HashMap::new();
-        for s in body.states() {
+        for item in &body.items {
+            let s = match item {
+                Item::State(s) => s,
+                Item::History(h) => {
+                    self.history_node(parent, h, &mut seen);
+                    continue;
+                }
+                _ => continue,
+            };
             if let Some(first) = seen.get(s.name.name.as_str()) {
                 let parent_name = self.nodes[parent].id.clone();
                 self.ck.diags.push(
@@ -470,6 +488,9 @@ impl<'p> Cx<'_, 'p> {
                 id,
                 parent: Some(parent),
                 children: Vec::new(),
+                histories: Vec::new(),
+                order: Vec::new(),
+                history: None,
                 body: &s.body,
                 state: Some(s),
                 depth: self.nodes[parent].depth + 1,
@@ -478,7 +499,112 @@ impl<'p> Cx<'_, 'p> {
                 alias_symbol,
             });
             self.nodes[parent].children.push(idx);
+            self.nodes[parent].order.push(idx);
             self.build_tree(idx);
+        }
+    }
+
+    /// Adds history state `h` of `parent` to the tree.
+    fn history_node(&mut self, parent: usize, h: &'p ast::History, seen: &mut HashMap<&'p str, Span>) {
+        let parent_id = self.nodes[parent].id.clone();
+        if let Some(first) = seen.get(h.name.name.as_str()) {
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::DUPLICATE_NAME,
+                    h.name.span,
+                    format!("state `{}` is declared twice in `{parent_id}`", h.name.name),
+                )
+                .with_secondary(*first, "first declared here")
+                .with_help("a history state shares the names of its sibling states"),
+            );
+        } else {
+            seen.insert(&h.name.name, h.name.span);
+        }
+        let idx = self.nodes.len();
+        let id = format!("{parent_id}.{}", h.name.name);
+        let word = if h.deep { "deep history" } else { "history" };
+        let symbol = self.ck.define(
+            SymbolKind::State,
+            &h.name,
+            h.span,
+            self.nodes[parent].symbol,
+            &h.doc,
+            format!("{word} {id}"),
+        );
+        self.nodes.push(Node {
+            name: h.name.name.clone(),
+            name_span: h.name.span,
+            id,
+            parent: Some(parent),
+            children: Vec::new(),
+            histories: Vec::new(),
+            order: Vec::new(),
+            history: Some(h),
+            body: self.nodes[parent].body,
+            state: None,
+            depth: self.nodes[parent].depth + 1,
+            alias: None,
+            symbol: Some(symbol),
+            alias_symbol: None,
+        });
+        self.nodes[parent].histories.push(idx);
+        self.nodes[parent].order.push(idx);
+    }
+
+    /// Lowers history state `idx`, checking that its parent can have one.
+    fn lower_history(&mut self, idx: usize, h: &ast::History) -> ir::State {
+        let parent = self.nodes[idx].parent.expect("a history state has a parent");
+        let parent_kind = self.nodes[parent].state.map(|s| s.kind);
+        let id = self.nodes[idx].id.clone();
+        let word = if h.deep { "deep history" } else { "history" };
+        let why = match parent_kind {
+            Some(StateKind::Final) => Some("is a final state"),
+            _ if self.nodes[parent].children.is_empty() => Some("has no child states"),
+            _ => None,
+        };
+        if let Some(why) = why {
+            let parent_id = &self.nodes[parent].id;
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::HISTORY_WITHOUT_CHILDREN,
+                    h.span,
+                    format!("`{word} {}`: `{parent_id}` {why}", h.name.name),
+                )
+                .with_help("a history state returns to the child states its parent was in when it was last left; put it in a state that has child states"),
+            );
+        }
+        self.info.states.insert(
+            id.clone(),
+            StateInfo {
+                name_span: h.name.span,
+                invoke_span: None,
+                triggers: Vec::new(),
+                initial_span: None,
+                entry_reads: Vec::new(),
+                exit_reads: Vec::new(),
+                invoke_reads: Vec::new(),
+                result_reads: Vec::new(),
+                transition_reads: Vec::new(),
+            },
+        );
+        ir::State {
+            name: self.nodes[idx].name.clone(),
+            id,
+            kind: if h.deep {
+                ir::StateKind::DeepHistory
+            } else {
+                ir::StateKind::History
+            },
+            doc: doc(&h.doc),
+            span: ir_span(h.span),
+            initial: None,
+            states: Vec::new(),
+            entry: Vec::new(),
+            exit: Vec::new(),
+            invoke: None,
+            transitions: Vec::new(),
+            output: None,
+            fail: None,
         }
     }
 
@@ -860,7 +986,24 @@ impl<'p> Cx<'_, 'p> {
             .find(|&c| self.nodes[c].name == name)
     }
 
+    fn history_child(&self, node: usize, name: &str) -> Option<usize> {
+        self.nodes[node]
+            .histories
+            .iter()
+            .copied()
+            .find(|&c| self.nodes[c].name == name)
+    }
+
+    /// A child state or history state named `name`: what a target names.
+    fn target_child(&self, node: usize, name: &str) -> Option<usize> {
+        self.child(node, name)
+            .or_else(|| self.history_child(node, name))
+    }
+
     fn lower_state(&mut self, idx: usize) -> ir::State {
+        if let Some(h) = self.nodes[idx].history {
+            return self.lower_history(idx, h);
+        }
         let body = self.nodes[idx].body;
         let state = self.nodes[idx].state;
         let has_children = !self.nodes[idx].children.is_empty();
@@ -1052,6 +1195,7 @@ impl<'p> Cx<'_, 'p> {
                 | Item::Event(_)
                 | Item::Emits(_)
                 | Item::Initial(_)
+                | Item::History(_)
                 | Item::State(_) => {}
             }
         }
@@ -1086,7 +1230,7 @@ impl<'p> Cx<'_, 'p> {
             info.result_reads = result_reads;
             info.transition_reads = transition_reads;
         }
-        let children = self.nodes[idx].children.clone();
+        let children = self.nodes[idx].order.clone();
         let states = children.into_iter().map(|c| self.lower_state(c)).collect();
         ir::State {
             name: self.nodes[idx].name.clone(),
@@ -1181,6 +1325,7 @@ impl<'p> Cx<'_, 'p> {
                 // Before the item's doc comment, which must stay with the item.
                 let doc = match item {
                     Item::State(s) => s.doc.as_ref(),
+                    Item::History(h) => h.doc.as_ref(),
                     Item::Var(v) => v.doc.as_ref(),
                     Item::Event(e) | Item::Emits(e) => e.doc.as_ref(),
                     _ => None,
@@ -1200,6 +1345,20 @@ impl<'p> Cx<'_, 'p> {
             Some(c) => {
                 self.refer_state(c, first);
                 Some(self.nodes[c].id.clone())
+            }
+            None if let Some(h) = self.history_child(idx, &first.name) => {
+                self.refer_state(h, first);
+                self.ck.diags.push(
+                    Diagnostic::error(
+                        codes::BAD_INITIAL,
+                        first.span,
+                        format!("`initial {}`: `{}` is a history state", first.name, self.nodes[h].id),
+                    )
+                    .with_help(format!(
+                        "`initial` names the child state entered when `{id}` is entered with no history; a history state is only a transition's target"
+                    )),
+                );
+                None
             }
             None => {
                 let names: Vec<String> = children
@@ -1425,7 +1584,7 @@ impl<'p> Cx<'_, 'p> {
         let mut scope = Some(start);
         let mut found = None;
         while let Some(s) = scope {
-            if let Some(c) = self.child(s, &head.name) {
+            if let Some(c) = self.target_child(s, &head.name) {
                 found = Some(c);
                 break;
             }
@@ -1441,7 +1600,7 @@ impl<'p> Cx<'_, 'p> {
             let mut visible: Vec<String> = Vec::new();
             let mut scope = Some(start);
             while let Some(s) = scope {
-                for &c in &self.nodes[s].children {
+                for &c in &self.nodes[s].order {
                     if !visible.contains(&self.nodes[c].name) {
                         visible.push(self.nodes[c].name.clone());
                     }
@@ -1453,7 +1612,7 @@ impl<'p> Cx<'_, 'p> {
                 head.span,
                 format!("unknown target state `{}`", head.name),
             );
-            if self.child(from, &head.name).is_some() && self.nodes[from].parent.is_some() {
+            if self.target_child(from, &head.name).is_some() && self.nodes[from].parent.is_some() {
                 let own = &self.nodes[from].name;
                 d = d
                     .with_help(format!(
@@ -1474,7 +1633,19 @@ impl<'p> Cx<'_, 'p> {
             return None;
         };
         for seg in &t.path[1..] {
-            match self.child(node, &seg.name) {
+            if self.nodes[node].history.is_some() {
+                let through = self.nodes[node].id.clone();
+                self.ck.diags.push(
+                    Diagnostic::error(
+                        codes::UNKNOWN_TARGET,
+                        seg.span,
+                        format!("unknown target state `{written}`: `{through}` is a history state, which has no children"),
+                    )
+                    .with_help(format!("target the history state itself, `-> {}`, to return to where its parent was", t.path.iter().take_while(|p| !std::ptr::eq(*p, seg)).map(|p| p.name.as_str()).collect::<Vec<_>>().join("."))),
+                );
+                return None;
+            }
+            match self.target_child(node, &seg.name) {
                 Some(c) => {
                     self.refer_state(c, seg);
                     node = c;
@@ -1482,7 +1653,7 @@ impl<'p> Cx<'_, 'p> {
                 None => {
                     let parent = self.nodes[node].id.clone();
                     let children: Vec<String> = self.nodes[node]
-                        .children
+                        .order
                         .iter()
                         .map(|&c| self.nodes[c].name.clone())
                         .collect();
