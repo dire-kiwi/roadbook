@@ -252,6 +252,9 @@ importers:
 
   packages/viewer:
     dependencies:
+      '@roadbook/core':
+        specifier: workspace:*
+        version: link:../core
       elkjs:
         specifier: ^0.12.2
         version: 0.12.2

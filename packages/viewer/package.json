@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@roadbook/core": "workspace:*",
     "elkjs": "^0.12.2"
   },
   "devDependencies": {

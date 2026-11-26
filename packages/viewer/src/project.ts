@@ -15,13 +15,15 @@ import { esc } from './render.ts'
 export type PageData =
   | {
       kind: 'chart'
-      /** The viewer mode. Only `explore` exists yet; simulate, replay, diff and coverage come later. */
-      mode: 'explore'
+      /** The mode the page opens in: `explore`, or `replay` for a page given a trace. (Diff and coverage come later.) */
+      mode: 'explore' | 'simulate' | 'replay'
       /** Project path of the entry chart. */
       entry: string
       /** Href of the project index (relative, `./index.html`), or null if there is none. */
       index: string | null
       ir: Ir
+      /** A trace to replay (`roadbook viz --trace`): the file's name and its JSON Lines text. */
+      trace?: { name: string; text: string } | null
     }
   | { kind: 'index'; index: ProjectIndex }
 

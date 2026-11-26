@@ -35,8 +35,14 @@ pub fn href(name: &str) -> String {
 }
 
 /// The page of one entry chart: every machine of its IR. `index`: the href of the project
-/// index.
-pub fn chart_page(entry: &str, ir: &Ir, index: Option<&str>, script: &Script) -> String {
+/// index. `trace`: a trace's file name and text, which the page opens in replay mode.
+pub fn chart_page(
+    entry: &str,
+    ir: &Ir,
+    index: Option<&str>,
+    trace: Option<(&str, &str)>,
+    script: &Script,
+) -> String {
     // The entry file's first machine, not one it imports.
     let title = ir
         .machines
@@ -46,10 +52,15 @@ pub fn chart_page(entry: &str, ir: &Ir, index: Option<&str>, script: &Script) ->
         .map_or("Roadbook", |(name, _)| name.as_str());
     // Written by hand rather than through `serde_json::Value`, whose maps would sort the IR's
     // members: the viewer shows machines, events and declarations in source order.
+    let (mode, trace) = match trace {
+        Some((name, text)) => ("replay", json!({ "name": name, "text": text })),
+        None => ("explore", Value::Null),
+    };
     let data = format!(
-        "{{\"kind\":\"chart\",\"mode\":\"explore\",\"entry\":{},\"index\":{},\"ir\":{}}}",
+        "{{\"kind\":\"chart\",\"mode\":\"{mode}\",\"entry\":{},\"index\":{},\"trace\":{},\"ir\":{}}}",
         Value::from(entry),
         index.map_or(Value::Null, Value::from),
+        trace,
         serde_json::to_string(ir).unwrap_or_default()
     );
     shell(&format!("{title} · {entry}"), &data, script)

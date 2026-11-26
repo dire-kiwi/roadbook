@@ -2,7 +2,7 @@
 
 `roadbook viz` turns charts into HTML with no agent and no service involved. It is a deterministic function of the IR: the same chart always gives the same page.
 
-The viewer is [`packages/viewer`](../../packages/viewer) (`@roadbook/viewer`), built to one script that the CLI embeds: `crates/roadbook-cli/assets/roadbook-viewer.js` is committed, so building the CLI needs no Node. After changing `packages/viewer`, rebuild it with `pnpm --filter @roadbook/viewer build` and commit it; `pnpm test` and `cargo test` fail while it is stale (`cargo test` reads its header: the hash of the sources, the elkjs and esbuild versions in `pnpm-lock.yaml`, and the hash of the script, so a dependency bump or a hand edit is caught without Node). `roadbook viz examples/shop` draws the shop example.
+The viewer is [`packages/viewer`](../../packages/viewer) (`@roadbook/viewer`), built to one script that the CLI embeds: `crates/roadbook-cli/assets/roadbook-viewer.js` is committed, so building the CLI needs no Node. The bundle includes `@roadbook/core`, which simulate mode runs. After changing `packages/viewer` or `packages/core`, rebuild it with `pnpm --filter @roadbook/viewer build` and commit it; `pnpm test` and `cargo test` fail while it is stale (`cargo test` reads its header: the hash of the sources of both packages, the elkjs and esbuild versions in `pnpm-lock.yaml`, and the hash of the script, so a dependency bump or a hand edit is caught without Node). `roadbook viz examples/shop` draws the shop example; `roadbook viz examples/shop --trace spec/conformance/cases/place-order-checkout/trace.jsonl` adds a trace to replay.
 
 ![PlaceOrder drawn by the viewer](images/place-order.png)
 
@@ -78,16 +78,40 @@ The viewer's tests lay out every example, every conformance chart and a stress c
 - Click a `send`, an `emit` or the name in an `on upload.Progress` label to open the event in the machine that declares it: its declaration and fields, where that machine handles or emits it, and every place in the chart that sends it or handles it, each a link. The transitions it triggers are highlighted. A `ref` type in a signature opens its machine.
 - Search (`/`) by state, event (declared, sent, emitted or handled), task, machine, error or action name. Matches are highlighted; choosing one opens its machine, expands what hides it and selects it.
 - Light and dark themes, following the system, with a toggle that is remembered.
+- A mode switch in the header: Explore (the default), Simulate and Replay ([modes](#modes)). In simulate and replay, `→` (or `n`) steps forward and `←` (or `p`) steps back; in replay `Home` and `End` go to the first and last record.
 
 ## Modes
 
-Explore is the first milestone. The others arrive as the runtime pieces they depend on do.
+Explore, simulate and replay are built; diff and coverage come later. Simulate and replay keep the diagram and its interaction and put their own section at the top of the details panel (the details of a state or transition clicked follow below it). Both light up the diagram the same way, and as everywhere else every distinction reads in greyscale:
+
+| What | Drawn as |
+| --- | --- |
+| An active state | A solid ring around its box, a heavier border and a bold name (in the "live" colour); the innermost one inside a collapsed state lights up the collapsed box |
+| The states the current record names (replay) | A dashed ring, further out |
+| The transitions taken (simulate: by the last choice; replay: the record's, or the run's last) | A heavy line, and a heavy border and an underlined bold trigger on its label (or its row) |
+
+A line over the diagram says where the mode is in words (`Simulate · step 3/5 · t = 30 ms · running · in Processing.Paying`, `Replay · record 22/50 · run r1 · t = 30 · set order = …`), and the panel lists the active states, the last transition and the variables, so nothing depends on seeing the colours.
 
 **Explore.** The static chart, as above.
 
-**Simulate.** Step through a chart by hand. The viewer shows the events and outcomes that are possible in the current state. The reader picks one (send `Cancel`, let `chargeCard` fail with `GatewayUnavailable`, let 30 seconds pass), and the viewer highlights the transition and the new state and shows the variables. Guards that call host functions ask the reader for the result. This runs `@roadbook/core` in the page, so it behaves exactly as the real runtime would.
+**Simulate.** Step through the machine on screen by hand. This runs `@roadbook/core` in the page (`packages/viewer/src/sim.ts` is a small driver for one run on a virtual clock), so it behaves exactly as the real runtime would; the tests drive it through a conformance case's script and get the case's trace byte for byte (fourteen cases: every one that runs a single machine, with no child run from the chart, no other top-level run and no `together`).
 
-**Replay.** Load a [trace](semantics.md#the-trace) recorded by either runtime. The viewer draws the path the run took, steps forward and back through it, and shows the variables at each point. A failed request becomes a picture of where it went. If the trace's IR hash differs from the chart on screen, the viewer says so.
+- **Input.** The machine starts from a JSON form prefilled from its parameter types (empty strings, zeros, `false`, the first enum variant, empty lists, `null` for optionals, records field by field). It is checked as it is typed, with the path to each problem (`input.draft.items[0].qty: expected an integer`), and Start stays disabled until it is well formed. Every value form below works the same way.
+- **What can happen next.** The panel lists what the current configuration waits for. Every declared event can be sent (with a form for its fields), and one no active state has an `on` for is marked as one that would be dropped. Each running invoke can end with `done` (a form for its result type), with each of its declared errors (with their fields), or with a host defect. Each running timer can fire, which moves the clock to when it is due. The clock can be advanced by any number of milliseconds, firing the timers due on the way one at a time, earliest first, as a conformance runner's `advance` does. The run can be cancelled from outside.
+- **Functions.** When a guard, an effect, a delay or an output calls a host function, the core stops and the panel asks: `retryDelay(1) → duration. What does it return?`, with a form for the return type, a button to make it throw (a host defect), and one to give up the choice. The step is then run again from the same snapshot (the core is pure), asking for the next call it needs, if any. Answers are remembered per argument list, listed in the panel, and can be forgotten; they are kept when the reader steps back or starts again with a new input.
+- **Child machines** invoked with a chart in the same IR are treated as tasks: the child run is not started and the reader gives its outcome by hand, as for a task. The panel says so under the invoke, and points to the child's tab to simulate it on its own. A child invoked with `as` can be made to emit one of its events to the run.
+- **Messaging.** `send` and `emit` effects are carried out as their records only (`sent`, `emitted`, `undelivered`): there is no other run to deliver to. Actions do nothing.
+- **History.** Every choice is a step; Back and Forward move through them, and a new choice from an earlier step drops the steps after it. The panel lists the active states, the transitions the step took, the parameters and variables (marking those with no value yet), the result once the run has ended, and the trace so far with the last step's records set apart.
+- **Parallel states.** The core does not run them yet, so for a machine that has one the panel says that the core refused it, with the core's message, and that explore and replay still work.
+
+**Replay.** Load a [trace](semantics.md#the-trace) recorded by either runtime: with the file picker in the panel, by dropping a `.jsonl` file anywhere on the page, or built in: `roadbook viz --trace run.jsonl` writes the trace into the page of every chart that has the machine of its first top-level run, and those pages open in replay mode (the CLI refuses a file that is not a trace, or one whose machine no chart has, and warns when the hashes differ). Nothing is uploaded: the file is read in the browser.
+
+- **Stepping.** One record at a time, forward and back, or to any record by clicking it in the list. At each record the diagram shows the run the record belongs to, with its active states, the states and transition the record names (an `entered` names a state, a `transition` its arrow, an `after` expiry its timer's `after` arrow, an invoke's outcome its state), and the run's last transition.
+- **Variables** at each point come from the `started` record's input and the `set` records so far. Initial values are not traced, so a variable with one that has not been set yet shows its initial expression, marked as not in the trace.
+- **Child runs.** When the record is a child run's (`r1.4`), the viewer opens the child machine's diagram, with a trail back to the parent (`PlaceOrder invokes (r1.4) › Checkout`). The panel lists the runs with their machines, number of records and how they ended, the child runs of the current one, and a link back to the record that started the child in the parent.
+- **The chart on screen.** If a run's IR hash (the `ir` of its `started` record) differs from its machine's in the chart, or the chart has no such machine, the panel shows a warning, since states and transitions may not match. The viewer also follows every run and lists the records that do not fit the chart: a state that does not exist or is not active, a transition whose target differs, an invoke or timer that is not running. The tests replay the expected trace of every conformance case against its chart with no warning and no such record.
+
+A failed request becomes a picture of where it went: the trace a failing test or a production run wrote, opened on its chart.
 
 **Diff.** `roadbook viz --diff main..HEAD` draws both versions as one chart with added, removed and changed states and transitions marked. This is the mode aimed most directly at the project's goal. When an agent changes a program, the reviewer sees the change in flow before reading any code.
 

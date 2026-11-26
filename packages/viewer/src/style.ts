@@ -18,6 +18,8 @@ export const LIGHT = `
   --rb-accent-bg: #e4edfb;
   --rb-msg: #7a35d6;
   --rb-match: #fff1a8;
+  --rb-live: #a84f00;
+  --rb-live-bg: #fdf0e2;
   --rb-label-bg: #ffffff;
   --rb-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 `
@@ -38,6 +40,8 @@ export const DARK = `
   --rb-accent-bg: #1c2b45;
   --rb-msg: #c39bff;
   --rb-match: #5a4a00;
+  --rb-live: #ffad5c;
+  --rb-live-bg: #3a2614;
   --rb-label-bg: #15181c;
   --rb-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 `
@@ -253,6 +257,85 @@ body.rb-index { min-height: 100vh; }
 .rb-table td code { overflow-wrap: anywhere; }
 .rb-table a { color: var(--rb-accent); font-family: var(--rb-mono); font-weight: 650; }
 .rb-table .rb-doc { margin: 2px 0 0; }
+
+/* simulate and replay: a solid ring around active states, a dashed one around the states the
+   current record names, heavy lines for the transitions taken; all readable in greyscale */
+.rb-ring { fill: none; pointer-events: none; }
+.rb-ring-active { stroke: var(--rb-live); stroke-width: 3.2; }
+.rb-ring-named { stroke: var(--rb-fg); stroke-width: 2; stroke-dasharray: 6 4; }
+.rb-active > .rb-box { stroke: var(--rb-live); stroke-width: 2; }
+.rb-active.rb-leaf > .rb-box { fill: var(--rb-live-bg); }
+.rb-active > .rb-title { font-weight: 800; }
+.rb-edge.rb-taken .rb-edge-line { stroke-width: 4.4; }
+.rb-canvas .rb-label.rb-taken .rb-label-bg { stroke: var(--rb-live); stroke-width: 3; }
+.rb-label.rb-taken .rb-label-trigger { font-weight: 800; text-decoration: underline; }
+.rb-row.rb-taken { font-weight: 800; text-decoration: underline; }
+.rb-mode-status { position: absolute; left: 12px; top: 10px; max-width: calc(100% - 24px); font: 12px var(--rb-mono); color: var(--rb-fg); background: var(--rb-surface); border: 1px solid var(--rb-border); border-radius: 6px; padding: 3px 8px; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: var(--rb-shadow); }
+
+.rb-modes { display: flex; border: 1px solid var(--rb-border); border-radius: 7px; overflow: hidden; }
+.rb-mode-btn { font: inherit; font-size: 13px; color: var(--rb-fg); background: transparent; border: 0; border-left: 1px solid var(--rb-border); padding: 3px 11px; cursor: pointer; }
+.rb-mode-btn:first-child { border-left: 0; }
+.rb-mode-btn:hover { background: var(--rb-bg); }
+.rb-mode-btn[aria-pressed="true"] { background: var(--rb-accent-bg); color: var(--rb-accent); font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+.rb-mode-btn:focus-visible { outline: 2px solid var(--rb-accent); outline-offset: -2px; }
+
+.rb-mode-panel { margin-bottom: 14px; }
+.rb-details-below { border-top: 1px solid var(--rb-border); padding-top: 12px; }
+.rb-mode-head { display: flex; align-items: center; gap: 8px; }
+.rb-mode-head h2 { flex: 1; }
+.rb-mode-note { color: var(--rb-muted); font-size: 12.5px; margin: 6px 0 0; }
+.rb-panel h4 { font-size: 12.5px; margin: 12px 0 5px; font-weight: 650; }
+.rb-h-note { font-weight: 400; color: var(--rb-muted); text-transform: none; letter-spacing: 0; }
+.rb-status-running { border-color: var(--rb-accent); color: var(--rb-accent); }
+.rb-status-done { border-color: var(--rb-ok); color: var(--rb-ok); }
+.rb-status-failed, .rb-status-defect { border-color: var(--rb-err); color: var(--rb-err); font-weight: 650; }
+.rb-refusal { margin: 10px 0 0; padding: 8px 10px; border: 2px solid var(--rb-err); border-radius: 6px; font-size: 13px; background: var(--rb-bg); }
+.rb-alert { margin: 10px 0 0; padding: 6px 9px; border: 1px dashed var(--rb-err); border-radius: 6px; font-size: 13px; }
+.rb-ask { margin: 12px 0 0; padding: 4px 11px 11px; border: 2px solid var(--rb-accent); border-radius: 8px; background: var(--rb-accent-bg); }
+.rb-ask h3 { color: var(--rb-fg); }
+.rb-ask p { margin: 4px 0; font-size: 13px; }
+.rb-steps { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 12px 0 0; }
+.rb-step-text { flex-basis: 100%; order: -1; font-size: 12.5px; }
+.rb-clock { font: 12.5px var(--rb-mono); margin: 6px 0 0; }
+.rb-choice { margin: 5px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+details.rb-choice { display: block; }
+details.rb-choice > summary { cursor: pointer; font: 12.5px var(--rb-mono); border: 1px solid var(--rb-border); border-radius: 6px; padding: 3px 9px; display: inline-block; }
+details.rb-choice > summary:hover { border-color: var(--rb-box); }
+details.rb-choice[open] > summary { border-style: dashed; margin-bottom: 5px; }
+.rb-choice .rb-btn, .rb-row-btns .rb-btn { font-family: var(--rb-mono); font-size: 12.5px; }
+.rb-cnote { color: var(--rb-muted); font-size: 12px; }
+.rb-task-note { margin: 0 0 4px; }
+.rb-row-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.rb-form { display: grid; gap: 5px; margin: 6px 0; }
+.rb-form .rb-go { justify-self: start; }
+.rb-btn:disabled { opacity: 0.5; cursor: not-allowed; text-decoration: line-through; }
+.rb-json { width: 100%; font: 12px/1.4 var(--rb-mono); color: var(--rb-fg); background: var(--rb-bg); border: 1px solid var(--rb-border); border-radius: 6px; padding: 6px 8px; resize: vertical; }
+.rb-json[aria-invalid="true"] { border: 2px dashed var(--rb-err); }
+.rb-form-errors { margin: 0; padding: 0 0 0 16px; color: var(--rb-err); font-size: 12px; }
+.rb-form-errors:empty { display: none; }
+.rb-ms { width: 7em; font: 12.5px var(--rb-mono); color: var(--rb-fg); background: var(--rb-bg); border: 1px solid var(--rb-border); border-radius: 5px; padding: 2px 5px; }
+.rb-advance label { font: 12.5px var(--rb-mono); }
+.rb-active-path { margin: 0; font-size: 12.5px; }
+.rb-vars .rb-vnote { color: var(--rb-muted); font-family: var(--rb-sans); font-size: 11.5px; }
+.rb-file { display: inline-block; }
+.rb-problems summary { cursor: pointer; color: var(--rb-err); font-size: 13px; margin-top: 8px; }
+.rb-now { margin: 10px 0 0; padding: 6px 9px; border-left: 4px solid var(--rb-live); background: var(--rb-bg); }
+.rb-now p { margin: 0; }
+.rb-now-text { font: 12.5px var(--rb-mono); overflow-wrap: anywhere; }
+.rb-records { list-style: none; margin: 0; padding: 0; max-height: 46vh; overflow: auto; border: 1px solid var(--rb-border); border-radius: 6px; font: 11.5px/1.35 var(--rb-mono); }
+.rb-records li { border-bottom: 1px solid var(--rb-border); }
+.rb-records li:last-child { border-bottom: 0; }
+.rb-rec { display: flex; gap: 8px; width: 100%; padding: 2px 6px; text-align: left; font: inherit; color: inherit; background: none; border: 0; }
+button.rb-rec { cursor: pointer; }
+.rb-records button:hover { background: var(--rb-bg); }
+.rb-records .rb-rt { color: var(--rb-muted); min-width: 3em; text-align: right; flex: none; }
+.rb-records .rb-rrun { color: var(--rb-muted); flex: none; }
+.rb-records .rb-rtext { overflow-wrap: anywhere; min-width: 0; }
+.rb-records li.rb-recent { background: var(--rb-live-bg); border-left: 3px solid var(--rb-live); }
+.rb-records li.rb-current { background: var(--rb-live-bg); outline: 2px solid var(--rb-live); outline-offset: -2px; font-weight: 700; }
+.rb-records .rb-rk-transition .rb-rtext { font-weight: 650; }
+.rb-records .rb-rk-failed .rb-rtext, .rb-records .rb-rk-defect .rb-rtext { color: var(--rb-err); }
+body[data-mode="simulate"] .rb-hint, body[data-mode="replay"] .rb-hint { display: none; }
 
 @media (max-width: 860px) {
   .rb-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 3fr) minmax(0, 2fr); }
