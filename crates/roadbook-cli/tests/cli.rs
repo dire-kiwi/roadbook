@@ -505,11 +505,11 @@ fn viz_trace_is_embedded_and_opens_in_replay() {
     let dir = out_dir("trace-files");
     std::fs::create_dir_all(&dir).unwrap();
     let other = dir.join("other.jsonl");
-    let text = std::fs::read_to_string(repo().join(trace)).unwrap();
-    let first: serde_json::Value = serde_json::from_str(text.lines().next().unwrap()).unwrap();
+    let records = std::fs::read_to_string(repo().join(trace)).unwrap();
+    let first: serde_json::Value = serde_json::from_str(records.lines().next().unwrap()).unwrap();
     let hash = first["ir"].as_str().unwrap();
     let zeros = format!("sha256:{}", "0".repeat(64));
-    std::fs::write(&other, text.replace(hash, &zeros)).unwrap();
+    std::fs::write(&other, records.replace(hash, &zeros)).unwrap();
     let res = roadbook(
         &repo(),
         &[
@@ -651,10 +651,25 @@ fn viz_names_pages_after_their_entries_and_reports_errors() {
         publish["receives"],
         serde_json::json!([{ "from": upload, "events": ["Progress"] }])
     );
+    // A machine that spawns children: spawns, sends to and receives from them by collection.
+    let batch = &machines[at("Batch")];
+    assert_eq!(batch["invokes"], serde_json::json!([]));
+    assert_eq!(
+        batch["spawns"],
+        serde_json::json!([{ "to": upload, "names": ["uploads"] }])
+    );
+    assert_eq!(
+        batch["sends"],
+        serde_json::json!([{ "to": upload, "events": ["Pause", "Resume"] }])
+    );
+    assert_eq!(
+        batch["receives"],
+        serde_json::json!([{ "from": upload, "events": ["Progress"] }])
+    );
     // A machine of another package is named by its package and its path in it.
     assert_eq!(machines[inventory]["source"], "inventory/inventory.road:19");
     for m in machines {
-        if m["name"] != "Order" && m["name"] != "Publish" {
+        if m["name"] != "Order" && m["name"] != "Publish" && m["name"] != "Batch" {
             assert_eq!(m["sends"], serde_json::json!([]), "{m}");
             assert_eq!(m["receives"], serde_json::json!([]), "{m}");
         }
