@@ -8,7 +8,8 @@
 //! - [`Case`] and [`Step`], the contents of a `case.json`;
 //! - [`LoadedCase`], a case with its expected trace and, once the compiler
 //!   has generated it, its IR ([`load_case`], [`load_all`]);
-//! - [`FnTable`], the scripted results of the host's pure functions;
+//! - [`FnTable`], the scripted results of the host's pure functions, and
+//!   [`ActionTable`], the action calls that have a host defect;
 //! - [`arrange`] and [`to_lines`], which put a runtime's trace records in the
 //!   order and the canonical form the expected traces use;
 //! - [`lint`], structural checks of a trace that need no runtime;
@@ -56,6 +57,8 @@ pub struct Case {
     pub stub: Vec<String>,
     /// Scripted results of the host's pure functions.
     pub fns: FnTable,
+    /// The action calls that have a host defect.
+    pub actions: ActionTable,
     /// The steps, in order.
     pub script: Vec<Step>,
     /// The root run's status after the script.
@@ -112,8 +115,10 @@ pub enum Step {
     Task(TaskStep),
     /// Cancel the root run from outside.
     Cancel,
-    /// Queue all these inputs before any run takes the first. Only
-    /// [`Step::Event`] and [`Step::Task`] appear here.
+    /// Queue all these inputs for one run before it takes the first. Only
+    /// [`Step::Event`], [`Step::Task`] and at most one [`Step::Advance`]
+    /// appear here; an advance queues the expiries of the timers due in its
+    /// window.
     Together(Vec<Step>),
 }
 
@@ -189,9 +194,17 @@ fn step_from_value(v: Value) -> Result<Step, String> {
         }
         if !steps
             .iter()
-            .all(|s| matches!(s, Step::Event(_) | Step::Task(_)))
+            .all(|s| matches!(s, Step::Event(_) | Step::Task(_) | Step::Advance(_)))
         {
-            return Err("`together` holds only `event` and `task` steps".into());
+            return Err("`together` holds only `event`, `task` and `advance` steps".into());
+        }
+        if steps
+            .iter()
+            .filter(|s| matches!(s, Step::Advance(_)))
+            .count()
+            > 1
+        {
+            return Err("`together` holds at most one `advance`".into());
         }
         return Ok(Step::Together(steps));
     }
@@ -251,6 +264,34 @@ impl FnTable {
         self.0.get(name)?.iter().find_map(|r| {
             let have = roadbook_ir::jcs::to_canonical_string(&Value::Array(r.args.clone()));
             (have == want).then_some(&r.returns)
+        })
+    }
+}
+
+/// The action calls that have a host defect: for each action, a list of
+/// argument objects and defect messages. Every other call does nothing.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+#[serde(transparent)]
+pub struct ActionTable(pub IndexMap<String, Vec<ActionDefect>>);
+
+/// One entry of an [`ActionTable`].
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ActionDefect {
+    /// The arguments, keyed by parameter name.
+    pub args: Value,
+    /// The message of the host defect a matching call has.
+    pub defect: String,
+}
+
+impl ActionTable {
+    /// The message of the host defect that calling action `name` with `args`
+    /// (keyed by parameter name) has, comparing arguments as canonical JSON.
+    /// `None` means the call does nothing and returns at once.
+    pub fn defect(&self, name: &str, args: &Value) -> Option<&str> {
+        let want = roadbook_ir::jcs::to_canonical_string(args);
+        self.0.get(name)?.iter().find_map(|a| {
+            (roadbook_ir::jcs::to_canonical_string(&a.args) == want).then_some(a.defect.as_str())
         })
     }
 }
@@ -490,7 +531,8 @@ mod tests {
             {"event": {"_tag": "Go"}},
             {"task": "t", "fail": {"_tag": "E"}, "run": "r1.2"},
             {"cancel": true},
-            {"together": [{"event": {"_tag": "Go"}}, {"task": "t", "done": null}]}
+            {"together": [{"event": {"_tag": "Go"}}, {"task": "t", "done": null}]},
+            {"together": [{"event": {"_tag": "Go"}}, {"advance": 10}]}
         ]))
         .unwrap();
         assert_eq!(s[0], Step::Advance(5));
@@ -509,6 +551,7 @@ mod tests {
             json!({"advance": -1}),
             json!({"advance": 1, "event": {}}),
             json!({"together": [{"advance": 1}, {"cancel": true}]}),
+            json!({"together": [{"advance": 1}, {"advance": 2}]}),
             json!({"cancel": false}),
         ] {
             assert!(
@@ -527,5 +570,16 @@ mod tests {
         assert_eq!(t.call("f", &[json!({"a": 2, "b": 1})]), Some(&json!("x")));
         assert_eq!(t.call("f", &[json!({"a": 3, "b": 1})]), None);
         assert_eq!(t.call("g", &[]), None);
+    }
+
+    #[test]
+    fn action_table_matches_canonically() {
+        let t: ActionTable = serde_json::from_value(json!({
+            "log": [{"args": {"what": "x", "n": 1.0}, "defect": "boom"}]
+        }))
+        .unwrap();
+        assert_eq!(t.defect("log", &json!({"n": 1, "what": "x"})), Some("boom"));
+        assert_eq!(t.defect("log", &json!({"n": 2, "what": "x"})), None);
+        assert_eq!(t.defect("audit", &json!({})), None);
     }
 }
