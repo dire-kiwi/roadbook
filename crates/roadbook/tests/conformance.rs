@@ -8,6 +8,11 @@
 //! only when the runner ends or fires them, while a message or emitted event that one run
 //! delivers to another wakes the receiver, so that is exactly "quiescent".
 //!
+//! Saved snapshots go through the production API too: a `snapshot` step is
+//! `RunHandle::save`, a `suspend` step `RunHandle::suspend` (whose run's future then ends with
+//! `RunEnd::Suspended`), and a `restore` step `dynamic::restore` with the runner's migration
+//! in the `Config`. Each snapshot is compared byte for byte, in canonical JSON, with its file.
+//!
 //! With `ROADBOOK_CONFORMANCE_OUT=<dir>`, each case's actual trace is also written to
 //! `<dir>/<case>.jsonl`.
 //!
@@ -21,17 +26,19 @@ use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Wake, Waker};
 
 use roadbook::dynamic::{self, Host, Invocation, Outcome};
-use roadbook::{BoxFuture, Config, Defect, Input, MemorySink, Program, RunEnd, RunHandle, Timer};
+use roadbook::{
+    BoxFuture, Config, Defect, Input, MemorySink, Program, RunEnd, RunHandle, Saved, Timer,
+};
 use roadbook_conformance::{
     LoadedCase, Outcome as ScriptOutcome, Status, Step, arrange, compare_run_ids, conformance_dir,
-    load_all, to_lines,
+    load_all, snapshot_text, to_lines,
 };
 use roadbook_core::{Object, SrcKind};
 use serde_json::Value;
 
 /// The features of `spec/conformance/case.schema.json`'s `requires` this runtime
 /// implements.
-const SUPPORTED: &[&str] = &["messaging"];
+const SUPPORTED: &[&str] = &["messaging", "parallel", "snapshots"];
 
 // ---- the executor ------------------------------------------------------------------------
 
@@ -326,6 +333,8 @@ struct Top<'a> {
     handle: RunHandle,
     /// The status the case expects it to have after the last step.
     expected: Status,
+    /// The snapshot a `suspend` step waits for it to give, until it has given it.
+    suspending: Option<String>,
 }
 
 struct Runner<'a> {
@@ -371,6 +380,59 @@ impl Runner<'_> {
         }
         Ok(&run.handle)
     }
+
+    /// The top-level run `id`, which must not have ended nor be suspended or being
+    /// suspended: one an event or a cancel can be given to.
+    fn awake(&self, id: &str) -> Result<&RunHandle, String> {
+        let handle = self.running(id)?;
+        if self
+            .runs
+            .iter()
+            .any(|r| r.id == id && r.suspending.is_some())
+        {
+            return Err(format!("the top-level run {id} is being suspended"));
+        }
+        Ok(handle)
+    }
+
+    /// Compares the snapshot of every run a `suspend` step waits for that has become idle
+    /// (its future ended with `Suspended`) or has ended.
+    fn check_suspended(&mut self, c: &LoadedCase) -> Result<(), String> {
+        for run in &mut self.runs {
+            let (Some(name), Some(end)) = (&run.suspending, &run.end) else {
+                continue;
+            };
+            let saved = match end {
+                RunEnd::Suspended(saved) => (**saved).clone(),
+                RunEnd::Defect(d) => {
+                    return Err(format!("{} was suspended but ended with {d}", run.id));
+                }
+                _ => run
+                    .handle
+                    .save()
+                    .ok_or_else(|| format!("{} has no saved snapshot", run.id))?,
+            };
+            compare_snapshot(c, name, &saved)?;
+            run.suspending = None;
+        }
+        Ok(())
+    }
+}
+
+/// Compares a saved snapshot with the case's file `<name>.snapshot.json`.
+fn compare_snapshot(c: &LoadedCase, name: &str, saved: &Saved) -> Result<(), String> {
+    let expected = c
+        .snapshots
+        .get(name)
+        .ok_or_else(|| format!("no {name}.snapshot.json"))?;
+    let actual = snapshot_text(&saved.to_value());
+    if actual != *expected {
+        return Err(format!(
+            "snapshot {name}:\n  expected {}  actual   {actual}",
+            expected
+        ));
+    }
+    Ok(())
 }
 
 fn status_of(end: &Option<RunEnd>) -> Status {
@@ -380,6 +442,8 @@ fn status_of(end: &Option<RunEnd>) -> Status {
         Some(RunEnd::Failed(_)) => Status::Failed,
         Some(RunEnd::Cancelled) => Status::Cancelled,
         Some(RunEnd::Defect(_)) => Status::Defect,
+        // A suspended run has not ended.
+        Some(RunEnd::Suspended(_)) => Status::Running,
     }
 }
 
@@ -433,6 +497,7 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
             end: None,
             handle: root,
             expected: c.case.status,
+            suspending: None,
         }],
         flag: Arc::new(Flag::default()),
     };
@@ -440,8 +505,14 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
 
     for (i, step) in c.case.script.iter().enumerate() {
         let at = |e: String| format!("step {}: {e}", i + 1);
-        if !matches!(step, Step::Start(_)) && runner.runs.iter().all(|r| r.end.is_some()) {
-            return Err(at("every top-level run has already ended".into()));
+        let gives_input = matches!(
+            step,
+            Step::Event(_) | Step::Task(_) | Step::Cancel(_) | Step::Together(_)
+        );
+        if gives_input && runner.runs.iter().all(|r| r.end.is_some()) {
+            return Err(at(
+                "every top-level run has already ended or been suspended".into(),
+            ));
         }
         match step {
             Step::Advance(d) => {
@@ -456,7 +527,7 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                 timer.now.store(end, Ordering::SeqCst);
             }
             Step::Event(e) => {
-                runner.running(e.run()).map_err(at)?.send(e.event.clone());
+                runner.awake(e.run()).map_err(at)?.send(e.event.clone());
                 runner.settle().map_err(at)?;
             }
             Step::Task(t) => {
@@ -469,7 +540,7 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
             }
             Step::Cancel(run) => {
                 let run = run.as_deref().unwrap_or(roadbook_conformance::ROOT_RUN);
-                runner.running(run).map_err(at)?.cancel();
+                runner.awake(run).map_err(at)?.cancel();
                 runner.settle().map_err(at)?;
             }
             Step::Start(s) => {
@@ -495,6 +566,7 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                     end: None,
                     handle,
                     expected: s.status,
+                    suspending: None,
                 });
                 runner.settle().map_err(at)?;
             }
@@ -541,12 +613,108 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                 handle.push(inputs.into_iter().map(|(_, i)| i).collect());
                 runner.settle().map_err(at)?;
             }
-            // Cases with these steps require `snapshots`, which this runtime does not
-            // implement yet, so they are skipped before they get here.
-            Step::Snapshot(_) | Step::Restore(_) | Step::Suspend(_) => {
-                return Err(at("saving and restoring are not implemented yet".into()));
+            Step::Snapshot(snap) => {
+                let saved = runner
+                    .running(snap.run())
+                    .map_err(at)?
+                    .save()
+                    .ok_or_else(|| at(format!("{} has no saved snapshot", snap.run())))?;
+                compare_snapshot(c, &snap.name, &saved).map_err(at)?;
+            }
+            Step::Suspend(snap) => {
+                let run = runner
+                    .runs
+                    .iter_mut()
+                    .find(|r| r.id == snap.run())
+                    .ok_or_else(|| at(format!("no top-level run {}", snap.run())))?;
+                if run.suspending.is_some() {
+                    return Err(at(format!("{} is already being suspended", run.id)));
+                }
+                if !matches!(
+                    run.end,
+                    None | Some(RunEnd::Done(_) | RunEnd::Failed(_) | RunEnd::Cancelled)
+                ) {
+                    return Err(at(format!("{} cannot be suspended", run.id)));
+                }
+                run.suspending = Some(snap.name.clone());
+                run.handle.suspend();
+                runner.settle().map_err(at)?;
+            }
+            Step::Restore(r) => {
+                let text = c
+                    .snapshots
+                    .get(&r.name)
+                    .ok_or_else(|| at(format!("no {}.snapshot.json", r.name)))?;
+                let records = sink.records().len();
+                // The runner's migration: called once, with the snapshot being restored.
+                let calls: Arc<Mutex<Vec<Value>>> = Arc::default();
+                let mut restore_config = config.clone();
+                if let Some(m) = &r.migrate {
+                    let to: Value = serde_json::from_str(
+                        c.snapshots
+                            .get(m)
+                            .ok_or_else(|| at(format!("no {m}.snapshot.json")))?,
+                    )
+                    .map_err(|e| at(e.to_string()))?;
+                    let seen = calls.clone();
+                    restore_config = restore_config.migrate(move |old| {
+                        seen.lock().unwrap().push(old);
+                        Ok(to.clone())
+                    });
+                }
+                let id = format!("r{}", runner.runs.len() + 1);
+                let restored = Saved::from_json(text).and_then(|saved| {
+                    dynamic::restore(
+                        &restore_config.clone().run_id(id.clone()),
+                        &program,
+                        None,
+                        &saved,
+                        &host,
+                    )
+                });
+                if let Some(m) = &r.migrate {
+                    let calls = calls.lock().unwrap();
+                    let from: Value = serde_json::from_str(text).map_err(|e| at(e.to_string()))?;
+                    if calls.len() != 1 || snapshot_text(&calls[0]) != snapshot_text(&from) {
+                        return Err(at(format!(
+                            "the migration to {m} was called {} times, not once with {}",
+                            calls.len(),
+                            r.name
+                        )));
+                    }
+                }
+                match (restored, &r.refused) {
+                    (Err(e), Some(reason)) if e.reason() == reason => {
+                        if sink.records().len() != records {
+                            return Err(at("a refused restore wrote records".into()));
+                        }
+                    }
+                    (Err(e), _) => return Err(at(e.to_string())),
+                    (Ok(_), Some(reason)) => {
+                        return Err(at(format!("the restore was not refused ({reason})")));
+                    }
+                    (Ok((fut, handle)), None) => {
+                        let run = r.run.clone().unwrap_or_default();
+                        if run != id {
+                            return Err(at(format!("the run is {id}, not {run}")));
+                        }
+                        runner.runs.push(Top {
+                            id,
+                            fut: Some(fut),
+                            end: None,
+                            handle,
+                            expected: r.status.unwrap_or(Status::Running),
+                            suspending: None,
+                        });
+                        runner.settle().map_err(at)?;
+                    }
+                }
             }
         }
+        runner.check_suspended(c).map_err(at)?;
+    }
+    if let Some(run) = runner.runs.iter().find(|r| r.suspending.is_some()) {
+        return Err(format!("{} was never suspended", run.id));
     }
 
     let problems = host.problems.lock().unwrap().clone();

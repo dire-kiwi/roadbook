@@ -20,8 +20,10 @@
 //! emit comes back as [`Input::Message`] and [`Input::Emitted`]. A `ref` is the id of the run
 //! it refers to; delivering is the driver's business.
 //!
-//! Parallel states and restoring snapshots are milestone 6: [`Program::new`] refuses an IR
-//! with a parallel state.
+//! Parallel states take one input in several regions at once, in one microstep. A run can be
+//! saved as a [`Saved`] snapshot and started again from it: [`Program::check_saved`] checks a
+//! saved snapshot against the IR (and applies a migration), and [`Program::restore`] starts
+//! the new run from it.
 //!
 //! ```
 //! use roadbook_core::{Command, Input, Program, Record, Status};
@@ -47,14 +49,16 @@
 mod eval;
 mod program;
 mod run;
+mod saved;
 mod types;
 
 pub use eval::Fns;
 pub use program::{Program, ProgramError};
 pub use run::{StepResult, UnknownMachine};
+pub use saved::{Migration, Refusal, RestoreError};
 pub use types::{
-    Command, Defect, Input, InvokeEntry, Object, Record, RunResult, Snapshot, SrcKind, Status,
-    TimerEntry,
+    Command, Defect, Input, InvokeEntry, Object, Record, RunResult, Saved, SavedTimer, Snapshot,
+    SrcKind, Status, TimerEntry,
 };
 
 /// The most microsteps settling may take for one input before it is a `limit` defect.

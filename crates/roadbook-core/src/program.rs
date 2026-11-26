@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use roadbook_ir::{Ir, Machine, State, StateKind, TypeDef, TypeRef};
+use roadbook_ir::{Ir, Machine, State, TypeDef, TypeRef};
 
 /// An IR document, checked and indexed for the interpreter.
 ///
@@ -33,24 +33,12 @@ pub(crate) struct MachineIndex {
 pub enum ProgramError {
     /// The IR could not be read (its version, or its shape).
     Read(String),
-    /// A machine has a parallel state, which the runtime does not support yet (milestone 6).
-    Parallel {
-        /// The machine.
-        machine: String,
-        /// The parallel state's id.
-        state: String,
-    },
 }
 
 impl fmt::Display for ProgramError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ProgramError::Read(e) => f.write_str(e),
-            ProgramError::Parallel { machine, state } => write!(
-                f,
-                "machine `{machine}` has the parallel state `{state}`: parallel states are not \
-                 supported by this runtime yet (milestone 6)"
-            ),
         }
     }
 }
@@ -58,7 +46,7 @@ impl fmt::Display for ProgramError {
 impl std::error::Error for ProgramError {}
 
 impl Program {
-    /// Indexes `ir`. Refuses a machine with a parallel state.
+    /// Indexes `ir`.
     pub fn new(ir: Ir) -> Result<Program, ProgramError> {
         let mut machines = HashMap::new();
         for (name, m) in &ir.machines {
@@ -68,7 +56,7 @@ impl Program {
                 children: Vec::new(),
                 by_id: HashMap::new(),
             };
-            walk(&m.root, None, &mut Vec::new(), &mut idx, name)?;
+            walk(&m.root, None, &mut Vec::new(), &mut idx);
             machines.insert(name.clone(), idx);
         }
         Ok(Program { ir, machines })
@@ -118,19 +106,7 @@ impl Program {
     }
 }
 
-fn walk(
-    s: &State,
-    parent: Option<usize>,
-    path: &mut Vec<usize>,
-    idx: &mut MachineIndex,
-    machine: &str,
-) -> Result<usize, ProgramError> {
-    if s.kind == StateKind::Parallel {
-        return Err(ProgramError::Parallel {
-            machine: machine.to_owned(),
-            state: s.id.clone(),
-        });
-    }
+fn walk(s: &State, parent: Option<usize>, path: &mut Vec<usize>, idx: &mut MachineIndex) -> usize {
     let me = idx.paths.len();
     idx.paths.push(path.clone());
     idx.parents.push(parent);
@@ -138,11 +114,11 @@ fn walk(
     idx.by_id.insert(s.id.clone(), me);
     for (i, c) in s.states.iter().enumerate() {
         path.push(i);
-        let ci = walk(c, Some(me), path, idx, machine)?;
+        let ci = walk(c, Some(me), path, idx);
         path.pop();
         idx.children[me].push(ci);
     }
-    Ok(me)
+    me
 }
 
 impl MachineIndex {
@@ -164,5 +140,20 @@ impl MachineIndex {
             p = self.parents[x];
         }
         false
+    }
+}
+
+impl Program {
+    /// The state a run of `machine` whose active states are `active` (in document order) is
+    /// in, as host code sees it: the outermost active parallel state if there is one, since
+    /// a run inside one is in all its regions at once; otherwise the innermost active state.
+    pub fn current_state<'s>(&self, machine: &str, active: &'s [String]) -> Option<&'s str> {
+        let (m, idx) = self.machine(machine)?;
+        let parallel = active.iter().find(|id| {
+            idx.by_id
+                .get(*id)
+                .is_some_and(|&i| idx.state(m, i).kind == roadbook_ir::StateKind::Parallel)
+        });
+        parallel.or(active.last()).map(String::as_str)
     }
 }

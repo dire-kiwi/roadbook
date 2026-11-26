@@ -8,7 +8,8 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use roadbook_core::{
-    Command, Defect, Input, Object, Program, Record, RunResult, Snapshot, SrcKind, Status,
+    Command, Defect, Input, Object, Program, Record, RestoreError, RunResult, Saved, Snapshot,
+    SrcKind, Status,
 };
 use roadbook_ir::{Field, TypeDef, TypeRef};
 use serde_json::{Map, Value};
@@ -30,6 +31,23 @@ pub enum RunEnd {
     Cancelled,
     /// It ended with a defect.
     Defect(Defect),
+    /// It was suspended once idle ([`crate::RunHandle::suspend`]), giving its saved snapshot.
+    /// It has not ended: it goes on from the snapshot when that is restored.
+    Suspended(Box<Saved>),
+}
+
+/// How a driver begins its run.
+enum Begin<'a> {
+    /// `start` with the machine's arguments.
+    Start(&'a str, Object),
+    /// `restore` from a checked snapshot, with the hash it had before a migration.
+    Restore(Box<Saved>, Option<String>),
+}
+
+/// What the run loop takes next.
+enum Next {
+    Input(Input),
+    Suspend,
 }
 
 /// A running invoke: its future and, for a machine invoke, the context it is polled in.
@@ -41,7 +59,7 @@ struct Slot<'a> {
 pub(crate) struct Driver<'a> {
     program: &'a Program,
     host: &'a dyn Host,
-    start: Option<(&'a str, Object)>,
+    begin: Option<Begin<'a>>,
     config: Config,
     id: String,
     parent: Option<String>,
@@ -58,6 +76,10 @@ pub(crate) struct Driver<'a> {
     /// has not been cancelled: where a message to its child run goes.
     contexts: BTreeMap<u64, Arc<InvokeContext>>,
     timers: BTreeMap<u64, BoxFuture<'static, ()>>,
+    /// When each timer of the snapshot is due, on the timer's clock.
+    dues: BTreeMap<u64, u64>,
+    /// The due times of the snapshot this run was restored from, for `timer.fire`.
+    restored_dues: BTreeMap<u64, u64>,
     snap: Snapshot,
     final_state: Option<String>,
     cancel_requested: bool,
@@ -179,6 +201,55 @@ pub(crate) fn open(
     Ok(Arc::new(peers))
 }
 
+/// The saved snapshot of a run that ended with `defect` before it started (a `ref` argument
+/// it could not hold, or one that did not encode): no state is active.
+pub(crate) fn early_defect(
+    program: &Program,
+    machine: &str,
+    run: &str,
+    input: Object,
+    defect: Defect,
+) -> Saved {
+    let mut snap = blank();
+    snap.machine = machine.to_owned();
+    snap.run = run.to_owned();
+    snap.ir = program
+        .ir()
+        .machines
+        .get(machine)
+        .map(|m| m.hash.clone())
+        .unwrap_or_default();
+    snap.input = input;
+    snap.status = Status::Defect;
+    snap.result = Some(RunResult::Defect(defect));
+    Saved::new(&snap, |t| t.delay)
+}
+
+/// Checks a saved snapshot for restoring as a run of `machine` (or of the machine it names),
+/// applying `config`'s migration when the hashes differ. A migration that panics has failed.
+pub(crate) fn check(
+    program: &Program,
+    machine: Option<&str>,
+    saved: &Saved,
+    config: &Config,
+) -> Result<(Saved, Option<String>), RestoreError> {
+    let value = saved.to_value();
+    match &config.migrate {
+        Some(f) => {
+            let mut migrate = |v: Value| {
+                catch_unwind(AssertUnwindSafe(|| f(v))).unwrap_or_else(|p| {
+                    Err(match defect_from_panic(p) {
+                        Defect::Host { message } => message,
+                        d => d.to_string(),
+                    })
+                })
+            };
+            program.check_saved(value, machine, Some(&mut migrate))
+        }
+        None => program.check_saved(value, machine, None),
+    }
+}
+
 fn blank() -> Snapshot {
     Snapshot {
         machine: String::new(),
@@ -229,8 +300,31 @@ impl<'a> Driver<'a> {
     ) -> Self {
         Self::new(
             program,
-            (machine, input),
+            Begin::Start(machine, input),
             peers,
+            host,
+            config.clone(),
+            id,
+            None,
+            shared,
+            None,
+        )
+    }
+
+    /// A root run restored from `saved`, which [`check`] has passed. It is open from now on,
+    /// and holds no `ref`s.
+    pub fn restored(
+        program: &'a Program,
+        (saved, migrated): (Saved, Option<String>),
+        host: &'a dyn Host,
+        config: &Config,
+        id: String,
+        shared: Arc<Shared>,
+    ) -> Self {
+        Self::new(
+            program,
+            Begin::Restore(Box::new(saved), migrated),
+            Ok(Arc::default()),
             host,
             config.clone(),
             id,
@@ -252,7 +346,7 @@ impl<'a> Driver<'a> {
         let peers = open(program, machine, &input, refs, &ctx.token);
         Self::new(
             program,
-            (machine, input),
+            Begin::Start(machine, input),
             peers,
             host,
             ctx.config.clone(),
@@ -266,7 +360,7 @@ impl<'a> Driver<'a> {
     #[allow(clippy::too_many_arguments)]
     fn new(
         program: &'a Program,
-        start: (&'a str, Object),
+        begin: Begin<'a>,
         peers: Result<Arc<Peers>, Defect>,
         host: &'a dyn Host,
         config: Config,
@@ -282,7 +376,7 @@ impl<'a> Driver<'a> {
         Driver {
             program,
             host,
-            start: Some(start),
+            begin: Some(begin),
             config,
             id,
             parent,
@@ -294,6 +388,8 @@ impl<'a> Driver<'a> {
             invokes: BTreeMap::new(),
             contexts: BTreeMap::new(),
             timers: BTreeMap::new(),
+            dues: BTreeMap::new(),
+            restored_dues: BTreeMap::new(),
             snap: blank(),
             final_state: None,
             cancel_requested: false,
@@ -308,9 +404,22 @@ impl<'a> Driver<'a> {
     /// Runs to the end. Also says whether the run took a cancel request, in which case a
     /// defect it ended with happened in its cancel step.
     pub async fn drive_reporting(mut self) -> (RunEnd, bool) {
-        let (machine, input) = self.start.take().expect("a driver runs once");
+        let begin = self.begin.take().expect("a driver runs once");
+        let machine = match &begin {
+            Begin::Start(m, _) => (*m).to_owned(),
+            Begin::Restore(saved, _) => saved.machine.clone(),
+        };
         // A run given a handle it cannot hold ends before it starts, with no record.
         if let Some(defect) = self.bad_ref.take() {
+            if let Begin::Start(m, input) = begin {
+                self.shared.set_saved(early_defect(
+                    self.program,
+                    m,
+                    &self.id,
+                    input,
+                    defect.clone(),
+                ));
+            }
             self.close();
             self.shared.finish(Finished::Ok);
             return (RunEnd::Defect(defect), false);
@@ -318,22 +427,30 @@ impl<'a> Driver<'a> {
         if let Some(observer) = &self.config.observer {
             let child = self.parent.is_some();
             let handle =
-                RunHandle::new(self.shared.clone(), &self.id, self.program, machine, child);
+                RunHandle::new(self.shared.clone(), &self.id, self.program, &machine, child);
             observer(&self.id, handle);
         }
         let host = self.host;
         let peers = self.peers.clone();
-        let (snap, commands) = self
-            .program
-            .start(machine, &self.id, input, &mut |n, a| {
-                call_function(host, &peers, n, a)
-            })
-            .unwrap_or_else(|e| panic!("{e}"));
+        let mut fns = |n: &str, a: Vec<Value>| call_function(host, &peers, n, a);
+        let (snap, commands) = match begin {
+            Begin::Start(machine, input) => self.program.start(machine, &self.id, input, &mut fns),
+            Begin::Restore(saved, migrated) => {
+                self.restored_dues = saved.timers.iter().map(|t| (t.id, t.due)).collect();
+                let now = self.config.timer.now();
+                self.program
+                    .restore(&saved, &self.id, now, migrated, &mut fns)
+            }
+        }
+        .unwrap_or_else(|e| panic!("{e}"));
         self.set_snapshot(snap);
         self.carry_out(commands).await;
         self.publish();
         while self.snap.status == Status::Running {
-            let input = self.take().await;
+            let input = match self.take().await {
+                Next::Input(input) => input,
+                Next::Suspend => return self.suspend().await,
+            };
             let (invoke, timer) = (input.invoke_id(), input.timer_id());
             let (snap, commands) = self.program.step(&self.snap, input, &mut |n, a| {
                 call_function(host, &peers, n, a)
@@ -374,27 +491,76 @@ impl<'a> Driver<'a> {
         }
     }
 
-    fn publish(&self) {
-        let leaf = self.final_state.as_ref().or(self.snap.active.last());
+    /// Publishes the state the run is in and its saved snapshot, as the last step left it.
+    fn publish(&mut self) {
+        let leaf = match &self.final_state {
+            Some(f) => Some(f.as_str()),
+            None => self
+                .program
+                .current_state(&self.snap.machine, &self.snap.active),
+        };
         if let Some(leaf) = leaf {
             self.shared.set_state(leaf);
         }
+        let timers = &self.snap.timers;
+        self.dues.retain(|id, _| timers.iter().any(|t| t.id == *id));
+        let now = self.config.timer.now();
+        let saved = Saved::new(&self.snap, |t| {
+            self.dues.get(&t.id).copied().unwrap_or(now + t.delay)
+        });
+        self.shared.set_saved(saved);
     }
 
-    /// The next input: a cancel request if there is one, else the front of the queue.
-    async fn take(&mut self) -> Input {
+    /// The next input: a cancel request if there is one, else the front of the queue; or, for
+    /// a top-level run asked to suspend, the stop once it is idle.
+    async fn take(&mut self) -> Next {
         poll_fn(|cx| {
             self.poll_sources(cx);
             if self.cancel_requested {
                 self.cancel_taken = true;
-                return Poll::Ready(Input::Cancel);
+                return Poll::Ready(Next::Input(Input::Cancel));
+            }
+            if self.queue.is_empty()
+                && self.snap.invokes.is_empty()
+                && self.parent.is_none()
+                && self.shared.suspend_requested()
+            {
+                return Poll::Ready(Next::Suspend);
             }
             match self.queue.pop_front() {
-                Some(input) => Poll::Ready(input),
+                Some(input) => Poll::Ready(Next::Input(input)),
                 None => Poll::Pending,
             }
         })
         .await
+    }
+
+    /// Stops an idle run that was asked to suspend: closes it, cancels its timers through the
+    /// timer without records (they are in the snapshot), writes `suspended`, and gives the
+    /// saved snapshot. No exit effect runs.
+    async fn suspend(mut self) -> (RunEnd, bool) {
+        self.close();
+        self.queue.clear();
+        self.contexts.clear();
+        for (_, slot) in std::mem::take(&mut self.invokes) {
+            let _ = self.cancel_slot(slot).await;
+        }
+        for (timer, fut) in std::mem::take(&mut self.timers) {
+            drop(fut);
+            self.config.timer.cancel(&self.id, timer);
+        }
+        self.write(Record::Suspended);
+        let saved = self
+            .shared
+            .saved()
+            .map(|s| (*s).clone())
+            .unwrap_or_else(|| {
+                Saved::new(&self.snap, |t| {
+                    self.dues.get(&t.id).copied().unwrap_or(t.delay)
+                })
+            });
+        self.shared.finish(Finished::Ok);
+        (RunEnd::Suspended(Box::new(saved)), false)
     }
 
     /// Finds out what has arrived and pushes it onto the queue: the inbox (events and inputs
@@ -607,8 +773,18 @@ impl<'a> Driver<'a> {
                 Ok(())
             }
             Command::TimerStart { timer, delay } => {
+                let due = self.config.timer.now() + delay;
                 let fut = self.config.timer.start(&self.id, timer, delay);
                 self.timers.insert(timer, fut);
+                self.dues.insert(timer, due);
+                Ok(())
+            }
+            Command::TimerFire { timer } => {
+                // A restored timer already due keeps the due time it was saved with.
+                if let Some(&due) = self.restored_dues.get(&timer) {
+                    self.dues.insert(timer, due);
+                }
+                self.queue.push_back(Input::After { timer });
                 Ok(())
             }
             Command::TimerCancel { timer } => {

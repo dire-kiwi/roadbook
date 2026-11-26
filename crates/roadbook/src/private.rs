@@ -12,8 +12,8 @@ pub use roadbook_core::{Defect, Object, Program, SrcKind};
 pub use serde;
 pub use serde_json;
 
-pub use crate::actor::{Codec, spawn};
-pub use crate::dynamic::{Host, Invocation, Outcome, run, run_with};
+pub use crate::actor::{Codec, spawn, spawn_restored};
+pub use crate::dynamic::{Host, Invocation, Outcome, resume, run, run_with};
 pub use crate::env::{BoxFuture, Config};
 pub use crate::shared::RunHandle;
 pub use roadbook_macros::__include_continue as include_continue;
@@ -216,4 +216,10 @@ pub mod wire {
 /// `ref`s name.
 pub fn collect<R>(f: impl FnOnce() -> R) -> (R, Vec<RunHandle>) {
     crate::handle::collect(f)
+}
+
+/// An event for `resume`, encoded, or the sender's host defect raised as a [`Defect`] panic
+/// payload, as `Actor::send` does.
+pub fn event<T: Serialize>(event: Option<&T>) -> Option<Value> {
+    event.map(|e| encode(e).unwrap_or_else(|d| std::panic::resume_unwind(Box::new(d))))
 }

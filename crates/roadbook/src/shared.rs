@@ -7,7 +7,7 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::task::Waker;
 
-use roadbook_core::{Defect, Input, Program};
+use roadbook_core::{Defect, Input, Program, Saved};
 use serde_json::Value;
 
 use crate::env::Config;
@@ -37,6 +37,11 @@ struct Inner {
     closed: bool,
     /// The open runs that hold a `ref` to this run, which receive what it emits.
     subscribers: Vec<Arc<Shared>>,
+    /// Host code asked to suspend the run once it is idle.
+    suspend: bool,
+    /// The run's saved snapshot as its last step left it, once it has one.
+    saved: Option<Arc<Saved>>,
+    saved_wakers: Vec<Waker>,
 }
 
 #[derive(Default)]
@@ -142,6 +147,48 @@ impl Shared {
         !g.closed && g.finished.is_none()
     }
 
+    /// Asks the run to suspend once it is idle (`spec/execution.md#suspending-and-resume`).
+    pub fn request_suspend(&self) {
+        let waker = {
+            let mut g = self.lock();
+            g.suspend = true;
+            g.waker.take()
+        };
+        if let Some(w) = waker {
+            w.wake();
+        }
+    }
+
+    pub fn suspend_requested(&self) -> bool {
+        self.lock().suspend
+    }
+
+    /// Publishes the run's saved snapshot.
+    pub fn set_saved(&self, saved: Saved) {
+        let mut g = self.lock();
+        g.saved = Some(Arc::new(saved));
+        let wakers = std::mem::take(&mut g.saved_wakers);
+        drop(g);
+        for w in wakers {
+            w.wake();
+        }
+    }
+
+    pub fn saved(&self) -> Option<Arc<Saved>> {
+        self.lock().saved.clone()
+    }
+
+    /// The saved snapshot, `Some(None)` if the run finished without one, or `None` after
+    /// registering `waker` for it.
+    pub fn poll_saved(&self, waker: &Waker) -> Option<Option<Arc<Saved>>> {
+        let mut g = self.lock();
+        if g.saved.is_some() || g.finished.is_some() {
+            return Some(g.saved.clone());
+        }
+        remember(&mut g.saved_wakers, waker);
+        None
+    }
+
     pub fn request_cancel(&self) {
         let waker = {
             let mut g = self.lock();
@@ -172,6 +219,7 @@ impl Shared {
         g.inbox.clear();
         let mut wakers = std::mem::take(&mut g.finish_wakers);
         wakers.append(&mut g.state_wakers);
+        wakers.append(&mut g.saved_wakers);
         drop(g);
         for w in wakers {
             w.wake();
@@ -316,6 +364,20 @@ impl RunHandle {
     /// Asks the run to cancel. It takes the request between steps, before anything queued.
     pub fn cancel(&self) {
         self.shared.request_cancel();
+    }
+
+    /// Asks a top-level run to suspend: once it is idle (between steps, nothing queued, no
+    /// running invoke) it stops without exit effects, writes `suspended`, and its future
+    /// ends with [`crate::RunEnd::Suspended`]. A run that ends first ends as it would have.
+    /// A child run ignores the request.
+    pub fn suspend(&self) {
+        self.shared.request_suspend();
+    }
+
+    /// The run's saved snapshot as its last step left it (`spec/execution.md#saving-and-restoring`),
+    /// or `None` before it has carried out its start (or restore) step.
+    pub fn save(&self) -> Option<Saved> {
+        self.shared.saved().map(|s| (*s).clone())
     }
 
     /// Whether the run has ended: it finished, was cancelled, or its future was dropped (a

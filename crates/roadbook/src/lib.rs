@@ -22,6 +22,10 @@
 //! - Messages between runs go through the runs' queues: a run is open until its core gives a
 //!   snapshot that is not `running`, a `send` to a closed run is `undelivered`, and a run is
 //!   subscribed to what its peers emit while it is open.
+//! - A top-level run can be saved ([`Saved`], `actor.save()`), suspended once idle
+//!   (`actor.suspend()`), and restored from a saved snapshot as a new run (a generated
+//!   `restore` or `resume`, [`dynamic::restore`], [`dynamic::resume`]); a snapshot that does
+//!   not fit is refused with a [`RestoreError`].
 //! - [`dynamic`] is the erased interface the generated code adapts to, for hosts that call
 //!   host code by name.
 
@@ -42,10 +46,11 @@ pub use driver::RunEnd;
 #[cfg(feature = "tokio")]
 pub use env::TokioTimer;
 pub use env::{
-    BoxFuture, Config, JsonLines, MemorySink, NoTrace, RunObserver, Timer, TraceRecord, TraceSink,
+    BoxFuture, Config, JsonLines, MemorySink, Migrate, NoTrace, RunObserver, Timer, TraceRecord,
+    TraceSink,
 };
 pub use handle::Ref;
-pub use roadbook_core::{Defect, Input, Program, Record};
+pub use roadbook_core::{Defect, Input, Program, Record, Refusal, RestoreError, Saved, SavedTimer};
 pub use roadbook_macros::include;
 pub use shared::RunHandle;
 

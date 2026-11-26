@@ -1,6 +1,6 @@
 //! Rules of `spec/execution.md` that the conformance cases do not reach.
 
-use roadbook_core::{Command, Defect, Input, Program, ProgramError, Record, Status};
+use roadbook_core::{Command, Defect, Input, Program, Record, Status};
 use serde_json::{Map, Value, json};
 
 fn program(src: &str) -> Program {
@@ -143,17 +143,20 @@ fn snapshots_have_the_spec_shape() {
 }
 
 #[test]
-fn parallel_states_are_refused() {
+fn parallel_states_run() {
     let c = roadbook_compiler::compile_source(
         "t.road",
         "machine M() {\n  initial P\n  parallel state P {\n    state X { initial A  state A {} }\n    state Y { initial B  state B {} }\n  }\n}\n",
         &Default::default(),
     );
-    let ir = c.ir.expect("the compiler accepts parallel states");
-    assert!(matches!(
-        Program::new(ir),
-        Err(ProgramError::Parallel { state, .. }) if state == "M.P"
-    ));
+    let program = Program::new(c.ir.expect("the compiler accepts parallel states")).unwrap();
+    let (snap, _) = program
+        .start("M", "r1", Default::default(), &mut no_fns)
+        .unwrap();
+    assert_eq!(
+        snap.active,
+        ["M", "M.P", "M.P.X", "M.P.X.A", "M.P.Y", "M.P.Y.B"]
+    );
 }
 
 #[test]
