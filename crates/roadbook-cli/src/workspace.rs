@@ -229,40 +229,6 @@ fn glob(pattern: &str, path: &str) -> bool {
     go(pattern.as_bytes(), path.as_bytes())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn globs() {
-        assert!(glob("spike", "spike"));
-        assert!(!glob("spike", "spikes"));
-        assert!(glob("a/*.road", "a/b.road"));
-        assert!(!glob("a/*.road", "a/b/c.road"));
-        assert!(glob("a/**/c.road", "a/c.road"));
-        assert!(glob("a/**/c.road", "a/b/x/c.road"));
-        assert!(glob("**/fail", "crates/x/tests/fail"));
-        assert!(glob("**", "anything/at/all"));
-        assert!(glob("t?st", "test"));
-        assert!(!glob("t?st", "t/st"));
-    }
-
-    #[test]
-    fn exclude_lists() {
-        assert_eq!(excludes("").unwrap(), Vec::<String>::new());
-        assert_eq!(
-            excludes("# c\nexclude = [\"a\", \"b/**\"]\n[ts]\nexclude = [\"x\"]").unwrap(),
-            ["a", "b/**"]
-        );
-        assert_eq!(
-            excludes("exclude = [\n  \"a\", # why\n  \"b\",\n]\n").unwrap(),
-            ["a", "b"]
-        );
-        assert!(excludes("exclude = \"a\"").is_err());
-        assert!(excludes("exclude = [a]").is_err());
-    }
-}
-
 fn absolute(cwd: &Path, p: &Path) -> PathBuf {
     if p.is_absolute() {
         p.to_path_buf()
@@ -301,4 +267,38 @@ fn relative(from: &Path, to: &Path) -> PathBuf {
         out.push(c.as_os_str());
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn globs() {
+        assert!(glob("spike", "spike"));
+        assert!(!glob("spike", "spikes"));
+        assert!(glob("a/*.road", "a/b.road"));
+        assert!(!glob("a/*.road", "a/b/c.road"));
+        assert!(glob("a/**/c.road", "a/c.road"));
+        assert!(glob("a/**/c.road", "a/b/x/c.road"));
+        assert!(glob("**/fail", "crates/x/tests/fail"));
+        assert!(glob("**", "anything/at/all"));
+        assert!(glob("t?st", "test"));
+        assert!(!glob("t?st", "t/st"));
+    }
+
+    #[test]
+    fn exclude_lists() {
+        assert_eq!(excludes("").unwrap(), Vec::<String>::new());
+        assert_eq!(
+            excludes("# c\nexclude = [\"a\", \"b/**\"]\n[ts]\nexclude = [\"x\"]").unwrap(),
+            ["a", "b/**"]
+        );
+        assert_eq!(
+            excludes("exclude = [\n  \"a\", # why\n  \"b\",\n]\n").unwrap(),
+            ["a", "b"]
+        );
+        assert!(excludes("exclude = \"a\"").is_err());
+        assert!(excludes("exclude = [a]").is_err());
+    }
 }
