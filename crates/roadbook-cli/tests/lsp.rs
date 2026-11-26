@@ -56,6 +56,17 @@ impl Server {
         serde_json::from_slice(&body).unwrap()
     }
 
+    /// Sends several messages in one write, as a client that falls behind would.
+    fn send_all(&mut self, msgs: &[Value]) {
+        let mut out = String::new();
+        for m in msgs {
+            let body = m.to_string();
+            out.push_str(&format!("Content-Length: {}\r\n\r\n{body}", body.len()));
+        }
+        self.stdin.write_all(out.as_bytes()).unwrap();
+        self.stdin.flush().unwrap();
+    }
+
     /// The answer to request `id`, skipping notifications.
     fn answer(&mut self, id: i64) -> Value {
         loop {
@@ -149,6 +160,71 @@ fn an_editor_session() {
 
     s.send(json!({ "jsonrpc": "2.0", "id": 3, "method": "shutdown" }));
     assert_eq!(s.answer(3)["result"], Value::Null);
+    s.send(json!({ "jsonrpc": "2.0", "method": "exit" }));
+    assert!(s.child.wait().unwrap().success());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn rapid_changes_are_compiled_together() {
+    // A copy of the large example, so that a compilation takes a while.
+    let dir = std::env::temp_dir().join(format!("roadbook-cli-lsp-rapid-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("roadbook.toml"), "").unwrap();
+    let dir = dir.canonicalize().unwrap();
+    for f in ["types.road", "ticket.road", "survey.road"] {
+        std::fs::copy(repo().join("examples/large").join(f), dir.join(f)).unwrap();
+    }
+    let file = dir.join("ticket.road");
+    let text = std::fs::read_to_string(&file).unwrap();
+    let file_uri = uri(&file);
+
+    let mut s = Server::start();
+    s.send(json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "capabilities": {} } }));
+    s.answer(1);
+    s.send(json!({ "jsonrpc": "2.0", "method": "initialized", "params": {} }));
+    s.send(json!({ "jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {
+        "textDocument": { "uri": file_uri, "languageId": "roadbook", "version": 1, "text": text } } }));
+    assert_eq!(s.diagnostics(&file_uri), Vec::<Value>::new());
+
+    // Typing: each change a whole text, as the client sends them; the last one is broken.
+    const CHANGES: i64 = 60;
+    let changes: Vec<Value> = (2..=CHANGES + 1)
+        .map(|version| {
+            let text = if version == CHANGES + 1 {
+                format!(
+                    "{text}\nmachine Extra() {{\n  initial A\n  state A {{ always -> Dne }}\n}}\n"
+                )
+            } else {
+                format!("{text}\n// {version}\n")
+            };
+            json!({ "jsonrpc": "2.0", "method": "textDocument/didChange", "params": {
+                "textDocument": { "uri": file_uri, "version": version },
+                "contentChanges": [{ "text": text }] } })
+        })
+        .collect();
+    s.send_all(&changes);
+    let mut compiled = 0;
+    let last = loop {
+        let m = s.recv();
+        if m["method"] != "textDocument/publishDiagnostics" || m["params"]["uri"] != file_uri {
+            continue;
+        }
+        compiled += 1;
+        if m["params"]["version"] == CHANGES + 1 {
+            break m["params"]["diagnostics"].as_array().unwrap().clone();
+        }
+    };
+    assert!(
+        compiled * 3 < CHANGES,
+        "{compiled} compilations for {CHANGES} changes sent at once"
+    );
+    let codes: Vec<&str> = last.iter().map(|d| d["code"].as_str().unwrap()).collect();
+    assert_eq!(codes, ["RB0201"], "{last:#?}");
+
+    s.send(json!({ "jsonrpc": "2.0", "id": 2, "method": "shutdown" }));
+    assert_eq!(s.answer(2)["result"], Value::Null);
     s.send(json!({ "jsonrpc": "2.0", "method": "exit" }));
     assert!(s.child.wait().unwrap().success());
     let _ = std::fs::remove_dir_all(&dir);

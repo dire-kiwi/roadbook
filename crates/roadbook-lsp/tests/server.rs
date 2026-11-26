@@ -641,3 +641,178 @@ fn a_change_to_the_large_example_is_answered_quickly() {
     assert!(took < Duration::from_secs(3), "{took:?}");
     c.shutdown();
 }
+
+const BASE: &str = "type Base { id: string }\n";
+const LIB: &str = "import { Base } from \"/sub/base.road\"\n\nfn helper(b: Base) -> string\n\nmachine Lib(b: Base) -> Base {\n  initial Done\n  final state Done { output b }\n}\n";
+const MAIN: &str = "import { Lib } from \"pkg/lib.road\"\nimport { Base } from \"pkg/sub/base.road\"\n\nmachine Main(b: Base) -> Base {\n  initial Run\n  state Run {\n    invoke Lib(b) {\n      done -> Done\n    }\n  }\n  final state Done { output b }\n}\n";
+
+fn with_package(name: &str) -> Project {
+    Project::new(
+        name,
+        &[
+            ("main.road", MAIN),
+            ("node_modules/pkg/lib.road", LIB),
+            ("node_modules/pkg/sub/base.road", BASE),
+        ],
+    )
+}
+
+#[test]
+fn a_file_of_a_package_is_checked_as_the_package_s() {
+    let p = with_package("package");
+    let (main, lib) = (p.uri("main.road"), p.uri("node_modules/pkg/lib.road"));
+    let mut c = Client::start(json!({}));
+    c.open(&lib, LIB);
+    // Its `/` import is from the package's root, and its unused function is not reported:
+    // only errors are, in another package's files, as with `roadbook check`.
+    assert_eq!(c.diagnostics(&lib), Vec::<Value>::new());
+    assert_eq!(c.diagnostics(&main), Vec::<Value>::new());
+    // Nothing is said about other files, such as a `sub/base.road` of the project.
+    let others = c.published();
+    assert!(
+        others.iter().all(|u| [&lib, &main].contains(&u)),
+        "{others:?}"
+    );
+    // An error in it is reported, by compiling the project's file that imports it.
+    let broken = LIB.replace("output b", "output c");
+    c.change(&lib, 2, &broken);
+    let diags = c.diagnostics(&lib);
+    assert_eq!(diags.len(), 1, "{diags:#?}");
+    assert_eq!(diags[0]["severity"], 1);
+    // Go to definition from the package's file leads into the package.
+    let loc = c
+        .request(
+            "textDocument/definition",
+            at(&lib, &broken, "(b: ^Base) -> Base {"),
+        )
+        .unwrap();
+    assert_eq!(loc["uri"], p.uri("node_modules/pkg/sub/base.road"));
+    c.change(&lib, 3, LIB);
+    assert_eq!(c.diagnostics(&lib), Vec::<Value>::new());
+
+    // A rename that would edit the package's files is refused.
+    c.open(&main, MAIN);
+    c.forget();
+    let why = rename_error(&mut c, &main, MAIN, "Main(b: ^Base)", "Thing");
+    assert!(why.contains("a file of another package"), "{why}");
+    assert!(why.contains("node_modules/pkg/sub/base.road"), "{why}");
+    let why = rename_error(&mut c, &lib, LIB, "fn ^helper", "assist");
+    assert!(why.contains("a file of another package"), "{why}");
+    // A name of the project's own is renamed as usual.
+    let renamed = rename_edits(&mut c, &main, MAIN, "state ^Run", "Running");
+    assert_eq!(renamed.as_object().unwrap().len(), 1);
+    c.shutdown();
+}
+
+/// The `changes` of a rename's workspace edit.
+fn rename_edits(c: &mut Client, uri: &str, text: &str, needle: &str, new: &str) -> Value {
+    let mut params = at(uri, text, needle);
+    params["newName"] = json!(new);
+    let edit = c
+        .request("textDocument/rename", params)
+        .unwrap_or_else(|e| panic!("{needle} -> {new}: {e}"));
+    edit["changes"].clone()
+}
+
+#[test]
+fn as_names_of_states_side_by_side_may_be_the_same() {
+    let text = "machine Child() {\n  event Stop\n  initial A\n  state A { on Stop -> B }\n  final state B {}\n}\n\nmachine M() {\n  event Go\n  initial P\n  state P {\n    invoke Child() as first {\n      done -> Q\n    }\n    on Go send first.Stop\n  }\n  state Q {\n    invoke Child() as second {\n      done -> R\n    }\n    on Go send second.Stop\n    initial Inner\n    state Inner {\n      invoke Child() as inner {\n        done -> Q\n      }\n    }\n  }\n  final state R {}\n}\n";
+    let p = Project::new("as-names", &[("c.road", text)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, text);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+    // `P` and `Q` are side by side: the compiler takes the same name in both.
+    let out = rename(&mut c, &uri, text, "as ^second", "first");
+    assert!(out.contains("send first.Stop\n    initial Inner"), "{out}");
+    // `Q` contains `Q.Inner`: an `as` name cannot be one of an `as` around it.
+    let why = rename_error(&mut c, &uri, text, "as ^inner", "second");
+    assert!(why.contains("already the name of"), "{why}");
+    c.shutdown();
+}
+
+#[test]
+fn an_untitled_document_is_a_file_of_its_own() {
+    let uri = "untitled:Untitled-1";
+    let bad = "machine M() {\n  initial A\n  state A { always -> Dne }\n}\n";
+    let mut c = Client::start(json!({}));
+    c.open(uri, bad);
+    let diags = c.diagnostics(uri);
+    assert_eq!(diags.len(), 1, "{diags:#?}");
+    assert_eq!(diags[0]["code"], "RB0201");
+    let good = "machine M() {\n  initial A\n  state A { always -> B }\n  final state B {}\n}\n";
+    c.change(uri, 2, good);
+    assert_eq!(c.diagnostics(uri), Vec::<Value>::new());
+    let loc = c
+        .request("textDocument/definition", at(uri, good, "-> ^B"))
+        .unwrap();
+    assert_eq!(loc["uri"], uri);
+    let out = rename(&mut c, uri, good, "state ^A", "Start");
+    assert!(out.contains("initial Start"), "{out}");
+    let ir = c
+        .request("roadbook/ir", json!({ "textDocument": { "uri": uri } }))
+        .unwrap();
+    assert_eq!(ir["root"], Value::Null);
+    assert_eq!(ir["entry"], "Untitled-1.road");
+    assert!(ir["ir"].as_str().unwrap().contains("\"M\""), "{ir}");
+    c.notify(
+        "textDocument/didClose",
+        json!({ "textDocument": { "uri": uri } }),
+    );
+    assert_eq!(c.diagnostics(uri), Vec::<Value>::new());
+    c.shutdown();
+}
+
+#[test]
+fn ir_compiles_the_editor_s_text_as_export_ir_would() {
+    let types = "type Order { id: string }\n";
+    let a = "import { Order } from \"./types.road\"\nimport { B } from \"./b.road\"\n\nmachine A(o: Order) -> Order {\n  initial Done\n  final state Done { output o }\n}\n";
+    // `b.road` imports `a.road` back: a cycle, which is not an error.
+    let b = "import { A } from \"./a.road\"\n\nmachine B() {\n  initial Done\n  final state Done {}\n}\n";
+    let p = Project::new("ir", &[("types.road", types), ("a.road", a), ("b.road", b)]);
+    let (au, tu) = (p.uri("a.road"), p.uri("types.road"));
+    let mut c = Client::start(json!({}));
+    let ir = |c: &mut Client| {
+        c.request("roadbook/ir", json!({ "textDocument": { "uri": au } }))
+            .unwrap()
+    };
+    // Not open: read from disk.
+    let first = ir(&mut c);
+    assert_eq!(first["diagnostics"], json!([]), "{first}");
+    assert_eq!(first["entry"], "a.road");
+    assert_eq!(first["root"], p.root.to_string_lossy().as_ref());
+    let text = first["ir"].as_str().unwrap();
+    let parsed: Value = serde_json::from_str(text).unwrap();
+    assert_eq!(parsed["sources"][0]["path"], "a.road");
+    // An unsaved change to an imported file counts.
+    c.open(&tu, types);
+    c.change(&tu, 2, "type Order { id: string, total: int }\n");
+    let second = ir(&mut c);
+    assert!(second["ir"].as_str().unwrap().contains("total"), "{second}");
+    // An error: no IR, and the diagnostics as `roadbook check --json` gives them.
+    c.change(&tu, 3, "type Ordr { id: string }\n");
+    let third = ir(&mut c);
+    assert_eq!(third["ir"], Value::Null);
+    let d = &third["diagnostics"][0];
+    assert_eq!(d["code"], "RB0112", "{third}");
+    assert_eq!(d["file"], "a.road");
+    assert_eq!(d["severity"], "error");
+    assert!(d["line"].is_u64() && d["endCol"].is_u64(), "{d}");
+    // A file of a package is not compiled as an entry of the project.
+    let q = with_package("ir-package");
+    let why = c
+        .request(
+            "roadbook/ir",
+            json!({ "textDocument": { "uri": q.uri("node_modules/pkg/lib.road") } }),
+        )
+        .unwrap_err();
+    assert!(why.contains("another package"), "{why}");
+    let main = c
+        .request(
+            "roadbook/ir",
+            json!({ "textDocument": { "uri": q.uri("main.road") } }),
+        )
+        .unwrap();
+    assert!(main["ir"].is_string(), "{main}");
+    c.shutdown();
+}

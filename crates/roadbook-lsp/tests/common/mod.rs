@@ -75,7 +75,7 @@ impl Drop for Project {
 }
 
 /// Finds projects as the command line does, simplified: the nearest `roadbook.toml`, every
-/// `.road` file under it, no packages.
+/// `.road` file under it outside `node_modules`, and packages in `node_modules`.
 pub fn finder() -> FindProject {
     Box::new(|file: &Path| {
         let mut dir = file.parent();
@@ -86,7 +86,7 @@ pub fn finder() -> FindProject {
                 files.sort();
                 return Ok(ProjectConfig {
                     root: d.to_path_buf(),
-                    loader: FsLoader::new(d),
+                    loader: FsLoader::new(d).with_node_modules(true),
                     options: Default::default(),
                     files,
                 });
@@ -101,7 +101,9 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<String>) {
     for e in std::fs::read_dir(dir).unwrap().flatten() {
         let p = e.path();
         if p.is_dir() {
-            walk(root, &p, out);
+            if !p.ends_with("node_modules") {
+                walk(root, &p, out);
+            }
         } else if p.extension().is_some_and(|x| x == "road") {
             out.push(
                 p.strip_prefix(root)
@@ -208,6 +210,25 @@ impl Client {
                 _ => {}
             }
         }
+    }
+
+    /// The URIs of every diagnostics published so far and not yet looked at, in order;
+    /// they are dropped.
+    pub fn published(&mut self) -> Vec<String> {
+        // An answer comes after everything the messages before the request caused.
+        self.request(
+            "textDocument/documentSymbol",
+            json!({ "textDocument": { "uri": "file:///nowhere.road" } }),
+        )
+        .ok();
+        let out = self
+            .queue
+            .iter()
+            .filter(|n| n.method == "textDocument/publishDiagnostics")
+            .map(|n| n.params["uri"].as_str().unwrap().to_string())
+            .collect();
+        self.queue.clear();
+        out
     }
 
     /// Drops the notifications received so far.

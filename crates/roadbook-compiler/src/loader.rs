@@ -240,6 +240,20 @@ impl FsLoader {
         })
     }
 
+    /// Notes where a file of a package is, as another loader's [`package_file`] found it, so
+    /// that this loader resolves the file's own imports as that one would.
+    ///
+    /// [`package_file`]: FsLoader::package_file
+    pub fn remember(&mut self, file: &FileRef, found: &PackageFile) {
+        let Some(package) = &file.package else {
+            return;
+        };
+        self.found.insert(file.clone(), found.disk.clone());
+        self.dirs
+            .entry(package.clone())
+            .or_insert_with(|| found.dir.clone());
+    }
+
     fn package_dir(&self, package: &str, from: &Path) -> Result<PathBuf, String> {
         if let Some(d) = self.packages.get(package) {
             return Ok(self.root.join(d));

@@ -85,3 +85,16 @@ export function projectRoot(file: string): string {
 export function projectPath(root: string, file: string): string {
   return path.relative(root, path.resolve(file)).split(path.sep).join('/')
 }
+
+/**
+ * The file a project path names, if it is a `.road` file inside the project at `root`;
+ * undefined for anything else (an absolute path, `..` out of the root, another kind of file),
+ * which the preview does not open on a page's say-so.
+ */
+export function projectFile(root: string, file: string): string | undefined {
+  if (!file.endsWith('.road') || path.isAbsolute(file) || /^[a-zA-Z]:/.test(file)) return undefined
+  const abs = path.resolve(root, ...file.split(/[\\/]/))
+  const rel = path.relative(path.resolve(root), abs)
+  if (!rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) return undefined
+  return abs
+}

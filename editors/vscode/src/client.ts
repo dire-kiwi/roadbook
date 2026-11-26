@@ -1,15 +1,21 @@
 // The language client: runs `roadbook lsp` over stdio. Diagnostics, go to definition,
-// references, rename, hover, formatting, symbols and code actions all come from the server.
+// references, rename, hover, formatting, symbols and code actions all come from the server,
+// and the preview asks it for the IR (`roadbook/ir`).
+//
+// Starting, stopping and restarting run one at a time, in the order asked: a restart asked
+// for while the server is starting (after `roadbook.path` changed) stops that server once it
+// has started and starts one with the new setting; a stop asked for meanwhile stops it.
 
 import path from 'node:path'
 import * as vscode from 'vscode'
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node'
 import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node'
 import { hasLsp, resolveExecutable } from './cli.ts'
+import { Serial } from './serial.ts'
 
 export class Cli implements vscode.Disposable {
   private client: LanguageClient | undefined
-  private starting: Promise<void> | undefined
+  private readonly serial = new Serial()
   /** The setting each warning was shown for, so it is shown once per value. */
   private warned = new Set<string>()
   /** Whether the server is running, for the tests: `true`, or why it is not. */
@@ -43,10 +49,27 @@ export class Cli implements vscode.Disposable {
     })
   }
 
-  /** Starts the language server, if the command line has one. */
+  /** The running language client, if there is one: for the preview's requests. */
+  running(): LanguageClient | undefined {
+    return this.client?.isRunning() ? this.client : undefined
+  }
+
+  /** Starts the language server, if the command line has one and it is not running. */
   start(): Promise<void> {
-    this.starting ??= this.doStart().finally(() => (this.starting = undefined))
-    return this.starting
+    return this.serial.run(() => (this.client ? Promise.resolve() : this.doStart()))
+  }
+
+  /** Stops the language server. */
+  stop(): Promise<void> {
+    return this.serial.run(() => this.doStop())
+  }
+
+  /** Stops the language server and starts it again, with the settings as they are now. */
+  restart(): Promise<void> {
+    return this.serial.run(async () => {
+      await this.doStop()
+      await this.doStart()
+    })
   }
 
   private async doStart() {
@@ -70,27 +93,24 @@ export class Cli implements vscode.Disposable {
       synchronize: { fileEvents: vscode.workspace.createFileSystemWatcher('**/{*.road,roadbook.toml}') },
       outputChannel: this.output,
     }
-    this.client = new LanguageClient('roadbook', 'Roadbook Language Server', server, options)
+    const client = new LanguageClient('roadbook', 'Roadbook Language Server', server, options)
+    this.client = client
     try {
-      await this.client.start()
+      await client.start()
       this.status = true
       this.output.appendLine(`Started \`${exe} lsp\`.`)
     } catch (e) {
+      this.client = undefined
       this.status = `the server did not start: ${e instanceof Error ? e.message : String(e)}`
       this.output.appendLine(`Roadbook: ${this.status}`)
     }
   }
 
-  async stop() {
+  private async doStop() {
     const c = this.client
     this.client = undefined
     this.status = 'stopped'
     if (c) await c.stop().catch(() => undefined)
-  }
-
-  async restart() {
-    await this.stop()
-    await this.start()
   }
 
   dispose() {
