@@ -296,3 +296,334 @@ fn the_repository_checks_clean_from_its_root() {
     let out = roadbook(&repo(), &["check", "spec/conformance/charts"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
 }
+
+/// A fresh, empty output directory.
+fn out_dir(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("roadbook-viz-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    dir
+}
+
+/// The JSON a page holds in `<script type="application/json" id="rb-data">`.
+fn page_data(html: &str) -> serde_json::Value {
+    let start = html.find("id=\"rb-data\">").unwrap() + "id=\"rb-data\">".len();
+    let end = start + html[start..].find("</script>").unwrap();
+    serde_json::from_str(&html[start..end]).unwrap()
+}
+
+#[test]
+fn viz_writes_a_page_per_entry_and_an_index() {
+    let out = out_dir("shop");
+    let o = out.to_str().unwrap();
+    let res = roadbook(&repo(), &["viz", "examples/shop", "-o", o]);
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    let mut files: Vec<String> = std::fs::read_dir(&out)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    files.sort();
+    // checkout.road and types.road are imported by place_order.road: one entry.
+    assert_eq!(
+        files,
+        ["index.html", "place_order.html", "roadbook-viewer.js"]
+    );
+
+    let page = std::fs::read_to_string(out.join("place_order.html")).unwrap();
+    assert!(page.contains("<script src=\"roadbook-viewer.js\"></script>"));
+    assert!(
+        !page.contains("http://") && !page.contains("https://"),
+        "{page}"
+    );
+    // The IR is embedded whole, in source order, as `export ir` writes it.
+    let data = page_data(&page);
+    assert_eq!(data["kind"], "chart");
+    assert_eq!(data["entry"], "examples/shop/place_order.road");
+    assert_eq!(data["index"], "index.html");
+    let exported = roadbook(&repo(), &["export", "ir", "examples/shop/place_order.road"]);
+    let ir = roadbook_ir::Ir::from_json(&data["ir"].to_string()).unwrap();
+    assert_eq!(
+        ir,
+        roadbook_ir::Ir::from_json(&text(&exported.stdout)).unwrap()
+    );
+    let ir_at = page.find("\"ir\":").unwrap();
+    assert!(page[ir_at..].find("\"PlaceOrder\"") < page[ir_at..].find("\"Checkout\""));
+
+    let index = std::fs::read_to_string(out.join("index.html")).unwrap();
+    assert!(!index.contains("http://") && !index.contains("https://"));
+    let data = page_data(&index);
+    let machines = data["index"]["machines"].as_array().unwrap();
+    let names: Vec<&str> = machines
+        .iter()
+        .map(|m| m["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["PlaceOrder", "Checkout"]);
+    assert_eq!(machines[0]["invokes"], serde_json::json!([1]));
+    assert_eq!(machines[1]["source"], "examples/shop/checkout.road:4");
+    assert_eq!(data["index"]["pages"][0]["href"], "place_order.html");
+
+    let js = std::fs::read_to_string(out.join("roadbook-viewer.js")).unwrap();
+    assert_eq!(
+        js,
+        include_str!("../assets/roadbook-viewer.js"),
+        "the shared script is the embedded viewer"
+    );
+}
+
+#[test]
+fn viz_self_contained_pages_need_nothing_else() {
+    let out = out_dir("single");
+    let o = out.to_str().unwrap();
+    let res = roadbook(
+        &repo(),
+        &["viz", "examples/shop", "-o", o, "--self-contained"],
+    );
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    assert!(!out.join("roadbook-viewer.js").exists());
+    for page in ["place_order.html", "index.html"] {
+        let html = std::fs::read_to_string(out.join(page)).unwrap();
+        assert!(!html.contains("<script src="), "{page}");
+        assert!(!html.contains("<link"), "{page}");
+        for attr in [
+            "src=\"http",
+            "href=\"http",
+            "url(http",
+            "src='http",
+            "href='http",
+        ] {
+            assert!(!html.contains(attr), "{page} has {attr}");
+        }
+        // The viewer is inline, and nothing in it ends the script element early.
+        let body = &html[html.find("<script>").unwrap()..];
+        assert_eq!(body.matches("</script>").count(), 1, "{page}");
+        assert!(html.len() > 1_000_000);
+    }
+}
+
+#[test]
+fn viz_names_pages_after_their_entries_and_reports_errors() {
+    let out = out_dir("examples");
+    let o = out.to_str().unwrap();
+    let res = roadbook(&repo(), &["viz", "examples", "-o", o]);
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    for page in [
+        "shop-place_order.html",
+        "large-ticket.html",
+        "password-reset-confirm.html",
+        "webhook-webhook.html",
+        "import-job-import.html",
+        "index.html",
+    ] {
+        assert!(out.join(page).is_file(), "{page}");
+    }
+    let index = page_data(&std::fs::read_to_string(out.join("index.html")).unwrap());
+    assert_eq!(index["index"]["machines"].as_array().unwrap().len(), 7);
+
+    let dir = project(
+        "viz-bad",
+        &[("bad.road", "machine M() {\n  initial Nope\n}\n")],
+    );
+    let res = roadbook(&dir, &["viz", "-o", "out"]);
+    assert_eq!(res.status.code(), Some(1));
+    assert!(text(&res.stderr).contains("error["));
+    assert!(!dir.join("out").exists());
+}
+
+#[test]
+fn viz_watch_serves_and_rebuilds() {
+    use std::io::{BufRead, BufReader, Read, Write};
+    use std::net::TcpStream;
+    use std::process::Stdio;
+
+    let dir = project("viz-watch", &[("m.road", OK)]);
+    let mut child = Command::new(env!("CARGO_BIN_EXE_roadbook"))
+        .args(["viz", "--watch", "--port", "0", "-o", "out"])
+        .current_dir(&dir)
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut err = BufReader::new(child.stderr.take().unwrap());
+    let mut port = None;
+    let mut line = String::new();
+    while port.is_none() && err.read_line(&mut line).unwrap() > 0 {
+        if let Some(rest) = line.split("http://127.0.0.1:").nth(1) {
+            port = rest.split('/').next().map(|p| p.parse::<u16>().unwrap());
+        }
+        line.clear();
+    }
+    let port = port.expect("the server's address");
+    let get = |path: &str| {
+        let mut s = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        write!(s, "GET {path} HTTP/1.1\r\nHost: localhost\r\n\r\n").unwrap();
+        let mut r = String::new();
+        s.read_to_string(&mut r).unwrap();
+        r
+    };
+    let index = get("/");
+    assert!(index.starts_with("HTTP/1.1 200"), "{index}");
+    assert!(
+        index.contains("/__roadbook/version"),
+        "the reload script is added"
+    );
+    assert!(get("/m.html").contains("\"kind\":\"chart\""));
+    assert!(get("/../roadbook.toml").starts_with("HTTP/1.1 404"));
+    let body = |r: String| r.split("\r\n\r\n").nth(1).unwrap_or("").to_string();
+    let v1 = body(get("/__roadbook/version"));
+
+    std::fs::write(
+        dir.join("m.road"),
+        OK.replace("final state Done {}", "final state Finished {}")
+            .replace("initial Done", "initial Finished"),
+    )
+    .unwrap();
+    let mut changed = false;
+    for _ in 0..40 {
+        std::thread::sleep(std::time::Duration::from_millis(250));
+        if body(get("/__roadbook/version")) != v1 {
+            changed = true;
+            break;
+        }
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    assert!(changed, "the version changes after an edit");
+    let page = std::fs::read_to_string(dir.join("out/m.html")).unwrap();
+    assert!(page.contains("M.Finished"));
+}
+
+#[test]
+fn export_mermaid_snapshots_the_shop() {
+    let out = roadbook(
+        &repo(),
+        &["export", "mermaid", "examples/shop/place_order.road"],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    insta::assert_snapshot!("shop_mermaid", text(&out.stdout));
+    let out = roadbook(
+        &repo(),
+        &[
+            "export",
+            "mermaid",
+            "examples/shop/place_order.road",
+            "--machine",
+            "Checkout",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    insta::assert_snapshot!("checkout_mermaid", text(&out.stdout));
+    let out = roadbook(
+        &repo(),
+        &[
+            "export",
+            "mermaid",
+            "examples/shop/place_order.road",
+            "--machine",
+            "Nope",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(2));
+}
+
+#[test]
+fn export_mermaid_nests_and_splits_regions() {
+    let out = roadbook(
+        &repo(),
+        &[
+            "export",
+            "mermaid",
+            "packages/viewer/test/charts/stress.road",
+            "--machine",
+            "Stress",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let m = text(&out.stdout);
+    assert!(m.starts_with("stateDiagram-v2\n  [*] --> Stress\n"), "{m}");
+    assert!(m.contains("    state Running {\n"), "{m}");
+    assert!(
+        m.contains("\n      --\n"),
+        "parallel regions are split: {m}"
+    );
+    assert!(
+        m.contains("Running_Right_X_X1 --> Running_Right_X_X1: Poke"),
+        "{m}"
+    );
+    assert!(m.contains("Stress --> Start: Reset"), "{m}");
+    assert!(
+        m.contains("Start: on * / do note(#quot;ignored#quot;)")
+            || m.contains("Start: on * / do note(\"ignored\")"),
+        "{m}"
+    );
+}
+
+/// The viewer bundle the CLI embeds was built from `packages/viewer` as it is now: its header
+/// names the hash of the sources, computed as `packages/viewer/build.mjs` does.
+#[test]
+fn viewer_asset_is_fresh() {
+    use sha2::{Digest, Sha256};
+    let pkg = repo().join("packages/viewer");
+    let mut files = Vec::new();
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        for e in std::fs::read_dir(dir).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                walk(&p, out);
+            } else {
+                out.push(p);
+            }
+        }
+    }
+    walk(&pkg.join("src"), &mut files);
+    files.push(pkg.join("build.mjs"));
+    let mut names: Vec<(String, PathBuf)> = files
+        .into_iter()
+        .map(|p| {
+            let rel = p.strip_prefix(&pkg).unwrap();
+            let name: Vec<String> = rel
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy().into_owned())
+                .collect();
+            (name.join("/"), p)
+        })
+        .collect();
+    names.sort();
+    let mut h = Sha256::new();
+    for (name, p) in &names {
+        h.update(name.as_bytes());
+        h.update([0]);
+        h.update(std::fs::read(p).unwrap());
+        h.update([0]);
+    }
+    let hash: String = h.finalize().iter().map(|b| format!("{b:02x}")).collect();
+    let asset = include_str!("../assets/roadbook-viewer.js");
+    let header = asset.lines().next().unwrap();
+    assert!(
+        header.contains(&format!("sources sha256:{hash} ")),
+        "crates/roadbook-cli/assets/roadbook-viewer.js is stale: run `pnpm --filter @roadbook/viewer build` and commit it\n{header}"
+    );
+}
+
+/// The IR the viewer's tests lay out is what the compiler writes now
+/// (`packages/viewer/test/charts/regen.sh` regenerates it).
+#[test]
+fn viewer_test_charts_are_fresh() {
+    let dir = repo().join("packages/viewer/test/charts");
+    for (chart, name) in [
+        ("examples/shop/place_order.road", "shop-place_order"),
+        ("examples/large/ticket.road", "large-ticket"),
+        (
+            "examples/password-reset/confirm.road",
+            "password-reset-confirm",
+        ),
+        ("examples/webhook/webhook.road", "webhook-webhook"),
+        ("examples/import-job/import.road", "import-job-import"),
+        ("packages/viewer/test/charts/stress.road", "charts-stress"),
+    ] {
+        let out = roadbook(&repo(), &["export", "ir", chart]);
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        let committed = std::fs::read_to_string(dir.join(format!("{name}.ir.json"))).unwrap();
+        assert!(
+            text(&out.stdout) == committed,
+            "{name}.ir.json is stale: run packages/viewer/test/charts/regen.sh"
+        );
+    }
+}

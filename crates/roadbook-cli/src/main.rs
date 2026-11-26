@@ -14,7 +14,7 @@ mod commands;
 mod report;
 mod workspace;
 
-use commands::{check, export, fmt};
+use commands::{check, export, fmt, viz};
 
 /// Exit codes shared by every command.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -31,7 +31,7 @@ pub enum Exit {
 #[command(
     name = "roadbook",
     version,
-    about = "Statecharts as code: check, format and export `.road` files"
+    about = "Statecharts as code: check, format, draw and export `.road` files"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -44,6 +44,8 @@ enum Command {
     Check(check::Args),
     /// Format `.road` files in place, canonically.
     Fmt(fmt::Args),
+    /// Write the HTML diagram viewer: a page per entry chart, plus an index.
+    Viz(viz::Args),
     /// Write a chart in another format.
     #[command(subcommand)]
     Export(export::Format),
@@ -54,6 +56,7 @@ fn main() -> ExitCode {
     let exit = match cli.command {
         Command::Check(args) => check::run(args),
         Command::Fmt(args) => fmt::run(args),
+        Command::Viz(args) => viz::run(args),
         Command::Export(format) => export::run(format),
     };
     ExitCode::from(exit as u8)

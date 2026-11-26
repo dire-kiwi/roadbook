@@ -4,3 +4,4 @@
 pub mod check;
 pub mod export;
 pub mod fmt;
+pub mod viz;
