@@ -1,0 +1,92 @@
+import * as fs from "node:fs"
+import * as path from "node:path"
+import { describe, expect, it } from "vitest"
+import { canonicalJson, compareCodePoints, type Fns, getMachine, IrError, loadIr, start, step } from "../src/index.ts"
+
+const charts = path.resolve(import.meta.dirname, "../../../spec/conformance/charts")
+const readIr = (file: string) => loadIr(JSON.parse(fs.readFileSync(path.join(charts, file), "utf8")))
+const noFns: Fns = (name) => ({ defect: { kind: "host", message: `unexpected call of ${name}` } })
+
+describe("canonicalJson", () => {
+  it("sorts keys by UTF-16 code units and writes numbers as JavaScript does", () => {
+    expect(canonicalJson({ b: 1, a: [2.0, -0, 1e21, "é"], "€": null, "😀": true })).toBe(
+      "{\"a\":[2,0,1e+21,\"é\"],\"b\":1,\"€\":null,\"😀\":true}"
+    )
+  })
+  it("refuses non-finite numbers", () => {
+    expect(() => canonicalJson(Number.NaN)).toThrow()
+  })
+})
+
+describe("compareCodePoints", () => {
+  it("orders by Unicode scalar value, not UTF-16 code unit", () => {
+    // U+FF61 is a single code unit above the surrogates; U+1F600 is a surrogate pair.
+    expect("｡" < "😀").toBe(false)
+    expect(compareCodePoints("｡", "😀")).toBeLessThan(0)
+    expect(compareCodePoints("ab", "abc")).toBeLessThan(0)
+    expect(compareCodePoints("b", "abc")).toBeGreaterThan(0)
+    expect(compareCodePoints("x", "x")).toBe(0)
+  })
+})
+
+describe("loadIr", () => {
+  it("refuses another IR version, naming both", () => {
+    expect(() => loadIr({ irVersion: "0.2" })).toThrow(/"0\.2".*0\.1/)
+    expect(() => loadIr([])).toThrow(IrError)
+  })
+  it("refuses a machine with a parallel state", () => {
+    const ir = readIr("nest.ir.json")
+    const nest = ir.machines["Nest"]!
+    const parallel = { ...ir, machines: { Nest: { ...nest, root: { ...nest.root, kind: "parallel" as const } } } }
+    expect(() => getMachine(parallel, "Nest")).toThrow(/parallel state/)
+    expect(() => getMachine(ir, "Nope")).toThrow(/no machine "Nope"/)
+  })
+})
+
+describe("start and step", () => {
+  const ir = readIr("shop/checkout.ir.json")
+  const input = {
+    order: { id: "o1", items: [{ sku: "apple", qty: 2 }], totalCents: 4200 },
+    user: { id: "u1", role: "Customer" }
+  }
+
+  it("asks the driver to start the invoke, then finishes on its outcome", () => {
+    const started = start(ir, "Checkout", input, noFns)
+    expect(started.snapshot.active).toEqual(["Checkout", "Checkout.Charging"])
+    expect(started.snapshot.invokes).toEqual([{ id: 1, state: "Checkout.Charging", src: "chargeCard" }])
+    expect(started.commands.at(-1)).toEqual({
+      kind: "invoke.start",
+      invoke: 1,
+      state: "Checkout.Charging",
+      src: "chargeCard",
+      srcKind: "task",
+      args: input
+    })
+    const receipt = { chargeId: "c1", amountCents: 4200 }
+    const done = step(ir, started.snapshot, { kind: "invoke.done", invoke: 1, value: receipt }, noFns)
+    expect(done.snapshot.status).toBe("done")
+    expect(done.snapshot.result).toEqual({ output: receipt })
+    expect(done.snapshot.active).toEqual([])
+    expect(started.snapshot.status).toBe("running")
+  })
+
+  it("is atomic: a host defect in a function discards the step's commands", () => {
+    const started = start(ir, "Checkout", input, noFns)
+    const failed = step(ir, started.snapshot, { kind: "invoke.fail", invoke: 1, error: { _tag: "GatewayUnavailable" } }, noFns)
+    expect(failed.snapshot.status).toBe("defect")
+    expect(failed.snapshot.result).toEqual({ defect: { kind: "host", message: "unexpected call of retryDelay" } })
+    expect(failed.commands).toEqual([
+      { kind: "invoke.cancel", invoke: 1 },
+      { kind: "trace", record: { kind: "defect", defect: { kind: "host", message: "unexpected call of retryDelay" } } }
+    ])
+  })
+
+  it("traces a stale outcome and changes nothing else", () => {
+    const started = start(ir, "Checkout", input, noFns)
+    const stale = step(ir, started.snapshot, { kind: "invoke.done", invoke: 9, value: null }, noFns)
+    expect(stale.commands).toEqual([
+      { kind: "trace", record: { kind: "stale", event: { kind: "invoke.done", invoke: 9, value: null } } }
+    ])
+    expect(stale.snapshot).toEqual(started.snapshot)
+  })
+})

@@ -185,6 +185,40 @@ importers:
 
   .: {}
 
+  packages/core:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.7
+        version: 26.6.7
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.1.1
+        version: 5.1.1(@types/node@26.6.7)(vite@8.3.8(@types/node@26.6.7)(esbuild@0.28.2))
+
+  packages/effect:
+    dependencies:
+      '@roadbook/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@effect/vitest':
+        specifier: 4.1.5
+        version: 4.1.5(effect@4.1.5)(vitest@5.1.1(@types/node@26.6.7)(vite@8.3.8(@types/node@26.6.7)(esbuild@0.28.2)))
+      '@types/node':
+        specifier: ^26.6.7
+        version: 26.6.7
+      effect:
+        specifier: 4.1.5
+        version: 4.1.5
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.1.1
+        version: 5.1.1(@types/node@26.6.7)(vite@8.3.8(@types/node@26.6.7)(esbuild@0.28.2))
+
   packages/viewer:
     dependencies:
       elkjs:
@@ -205,6 +239,12 @@ importers:
         version: 5.1.1(@types/node@26.6.7)(vite@8.3.8(@types/node@26.6.7)(esbuild@0.28.2))
 
 packages:
+
+  '@effect/vitest@4.1.5':
+    resolution: {integrity: sha512-18u1013wkJtSelk1ZYLc/5aUnluTQyDfi2hAemkJW1GQ9qXw4mtPSiSf0AXZPhesmGCvG1Dk2C4JYD2sz+R72w==}
+    peerDependencies:
+      effect: ^4.1.5
+      vitest: '>=5.0.0 <6.0.0'
 
   '@emnapi/core@2.0.0-beta.2':
     resolution: {integrity: sha512-MzCVoWtcg4Pm2B3je5mMvYMvj3MmBKw+fU7vbsJc9/iT8ip6/eYIHo/Dsm/mr+wsHB6SEyJDuxB09Yy6r/8+4A==}
@@ -656,6 +696,9 @@ packages:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
 
+  effect@4.1.5:
+    resolution: {integrity: sha512-xyR20KhQI0vg2gD8ILUSQRTTESEYJ0JKdP+QD8J37xbwPTqXRxFM/l0+vUVD9fuSvoYruoTqyt33C4FZv1s4TQ==}
+
   elkjs@0.12.2:
     resolution: {integrity: sha512-YC42gyUwsOeKWB/EVTr1abEnNhDEoz+qeLshCBufNW0qrJPcxk+/s1lih4Sbke4BOgjficJGvJ2D9jL/QTC/ew==}
 
@@ -910,6 +953,11 @@ packages:
     hasBin: true
 
 snapshots:
+
+  '@effect/vitest@4.1.5(effect@4.1.5)(vitest@5.1.1(@types/node@26.6.7)(vite@8.3.8(@types/node@26.6.7)(esbuild@0.28.2)))':
+    dependencies:
+      effect: 4.1.5
+      vitest: 5.1.1(@types/node@26.6.7)(vite@8.3.8(@types/node@26.6.7)(esbuild@0.28.2))
 
   '@emnapi/core@2.0.0-beta.2':
     dependencies:
@@ -1171,6 +1219,8 @@ snapshots:
   chai@6.3.0: {}
 
   detect-libc@2.1.2: {}
+
+  effect@4.1.5: {}
 
   elkjs@0.12.2: {}
 

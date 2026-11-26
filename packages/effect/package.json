@@ -1,0 +1,27 @@
+{
+  "name": "@roadbook/effect",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Roadbook driver and public API on Effect v4",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@roadbook/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "effect": "4.1.5"
+  },
+  "devDependencies": {
+    "@effect/vitest": "4.1.5",
+    "@types/node": "^26.6.7",
+    "effect": "4.1.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  }
+}
