@@ -16,6 +16,7 @@ use crate::check::{Checker, Sig, SigKind, doc, ir_span};
 use crate::codes;
 use crate::index::{SymbolId, SymbolKind};
 use crate::names::{Found, is_type, kind_phrase, suggest};
+use crate::sensitive::Dest;
 use crate::types::{BOOL, DURATION, Ty, ir_type};
 
 mod retry;
@@ -157,6 +158,8 @@ struct Node<'p> {
 pub(crate) struct Var {
     pub ty: Ty,
     pub param: bool,
+    /// Marked `sensitive`.
+    pub sensitive: bool,
 }
 
 pub(crate) struct Cx<'c, 'p> {
@@ -181,6 +184,8 @@ pub(crate) struct Cx<'c, 'p> {
     /// The counter `attempt` reads while a retry's delay is checked: a variable for the
     /// checker, but not one to suggest, since the chart cannot name it.
     counter: Option<String>,
+    /// Whether the expression [`Cx::expr`] last returned reads a sensitive value.
+    pub sens: bool,
 }
 
 /// Checks machine `m` declared in `file` and lowers it. Its hash is left empty.
@@ -219,6 +224,7 @@ pub(crate) fn lower<'p>(
         transition_reads: Vec::new(),
         retry_vars: Vec::new(),
         counter: None,
+        sens: false,
     };
 
     // Parameters and variables share one namespace.
@@ -232,6 +238,7 @@ pub(crate) fn lower<'p>(
         cx.vars.entry(p.name.name.clone()).or_insert(Var {
             ty: ty.clone(),
             param: true,
+            sensitive: p.sensitive,
         });
     }
     let mut var_tys = Vec::new();
@@ -258,6 +265,7 @@ pub(crate) fn lower<'p>(
                 Var {
                     ty: ty.clone(),
                     param: false,
+                    sensitive: v.sensitive,
                 },
             );
         }
@@ -316,6 +324,7 @@ pub(crate) fn lower<'p>(
                 .map(|f| ir::Field {
                     name: f.name.name.clone(),
                     ty: ir_type(&f.ty),
+                    sensitive: f.sensitive,
                     doc: String::new(),
                 })
                 .collect(),
@@ -340,11 +349,12 @@ pub(crate) fn lower<'p>(
     for (v, ty) in m.body.vars().zip(var_tys) {
         cx.reads.clear();
         let init = v.init.as_ref().map(|e| {
-            cx.expect(
+            cx.expect_to(
                 e,
                 &Scope::none(),
                 &ty,
                 &format!("the initial value of `{}`", v.name.name),
+                dest(v.sensitive, format!("`{}`", v.name.name)),
             )
         });
         let optional = matches!(cx.ck.env.expand(&ty), Ty::Optional(_));
@@ -359,6 +369,7 @@ pub(crate) fn lower<'p>(
         vars.push(ir::Var {
             name: v.name.name.clone(),
             ty: ir_type(&v.ty),
+            sensitive: v.sensitive,
             init,
             doc: doc(&v.doc),
             span: ir_span(v.span),
@@ -399,6 +410,7 @@ pub(crate) fn lower<'p>(
             .map(|p| ir::Field {
                 name: p.name.name.clone(),
                 ty: ir_type(&p.ty),
+                sensitive: p.sensitive,
                 doc: String::new(),
             })
             .collect(),
@@ -1393,7 +1405,13 @@ impl<'p> Cx<'_, 'p> {
                 ir::Trigger::Any
             }
             Trigger::After(e) => ir::Trigger::After {
-                delay: self.expect(e, &Scope::none(), &DURATION, "an `after` delay"),
+                delay: self.expect_to(
+                    e,
+                    &Scope::none(),
+                    &DURATION,
+                    "an `after` delay",
+                    Dest::Shown,
+                ),
             },
             Trigger::Always => ir::Trigger::Always,
             // `fail` outcomes only occur inside an invoke; the parser rejects them elsewhere.
@@ -1574,6 +1592,10 @@ impl<'p> Cx<'_, 'p> {
             match e {
                 Effect::Set(a) => {
                     self.ck.refer_member(self.file, self.symbol, &a.var);
+                    let to = dest(
+                        self.vars.get(&a.var.name).is_some_and(|v| v.sensitive),
+                        format!("`{}`", a.var.name),
+                    );
                     let want = match self.vars.get(&a.var.name) {
                         Some(v) if v.param => {
                             self.ck.diags.push(
@@ -1596,11 +1618,12 @@ impl<'p> Cx<'_, 'p> {
                             Ty::Unknown
                         }
                     };
-                    let value = self.expect(
+                    let value = self.expect_to(
                         &a.value,
                         scope,
                         &want,
                         &format!("the value assigned to `{}`", a.var.name),
+                        to,
                     );
                     out.push(ir::Effect::Set {
                         var: a.var.name.clone(),
@@ -1609,7 +1632,14 @@ impl<'p> Cx<'_, 'p> {
                 }
                 Effect::Do(c) => {
                     let sig = self.callee(&c.name, SigKind::Action);
-                    let args = self.args(&c.name, c.span, &c.args, sig.as_ref(), scope);
+                    let args = self.args(
+                        &c.name,
+                        c.span,
+                        &c.args,
+                        sig.as_ref(),
+                        SigKind::Action,
+                        scope,
+                    );
                     out.push(ir::Effect::Do {
                         action: c.name.name.clone(),
                         args,
@@ -1734,6 +1764,7 @@ impl<'p> Cx<'_, 'p> {
         span: Span,
         args: &[ast::Expr],
         sig: Option<&Sig>,
+        kind: SigKind,
         scope: &Scope,
     ) -> Vec<ir::Expr> {
         if let Some(sig) = sig
@@ -1769,7 +1800,17 @@ impl<'p> Cx<'_, 'p> {
             .map(|(i, a)| match sig.and_then(|s| s.params.get(i)) {
                 Some((p, t)) => {
                     let t = t.clone();
-                    self.expect(a, scope, &t, &format!("argument `{p}` of `{}`", name.name))
+                    let what = format!("argument `{p}` of `{}`", name.name);
+                    if kind == SigKind::Fn {
+                        // Function calls are not traced.
+                        self.expect(a, scope, &t, &what)
+                    } else {
+                        let to = dest(
+                            self.ck.sensitive.is(&name.name, p),
+                            format!("parameter `{p}` of `{}`", name.name),
+                        );
+                        self.expect_to(a, scope, &t, &what, to)
+                    }
                 }
                 None => self.expr(a, scope).0,
             })
@@ -1798,6 +1839,11 @@ impl<'p> Cx<'_, 'p> {
             invoke_head(inv),
             &inv.args,
             sig.as_ref(),
+            if is_machine {
+                SigKind::Machine
+            } else {
+                SigKind::Task
+            },
             &Scope::none(),
         );
         let arg_reads = std::mem::take(&mut self.reads);
@@ -1975,7 +2021,7 @@ impl<'p> Cx<'_, 'p> {
         match self.returns.clone() {
             Some(t) => {
                 let what = format!("the output of `{}`", self.machine);
-                self.expect(e, &Scope::none(), &t, &what)
+                self.expect_to(e, &Scope::none(), &t, &what, Dest::Shown)
             }
             None => {
                 let m = self.machine.clone();
@@ -1997,6 +2043,17 @@ impl<'p> Cx<'_, 'p> {
     fn fail_value(&mut self, e: &ast::Expr) -> ir::Expr {
         let (ie, t) = self.expr(e, &Scope::none());
         let m = self.machine.clone();
+        if self.sens {
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::SENSITIVE_VALUE,
+                    e.span,
+                    format!("`{}` is sensitive, and the failure of `{m}` is not", ie.text),
+                )
+                .with_label("a trace would show this value")
+                .with_help("traces show a machine's failure as it is, redacting only the error's sensitive fields; fail with an error built with the value in a `sensitive` field"),
+            );
+        }
         let ok = match self.ck.env.expand(&t) {
             Ty::Unknown => true,
             Ty::Named(n) => self.errors.contains(&n),
@@ -2029,4 +2086,13 @@ impl<'p> Cx<'_, 'p> {
 /// `invoke name`: where diagnostics about an invoke point.
 fn invoke_head(inv: &Invoke) -> Span {
     inv.span.to(inv.callee.span)
+}
+
+/// Where a value goes: `place`, which is marked `sensitive` or not.
+fn dest(sensitive: bool, place: String) -> Dest {
+    if sensitive {
+        Dest::Sensitive
+    } else {
+        Dest::Plain(place)
+    }
 }

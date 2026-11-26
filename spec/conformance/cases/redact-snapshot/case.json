@@ -1,0 +1,92 @@
+{
+  "description": "A saved snapshot keeps the real values: the sensitive parameter and variable, and the session's token. The `restored` record of the run restored from it shows them redacted, and so do the records of the work it restarts.",
+  "requires": [
+    "snapshots"
+  ],
+  "chart": "charts/vault.road",
+  "machine": "Vault",
+  "input": {
+    "login": {
+      "user": "ada",
+      "password": "hunter2"
+    },
+    "pin": 1234,
+    "extra": [
+      {
+        "user": "bob",
+        "password": "pw-bob"
+      }
+    ],
+    "backup": null
+  },
+  "stub": [],
+  "fns": {
+    "both": [
+      {
+        "args": [
+          {
+            "id": "s1",
+            "token": "tok-s1",
+            "expires": 60
+          }
+        ],
+        "returns": [
+          {
+            "id": "s1",
+            "token": "tok-s1",
+            "expires": 60
+          },
+          {
+            "id": "s1",
+            "token": "tok-s1",
+            "expires": 60
+          }
+        ]
+      }
+    ]
+  },
+  "actions": {},
+  "script": [
+    {
+      "task": "signIn",
+      "done": {
+        "id": "s1",
+        "token": "tok-s1",
+        "expires": 60
+      }
+    },
+    {
+      "snapshot": "loading"
+    },
+    {
+      "restore": "loading",
+      "run": "r2",
+      "status": "done"
+    },
+    {
+      "task": "loadProfile",
+      "run": "r2",
+      "done": {
+        "name": "Ada",
+        "cards": [
+          {
+            "last4": "4242",
+            "number": "4242424242424242"
+          }
+        ],
+        "backup": {
+          "id": "s0",
+          "token": "tok-s0",
+          "expires": 1
+        },
+        "logins": [
+          {
+            "user": "ada",
+            "password": "hunter2"
+          }
+        ]
+      }
+    }
+  ],
+  "status": "running"
+}

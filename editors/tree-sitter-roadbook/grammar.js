@@ -21,8 +21,8 @@ module.exports = grammar({
 
   word: ($) => $.identifier,
 
-  // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref` and the built-in
-  // type names are not, because they mean something only where no name can appear.
+  // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref`, `sensitive` and
+  // the built-in type names are not, because they mean something only where no name can appear.
   reserved: {
     global: (_) => [
       'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'var',
@@ -88,7 +88,14 @@ module.exports = grammar({
 
     fields: ($) => seq('{', commaSep($.field_declaration), '}'),
 
-    field_declaration: ($) => seq(field('name', $.identifier), ':', field('type', $._type)),
+    // `sensitive` is not reserved: a modifier before a field or parameter name, or `var`, and a
+    // name anywhere else, a field's or parameter's too (`sensitive: bool`).
+    field_declaration: ($) =>
+      seq(optional($.sensitive), field('name', $._member_name), ':', field('type', $._type)),
+
+    _member_name: ($) => choice($.identifier, alias('sensitive', $.identifier)),
+
+    sensitive: (_) => 'sensitive',
 
     function_declaration: ($) =>
       seq(
@@ -113,7 +120,8 @@ module.exports = grammar({
 
     parameters: ($) => seq('(', commaSep($.parameter), ')'),
 
-    parameter: ($) => seq(field('name', $.identifier), ':', field('type', $._type)),
+    parameter: ($) =>
+      seq(optional($.sensitive), field('name', $._member_name), ':', field('type', $._type)),
 
     errors: ($) =>
       seq('!', field('error', $.type_identifier), repeat(seq('|', field('error', $.type_identifier)))),
@@ -149,6 +157,7 @@ module.exports = grammar({
 
     variable_declaration: ($) =>
       seq(
+        optional($.sensitive),
         'var',
         field('name', $.identifier),
         ':',

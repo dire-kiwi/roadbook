@@ -13,6 +13,7 @@ import {
   type Transition
 } from "./ir.ts"
 import type { Json } from "./json.ts"
+import { redactor } from "./redact.ts"
 import type {
   Command,
   CoreRecord,
@@ -62,7 +63,7 @@ export const start = (
   }
   const started: Command = {
     kind: "trace",
-    record: { kind: "started", machine: name, ir: index.machine.hash, input }
+    record: redactor(ir).record(index.machine, { kind: "started", machine: name, ir: index.machine.hash, input })
   }
   const macro = new Macrostep(ir, index, initial, fns)
   macro.commands.push(started)
@@ -141,7 +142,13 @@ export const restore = (
   }
   const restored: Command = {
     kind: "trace",
-    record: { kind: "restored", machine: saved.machine, ir: index.machine.hash, migrated, snapshot: saved }
+    record: redactor(ir).record(index.machine, {
+      kind: "restored",
+      machine: saved.machine,
+      ir: index.machine.hash,
+      migrated,
+      snapshot: saved
+    })
   }
   try {
     const macro = new Macrostep(ir, index, snapshot, fns)
@@ -317,28 +324,38 @@ class Macrostep {
     }
   }
 
+  /**
+   * Emit a trace record, redacted (`spec/trace.md#redaction`). An `event`, `dropped` or `stale`
+   * record holds an input {@link Macrostep.take} has already redacted.
+   */
   private trace(record: CoreRecord) {
-    this.commands.push({ kind: "trace", record })
+    const r = redactor(this.ir)
+    this.commands.push({ kind: "trace", record: r.active ? r.record(this.index.machine, record) : record })
   }
 
   take(input: Exclude<Input, { readonly kind: "defect" }>) {
+    // The input as its record shows it, redacted while the invoke it may be the outcome of is
+    // still in the snapshot.
+    if (input.kind === "cancel") {
+      this.cancelRun()
+      return
+    }
+    const r = redactor(this.ir)
+    const shown = r.active ? r.input(this.index.machine, this.invokes, input) : input
     let selected: ReadonlyArray<Selected> = []
     let bindings: Bindings = NO_BINDINGS
     switch (input.kind) {
-      case "cancel":
-        this.cancelRun()
-        return
       case "invoke.done":
       case "invoke.fail":
       case "invoke.defect": {
         const inv = this.invokes.find((i) => i.id === input.invoke)
         if (inv === undefined) {
-          this.trace({ kind: "stale", event: input })
+          this.trace({ kind: "stale", event: shown })
           return
         }
         this.invokes = this.invokes.filter((i) => i !== inv)
         if (input.kind === "invoke.defect") {
-          this.trace({ kind: "event", event: input })
+          this.trace({ kind: "event", event: shown })
           this.failWithDefect(input.defect)
           return
         }
@@ -357,7 +374,7 @@ class Macrostep {
       case "after": {
         const tm = this.timers.find((t) => t.id === input.timer)
         if (tm === undefined) {
-          this.trace({ kind: "stale", event: input })
+          this.trace({ kind: "stale", event: shown })
           return
         }
         this.timers = this.timers.filter((t) => t !== tm)
@@ -371,7 +388,7 @@ class Macrostep {
         break
       case "emitted": {
         if (input.invoke !== null && !this.invokes.some((i) => i.id === input.invoke)) {
-          this.trace({ kind: "stale", event: input })
+          this.trace({ kind: "stale", event: shown })
           return
         }
         bindings = { event: input.value }
@@ -380,10 +397,10 @@ class Macrostep {
       }
     }
     if (selected.length === 0) {
-      this.trace({ kind: "dropped", event: input })
+      this.trace({ kind: "dropped", event: shown })
       return
     }
-    this.trace({ kind: "event", event: input })
+    this.trace({ kind: "event", event: shown })
     this.microstep(selected, bindings)
     this.settle()
     if (this.status === "running") this.startWork()
@@ -678,7 +695,8 @@ class Macrostep {
             const inv = this.invokes.find((i) => i.state === state)
             value = this.eval(effect.value, bindings) as Tagged
             if (inv === undefined) {
-              this.trace({ kind: "undelivered", message, to: null, value })
+              const shown = redactor(this.ir).sent(effect.to.machine, value) as Tagged
+              this.trace({ kind: "undelivered", message, to: null, value: shown })
               break
             }
             to = `${this.snapshot.run}.${inv.id}`
@@ -689,7 +707,7 @@ class Macrostep {
             invoke = null
             value = this.eval(effect.value, bindings) as Tagged
           }
-          this.trace({ kind: "sent", message, to, value })
+          this.trace({ kind: "sent", message, to, value: redactor(this.ir).sent(effect.to.machine, value) as Tagged })
           this.commands.push({ kind: "send", to, invoke, message, value })
           break
         }

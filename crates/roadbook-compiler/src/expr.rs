@@ -9,6 +9,7 @@ use crate::codes;
 use crate::index::SymbolId;
 use crate::machine::{Cx, Implicit, Scope};
 use crate::names::{Found, is_type, suggest};
+use crate::sensitive::Dest;
 use crate::types::{BOOL, Ty, TypeDef};
 
 const INT: Ty = Ty::Builtin(Builtin::Int);
@@ -42,6 +43,17 @@ impl Cx<'_, '_> {
     /// Checks `e` against an expected type. `what` names the position in the diagnostic: "a
     /// guard", "argument `x` of `f`".
     pub(crate) fn expect(&mut self, e: &Expr, scope: &Scope, want: &Ty, what: &str) -> ir::Expr {
+        self.expect_typed(e, scope, want, what).0
+    }
+
+    /// [`Cx::expect`], also giving the type `e` was found to have.
+    pub(crate) fn expect_typed(
+        &mut self,
+        e: &Expr,
+        scope: &Scope,
+        want: &Ty,
+        what: &str,
+    ) -> (ir::Expr, Ty) {
         let (ie, got) = self.expr(e, scope);
         if !self.ck.env.assignable(&got, want) {
             let mut d = Diagnostic::error(
@@ -63,11 +75,27 @@ impl Cx<'_, '_> {
             }
             self.ck.diags.push(d);
         }
-        ie
+        (ie, got)
     }
 
-    /// The IR node for `e` and its type.
+    /// The IR node for `e` and its type. Leaves in [`Cx::sens`] whether `e`'s value is
+    /// sensitive: a sensitive parameter or variable, a sensitive field of any value, a field of
+    /// a sensitive value, or an operator's result with a sensitive operand (`pin + 0`,
+    /// `not flag`, `pin == 1`). A function's result is not: a `fn` is how a chart derives what
+    /// may be shown.
     pub(crate) fn expr(&mut self, e: &Expr, scope: &Scope) -> (ir::Expr, Ty) {
+        let out = self.expr_node(e, scope);
+        if !matches!(
+            e.kind,
+            ExprKind::Var(_) | ExprKind::Field(..) | ExprKind::Unary(..) | ExprKind::Binary(..)
+        ) {
+            self.sens = false;
+        }
+        out
+    }
+
+    fn expr_node(&mut self, e: &Expr, scope: &Scope) -> (ir::Expr, Ty) {
+        self.sens = false;
         match &e.kind {
             ExprKind::Int(n) => {
                 if n.unsigned_abs() > MAX_SAFE_INTEGER as u64 {
@@ -114,6 +142,7 @@ impl Cx<'_, '_> {
                     }
                     None => match self.vars.get(&n.name) {
                         Some(v) => {
+                            self.sens = v.sensitive;
                             self.ck.refer_member(self.file, self.symbol, n);
                             if !v.param {
                                 self.reads.push((n.name.clone(), n.span));
@@ -132,7 +161,9 @@ impl Cx<'_, '_> {
             }
             ExprKind::Field(base, f) => {
                 let (be, bt) = self.expr(base, scope);
+                let sens = self.sens || self.field_is_sensitive(&bt, &f.name);
                 let ty = self.field(&bt, f);
+                self.sens = sens;
                 let kind = match be.kind {
                     K::Ref { mut path } => {
                         path.push(f.name.clone());
@@ -151,7 +182,7 @@ impl Cx<'_, '_> {
             }
             ExprKind::Call(c) => {
                 let sig = self.callee(&c.name, SigKind::Fn);
-                let args = self.args(&c.name, c.span, &c.args, sig.as_ref(), scope);
+                let args = self.args(&c.name, c.span, &c.args, sig.as_ref(), SigKind::Fn, scope);
                 let ty = sig.and_then(|s| s.returns).unwrap_or(Ty::Unknown);
                 let kind = K::Call {
                     func: c.name.name.clone(),
@@ -229,6 +260,7 @@ impl Cx<'_, '_> {
                 (node(K::Record { fields: out }, &ty, e), ty)
             }
             ExprKind::Unary(UnaryOp::Not, x) => {
+                // `self.sens` stays the operand's: nothing below evaluates another expression.
                 let (xe, xt) = self.expr(x, scope);
                 if !self.ck.env.same(&xt, &BOOL) {
                     self.bad_operands(e, format!("`not` needs a `bool`, found `{xt}`"));
@@ -246,6 +278,7 @@ impl Cx<'_, '_> {
                 )
             }
             ExprKind::Unary(UnaryOp::Neg, x) => {
+                // `self.sens` stays the operand's: nothing below evaluates another expression.
                 let (xe, xt) = self.expr(x, scope);
                 let ty = match self.ck.env.expand(&xt) {
                     t @ (Ty::Unknown | Ty::Builtin(Builtin::Int | Builtin::Float)) => t,
@@ -271,7 +304,10 @@ impl Cx<'_, '_> {
             }
             ExprKind::Binary(o, a, b) => {
                 let (ae, at) = self.expr(a, scope);
+                let sens = self.sens;
                 let (be, bt) = self.expr(b, scope);
+                // Either operand's: nothing below evaluates another expression.
+                self.sens |= sens;
                 let (xa, xb) = (self.ck.env.expand(&at), self.ck.env.expand(&bt));
                 let unknown = xa.is_unknown() || xb.is_unknown();
                 let sym = o.as_str();
@@ -366,7 +402,12 @@ impl Cx<'_, '_> {
             let value = match (&declared, decl_fields) {
                 (Some(ft), _) => {
                     let what = format!("field `{}` of `{name}`", fv.name.name);
-                    self.expect(&fv.value, scope, ft, &what)
+                    let target = if self.field_is_sensitive(ty, &fv.name.name) {
+                        Dest::Sensitive
+                    } else {
+                        Dest::Plain(format!("field `{}` of `{name}`", fv.name.name))
+                    };
+                    self.expect_to(&fv.value, scope, ft, &what, target)
                 }
                 (None, Some(fs)) => {
                     let names: Vec<&str> = fs.iter().map(|(n, _)| n.as_str()).collect();

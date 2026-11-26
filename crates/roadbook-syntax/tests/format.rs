@@ -7,6 +7,11 @@ use roadbook_syntax::{FileId, format, parse_file};
 
 /// `(input, canonical output)`
 const LAYOUTS: &[(&str, &str)] = &[
+    // `sensitive` comes first, on fields, parameters and variables.
+    (
+        "type T {sensitive   a:int,b:int}\nmachine M( sensitive  k :string) {\n  sensitive   var t:int=1\n  var u: int\n}\n",
+        "type T { sensitive a: int, b: int }\nmachine M(sensitive k: string) {\n  sensitive var t: int = 1\n  var u:           int\n}\n",
+    ),
     // Spacing is normalised; trailing commas and redundant parentheses go.
     (
         "machine   M ( a :int , ) -> R!E{initial A state A{on Go->A set x=(1+2)*3,y=(a)}}",

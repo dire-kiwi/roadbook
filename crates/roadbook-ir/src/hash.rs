@@ -32,13 +32,14 @@
 //!   `"*"`. A name that is an event of the machine being walked (the type
 //!   of a bare `event`, or of an `emit` value), or a dotted event type, is
 //!   not a type and is skipped.
-//! - `strip` removes every member named `doc`, `span` or `text` from every
-//!   object, recursively. The only name-keyed maps inside these values are a
+//! - `strip` removes every member named `doc`, `span`, `text` or
+//!   `sensitive` from every object, recursively. The only name-keyed maps inside these values are a
 //!   machine's `events` and `emits`, whose keys are upper-case, so no
 //!   user-chosen name is ever stripped.
 //!
-//! Comments, formatting, source positions and unused declarations therefore
-//! do not change a hash; any change to behaviour or to a type a machine uses
+//! Comments, formatting, source positions, `sensitive` marks and unused
+//! declarations therefore do not change a hash (a mark changes only what
+//! traces show, so a snapshot saved before it was added still restores); any change to behaviour or to a type a machine uses
 //! does, including in a child machine.
 
 use std::collections::BTreeSet;
@@ -344,11 +345,11 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
     Ok(w.out)
 }
 
-/// Removes every `doc`, `span` and `text` member, recursively.
+/// Removes every `doc`, `span`, `text` and `sensitive` member, recursively.
 fn strip(v: &mut Value) {
     match v {
         Value::Object(m) => {
-            for key in ["doc", "span", "text"] {
+            for key in ["doc", "span", "text", "sensitive"] {
                 m.remove(key);
             }
             m.values_mut().for_each(strip);

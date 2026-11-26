@@ -164,9 +164,12 @@ impl DeclKind {
     }
 }
 
-/// `name: T`, in records, errors, events and parameter lists.
+/// `[sensitive] name: T`, in records, errors, events and parameter lists.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Field {
+    /// Written `sensitive name: T`: the value is redacted in trace records.
+    #[serde(skip_serializing_if = "is_false")]
+    pub sensitive: bool,
     pub name: Ident,
     pub ty: TypeRef,
     #[serde(skip)]
@@ -365,11 +368,14 @@ impl Item {
     }
 }
 
-/// `var name: T [= expr]`
+/// `[sensitive] var name: T [= expr]`
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Var {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub doc: Option<Doc>,
+    /// Written `sensitive var`: the value is redacted in trace records.
+    #[serde(skip_serializing_if = "is_false")]
+    pub sensitive: bool,
     pub name: Ident,
     pub ty: TypeRef,
     pub init: Option<Expr>,
@@ -793,4 +799,8 @@ impl Expr {
             | ExprKind::Enum(..) => {}
         }
     }
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
 }

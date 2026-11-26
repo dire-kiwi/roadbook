@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "spec/conformance/charts/fetch.road",
@@ -37,6 +37,7 @@
         {
           "name": "retryAfter",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -57,6 +58,7 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -76,6 +78,7 @@
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -109,6 +112,7 @@
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -120,6 +124,7 @@
         {
           "name": "body",
           "type": "string",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {

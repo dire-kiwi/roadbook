@@ -15,6 +15,7 @@ use super::{Cx, Reads, Scope, StateInfo, TransitionReads, Var, VarInfo, invoke_h
 use crate::check::ir_span;
 use crate::codes;
 use crate::names::suggest;
+use crate::sensitive::Dest;
 use crate::types::{DURATION, Ty};
 
 const INT: Ty = Ty::Builtin(Builtin::Int);
@@ -83,10 +84,17 @@ impl<'p> Cx<'_, 'p> {
                 Var {
                     ty: INT,
                     param: false,
+                    sensitive: false,
                 },
             );
             self.counter = Some(var.clone());
-            let e = self.expect(&renamed, &Scope::none(), &DURATION, "a retry delay");
+            let e = self.expect_to(
+                &renamed,
+                &Scope::none(),
+                &DURATION,
+                "a retry delay",
+                Dest::Shown,
+            );
             self.counter = None;
             self.vars.remove(&var);
             (e, std::mem::take(&mut self.reads))
@@ -538,6 +546,7 @@ impl<'p> Cx<'_, 'p> {
                 name: var.clone(),
                 ty: INT.to_ir(),
                 init: Some(int(0)),
+                sensitive: false,
                 doc: String::new(),
                 span: ir_span(span),
             },

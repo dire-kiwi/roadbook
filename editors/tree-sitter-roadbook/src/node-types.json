@@ -1206,6 +1206,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "sensitive",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -2132,6 +2142,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "sensitive",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -2430,6 +2450,11 @@
         ]
       }
     }
+  },
+  {
+    "type": "sensitive",
+    "named": true,
+    "fields": {}
   },
   {
     "type": "set",
@@ -2844,6 +2869,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "sensitive",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -3118,6 +3153,10 @@
   },
   {
     "type": "send",
+    "named": false
+  },
+  {
+    "type": "sensitive",
     "named": false
   },
   {

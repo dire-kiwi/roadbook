@@ -32,8 +32,30 @@ pub fn encode<T: Serialize + ?Sized>(value: &T) -> Result<Value, Defect> {
 }
 
 /// An argument or result decoded as its Rust type, or a host defect.
+///
+/// The defect's message names the value's JSON kind, never the value: a defect is written to
+/// the trace as it is, and the value may be sensitive (`serde_json`'s own message quotes it).
 pub fn decode<T: DeserializeOwned>(value: Value, what: &str) -> Result<T, Defect> {
-    serde_json::from_value(value).map_err(|e| Defect::host(format!("{what} does not decode: {e}")))
+    let kind = json_kind(&value);
+    serde_json::from_value(value).map_err(|e| {
+        let at = match e.classify() {
+            serde_json::error::Category::Data => "its Rust type does not accept it",
+            _ => "it is not JSON its Rust type reads",
+        };
+        Defect::host(format!("{what} does not decode: {kind}, and {at}"))
+    })
+}
+
+/// What kind of JSON value `v` is, without its contents: `a string`, `an object`.
+pub(crate) fn json_kind(v: &Value) -> &'static str {
+    match v {
+        Value::Null => "null",
+        Value::Bool(_) => "a bool",
+        Value::Number(_) => "a number",
+        Value::String(_) => "a string",
+        Value::Array(_) => "a list",
+        Value::Object(_) => "an object",
+    }
 }
 
 /// Takes argument `name` out of `args` and decodes it.
@@ -153,7 +175,7 @@ pub mod wire {
             Ok(Value::from(*self))
         }
         fn from_wire(v: Value) -> Result<Self, String> {
-            integer(&v).ok_or_else(|| format!("{v} is not an int"))
+            integer(&v).ok_or_else(|| format!("{} is not an int", super::json_kind(&v)))
         }
     }
 
@@ -164,7 +186,8 @@ pub mod wire {
                 .ok_or_else(|| format!("{self} is not a finite float"))
         }
         fn from_wire(v: Value) -> Result<Self, String> {
-            v.as_f64().ok_or_else(|| format!("{v} is not a float"))
+            v.as_f64()
+                .ok_or_else(|| format!("{} is not a float", super::json_kind(&v)))
         }
     }
 
@@ -177,7 +200,9 @@ pub mod wire {
                 .and_then(|i| u64::try_from(i).ok())
                 .or_else(|| v.as_u64())
                 .map(Duration::from_millis)
-                .ok_or_else(|| format!("{v} is not a duration in milliseconds"))
+                .ok_or_else(|| {
+                    format!("{} is not a duration in milliseconds", super::json_kind(&v))
+                })
         }
     }
 
@@ -203,7 +228,7 @@ pub mod wire {
         fn from_wire(v: Value) -> Result<Self, String> {
             match v {
                 Value::Array(items) => items.into_iter().map(T::from_wire).collect(),
-                v => Err(format!("{v} is not a list")),
+                v => Err(format!("{} is not a list", super::json_kind(&v))),
             }
         }
     }
