@@ -34,12 +34,8 @@ describe("loadIr", () => {
     expect(() => loadIr({ irVersion: "0.1" })).toThrow(/"0\.1".*0\.2/)
     expect(() => loadIr([])).toThrow(IrError)
   })
-  it("refuses a machine with a parallel state", () => {
-    const ir = readIr("nest.ir.json")
-    const nest = ir.machines["Nest"]!
-    const parallel = { ...ir, machines: { Nest: { ...nest, root: { ...nest.root, kind: "parallel" as const } } } }
-    expect(() => getMachine(parallel, "Nest")).toThrow(/parallel state/)
-    expect(() => getMachine(ir, "Nope")).toThrow(/no machine "Nope"/)
+  it("refuses a machine the IR does not have", () => {
+    expect(() => getMachine(readIr("nest.ir.json"), "Nope")).toThrow(/no machine "Nope"/)
   })
 })
 

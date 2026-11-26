@@ -1,6 +1,6 @@
 /**
- * The pure core: `start` and `step`, exactly as `spec/execution.md` specifies them. They do no
- * I/O, read no clock and never modify the snapshot they are given.
+ * The pure core: `start`, `step` and `restore`, exactly as `spec/execution.md` specifies them.
+ * They do no I/O, read no clock and never modify the snapshot they are given.
  */
 import {
   type Address,
@@ -21,6 +21,7 @@ import type {
   Input,
   InvokeEntry,
   RunResult,
+  Saved,
   Snapshot,
   Status,
   Stepped,
@@ -34,7 +35,7 @@ export const SETTLE_LIMIT = 1000
 /**
  * Start run `run` of machine `name` with `input` (its arguments keyed by parameter name, a
  * `ref` as the id of the run it refers to), as execution.md's `start`. Throws an `IrError` if
- * the IR has no such machine or the machine has a parallel state (not supported yet).
+ * the IR has no such machine.
  */
 export const start = (
   ir: Ir,
@@ -107,6 +108,55 @@ export const step = (ir: Ir, snapshot: Snapshot, input: Input, fns: Fns): Steppe
   }
 }
 
+/**
+ * Start run `run` again from a saved snapshot, as execution.md's `restore`: restart the invokes
+ * it holds with their ids and fresh arguments, restart the timers not yet due for the time that
+ * remains at `now`, and queue the expiry of the others (`timer.fire`). No state is entered or
+ * exited. `saved` must have passed every check of `checkSaved`; `migrated` is the hash it had
+ * before a migration, or `null`.
+ */
+export const restore = (
+  ir: Ir,
+  saved: Saved,
+  run: string,
+  now: number,
+  migrated: string | null,
+  fns: Fns
+): Stepped => {
+  const index = machineIndex(ir, saved.machine)
+  const snapshot: Snapshot = {
+    machine: saved.machine,
+    run,
+    ir: saved.ir,
+    status: saved.status,
+    active: saved.active,
+    input: saved.input,
+    vars: saved.vars,
+    invokes: saved.invokes.map(({ id, src, state }) => ({ id, state, src })),
+    timers: saved.timers.map(({ delay, id, index, state }) => ({ id, state, index, delay })),
+    nextInvoke: saved.nextInvoke,
+    nextTimer: saved.nextTimer,
+    nextMessage: saved.nextMessage,
+    result: saved.result
+  }
+  const restored: Command = {
+    kind: "trace",
+    record: { kind: "restored", machine: saved.machine, ir: index.machine.hash, migrated, snapshot: saved }
+  }
+  try {
+    const macro = new Macrostep(ir, index, snapshot, fns)
+    macro.commands.push(restored)
+    macro.restartWork(saved, now)
+    return macro.finishStep()
+  } catch (error) {
+    if (!(error instanceof Abort)) throw error
+    const failed = new Macrostep(ir, index, snapshot, fns)
+    failed.commands.push(restored)
+    failed.failWithDefect(error.defect)
+    return failed.finishStep()
+  }
+}
+
 // ---- the machine, indexed ------------------------------------------------------------------
 
 class MachineIndex {
@@ -141,14 +191,18 @@ class MachineIndex {
     return this.parents.get(state.id)
   }
 
+  /** The states entered below `state` when it is entered with no more specific target. */
   defaultEntry(state: State): Array<State> {
-    const entry: Array<State> = []
-    let current = state
-    while (current.kind === "compound" && current.initial !== null) {
-      current = this.state(current.initial)
-      entry.push(current)
+    if (state.kind === "compound" && state.initial !== null) {
+      const child = this.state(state.initial)
+      return [child, ...this.defaultEntry(child)]
     }
-    return entry
+    if (state.kind === "parallel") return state.states.flatMap((child) => [child, ...this.defaultEntry(child)])
+    return []
+  }
+
+  position(state: State): number {
+    return this.order.get(state.id)!
   }
 
   /** Whether `a` is a proper ancestor of `b`. */
@@ -200,6 +254,9 @@ interface Selected {
   readonly index: number
   readonly transition: Transition
 }
+
+/** Which of a state's transitions are candidates for the input being selected. */
+type Candidates = (state: State) => (t: Transition) => boolean
 
 class Macrostep {
   status: Status
@@ -265,7 +322,7 @@ class Macrostep {
   }
 
   take(input: Exclude<Input, { readonly kind: "defect" }>) {
-    let selected: Selected | undefined
+    let selected: ReadonlyArray<Selected> = []
     let bindings: Bindings = NO_BINDINGS
     switch (input.kind) {
       case "cancel":
@@ -322,7 +379,7 @@ class Macrostep {
         break
       }
     }
-    if (selected === undefined) {
+    if (selected.length === 0) {
       this.trace({ kind: "dropped", event: input })
       return
     }
@@ -360,28 +417,82 @@ class Macrostep {
     return this.active.map((id) => this.index.state(id)).reverse()
   }
 
-  private selectEvent(value: Tagged, bindings: Bindings): Selected | undefined {
+  /** The active states with no active child, in document order. */
+  private activeLeaves(): Array<State> {
+    const parents = new Set<string>()
+    for (const id of this.active) {
+      const parent = this.index.parent(this.index.state(id))
+      if (parent !== undefined) parents.add(parent.id)
+    }
+    return this.active.filter((id) => !parents.has(id)).map((id) => this.index.state(id))
+  }
+
+  /**
+   * execution.md's `selectByWalks`: from each active leaf, in document order, outward to the
+   * root, the first state that offers an enabled candidate; then conflicts are removed. A state
+   * that several walks reach offers the same transition each time, so what it offered is kept.
+   */
+  private selectByWalks(candidates: Candidates, bindings: Bindings): Array<Selected> {
+    const offered = new Map<State, Selected | undefined>()
+    const enabled: Array<Selected> = []
+    for (const leaf of this.activeLeaves()) {
+      for (let state: State | undefined = leaf; state !== undefined; state = this.index.parent(state)) {
+        let selected: Selected | undefined
+        if (offered.has(state)) selected = offered.get(state)
+        else {
+          selected = this.firstEnabled(state, candidates(state), bindings)
+          offered.set(state, selected)
+        }
+        if (selected === undefined) continue
+        if (!enabled.includes(selected)) enabled.push(selected)
+        break
+      }
+    }
+    return this.removeConflicts(enabled)
+  }
+
+  /** SCXML's `removeConflictingTransitions`, as execution.md gives it. */
+  private removeConflicts(enabled: ReadonlyArray<Selected>): Array<Selected> {
+    let kept: Array<Selected> = []
+    const exits = new Map<Selected, Set<string>>()
+    const exitsOf = (t: Selected) => {
+      let set = exits.get(t)
+      if (set === undefined) exits.set(t, set = new Set(this.exitSet(t)))
+      return set
+    }
+    for (const t1 of enabled) {
+      let preempted = false
+      const replaced: Array<Selected> = []
+      for (const t2 of kept) {
+        const e2 = exitsOf(t2)
+        if (![...exitsOf(t1)].some((id) => e2.has(id))) continue
+        if (this.index.isProperAncestor(t2.source, t1.source)) replaced.push(t2)
+        else {
+          preempted = true
+          break
+        }
+      }
+      if (!preempted) {
+        kept = kept.filter((t) => !replaced.includes(t))
+        kept.push(t1)
+      }
+    }
+    return kept
+  }
+
+  private selectEvent(value: Tagged, bindings: Bindings): Array<Selected> {
     const name = value._tag
     const isOn = (t: Transition) => t.trigger.kind === "event" && t.trigger.event === name
     const isAny = (t: Transition) => t.trigger.kind === "any"
-    for (const state of this.innermostFirst()) {
-      const matches = state.transitions.some(isOn) ? isOn : isAny
-      const selected = this.firstEnabled(state, matches, bindings)
-      if (selected !== undefined) return selected
-    }
-    return undefined
+    return this.selectByWalks((state) => (state.transitions.some(isOn) ? isOn : isAny), bindings)
   }
 
   /** `on name.Event` for an emitted event: the address must name its sender. No `on *`. */
-  private selectEmitted(input: Extract<Input, { readonly kind: "emitted" }>, bindings: Bindings): Selected | undefined {
+  private selectEmitted(input: Extract<Input, { readonly kind: "emitted" }>, bindings: Bindings): Array<Selected> {
     const name = input.value._tag
     const matches = (t: Transition) =>
       t.trigger.kind === "emitted" && t.trigger.event === name && this.namesSender(t.trigger.from, input)
-    for (const state of this.innermostFirst()) {
-      const selected = this.firstEnabled(state, matches, bindings)
-      if (selected !== undefined) return selected
-    }
-    return undefined
+    return this.selectByWalks(() => matches, bindings)
   }
 
   /** Whether `address` names the run that emitted `input`. */
@@ -399,53 +510,73 @@ class Macrostep {
     inv: InvokeEntry,
     matches: (t: Transition) => boolean,
     bindings: Bindings
-  ): Selected | undefined {
-    return this.firstEnabled(this.index.state(inv.state), matches, bindings)
+  ): Array<Selected> {
+    return listOf(this.firstEnabled(this.index.state(inv.state), matches, bindings))
   }
 
-  private selectFail(inv: InvokeEntry, error: Tagged, bindings: Bindings): Selected | undefined {
+  private selectFail(inv: InvokeEntry, error: Tagged, bindings: Bindings): Array<Selected> {
     const state = this.index.state(inv.state)
     const isFail = (name: string) => (t: Transition) => t.trigger.kind === "invoke.fail" && t.trigger.error === name
     const named = isFail(error._tag)
     const matches = state.transitions.some(named) ? named : isFail("*")
-    return this.firstEnabled(state, matches, bindings)
+    return listOf(this.firstEnabled(state, matches, bindings))
   }
 
-  private selectAfter(tm: TimerEntry): Selected | undefined {
+  private selectAfter(tm: TimerEntry): Array<Selected> {
     const state = this.index.state(tm.state)
     const group = state.transitions[tm.index]?.group
-    return this.firstEnabled(state, (t) => t.trigger.kind === "after" && t.group === group, NO_BINDINGS)
+    return listOf(this.firstEnabled(state, (t) => t.trigger.kind === "after" && t.group === group, NO_BINDINGS))
   }
 
   // ---- microsteps ----
 
-  private microstep(selected: Selected, bindings: Bindings) {
-    const { index, source, transition } = selected
-    this.trace({ kind: "transition", from: source.id, index, to: transition.target })
-    if (transition.target === null) {
-      this.runEffects(transition.effects, bindings)
-      return
-    }
-    const target = this.index.state(transition.target)
+  /** The nearest compound proper ancestor of the source that is a proper ancestor of the target. */
+  private domain(t: Selected, target: State): State {
     const root = this.index.machine.root
-    let domain: State = root
-    if (source !== root) {
-      for (let p = this.index.parent(source); p !== undefined; p = this.index.parent(p)) {
-        if (this.index.isProperAncestor(p, target)) {
-          domain = p
-          break
-        }
+    if (t.source === root) return root
+    for (let p = this.index.parent(t.source); p !== undefined; p = this.index.parent(p)) {
+      if ((p === root || p.kind === "compound") && this.index.isProperAncestor(p, target)) return p
+    }
+    return root
+  }
+
+  /** The active states a transition leaves: the proper descendants of its domain. */
+  private exitSet(t: Selected): Array<string> {
+    if (t.transition.target === null) return []
+    const domain = this.domain(t, this.index.state(t.transition.target))
+    return this.active.filter((id) => this.index.isProperAncestor(domain, this.index.state(id)))
+  }
+
+  /** The states a transition enters, below its domain down to the target and its default entry. */
+  private entrySet(t: Selected, target: State): Array<State> {
+    const domain = this.domain(t, target)
+    const path: Array<State> = []
+    for (let s: State | undefined = target; s !== undefined && s !== domain; s = this.index.parent(s)) path.unshift(s)
+    const set = [...path, ...this.index.defaultEntry(target)]
+    for (const p of path) {
+      if (p === target || p.kind !== "parallel") continue
+      for (const c of p.states) if (!path.includes(c)) set.push(c, ...this.index.defaultEntry(c))
+    }
+    return set
+  }
+
+  /** Take the transitions of `selected` together: every exit, then every effect, then every entry. */
+  private microstep(selected: ReadonlyArray<Selected>, bindings: Bindings) {
+    for (const { index, source, transition } of selected) {
+      this.trace({ kind: "transition", from: source.id, index, to: transition.target })
+    }
+    const exits = new Set(selected.flatMap((t) => this.exitSet(t)))
+    for (const state of this.innermostFirst()) {
+      if (exits.has(state.id)) this.exitState(state)
+    }
+    for (const t of selected) this.runEffects(t.transition.effects, bindings)
+    const entries = new Set<State>()
+    for (const t of selected) {
+      if (t.transition.target !== null) {
+        for (const state of this.entrySet(t, this.index.state(t.transition.target))) entries.add(state)
       }
     }
-    for (const state of this.innermostFirst()) {
-      if (this.index.isProperAncestor(domain, state)) this.exitState(state)
-    }
-    this.runEffects(transition.effects, bindings)
-    const path: Array<State> = []
-    for (let s: State | undefined = target; s !== undefined && s !== domain; s = this.index.parent(s)) {
-      path.unshift(s)
-    }
-    this.enterStates([...path, ...this.index.defaultEntry(target)])
+    this.enterStates([...entries].sort((a, b) => this.index.position(a) - this.index.position(b)))
   }
 
   private exitState(state: State) {
@@ -477,13 +608,41 @@ class Macrostep {
       this.runEffects(state.entry, NO_BINDINGS)
       this.entered.add(state.id)
       if (state.kind === "final") {
-        const parent = this.index.parent(state)
-        if (parent === this.index.machine.root) {
+        if (this.index.parent(state) === this.index.machine.root) {
           this.finish(state)
           return
         }
-        if (parent !== undefined) this.completions.push(parent.id)
+        this.complete(state)
       }
+    }
+  }
+
+  /** Final state `final`, not a child of the root, was just entered: queue what it completes. */
+  private complete(final: State) {
+    let s = final
+    const parent = this.index.parent(final)!
+    if (parent.kind === "compound") {
+      this.completions.push(parent.id)
+      s = parent
+    }
+    for (let p = this.index.parent(s); p !== undefined && p.kind === "parallel" && this.inFinalState(p); p = this.index.parent(s)) {
+      s = p
+      this.completions.push(s.id)
+    }
+  }
+
+  /** SCXML's `isInFinalState`, over the active states. */
+  private inFinalState(state: State): boolean {
+    if (!this.active.includes(state.id)) return false
+    switch (state.kind) {
+      case "final":
+        return true
+      case "compound":
+        return state.states.some((c) => c.kind === "final" && this.active.includes(c.id))
+      case "parallel":
+        return state.states.every((c) => this.inFinalState(c))
+      default:
+        return false
     }
   }
 
@@ -550,17 +709,14 @@ class Macrostep {
 
   settle() {
     let count = 0
+    const isAlways = (t: Transition) => t.trigger.kind === "always"
     while (this.status === "running") {
-      let selected: Selected | undefined
-      for (const state of this.innermostFirst()) {
-        selected = this.firstEnabled(state, (t) => t.trigger.kind === "always", NO_BINDINGS)
-        if (selected !== undefined) break
+      let selected = this.selectByWalks(() => isAlways, NO_BINDINGS)
+      while (selected.length === 0 && this.completions.length > 0) {
+        const completed = this.index.state(this.completions.shift()!)
+        selected = listOf(this.firstEnabled(completed, (t) => t.trigger.kind === "done", NO_BINDINGS))
       }
-      while (selected === undefined && this.completions.length > 0) {
-        const parent = this.index.state(this.completions.shift()!)
-        selected = this.firstEnabled(parent, (t) => t.trigger.kind === "done", NO_BINDINGS)
-      }
-      if (selected === undefined) return
+      if (selected.length === 0) return
       count += 1
       if (count > SETTLE_LIMIT) throw new Abort({ kind: "limit" })
       this.microstep(selected, NO_BINDINGS)
@@ -571,28 +727,11 @@ class Macrostep {
     for (const id of [...this.active]) {
       if (!this.entered.has(id)) continue
       const state = this.index.state(id)
-      const invoke = state.invoke
-      if (invoke !== null) {
+      if (state.invoke !== null) {
         const invokeId = this.nextInvoke
         this.nextInvoke += 1
-        const params = invoke.kind === "task"
-          ? this.ir.tasks[invoke.src]?.params ?? []
-          : this.ir.machines[invoke.src]?.params ?? []
-        const args: Record<string, Json> = {}
-        invoke.args.forEach((arg, i) => {
-          args[params[i]?.name ?? String(i)] = this.eval(arg, NO_BINDINGS)
-        })
-        this.invokes.push({ id: invokeId, state: id, src: invoke.src })
-        this.trace({ kind: "invoke.started", invoke: invokeId, state: id, src: invoke.src, args })
-        this.commands.push({
-          kind: "invoke.start",
-          invoke: invokeId,
-          state: id,
-          src: invoke.src,
-          srcKind: invoke.kind,
-          as: invoke.as,
-          args
-        })
+        this.invokes.push({ id: invokeId, state: id, src: state.invoke.src })
+        this.startInvoke(state, invokeId)
       }
       const groups = new Set<number>()
       state.transitions.forEach((transition, index) => {
@@ -606,6 +745,49 @@ class Macrostep {
         this.commands.push({ kind: "timer.start", timer: timerId, delay })
       })
     }
+  }
+
+  /** Trace and start invoke `invokeId` of `state`, its arguments evaluated now. */
+  private startInvoke(state: State, invokeId: number) {
+    const invoke = state.invoke!
+    const params = invoke.kind === "task"
+      ? this.ir.tasks[invoke.src]?.params ?? []
+      : this.ir.machines[invoke.src]?.params ?? []
+    const args: Record<string, Json> = {}
+    invoke.args.forEach((arg, i) => {
+      args[params[i]?.name ?? String(i)] = this.eval(arg, NO_BINDINGS)
+    })
+    this.trace({ kind: "invoke.started", invoke: invokeId, state: state.id, src: invoke.src, args })
+    this.commands.push({
+      kind: "invoke.start",
+      invoke: invokeId,
+      state: state.id,
+      src: invoke.src,
+      srcKind: invoke.kind,
+      as: invoke.as,
+      args
+    })
+  }
+
+  /**
+   * `restore`'s work: restart each saved invoke with its id, and each saved timer not yet due
+   * for the time left, state by state in document order; then queue the expiry of the timers
+   * already due, the earliest first.
+   */
+  restartWork(saved: Saved, now: number) {
+    for (const id of this.active) {
+      const state = this.index.state(id)
+      const inv = this.invokes.find((i) => i.state === id)
+      if (inv !== undefined) this.startInvoke(state, inv.id)
+      const timers = saved.timers.filter((t) => t.state === id && t.due > now).sort((a, b) => a.id - b.id)
+      for (const tm of timers) {
+        const delay = tm.due - now
+        this.trace({ kind: "timer.started", timer: tm.id, state: id, index: tm.index, delay })
+        this.commands.push({ kind: "timer.start", timer: tm.id, delay })
+      }
+    }
+    const due = saved.timers.filter((t) => t.due <= now).sort((a, b) => a.due - b.due || a.id - b.id)
+    for (const tm of due) this.commands.push({ kind: "timer.fire", timer: tm.id })
   }
 
   private finish(final: State) {
@@ -745,6 +927,8 @@ class Macrostep {
     return value
   }
 }
+
+const listOf = <A>(a: A | undefined): Array<A> => (a === undefined ? [] : [a])
 
 const readField = (value: Json, field: string): Json => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return null
