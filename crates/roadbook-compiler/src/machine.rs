@@ -2042,7 +2042,14 @@ impl<'p> Cx<'_, 'p> {
                         }
                     }
                     let span = sp.machine.span.to(sp.span);
-                    let args = self.args(&sp.machine, span, &sp.args, sig.as_ref(), SigKind::Machine, scope);
+                    let args = self.args(
+                        &sp.machine,
+                        span,
+                        &sp.args,
+                        sig.as_ref(),
+                        SigKind::Machine,
+                        scope,
+                    );
                     if c.is_some() {
                         out.push(ir::Effect::Spawn {
                             children: sp.children.name.clone(),
