@@ -518,7 +518,9 @@ stopChildren():
     emit spawn.stop { spawn: ch.id }
   snap.spawned = []
   clear the pending spawns
-``` The run's result is the output (an Effect success, a Rust `Ok`) or the error (the Effect error channel, a Rust `Err` of the machine's error enum).
+```
+
+The run's result is the output (an Effect success, a Rust `Ok`) or the error (the Effect error channel, a Rust `Err` of the machine's error enum).
 
 ## Cancelling from outside
 
@@ -609,7 +611,7 @@ Expressions are evaluated by their IR node, recursively. Every node's `type` is 
 | Node | Value |
 | --- | --- |
 | `lit` | `value`, read according to `type` (an `int`, a float, a string, a bool, or a duration in milliseconds). |
-| `ref` | `path[0]` is a parameter (from `input`), a variable (from `vars`; reading one with no value is `unassigned`), or the implicit name `event`, `result` or `error`. Each further name reads that field of the value. A parameter or variable of a `ref` type reads as the run id it holds. |
+| `ref` | `path[0]` is a parameter (from `input`), a variable (from `vars`; reading one with no value is `unassigned`), or the implicit name `event`, `result`, `error` or `key`. Each further name reads that field of the value. A parameter or variable of a `ref` type reads as the run id it holds. |
 | `field` | Evaluate `of`, then read field `name`. |
 | `call` | Evaluate `args` left to right, then `fns(fn, args)`. |
 | `record` | An object with the fields in order. If `type` is an error, it also has `"_tag": type`. If `type` is an event (the value of a `send` or `emit`: `Machine.Name`, or the name of one of the current machine's `emits`), it also has `"_tag"` with the event's name, the part after the dot: `send upload.Pause` sends `{"_tag": "Pause"}`. |
@@ -839,7 +841,7 @@ restore(ir, saved, run, now, migrated, fns):
 
 `now` is the driver's clock, `run` the new run's id, and `migrated` the hash the snapshot had before a migration, or `null` when there was none. Each timer of the core snapshot keeps the `delay` it was saved with, the delay its `after` evaluated to, though a restarted timer's `timer.started` record and command give the time that remains. `snapshot` in the `restored` record is the saved snapshot as restored, after any migration.
 
-- **The spawned children restart.** Each child in `spawned` is started again, with its id and key and the arguments it was spawned with (they were evaluated from the event that spawned it, which is gone, so they are kept), as a new child run `<new run id>.<id>` that starts from the beginning, before the states' work, as in [starting work](#starting-work).
+- **The spawned children restart.** Each child in `spawned` is started again, with its id and key and the arguments it was spawned with (they were evaluated from the event that spawned it, which is gone, so they are kept), as a new child run `<new run id>.<id>` that starts from the beginning, before the states' work, as in [starting work](#starting-work). A child that had ended when the run was saved, but whose outcome had not been taken yet, is still in `spawned` and runs again, as an invoke in that position does.
 - **The work that was running restarts.** Each invoke in `invokes` is started again, with the same id and with its arguments evaluated now, from the snapshot's variables (a function in them is called again). A task runs again from the start, so a machine meant to be saved should wait in states with no `invoke`, or use tasks that are safe to repeat ([semantics](../docs/design/semantics.md#saving-and-restoring)). A child machine runs again from its `start`, as a new child run `<new run id>.<invoke id>`: its own progress, and the messages its parent had sent it, were not saved. An invoke whose outcome had already been taken is not in `invokes` and is not restarted, though its state is active.
 - **Timers keep their deadlines.** A timer not yet due is started again, with the same id, for the time that remains, so it expires at its saved `due`. A timer already due is not started: `timer.fire` queues its expiry at once, before anything else can reach the run's queue, the earliest due first. Its deadline passed while the run was saved, so it is taken before any event given after restoring: an order restored after its payment deadline expires before it sees the payment. Since ids are kept, `nextInvoke` and `nextTimer` do not change; they cannot collide with anything, since the run id is new.
 - **Nothing else happens.** No state is entered or exited, no effect runs and the run does not settle: the snapshot was saved between steps, already settled. The run then takes inputs like any run.
