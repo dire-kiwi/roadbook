@@ -1,0 +1,126 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  POST /orders: authenticate, validate, price, take payment, confirm.
+  Every final state is one HTTP response.
+-->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="PlaceOrder" datamodel="roadbook" initial="PlaceOrder_Authenticating" rb:returns="ApiResponse">
+  <datamodel>
+    <data id="token" rb:type="string" rb:param="true"/>
+    <data id="draft" rb:type="OrderDraft" rb:param="true"/>
+    <data id="user" rb:type="User"/>
+    <data id="order" rb:type="Order"/>
+    <data id="receipt" rb:type="Receipt"/>
+    <data id="issues" rb:type="string[]"/>
+  </datamodel>
+  <!-- Turn the bearer token into a user. -->
+  <state id="PlaceOrder_Authenticating">
+    <invoke id="PlaceOrder_Authenticating_invoke" type="urn:roadbook:task" src="authenticate">
+      <param name="token" expr="token"/>
+    </invoke>
+    <transition event="done.invoke.PlaceOrder_Authenticating_invoke" target="PlaceOrder_Processing">
+      <assign location="user" expr="result"/>
+    </transition>
+    <transition event="error.Unauthenticated.PlaceOrder_Authenticating_invoke" target="PlaceOrder_Unauthorized"/>
+  </state>
+  <!--
+    Everything that happens once we know who is asking.
+    Cancel and the 30 second budget apply to every step inside.
+  -->
+  <state id="PlaceOrder_Processing" initial="PlaceOrder_Processing_Validating">
+    <onentry>
+      <send id="PlaceOrder_Processing_after_1" event="roadbook.after.PlaceOrder_Processing.1" delay="30000ms"/>
+    </onentry>
+    <onexit>
+      <cancel sendid="PlaceOrder_Processing_after_1"/>
+    </onexit>
+    <transition event="Cancel" target="PlaceOrder_Cancelled"/>
+    <transition event="roadbook.after.PlaceOrder_Processing.1" target="PlaceOrder_TimedOut"/>
+    <state id="PlaceOrder_Processing_Validating">
+      <invoke id="PlaceOrder_Processing_Validating_invoke" type="urn:roadbook:task" src="validateOrder">
+        <param name="draft" expr="draft"/>
+      </invoke>
+      <transition event="done.invoke.PlaceOrder_Processing_Validating_invoke" target="PlaceOrder_Processing_Pricing">
+        <assign location="order" expr="result"/>
+      </transition>
+      <transition event="error.ValidationFailed.PlaceOrder_Processing_Validating_invoke" target="PlaceOrder_Invalid">
+        <assign location="issues" expr="error.issues"/>
+      </transition>
+    </state>
+    <!-- Apply the user's prices and discounts. -->
+    <state id="PlaceOrder_Processing_Pricing">
+      <invoke id="PlaceOrder_Processing_Pricing_invoke" type="urn:roadbook:task" src="priceOrder">
+        <param name="order" expr="order"/>
+        <param name="user" expr="user"/>
+      </invoke>
+      <transition event="done.invoke.PlaceOrder_Processing_Pricing_invoke" target="PlaceOrder_Processing_Paying">
+        <assign location="order" expr="result"/>
+      </transition>
+    </state>
+    <!-- Payment is its own machine: see checkout.road. -->
+    <state id="PlaceOrder_Processing_Paying">
+      <invoke id="PlaceOrder_Processing_Paying_invoke" type="http://www.w3.org/TR/scxml/" src="Checkout.scxml">
+        <param name="order" expr="order"/>
+        <param name="user" expr="user"/>
+      </invoke>
+      <transition event="done.invoke.PlaceOrder_Processing_Paying_invoke" target="PlaceOrder_Processing_Confirming">
+        <assign location="receipt" expr="result"/>
+      </transition>
+      <transition event="error.CardDeclined.PlaceOrder_Processing_Paying_invoke" target="PlaceOrder_PaymentFailed">
+        <rb:do action="audit">
+          <param name="what" expr="&quot;card_declined&quot;"/>
+          <param name="order" expr="order"/>
+        </rb:do>
+      </transition>
+      <transition event="error.GatewayUnavailable.PlaceOrder_Processing_Paying_invoke" target="PlaceOrder_PaymentFailed">
+        <rb:do action="audit">
+          <param name="what" expr="&quot;gateway_down&quot;"/>
+          <param name="order" expr="order"/>
+        </rb:do>
+      </transition>
+    </state>
+    <state id="PlaceOrder_Processing_Confirming">
+      <onentry>
+        <rb:do action="sendConfirmationEmail">
+          <param name="user" expr="user"/>
+          <param name="order" expr="order"/>
+          <param name="receipt" expr="receipt"/>
+        </rb:do>
+      </onentry>
+      <transition target="PlaceOrder_Confirmed"/>
+    </state>
+  </state>
+  <final id="PlaceOrder_Confirmed">
+    <donedata>
+      <content expr="confirmation(order, receipt)"/>
+    </donedata>
+  </final>
+  <final id="PlaceOrder_Unauthorized">
+    <donedata>
+      <content expr="problem(401, &quot;unauthenticated&quot;)"/>
+    </donedata>
+  </final>
+  <final id="PlaceOrder_Invalid">
+    <donedata>
+      <content expr="invalid(issues)"/>
+    </donedata>
+  </final>
+  <final id="PlaceOrder_PaymentFailed">
+    <donedata>
+      <content expr="problem(402, &quot;payment_failed&quot;)"/>
+    </donedata>
+  </final>
+  <final id="PlaceOrder_Cancelled">
+    <donedata>
+      <content expr="problem(499, &quot;cancelled&quot;)"/>
+    </donedata>
+  </final>
+  <final id="PlaceOrder_TimedOut">
+    <donedata>
+      <content expr="problem(504, &quot;timeout&quot;)"/>
+    </donedata>
+  </final>
+</scxml>
