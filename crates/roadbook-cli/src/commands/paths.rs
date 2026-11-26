@@ -390,9 +390,17 @@ impl<'a> Graph<'a> {
     /// The transitions of `s` and the states inside it, in document order, whose target is
     /// not inside the parallel state whose id is `inside` less its last `.`: the ways out of
     /// it from its regions. A `done` is not one: a region's ending is the parallel state's.
-    fn region_exits(&self, s: &'a State, inside: &str, out: &mut Vec<(&'a str, usize, &'a Transition)>) {
+    fn region_exits(
+        &self,
+        s: &'a State,
+        inside: &str,
+        out: &mut Vec<(&'a str, usize, &'a Transition)>,
+    ) {
         for (i, t) in s.transitions.iter().enumerate() {
-            let leaves = t.target.as_deref().is_some_and(|to| !to.starts_with(inside));
+            let leaves = t
+                .target
+                .as_deref()
+                .is_some_and(|to| !to.starts_with(inside));
             if leaves && !matches!(t.trigger, Trigger::Done) {
                 out.push((&s.id, i, t));
             }

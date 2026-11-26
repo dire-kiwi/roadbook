@@ -372,7 +372,11 @@ fn a_machine_in_a_project_local_package_is_one_declaration() {
             ),
         ],
     );
-    std::fs::write(dir.join("roadbook.toml"), "[packages]\ninv = \"pkgs/inv\"\n").unwrap();
+    std::fs::write(
+        dir.join("roadbook.toml"),
+        "[packages]\ninv = \"pkgs/inv\"\n",
+    )
+    .unwrap();
     let out = roadbook(&dir, &["paths", "Loop"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     assert!(text(&out.stdout).starts_with("Loop: 5 paths\n"));
