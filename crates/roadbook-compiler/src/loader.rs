@@ -11,6 +11,11 @@
 //! names a file in another package: its first segment is the package's name, or its first two
 //! for a scoped name (`@shop/inventory`), and the rest is the path inside the package:
 //! `"inventory/inventory.road"`, `"@shop/inventory/charts/inventory.road"`.
+//!
+//! An import stays inside the importing file's project or package: [`resolve_spec`] refuses
+//! a path that goes above the root of either, and [`FsLoader`] refuses, without reading it, a
+//! file whose canonical path on disk is outside the project root or the package's directory,
+//! so neither `..`, a remapping `exports` nor a symbolic link leads out of them.
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
@@ -105,13 +110,25 @@ pub trait Loader {
 
 /// Resolves an import path written in `importer`, as described in the [module](self)
 /// documentation, without looking at any file.
+///
+/// A path of the project or package may not go above its root. A project file outside the
+/// root, which only an entry named on the command line can be, may import files no further
+/// above the root than itself.
 pub fn resolve_spec(importer: &FileRef, spec: &str) -> Result<FileRef, String> {
     if spec.starts_with("./") || spec.starts_with("../") || spec.starts_with('/') {
         let path = join(&importer.path, spec);
-        if path == ".." || path.starts_with("../") {
-            if let Some(p) = &importer.package {
-                return Err(format!("the path goes above the root of package `{p}`"));
-            }
+        if levels_up(&path) > levels_up(&importer.path) {
+            return Err(match &importer.package {
+                Some(p) => format!("the path goes above the root of package `{p}`"),
+                None if levels_up(&importer.path) == 0 => {
+                    "the path goes above the project root: an import names a file of the project \
+                     or of a package"
+                        .into()
+                }
+                None => {
+                    "the path goes further above the project root than the importing file".into()
+                }
+            });
         }
         return Ok(FileRef {
             package: importer.package.clone(),
@@ -134,6 +151,11 @@ pub fn resolve_spec(importer: &FileRef, spec: &str) -> Result<FileRef, String> {
         package: Some(package.to_string()),
         path,
     })
+}
+
+/// How many `..` a normalised path starts with: how far above the root it is.
+fn levels_up(path: &str) -> usize {
+    path.split('/').take_while(|s| *s == "..").count()
 }
 
 /// `inventory/a/b.road` is `("inventory", "a/b.road")`, `@shop/inventory/a.road` is
@@ -199,6 +221,12 @@ impl FileSystem for StdFs {
 /// A file's identity ([`Loader::location`]) is its canonical path on disk, so a file reached
 /// both by a relative path and as a file of a package, or through a symbolic link, is loaded
 /// once.
+///
+/// A file is read only if its canonical path, symbolic links resolved, is inside the
+/// canonical project root (a project file) or package directory (a file of a package), so a
+/// link inside the project to a file outside it is refused. A project file that is itself
+/// outside the root (an entry named on the command line) may be as far above the root as its
+/// path goes.
 #[derive(Clone, Debug)]
 pub struct FsLoader<F = StdFs> {
     pub root: PathBuf,
@@ -321,6 +349,49 @@ impl<F: FileSystem> FsLoader<F> {
              `roadbook.toml`, or install it in a `node_modules` directory"
         ))
     }
+
+    /// Fails unless `disk`, the file on disk for `file`, is inside the project root or the
+    /// package's directory: lexically, and once symbolic links are resolved.
+    fn check_inside(&self, file: &FileRef, disk: &Path) -> Result<(), String> {
+        let (bound, what) = match &file.package {
+            None => {
+                let mut bound = self.root.clone();
+                for _ in 0..levels_up(&file.path) {
+                    bound.push("..");
+                }
+                (bound, "the project".to_string())
+            }
+            Some(p) => match self.dirs.get(p) {
+                Some(dir) => (dir.clone(), format!("package `{p}`")),
+                None => return Err(format!("package `{p}` was not resolved")),
+            },
+        };
+        let lexical = |p: &Path| normalize(&p.to_string_lossy());
+        if !within(&lexical(disk), &lexical(&bound)) {
+            return Err(format!("the file is outside {what}"));
+        }
+        if let (Some(disk), Some(bound)) =
+            (self.fs.canonicalize(disk), self.fs.canonicalize(&bound))
+            && !disk.starts_with(&bound)
+        {
+            return Err(format!(
+                "a symbolic link leads from it to outside {what}, and links out of {what} are \
+                 not followed"
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Whether the normalised path `path` is `dir` or inside it.
+fn within(path: &str, dir: &str) -> bool {
+    let mut path = path.split('/').filter(|s| !s.is_empty());
+    for seg in dir.split('/').filter(|s| !s.is_empty()) {
+        if path.next() != Some(seg) {
+            return false;
+        }
+    }
+    path.next() != Some("..")
 }
 
 /// The conditions [`FsLoader`] matches in an `exports` map, in addition to the order written:
@@ -627,6 +698,7 @@ impl<F: FileSystem> Loader for FsLoader<F> {
                 file.package.as_deref().unwrap_or("")
             )
         })?;
+        self.check_inside(file, &path)?;
         self.fs.read_to_string(&path).map(Loaded::Source)
     }
 
@@ -794,6 +866,32 @@ mod tests {
                 .unwrap_err()
                 .contains("above the root")
         );
+        // A project file's import stays in the project; one outside the root (an entry named
+        // on the command line) goes no further above it than itself.
+        for spec in [
+            "/../x.road",
+            "../../x.road",
+            "./../a/../../x.road",
+            "/a/../../x.road",
+        ] {
+            assert!(
+                r(&project, spec)
+                    .unwrap_err()
+                    .contains("above the project root"),
+                "{spec}"
+            );
+        }
+        let outside = FileRef::project("../side/a.road");
+        assert_eq!(
+            r(&outside, "./b.road"),
+            Ok(FileRef::project("../side/b.road"))
+        );
+        assert_eq!(r(&outside, "/b.road"), Ok(FileRef::project("b.road")));
+        assert!(
+            r(&outside, "../../b.road")
+                .unwrap_err()
+                .contains("further above")
+        );
         assert!(
             r(&project, "types.road")
                 .unwrap_err()
@@ -955,6 +1053,18 @@ mod tests {
             Err(NotExported::Missing)
         );
         assert_eq!(export_of(r#"{"name": "x"}"#, &[], conditions), Ok(None));
+    }
+
+    #[test]
+    fn paths_within_a_directory() {
+        assert!(within("r/a/b.road", "r"));
+        assert!(within("r", "r"));
+        assert!(!within("ra/b.road", "r"));
+        assert!(!within("x/b.road", "r/x"));
+        assert!(within("a.road", ""));
+        assert!(!within("../a.road", ""));
+        assert!(within("../../a.road", "../.."));
+        assert!(!within("../../../a.road", "../.."));
     }
 
     #[test]
