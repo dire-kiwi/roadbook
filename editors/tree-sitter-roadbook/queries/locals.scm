@@ -14,7 +14,7 @@
 (invoke
   alias: (identifier) @local.definition)
 
-; Names read in expressions, assigned, or used as the address of a message.
+; Names read in expressions, assigned, or used as the address of a message, a call or a reply.
 (_
   value: (identifier) @local.reference)
 
@@ -47,3 +47,9 @@
 
 (received_event
   from: (identifier) @local.reference)
+
+(invoke
+  peer: (identifier) @local.reference)
+
+(reply
+  call: (identifier) @local.reference)
