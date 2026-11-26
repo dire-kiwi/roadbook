@@ -123,3 +123,46 @@ A failed request becomes a picture of where it went: the trace a failing test or
 - **Mermaid.** `roadbook export mermaid <file>` writes Markdown with a `stateDiagram-v2` block per machine; `--machine Name` writes one bare diagram. GitHub renders it inline, so a chart can sit in a README or a pull request description. States, nesting, parallel regions, initial and final states and labelled transitions survive, with invokes, `entry`, `exit`, internal transitions and results as state descriptions (a note beside a compound or parallel state, which Mermaid allows no description). Messaging is written as in the chart: `upload.Progress` as a trigger, `send upload.Pause` and `emit Progress { … }` as effects, `invoke machine Upload(file) as upload`; the source line of a machine from another package names the package (`inventory/inventory.road:19`). A state named like a Mermaid keyword gets an id ending in `_`, and the machine drawn as a state the id `<Machine>_machine`; the names shown are unchanged. A machine's doc comment is a `text` block, so nothing in it is read as Markdown. It loses the line styles, the detail panel and the drill-down, and its layout is coarser.
 - **Static SVG.** For documentation, from `packages/viewer/scripts/svg.ts`. The CLI has no command for it yet, since it needs a JavaScript runtime to run ELK.
 - **Live.** `roadbook viz --watch [--port N]` rebuilds when a chart changes and serves the output on `127.0.0.1` (port 7357 by default), and the pages reload themselves. It answers only requests whose `Host` is `localhost`, `127.0.0.1` or `[::1]` with its port, so another site cannot read the charts by pointing a DNS name at the machine. Later, a running application can stream its trace to the viewer for a live view of what it is doing.
+
+## Paths through a machine
+
+`roadbook paths <Machine> [file]` lists the paths through a machine from its initial state to each final state and to each state with no way out. Without `file`, it compiles every `.road` file of the project and takes the one declaration of that name; if there is none, or more than one (the repository has several `Checkout`s), it says where and exits 2, and the file must be named. With `file`, the machine is taken from that file's compilation, declared there or imported. Compile errors are reported as `roadbook check` reports them, and exit 1.
+
+```
+Checkout: 6 paths
+1. Charging --done--> Charged (final: output receipt)
+2. Charging --fail CardDeclined--> Declined (final: fail declined)
+3. Charging
+     --fail GatewayUnavailable [attempts < 3]--> Backoff
+     --after retryDelay(attempts)--> Charging
+     --done--> Charged (final: output receipt)
+…
+```
+
+States are named below the machine (`Processing.Paying`); a path longer than a hundred columns is printed one step per line. The rules:
+
+- **Positions.** A position is a leaf state: atomic, final or parallel. A path starts at the machine's initial leaf (the root's `initial`, then each compound's `initial` in turn), and entering a target enters its initial descendants the same way.
+- **Steps.** A step takes one transition with a target; an internal transition is not a step. From a position the transitions available are its own and then each ancestor's, innermost first, each state's in written order, so `Processing`'s `Cancel` and `after 30s` are steps from every state inside it. Each branch of a guarded block is a step of its own and shows its guard, `[else]` for the unguarded last branch. A `done` is available only from a final state (its parent's) and from a parallel state (its own). An `always` without a guard is taken at once, so where one is available the steps are the `always` branches up to and including it (`Confirming` has no `Cancel` step).
+- **Finals.** A final state directly under the root ends the path (`final`, with its `output` or `fail`). Any other final state ends its parent: the steps from it are the parent's `done` transitions, or, if the parent has none, what the position allows otherwise.
+- **Parallel states** are one position: the paths do not go inside their regions. The steps from one are its own transitions, its `done` among them, and its ancestors'. A target inside a parallel state puts the position at the outermost parallel state containing it.
+- **Stuck.** A position with no step at all ends the path: `stuck`, a state with no way out.
+- **Loops** are taken at most once: no path takes the same transition (state, index) twice. `Charging -> Backoff -> Charging -> Charged` is listed, and the loop is not repeated. A path whose every remaining step was taken already only loops, and is not listed.
+- **Child machines** are not entered: an invoke's `done` and `fail` are ordinary steps.
+- **Order and bounds.** The search is depth-first in that order, so the output is the same every time. It stops after `--max N` paths (1000 by default) or a million steps searched, prints the paths found, says on standard error that it stopped, and exits 0.
+
+`--json` prints one object:
+
+```json
+{
+  "machine": "Checkout",
+  "paths": [
+    {"end": "final", "state": "Checkout.Charged", "steps": [{"from": "Checkout.Charging", "index": 0, "trigger": "done", "guard": null, "to": "Checkout.Charged"}]},
+    …
+  ],
+  "truncated": false
+}
+```
+
+`end` is `final` or `stuck` and `state` the full id of the state the path ends at. In a step, `from` is the state the transition belongs to (an ancestor of the position, for an inherited one) and `index` its index among that state's transitions: what a trace's `transition` record carries. `trigger` is the label the diagram gives it (`Cancel`, `upload.Progress`, `on *`, `after 30s`, `always`, `done`, `fail CardDeclined`), `guard` the guard's text, `else` for an else branch and `null` with none, and `to` the target as written. `truncated` is true when a bound stopped the search.
+
+Each path is a test to write: start the machine, drive it along the steps (send the event, finish or fail the invoke, advance the clock past the timer, with guards made true by the input and the host's answers), and expect the run to end where the path does. For coverage, the paths are the transitions there are to take: compare their `(from, index)` pairs with the `transition` records of the traces a test suite or production wrote. The viewer's coverage mode shades the transitions taken.
