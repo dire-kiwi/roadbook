@@ -1,6 +1,6 @@
 //! `start` and `step`, exactly as `spec/execution.md` gives them.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 use roadbook_ir::{
     Address, AddressKind, Effect, Machine, State, StateKind, Transition, Trigger, TypeRef,
@@ -10,7 +10,7 @@ use serde_json::{Map, Value};
 use crate::eval::{Fns, Scope, eval};
 use crate::program::{MachineIndex, Program};
 use crate::{
-    Command, Defect, Input, InvokeEntry, Object, Record, RunResult, SETTLE_LIMIT, Snapshot,
+    Command, Defect, Input, InvokeEntry, Object, Record, RunResult, SETTLE_LIMIT, Saved, Snapshot,
     SrcKind, Status, TimerEntry,
 };
 
@@ -31,6 +31,9 @@ impl std::error::Error for UnknownMachine {}
 
 /// The implicit name a transition binds, and its value.
 type Implicit<'a> = Option<(&'static str, &'a Value)>;
+
+/// A transition: its state's index and its index in that state's `transitions`.
+type Tr = (usize, usize);
 
 struct Ctx<'p, 'f, 'g> {
     program: &'p Program,
@@ -116,6 +119,45 @@ impl Program {
                 let mut cx = Ctx::new(self, m, idx, snap.clone(), cx.fns);
                 cx.fail_with_defect(d);
                 cx.finish()
+            }
+        }
+    }
+}
+
+impl Program {
+    /// Starts run `run` again from the saved snapshot `saved`, which
+    /// [`Program::check_saved`] has passed (`spec/execution.md#restoring-a-snapshot`): writes
+    /// `restored`, restarts the invokes that were running and the timers not yet due (for the
+    /// time that remains until their `due`), and queues the expiry of those already due at
+    /// `now` with `timer.fire`, the earliest first. `migrated` is the hash the snapshot had
+    /// before a migration. No state is entered or exited and the run does not settle.
+    pub fn restore(
+        &self,
+        saved: &Saved,
+        run: &str,
+        now: u64,
+        migrated: Option<String>,
+        fns: &mut Fns<'_>,
+    ) -> Result<StepResult, UnknownMachine> {
+        let (m, idx) = self
+            .machine(&saved.machine)
+            .ok_or_else(|| UnknownMachine(saved.machine.clone()))?;
+        let snap = saved.to_snapshot(run);
+        let restored = Record::Restored {
+            machine: saved.machine.clone(),
+            ir: m.hash.clone(),
+            migrated,
+            snapshot: Box::new(saved.clone()),
+        };
+        let mut cx = Ctx::new(self, m, idx, snap.clone(), fns);
+        cx.trace(restored.clone());
+        match cx.restart(saved, now) {
+            Ok(()) => Ok(cx.finish()),
+            Err(d) => {
+                let mut cx = Ctx::new(self, m, idx, snap, cx.fns);
+                cx.trace(restored);
+                cx.fail_with_defect(d);
+                Ok(cx.finish())
             }
         }
     }
@@ -220,22 +262,75 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         Ok(())
     }
 
+    /// The states entered below `s` when it is entered with no more specific target, in
+    /// document order: a compound state's initial chain, every region of a parallel state.
     fn default_entry(&self, s: usize) -> Vec<usize> {
         let mut out = Vec::new();
-        let mut cur = self.state(s);
-        while cur.kind == StateKind::Compound {
-            let Some(init) = &cur.initial else { break };
-            let i = self.index_of(init);
-            out.push(i);
-            cur = self.state(i);
-        }
+        self.default_entry_into(s, &mut out);
         out
+    }
+
+    fn default_entry_into(&self, s: usize, out: &mut Vec<usize>) {
+        let state = self.state(s);
+        match state.kind {
+            StateKind::Compound => {
+                if let Some(init) = &state.initial {
+                    let c = self.index_of(init);
+                    out.push(c);
+                    self.default_entry_into(c, out);
+                }
+            }
+            StateKind::Parallel => {
+                for &c in &self.idx.children[s] {
+                    out.push(c);
+                    self.default_entry_into(c, out);
+                }
+            }
+            StateKind::Atomic | StateKind::Final => {}
+        }
+    }
+
+    // ---- restore -------------------------------------------------------------------------
+
+    fn restart(&mut self, saved: &Saved, now: u64) -> R {
+        for s in self.active.clone() {
+            let state = self.state(s);
+            if let Some(inv) = self.snap.invokes.iter().find(|i| i.state == state.id) {
+                let id = inv.id;
+                self.start_invoke(s, id)?;
+            }
+            let mut timers: Vec<_> = saved
+                .timers
+                .iter()
+                .filter(|t| t.state == state.id && t.due > now)
+                .collect();
+            timers.sort_by_key(|t| t.id);
+            for tm in timers {
+                let delay = tm.due - now;
+                self.trace(Record::TimerStarted {
+                    timer: tm.id,
+                    state: state.id.clone(),
+                    index: tm.index,
+                    delay,
+                });
+                self.cmds.push(Command::TimerStart {
+                    timer: tm.id,
+                    delay,
+                });
+            }
+        }
+        let mut due: Vec<_> = saved.timers.iter().filter(|t| t.due <= now).collect();
+        due.sort_by_key(|t| (t.due, t.id));
+        for tm in due {
+            self.cmds.push(Command::TimerFire { timer: tm.id });
+        }
+        Ok(())
     }
 
     // ---- step ----------------------------------------------------------------------------
 
     fn take(&mut self, input: Input) -> R {
-        let chosen: Option<(usize, usize)>;
+        let chosen: Vec<Tr>;
         let bound: Option<(&'static str, Value)>;
         match &input {
             Input::Cancel => return self.cancel_run(),
@@ -257,12 +352,15 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     }
                     Input::InvokeDone { value, .. } => {
                         bound = Some(("result", value.clone()));
-                        chosen = self.select_in(
-                            owner,
-                            bound.as_ref(),
-                            |t| matches!(t, Trigger::InvokeDone),
-                            None,
-                        )?;
+                        chosen = self
+                            .select_in(
+                                owner,
+                                bound.as_ref(),
+                                |t| matches!(t, Trigger::InvokeDone),
+                                None,
+                            )?
+                            .into_iter()
+                            .collect();
                     }
                     Input::InvokeFail { error, .. } => {
                         let tag = error.get("_tag").and_then(Value::as_str).unwrap_or("");
@@ -278,12 +376,15 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                             |t| matches!(&t.trigger, Trigger::InvokeFail { error } if *error == tag),
                         );
                         let want = if listed { tag } else { "*".to_owned() };
-                        chosen = self.select_in(
-                            owner,
-                            bound.as_ref(),
-                            |t| matches!(t, Trigger::InvokeFail { error } if *error == want),
-                            None,
-                        )?;
+                        chosen = self
+                            .select_in(
+                                owner,
+                                bound.as_ref(),
+                                |t| matches!(t, Trigger::InvokeFail { error } if *error == want),
+                                None,
+                            )?
+                            .into_iter()
+                            .collect();
                     }
                     _ => unreachable!(),
                 }
@@ -297,12 +398,15 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 let owner = self.index_of(&tm.state);
                 let group = self.state(owner).transitions[tm.index].group;
                 bound = None;
-                chosen = self.select_in(
-                    owner,
-                    None,
-                    |t| matches!(t, Trigger::After { .. }),
-                    Some(group),
-                )?;
+                chosen = self
+                    .select_in(
+                        owner,
+                        None,
+                        |t| matches!(t, Trigger::After { .. }),
+                        Some(group),
+                    )?
+                    .into_iter()
+                    .collect();
             }
             Input::Event { value } | Input::Message { value, .. } => {
                 bound = Some(("event", value.clone()));
@@ -325,12 +429,12 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             }
             Input::Defect { .. } => unreachable!("handled by step"),
         }
-        let Some(t) = chosen else {
+        if chosen.is_empty() {
             self.trace(Record::Dropped { event: input });
             return Ok(());
-        };
+        }
         self.trace(Record::Event { event: input });
-        self.microstep(t, bound.as_ref().map(|(n, v)| (*n, v)))?;
+        self.microstep(&chosen, bound.as_ref().map(|(n, v)| (*n, v)))?;
         self.settle()?;
         if self.snap.status == Status::Running {
             self.start_work()?;
@@ -369,11 +473,11 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         Ok(None)
     }
 
-    fn select_event(&mut self, value: &Value) -> R<Option<(usize, usize)>> {
+    fn select_event(&mut self, value: &Value) -> R<Vec<Tr>> {
         let tag = value.get("_tag").and_then(Value::as_str).unwrap_or("");
         let bound = ("event", value);
-        for &s in self.active.clone().iter().rev() {
-            let state = self.state(s);
+        self.select_walks(|cx, s| {
+            let state = cx.state(s);
             let has_on = state
                 .transitions
                 .iter()
@@ -384,12 +488,146 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 } else {
                     matches!(t.trigger, Trigger::Any)
                 };
-                if candidate && self.holds(t, Some(bound))? {
+                if candidate && cx.holds(t, Some(bound))? {
                     return Ok(Some((s, i)));
                 }
             }
+            Ok(None)
+        })
+    }
+
+    /// The active leaves, in document order: the active states with no active child.
+    fn active_leaves(&self) -> Vec<usize> {
+        self.active
+            .iter()
+            .copied()
+            .filter(|&s| !self.active.iter().any(|&c| self.idx.parents[c] == Some(s)))
+            .collect()
+    }
+
+    /// `selectByWalks`: each active leaf, in document order, walks outward to the first state
+    /// that offers a transition (`first`, which tries the state's candidates in document
+    /// order); the transitions found, each once, with conflicts removed. A state's offer is
+    /// remembered, so a state that several walks reach is searched once.
+    fn select_walks(
+        &mut self,
+        mut first: impl FnMut(&mut Self, usize) -> R<Option<Tr>>,
+    ) -> R<Vec<Tr>> {
+        let mut offered: HashMap<usize, Option<Tr>> = HashMap::new();
+        let mut enabled: Vec<Tr> = Vec::new();
+        for leaf in self.active_leaves() {
+            let mut cur = Some(leaf);
+            while let Some(s) = cur {
+                let t = match offered.get(&s) {
+                    Some(t) => *t,
+                    None => {
+                        let t = first(self, s)?;
+                        offered.insert(s, t);
+                        t
+                    }
+                };
+                if let Some(t) = t {
+                    if !enabled.contains(&t) {
+                        enabled.push(t);
+                    }
+                    break;
+                }
+                cur = self.idx.parents[s];
+            }
         }
-        Ok(None)
+        Ok(self.remove_conflicts(enabled))
+    }
+
+    /// SCXML's `removeConflictingTransitions`.
+    fn remove_conflicts(&self, enabled: Vec<Tr>) -> Vec<Tr> {
+        let mut kept: Vec<(Tr, Vec<usize>)> = Vec::new();
+        for t1 in enabled {
+            let x1 = self.exit_set(t1);
+            let mut preempted = false;
+            let mut replaced = Vec::new();
+            for (t2, x2) in &kept {
+                if x1.iter().any(|s| x2.contains(s)) {
+                    if self.idx.is_ancestor(t2.0, t1.0) {
+                        replaced.push(*t2);
+                    } else {
+                        preempted = true;
+                        break;
+                    }
+                }
+            }
+            if !preempted {
+                kept.retain(|(t, _)| !replaced.contains(t));
+                kept.push((t1, x1));
+            }
+        }
+        kept.into_iter().map(|(t, _)| t).collect()
+    }
+
+    fn target(&self, (source, index): Tr) -> Option<usize> {
+        self.state(source).transitions[index]
+            .target
+            .as_ref()
+            .map(|id| self.index_of(id))
+    }
+
+    /// The domain of a transition from `source` to `target`: the root for one of the root's,
+    /// else the nearest proper ancestor of `source` that is a compound state and a proper
+    /// ancestor of `target`. Never a parallel state.
+    fn domain(&self, source: usize, target: usize) -> usize {
+        if source == 0 {
+            return 0;
+        }
+        let mut cur = self.idx.parents[source];
+        while let Some(x) = cur {
+            if self.state(x).kind == StateKind::Compound && self.idx.is_ancestor(x, target) {
+                return x;
+            }
+            cur = self.idx.parents[x];
+        }
+        0
+    }
+
+    /// The active states a transition exits, in document order: none for one with no target.
+    fn exit_set(&self, t: Tr) -> Vec<usize> {
+        let Some(target) = self.target(t) else {
+            return Vec::new();
+        };
+        let domain = self.domain(t.0, target);
+        self.active
+            .iter()
+            .copied()
+            .filter(|&s| self.idx.is_ancestor(domain, s))
+            .collect()
+    }
+
+    /// The states a transition with a target enters: the path from just below its domain to
+    /// the target, the target's default entry, and every other region of a parallel state on
+    /// the path by default entry.
+    fn entry_set(&self, t: Tr, target: usize) -> Vec<usize> {
+        let domain = self.domain(t.0, target);
+        let mut path = Vec::new();
+        let mut cur = Some(target);
+        while let Some(c) = cur {
+            if c == domain {
+                break;
+            }
+            path.push(c);
+            cur = self.idx.parents[c];
+        }
+        path.reverse();
+        let mut set = path.clone();
+        self.default_entry_into(target, &mut set);
+        for &p in &path {
+            if p != target && self.state(p).kind == StateKind::Parallel {
+                for &c in &self.idx.children[p] {
+                    if !path.contains(&c) {
+                        set.push(c);
+                        self.default_entry_into(c, &mut set);
+                    }
+                }
+            }
+        }
+        set
     }
 
     /// Whether `address` names the sender `from` of an emitted event, which this run's
@@ -415,78 +653,58 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         }
     }
 
-    fn select_emitted(
-        &mut self,
-        from: &str,
-        invoke: Option<u64>,
-        value: &Value,
-    ) -> R<Option<(usize, usize)>> {
+    fn select_emitted(&mut self, from: &str, invoke: Option<u64>, value: &Value) -> R<Vec<Tr>> {
         let tag = value.get("_tag").and_then(Value::as_str).unwrap_or("");
         let bound = ("event", value);
-        for &s in self.active.clone().iter().rev() {
-            let state = self.state(s);
+        self.select_walks(|cx, s| {
+            let state = cx.state(s);
             for (i, t) in state.transitions.iter().enumerate() {
                 let candidate = matches!(
                     &t.trigger,
                     Trigger::Emitted { from: address, event }
-                        if event == tag && self.names_sender(address, from, invoke)
+                        if event == tag && cx.names_sender(address, from, invoke)
                 );
-                if candidate && self.holds(t, Some(bound))? {
+                if candidate && cx.holds(t, Some(bound))? {
                     return Ok(Some((s, i)));
                 }
             }
-        }
-        Ok(None)
+            Ok(None)
+        })
     }
 
     // ---- microsteps ----------------------------------------------------------------------
 
-    fn microstep(&mut self, (source, index): (usize, usize), implicit: Implicit<'_>) -> R {
-        let t = &self.state(source).transitions[index];
-        self.trace(Record::Transition {
-            from: self.state(source).id.clone(),
-            index,
-            to: t.target.clone(),
-        });
-        let Some(target_id) = &t.target else {
-            return self.run_effects(&t.effects, implicit);
-        };
-        let target = self.index_of(target_id);
-        let domain = if source == 0 {
-            0
-        } else {
-            let mut d = self.idx.parents[source];
-            while let Some(x) = d {
-                if self.idx.is_ancestor(x, target) {
-                    break;
-                }
-                d = self.idx.parents[x];
-            }
-            d.unwrap_or(0)
-        };
-        let exiting: Vec<usize> = self
-            .active
-            .iter()
-            .rev()
-            .copied()
-            .filter(|&s| self.idx.is_ancestor(domain, s))
-            .collect();
-        for s in exiting {
+    /// Takes the transitions of `t` together: their `transition` records, every exit they
+    /// cause (innermost first), each transition's effects in order, every entry (in document
+    /// order).
+    fn microstep(&mut self, t: &[Tr], implicit: Implicit<'_>) -> R {
+        for &(source, index) in t {
+            let state = self.state(source);
+            self.trace(Record::Transition {
+                from: state.id.clone(),
+                index,
+                to: state.transitions[index].target.clone(),
+            });
+        }
+        let mut exits: Vec<usize> = t.iter().flat_map(|&x| self.exit_set(x)).collect();
+        exits.sort_unstable();
+        exits.dedup();
+        for s in exits.into_iter().rev() {
             self.exit_state(s)?;
         }
-        self.run_effects(&t.effects, implicit)?;
-        let mut path = Vec::new();
-        let mut cur = Some(target);
-        while let Some(c) = cur {
-            if c == domain {
-                break;
-            }
-            path.push(c);
-            cur = self.idx.parents[c];
+        for &(source, index) in t {
+            let effects = &self.state(source).transitions[index].effects;
+            self.run_effects(effects, implicit)?;
         }
-        path.reverse();
-        path.extend(self.default_entry(target));
-        self.enter_states(&path, None)
+        let mut entries: Vec<usize> = Vec::new();
+        for &x in t {
+            if let Some(target) = self.target(x) {
+                entries.extend(self.entry_set(x, target));
+            }
+        }
+        entries.sort_unstable();
+        entries.dedup();
+        self.enter_states(&entries, None)
     }
 
     fn exit_state(&mut self, s: usize) -> R {
@@ -539,11 +757,50 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             if state.kind == StateKind::Final {
                 match self.idx.parents[s] {
                     Some(0) | None => return self.finish_run(s),
-                    Some(p) => self.completion.push_back(p),
+                    Some(_) => self.complete(s),
                 }
             }
         }
         Ok(())
+    }
+
+    /// Queues the completions that entering final state `f` causes: its compound parent's,
+    /// then each enclosing parallel state's that is now in a final state, innermost first.
+    fn complete(&mut self, f: usize) {
+        let mut s = f;
+        if let Some(p) = self.idx.parents[f] {
+            if self.state(p).kind == StateKind::Compound {
+                self.completion.push_back(p);
+                s = p;
+            }
+        }
+        while let Some(p) = self.idx.parents[s] {
+            if self.state(p).kind != StateKind::Parallel || !self.in_final(p) {
+                break;
+            }
+            self.completion.push_back(p);
+            s = p;
+        }
+    }
+
+    fn is_active(&self, s: usize) -> bool {
+        self.active.binary_search(&s).is_ok()
+    }
+
+    /// SCXML's `isInFinalState`, for an active state.
+    fn in_final(&self, s: usize) -> bool {
+        if !self.is_active(s) {
+            return false;
+        }
+        let children = &self.idx.children[s];
+        match self.state(s).kind {
+            StateKind::Final => true,
+            StateKind::Atomic => false,
+            StateKind::Compound => children
+                .iter()
+                .any(|&c| self.is_active(c) && self.state(c).kind == StateKind::Final),
+            StateKind::Parallel => children.iter().all(|&c| self.in_final(c)),
+        }
     }
 
     fn run_effects(&mut self, effects: &[Effect], implicit: Implicit<'_>) -> R {
@@ -643,25 +900,23 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             if self.snap.status != Status::Running {
                 return Ok(());
             }
-            let mut t = None;
-            for &s in self.active.clone().iter().rev() {
-                t = self.select_in(s, None, |t| matches!(t, Trigger::Always), None)?;
-                if t.is_some() {
-                    break;
-                }
-            }
-            while t.is_none() {
+            let mut t = self.select_walks(|cx, s| {
+                cx.select_in(s, None, |t| matches!(t, Trigger::Always), None)
+            })?;
+            while t.is_empty() {
                 let Some(p) = self.completion.pop_front() else {
                     break;
                 };
-                t = self.select_in(p, None, |t| matches!(t, Trigger::Done), None)?;
+                t.extend(self.select_in(p, None, |t| matches!(t, Trigger::Done), None)?);
             }
-            let Some(t) = t else { return Ok(()) };
+            if t.is_empty() {
+                return Ok(());
+            }
             count += 1;
             if count > SETTLE_LIMIT {
                 return Err(Defect::Limit);
             }
-            self.microstep(t, None)?;
+            self.microstep(&t, None)?;
         }
     }
 
@@ -674,38 +929,12 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             if let Some(inv) = &state.invoke {
                 let id = self.snap.next_invoke;
                 self.snap.next_invoke += 1;
-                let ir = self.program.ir();
-                let params = match inv.kind {
-                    roadbook_ir::InvokeKind::Task => &ir.tasks[inv.src.as_str()].params,
-                    roadbook_ir::InvokeKind::Machine => &ir.machines[inv.src.as_str()].params,
-                };
-                let mut args = Map::new();
-                for (p, a) in params.iter().zip(&inv.args) {
-                    let v = self.eval(a, None)?;
-                    args.insert(p.name.clone(), v);
-                }
                 self.snap.invokes.push(InvokeEntry {
                     id,
                     state: state.id.clone(),
                     src: inv.src.clone(),
                 });
-                self.trace(Record::InvokeStarted {
-                    invoke: id,
-                    state: state.id.clone(),
-                    src: inv.src.clone(),
-                    args: args.clone(),
-                });
-                self.cmds.push(Command::InvokeStart {
-                    invoke: id,
-                    state: state.id.clone(),
-                    src: inv.src.clone(),
-                    src_kind: match inv.kind {
-                        roadbook_ir::InvokeKind::Task => SrcKind::Task,
-                        roadbook_ir::InvokeKind::Machine => SrcKind::Machine,
-                    },
-                    alias: inv.alias.clone(),
-                    args,
-                });
+                self.start_invoke(s, id)?;
             }
             let mut seen = Vec::new();
             for (i, t) in state.transitions.iter().enumerate() {
@@ -740,6 +969,43 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 self.cmds.push(Command::TimerStart { timer: id, delay });
             }
         }
+        Ok(())
+    }
+
+    /// Evaluates the arguments of state `s`'s invoke and starts it as invoke `id`: its
+    /// `invoke.started` record and `invoke.start` command.
+    fn start_invoke(&mut self, s: usize, id: u64) -> R {
+        let state = self.state(s);
+        let Some(inv) = &state.invoke else {
+            return Ok(());
+        };
+        let ir = self.program.ir();
+        let params = match inv.kind {
+            roadbook_ir::InvokeKind::Task => &ir.tasks[inv.src.as_str()].params,
+            roadbook_ir::InvokeKind::Machine => &ir.machines[inv.src.as_str()].params,
+        };
+        let mut args = Map::new();
+        for (p, a) in params.iter().zip(&inv.args) {
+            let v = self.eval(a, None)?;
+            args.insert(p.name.clone(), v);
+        }
+        self.trace(Record::InvokeStarted {
+            invoke: id,
+            state: state.id.clone(),
+            src: inv.src.clone(),
+            args: args.clone(),
+        });
+        self.cmds.push(Command::InvokeStart {
+            invoke: id,
+            state: state.id.clone(),
+            src: inv.src.clone(),
+            src_kind: match inv.kind {
+                roadbook_ir::InvokeKind::Task => SrcKind::Task,
+                roadbook_ir::InvokeKind::Machine => SrcKind::Machine,
+            },
+            alias: inv.alias.clone(),
+            args,
+        });
         Ok(())
     }
 

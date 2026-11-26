@@ -318,6 +318,13 @@ pub enum Command {
         /// The timer's id.
         timer: u64,
     },
+    /// Queue `{"kind": "after", "timer": id}` on this run's queue at once, without starting a
+    /// timer: a restored timer that was already due. Only [`crate::Program::restore`] emits it.
+    #[serde(rename = "timer.fire")]
+    TimerFire {
+        /// The timer's id.
+        timer: u64,
+    },
     /// Queue a message for run `to` without waiting for it: for the child run of this run's
     /// invoke `invoke`, or, when `invoke` is `None`, for the peer `to`.
     #[serde(rename = "send")]
@@ -355,6 +362,18 @@ pub enum Record {
         ir: String,
         /// The arguments.
         input: Object,
+    },
+    /// The run was restored from a saved snapshot: first, instead of `started`.
+    #[serde(rename = "restored")]
+    Restored {
+        /// The machine's name.
+        machine: String,
+        /// The machine's hash.
+        ir: String,
+        /// The hash the snapshot had before a migration, or `null` when there was none.
+        migrated: Option<String>,
+        /// The saved snapshot it was restored from, after any migration.
+        snapshot: Box<Saved>,
     },
     /// A state was entered, before its entry effects.
     #[serde(rename = "entered")]
@@ -511,11 +530,163 @@ pub enum Record {
         /// The defect.
         defect: Defect,
     },
+    /// Written by the driver, last, when it stopped an idle run it had saved. The run has not
+    /// ended: it goes on, as another run, from its saved snapshot.
+    #[serde(rename = "suspended")]
+    Suspended,
 }
 
 impl Record {
     /// The record as a JSON object, without `t`, `run` and `parent`.
     pub fn to_value(&self) -> Value {
         serde_json::to_value(self).unwrap_or(Value::Null)
+    }
+}
+
+/// A running `after` timer in a saved snapshot: a [`TimerEntry`] with its due time.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SavedTimer {
+    /// Its id within the run.
+    pub id: u64,
+    /// The id of the state that owns it.
+    pub state: String,
+    /// The index in the state's `transitions` of its `after` block's first transition.
+    pub index: usize,
+    /// The evaluated delay, in milliseconds.
+    pub delay: u64,
+    /// When it expires, on the driver's clock, in integer milliseconds.
+    pub due: u64,
+}
+
+/// A saved snapshot of a top-level run, the form host code stores
+/// (`spec/execution.md#the-saved-snapshot`, `spec/snapshot.schema.json`): the core's
+/// [`Snapshot`] with the format version and each timer's due time. Both runtimes save the
+/// same run as the same JSON, and either restores what the other saved.
+///
+/// Read one with [`Saved::from_json`] or [`Saved::from_value`], which check it against the
+/// schema; restoring checks the rest.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Saved {
+    /// The version of the format, `1`.
+    pub snapshot_version: u64,
+    /// The machine's name.
+    pub machine: String,
+    /// The id the run had when it was saved. A restored run gets a new one.
+    pub run: String,
+    /// The machine's hash in the IR it ran with.
+    pub ir: String,
+    /// The run's status.
+    pub status: Status,
+    /// The active states' ids, in document order.
+    pub active: Vec<String>,
+    /// The arguments, keyed by parameter name.
+    pub input: Object,
+    /// Every variable that has a value.
+    pub vars: Object,
+    /// The running invokes, in the order they were started.
+    pub invokes: Vec<InvokeEntry>,
+    /// The running timers, in the order they were started, with their due times.
+    pub timers: Vec<SavedTimer>,
+    /// The id the next invoke will get.
+    pub next_invoke: u64,
+    /// The id the next timer will get.
+    pub next_timer: u64,
+    /// The id the next `send` or `emit` effect will get.
+    pub next_message: u64,
+    /// `null` while running and when cancelled.
+    pub result: Option<RunResult>,
+}
+
+impl Saved {
+    /// The version of the format this runtime writes and reads.
+    pub const VERSION: u64 = 1;
+
+    /// `snap` saved, with each timer due at `due(id)`.
+    pub fn new(snap: &Snapshot, mut due: impl FnMut(&TimerEntry) -> u64) -> Saved {
+        Saved {
+            snapshot_version: Saved::VERSION,
+            machine: snap.machine.clone(),
+            run: snap.run.clone(),
+            ir: snap.ir.clone(),
+            status: snap.status,
+            active: snap.active.clone(),
+            input: snap.input.clone(),
+            vars: snap.vars.clone(),
+            invokes: snap.invokes.clone(),
+            timers: snap
+                .timers
+                .iter()
+                .map(|t| SavedTimer {
+                    id: t.id,
+                    state: t.state.clone(),
+                    index: t.index,
+                    delay: t.delay,
+                    due: due(t),
+                })
+                .collect(),
+            next_invoke: snap.next_invoke,
+            next_timer: snap.next_timer,
+            next_message: snap.next_message,
+            result: snap.result.clone(),
+        }
+    }
+
+    /// The core's snapshot: without the version and the due times, as run `run`.
+    pub fn to_snapshot(&self, run: &str) -> Snapshot {
+        Snapshot {
+            machine: self.machine.clone(),
+            run: run.to_owned(),
+            ir: self.ir.clone(),
+            status: self.status,
+            active: self.active.clone(),
+            input: self.input.clone(),
+            vars: self.vars.clone(),
+            invokes: self.invokes.clone(),
+            timers: self
+                .timers
+                .iter()
+                .map(|t| TimerEntry {
+                    id: t.id,
+                    state: t.state.clone(),
+                    index: t.index,
+                    delay: t.delay,
+                })
+                .collect(),
+            next_invoke: self.next_invoke,
+            next_timer: self.next_timer,
+            next_message: self.next_message,
+            result: self.result.clone(),
+        }
+    }
+
+    /// The snapshot as JSON.
+    pub fn to_value(&self) -> Value {
+        serde_json::to_value(self).unwrap_or(Value::Null)
+    }
+
+    /// The snapshot in canonical JSON (RFC 8785), the form conformance compares.
+    pub fn to_canonical(&self) -> String {
+        roadbook_ir::jcs::to_canonical_string(&self.to_value())
+    }
+
+    /// Reads a saved snapshot from JSON, checking it against `spec/snapshot.schema.json`: a
+    /// document that does not match is refused as `invalid`.
+    pub fn from_value(value: Value) -> Result<Saved, crate::RestoreError> {
+        crate::saved::schema(&value).map_err(crate::RestoreError::invalid)?;
+        serde_json::from_value(value).map_err(|e| crate::RestoreError::invalid(e.to_string()))
+    }
+
+    /// Reads a saved snapshot from JSON text ([`Saved::from_value`]).
+    pub fn from_json(json: &str) -> Result<Saved, crate::RestoreError> {
+        let value = serde_json::from_str(json)
+            .map_err(|e| crate::RestoreError::invalid(format!("not JSON: {e}")))?;
+        Saved::from_value(value)
+    }
+
+    /// The earliest due time of its timers: when a host should wake the saved run.
+    pub fn next_due(&self) -> Option<u64> {
+        self.timers.iter().map(|t| t.due).min()
     }
 }

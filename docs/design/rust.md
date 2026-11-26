@@ -18,9 +18,10 @@ The path is relative to the package's directory (`CARGO_MANIFEST_DIR`); the char
 - Numbers follow the value encoding, not serde's defaults. A JSON number's form does not matter, so an `int` (and a `duration`) accepts any integral number, `2.0` and `2e0` as well as `2`, and refuses `2.5`. A non-finite `float`, which `serde_json` would write as `null`, does not encode: from host code (a function's or task's result, a machine argument, an event) it is a `host` defect. An extern type's JSON is its own `Serialize`'s, so a non-finite float inside one is not caught.
 - For every fallible task and machine, an error `enum` of exactly the errors it declared, with `From` impls so `?` converts into it. Rust has no anonymous unions, so `! CardDeclined | GatewayUnavailable` becomes `ChargeCardError`. If the name is taken, a task's is `<Name>TaskError` and a machine's `<Name>MachineError`.
 - A `Handlers` trait: one method per function, action, task and child machine the chart uses.
-- `State`, `Event` and `Emitted` enums: the states, the events the machine accepts and the events it `emits`. Compound states carry their active child: `State::Processing(Processing::Paying)`. A child enum whose name is taken is prefixed with the names of the states above it.
+- `State`, `Event` and `Emitted` enums: the states, the events the machine accepts and the events it `emits`. Compound states carry their active child: `State::Processing(Processing::Paying)`. A child enum whose name is taken is prefixed with the names of the states above it. A parallel state's variant carries nothing (`State::Busy`): a run inside one is in all its regions at once, and `actor.state()` names the outermost parallel state it is in.
 - `Ref`, a handle to a run of the machine (`roadbook::Ref<Event>`): the Rust type of `ref Machine`, in `run` and `spawn` parameters and in `Handlers` methods that take one (by reference, `&inventory::Ref`).
-- `run` and `spawn` functions, and `run_with` and `spawn_with`, which take a `roadbook::Config` (trace sink, timer, root run id).
+- `run` and `spawn` functions, and `run_with` and `spawn_with`, which take a `roadbook::Config` (trace sink, timer, root run id, migration).
+- `restore` and `resume` functions, and `restore_with` and `resume_with` ([saving and restoring](#saving-and-restoring)), and `HASH`, the machine's hash in the IR: what a saved snapshot of it records as `ir`.
 - The IR, embedded as a constant.
 
 A chart error is a Rust compile error, reported at the macro call with the chart's file and line. Cargo rebuilds when any of the chart's files changes, or the `roadbook.toml` that made the project root: the expansion `include_bytes!`es each of them. Stable Rust has no way for a macro to track a file that does not exist, so creating one is not seen: a new `roadbook.toml` between the chart and its project root (or above a chart that has none), which would move the root, takes effect at the next rebuild for another reason (touch the chart). A missing import is a compile error, and Cargo retries a crate that failed on every build, so creating the imported file is seen. A `build.rs` route to the same generator is not built yet.
@@ -95,28 +96,34 @@ A machine that declares no errors returns its output directly from `run`. One th
 
 ## Saving and restoring
 
-Specified in [execution.md](../../spec/execution.md#saving-and-restoring) (milestone 6); not implemented yet. A saved snapshot is a `roadbook::Saved`, a `serde` type of [`snapshot.schema.json`](../../spec/snapshot.schema.json), the same JSON the TypeScript runtime saves.
+Specified in [execution.md](../../spec/execution.md#saving-and-restoring). A saved snapshot is a `roadbook::Saved`, a `serde` type of [`snapshot.schema.json`](../../spec/snapshot.schema.json) with public fields, the same JSON the TypeScript runtime saves. `Saved::from_json` and `Saved::from_value` read one and check it against the schema (refusing it as `invalid`), `to_canonical` writes the canonical JSON both runtimes compare, and `next_due` gives the earliest timer deadline, when a host should wake the run.
 
 ```rust
 // The request handler: restore, one event, run until idle, save.
-let next: roadbook::Saved = order::resume(&*app, saved, Some(order::Event::PaymentReceived { amount: 42 })).await?;
+let next: roadbook::Saved = order::resume(&*app, saved.clone(), Some(order::Event::PaymentReceived { amount: 42 })).await?;
+order::resume(&*app, saved, None).await?;                  // no event: only the timers whose deadline passed
 
 // The first request: spawn, then suspend once idle.
 let created = order::spawn(app.clone(), id).suspend().await;
 
 // Long-lived: restore as an actor, and save one without stopping it.
 let actor = order::restore(app.clone(), saved)?;            // Result<Actor, roadbook::RestoreError>
-let now = actor.save();                                     // the run carries on
+let now = actor.save().await;                               // the run carries on
 let last = actor.suspend().await;                           // waits until idle, then stops the run
 
 // A chart that changed: the migration is called only when the hashes differ.
-let config = roadbook::Config::new().migrate(|old: serde_json::Value| -> Result<serde_json::Value, String> { … });
+let config = roadbook::Config::new().migrate(|mut old: serde_json::Value| -> Result<serde_json::Value, String> {
+    old["ir"] = order::HASH.into();
+    Ok(old)
+});
 order::resume_with(&config, &*app, saved, None).await?;
 ```
 
-- **`resume`** (and `resume_with`) is `restore`, `send` and `suspend`. It returns `Ok(Saved)` whatever the run's status, `done`, `failed` and `cancelled` included, and resumes unwinding with the `roadbook::Defect` if the run ended with one, as `run` does. Dropping its future stops the run hard, as dropping `run`'s does.
-- **`restore`** (and `restore_with`) spawns the restored run like `spawn`, and returns `Err(RestoreError)` before starting anything when the snapshot is refused; `RestoreError::reason()` is `invalid`, `machine`, `ir`, `migration`, `ended` or `ref`.
-- **`actor.save()`** gives the saved snapshot as of the last step; **`actor.suspend()`** takes the actor, waits until the run is idle (or has ended), stops it without exit effects, writes `suspended` to the trace and returns the snapshot.
+- **`resume`** (and `resume_with`) is `restore`, `send` and `suspend`, borrowing the handlers like `run` and needing no particular executor. It returns `Ok(Saved)` whatever the run's status, `done`, `failed` and `cancelled` included (the output or error is its `result`), and resumes unwinding with the `roadbook::Defect` if the run ended with one, as `run` does. Dropping its future stops the run hard, as dropping `run`'s does.
+- **`restore`** (and `restore_with`) spawns the restored run on a Tokio task like `spawn`, and returns `Err(RestoreError)` before starting anything when the snapshot is refused. `RestoreError::reason()` is `invalid`, `machine`, `ir`, `migration`, `ended` or `ref` (`refusal()` gives it as the enum `roadbook::Refusal`), and `message()` says what was wrong. The restored run gets a new id: `Config::run_id`, or the next default one.
+- **`actor.save().await`** gives the saved snapshot as of the last step: the driver publishes it after carrying out each step's commands, with each timer's due time. It waits only until the run has carried out its start (or restore) step. **`actor.suspend()`** takes the actor, waits until the run is idle (or has ended), stops it without exit effects, writes `suspended` to the trace and returns the snapshot; a run that ended with a defect resumes unwinding with it.
+- **`Config::migrate`** takes `Fn(serde_json::Value) -> Result<serde_json::Value, String>`. It gets the old snapshot as JSON after it has passed the schema check (TypeScript's migration takes and gives a `Saved`; the data is the same), and a migration that returns `Err` or panics refuses the snapshot with `migration`. Its result is checked from the top, without a second migration.
+- **The erased interface.** `dynamic::restore` gives a restored run's future and `RunHandle`, as `dynamic::start` does, and `dynamic::resume` is `resume` by name. `RunHandle::save` gives the published snapshot, and `RunHandle::suspend` asks a top-level run to suspend, after which its future ends with `RunEnd::Suspended(saved)`. The core's `Program::check_saved` makes the spec's checks in order and `Program::restore` is the spec's `restore`.
 
 ## How the driver maps onto Rust
 
@@ -134,6 +141,8 @@ order::resume_with(&config, &*app, saved, None).await?;
 | A defect | A panic, caught with `catch_unwind` around functions, actions and invoke futures; a run that ends with one resumes unwinding with a `roadbook::Defect` payload |
 | Host code | The erased `roadbook::dynamic::Host` (called by name with JSON values), which the generated `Handlers` are adapted to |
 | Trace output | A `TraceSink` trait object, with a no-op default, `JsonLines` and `MemorySink` |
+| A saved snapshot | `roadbook::Saved`, which the driver publishes beside the run's inbox after each step's commands, with each timer's due time (when it carried out `timer.start`, plus the delay) |
+| Suspending | A flag beside the inbox: the loop checks it before each take, and stops the run once its queue is empty and no invoke runs |
 | Tracing | `tracing` spans per machine and per state: not built yet |
 
 Rust futures are cancelled by dropping them, so "leaving a state cancels its work" needs no extra machinery for a task: the driver drops the invoke's future. Because the driver holds futures and never spawns tasks, `run` borrows the handlers (`&H`) and works on any executor. Only timers need a runtime, behind a small `Timer` trait with a Tokio implementation enabled by default; the conformance runner implements it with a virtual clock.
@@ -163,7 +172,7 @@ The rules are in [execution.md](../../spec/execution.md#messages-between-runs). 
 
 `roadbook-core` has no async and no I/O. Keeping it `no_std` with `alloc` is a goal to hold onto if it stays cheap, since it would let charts run on embedded targets, but it is not a first-version requirement, and the first version uses `std` (as `roadbook-ir` does).
 
-The conformance runner (`crates/roadbook/tests/conformance.rs`) runs every case through this driver: it implements `dynamic::Host` from the case's script and `Timer` with a virtual clock, and is its own executor, polling the future of every top-level run until a round of polls leaves no wake-up behind, which is quiescence, since every child run is polled inside its top-level run's future and every delivery wakes its receiver.
+The conformance runner (`crates/roadbook/tests/conformance.rs`) runs every case through this driver: it implements `dynamic::Host` from the case's script and `Timer` with a virtual clock, and is its own executor, polling the future of every top-level run until a round of polls leaves no wake-up behind, which is quiescence, since every child run is polled inside its top-level run's future and every delivery wakes its receiver. Its `snapshot`, `suspend` and `restore` steps are `RunHandle::save`, `RunHandle::suspend` and `dynamic::restore` with the runner's migration in the `Config`. A second test restores every committed snapshot file and lets the run go on; with `ROADBOOK_RESTORE_FROM=<dir>` it restores `<dir>/<case>/<name>.snapshot.json` instead, such as the snapshots another runtime saved (the Rust runner writes its own there with `ROADBOOK_CONFORMANCE_OUT=<dir>`).
 
 ## Interpreter first, generated code later
 

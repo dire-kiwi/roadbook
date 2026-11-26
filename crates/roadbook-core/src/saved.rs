@@ -1,0 +1,576 @@
+//! Checking a saved snapshot before it is restored (`spec/execution.md#restoring-a-snapshot`):
+//! the schema, the machine, the hash and a migration, the status, `ref` parameters, and
+//! whether it fits the machine. The checks are made in the order the spec lists them, and the
+//! first that fails gives the reason.
+
+use std::collections::HashSet;
+use std::fmt;
+
+use roadbook_ir::{Builtin, Field, StateKind, Trigger, TypeDef, TypeRef};
+use serde_json::{Map, Value};
+
+use crate::Saved;
+use crate::program::Program;
+
+/// Why a saved snapshot was refused.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Refusal {
+    /// It does not match `snapshot.schema.json`, its version is not 1, or it does not fit
+    /// the machine.
+    Invalid,
+    /// The IR has no machine of its name, or it is not the machine asked for.
+    Machine,
+    /// Its hash is not the machine's, and no migration was given (or the migration's result
+    /// has another hash too).
+    Ir,
+    /// The migration failed.
+    Migration,
+    /// Its status is not `running`.
+    Ended,
+    /// The machine has a `ref` parameter: restoring a run that holds `ref`s is not specified
+    /// yet.
+    Ref,
+}
+
+impl Refusal {
+    /// The reason as the spec names it: `invalid`, `machine`, `ir`, `migration`, `ended` or
+    /// `ref`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Refusal::Invalid => "invalid",
+            Refusal::Machine => "machine",
+            Refusal::Ir => "ir",
+            Refusal::Migration => "migration",
+            Refusal::Ended => "ended",
+            Refusal::Ref => "ref",
+        }
+    }
+}
+
+impl fmt::Display for Refusal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// A saved snapshot that cannot be restored, with the reason and what was wrong.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RestoreError {
+    refusal: Refusal,
+    message: String,
+}
+
+impl RestoreError {
+    /// A refusal for `refusal`, saying what was wrong.
+    pub fn new(refusal: Refusal, message: impl Into<String>) -> RestoreError {
+        RestoreError {
+            refusal,
+            message: message.into(),
+        }
+    }
+
+    pub(crate) fn invalid(message: impl Into<String>) -> RestoreError {
+        RestoreError::new(Refusal::Invalid, message)
+    }
+
+    /// The reason: `invalid`, `machine`, `ir`, `migration`, `ended` or `ref`.
+    pub fn reason(&self) -> &'static str {
+        self.refusal.as_str()
+    }
+
+    /// The reason as an enum.
+    pub fn refusal(&self) -> Refusal {
+        self.refusal
+    }
+
+    /// What was wrong.
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+}
+
+impl fmt::Display for RestoreError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "the saved snapshot was refused ({}): {}",
+            self.refusal, self.message
+        )
+    }
+}
+
+impl std::error::Error for RestoreError {}
+
+/// A migration: the old saved snapshot to a new one, both plain JSON. `Err` (or a panic,
+/// which the binding layer catches) is a failed migration.
+pub type Migration<'a> = dyn FnMut(Value) -> Result<Value, String> + 'a;
+
+impl Program {
+    /// Checks `saved` against the IR before restoring it, in the spec's order, and gives the
+    /// snapshot to restore and, if `migrate` was called, the hash the snapshot had before.
+    /// `machine` is the machine restore was asked to restore, or `None` for the one the
+    /// snapshot names. `migrate` is called at most once, and only when the hashes differ;
+    /// its result is checked from the top, without a second migration.
+    pub fn check_saved(
+        &self,
+        saved: Value,
+        machine: Option<&str>,
+        migrate: Option<&mut Migration<'_>>,
+    ) -> Result<(Saved, Option<String>), RestoreError> {
+        schema(&saved).map_err(RestoreError::invalid)?;
+        let name = saved["machine"].as_str().unwrap_or_default();
+        let Some((m, _)) = self.machine(name) else {
+            return Err(RestoreError::new(
+                Refusal::Machine,
+                format!("the IR has no machine `{name}`"),
+            ));
+        };
+        if let Some(want) = machine.filter(|w| *w != name) {
+            return Err(RestoreError::new(
+                Refusal::Machine,
+                format!("it is a snapshot of `{name}`, not of `{want}`"),
+            ));
+        }
+        let hash = saved["ir"].as_str().unwrap_or_default();
+        if hash != m.hash {
+            let Some(migrate) = migrate else {
+                return Err(RestoreError::new(
+                    Refusal::Ir,
+                    format!(
+                        "it was saved with `{name}` at {hash}, and the IR has it at {}",
+                        m.hash
+                    ),
+                ));
+            };
+            let old = hash.to_owned();
+            let new = migrate(saved).map_err(|e| {
+                RestoreError::new(Refusal::Migration, format!("the migration failed: {e}"))
+            })?;
+            let (saved, _) = self.check_saved(new, machine, None)?;
+            return Ok((saved, Some(old)));
+        }
+        if saved["status"] != "running" {
+            return Err(RestoreError::new(
+                Refusal::Ended,
+                format!("the run has ended: its status is {}", saved["status"]),
+            ));
+        }
+        if let Some(p) = m.params.iter().find(|p| self.holds_ref(&p.ty)) {
+            return Err(RestoreError::new(
+                Refusal::Ref,
+                format!(
+                    "`{name}` has the `ref` parameter `{}`; restoring a run that holds `ref`s \
+                     is not supported yet",
+                    p.name
+                ),
+            ));
+        }
+        let saved: Saved =
+            serde_json::from_value(saved).map_err(|e| RestoreError::invalid(e.to_string()))?;
+        self.fits(&saved).map_err(RestoreError::invalid)?;
+        Ok((saved, None))
+    }
+
+    /// Whether `ty` is `ref M`, `ref M?` or `ref M[]`, through aliases.
+    fn holds_ref(&self, ty: &TypeRef) -> bool {
+        match self.resolve(ty) {
+            TypeRef::Ref(_) => true,
+            TypeRef::Optional(t) | TypeRef::List(t) => self.holds_ref(t),
+            _ => false,
+        }
+    }
+
+    /// Whether a running snapshot fits its machine (the last `invalid` row of the spec).
+    fn fits(&self, s: &Saved) -> Result<(), String> {
+        let (m, idx) = self.machine(&s.machine).ok_or("no such machine")?;
+        // `active` is a configuration, in document order.
+        let mut active = Vec::new();
+        for id in &s.active {
+            let i = *idx
+                .by_id
+                .get(id)
+                .ok_or_else(|| format!("`active` names `{id}`, which `{}` has not", s.machine))?;
+            if active.last().is_some_and(|&l| l >= i) {
+                return Err("`active` is not in document order".into());
+            }
+            active.push(i);
+        }
+        if active.first() != Some(&0) {
+            return Err("`active` does not start with the machine itself".into());
+        }
+        let is_active = |i: usize| active.binary_search(&i).is_ok();
+        for &i in &active {
+            let st = idx.state(m, i);
+            if let Some(p) = idx.parents[i] {
+                if !is_active(p) {
+                    return Err(format!("`{}` is active but its parent is not", st.id));
+                }
+            }
+            let on = idx.children[i].iter().filter(|&&c| is_active(c)).count();
+            match st.kind {
+                StateKind::Compound if on != 1 => {
+                    return Err(format!(
+                        "the compound state `{}` has {on} active children",
+                        st.id
+                    ));
+                }
+                StateKind::Parallel if on != idx.children[i].len() => {
+                    return Err(format!(
+                        "not every region of the parallel state `{}` is active",
+                        st.id
+                    ));
+                }
+                _ => {}
+            }
+        }
+        // Invokes.
+        let mut ids = HashSet::new();
+        let mut states = HashSet::new();
+        for inv in &s.invokes {
+            let i = idx.by_id.get(&inv.state).copied().filter(|&i| is_active(i));
+            let Some(i) = i else {
+                return Err(format!(
+                    "invoke {} belongs to a state that is not active",
+                    inv.id
+                ));
+            };
+            if idx.state(m, i).invoke.as_ref().map(|v| &v.src) != Some(&inv.src) {
+                return Err(format!(
+                    "the state `{}` has no invoke of `{}`",
+                    inv.state, inv.src
+                ));
+            }
+            if !states.insert(&inv.state) {
+                return Err(format!("the state `{}` has two invokes", inv.state));
+            }
+            if !ids.insert(inv.id) || inv.id >= s.next_invoke {
+                return Err(format!(
+                    "the invoke id {} is repeated or not below nextInvoke",
+                    inv.id
+                ));
+            }
+        }
+        // Timers.
+        let mut ids = HashSet::new();
+        let mut blocks = HashSet::new();
+        for tm in &s.timers {
+            let i = idx.by_id.get(&tm.state).copied().filter(|&i| is_active(i));
+            let Some(i) = i else {
+                return Err(format!(
+                    "timer {} belongs to a state that is not active",
+                    tm.id
+                ));
+            };
+            let ts = &idx.state(m, i).transitions;
+            let first = matches!(ts.get(tm.index), Some(t) if matches!(t.trigger, Trigger::After { .. })
+                && !ts[..tm.index].iter().any(|u| u.group == t.group));
+            if !first {
+                return Err(format!(
+                    "timer {}'s index {} is not the first transition of an `after` block of `{}`",
+                    tm.id, tm.index, tm.state
+                ));
+            }
+            if !blocks.insert((&tm.state, tm.index)) {
+                return Err(format!(
+                    "two timers of `{}` have the index {}",
+                    tm.state, tm.index
+                ));
+            }
+            if !ids.insert(tm.id) || tm.id >= s.next_timer {
+                return Err(format!(
+                    "the timer id {} is repeated or not below nextTimer",
+                    tm.id
+                ));
+            }
+        }
+        // Values.
+        if s.input.len() != m.params.len() {
+            return Err("`input` does not have exactly the machine's parameters".into());
+        }
+        for p in &m.params {
+            let v = s
+                .input
+                .get(&p.name)
+                .ok_or_else(|| format!("`input` lacks the parameter `{}`", p.name))?;
+            if !self.value_fits(&s.machine, &p.ty, v) {
+                return Err(format!("the parameter `{}` is not a {}", p.name, p.ty));
+            }
+        }
+        for (name, v) in &s.vars {
+            let var = m
+                .vars
+                .iter()
+                .find(|x| x.name == *name)
+                .ok_or_else(|| format!("`vars` has `{name}`, which is not a variable"))?;
+            if !self.value_fits(&s.machine, &var.ty, v) {
+                return Err(format!("the variable `{name}` is not a {}", var.ty));
+            }
+        }
+        for var in &m.vars {
+            if matches!(self.resolve(&var.ty), TypeRef::Optional(_))
+                && !s.vars.contains_key(&var.name)
+            {
+                return Err(format!("`vars` lacks the optional variable `{}`", var.name));
+            }
+        }
+        Ok(())
+    }
+
+    /// Whether `v` is a value of type `ty` in its JSON form, in machine `machine` (whose own
+    /// events a bare event name means).
+    fn value_fits(&self, machine: &str, ty: &TypeRef, v: &Value) -> bool {
+        match self.resolve(ty) {
+            TypeRef::Builtin(b) => match b {
+                Builtin::String => v.is_string(),
+                Builtin::Int => integer(v).is_some(),
+                Builtin::Float => v.is_number(),
+                Builtin::Bool => v.is_boolean(),
+                Builtin::Duration => integer(v).is_some_and(|i| i >= 0),
+                Builtin::Json => true,
+            },
+            TypeRef::Ref(_) => v.is_string(),
+            TypeRef::Optional(t) => v.is_null() || self.value_fits(machine, t, v),
+            TypeRef::List(t) => v
+                .as_array()
+                .is_some_and(|a| a.iter().all(|x| self.value_fits(machine, t, x))),
+            TypeRef::Named(n) => match self.ir().types.get(n).map(|d| &d.def) {
+                Some(TypeDef::Record { fields }) => self.fields_fit(machine, None, fields, v),
+                Some(TypeDef::Error { fields }) => self.fields_fit(machine, Some(n), fields, v),
+                Some(TypeDef::Enum { variants }) => {
+                    v.as_str().is_some_and(|s| variants.iter().any(|x| x == s))
+                }
+                Some(TypeDef::Extern) => true,
+                Some(TypeDef::Alias { .. }) => false,
+                None => {
+                    let (owner, ev) = n.split_once('.').unwrap_or((machine, n));
+                    let decl = self
+                        .ir()
+                        .machines
+                        .get(owner)
+                        .and_then(|m| m.events.get(ev).or_else(|| m.emits.get(ev)));
+                    decl.is_some_and(|d| self.fields_fit(machine, Some(ev), &d.fields, v))
+                }
+            },
+        }
+    }
+
+    /// Whether `v` is an object with exactly `fields` (and `"_tag": tag`, if given).
+    fn fields_fit(&self, machine: &str, tag: Option<&str>, fields: &[Field], v: &Value) -> bool {
+        let Some(o) = v.as_object() else { return false };
+        let extra = usize::from(tag.is_some());
+        if o.len() != fields.len() + extra {
+            return false;
+        }
+        if let Some(tag) = tag {
+            if o.get("_tag").and_then(Value::as_str) != Some(tag) {
+                return false;
+            }
+        }
+        fields.iter().all(|f| {
+            o.get(&f.name)
+                .is_some_and(|x| self.value_fits(machine, &f.ty, x))
+        })
+    }
+}
+
+/// An integer from a JSON number in any form (`2`, `2.0`), or `None`.
+fn integer(v: &Value) -> Option<i64> {
+    if let Some(i) = v.as_i64() {
+        return Some(i);
+    }
+    let f = v.as_f64()?;
+    (f.fract() == 0.0 && (i64::MIN as f64..-(i64::MIN as f64)).contains(&f)).then_some(f as i64)
+}
+
+// ---- the schema ----------------------------------------------------------------------------
+
+const MEMBERS: [&str; 14] = [
+    "snapshotVersion",
+    "machine",
+    "run",
+    "ir",
+    "status",
+    "active",
+    "input",
+    "vars",
+    "invokes",
+    "timers",
+    "nextInvoke",
+    "nextTimer",
+    "nextMessage",
+    "result",
+];
+
+/// The largest integer `spec/snapshot.schema.json` allows, 2^53 − 1.
+const MAX_SAFE: u64 = 9_007_199_254_740_991;
+
+/// Checks `v` against `spec/snapshot.schema.json`, including `snapshotVersion` being 1.
+pub(crate) fn schema(v: &Value) -> Result<(), String> {
+    let o = v.as_object().ok_or("a saved snapshot is an object")?;
+    exactly(o, &MEMBERS, "a saved snapshot")?;
+    if o["snapshotVersion"].as_u64() != Some(Saved::VERSION) {
+        return Err(format!(
+            "its snapshotVersion is {}, not 1",
+            o["snapshotVersion"]
+        ));
+    }
+    string(&o["machine"], "machine", upper_name)?;
+    string(&o["run"], "run", run_id)?;
+    string(&o["ir"], "ir", hash)?;
+    let status = o["status"].as_str().unwrap_or_default();
+    if !["running", "done", "failed", "cancelled", "defect"].contains(&status) {
+        return Err(format!("`status` is {}", o["status"]));
+    }
+    let active = o["active"].as_array().ok_or("`active` is not an array")?;
+    let mut seen = HashSet::new();
+    for a in active {
+        string(a, "an active state", state_id)?;
+        if !seen.insert(a.as_str()) {
+            return Err(format!("`active` names {a} twice"));
+        }
+    }
+    args(&o["input"], "input")?;
+    args(&o["vars"], "vars")?;
+    for inv in o["invokes"].as_array().ok_or("`invokes` is not an array")? {
+        let inv = inv.as_object().ok_or("an invoke is not an object")?;
+        exactly(inv, &["id", "state", "src"], "an invoke")?;
+        natural(&inv["id"], "an invoke's id", 1)?;
+        string(&inv["state"], "an invoke's state", state_id)?;
+        string(&inv["src"], "an invoke's src", any_name)?;
+    }
+    for tm in o["timers"].as_array().ok_or("`timers` is not an array")? {
+        let tm = tm.as_object().ok_or("a timer is not an object")?;
+        exactly(tm, &["id", "state", "index", "delay", "due"], "a timer")?;
+        natural(&tm["id"], "a timer's id", 1)?;
+        string(&tm["state"], "a timer's state", state_id)?;
+        natural(&tm["index"], "a timer's index", 0)?;
+        natural(&tm["delay"], "a timer's delay", 0)?;
+        natural(&tm["due"], "a timer's due", 0)?;
+    }
+    for k in ["nextInvoke", "nextTimer", "nextMessage"] {
+        natural(&o[k], k, 1)?;
+    }
+    match &o["result"] {
+        Value::Null => {}
+        Value::Object(r) if r.len() == 1 && r.contains_key("output") => {}
+        Value::Object(r) if r.len() == 1 && r.contains_key("error") => {
+            let tag = r["error"].as_object().and_then(|e| e.get("_tag"));
+            if !tag.is_some_and(|t| t.as_str().is_some_and(upper_name)) {
+                return Err("`result.error` is not a tagged record".into());
+            }
+        }
+        Value::Object(r) if r.len() == 1 && r.contains_key("defect") => {
+            if !r["defect"]
+                .as_object()
+                .is_some_and(|d| d.contains_key("kind"))
+            {
+                return Err("`result.defect` is not a defect".into());
+            }
+        }
+        r => return Err(format!("`result` is {r}")),
+    }
+    Ok(())
+}
+
+fn exactly(o: &Map<String, Value>, members: &[&str], what: &str) -> Result<(), String> {
+    if let Some(k) = o.keys().find(|k| !members.contains(&k.as_str())) {
+        return Err(format!(
+            "{what} has the member `{k}`, which the schema does not allow"
+        ));
+    }
+    if let Some(k) = members.iter().find(|k| !o.contains_key(**k)) {
+        return Err(format!("{what} lacks the member `{k}`"));
+    }
+    Ok(())
+}
+
+fn string(v: &Value, what: &str, ok: fn(&str) -> bool) -> Result<(), String> {
+    match v.as_str() {
+        Some(s) if ok(s) => Ok(()),
+        _ => Err(format!("{what} is {v}, which the schema does not allow")),
+    }
+}
+
+fn natural(v: &Value, what: &str, min: u64) -> Result<(), String> {
+    match v.as_u64() {
+        Some(n) if n >= min && n <= MAX_SAFE => Ok(()),
+        _ => Err(format!("{what} is {v}, which the schema does not allow")),
+    }
+}
+
+fn args(v: &Value, what: &str) -> Result<(), String> {
+    let o = v
+        .as_object()
+        .ok_or_else(|| format!("`{what}` is not an object"))?;
+    match o.keys().find(|k| !lower_name(k)) {
+        Some(k) => Err(format!(
+            "`{what}` has the member `{k}`, which is not a name"
+        )),
+        None => Ok(()),
+    }
+}
+
+/// `[A-Za-z0-9]*`
+fn alnum(s: &str) -> bool {
+    s.bytes().all(|b| b.is_ascii_alphanumeric())
+}
+
+/// `^[A-Z][A-Za-z0-9]*$`
+fn upper_name(s: &str) -> bool {
+    s.as_bytes().first().is_some_and(u8::is_ascii_uppercase) && alnum(s)
+}
+
+/// `^[a-z][A-Za-z0-9]*$`
+fn lower_name(s: &str) -> bool {
+    s.as_bytes().first().is_some_and(u8::is_ascii_lowercase) && alnum(s)
+}
+
+/// `^[A-Za-z][A-Za-z0-9]*$`
+fn any_name(s: &str) -> bool {
+    s.as_bytes().first().is_some_and(u8::is_ascii_alphabetic) && alnum(s)
+}
+
+/// `^[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)*$`
+fn state_id(s: &str) -> bool {
+    s.split('.').all(upper_name)
+}
+
+/// `^[A-Za-z0-9_-]+(\.[1-9][0-9]*)*$`
+fn run_id(s: &str) -> bool {
+    let mut parts = s.split('.');
+    let first = parts.next().unwrap_or_default();
+    !first.is_empty()
+        && first
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+        && parts.all(|p| {
+            p.as_bytes()
+                .first()
+                .is_some_and(|b| (b'1'..=b'9').contains(b))
+                && p.bytes().all(|b| b.is_ascii_digit())
+        })
+}
+
+/// `^sha256:[0-9a-f]{64}$`
+fn hash(s: &str) -> bool {
+    s.strip_prefix("sha256:").is_some_and(|h| {
+        h.len() == 64
+            && h.bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn patterns() {
+        assert!(run_id("r1") && run_id("r1.4.10") && run_id("order-7_x"));
+        assert!(!run_id("") && !run_id("r1.0") && !run_id("r1.") && !run_id("a b"));
+        assert!(state_id("A.B") && !state_id("A.b") && !state_id("A..B") && !state_id(""));
+        assert!(hash(&format!("sha256:{}", "0a".repeat(32))));
+        assert!(!hash(&format!("sha256:{}", "0A".repeat(32))));
+        assert!(lower_name("n2") && !lower_name("N") && !lower_name("a_b"));
+    }
+}

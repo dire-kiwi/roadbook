@@ -54,14 +54,6 @@ fn program_static(suffix: &str) -> Ident {
 /// re-exported from the crate that generated them. `suffix` is the chart's package path,
 /// encoded, which the hidden items are named with, so that two charts can sit side by side.
 pub fn generate(ir: &Ir, foreign: &Foreign, suffix: &str) -> Result<TokenStream, String> {
-    for (name, m) in &ir.machines {
-        if let Some(id) = find_parallel(&m.root) {
-            return Err(format!(
-                "machine `{name}` has a parallel state (`{id}`); parallel states are not \
-                 supported in Rust until milestone 6"
-            ));
-        }
-    }
     let mut g = Gen::new(ir, foreign)?;
     g.program = program_static(suffix);
     let mut items = Vec::new();
@@ -108,13 +100,6 @@ pub fn generate(ir: &Ir, foreign: &Foreign, suffix: &str) -> Result<TokenStream,
 
         #(#items)*
     })
-}
-
-fn find_parallel(s: &State) -> Option<&str> {
-    if s.kind == StateKind::Parallel {
-        return Some(&s.id);
-    }
-    s.states.iter().find_map(find_parallel)
 }
 
 /// `#[doc = "…"]`, or nothing for an empty doc.
@@ -661,11 +646,20 @@ impl<'a> Gen<'a> {
         let events = self.events(name, m)?;
         let runners = self.runners(name, m);
         let module_doc = doc(&m.doc);
+        let hash = &m.hash;
+        let hash_doc = format!(
+            "The hash of machine `{name}` in the chart's IR: the `ir` a saved snapshot of it \
+             records. A snapshot with another hash is restored only through a migration \
+             (`roadbook::Config::migrate`), which sets this one."
+        );
         Ok(quote! {
             #module_doc
             #[allow(dead_code, unused_imports, missing_docs, non_camel_case_types, non_snake_case)]
             pub mod #module {
                 use super::*;
+
+                #[doc = #hash_doc]
+                pub const HASH: &str = #hash;
 
                 #handlers
                 #states
@@ -1024,7 +1018,9 @@ impl<'a> Gen<'a> {
         let state = format_ident!("State");
         let text = format!(
             "The state a `{machine}` run is in: its innermost active state, or the final state \
-             it ended in. A compound state's variant carries its active child."
+             it ended in. A compound state's variant carries its active child. A parallel \
+             state's carries nothing: a run inside one is in all its regions at once, and is \
+             in the outermost such state."
         );
         self.state_enum(
             &m.root,
@@ -1066,7 +1062,7 @@ impl<'a> Gen<'a> {
         for c in &s.states {
             let vid = ident(&c.name);
             let vdoc = doc(&c.doc);
-            if c.states.is_empty() {
+            if c.states.is_empty() || c.kind == StateKind::Parallel {
                 let ctor = wrap(quote!(#name::#vid));
                 leaves.push((c.id.clone(), ctor));
                 variants.push(quote!(#vdoc #vid));
@@ -1296,6 +1292,29 @@ impl<'a> Gen<'a> {
              cancel it."
         );
         let spawn_with_doc = "Like `spawn`, set up by `config`.";
+        let restore_doc = format!(
+            "Restores a saved snapshot of `{name}` as a new run on a new Tokio task, with \
+             `roadbook::Config::default()`, and gives its actor, as `spawn` does. The run \
+             starts from the snapshot: the invokes that were running start again, and the \
+             timers keep their deadlines (one already due expires first). A snapshot that \
+             does not fit is refused before anything starts: `RestoreError::reason()` is \
+             `invalid`, `machine`, `ir` (another hash and no migration, see \
+             `roadbook::Config::migrate`), `migration`, `ended` or `ref`."
+        );
+        let restore_with_doc =
+            "Like `restore`, set up by `config` (trace sink, timer, run id, migration).";
+        let resume_doc = format!(
+            "The request handler's operation on a saved `{name}`: restores `saved` as a new \
+             run, gives it `event` if there is one, waits until it is idle (its queue empty and \
+             no task or child machine running), stops it without exit effects and gives the \
+             new saved snapshot. Timers that fell due while it was saved expire before the \
+             event. A run that ends gives its final snapshot (`done`, `failed` or \
+             `cancelled`); one that ends with a defect resumes unwinding with the \
+             `roadbook::Defect`. A refused snapshot is `Err` before anything starts. The \
+             future borrows `handlers`; dropping it stops the run at once."
+        );
+        let resume_with_doc =
+            "Like `resume`, set up by `config` (trace sink, timer, run id, migration).";
         let program = &self.program;
         let program = quote!(&super::#program);
         quote! {
@@ -1366,6 +1385,56 @@ impl<'a> Gen<'a> {
                         error: __error,
                     },
                 )
+            }
+
+            #[doc = #restore_doc]
+            pub fn restore<H: Handlers + 'static>(
+                handlers: ::std::sync::Arc<H>,
+                saved: ::roadbook::Saved,
+            ) -> ::core::result::Result<::roadbook::Actor<Event, State, #output, #error>, ::roadbook::RestoreError> {
+                restore_with(::roadbook::Config::default(), handlers, saved)
+            }
+
+            #[doc = #restore_with_doc]
+            pub fn restore_with<H: Handlers + 'static>(
+                config: ::roadbook::Config,
+                handlers: ::std::sync::Arc<H>,
+                saved: ::roadbook::Saved,
+            ) -> ::core::result::Result<::roadbook::Actor<Event, State, #output, #error>, ::roadbook::RestoreError> {
+                ::roadbook::__private::spawn_restored(
+                    config,
+                    #program,
+                    #name,
+                    &saved,
+                    ::std::boxed::Box::new(Bind(handlers)),
+                    ::roadbook::__private::Codec {
+                        event: __event,
+                        state: __from_state_id,
+                        output: __output,
+                        error: __error,
+                    },
+                )
+            }
+
+            #[doc = #resume_doc]
+            pub async fn resume<H: Handlers + ?::core::marker::Sized>(
+                handlers: &H,
+                saved: ::roadbook::Saved,
+                event: ::core::option::Option<Event>,
+            ) -> ::core::result::Result<::roadbook::Saved, ::roadbook::RestoreError> {
+                resume_with(&::roadbook::Config::default(), handlers, saved, event).await
+            }
+
+            #[doc = #resume_with_doc]
+            pub async fn resume_with<H: Handlers + ?::core::marker::Sized>(
+                config: &::roadbook::Config,
+                handlers: &H,
+                saved: ::roadbook::Saved,
+                event: ::core::option::Option<Event>,
+            ) -> ::core::result::Result<::roadbook::Saved, ::roadbook::RestoreError> {
+                let __host = Bind(handlers);
+                let __ev = ::roadbook::__private::event(event.as_ref());
+                ::roadbook::__private::resume(config, #program, ::core::option::Option::Some(#name), &saved, __ev, &__host).await
             }
         }
     }

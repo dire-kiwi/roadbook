@@ -10,7 +10,7 @@
 //! [`Invocation`] carries those its arguments name, so a host that runs an invoked machine
 //! passes them on.
 
-use roadbook_core::{Defect, Object, Program, SrcKind};
+use roadbook_core::{Defect, Input, Object, Program, RestoreError, Saved, SrcKind};
 use serde_json::Value;
 
 use crate::driver::{Driver, RunEnd};
@@ -141,6 +141,10 @@ async fn finish(end: RunEnd, cancelled_child: bool) -> Result<Value, Value> {
         RunEnd::Done(v) => Ok(v),
         RunEnd::Failed(e) => Err(e),
         RunEnd::Defect(defect) if !cancelled_child => std::panic::resume_unwind(Box::new(defect)),
+        // Only host code holding the run's handle from `Config::on_run` can suspend it.
+        RunEnd::Suspended(_) => std::panic::resume_unwind(Box::new(Defect::host(
+            "the run was suspended through its handle",
+        ))),
         // Reported through the token; the parent drops this future.
         _ => std::future::pending().await,
     }
@@ -164,4 +168,64 @@ pub fn start<'a>(
     let handle = RunHandle::new(shared.clone(), &id, program, machine, false);
     let driver = Driver::root(program, machine, input, refs, host, config, id, shared);
     (Box::pin(driver.drive()), handle)
+}
+
+/// Restores a saved snapshot as a new root run (`spec/execution.md#restoring-a-snapshot`) and
+/// gives a handle to it, as [`start`] does. `machine` is the machine to restore, or `None` for
+/// the one the snapshot names. The snapshot is checked first, applying `config`'s migration
+/// ([`Config::migrate`]) when its hash is not the machine's, and refused with a
+/// [`RestoreError`] if it does not fit; nothing is written to the trace then. The new run gets
+/// a new id ([`Config::run_id`], or the next default one), and its first record is
+/// `restored`.
+pub fn restore<'a>(
+    config: &Config,
+    program: &'a Program,
+    machine: Option<&str>,
+    saved: &Saved,
+    host: &'a dyn Host,
+) -> Result<(BoxFuture<'a, RunEnd>, RunHandle), RestoreError> {
+    let checked = crate::driver::check(program, machine, saved, config)?;
+    let shared = Shared::claimed();
+    let id = config.root_id();
+    let handle = RunHandle::new(shared.clone(), &id, program, &checked.0.machine, false);
+    let driver = Driver::restored(program, checked, host, config, id, shared);
+    Ok((Box::pin(driver.drive()), handle))
+}
+
+/// The request handler's operation (`spec/execution.md#suspending-and-resume`): restores
+/// `saved` as a new root run, gives it `event` (an encoded event) if there is one, and
+/// suspends it once it is idle, giving the saved snapshot. Expiries of timers that fell due
+/// while the run was saved are taken before the event. A run that ends gives its final
+/// snapshot (`done`, `failed`, `cancelled`); one that ends with a defect resumes unwinding
+/// with the [`Defect`], as [`run`] does.
+pub async fn resume(
+    config: &Config,
+    program: &Program,
+    machine: Option<&str>,
+    saved: &Saved,
+    event: Option<Value>,
+    host: &dyn Host,
+) -> Result<Saved, RestoreError> {
+    let checked = crate::driver::check(program, machine, saved, config)?;
+    let shared = Shared::claimed();
+    if let Some(value) = event {
+        shared.push([Input::Event { value }]);
+    }
+    shared.request_suspend();
+    let id = config.root_id();
+    let driver = Driver::restored(program, checked, host, config, id, shared.clone());
+    Ok(suspended(driver.drive().await, &shared))
+}
+
+/// The saved snapshot a run that was asked to suspend gives: the one it stopped with, or the
+/// final one of a run that ended. A run that ended with a defect resumes unwinding with it.
+pub(crate) fn suspended(end: RunEnd, shared: &Shared) -> Saved {
+    match end {
+        RunEnd::Suspended(saved) => *saved,
+        RunEnd::Defect(d) => std::panic::resume_unwind(Box::new(d)),
+        RunEnd::Done(_) | RunEnd::Failed(_) | RunEnd::Cancelled => shared
+            .saved()
+            .map(|s| (*s).clone())
+            .expect("a run that ended has a saved snapshot"),
+    }
 }

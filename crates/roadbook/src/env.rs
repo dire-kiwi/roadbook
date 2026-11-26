@@ -188,6 +188,10 @@ impl TraceSink for MemorySink {
 /// Called with the id and handle of every run as it starts, root and children.
 pub type RunObserver = dyn Fn(&str, crate::RunHandle) + Send + Sync;
 
+/// A migration of saved snapshots: the old snapshot to a new one, both plain JSON
+/// ([`Config::migrate`]).
+pub type Migrate = dyn Fn(Value) -> Result<Value, String> + Send + Sync;
+
 /// How a root run is set up: its trace sink, timer and run id. Child runs inherit their
 /// parent's sink and timer.
 #[derive(Clone)]
@@ -196,6 +200,7 @@ pub struct Config {
     pub(crate) timer: Arc<dyn Timer>,
     pub(crate) run_id: Option<String>,
     pub(crate) observer: Option<Arc<RunObserver>>,
+    pub(crate) migrate: Option<Arc<Migrate>>,
 }
 
 impl Default for Config {
@@ -208,6 +213,7 @@ impl Default for Config {
             timer: Arc::new(NoTimer),
             run_id: None,
             observer: None,
+            migrate: None,
         }
     }
 }
@@ -249,6 +255,19 @@ impl Config {
     /// run below it. A test uses this to give inputs to a child run directly.
     pub fn on_run(mut self, f: impl Fn(&str, crate::RunHandle) + Send + Sync + 'static) -> Self {
         self.observer = Some(Arc::new(f));
+        self
+    }
+
+    /// Restores a saved snapshot whose hash is not the machine's by migrating it with `f`
+    /// first: `f` gets the old snapshot as JSON and gives the new one (with the current
+    /// hash), or `Err` if it cannot. It is called at most once per restore, and only when the
+    /// hashes differ; its result is checked like any snapshot, without a second migration. A
+    /// migration that fails (or panics) refuses the snapshot with the reason `migration`.
+    pub fn migrate(
+        mut self,
+        f: impl Fn(Value) -> Result<Value, String> + Send + Sync + 'static,
+    ) -> Self {
+        self.migrate = Some(Arc::new(f));
         self
     }
 

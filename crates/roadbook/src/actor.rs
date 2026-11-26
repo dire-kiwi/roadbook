@@ -6,7 +6,7 @@ use std::panic::resume_unwind;
 use std::sync::Arc;
 use std::task::Poll;
 
-use roadbook_core::{Defect, Input, Object, Program};
+use roadbook_core::{Defect, Input, Object, Program, RestoreError, Saved};
 use serde_json::Value;
 
 use crate::driver::{Driver, RunEnd};
@@ -148,7 +148,40 @@ impl<Event, State: Clone, Output, Error> Actor<Event, State, Output, Error> {
             RunEnd::Failed(e) => Err(Stopped::Failed((self.codec.error)(e))),
             RunEnd::Cancelled => Err(Stopped::Cancelled),
             RunEnd::Defect(d) => std::panic::resume_unwind(Box::new(d)),
+            // Only host code holding the run's `RunHandle` can suspend it that way.
+            RunEnd::Suspended(_) => std::panic::resume_unwind(Box::new(Defect::host(
+                "the run was suspended through its handle",
+            ))),
         }
+    }
+
+    /// The run's saved snapshot (`spec/execution.md#the-saved-snapshot`) as its last step
+    /// left it: the run carries on. It waits only until the run has carried out its start
+    /// (or restore) step; a run that ended gives its final snapshot.
+    pub async fn save(&self) -> Saved {
+        let saved = poll_fn(|cx| match self.shared.poll_saved(cx.waker()) {
+            Some(s) => Poll::Ready(s),
+            None => Poll::Pending,
+        })
+        .await;
+        match saved {
+            Some(s) => (*s).clone(),
+            None => std::panic::resume_unwind(Box::new(Defect::host(
+                "the run stopped before its first step",
+            ))),
+        }
+    }
+
+    /// Waits until the run is idle (between steps, nothing queued, no running task or child
+    /// machine), taking inputs meanwhile as always, then stops it without running any exit
+    /// effect, writes `suspended` to the trace, and gives its saved snapshot: the request
+    /// handler's way to keep a run as data. A run that ends first gives its final snapshot
+    /// (`done`, `failed` or `cancelled`) and writes nothing; one that ends with a defect
+    /// resumes unwinding with the [`crate::Defect`].
+    pub async fn suspend(mut self) -> Saved {
+        self.shared.request_suspend();
+        let end = self.join().await;
+        crate::dynamic::suspended(end, &self.shared)
     }
 
     /// Waits for the run's task. The handle stays in the actor until the task has ended, so
@@ -196,7 +229,8 @@ impl Drop for Closer {
     }
 }
 
-/// The ids of the states entered when `machine` starts, down to its first leaf.
+/// The state a run of `machine` is in once started: down its initial chain to a leaf or a
+/// parallel state.
 fn initial_leaf(program: &Program, machine: &str) -> Option<String> {
     let m = program.ir().machines.get(machine)?;
     let mut s = &m.root;
@@ -204,6 +238,55 @@ fn initial_leaf(program: &Program, machine: &str) -> Option<String> {
         s = s.states.iter().find(|c| &c.id == init)?;
     }
     Some(s.id.clone())
+}
+
+/// Restores `saved` as a root run on a new Tokio task and gives its actor, or refuses it
+/// before starting anything ([`crate::dynamic::restore`]).
+#[doc(hidden)]
+#[cfg_attr(not(feature = "tokio"), allow(unused_variables))]
+pub fn spawn_restored<Event, State, Output, Error>(
+    config: Config,
+    program: &'static Program,
+    machine: &'static str,
+    saved: &Saved,
+    host: Box<dyn Host + 'static>,
+    codec: Codec<Event, State, Output, Error>,
+) -> Result<Actor<Event, State, Output, Error>, RestoreError> {
+    let checked = crate::driver::check(program, Some(machine), saved, &config)?;
+    let shared = Shared::claimed();
+    let id = config.root_id();
+    let leaf = program
+        .current_state(machine, &checked.0.active)
+        .expect("a running snapshot has active states")
+        .to_owned();
+    shared.set_state(&leaf);
+    let seen = shared.state().0;
+    let initial = (codec.state)(&leaf).expect("a state has a State variant");
+    #[cfg(feature = "tokio")]
+    {
+        let run_shared = shared.clone();
+        let run_id = id.clone();
+        let guard = Closer(run_shared.clone());
+        let task = tokio::spawn(async move {
+            let _guard = guard;
+            let host = host;
+            Driver::restored(program, checked, &*host, &config, run_id, run_shared)
+                .drive()
+                .await
+        });
+        Ok(Actor {
+            shared,
+            id,
+            program,
+            machine,
+            task: Some(task),
+            codec,
+            initial,
+            seen,
+        })
+    }
+    #[cfg(not(feature = "tokio"))]
+    panic!("`restore` needs the `tokio` feature of `roadbook`")
 }
 
 /// Starts `machine` as a root run on a new Tokio task and gives its actor. An input that
@@ -249,6 +332,13 @@ pub fn spawn<Event, State, Output, Error>(
                 })
             }
             Err(defect) => {
+                run_shared.set_saved(crate::driver::early_defect(
+                    program,
+                    machine,
+                    &id,
+                    Object::new(),
+                    defect.clone(),
+                ));
                 run_shared.close();
                 run_shared.finish(crate::shared::Finished::Ok);
                 tokio::spawn(async move { RunEnd::Defect(defect) })
