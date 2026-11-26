@@ -10,7 +10,7 @@
       "$ref": "#/$defs/safeNatural"
     },
     "run": {
-      "description": "The run that wrote the record. A child run's id is its parent's id, a dot, and the id of the invoke that started it.",
+      "description": "The run that wrote the record. A top-level run's id is chosen by the driver; a child run's id is its parent's id, a dot, and the id of the invoke that started it.",
       "$ref": "#/$defs/runId"
     },
     "parent": {
@@ -54,7 +54,7 @@
       "required": ["event"]
     },
     {
-      "description": "The run took the outcome of an invoke, or the expiry of a timer, that had already been cancelled. Nothing changed.",
+      "description": "The run took the outcome of an invoke, the expiry of a timer, or an event emitted by a child run, whose invoke or timer had already been cancelled. Nothing changed.",
       "properties": { "kind": { "const": "stale" }, "event": { "$ref": "#/$defs/event" } },
       "required": ["event"]
     },
@@ -88,6 +88,37 @@
         "args": { "$ref": "#/$defs/args" }
       },
       "required": ["action", "args"]
+    },
+    {
+      "description": "A send effect ran: the message is queued for run `to`.",
+      "properties": {
+        "kind": { "const": "sent" },
+        "message": { "$ref": "#/$defs/id" },
+        "to": { "$ref": "#/$defs/runId" },
+        "value": { "$ref": "#/$defs/tagged" }
+      },
+      "required": ["message", "to", "value"]
+    },
+    {
+      "description": "An emit effect ran: the event is queued for the run's invoker (if it used `as`) and for every run that holds a ref to it.",
+      "properties": {
+        "kind": { "const": "emitted" },
+        "message": { "$ref": "#/$defs/id" },
+        "value": { "$ref": "#/$defs/tagged" }
+      },
+      "required": ["message", "value"]
+    },
+    {
+      "description": "A send reached no run: written by the core with `to` null when the child addressed is not running, or by the driver after the `sent` record when run `to` has ended.",
+      "properties": {
+        "kind": { "const": "undelivered" },
+        "message": { "$ref": "#/$defs/id" },
+        "to": {
+          "oneOf": [{ "$ref": "#/$defs/runId" }, { "type": "null" }]
+        },
+        "value": { "$ref": "#/$defs/tagged" }
+      },
+      "required": ["message", "to", "value"]
     },
     {
       "description": "A task or child machine was started.",
@@ -188,6 +219,29 @@
         {
           "properties": { "kind": { "const": "event" }, "value": { "$ref": "#/$defs/tagged" } },
           "required": ["kind", "value"],
+          "additionalProperties": false
+        },
+        {
+          "description": "A message: run `from` sent one of this machine's events, as its message `message`.",
+          "properties": {
+            "kind": { "const": "message" },
+            "from": { "$ref": "#/$defs/runId" },
+            "message": { "$ref": "#/$defs/id" },
+            "value": { "$ref": "#/$defs/tagged" }
+          },
+          "required": ["kind", "from", "message", "value"],
+          "additionalProperties": false
+        },
+        {
+          "description": "An emitted event of run `from`, its message `message`. `invoke` is this run's invoke that started `from`, or null when this run holds a ref to `from`.",
+          "properties": {
+            "kind": { "const": "emitted" },
+            "from": { "$ref": "#/$defs/runId" },
+            "invoke": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
+            "message": { "$ref": "#/$defs/id" },
+            "value": { "$ref": "#/$defs/tagged" }
+          },
+          "required": ["kind", "from", "invoke", "message", "value"],
           "additionalProperties": false
         },
         {

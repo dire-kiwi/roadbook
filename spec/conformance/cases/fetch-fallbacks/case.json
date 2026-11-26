@@ -1,5 +1,6 @@
 {
   "description": "on * catches an event the state has no on for, but not one it has; fail * catches an unlisted error; an event no active state handles is dropped.",
+  "requires": [],
   "chart": "charts/fetch.road",
   "machine": "Fetch",
   "input": {

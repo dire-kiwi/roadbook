@@ -8,8 +8,9 @@
 use std::collections::BTreeSet;
 
 use roadbook_conformance::{
-    LoadedCase, Status, Step, case_validator, conformance_dir, lint::lint, load_all,
-    restamp_hashes, schema_errors, to_lines, trace_validator,
+    FEATURES, LoadedCase, ROOT_RUN, Status, Step, case_validator, conformance_dir,
+    lint::{lint, lint_runs},
+    load_all, restamp_hashes, schema_errors, to_lines, trace_validator,
 };
 use serde_json::{Value, json};
 
@@ -63,11 +64,77 @@ fn traces_are_canonical() {
     }
 }
 
+fn statuses(c: &LoadedCase) -> Vec<(String, Status)> {
+    c.case
+        .top_level_runs()
+        .into_iter()
+        .map(|(run, _, _, status)| (run, status))
+        .collect()
+}
+
 #[test]
 fn traces_are_well_formed() {
     for c in cases() {
-        let problems = lint(&c.records, c.case.status, c.ir.as_ref());
+        let problems = lint_runs(&c.records, &statuses(&c), c.ir.as_ref());
         assert!(problems.is_empty(), "{}: {problems:#?}", c.name);
+    }
+}
+
+/// Start steps name `r2`, `r3`, … in order; every `run` of an event or
+/// cancel step is a top-level run started before it; a case requires
+/// `messaging` exactly when a machine of its chart uses it, and so does a
+/// case with more than one top-level run.
+#[test]
+fn top_level_runs_are_started_in_order() {
+    for c in cases() {
+        let mut started = vec![ROOT_RUN.to_owned()];
+        for f in &c.case.requires {
+            assert!(
+                FEATURES.contains(&f.as_str()),
+                "{}: unknown feature {f}",
+                c.name
+            );
+        }
+        let mut steps: Vec<&Step> = c.case.script.iter().collect();
+        steps.reverse();
+        while let Some(s) = steps.pop() {
+            match s {
+                Step::Start(st) => {
+                    let want = format!("r{}", started.len() + 1);
+                    assert_eq!(st.run, want, "{}: start steps name r2, r3, …", c.name);
+                    started.push(st.run.clone());
+                }
+                Step::Event(e) => assert!(
+                    started.iter().any(|r| r == e.run()),
+                    "{}: event for {}, which has not been started",
+                    c.name,
+                    e.run()
+                ),
+                Step::Cancel(Some(r)) => assert!(
+                    started.contains(r),
+                    "{}: cancel of {r}, which has not been started",
+                    c.name
+                ),
+                Step::Together(inner) => steps.extend(inner.iter().rev()),
+                _ => {}
+            }
+        }
+        let messaging = c.case.requires.iter().any(|f| f == "messaging");
+        if started.len() > 1 {
+            assert!(
+                messaging,
+                "{}: several top-level runs need `messaging`",
+                c.name
+            );
+        }
+        if let Some(ir) = &c.ir {
+            let uses = ir.machines.values().any(|m| m.messaging().is_some());
+            assert_eq!(
+                uses, messaging,
+                "{}: `requires` must list `messaging` exactly when a machine of its chart uses it",
+                c.name
+            );
+        }
     }
 }
 
@@ -110,12 +177,13 @@ fn ir_when_present() {
             missing.push(c.ir_path.display().to_string());
             continue;
         };
-        assert!(
-            ir.machines.contains_key(&c.case.machine),
-            "{}: the IR has no machine {}",
-            c.name,
-            c.case.machine
-        );
+        for (_, m, _, _) in c.case.top_level_runs() {
+            assert!(
+                ir.machines.contains_key(m),
+                "{}: the IR has no machine {m}",
+                c.name
+            );
+        }
         for m in &c.case.stub {
             assert!(
                 ir.machines.contains_key(m),
@@ -165,8 +233,19 @@ fn every_status_and_record_kind_is_covered() {
         "failed",
         "cancelled",
         "defect",
+        "sent",
+        "emitted",
+        "undelivered",
     ] {
         assert!(kinds.contains(k), "no expected trace has a `{k}` record");
+    }
+    let inputs: BTreeSet<&str> = all
+        .iter()
+        .flat_map(|c| c.records.iter())
+        .filter_map(|r| r["event"]["kind"].as_str())
+        .collect();
+    for k in ["message", "emitted"] {
+        assert!(inputs.contains(k), "no expected trace takes a `{k}` input");
     }
 }
 
@@ -175,6 +254,14 @@ fn trace_schema_rejects_malformed_records() {
     let v = trace_validator();
     let good = json!({"t": 0, "run": "r1", "kind": "entered", "state": "Checkout"});
     assert!(v.is_valid(&good));
+    for good in [
+        json!({"t": 0, "run": "r2", "kind": "sent", "message": 1, "to": "r1.3", "value": {"_tag": "A"}}),
+        json!({"t": 0, "run": "r1", "kind": "undelivered", "message": 2, "to": null, "value": {"_tag": "A"}}),
+        json!({"t": 0, "run": "r1", "kind": "event", "event": {"kind": "emitted", "from": "r1.1", "invoke": 1, "message": 1, "value": {"_tag": "A"}}}),
+        json!({"t": 0, "run": "r1", "kind": "stale", "event": {"kind": "message", "from": "r2", "message": 1, "value": {"_tag": "A"}}}),
+    ] {
+        assert!(v.is_valid(&good), "should be accepted: {good}");
+    }
     let child = json!({"t": 0, "run": "r1.2", "parent": "r1", "kind": "cancelled"});
     assert!(v.is_valid(&child));
     for bad in [
@@ -191,6 +278,12 @@ fn trace_schema_rejects_malformed_records() {
         json!({"t": 0, "run": "r1", "kind": "failed", "state": "A", "error": {"reason": "x"}}),
         json!({"t": 0, "run": "r1", "kind": "defect", "defect": {"kind": "host"}}),
         json!({"t": 0, "run": "r1", "kind": "started", "machine": "A", "ir": "sha256:abc", "input": {}}),
+        json!({"t": 0, "run": "r1", "kind": "sent", "message": 1, "value": {"_tag": "A"}}),
+        json!({"t": 0, "run": "r1", "kind": "sent", "message": 0, "to": "r2", "value": {"_tag": "A"}}),
+        json!({"t": 0, "run": "r1", "kind": "emitted", "message": 1, "to": "r2", "value": {"_tag": "A"}}),
+        json!({"t": 0, "run": "r1", "kind": "undelivered", "message": 1, "value": {"_tag": "A"}}),
+        json!({"t": 0, "run": "r1", "kind": "event", "event": {"kind": "message", "from": "r2", "message": 1}}),
+        json!({"t": 0, "run": "r1", "kind": "event", "event": {"kind": "emitted", "from": "r2", "message": 1, "value": {"_tag": "A"}}}),
     ] {
         assert!(!v.is_valid(&bad), "should be rejected: {bad}");
     }
@@ -211,7 +304,22 @@ fn case_schema_rejects_malformed_cases() {
     two_outcomes["script"] = json!([{"task": "t", "done": 1, "fail": {"_tag": "E"}}]);
     let mut lonely = c.case_json.clone();
     lonely["script"] = json!([{"together": [{"event": {"_tag": "A"}}]}]);
-    for bad in [missing, extra, status, two_outcomes, lonely] {
+    let mut feature = c.case_json.clone();
+    feature["requires"] = json!(["telepathy"]);
+    let mut start = c.case_json.clone();
+    start["script"] = json!([{"start": "A", "run": "r2.1", "input": {}, "status": "done"}]);
+    let mut event_to_child = c.case_json.clone();
+    event_to_child["script"] = json!([{"event": {"_tag": "A"}, "run": "r1.2"}]);
+    for bad in [
+        missing,
+        extra,
+        status,
+        two_outcomes,
+        lonely,
+        feature,
+        start,
+        event_to_child,
+    ] {
         assert!(!v.is_valid(&bad), "should be rejected: {bad}");
     }
 }
@@ -242,6 +350,72 @@ fn lint_catches_mistakes() {
     assert!(!lint(&twice, Status::Done, None).is_empty());
 }
 
+#[test]
+fn lint_catches_message_mistakes() {
+    let c = cases()
+        .into_iter()
+        .find(|c| c.name == "pair-order")
+        .unwrap();
+    let st = statuses(&c);
+    assert!(lint_runs(&c.records, &st, None).is_empty());
+    let find = |recs: &[Value], kind: &str, n: u64| {
+        recs.iter()
+            .position(|r| r["event"]["kind"] == kind && r["event"]["message"] == n)
+            .unwrap()
+    };
+    // Second taken before First.
+    let mut swapped = c.records.clone();
+    let (a, b) = (find(&swapped, "message", 1), find(&swapped, "message", 2));
+    let (va, vb) = (swapped[a]["event"].clone(), swapped[b]["event"].clone());
+    swapped[a]["event"] = vb;
+    swapped[b]["event"] = va;
+    assert!(!lint_runs(&swapped, &st, None).is_empty());
+    // A message nobody sent, and one with another value.
+    let mut unsent = c.records.clone();
+    let i = find(&unsent, "message", 1);
+    unsent[i]["event"]["message"] = json!(7);
+    assert!(!lint_runs(&unsent, &st, None).is_empty());
+    let mut changed = c.records.clone();
+    changed[i]["event"]["value"] = json!({"_tag": "Second"});
+    assert!(!lint_runs(&changed, &st, None).is_empty());
+    // A message id skipped by the sender.
+    let mut skipped = c.records.clone();
+    let j = skipped.iter().position(|r| r["kind"] == "sent").unwrap();
+    skipped[j]["message"] = json!(2);
+    assert!(!lint_runs(&skipped, &st, None).is_empty());
+    // The wrong status of a top-level run that is not the root.
+    let wrong = [st[0].clone(), ("r2".to_owned(), Status::Failed)];
+    assert!(!lint_runs(&c.records, &wrong, None).is_empty());
+
+    let c = cases()
+        .into_iter()
+        .find(|c| c.name == "peer-stopped")
+        .unwrap();
+    let st = statuses(&c);
+    assert!(lint_runs(&c.records, &st, None).is_empty());
+    // An `undelivered` that does not follow its `sent`.
+    let mut moved = c.records.clone();
+    let k = moved
+        .iter()
+        .position(|r| r["kind"] == "undelivered")
+        .unwrap();
+    let u = moved.remove(k);
+    moved.insert(k + 1, u);
+    assert!(!lint_runs(&moved, &st, None).is_empty());
+
+    let c = cases()
+        .into_iter()
+        .find(|c| c.name == "child-stale-emit")
+        .unwrap();
+    let st = statuses(&c);
+    assert!(lint_runs(&c.records, &st, None).is_empty());
+    // A stale emitted event written as taken.
+    let mut live = c.records.clone();
+    let k = live.iter().position(|r| r["kind"] == "stale").unwrap();
+    live[k]["kind"] = json!("dropped");
+    assert!(!lint_runs(&live, &st, None).is_empty());
+}
+
 /// Until the compiler generates the shop charts' IR, check their cases
 /// against the hand-written IR fixture of `examples/shop`, of which
 /// `charts/shop` is a copy: state ids, transition indices and targets,
@@ -255,7 +429,7 @@ fn shop_cases_agree_with_the_ir_fixture() {
         if !c.case.chart.starts_with("charts/shop/") {
             continue;
         }
-        let problems = lint(&c.records, c.case.status, Some(&ir));
+        let problems = lint_runs(&c.records, &statuses(&c), Some(&ir));
         assert!(problems.is_empty(), "{}: {problems:#?}", c.name);
         checked += 1;
     }

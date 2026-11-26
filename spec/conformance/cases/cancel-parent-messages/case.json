@@ -1,0 +1,27 @@
+{
+  "description": "Boss, r2, is cancelled from outside while its Worker runs. The Worker's cancel step sends a note to the Logbook peer, which takes it, and emits Stopping, which is not delivered: Boss ended with the step that cancelled it. Boss's own exit effect then sends its note, which the Logbook takes after the Worker's, since Boss waits for the Worker's cancel step.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/workers.road",
+  "machine": "Logbook",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Boss",
+      "run": "r2",
+      "input": {
+        "book": "r1"
+      },
+      "status": "cancelled"
+    },
+    {
+      "cancel": true,
+      "run": "r2"
+    }
+  ],
+  "status": "running"
+}

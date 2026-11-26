@@ -1,0 +1,379 @@
+{
+  "irVersion": "0.2",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/pair.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "note": {
+      "params": [
+        {
+          "name": "peer",
+          "type": "ref Receiver",
+          "doc": ""
+        }
+      ],
+      "doc": "Record which machine a sender talks to.",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 32
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Receiver": {
+      "doc": "Must get First before Second.",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 19,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "First": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 14
+          }
+        },
+        "Second": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {},
+      "root": {
+        "id": "Receiver",
+        "name": "Receiver",
+        "kind": "compound",
+        "doc": "Must get First before Second.",
+        "span": {
+          "file": 0,
+          "line": 8,
+          "col": 1,
+          "endLine": 19,
+          "endCol": 2
+        },
+        "initial": "Receiver.WaitingFirst",
+        "states": [
+          {
+            "id": "Receiver.WaitingFirst",
+            "name": "WaitingFirst",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 14,
+              "col": 3,
+              "endLine": 14,
+              "endCol": 51
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "First"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Receiver.WaitingSecond",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 14,
+                  "col": 24,
+                  "endLine": 14,
+                  "endCol": 49
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Receiver.WaitingSecond",
+            "name": "WaitingSecond",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 16,
+              "col": 3,
+              "endLine": 16,
+              "endCol": 44
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Second"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Receiver.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 16,
+                  "col": 25,
+                  "endLine": 16,
+                  "endCol": 42
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Receiver.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 18,
+              "col": 3,
+              "endLine": 18,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:a3ddda38b14b5ec2a94886b68e786f3aa4c678c3782515d40561f8ed17d83566"
+    },
+    "Sender": {
+      "doc": "Sends First, then Second, in one transition, to the same peer named two ways.",
+      "span": {
+        "file": 0,
+        "line": 22,
+        "col": 1,
+        "endLine": 33,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "peer",
+          "type": "ref Receiver",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "target",
+          "type": "ref Receiver",
+          "init": {
+            "kind": "ref",
+            "path": [
+              "peer"
+            ],
+            "type": "ref Receiver",
+            "text": "peer"
+          },
+          "doc": "The same peer, held in a variable: an address can be either.",
+          "span": {
+            "file": 0,
+            "line": 24,
+            "col": 3,
+            "endLine": 24,
+            "endCol": 34
+          }
+        }
+      ],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 26,
+            "col": 3,
+            "endLine": 26,
+            "endCol": 11
+          }
+        }
+      },
+      "emits": {},
+      "root": {
+        "id": "Sender",
+        "name": "Sender",
+        "kind": "compound",
+        "doc": "Sends First, then Second, in one transition, to the same peer named two ways.",
+        "span": {
+          "file": 0,
+          "line": 22,
+          "col": 1,
+          "endLine": 33,
+          "endCol": 2
+        },
+        "initial": "Sender.Idle",
+        "states": [
+          {
+            "id": "Sender.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 30,
+              "col": 3,
+              "endLine": 30,
+              "endCol": 83
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Sender.Sent",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "peer"
+                        ],
+                        "type": "ref Receiver",
+                        "text": "peer"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "ref",
+                      "name": "peer",
+                      "machine": "Receiver",
+                      "state": null
+                    },
+                    "event": "First",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Receiver.First",
+                      "text": "First"
+                    }
+                  },
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "ref",
+                      "name": "target",
+                      "machine": "Receiver",
+                      "state": null
+                    },
+                    "event": "Second",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Receiver.Second",
+                      "text": "Second"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 16,
+                  "endLine": 30,
+                  "endCol": 81
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Sender.Sent",
+            "name": "Sent",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 32,
+              "col": 3,
+              "endLine": 32,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:44fcb592287cddc7c3313a3ff3a57b939f2c6ffe34de436657f2877d3c3091b2"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{"input":{"warehouse":"w1"},"ir":"sha256:ce476c9f805a78c0125d0aa5e47142cbacf245ae7a2b5d5ae3aa1de2c1afc5eb","kind":"started","machine":"Inventory","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Inventory","t":0}
+{"kind":"entered","run":"r1","state":"Inventory.Ready","t":0}
+{"event":{"kind":"event","value":{"_tag":"Close"}},"kind":"event","run":"r1","t":0}
+{"from":"Inventory.Ready","index":1,"kind":"transition","run":"r1","t":0,"to":"Inventory.Closed"}
+{"kind":"exited","run":"r1","state":"Inventory.Ready","t":0}
+{"kind":"entered","run":"r1","state":"Inventory.Closed","t":0}
+{"kind":"exited","run":"r1","state":"Inventory.Closed","t":0}
+{"kind":"exited","run":"r1","state":"Inventory","t":0}
+{"kind":"done","output":null,"run":"r1","state":"Inventory.Closed","t":0}
+{"input":{"draft":{"card":"4242","items":[{"qty":2,"sku":"s1"}]},"id":"o1","inventory":"r1"},"ir":"sha256:4acb625ac346689b1399e54cca1ebad79f5509d474ffaab2dc727e628f6a243e","kind":"started","machine":"Order","run":"r2","t":0}
+{"kind":"entered","run":"r2","state":"Order","t":0}
+{"kind":"entered","run":"r2","state":"Order.Reserving","t":0}
+{"kind":"sent","message":1,"run":"r2","t":0,"to":"r1","value":{"_tag":"Reserve","items":[{"qty":2,"sku":"s1"}],"orderId":"o1"}}
+{"kind":"undelivered","message":1,"run":"r2","t":0,"to":"r1","value":{"_tag":"Reserve","items":[{"qty":2,"sku":"s1"}],"orderId":"o1"}}
+{"delay":5000,"index":2,"kind":"timer.started","run":"r2","state":"Order.Reserving","t":0,"timer":1}
+{"event":{"kind":"after","timer":1},"kind":"event","run":"r2","t":5000}
+{"from":"Order.Reserving","index":2,"kind":"transition","run":"r2","t":5000,"to":"Order.Unavailable"}
+{"kind":"exited","run":"r2","state":"Order.Reserving","t":5000}
+{"kind":"set","run":"r2","t":5000,"value":{"_tag":"OutOfStock","reason":"the warehouse did not answer"},"var":"problem"}
+{"kind":"entered","run":"r2","state":"Order.Unavailable","t":5000}
+{"kind":"exited","run":"r2","state":"Order.Unavailable","t":5000}
+{"kind":"exited","run":"r2","state":"Order","t":5000}
+{"error":{"_tag":"OutOfStock","reason":"the warehouse did not answer"},"kind":"failed","run":"r2","state":"Order.Unavailable","t":5000}

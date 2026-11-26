@@ -1,5 +1,6 @@
 {
   "description": "The child's chargeCard has a host defect. The child run ends with the defect, which reaches the parent through its invoke and ends it too: no fail branch, no exit effects, its timer cancelled without a record.",
+  "requires": [],
   "chart": "charts/shop/place_order.road",
   "machine": "PlaceOrder",
   "input": {

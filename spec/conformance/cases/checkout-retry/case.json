@@ -1,5 +1,6 @@
 {
   "description": "Two gateway failures with growing backoff, then a successful charge. The delay is computed from attempts after Backoff's entry effect has incremented it.",
+  "requires": [],
   "chart": "charts/shop/checkout.road",
   "machine": "Checkout",
   "input": {

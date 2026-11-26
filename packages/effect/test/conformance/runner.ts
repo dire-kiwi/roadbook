@@ -37,6 +37,7 @@ type Step =
 
 export interface Case {
   readonly description: string
+  readonly requires: ReadonlyArray<string>
   readonly chart: string
   readonly machine: string
   readonly input: { readonly [param: string]: Core.Json }
@@ -48,6 +49,18 @@ export interface Case {
 }
 
 export const conformanceDir = path.resolve(import.meta.dirname, "../../../../spec/conformance")
+
+/**
+ * The features of case.schema.json's `requires` this runtime implements. Messaging (milestone 5)
+ * is not one yet. A case that requires another is skipped, not failed.
+ */
+export const supported: ReadonlyArray<string> = []
+
+/** Whether this runtime implements everything case `name` requires. */
+export const isSupported = (name: string): boolean => {
+  const spec = JSON.parse(fs.readFileSync(path.join(conformanceDir, "cases", name, "case.json"), "utf8")) as Case
+  return spec.requires.every((feature) => supported.includes(feature))
+}
 
 export const caseNames = (): Array<string> =>
   fs.readdirSync(path.join(conformanceDir, "cases")).filter((name) =>

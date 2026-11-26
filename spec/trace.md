@@ -9,11 +9,11 @@ Every record has:
 | Member | Meaning |
 | --- | --- |
 | `t` | The driver's clock when it wrote the record, in integer milliseconds. Virtual time from 0 in conformance runs; since the Unix epoch otherwise. |
-| `run` | The id of the run that wrote it. The driver names a root run (`r1` in conformance). A child run is named `<parent run>.<invoke id>`: `r1.4` was started by invoke 4 of `r1`. |
-| `parent` | The parent run's id. Present on every record of a child run, and on no record of a root run. |
+| `run` | The id of the run that wrote it. The driver names a top-level run (`r1`, `r2`, … in conformance). A child run is named `<parent run>.<invoke id>`: `r1.4` was started by invoke 4 of `r1`. |
+| `parent` | The parent run's id. Present on every record of a child run, and on no record of a top-level run. |
 | `kind` | The record kind, below. |
 
-The core emits records without these members; the driver adds them.
+The core emits records without these members; the driver adds them. The driver also writes one kind of record itself, `undelivered` after a `sent` record.
 
 ## Records
 
@@ -26,10 +26,13 @@ States are named by their ids in the IR, transitions by their state's id and the
 | `exited` | `state` | When a state is left, after its invoke and timers were cancelled and its exit effects ran. |
 | `event` | `event` | When the run takes an input that enables a transition, before anything it causes. `event` is the input as the core received it (below). |
 | `dropped` | `event` | Instead of `event`, when the input enables no transition. Nothing else happens. |
-| `stale` | `event` | Instead of `event`, when the input is the outcome of an invoke or the expiry of a timer whose id is no longer running: it was cancelled after its outcome or expiry had been queued. Nothing else happens. |
+| `stale` | `event` | Instead of `event`, when the input is the outcome of an invoke, the expiry of a timer, or an event emitted by a child run, whose invoke or timer is no longer running: it was cancelled after the input had been queued. Nothing else happens. |
 | `transition` | `from`, `index`, `to` | When a transition is taken, before the exits it causes. `to` is the target state's id, or `null` for an internal transition. `always` and `done` transitions are traced the same way, with no `event` record before them. |
 | `set` | `var`, `value` | When an assignment runs, in an exit, transition or entry effect list. |
 | `action` | `action`, `args` | When an action is run, before the driver runs it. `args` is keyed by parameter name. |
+| `sent` | `message`, `to`, `value` | When a `send` effect runs, before the driver queues the message. `message` is the message's id in the sending run, from 1, shared with `emitted` and `undelivered`; `to` the receiving run's id; `value` the event, a tagged record. |
+| `emitted` | `message`, `value` | When an `emit` effect runs, before the driver queues the event for its receivers. Which runs received it is in their records, not here. |
+| `undelivered` | `message`, `to`, `value` | A `send` that reached no run. Written by the core in place of `sent`, with `to` `null`, when the state the child is addressed through has no running invoke (it has not started yet, or its outcome has been taken). Written by the driver right after the `sent` record, with the same members, when the receiving run has ended. |
 | `invoke.started` | `invoke`, `state`, `src`, `args` | When a task or child machine is started. `invoke` is its id in the run, from 1. |
 | `invoke.cancelled` | `invoke`, `state`, `src` | When a running invoke is cancelled because its state is left. An invoke whose outcome arrived is not cancelled. |
 | `timer.started` | `timer`, `state`, `index`, `delay` | When an `after` timer is started. `index` is the transition of its `after` block that comes first, and `delay` the evaluated delay in milliseconds. |
@@ -48,10 +51,15 @@ The `event` member of `event`, `dropped` and `stale` records is the input exactl
 | Input | Form |
 | --- | --- |
 | External event | `{"kind": "event", "value": {"_tag": "Check", "amount": 5}}` |
+| Message from another run | `{"kind": "message", "from": "r1", "message": 2, "value": {"_tag": "Pause"}}` |
+| Emitted by a child run | `{"kind": "emitted", "from": "r1.1", "invoke": 1, "message": 1, "value": {"_tag": "Progress", "offset": 100}}` |
+| Emitted by a peer | `{"kind": "emitted", "from": "r1", "invoke": null, "message": 3, "value": {"_tag": "Reserved", "orderId": "o1"}}` |
 | Invoke succeeded | `{"kind": "invoke.done", "invoke": 1, "value": …}` |
 | Invoke failed | `{"kind": "invoke.fail", "invoke": 1, "error": {"_tag": "GatewayUnavailable"}}` |
 | Invoke ended with a defect | `{"kind": "invoke.defect", "invoke": 1, "defect": {"kind": "host", "message": "…"}}` |
 | Timer expired | `{"kind": "after", "timer": 1}` |
+
+A message or emitted event names its sender by `from` and the sender's `message` id, so every received input points at exactly one `sent` or `emitted` record: the one in run `from`'s group with that `message`.
 
 The two other inputs, `cancel` and `defect`, are not written as `event` records: the `cancelled` or `defect` record that ends the run shows them. An `invoke.defect` input is written as an `event` record (or `stale`), followed by the run's `defect` record.
 
@@ -59,11 +67,15 @@ The two other inputs, `cancel` and `defect`, are not written as `event` records:
 
 `{"kind": "host", "message": …}`, `{"kind": "unassigned", "var": …}`, `{"kind": "overflow", "expr": …}`, `{"kind": "undeclared", "error": …}` or `{"kind": "limit"}`; see [execution.md](execution.md#defects).
 
+## Messages
+
+Records are enough to draw a sequence view across runs. A `send` is one `sent` record in the sender's group, with `to`, and one `event`, `dropped` or `stale` record in the receiver's, whose input has `from` and the same `message`; or `sent` followed by `undelivered` if the receiver had ended, or `undelivered` alone if there was no child to send to. An `emit` is one `emitted` record, and one input record in the group of each run it reached. A `sent` with no receiving record and no `undelivered` is a message that never reached a transition: it was still queued when the receiver ended and was discarded with the queue ([ending a run](execution.md#ending-a-run)), or it was kept for a child that never claimed its invoke (a stub) and discarded when the invoke ended.
+
 ## Order
 
-**Within a run**, records are in the order the core emitted them, which is fixed by the run's inputs. **Across runs**, a live trace interleaves records as they are written, and that interleaving depends on how the host schedules the parent and the child: on the Effect scheduler, or on how a Rust driver polls a child's future. It is not part of the format.
+**Within a run**, records are in the order the core emitted them, which is fixed by the run's inputs. **Across runs**, a live trace interleaves records as they are written, and that interleaving depends on how the host schedules the runs: on the Effect scheduler, or on how a Rust driver polls a child's future. It is not part of the format. A `sent` or `emitted` record is always written before the records of the runs that receive it.
 
-To compare traces, and in every conformance case, records are **grouped by run**. The groups are ordered by run id, and each keeps its records in their order. Run ids are compared segment by segment, splitting at the dots: the first segment as a string, the others as numbers, and an id before any id it is a prefix of. That is a pre-order walk of the run tree with each run's children in the order their invokes were started: `r1`, `r1.4`, `r1.4.2`, `r1.7`.
+To compare traces, and in every conformance case, records are **grouped by run**. The groups are ordered by run id, and each keeps its records in their order. Run ids are compared segment by segment, splitting at the dots: the first segment as a string, the others as numbers, and an id before any id it is a prefix of. That is a pre-order walk of the run tree with each run's children in the order their invokes were started, the top-level runs by id: `r1`, `r1.4`, `r1.4.2`, `r1.7`, `r2`, `r2.1`.
 
 Grouping is used instead of a defined global schedule because it asks nothing of either driver's concurrency. A global order would force both drivers to run a child's step synchronously inside the parent's command loop, or to share one deterministic scheduler, neither of which an Effect fiber or a Rust future gives without contortion. Grouped, each run's records only need to be in that run's own order, which both get for free, and `t` still places records from different runs relative to each other. Ordering groups by id rather than by creation time means the order does not depend on when the host actually created a child either.
 
@@ -103,4 +115,4 @@ A `PlaceOrder` request that times out while its `Checkout` child is waiting to r
 
 ## Later
 
-Fields marked `sensitive` in a chart will be redacted in records. Messaging (milestone 5) adds `sent` and `received` records carrying both run ids. Neither changes the records above.
+Fields marked `sensitive` in a chart will be redacted in records. That does not change the records above.

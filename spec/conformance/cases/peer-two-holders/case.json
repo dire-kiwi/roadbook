@@ -1,0 +1,63 @@
+{
+  "description": "Two Orders hold a `ref` to one Inventory. The busy Inventory's Rejected for o2 reaches both: o1 (r2) drops it, its guard on the id failing, and o2 (r3) fails. The Reserved for o1 then reaches only r2, since r3 has ended. r2's payment is declined, and the Release it sends in the transition that ends it is taken by r1.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/orders.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Order",
+      "run": "r2",
+      "input": {
+        "id": "o1",
+        "draft": {
+          "items": [
+            {
+              "sku": "s1",
+              "qty": 2
+            }
+          ],
+          "card": "4242"
+        },
+        "inventory": "r1"
+      },
+      "status": "failed"
+    },
+    {
+      "start": "Order",
+      "run": "r3",
+      "input": {
+        "id": "o2",
+        "draft": {
+          "items": [
+            {
+              "sku": "s2",
+              "qty": 1
+            }
+          ],
+          "card": "5555"
+        },
+        "inventory": "r1"
+      },
+      "status": "failed"
+    },
+    {
+      "task": "reserveStock",
+      "done": null
+    },
+    {
+      "task": "charge",
+      "fail": {
+        "_tag": "PaymentDeclined"
+      }
+    }
+  ],
+  "status": "running"
+}

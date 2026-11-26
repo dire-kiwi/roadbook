@@ -1,5 +1,6 @@
 {
   "description": "Skip and slow's result arrive together. Skip leaves Slow and cancels slow, so its already-queued result is stale: traced and ignored. quick's result then finishes the run.",
+  "requires": [],
   "chart": "charts/race.road",
   "machine": "Race",
   "input": {},

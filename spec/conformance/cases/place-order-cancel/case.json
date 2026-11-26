@@ -1,5 +1,6 @@
 {
   "description": "Cancel arrives while the Checkout child is charging. The transition on the compound Processing exits Paying, cancelling the child run, and Processing, cancelling its timer.",
+  "requires": [],
   "chart": "charts/shop/place_order.road",
   "machine": "PlaceOrder",
   "input": {

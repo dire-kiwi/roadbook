@@ -69,7 +69,7 @@ Pattern: `^(string|int|float|bool|duration|json|[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z
 
 **Event types.** Events are not declared types: an event's type is named after the event. Inside machine `M`, a bare name that is one of `M`'s events or emitted events is that event: the type of `event` in `on Name`, and of the value of `emit Name { … }`. The event of another machine, or of a machine reached through a `ref` or a child, is written `Machine.Name`: the type of `event` in `on upload.Progress` is `Upload.Progress`, and the value of `send upload.Pause` has type `Upload.Pause`, also when the other machine is `M` itself. Names never collide: an event never has the name of a type, error or machine of the document, and a machine's `events` and `emits` never share a name, so a bare name is a key of `types` or of the current machine's `events` or `emits`, never two of them.
 
-**Where a `ref` can be.** Machine parameters, variables, and the parameters of functions, actions and tasks may have a `ref` type, directly or through an alias. Fields of records, errors and events, and the results of functions, tasks and machines, never do, so a machine can only get a handle from its own signature or from `invoke … as`. A `ref` value has no JSON form: it is never a literal, never compared, never passed where `json` is expected, and a runtime passes it to host functions as its own handle type.
+**Where a `ref` can be.** Machine parameters, variables, and the parameters of functions, actions and tasks may have a `ref` type, directly or through an alias. Fields of records, errors and events, and the results of functions, tasks and machines, never do, so a machine can only get a handle from its own signature or from `invoke … as`. A `ref` value is never a literal, never compared, never passed where `json` is expected, and a runtime passes it to host code as its own handle type. In snapshots and traces it is the id of the run it refers to ([values](execution.md#values)).
 
 ## Declarations
 
@@ -212,7 +212,7 @@ An address names another running machine: the receiver of a `send`, or the sende
 | `machine` | The machine at the other end, a key of `machines`: the invoked machine, or the `ref`'s. Its `events` are what can be sent to it, its `emits` what can be received from it. |
 | `state` | For `child`, the id of the state whose invoke has the `as` name: the innermost state with that name that contains, or is, the state the item is written in. `null` for `ref`. |
 
-A child is addressed only from its invoking state and that state's descendants, which is while it runs: the compiler rejects a `send` to it from the invoking state's own `entry`, `exit` or invoke outcomes, and from a transition that leaves the invoking state (that would reach it after it was stopped). A `ref` variable addresses whichever machine it holds when the item runs.
+A child is addressed only from its invoking state and that state's descendants, which is while it runs: the compiler rejects a `send` to it from the invoking state's own `entry`, `exit` or invoke outcomes, and from a transition that leaves the invoking state (that would reach it after it was stopped). A send the compiler cannot rule out, made while the state has no running invoke, is undelivered at run time ([execution](execution.md#exiting-and-entering-a-state)). A `ref` variable addresses whichever machine it holds when the item runs.
 
 ## Transitions
 
@@ -354,4 +354,4 @@ Version 0.2 adds messaging between machines ([actors and messaging](../docs/desi
 - A list of effects is every `set`, then the other effects in the order written (in 0.1, the `do`s).
 - The [semantic view](#the-machine-hash) has `interfaces`.
 
-What a runtime does with the new members (queues, delivery to the invoker and to every holder of a reference, sending to a stopped machine, the trace records) belongs in [`execution.md`](execution.md) and [`trace.md`](trace.md), which do not cover it yet. A runtime that does not implement messaging refuses a machine that uses any of it before running it: in Rust, `Machine::messaging` names the first construct that does.
+What a runtime does with the new members (queues, delivery to the invoker and to every holder of a reference, sending to a stopped machine, the trace records) is in [`execution.md`](execution.md#messages-between-runs) and [`trace.md`](trace.md#messages). A runtime that does not implement messaging refuses a machine that uses any of it before running it: in Rust, `Machine::messaging` names the first construct that does.

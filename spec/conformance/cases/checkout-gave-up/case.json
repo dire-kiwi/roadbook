@@ -1,5 +1,6 @@
 {
   "description": "Four gateway failures: the guarded branch attempts < 3 is taken three times, then the else branch, and the run fails with a bare error value.",
+  "requires": [],
   "chart": "charts/shop/checkout.road",
   "machine": "Checkout",
   "input": {

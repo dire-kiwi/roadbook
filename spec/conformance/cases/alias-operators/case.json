@@ -1,5 +1,6 @@
 {
   "description": "Comparison, equality and arithmetic on aliases behave as on the aliased types: `<`, `<=`, `==` and `!=` on an alias of an alias of `int`, `<`, `==`, `>=`, `*` and unary `-` on an alias of `float`, `<=`, `==` and `>` on an alias of `duration`, `==` and `!=` on an alias of an enum. Every guard puts the alias-typed operand first, so a runtime that picks an operator's behaviour from the IR type without expanding aliases takes the wrong branch or drops the event. A variable whose type is an alias of an optional type starts as null, so Counting's entry action reads it.",
+  "requires": [],
   "chart": "charts/alias.road",
   "machine": "Aliases",
   "input": {

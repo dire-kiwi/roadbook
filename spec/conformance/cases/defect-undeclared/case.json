@@ -1,5 +1,6 @@
 {
   "description": "The stubbed machine Sub fails with Other, which it does not declare: an undeclared defect inside the core, with no event record.",
+  "requires": [],
   "chart": "charts/defects.road",
   "machine": "Main",
   "input": {},

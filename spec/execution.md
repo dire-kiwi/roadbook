@@ -2,14 +2,16 @@
 
 This page is the algorithm both runtimes implement: what the pure core does with a snapshot and an input, what it asks the driver to do, and how the driver carries that out. It is precise enough that two independent implementations produce the same [trace](trace.md) byte for byte, and the [conformance cases](conformance/) hold them to it. The design rationale is in [semantics](../docs/design/semantics.md); this page only says what happens.
 
-It covers what the first version supports: atomic, compound and final states, events, guards, `invoke` of tasks and machines, `after`, `always` and `done`. Parallel states and restoring snapshots (milestone 6) and messaging (milestone 5) are not specified yet; [the end of this page](#not-yet-specified) lists where they will fit.
+It covers atomic, compound and final states, events, guards, `invoke` of tasks and machines, `after`, `always` and `done`, and [messages between runs](#messages-between-runs) (`send`, `emit`, `on name.Event` and `ref`, milestone 5). Parallel states and restoring snapshots (milestone 6) are not specified yet; [the end of this page](#not-yet-specified) lists where they will fit.
 
 ## Terms
 
 - A **run** is one instance of a machine, from `start` until it finishes. A run's **status** is `running`, `done`, `failed`, `cancelled` or `defect`; only `running` is not final.
 - The **active states** are the states the run is in. Without parallel states they form a chain from the root (the machine itself, a compound state whose id is the machine's name) down to one atomic or final state. The root is active for the whole run.
 - **Document order** is the order of a pre-order walk of the IR's state tree: a state comes before its children, and children are in `states` order. **Innermost first** means reverse document order; for a chain it is leaf to root.
-- An **input** is what the driver gives the core: an external event, an invoke's outcome, a timer's expiry, or a request to cancel or to fail with a defect.
+- An **input** is what the driver gives the core: an external event, a message or an emitted event from another run, an invoke's outcome, a timer's expiry, or a request to cancel or to fail with a defect.
+- A **top-level run** is one that host code started (`run`, `spawn`), as opposed to a **child run**, which an `invoke` of its parent started ([child runs](#child-runs)). A **peer** of a run is a top-level run it holds a `ref` to.
+- A **message** is an event one run sends to another with `send`. An **emitted event** is one a run emits with `emit`, for its invoker and the runs that hold a `ref` to it. Both are queued for the receiver like any input ([messages between runs](#messages-between-runs)).
 - A **step** is what the core does with one input (or with `start`). It is a **macrostep** in SCXML's terms: one **microstep** for the input's transition, if any, then the microsteps of [settling](#settling), then [starting work](#starting-work).
 - `parent(s)` is the state whose `states` contains `s`. A **proper ancestor** of `s` is `parent(s)`, its parent, and so on up to the root. A **proper descendant** is the converse.
 
@@ -18,11 +20,11 @@ It covers what the first version supports: atomic, compound and final states, ev
 The core is two pure, synchronous functions. They do no I/O and read no clock.
 
 ```
-start(ir, machine, input, fns)  -> (snapshot, commands)
-step(ir, snapshot, input, fns)  -> (snapshot, commands)
+start(ir, machine, run, input, fns)  -> (snapshot, commands)
+step(ir, snapshot, input, fns)       -> (snapshot, commands)
 ```
 
-`ir` is the whole IR document and `machine` the name of the machine to run. `input` (for `start`) is the machine's arguments as an object keyed by parameter name. `fns(name, args)` calls the host's pure function `name` with positional argument values and returns its value, or a `host` [defect](#defects) if the host code threw, panicked or returned a value that is not of the declared type. The binding layer turns the positional list into whatever the host implementation takes (an object of named parameters in TypeScript, arguments in Rust), decodes the result, and catches what the host code throws (TypeScript `try`/`catch`, Rust `std::panic::catch_unwind`), so nothing ever unwinds through the core. `snapshot` is never modified in place: `step` returns a new one.
+`ir` is the whole IR document, `machine` the name of the machine to run and `run` the run's id ([run ids](#the-driver)), which the core needs only to name its child runs in `sent` records. `input` (for `start`) is the machine's arguments as an object keyed by parameter name. `fns(name, args)` calls the host's pure function `name` with positional argument values and returns its value, or a `host` [defect](#defects) if the host code threw, panicked or returned a value that is not of the declared type. The binding layer turns the positional list into whatever the host implementation takes (an object of named parameters in TypeScript, arguments in Rust), decodes the result, and catches what the host code throws (TypeScript `try`/`catch`, Rust `std::panic::catch_unwind`), so nothing ever unwinds through the core. `snapshot` is never modified in place: `step` returns a new one.
 
 `commands` is a list the driver carries out in order. It is the core's only way to affect the world. Trace records are commands too, so the trace interleaves with the work exactly as the core emitted it.
 
@@ -33,6 +35,7 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
 ```jsonc
 {
   "machine": "Checkout",
+  "run": "r1",                                   // the run's id
   "ir": "sha256:fa1a…",                         // the machine's hash from the IR
   "status": "running",                           // running | done | failed | cancelled | defect
   "active": ["Checkout", "Checkout.Backoff"],    // active state ids, in document order
@@ -42,6 +45,7 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
   "timers": [{ "id": 1, "state": "Checkout.Backoff", "index": 0, "delay": 200 }],
   "nextInvoke": 2,
   "nextTimer": 2,
+  "nextMessage": 1,
   "result": null
 }
 ```
@@ -49,13 +53,15 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
 | Member | Meaning |
 | --- | --- |
 | `machine`, `ir` | The machine's name and its `hash`. |
+| `run` | The run's id, as given to `start`. |
 | `status` | The run's status. |
 | `active` | The active states' ids in document order. `[]` once the run is `done`, `failed` or `cancelled`. When the run ends with a `defect`, left as it was in the snapshot the defect was applied to, to show roughly where it stopped (`[]` if that snapshot had already finished). |
-| `input` | The arguments, keyed by parameter name. Parameters are read from here. |
+| `input` | The arguments, keyed by parameter name. Parameters are read from here. A `ref` is the id of the run it refers to ([values](#values)). |
 | `vars` | Every variable that has a value, keyed by name. A variable with no value yet has no member, which is different from an optional variable holding `null`. An optional variable always has a member, since it starts as `null` when it has no initial value. |
 | `invokes` | `[{"id", "state", "src"}]`: the invokes that are running, in the order they were started. `state` is the id of the state that owns it, `src` the task's or machine's name. |
 | `timers` | `[{"id", "state", "index", "delay"}]`: the `after` timers that are running, in the order they were started. `index` is the position in the state's `transitions` of the first transition of the timer's `after` block, and `delay` the evaluated delay in milliseconds. |
 | `nextInvoke`, `nextTimer` | The id the next invoke or timer will get. Both start at 1. Ids are never reused within a run, which is what lets the core recognise a stale outcome. |
+| `nextMessage` | The id the next `send` or `emit` effect will get, from 1. A message is named in traces by its sender's run id and this id. |
 | `result` | `null` while running and when cancelled. `{"output": value}` when done (`value` is `null` for a machine that returns nothing), `{"error": value}` when failed, `{"defect": defect}` when the run ended with a [defect](#defects). |
 
 Within a macrostep the core also keeps two transient values that are not part of the snapshot: the set of states **entered during this macrostep**, and the **completion queue** of compound states that reached a final child and have not been exited since.
@@ -64,7 +70,9 @@ Within a macrostep the core also keeps two transient values that are not part of
 
 | Input | Meaning |
 | --- | --- |
-| `{"kind": "event", "value": {"_tag": "Cancel", …}}` | An external event: one of the machine's `events`, encoded as a tagged record (see [values](#values)). |
+| `{"kind": "event", "value": {"_tag": "Cancel", …}}` | An external event: one of the machine's `events`, encoded as a tagged record (see [values](#values)), given by host code. |
+| `{"kind": "message", "from": "r2", "message": 1, "value": {"_tag": "Reserve", …}}` | A message: run `r2` sent one of this machine's `events` with `send`, as its message 1. |
+| `{"kind": "emitted", "from": "r1.3", "invoke": 3, "message": 2, "value": {"_tag": "Progress", …}}` | An emitted event: run `r1.3` emitted one of its machine's `emits` as its message 2. `invoke` is the id of this run's invoke that started `r1.3` when this run is its invoker, and `null` when this run holds a `ref` to it. |
 | `{"kind": "invoke.done", "invoke": 1, "value": v}` | Invoke 1 succeeded with `v` (`null` for a task that returns nothing). |
 | `{"kind": "invoke.fail", "invoke": 1, "error": e}` | Invoke 1 failed with the declared error `e`, a tagged record. |
 | `{"kind": "invoke.defect", "invoke": 1, "defect": d}` | Invoke 1 ended with a [defect](#defects): a host defect in a task, or a child run that ended with a defect. |
@@ -80,20 +88,22 @@ The driver only ever passes events the machine declares, with values of the decl
 | --- | --- |
 | `{"kind": "trace", "record": r}` | writes trace record `r`, after adding `t`, `run` and, for a child run, `parent` ([trace](trace.md)). |
 | `{"kind": "action", "action": "audit", "args": {…}}` | runs the action and waits for it to finish. `args` is keyed by parameter name. |
-| `{"kind": "invoke.start", "invoke": 1, "state": "…", "src": "chargeCard", "srcKind": "task", "args": {…}}` | starts the task (`srcKind` `task`) or machine (`srcKind` `machine`) and, when it ends, queues its outcome as an `invoke.*` input with the same id. It does not wait for it. |
+| `{"kind": "invoke.start", "invoke": 1, "state": "…", "src": "chargeCard", "srcKind": "task", "as": null, "args": {…}}` | starts the task (`srcKind` `task`) or machine (`srcKind` `machine`) and, when it ends, queues its outcome as an `invoke.*` input with the same id. It does not wait for it. `as` is the invoke's `as` name or `null`: a child run invoked with one delivers what it emits to this run ([delivery](#delivering-messages)). |
 | `{"kind": "invoke.cancel", "invoke": 1}` | cancels invoke 1 and waits until it has stopped: at once for a task, after its cancel step for a [child run](#child-runs). Its outcome is not queued after this; one already queued stays queued. |
 | `{"kind": "timer.start", "timer": 1, "delay": 200}` | starts a timer that queues `{"kind": "after", "timer": 1}` after `delay` milliseconds. |
 | `{"kind": "timer.cancel", "timer": 1}` | cancels timer 1. Its expiry is not queued after this; one already queued stays queued. |
+| `{"kind": "send", "to": "r2", "invoke": null, "message": 1, "value": v}` | queues the message for run `to` and does not wait for it: for the child run of this run's invoke `invoke`, or, when `invoke` is `null`, for the peer `to` ([delivery](#delivering-messages)). |
+| `{"kind": "emit", "message": 2, "value": v}` | queues the emitted event for this run's invoker, if it invoked this run with `as`, and for every run that holds a `ref` to this run. It does not wait for them. |
 
-A trace record is always emitted immediately before the command it describes. Records are listed in [trace.md](trace.md).
+A trace record is always emitted immediately before the command it describes. Records are listed in [trace.md](trace.md). One record is written by the driver instead of the core: `undelivered`, when it finds that the receiver of a `send` has ended ([delivery](#delivering-messages)).
 
 ## Starting a machine
 
 ```
-start(ir, name, input, fns):
+start(ir, name, run, input, fns):
   m    = ir.machines[name]
-  snap = { machine: name, ir: m.hash, status: "running", active: [], input, vars: {},
-           invokes: [], timers: [], nextInvoke: 1, nextTimer: 1, result: null }
+  snap = { machine: name, run, ir: m.hash, status: "running", active: [], input, vars: {},
+           invokes: [], timers: [], nextInvoke: 1, nextTimer: 1, nextMessage: 1, result: null }
   emit trace { kind: "started", machine: name, ir: m.hash, input }
   for v in m.vars, in order:
     if v.init != null:          snap.vars[v.name] = eval(v.init)
@@ -133,8 +143,12 @@ step(ir, snap, input, fns):
       if none: emit trace { kind: "stale", event: input }; return
       remove tm from snap.timers
       t = selectAfter(tm)
-    "event":
+    "event", "message":
       t = selectEvent(input.value)
+    "emitted":
+      if input.invoke != null and snap.invokes has no entry with id input.invoke:
+        emit trace { kind: "stale", event: input }; return
+      t = selectEmitted(input)
   if t == null:
     emit trace { kind: "dropped", event: input }
     return
@@ -146,6 +160,7 @@ step(ir, snap, input, fns):
 
 - An invoke's outcome or a timer's expiry **consumes** it: it is removed from the snapshot before a transition is chosen, whether or not one is. Leaving the state afterwards therefore does not cancel it again.
 - An outcome or expiry whose id is not in the snapshot is **stale**: its state was left (and the invoke or timer cancelled) after the driver had already queued it. It is traced as `stale` and changes nothing.
+- An emitted event from a child run whose invoke is no longer in the snapshot is **stale** too: its invoke was cancelled after the child had emitted it, as a child cancelled by its parent does when its exit effects `emit`. Taking an emitted event does not consume the invoke. An emitted event from a peer (`invoke` `null`) and a message are never stale.
 - An input that enables no transition is **dropped**: traced as `dropped`, and nothing else happens. Settling is skipped, since nothing changed. A consumed invoke or timer stays consumed.
 - A `dropped` or `stale` record replaces the `event` record; an input is traced by exactly one of the three.
 - **A defect in the step that ended the run.** The core finishes the run (or cancels it) inside the step, so the snapshot a step returns can already be `done`, `failed` or `cancelled` while the driver is still carrying out that step's commands, every action of the step among them: say the effects of the transition into a top-level final state, the exit effects `finish` runs (the root's among them), or the exit effects of `cancelRun`. If any of those actions has a host defect, the driver stops at it as for any action ([defects](#defects)), so the `done`, `failed` or `cancelled` record after it is never written, and gives the core the `defect` input. That is why a `defect` input is taken in any status but `defect`: the run's status becomes `defect`, its result the defect, and the `defect` record is its last. `failWithDefect` finds no invokes or timers left to cancel, and `active` stays `[]`. A second `defect` input, for a run that already ended with one, changes nothing and writes nothing.
@@ -154,7 +169,14 @@ step(ir, snap, input, fns):
 
 A transition is **enabled** if its trigger matches the input and its guard holds. A `null` guard holds. Guards are evaluated in the order given here, and evaluation stops at the first enabled transition, so a guard after it is never evaluated (which matters because a guard can call host functions).
 
-**An external event** `{"_tag": N, …}`: for each active state `s`, innermost first, let the candidates be `s`'s transitions with trigger `{"kind": "event", "event": N}`. If `s` has none, the candidates are its `any` (`on *`) transitions instead. Try the candidates' guards in document order; the first that holds is taken. If none holds, go on to the next state outward. An `on *` is not tried in a state that has an `on N` whose guards all failed. `on *` never matches an invoke outcome or a timer.
+**An external event or a message** `{"_tag": N, …}`: for each active state `s`, innermost first, let the candidates be `s`'s transitions with trigger `{"kind": "event", "event": N}`. If `s` has none, the candidates are its `any` (`on *`) transitions instead. Try the candidates' guards in document order; the first that holds is taken. If none holds, go on to the next state outward. An `on *` is not tried in a state that has an `on N` whose guards all failed. `on *` never matches an invoke outcome, a timer or an emitted event. A message is one of the machine's own events, so it is selected exactly as the same event from host code would be; only its record shows who sent it.
+
+**An emitted event** `{"_tag": N, …}` from run `input.from`: for each active state `s`, innermost first, the candidates are `s`'s transitions with trigger kind `emitted`, `event` `N`, and an address `from` that names the sender:
+
+- an address of kind `child` names it when `input.invoke` is not `null` and the entry of `snap.invokes` with id `input.invoke` has `state` equal to the address's `state`. (That entry exists: the input would otherwise have been stale.)
+- an address of kind `ref` names it when `input.invoke` is `null` and the address's `name` is a parameter whose value, or a variable whose value, is the run id `input.from`. (An address names a parameter or variable of type `ref M`, through aliases: never an optional `ref` or a list of them, which the compiler rejects.) A variable with no value names no sender; reading it here is not an `unassigned` defect.
+
+Try the candidates' guards in document order; the first that holds is taken. If none holds, go on to the next state outward. There is no fallback to `on *`. So `on upload.Progress` is taken only for a `Progress` from the child that `upload` names, and from the run that started it, not from an earlier child of the same state: a child restarted by re-entering its state has a new invoke id.
 
 **An invoke outcome** for invoke `inv`: only the state `inv.state` is searched. For `invoke.done` the candidates are its `invoke.done` transitions. For `invoke.fail` with error tag `E`, they are its `invoke.fail` transitions with `error` `E`, or, if it has none, those with `error` `"*"`. Guards are tried in document order.
 
@@ -164,7 +186,7 @@ A transition is **enabled** if its trigger matches the input and its guard holds
 
 **`done`** of compound state `p`: `p`'s `done` transitions in document order.
 
-`event` is in scope in the guard and effects of an `on` transition (including `on *`), `result` in an `invoke.done` transition and `error` in an `invoke.fail` transition, bound to the input's `value` or `error`. Whether a chart may read `event` in an `on *` is the compiler's business. The implicit names are reserved and parameter and variable names are unique, so a name in a `ref` means exactly one thing.
+`event` is in scope in the guard and effects of an `on` transition (including `on *` and `on name.Event`), `result` in an `invoke.done` transition and `error` in an `invoke.fail` transition, bound to the input's `value` or `error`. For an emitted event `event` has the type `Machine.Name` of the sender's event ([type references](ir.md#type-references)), and its value is the tagged record the sender emitted. Whether a chart may read `event` in an `on *` is the compiler's business. The implicit names are reserved and parameter and variable names are unique, so a name in a `ref` means exactly one thing.
 
 ## A microstep
 
@@ -226,13 +248,39 @@ runEffects(effects):
   for e in effects with kind "set", in order:
     v = eval(e.value); snap.vars[e.var] = v
     emit trace { kind: "set", var: e.var, value: v }
-  for e in effects with kind "do", in order:
-    args = the action's parameter names zipped with eval of e.args, left to right
-    emit trace { kind: "action", action: e.action, args }
-    emit action { action: e.action, args }
+  for e in effects with kind "do", "send" or "emit", in order:
+    switch e.kind:
+      "do":
+        args = the action's parameter names zipped with eval of e.args, left to right
+        emit trace { kind: "action", action: e.action, args }
+        emit action { action: e.action, args }
+      "send":
+        id = snap.nextMessage; snap.nextMessage += 1
+        if e.to.kind == "child":
+          inv = the entry of snap.invokes with state e.to.state
+          v = eval(e.value)
+          if inv == null:
+            emit trace { kind: "undelivered", message: id, to: null, value: v }
+            continue
+          to = snap.run + "." + inv.id; invoke = inv.id
+        else:
+          to = eval({ kind: "ref", path: [e.to.name] }); invoke = null
+          v = eval(e.value)
+        emit trace { kind: "sent", message: id, to, value: v }
+        emit send { to, invoke, message: id, value: v }
+      "emit":
+        id = snap.nextMessage; snap.nextMessage += 1
+        v = eval(e.value)
+        emit trace { kind: "emitted", message: id, value: v }
+        emit emit { message: id, value: v }
 ```
 
-So a state's work stops before its own exit effects run, and the `exited` record comes last. All `set` effects of a list run before its `do` effects, whatever order the IR lists them in, and each `set` sees the assignments before it. Actions cannot change variables, so the arguments of every `do` in a list see the same values.
+So a state's work stops before its own exit effects run, and the `exited` record comes last. All `set` effects of a list run before its other effects, whatever order the IR lists them in, and each `set` sees the assignments before it. Then the `do`, `send` and `emit` effects run in the order the IR lists them. Actions, sends and emits cannot change variables, so every one of them in a list sees the same values, and a message carries what its transition assigned.
+
+- **Message ids.** Every `send` and `emit` effect that runs takes the next message id, also one that is undelivered. With the run id it names the message in every record about it: the sender's `sent`, `emitted` or `undelivered`, and the receiver's `event`, `dropped` or `stale`.
+- **A send to a child** goes to the run started by the invoke of the address's `state` that is running now. If that state has no running invoke, the message is **undelivered**: traced with `to` `null`, and nothing is sent. This happens when the send runs in the step that enters the invoking state, before its work starts (the `entry` of a state inside it, say: the compiler rejects only the invoking state's own `entry`), and when the invoke's outcome has already been taken while the state stays active (an outcome transition with no target, or an outcome that enabled no transition).
+- **A send to a peer** reads the `ref` parameter or variable the address names, exactly as an expression `ref` would, so a variable with no value is an `unassigned` defect. The address is read before the value is evaluated.
+- **Delivery is the driver's.** The core does not know whether the receiver is still running. If it is not, the driver writes `undelivered` after the `sent` record ([delivery](#delivering-messages)).
 
 In a microstep, then, the order is: the `transition` record; for each state exited, innermost first, its invoke cancelled, its timers cancelled, its exit effects, `exited`; the transition's effects; for each state entered, outermost first, `entered` and its entry effects. No work is started during a microstep.
 
@@ -272,7 +320,8 @@ startWork():
       args = the parameter names of s.invoke.src zipped with eval of s.invoke.args, left to right
       append { id, state: s.id, src: s.invoke.src } to snap.invokes
       emit trace { kind: "invoke.started", invoke: id, state: s.id, src: s.invoke.src, args }
-      emit invoke.start { invoke: id, state: s.id, src: s.invoke.src, srcKind: s.invoke.kind, args }
+      emit invoke.start { invoke: id, state: s.id, src: s.invoke.src, srcKind: s.invoke.kind,
+                          as: s.invoke.as, args }
     for each after block of s, in document order of its first transition (index i):
       delay = eval(s.transitions[i].trigger.delay)
       id = snap.nextTimer; snap.nextTimer += 1
@@ -321,6 +370,18 @@ cancelRun():
 
 This is the default in [open question 4](../docs/design/roadmap.md#open-questions). A parent leaving an invoking state cancels its child run this way, so the child's exit effects run too, and the parent waits for them ([child runs](#child-runs)). The cancel step is the run's last; a host defect in one of its exit actions turns it into a defect ([taking an input](#taking-an-input)).
 
+## Messages between runs
+
+A run talks to another only through queues. The core's part is small: a `send` or `emit` effect writes a record and gives the driver a `send` or `emit` command ([effects](#exiting-and-entering-a-state)), and a message or an emitted event comes back to the receiver's core as an input like any other ([taking an input](#taking-an-input), [selecting](#selecting-a-transition)). The driver does the delivering ([delivering messages](#delivering-messages)).
+
+- **Sending is queuing.** The sender's driver pushes the input onto the receiver's queue and carries on with the next command. A sender never waits for the receiver and never runs the receiver's transitions; the receiver takes the input later, one at a time, like any other.
+- **Who receives a `send`.** For an address of kind `child`, the child run of the invoke that is running in the address's `state`. For an address of kind `ref`, the run whose id the parameter or variable holds.
+- **Who receives an `emit`.** The run's invoker, if it invoked the run with `as`; an invoker without `as` has no name to receive them under, and they are not delivered to it. And every run that holds a `ref` to the emitting run ([refs and handles](#refs-and-handles)), whether or not it has an `on` for the event: one with no enabled transition writes `dropped`. A run never receives its own emitted events.
+- **A run holds a `ref`** to each run whose handle it was given as an argument: the value of a parameter whose type is `ref M`, or contains one (`ref M?`, `ref M[]`, an alias of one). A machine gets a `ref` only as an argument (from host code, or from a parent that passes one of its own to an invoke), never from a result, an event or a field, so the runs it holds are fixed when it starts. A `ref` variable holds one of them.
+- **Messages are not supervised.** When a run ends, the runs that hold a `ref` to it are not told; they learn of it only through their own timeouts ([open question 4](../docs/design/actors.md#open-questions)). Messages sent to it afterwards are `undelivered`.
+- **Ending a run.** The exit effects that run when a run finishes or is cancelled are effects like any others, and can send and emit. Whatever is still queued for a run when it ends, messages and emitted events included, is discarded without a record ([ending a run](#ending-a-run)).
+- **Defects.** A runtime error inside the core discards every command of the step, so nothing the step sent or emitted is delivered and no record of it is written; the snapshot the defect is applied to keeps its `nextMessage`. A host defect in an action stops the step's commands, so the sends and emits after it are neither delivered nor traced. `failWithDefect` runs no exit effects, so it sends and emits nothing itself; a child run it cancels runs its own cancel step, whose emitted events find the parent already ended.
+
 ## Defects
 
 A defect ends the run at once. It is never routed to a `fail` branch, and no exit effect runs, since the machine can no longer be trusted to run its own code. A defect is an object:
@@ -365,10 +426,10 @@ Expressions are evaluated by their IR node, recursively. Every node's `type` is 
 | Node | Value |
 | --- | --- |
 | `lit` | `value`, read according to `type` (an `int`, a float, a string, a bool, or a duration in milliseconds). |
-| `ref` | `path[0]` is a parameter (from `input`), a variable (from `vars`; reading one with no value is `unassigned`), or the implicit name `event`, `result` or `error`. Each further name reads that field of the value. |
+| `ref` | `path[0]` is a parameter (from `input`), a variable (from `vars`; reading one with no value is `unassigned`), or the implicit name `event`, `result` or `error`. Each further name reads that field of the value. A parameter or variable of a `ref` type reads as the run id it holds. |
 | `field` | Evaluate `of`, then read field `name`. |
 | `call` | Evaluate `args` left to right, then `fns(fn, args)`. |
-| `record` | An object with the fields in order. If `type` is an error, it also has `"_tag": type`. |
+| `record` | An object with the fields in order. If `type` is an error, it also has `"_tag": type`. If `type` is an event (the value of a `send` or `emit`: `Machine.Name`, or the name of one of the current machine's `emits`), it also has `"_tag"` with the event's name, the part after the dot: `send upload.Pause` sends `{"_tag": "Pause"}`. |
 | `enum` | The string `variant`. |
 | `op` | See below. |
 
@@ -401,6 +462,7 @@ Every Roadbook value has one JSON form. It is used for the machine's input, task
 | `T[]` | An array. |
 | An alias | The aliased type's form. |
 | An `extern` type | Whatever the language binding's encoder produces. The core never looks inside it. Conformance cases do not use extern types. |
+| `ref M` | The id of the run it refers to, a string: `"r2"`. The binding layer gives host code a handle to that run instead ([refs](#refs-and-handles)). |
 
 Arguments, inputs and the `args` of actions and invokes are objects keyed by parameter name. Values are decoded against their declared type by the binding layer before they reach the core, so the core can tell an `int` from a `float` without looking at the JSON.
 
@@ -412,7 +474,7 @@ The driver gives each run a queue and a clock, carries out the core's commands w
 
 ```
 run(machine, input):
-  (snap, commands) = core.start(ir, machine, input, fns)
+  (snap, commands) = core.start(ir, machine, runId, input, fns)
   snap = carryOut(snap, commands)
   while snap.status == "running":
     input = take()                  # a cancel request if there is one, else the front of the queue
@@ -433,7 +495,7 @@ carryOut(snap, commands):
 - **Commands are carried out in order, one at a time.** An action is awaited before the next command, and so is an `invoke.cancel` ([child runs](#child-runs)). Starting an invoke or a timer only registers it; its outcome comes back later through the queue.
 - **A defect stops the commands.** The commands after the one that met a defect are not carried out and their records are not written; the core's answer to the `defect` input is carried out instead. That answer is the same whether or not the step had already ended the run.
 - **Outcomes of a task.** Success gives `invoke.done` with the value. A failure with a tagged error gives `invoke.fail` with it (the core checks that it is one the task declares, and makes any other an `undeclared` defect). A defect gives `invoke.defect` ([catching host defects](#catching-host-defects)).
-- **Run ids.** The driver names each root run; a conformance runner names it `r1`. A child run's id is its parent's id, a dot, and the id of the invoke that started it: `r1.4` is the run started by invoke 4 of run `r1`.
+- **Run ids.** The driver names each top-level run; a conformance runner names them `r1`, `r2`, … in the order the case starts them. A child run's id is its parent's id, a dot, and the id of the invoke that started it: `r1.4` is the run started by invoke 4 of run `r1`. A `ref` is a run id, so the ids of top-level runs that can reach one another must differ: the default names (`r1`, `r2`, … in the order runs start in the process) do, and a driver given a fixed id (Rust `Config::run_id`, a `RootRunId` of one's own) must not be given the same one twice.
 
 ### One queue per run
 
@@ -442,6 +504,8 @@ Every source of input pushes onto one first-in, first-out queue per run, at the 
 | Source | Pushes |
 | --- | --- |
 | A caller's `send` | the external event |
+| Another run's `send` | a `message` input ([delivery](#delivering-messages)) |
+| Another run's `emit` | an `emitted` input, for its invoker and the runs that hold a `ref` to it |
 | A task, or a machine invoke that is not a child run | its outcome, when its future or fiber ends |
 | A child run | the outcome of the invoke that started it, when the child ends |
 | A timer | its expiry, when its sleep completes |
@@ -458,19 +522,40 @@ The run takes inputs from the front, one at a time, and takes the next only once
 
 A machine invoke's implementation is host code: in TypeScript the value given for it in `machines`, in Rust a `Handlers` method whose body usually calls the child machine's `run`. When that code runs the chart, the driver has to know, so that the child writes to the parent's trace on the parent's clock and is cancelled gracefully. Both drivers do it with an **invoke context**.
 
-- **The context.** When the driver carries out `invoke.start` with `srcKind` `machine`, it runs the implementation with an ambient invoke context holding the trace sink, the clock and timer, the parent's run id, the invoke id and a fresh cancel token. In TypeScript the context is a `Context.Reference` provided to the invoke's fiber. In Rust it is a task-local, or a thread-local that the driver sets around each `poll` of the invoke's future and restores afterwards, which works on any executor. All other host code the driver runs (functions, actions, tasks) runs with no invoke context; so does a child run's own work, except that each of its machine invokes gets a context of its own.
-- **Claiming it.** A machine's `run` looks for an invoke context. If it finds one whose token is unclaimed, it claims the token and becomes the **child run**: its run id is `<parent run id>.<invoke id>`, its records carry `parent`, and it uses the context's sink, clock and timer. Otherwise it is a root run. Host code that does not call `run` (a stub) never claims the token, which is how the parent's driver tells a stub from a child run. The parent's core cannot tell them apart and does not need to.
+- **The context.** When the driver carries out `invoke.start` with `srcKind` `machine`, it runs the implementation with an ambient invoke context holding the trace sink, the clock and timer, the parent's run id, the invoke id, a fresh cancel token, the messages the parent has sent to the invoke so far (none yet), and, when the command's `as` is not `null`, a way to push emitted events onto the parent's queue. In TypeScript the context is a `Context.Reference` provided to the invoke's fiber. In Rust it is a task-local, or a thread-local that the driver sets around each `poll` of the invoke's future and restores afterwards, which works on any executor. All other host code the driver runs (functions, actions, tasks) runs with no invoke context; so does a child run's own work, except that each of its machine invokes gets a context of its own.
+- **Claiming it.** A machine's `run` looks for an invoke context. If it finds one whose token is unclaimed, it claims the token and becomes the **child run**: its run id is `<parent run id>.<invoke id>`, its records carry `parent`, and it uses the context's sink, clock and timer. Its queue starts with the messages the context holds, in the order they were sent, and from then on the parent's sends go straight to its queue. Otherwise it is a root run. Host code that does not call `run` (a stub) never claims the token, which is how the parent's driver tells a stub from a child run. The parent's core cannot tell them apart and does not need to.
 - **Its outcome.** A child run ends like any run: on `done` its `run` returns the output, on `failed` the error, and on `defect` it raises the defect ([catching host defects](#catching-host-defects)). The parent's driver turns that into `invoke.done`, `invoke.fail` or `invoke.defect` as for a task, with the output, error or defect object unchanged, and pushes it onto the parent's queue.
 - **Cancelling it.** On `invoke.cancel` the parent's driver signals the token. If the token was never claimed (a task or a stub), it drops the future or interrupts the fiber at once and is done. If it was claimed, the child takes the signal as a cancel request, between its steps like any other, runs its cancel step (exit effects and the `cancelled` record) and reports through the token that it has finished. The parent keeps driving the child until then (in Rust, it keeps polling the child's future), and only then drops it. Carrying out `invoke.cancel` waits for this, like an action, so nothing after it in the parent's step (the exit effects of the state being left, the rest of the transition) happens before the child's exit effects have run. A child that has already ended, however it ended, reports plain "finished" at once (never a defect), and its outcome is not queued after the signal; one already queued is stale.
 - **A defect in the cancel step** is reported through the token too: the child writes its `defect` record and ends, and the parent's driver meets that defect while carrying out `invoke.cancel` and gives its own core `{"kind": "defect", "defect": d}`, with the child's `d` unchanged, as it would for a defect in an action. A cancelled task or stub has no cancel step, and whatever it does while being dropped or interrupted is ignored.
 - **In Effect** the signal is interruption. The parent interrupts the invoke's fiber and waits for it to end (`FiberMap.remove`, or `Fiber.interrupt`, which returns the fiber's exit). A child's `run` runs each step uninterruptibly and its cancel step in an `Effect.onInterrupt` around the step loop, so interrupting it during a step waits for that step to finish, and the interruption completes only after the cancel step. A defect in the cancel step shows in the fiber's exit as a die with a `Defect`, which the parent uses only if the token was claimed.
 - **In Rust** the token is a small shared value (a cancel flag with a waker, and a slot for "finished" or "finished with defect `d`"). The child's run loop checks it before each take, and the parent, after signalling it, polls the child's future until the slot is filled. The child's future may never complete after that; the parent drops it.
 
+### Refs and handles
+
+The core holds a `ref` as a run id ([values](#values)). Host code holds a **handle**: Rust's `Ref` (`inventory::Ref`, from `actor.handle()`), and its TypeScript counterpart, a value from a spawned run's actor. A handle can be cloned and passed on, and it is how host code reaches a run.
+
+- **Encoding.** The binding layer turns a handle into its run's id when it encodes a value for the core (a machine's arguments), and a run id back into the handle when it decodes a value for host code (the arguments of an invoke, an action, a task or a function). A machine can only get a `ref` from its arguments, so every run id its core gives back, in a `send` or in arguments, is one of the handles the run was started with. The driver keeps those for as long as the run is open. It needs no registry of runs by id: a run reaches exactly the runs it was given. What a run needs to emit is the other way round, the runs subscribed to it ([delivery](#delivering-messages)), which its handle can keep.
+- **Where handles come from.** A top-level run that host code `spawn`s has one; host code passes it in the arguments of the runs that are to talk to it. A child run has none: its parent reaches it through its invoke, and nothing else can.
+- **Host code sends** through a handle as through an actor: the run gets an ordinary `event` input, with no sender. Host code does not receive emitted events through a handle; that is not specified yet.
+- **Equality.** The language defines no `==` on `ref`s. The core compares run ids only to tell which address an emitted event is from ([selecting](#selecting-a-transition)).
+
+### Delivering messages
+
+- **Open and closed.** A run is **open** from just before its driver calls `start` until the core returns a snapshot whose status is not `running`, from `start` or from any `step`; it is then **closed** for good. A run closes before the commands of its last step are carried out, so a message that another run sends it while it carries them out is undelivered, and an emitted event is not delivered to it. Checking that a receiver is open and pushing onto its queue should be one operation with respect to its closing; a driver where a push can slip in just before the receiver closes loses that message with the receiver's queue, without a record. No conformance case can tell these apart.
+- **Subscriptions.** Before it calls `start`, the driver subscribes the run to the emitted events of every run it holds a `ref` to: each run whose handle is in its arguments, once however many times it appears there (a parameter of type `ref M`, `ref M?`, `ref M[]` or an alias of one). When the run closes, it is unsubscribed.
+- **Carrying out `send`.** The driver builds the input `{"kind": "message", "from": <this run's id>, "message": …, "value": …}`.
+  - With an `invoke`, it is for the child run of that invoke. If a run has claimed the invoke's token and is open, the driver pushes the input onto its queue. If the token has not been claimed yet (the host code has not called `run` yet), the driver keeps the input in the invoke context for the run that claims it. If the run that claimed it has closed, the driver writes `{"kind": "undelivered", "message": …, "to": …, "value": …}` (adding `t`, `run` and `parent` as for any record). If the invoke ends or is cancelled without its token ever being claimed (a stub, a task-like implementation), the inputs kept for it are discarded without a record.
+  - With `invoke` `null`, it is for the peer `to`, one of this run's handles. If that run is open, the driver pushes the input onto its queue; otherwise it writes the `undelivered` record.
+- **Carrying out `emit`.** If this run is a child run whose `invoke.start` had an `as`, and its parent is open, the driver pushes `{"kind": "emitted", "from": <this run's id>, "invoke": <its invoke id>, "message": …, "value": …}` onto the parent's queue. For every open run subscribed to this run, it pushes the same with `invoke` `null`. It writes nothing for receivers that are closed, and an emit with no receiver has only its `emitted` record. Pushing to the receivers is not an ordered operation the trace can show: they take their inputs independently.
+- **Order per pair.** Everything one run pushes onto another's queue arrives in the order its driver carried out the commands, so two messages from A to B are taken in the order they were sent, and so are an emitted event and a message. A child run's emitted events reach its parent's queue before its outcome, which is pushed when the child's run ends, after the commands of its last step; a Rust driver that finds a child's emitted events and its end in one poll pushes the emitted events first. There is no order between what two different runs push.
+- **Cancelled children.** "Cancelled work queues nothing" holds for a child run's emitted events as for its outcome: once the parent has carried out `invoke.cancel`, the child pushes nothing more. What it emitted before that, in its cancel step included, is in the parent's queue, where it is stale ([taking an input](#taking-an-input)), unless the parent has closed. A cancel request still goes before everything queued, messages included, and whatever a run has queued when it closes is discarded.
+- **Stubs.** A stubbed machine never claims its token, so it receives nothing and emits nothing. Messages for it are kept until its invoke ends, then discarded.
+
 ### Ending a run
 
 A run ends when its status is no longer `running`. On `done` the result is the output (an Effect success, a Rust `Ok`), on `failed` the error (the Effect error channel, a Rust `Err` of the machine's error enum), and on `defect` the defect is raised ([defects](#defects)). A cancelled run has no result: a child run reports through its token, a root run as follows.
 
-When a run ends, for whatever reason, the driver discards anything still in its queue and drops every invoke and timer of the run it still holds. Normally there are none, since the core cancelled them; there can be when an action's defect stopped a step before the `invoke.cancel` or `timer.cancel` of work the step had already removed from the snapshot, which `failWithDefect` therefore cannot see. A child run dropped this way gets a cancel signal first, as on `invoke.cancel`.
+When a run ends, for whatever reason, the driver discards anything still in its queue, messages and emitted events included and without a record, unsubscribes it from the emitted events of its peers, and drops every invoke and timer of the run it still holds. Normally there are none, since the core cancelled them; there can be when an action's defect stopped a step before the `invoke.cancel` or `timer.cancel` of work the step had already removed from the snapshot, which `failWithDefect` therefore cannot see. A child run dropped this way gets a cancel signal first, as on `invoke.cancel`.
 
 - **TypeScript.** Interrupting the fiber that runs a root `run`, or closing the scope of a `spawn`ed actor, is a graceful cancel. As for a child, each step runs uninterruptibly and the cancel step runs in `onInterrupt`, so the exit effects run and the trace ends with `cancelled` before the interruption completes; the run's Effect then ends interrupted.
 - **Rust.** Dropping the future of a root `run` is a **hard stop**: nothing more runs, no exit effect and no final record (the trace simply stops, as a run's in progress does), and the invokes, child runs and timers it holds are dropped with it. Graceful cancellation from outside goes through the actor: `spawn` the run, then `actor.cancel().await` gives it a cancel request and returns once its cancel step has finished, after which `actor.result()` reports that it was cancelled. A child run is never dropped while it runs: its parent cancels it through the token.
@@ -488,5 +573,5 @@ The formats leave room for these; their rules will be added here.
 
 - **Parallel states** (milestone 6). `active` already lists states in document order and every "innermost first" is reverse document order, as in SCXML, so regions fit without changing the snapshot or trace. Transition selection, conflict resolution between regions and completion of a parallel state are to be specified.
 - **Restoring a snapshot** (milestone 6). A snapshot holds everything the core needs except timer due times, which the driver will have to save alongside it. A restored run restarts its running invokes.
-- **Messaging** (milestone 5). `send` and `emit` will be new commands and effects, an event from a child or peer a new input with its source, and `sent` and `received` new trace records carrying both run ids.
+- **Keyed `spawn`** ([actors and messaging](../docs/design/actors.md#many-children)), and host code receiving a run's emitted events through a handle.
 - **`strict`**, which would turn a dropped event into a failure, is not in the grammar yet.

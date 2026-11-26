@@ -1,5 +1,6 @@
 {
   "description": "The same request with Checkout stubbed like a task: the parent's records are the same as in place-order-checkout and there is no child run.",
+  "requires": [],
   "chart": "charts/shop/place_order.road",
   "machine": "PlaceOrder",
   "input": {

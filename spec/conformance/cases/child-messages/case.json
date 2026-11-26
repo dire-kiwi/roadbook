@@ -1,0 +1,35 @@
+{
+  "description": "A parent and the child it invokes with `as`: each Progress the child emits reaches the parent's `on upload.Progress` as an emitted event from invoke 1; PauseClicked and ResumeClicked send Pause and Resume to the child run r1.1, which takes them as messages from r1 and cancels and restarts its task. The last Progress, emitted in the step that ends the child, is taken before the child's outcome.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/upload.road",
+  "machine": "Publish",
+  "input": {
+    "size": 200
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "sendChunk",
+      "done": 100
+    },
+    {
+      "event": {
+        "_tag": "PauseClicked"
+      }
+    },
+    {
+      "event": {
+        "_tag": "ResumeClicked"
+      }
+    },
+    {
+      "task": "sendChunk",
+      "done": 200
+    }
+  ],
+  "status": "done"
+}

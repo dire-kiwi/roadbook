@@ -1,5 +1,6 @@
 {
   "description": "Processing's 30 second budget runs out while the Checkout child waits in Backoff for a later retry. The parent's timer fires at 30010, cancelling the child, whose own timer is cancelled with it.",
+  "requires": [],
   "chart": "charts/shop/place_order.road",
   "machine": "PlaceOrder",
   "input": {

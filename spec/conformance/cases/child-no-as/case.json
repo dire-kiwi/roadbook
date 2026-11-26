@@ -1,0 +1,21 @@
+{
+  "description": "A child invoked without `as` emits Progress: its `emitted` record is the only trace of it, since an invoker without `as` is not given what its child emits.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/upload.road",
+  "machine": "Quiet",
+  "input": {
+    "size": 100
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "sendChunk",
+      "done": 100
+    }
+  ],
+  "status": "done"
+}

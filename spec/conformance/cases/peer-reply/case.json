@@ -1,0 +1,53 @@
+{
+  "description": "An Order, r2, holds a `ref` to an Inventory peer, r1, started before it. Its entry sends Reserve, which r1 takes as a message from r2; host code sends r1 a Restock, an ordinary event; r1 answers by emitting Reserved, which r2 takes as an emitted event from its `ref` (`invoke` null) and matches on its id, cancelling its timeout.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/orders.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Order",
+      "run": "r2",
+      "input": {
+        "id": "o1",
+        "draft": {
+          "items": [
+            {
+              "sku": "s1",
+              "qty": 2
+            }
+          ],
+          "card": "4242"
+        },
+        "inventory": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Restock",
+        "sku": "s1",
+        "qty": 5
+      }
+    },
+    {
+      "task": "reserveStock",
+      "done": null
+    },
+    {
+      "task": "charge",
+      "done": {
+        "orderId": "o1",
+        "total": 4200
+      }
+    }
+  ],
+  "status": "running"
+}
