@@ -1,0 +1,28 @@
+{
+  "description": "Skip and slow's result arrive together. Skip leaves Slow and cancels slow, so its already-queued result is stale: traced and ignored. quick's result then finishes the run.",
+  "chart": "charts/race.road",
+  "machine": "Race",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "script": [
+    {
+      "together": [
+        {
+          "event": {
+            "_tag": "Skip"
+          }
+        },
+        {
+          "task": "slow",
+          "done": 1
+        }
+      ]
+    },
+    {
+      "task": "quick",
+      "done": 2
+    }
+  ],
+  "status": "done"
+}

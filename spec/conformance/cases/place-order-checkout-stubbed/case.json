@@ -1,0 +1,104 @@
+{
+  "description": "The same request with Checkout stubbed like a task: the parent's records are the same as in place-order-checkout and there is no child run.",
+  "chart": "charts/shop/place_order.road",
+  "machine": "PlaceOrder",
+  "input": {
+    "token": "tok-1",
+    "draft": {
+      "items": [
+        {
+          "sku": "apple",
+          "qty": 2
+        }
+      ],
+      "coupon": null
+    }
+  },
+  "stub": [
+    "Checkout"
+  ],
+  "fns": {
+    "confirmation": [
+      {
+        "args": [
+          {
+            "id": "o1",
+            "items": [
+              {
+                "sku": "apple",
+                "qty": 2
+              }
+            ],
+            "totalCents": 4200
+          },
+          {
+            "chargeId": "c1",
+            "amountCents": 4200
+          }
+        ],
+        "returns": {
+          "status": 201,
+          "body": {
+            "orderId": "o1",
+            "chargeId": "c1"
+          }
+        }
+      }
+    ]
+  },
+  "script": [
+    {
+      "advance": 10
+    },
+    {
+      "task": "authenticate",
+      "done": {
+        "id": "u1",
+        "role": "Customer"
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "validateOrder",
+      "done": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "apple",
+            "qty": 2
+          }
+        ],
+        "totalCents": 0
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "priceOrder",
+      "done": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "apple",
+            "qty": 2
+          }
+        ],
+        "totalCents": 4200
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "Checkout",
+      "done": {
+        "chargeId": "c1",
+        "amountCents": 4200
+      }
+    }
+  ],
+  "status": "done"
+}

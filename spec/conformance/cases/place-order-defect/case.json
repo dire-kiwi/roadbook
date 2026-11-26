@@ -1,0 +1,71 @@
+{
+  "description": "The child's chargeCard has a host defect. The child run ends with the defect, which reaches the parent through its invoke and ends it too: no fail branch, no exit effects, its timer cancelled without a record.",
+  "chart": "charts/shop/place_order.road",
+  "machine": "PlaceOrder",
+  "input": {
+    "token": "tok-1",
+    "draft": {
+      "items": [
+        {
+          "sku": "apple",
+          "qty": 2
+        }
+      ],
+      "coupon": null
+    }
+  },
+  "stub": [],
+  "fns": {},
+  "script": [
+    {
+      "advance": 10
+    },
+    {
+      "task": "authenticate",
+      "done": {
+        "id": "u1",
+        "role": "Customer"
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "validateOrder",
+      "done": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "apple",
+            "qty": 2
+          }
+        ],
+        "totalCents": 0
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "priceOrder",
+      "done": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "apple",
+            "qty": 2
+          }
+        ],
+        "totalCents": 4200
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "chargeCard",
+      "defect": "payment client crashed"
+    }
+  ],
+  "status": "defect"
+}

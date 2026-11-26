@@ -1,0 +1,32 @@
+import { Order, User, Receipt, CardDeclined, GatewayUnavailable, chargeCard, retryDelay } from "./types.road"
+
+/// Charge the customer's card, retrying while the payment gateway is down.
+machine Checkout(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUnavailable {
+  var attempts: int = 0
+  var receipt:  Receipt
+  var declined: CardDeclined
+
+  initial Charging
+
+  /// One attempt against the payment gateway.
+  state Charging {
+    invoke chargeCard(order, user) {
+      done                    -> Charged   set receipt = result
+      fail CardDeclined       -> Declined  set declined = error
+      fail GatewayUnavailable {
+        if attempts < 3       -> Backoff
+        else                  -> GaveUp
+      }
+    }
+  }
+
+  /// Wait before the next attempt. The delay grows with each attempt.
+  state Backoff {
+    entry set attempts = attempts + 1
+    after retryDelay(attempts) -> Charging
+  }
+
+  final state Charged  { output receipt }
+  final state Declined { fail declined }
+  final state GaveUp   { fail GatewayUnavailable }
+}

@@ -1,0 +1,99 @@
+{
+  "description": "Processing's 30 second budget runs out while the Checkout child waits in Backoff for a later retry. The parent's timer fires at 30010, cancelling the child, whose own timer is cancelled with it.",
+  "chart": "charts/shop/place_order.road",
+  "machine": "PlaceOrder",
+  "input": {
+    "token": "tok-1",
+    "draft": {
+      "items": [
+        {
+          "sku": "apple",
+          "qty": 2
+        }
+      ],
+      "coupon": null
+    }
+  },
+  "stub": [],
+  "fns": {
+    "retryDelay": [
+      {
+        "args": [
+          1
+        ],
+        "returns": 60000
+      }
+    ],
+    "problem": [
+      {
+        "args": [
+          504,
+          "timeout"
+        ],
+        "returns": {
+          "status": 504,
+          "body": {
+            "code": "timeout"
+          }
+        }
+      }
+    ]
+  },
+  "script": [
+    {
+      "advance": 10
+    },
+    {
+      "task": "authenticate",
+      "done": {
+        "id": "u1",
+        "role": "Customer"
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "validateOrder",
+      "done": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "apple",
+            "qty": 2
+          }
+        ],
+        "totalCents": 0
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "priceOrder",
+      "done": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "apple",
+            "qty": 2
+          }
+        ],
+        "totalCents": 4200
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "chargeCard",
+      "fail": {
+        "_tag": "GatewayUnavailable"
+      }
+    },
+    {
+      "advance": 30000
+    }
+  ],
+  "status": "done"
+}

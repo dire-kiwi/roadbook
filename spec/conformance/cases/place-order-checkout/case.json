@@ -1,0 +1,102 @@
+{
+  "description": "The whole request with Checkout run from its chart as child run r1.4. Confirming is left by its always transition in the step that entered it, after its entry action.",
+  "chart": "charts/shop/place_order.road",
+  "machine": "PlaceOrder",
+  "input": {
+    "token": "tok-1",
+    "draft": {
+      "items": [
+        {
+          "sku": "apple",
+          "qty": 2
+        }
+      ],
+      "coupon": null
+    }
+  },
+  "stub": [],
+  "fns": {
+    "confirmation": [
+      {
+        "args": [
+          {
+            "id": "o1",
+            "items": [
+              {
+                "sku": "apple",
+                "qty": 2
+              }
+            ],
+            "totalCents": 4200
+          },
+          {
+            "chargeId": "c1",
+            "amountCents": 4200
+          }
+        ],
+        "returns": {
+          "status": 201,
+          "body": {
+            "orderId": "o1",
+            "chargeId": "c1"
+          }
+        }
+      }
+    ]
+  },
+  "script": [
+    {
+      "advance": 10
+    },
+    {
+      "task": "authenticate",
+      "done": {
+        "id": "u1",
+        "role": "Customer"
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "validateOrder",
+      "done": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "apple",
+            "qty": 2
+          }
+        ],
+        "totalCents": 0
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "priceOrder",
+      "done": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "apple",
+            "qty": 2
+          }
+        ],
+        "totalCents": 4200
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "chargeCard",
+      "done": {
+        "chargeId": "c1",
+        "amountCents": 4200
+      }
+    }
+  ],
+  "status": "done"
+}

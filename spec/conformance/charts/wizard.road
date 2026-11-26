@@ -1,0 +1,32 @@
+// Conformance chart: a compound state completed by a final child, then an
+// `always` transition, all in one step.
+
+action log(what: string)
+
+/// Two steps of a form, a review that passes straight through, and a result.
+machine Wizard() -> int {
+  var steps: int = 0
+
+  event Next
+
+  initial Form
+
+  state Form {
+    initial Name
+
+    done -> Review  do log("form done")
+
+    state Name  { on Next -> Email     set steps = steps + 1 }
+    state Email { on Next -> Complete  set steps = steps + 1 }
+
+    final state Complete {
+      entry do log("complete")
+    }
+  }
+
+  state Review {
+    always -> Finished  set steps = steps * 10
+  }
+
+  final state Finished { output steps }
+}

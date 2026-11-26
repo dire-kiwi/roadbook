@@ -1,0 +1,56 @@
+// Conformance chart: the order of entry, exit and transition effects across
+// nested states, external and internal transitions, and cancellation.
+
+action log(what: string, n: int)
+task work(n: int) -> int
+
+/// Logs every entry, exit and transition effect, with the counter's value.
+machine Nest() {
+  var n: int = 0
+
+  event Again
+  event Reset
+  event Bump
+  event Leave
+
+  entry do log("enter Nest", n)
+  exit  do log("exit Nest", n)
+
+  initial Outer
+
+  state Outer {
+    // `do` is written before `set` on purpose: assignments still run first.
+    entry do log("enter Outer", n)  set n = n + 1
+    exit  do log("exit Outer", n)
+
+    on Again -> Outer  do log("again", n)
+    on Bump            do log("bump", n)  set n = n + 10
+    on Leave -> Away   set n = n + 100  do log("leave", n)
+
+    initial Middle
+
+    state Middle {
+      entry do log("enter Middle", n)
+      exit  do log("exit Middle", n)
+
+      after 1s -> Away
+      on Reset -> Middle.Inner  do log("reset", n)
+
+      initial Inner
+
+      state Inner {
+        entry do log("enter Inner", n)
+        exit  do log("exit Inner", n)
+
+        invoke work(n) {
+          done -> Away  set n = result
+        }
+      }
+    }
+  }
+
+  state Away {
+    entry do log("enter Away", n)
+    exit  do log("exit Away", n)
+  }
+}

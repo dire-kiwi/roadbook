@@ -1,0 +1,80 @@
+{
+  "description": "Four gateway failures: the guarded branch attempts < 3 is taken three times, then the else branch, and the run fails with a bare error value.",
+  "chart": "charts/shop/checkout.road",
+  "machine": "Checkout",
+  "input": {
+    "order": {
+      "id": "o1",
+      "items": [
+        {
+          "sku": "apple",
+          "qty": 2
+        }
+      ],
+      "totalCents": 4200
+    },
+    "user": {
+      "id": "u1",
+      "role": "Customer"
+    }
+  },
+  "stub": [],
+  "fns": {
+    "retryDelay": [
+      {
+        "args": [
+          1
+        ],
+        "returns": 100
+      },
+      {
+        "args": [
+          2
+        ],
+        "returns": 200
+      },
+      {
+        "args": [
+          3
+        ],
+        "returns": 300
+      }
+    ]
+  },
+  "script": [
+    {
+      "task": "chargeCard",
+      "fail": {
+        "_tag": "GatewayUnavailable"
+      }
+    },
+    {
+      "advance": 100
+    },
+    {
+      "task": "chargeCard",
+      "fail": {
+        "_tag": "GatewayUnavailable"
+      }
+    },
+    {
+      "advance": 200
+    },
+    {
+      "task": "chargeCard",
+      "fail": {
+        "_tag": "GatewayUnavailable"
+      }
+    },
+    {
+      "advance": 300
+    },
+    {
+      "task": "chargeCard",
+      "fail": {
+        "_tag": "GatewayUnavailable"
+      }
+    }
+  ],
+  "status": "failed"
+}

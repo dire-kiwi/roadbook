@@ -1,0 +1,36 @@
+// Conformance chart: `fail *`, `on *`, and an event nothing handles.
+
+error NotFound
+error Forbidden
+error Throttled { retryAfter: int }
+
+action log(what: string)
+task fetch(id: string) -> string ! NotFound | Forbidden | Throttled
+
+/// Fetch a document. Errors other than NotFound wait for a retry.
+machine Fetch(id: string) -> string ! NotFound {
+  var body: string
+
+  event Ping
+  event Poke
+  event Retry
+
+  initial Loading
+
+  state Loading {
+    invoke fetch(id) {
+      done          -> Loaded   set body = result
+      fail NotFound -> Missing
+      fail *        -> Waiting  do log("retryable")
+    }
+    on Ping do log("ping")
+    on *    do log("other event")
+  }
+
+  state Waiting {
+    on Retry -> Loading
+  }
+
+  final state Loaded  { output body }
+  final state Missing { fail NotFound }
+}

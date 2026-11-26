@@ -1,0 +1,28 @@
+// Conformance chart: an outcome that arrives after its state was left.
+
+task slow() -> int
+task quick() -> int
+
+/// Take whichever answer the machine is still waiting for.
+machine Race() -> int {
+  var v: int = 0
+
+  event Skip
+
+  initial Slow
+
+  state Slow {
+    invoke slow() {
+      done -> Finished  set v = result
+    }
+    on Skip -> Quick
+  }
+
+  state Quick {
+    invoke quick() {
+      done -> Finished  set v = result
+    }
+  }
+
+  final state Finished { output v }
+}

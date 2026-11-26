@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Roadbook conformance case",
+  "description": "A case.json: a machine, its input, the host's scripted behaviour and the expected final status. The expected trace is trace.jsonl next to it. See spec/conformance/README.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "chart", "machine", "input", "stub", "fns", "script", "status"],
+  "properties": {
+    "description": { "description": "What the case checks, in a sentence or two.", "type": "string", "minLength": 1 },
+    "chart": {
+      "description": "The entry .road file, relative to spec/conformance. Its IR is the file next to it with .road replaced by .ir.json.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_./-]+\\.road$"
+    },
+    "machine": { "description": "The machine to run.", "$ref": "#/$defs/upperName" },
+    "input": { "description": "The machine's arguments, keyed by parameter name.", "type": "object" },
+    "stub": {
+      "description": "Machines that are scripted like tasks instead of run from the chart when invoked.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/upperName" }
+    },
+    "fns": {
+      "description": "Results of the host's pure functions, keyed by function name, then by argument list. A call that is not listed fails the case.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/lowerName" },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["args", "returns"],
+          "properties": {
+            "args": { "description": "Positional argument values.", "type": "array" },
+            "returns": { "description": "The function's value." }
+          }
+        }
+      }
+    },
+    "script": {
+      "description": "What happens after the machine starts, in order. The runner lets every run settle after each step.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "status": {
+      "description": "The root run's status after the script.",
+      "enum": ["running", "done", "failed", "cancelled", "defect"]
+    }
+  },
+  "$defs": {
+    "upperName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+    "lowerName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+    "runId": { "type": "string", "pattern": "^r1(\\.[1-9][0-9]*)*$" },
+    "tagged": {
+      "type": "object",
+      "required": ["_tag"],
+      "properties": { "_tag": { "$ref": "#/$defs/upperName" } }
+    },
+    "advance": {
+      "description": "Advance virtual time by this many milliseconds, firing every timer that falls due on the way.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["advance"],
+      "properties": { "advance": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 } }
+    },
+    "event": {
+      "description": "Send an external event to the root run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event"],
+      "properties": { "event": { "$ref": "#/$defs/tagged" } }
+    },
+    "task": {
+      "description": "End the one running scripted invoke of this task (or stubbed machine): with done, fail or defect. run picks the run when several have one.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task"],
+      "properties": {
+        "task": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" },
+        "run": { "$ref": "#/$defs/runId" },
+        "done": { "description": "The result value." },
+        "fail": { "description": "A declared error.", "$ref": "#/$defs/tagged" },
+        "defect": { "description": "The message of a host defect.", "type": "string" }
+      },
+      "oneOf": [
+        { "required": ["done"], "not": { "anyOf": [{ "required": ["fail"] }, { "required": ["defect"] }] } },
+        { "required": ["fail"], "not": { "anyOf": [{ "required": ["done"] }, { "required": ["defect"] }] } },
+        { "required": ["defect"], "not": { "anyOf": [{ "required": ["done"] }, { "required": ["fail"] }] } }
+      ]
+    },
+    "cancel": {
+      "description": "Cancel the root run from outside.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cancel"],
+      "properties": { "cancel": { "const": true } }
+    },
+    "together": {
+      "description": "Queue several inputs before any run takes the first of them, as when they arrive at the same moment.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["together"],
+      "properties": {
+        "together": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "oneOf": [{ "$ref": "#/$defs/event" }, { "$ref": "#/$defs/task" }] }
+        }
+      }
+    },
+    "step": {
+      "oneOf": [
+        { "$ref": "#/$defs/advance" },
+        { "$ref": "#/$defs/event" },
+        { "$ref": "#/$defs/task" },
+        { "$ref": "#/$defs/cancel" },
+        { "$ref": "#/$defs/together" }
+      ]
+    }
+  }
+}

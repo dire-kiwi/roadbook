@@ -1,0 +1,29 @@
+{"input":{"who":"eve"},"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"started","machine":"Gate","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Gate","t":0}
+{"kind":"entered","run":"r1","state":"Gate.Open","t":0}
+{"kind":"entered","run":"r1","state":"Gate.Open.Waiting","t":0}
+{"event":{"kind":"event","value":{"_tag":"Check","amount":5}},"kind":"event","run":"r1","t":0}
+{"from":"Gate.Open","index":1,"kind":"transition","run":"r1","t":0,"to":null}
+{"action":"log","args":{"what":"small"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Check","amount":500}},"kind":"event","run":"r1","t":0}
+{"from":"Gate.Open","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"kind":"set","run":"r1","t":0,"value":1,"var":"count"}
+{"action":"log","args":{"what":"big"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Check","amount":500}},"kind":"event","run":"r1","t":0}
+{"from":"Gate.Open.Waiting","index":1,"kind":"transition","run":"r1","t":0,"to":null}
+{"kind":"set","run":"r1","t":0,"value":2,"var":"count"}
+{"action":"log","args":{"what":"big again"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Check","amount":-1}},"kind":"event","run":"r1","t":0}
+{"from":"Gate.Open.Waiting","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"action":"log","args":{"what":"negative"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Check","amount":0}},"kind":"event","run":"r1","t":0}
+{"from":"Gate.Open.Waiting","index":2,"kind":"transition","run":"r1","t":0,"to":null}
+{"action":"log","args":{"what":"zero or trusted"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Stop"}},"kind":"event","run":"r1","t":0}
+{"from":"Gate.Open","index":2,"kind":"transition","run":"r1","t":0,"to":"Gate.Closed"}
+{"kind":"exited","run":"r1","state":"Gate.Open.Waiting","t":0}
+{"kind":"exited","run":"r1","state":"Gate.Open","t":0}
+{"kind":"entered","run":"r1","state":"Gate.Closed","t":0}
+{"kind":"exited","run":"r1","state":"Gate.Closed","t":0}
+{"kind":"exited","run":"r1","state":"Gate","t":0}
+{"kind":"done","output":null,"run":"r1","state":"Gate.Closed","t":0}
