@@ -1,0 +1,111 @@
+// A layout stress chart for the viewer's tests, not an example: parallel regions with
+// self-loops, transitions across levels, deep nesting, many final states and an invoked
+// machine. Its shape, not its meaning, is the point.
+
+task step(n: int) -> int ! Flaky | Broken
+error Flaky
+error Broken
+action note(what: string)
+
+/// Ticks on its own.
+machine Ticker(n: int) -> int {
+  initial Ticking
+  state Ticking {
+    after 1s -> Ticking   do note("tick")
+    after 1m -> Stopping
+  }
+  state Stopping   { always -> Done }
+  final state Done { output n }
+}
+
+/// Every shape the viewer has to lay out, at once.
+machine Stress() -> int {
+  var n: int = 0
+
+  event Go
+  event Stop
+  event Poke
+  event Reset
+
+  on Reset -> Start
+  after 1h -> Expired
+
+  initial Start
+
+  state Start {
+    on Go   -> Running
+    on Poke -> Start    set n = n + 1
+    on Stop -> Exits
+    on *                do note("ignored")
+  }
+
+  parallel state Running {
+    on Stop -> Stopped
+    done    -> Finished
+
+    state Left {
+      initial A
+      state A {
+        on Poke  -> A  do note("a")
+        after 5s -> B
+      }
+      state B {
+        invoke step(n) {
+          done       -> C       set n = result
+          fail Flaky {
+            if n < 3 -> B       set n = n + 1
+            else     -> A
+          }
+          fail *     -> Failed
+        }
+      }
+      state C              { always -> LeftDone }
+      final state LeftDone {}
+    }
+
+    state Right {
+      initial X
+      state X {
+        initial X1
+        state X1 {
+          on Poke -> X1
+          on Go   -> X2
+        }
+        state X2 {
+          initial Deep
+          state Deep {
+            initial Deeper
+            state Deeper { on Go -> Running.Left.C }
+          }
+          on Poke -> X1
+        }
+        on Stop -> Y
+      }
+      state Y {
+        invoke Ticker(n) {
+          done -> RightDone  set n = result
+        }
+      }
+      final state RightDone {}
+    }
+  }
+
+  state Stopped { on Go -> Running.Right.X.X2 }
+
+  final state Finished { output n }
+  final state Failed   { output 0 - 1 }
+  final state Expired  { output 0 - 2 }
+  final state Quit1    { output 1 }
+  final state Quit2    { output 2 }
+  final state Quit3    { output 3 }
+  final state Quit4    { output 4 }
+  final state Quit5    { output 5 }
+
+  state Exits {
+    on Go    -> Quit1
+    on Poke  -> Quit2
+    on Stop  -> Quit3
+    after 1s -> Quit4
+    always   -> Quit5
+  }
+}

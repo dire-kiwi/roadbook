@@ -1,0 +1,1338 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "examples/import-job/import.road"
+    },
+    {
+      "path": "examples/import-job/types.road"
+    }
+  ],
+  "types": {
+    "Upload": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "jobId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "path",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "The uploaded file, as stored by the upload endpoint.",
+      "span": {
+        "file": 1,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 44
+      }
+    },
+    "ImportPlan": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "totalRows",
+          "type": "int",
+          "doc": ""
+        },
+        {
+          "name": "batchSize",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "What validation learned about the file.",
+      "span": {
+        "file": 1,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 51
+      }
+    },
+    "RowError": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "row",
+          "type": "int",
+          "doc": ""
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 44
+      }
+    },
+    "ImportSummary": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "jobId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "totalRows",
+          "type": "int",
+          "doc": ""
+        },
+        {
+          "name": "batches",
+          "type": "int",
+          "doc": ""
+        },
+        {
+          "name": "retries",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "The machine's output.",
+      "span": {
+        "file": 1,
+        "line": 12,
+        "col": 1,
+        "endLine": 12,
+        "endCol": 81
+      }
+    },
+    "InvalidFile": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "rowErrors",
+          "type": "RowError[]",
+          "doc": ""
+        }
+      ],
+      "doc": "The file did not validate; nothing was imported.",
+      "span": {
+        "file": 1,
+        "line": 15,
+        "col": 1,
+        "endLine": 15,
+        "endCol": 44
+      }
+    },
+    "BatchFailed": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "batch",
+          "type": "int",
+          "doc": ""
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "A batch kept failing after its retries.",
+      "span": {
+        "file": 1,
+        "line": 17,
+        "col": 1,
+        "endLine": 17,
+        "endCol": 49
+      }
+    },
+    "ImportCancelled": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "batchesDone",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "The operator cancelled the job.",
+      "span": {
+        "file": 1,
+        "line": 19,
+        "col": 1,
+        "endLine": 19,
+        "endCol": 43
+      }
+    },
+    "TransientBatchError": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "reason",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "A batch hit something worth retrying, such as a lock timeout.",
+      "span": {
+        "file": 1,
+        "line": 22,
+        "col": 1,
+        "endLine": 22,
+        "endCol": 45
+      }
+    }
+  },
+  "functions": {},
+  "actions": {},
+  "tasks": {
+    "validateUpload": {
+      "params": [
+        {
+          "name": "upload",
+          "type": "Upload",
+          "doc": ""
+        }
+      ],
+      "returns": "ImportPlan",
+      "errors": [
+        "InvalidFile"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 24,
+        "col": 1,
+        "endLine": 24,
+        "endCol": 64
+      }
+    },
+    "processBatch": {
+      "params": [
+        {
+          "name": "upload",
+          "type": "Upload",
+          "doc": ""
+        },
+        {
+          "name": "plan",
+          "type": "ImportPlan",
+          "doc": ""
+        },
+        {
+          "name": "batch",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [
+        "TransientBatchError"
+      ],
+      "doc": "Import one batch. Returns how many rows remain after it.",
+      "span": {
+        "file": 1,
+        "line": 26,
+        "col": 1,
+        "endLine": 26,
+        "endCol": 93
+      }
+    }
+  },
+  "machines": {
+    "ImportJob": {
+      "doc": "A CSV import: validate the file, then import it batch by batch.\nThe operator can pause, resume and cancel it while it runs.",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 73,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "upload",
+          "type": "Upload",
+          "doc": ""
+        }
+      ],
+      "returns": "ImportSummary",
+      "errors": [
+        "InvalidFile",
+        "BatchFailed",
+        "ImportCancelled"
+      ],
+      "vars": [
+        {
+          "name": "plan",
+          "type": "ImportPlan",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 33
+          }
+        },
+        {
+          "name": "invalid",
+          "type": "InvalidFile",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 34
+          }
+        },
+        {
+          "name": "batch",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 30
+          }
+        },
+        {
+          "name": "retries",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 30
+          }
+        },
+        {
+          "name": "totalRetries",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 30
+          }
+        },
+        {
+          "name": "lastReason",
+          "type": "string",
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 34
+          }
+        },
+        {
+          "name": "pauseRequested",
+          "type": "bool",
+          "init": {
+            "kind": "lit",
+            "value": false,
+            "type": "bool",
+            "text": "false"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 35
+          }
+        }
+      ],
+      "events": {
+        "Pause": {
+          "fields": [],
+          "doc": "Stop after the batch that is running finishes.",
+          "span": {
+            "file": 0,
+            "line": 19,
+            "col": 3,
+            "endLine": 19,
+            "endCol": 14
+          }
+        },
+        "Resume": {
+          "fields": [],
+          "doc": "Carry on after a pause.",
+          "span": {
+            "file": 0,
+            "line": 21,
+            "col": 3,
+            "endLine": 21,
+            "endCol": 15
+          }
+        },
+        "Cancel": {
+          "fields": [],
+          "doc": "Stop now. A running batch is cancelled.",
+          "span": {
+            "file": 0,
+            "line": 23,
+            "col": 3,
+            "endLine": 23,
+            "endCol": 15
+          }
+        }
+      },
+      "root": {
+        "id": "ImportJob",
+        "name": "ImportJob",
+        "kind": "compound",
+        "doc": "A CSV import: validate the file, then import it batch by batch.\nThe operator can pause, resume and cancel it while it runs.",
+        "span": {
+          "file": 0,
+          "line": 9,
+          "col": 1,
+          "endLine": 73,
+          "endCol": 2
+        },
+        "initial": "ImportJob.Validating",
+        "states": [
+          {
+            "id": "ImportJob.Validating",
+            "name": "Validating",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 29,
+              "col": 3,
+              "endLine": 34,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "validateUpload",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "upload"
+                  ],
+                  "type": "Upload",
+                  "text": "upload"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 30,
+                "col": 5,
+                "endLine": 33,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "ImportJob.Importing",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "plan",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "ImportPlan",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 31,
+                  "col": 7,
+                  "endLine": 31,
+                  "endCol": 55
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "InvalidFile"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "ImportJob.Rejected",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "invalid",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "error"
+                      ],
+                      "type": "InvalidFile",
+                      "text": "error"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 32,
+                  "col": 7,
+                  "endLine": 32,
+                  "endCol": 57
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "ImportJob.Importing",
+            "name": "Importing",
+            "kind": "compound",
+            "doc": "Batches run one after another until no rows remain.\nA pause takes effect between batches: the running batch is never cancelled by it.",
+            "span": {
+              "file": 0,
+              "line": 38,
+              "col": 3,
+              "endLine": 67,
+              "endCol": 4
+            },
+            "initial": "ImportJob.Importing.RunningBatch",
+            "states": [
+              {
+                "id": "ImportJob.Importing.RunningBatch",
+                "name": "RunningBatch",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 56,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "task",
+                  "src": "processBatch",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "upload"
+                      ],
+                      "type": "Upload",
+                      "text": "upload"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "plan"
+                      ],
+                      "type": "ImportPlan",
+                      "text": "plan"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "batch"
+                      ],
+                      "type": "int",
+                      "text": "batch"
+                    }
+                  ],
+                  "span": {
+                    "file": 0,
+                    "line": 45,
+                    "col": 7,
+                    "endLine": 55,
+                    "endCol": 8
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "op",
+                      "op": "==",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "result"
+                          ],
+                          "type": "int",
+                          "text": "result"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 0,
+                          "type": "int",
+                          "text": "0"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "result == 0"
+                    },
+                    "target": "ImportJob.Completed",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "batch",
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "batch"
+                              ],
+                              "type": "int",
+                              "text": "batch"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "batch + 1"
+                        }
+                      },
+                      {
+                        "kind": "set",
+                        "var": "retries",
+                        "value": {
+                          "kind": "lit",
+                          "value": 0,
+                          "type": "int",
+                          "text": "0"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 47,
+                      "col": 11,
+                      "endLine": 47,
+                      "endCol": 87
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "ref",
+                      "path": [
+                        "pauseRequested"
+                      ],
+                      "type": "bool",
+                      "text": "pauseRequested"
+                    },
+                    "target": "ImportJob.Importing.Paused",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "batch",
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "batch"
+                              ],
+                              "type": "int",
+                              "text": "batch"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "batch + 1"
+                        }
+                      },
+                      {
+                        "kind": "set",
+                        "var": "retries",
+                        "value": {
+                          "kind": "lit",
+                          "value": 0,
+                          "type": "int",
+                          "text": "0"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 48,
+                      "col": 11,
+                      "endLine": 48,
+                      "endCol": 87
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "ImportJob.Importing.RunningBatch",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "batch",
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "batch"
+                              ],
+                              "type": "int",
+                              "text": "batch"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "batch + 1"
+                        }
+                      },
+                      {
+                        "kind": "set",
+                        "var": "retries",
+                        "value": {
+                          "kind": "lit",
+                          "value": 0,
+                          "type": "int",
+                          "text": "0"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 49,
+                      "col": 11,
+                      "endLine": 49,
+                      "endCol": 87
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "TransientBatchError"
+                    },
+                    "group": 1,
+                    "guard": {
+                      "kind": "op",
+                      "op": "<",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "retries"
+                          ],
+                          "type": "int",
+                          "text": "retries"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 3,
+                          "type": "int",
+                          "text": "3"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "retries < 3"
+                    },
+                    "target": "ImportJob.Importing.WaitingToRetry",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "retries",
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "retries"
+                              ],
+                              "type": "int",
+                              "text": "retries"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "retries + 1"
+                        }
+                      },
+                      {
+                        "kind": "set",
+                        "var": "totalRetries",
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "totalRetries"
+                              ],
+                              "type": "int",
+                              "text": "totalRetries"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "totalRetries + 1"
+                        }
+                      },
+                      {
+                        "kind": "set",
+                        "var": "lastReason",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "error",
+                            "reason"
+                          ],
+                          "type": "string",
+                          "text": "error.reason"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 52,
+                      "col": 11,
+                      "endLine": 52,
+                      "endCol": 138
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "TransientBatchError"
+                    },
+                    "group": 1,
+                    "guard": null,
+                    "target": "ImportJob.Failed",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "lastReason",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "error",
+                            "reason"
+                          ],
+                          "type": "string",
+                          "text": "error.reason"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 53,
+                      "col": 11,
+                      "endLine": 53,
+                      "endCol": 82
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "ImportJob.Importing.WaitingToRetry",
+                "name": "WaitingToRetry",
+                "kind": "atomic",
+                "doc": "A transient failure: wait, then run the same batch again.",
+                "span": {
+                  "file": 0,
+                  "line": 59,
+                  "col": 5,
+                  "endLine": 64,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "after",
+                      "delay": {
+                        "kind": "lit",
+                        "value": 10000,
+                        "type": "duration",
+                        "text": "10s"
+                      }
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "ref",
+                      "path": [
+                        "pauseRequested"
+                      ],
+                      "type": "bool",
+                      "text": "pauseRequested"
+                    },
+                    "target": "ImportJob.Importing.Paused",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 61,
+                      "col": 9,
+                      "endLine": 61,
+                      "endCol": 36
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "after",
+                      "delay": {
+                        "kind": "lit",
+                        "value": 10000,
+                        "type": "duration",
+                        "text": "10s"
+                      }
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "ImportJob.Importing.RunningBatch",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 62,
+                      "col": 9,
+                      "endLine": 62,
+                      "endCol": 42
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "ImportJob.Importing.Paused",
+                "name": "Paused",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 66,
+                  "col": 5,
+                  "endLine": 66,
+                  "endCol": 75
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Resume"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "ImportJob.Importing.RunningBatch",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "pauseRequested",
+                        "value": {
+                          "kind": "lit",
+                          "value": false,
+                          "type": "bool",
+                          "text": "false"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 66,
+                      "col": 20,
+                      "endLine": 66,
+                      "endCol": 73
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Pause"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "pauseRequested",
+                    "value": {
+                      "kind": "lit",
+                      "value": true,
+                      "type": "bool",
+                      "text": "true"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 41,
+                  "col": 5,
+                  "endLine": 41,
+                  "endCol": 40
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Resume"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "pauseRequested",
+                    "value": {
+                      "kind": "lit",
+                      "value": false,
+                      "type": "bool",
+                      "text": "false"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 42,
+                  "col": 5,
+                  "endLine": 42,
+                  "endCol": 41
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "ImportJob.Completed",
+            "name": "Completed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 69,
+              "col": 3,
+              "endLine": 69,
+              "endCol": 139
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "record",
+              "fields": [
+                {
+                  "name": "jobId",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "upload",
+                      "jobId"
+                    ],
+                    "type": "string",
+                    "text": "upload.jobId"
+                  }
+                },
+                {
+                  "name": "totalRows",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "plan",
+                      "totalRows"
+                    ],
+                    "type": "int",
+                    "text": "plan.totalRows"
+                  }
+                },
+                {
+                  "name": "batches",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "batch"
+                    ],
+                    "type": "int",
+                    "text": "batch"
+                  }
+                },
+                {
+                  "name": "retries",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "totalRetries"
+                    ],
+                    "type": "int",
+                    "text": "totalRetries"
+                  }
+                }
+              ],
+              "type": "ImportSummary",
+              "text": "ImportSummary { jobId: upload.jobId, totalRows: plan.totalRows, batches: batch, retries: totalRetries }"
+            },
+            "fail": null
+          },
+          {
+            "id": "ImportJob.Rejected",
+            "name": "Rejected",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 70,
+              "col": 3,
+              "endLine": 70,
+              "endCol": 41
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "ref",
+              "path": [
+                "invalid"
+              ],
+              "type": "InvalidFile",
+              "text": "invalid"
+            }
+          },
+          {
+            "id": "ImportJob.Failed",
+            "name": "Failed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 71,
+              "col": 3,
+              "endLine": 71,
+              "endCol": 82
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "record",
+              "fields": [
+                {
+                  "name": "batch",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "batch"
+                    ],
+                    "type": "int",
+                    "text": "batch"
+                  }
+                },
+                {
+                  "name": "reason",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "lastReason"
+                    ],
+                    "type": "string",
+                    "text": "lastReason"
+                  }
+                }
+              ],
+              "type": "BatchFailed",
+              "text": "BatchFailed { batch: batch, reason: lastReason }"
+            }
+          },
+          {
+            "id": "ImportJob.Cancelled",
+            "name": "Cancelled",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 72,
+              "col": 3,
+              "endLine": 72,
+              "endCol": 72
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "record",
+              "fields": [
+                {
+                  "name": "batchesDone",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "batch"
+                    ],
+                    "type": "int",
+                    "text": "batch"
+                  }
+                }
+              ],
+              "type": "ImportCancelled",
+              "text": "ImportCancelled { batchesDone: batch }"
+            }
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Cancel"
+            },
+            "group": 0,
+            "guard": null,
+            "target": "ImportJob.Cancelled",
+            "effects": [],
+            "span": {
+              "file": 0,
+              "line": 27,
+              "col": 3,
+              "endLine": 27,
+              "endCol": 25
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:2a886a294218eacadb42067c4c80aeade9517bff99c774098061b0050c30a75c"
+    }
+  }
+}

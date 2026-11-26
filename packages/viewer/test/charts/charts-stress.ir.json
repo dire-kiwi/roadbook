@@ -1,0 +1,1620 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "packages/viewer/test/charts/stress.road"
+    }
+  ],
+  "types": {
+    "Flaky": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 12
+      }
+    },
+    "Broken": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 13
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "note": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 26
+      }
+    }
+  },
+  "tasks": {
+    "step": {
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [
+        "Flaky",
+        "Broken"
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 42
+      }
+    }
+  },
+  "machines": {
+    "Ticker": {
+      "doc": "Ticks on its own.",
+      "span": {
+        "file": 0,
+        "line": 11,
+        "col": 1,
+        "endLine": 19,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [],
+      "events": {},
+      "root": {
+        "id": "Ticker",
+        "name": "Ticker",
+        "kind": "compound",
+        "doc": "Ticks on its own.",
+        "span": {
+          "file": 0,
+          "line": 11,
+          "col": 1,
+          "endLine": 19,
+          "endCol": 2
+        },
+        "initial": "Ticker.Ticking",
+        "states": [
+          {
+            "id": "Ticker.Ticking",
+            "name": "Ticking",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 13,
+              "col": 3,
+              "endLine": 16,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Ticker.Ticking",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "tick",
+                        "type": "string",
+                        "text": "\"tick\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 14,
+                  "col": 5,
+                  "endLine": 14,
+                  "endCol": 42
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 60000,
+                    "type": "duration",
+                    "text": "1m"
+                  }
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Ticker.Stopping",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 15,
+                  "col": 5,
+                  "endLine": 15,
+                  "endCol": 25
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Ticker.Stopping",
+            "name": "Stopping",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 17,
+              "col": 3,
+              "endLine": 17,
+              "endCol": 38
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Ticker.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 17,
+                  "col": 22,
+                  "endLine": 17,
+                  "endCol": 36
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Ticker.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 18,
+              "col": 3,
+              "endLine": 18,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "n"
+              ],
+              "type": "int",
+              "text": "n"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:070b7651c9545a297f86e759f4fdb2cdae831051d40044cc0683fa46028bb38c"
+    },
+    "Stress": {
+      "doc": "Every shape the viewer has to lay out, at once.",
+      "span": {
+        "file": 0,
+        "line": 22,
+        "col": 1,
+        "endLine": 111,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "n",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 23,
+            "col": 3,
+            "endLine": 23,
+            "endCol": 17
+          }
+        }
+      ],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 25,
+            "col": 3,
+            "endLine": 25,
+            "endCol": 11
+          }
+        },
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 26,
+            "col": 3,
+            "endLine": 26,
+            "endCol": 13
+          }
+        },
+        "Poke": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 27,
+            "col": 3,
+            "endLine": 27,
+            "endCol": 13
+          }
+        },
+        "Reset": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 28,
+            "col": 3,
+            "endLine": 28,
+            "endCol": 14
+          }
+        }
+      },
+      "root": {
+        "id": "Stress",
+        "name": "Stress",
+        "kind": "compound",
+        "doc": "Every shape the viewer has to lay out, at once.",
+        "span": {
+          "file": 0,
+          "line": 22,
+          "col": 1,
+          "endLine": 111,
+          "endCol": 2
+        },
+        "initial": "Stress.Start",
+        "states": [
+          {
+            "id": "Stress.Start",
+            "name": "Start",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 35,
+              "col": 3,
+              "endLine": 40,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Stress.Running",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 36,
+                  "col": 5,
+                  "endLine": 36,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Poke"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Stress.Start",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "n + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 37,
+                  "endCol": 38
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Stress.Exits",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 38,
+                  "col": 5,
+                  "endLine": 38,
+                  "endCol": 21
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "any"
+                },
+                "group": 3,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "ignored",
+                        "type": "string",
+                        "text": "\"ignored\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 39,
+                  "col": 5,
+                  "endLine": 39,
+                  "endCol": 43
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Stress.Running",
+            "name": "Running",
+            "kind": "parallel",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 42,
+              "col": 3,
+              "endLine": 91,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [
+              {
+                "id": "Stress.Running.Left",
+                "name": "Left",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 46,
+                  "col": 5,
+                  "endLine": 64,
+                  "endCol": 6
+                },
+                "initial": "Stress.Running.Left.A",
+                "states": [
+                  {
+                    "id": "Stress.Running.Left.A",
+                    "name": "A",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 48,
+                      "col": 7,
+                      "endLine": 51,
+                      "endCol": 8
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Poke"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Stress.Running.Left.A",
+                        "effects": [
+                          {
+                            "kind": "do",
+                            "action": "note",
+                            "args": [
+                              {
+                                "kind": "lit",
+                                "value": "a",
+                                "type": "string",
+                                "text": "\"a\""
+                              }
+                            ]
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 49,
+                          "col": 9,
+                          "endLine": 49,
+                          "endCol": 36
+                        }
+                      },
+                      {
+                        "trigger": {
+                          "kind": "after",
+                          "delay": {
+                            "kind": "lit",
+                            "value": 5000,
+                            "type": "duration",
+                            "text": "5s"
+                          }
+                        },
+                        "group": 1,
+                        "guard": null,
+                        "target": "Stress.Running.Left.B",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 50,
+                          "col": 9,
+                          "endLine": 50,
+                          "endCol": 22
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Stress.Running.Left.B",
+                    "name": "B",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 52,
+                      "col": 7,
+                      "endLine": 61,
+                      "endCol": 8
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": {
+                      "kind": "task",
+                      "src": "step",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        }
+                      ],
+                      "span": {
+                        "file": 0,
+                        "line": 53,
+                        "col": 9,
+                        "endLine": 60,
+                        "endCol": 10
+                      }
+                    },
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "invoke.done"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Stress.Running.Left.C",
+                        "effects": [
+                          {
+                            "kind": "set",
+                            "var": "n",
+                            "value": {
+                              "kind": "ref",
+                              "path": [
+                                "result"
+                              ],
+                              "type": "int",
+                              "text": "result"
+                            }
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 54,
+                          "col": 11,
+                          "endLine": 54,
+                          "endCol": 47
+                        }
+                      },
+                      {
+                        "trigger": {
+                          "kind": "invoke.fail",
+                          "error": "Flaky"
+                        },
+                        "group": 1,
+                        "guard": {
+                          "kind": "op",
+                          "op": "<",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "n"
+                              ],
+                              "type": "int",
+                              "text": "n"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 3,
+                              "type": "int",
+                              "text": "3"
+                            }
+                          ],
+                          "type": "bool",
+                          "text": "n < 3"
+                        },
+                        "target": "Stress.Running.Left.B",
+                        "effects": [
+                          {
+                            "kind": "set",
+                            "var": "n",
+                            "value": {
+                              "kind": "op",
+                              "op": "+",
+                              "args": [
+                                {
+                                  "kind": "ref",
+                                  "path": [
+                                    "n"
+                                  ],
+                                  "type": "int",
+                                  "text": "n"
+                                },
+                                {
+                                  "kind": "lit",
+                                  "value": 1,
+                                  "type": "int",
+                                  "text": "1"
+                                }
+                              ],
+                              "type": "int",
+                              "text": "n + 1"
+                            }
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 56,
+                          "col": 13,
+                          "endLine": 56,
+                          "endCol": 46
+                        }
+                      },
+                      {
+                        "trigger": {
+                          "kind": "invoke.fail",
+                          "error": "Flaky"
+                        },
+                        "group": 1,
+                        "guard": null,
+                        "target": "Stress.Running.Left.A",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 57,
+                          "col": 13,
+                          "endLine": 57,
+                          "endCol": 26
+                        }
+                      },
+                      {
+                        "trigger": {
+                          "kind": "invoke.fail",
+                          "error": "*"
+                        },
+                        "group": 2,
+                        "guard": null,
+                        "target": "Stress.Failed",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 59,
+                          "col": 11,
+                          "endLine": 59,
+                          "endCol": 31
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Stress.Running.Left.C",
+                    "name": "C",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 62,
+                      "col": 7,
+                      "endLine": 62,
+                      "endCol": 50
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "always"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Stress.Running.Left.LeftDone",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 62,
+                          "col": 30,
+                          "endLine": 62,
+                          "endCol": 48
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Stress.Running.Left.LeftDone",
+                    "name": "LeftDone",
+                    "kind": "final",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 63,
+                      "col": 7,
+                      "endLine": 63,
+                      "endCol": 30
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Stress.Running.Right",
+                "name": "Right",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 66,
+                  "col": 5,
+                  "endLine": 90,
+                  "endCol": 6
+                },
+                "initial": "Stress.Running.Right.X",
+                "states": [
+                  {
+                    "id": "Stress.Running.Right.X",
+                    "name": "X",
+                    "kind": "compound",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 68,
+                      "col": 7,
+                      "endLine": 83,
+                      "endCol": 8
+                    },
+                    "initial": "Stress.Running.Right.X.X1",
+                    "states": [
+                      {
+                        "id": "Stress.Running.Right.X.X1",
+                        "name": "X1",
+                        "kind": "atomic",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 70,
+                          "col": 9,
+                          "endLine": 73,
+                          "endCol": 10
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": null,
+                        "transitions": [
+                          {
+                            "trigger": {
+                              "kind": "event",
+                              "event": "Poke"
+                            },
+                            "group": 0,
+                            "guard": null,
+                            "target": "Stress.Running.Right.X.X1",
+                            "effects": [],
+                            "span": {
+                              "file": 0,
+                              "line": 71,
+                              "col": 11,
+                              "endLine": 71,
+                              "endCol": 24
+                            }
+                          },
+                          {
+                            "trigger": {
+                              "kind": "event",
+                              "event": "Go"
+                            },
+                            "group": 1,
+                            "guard": null,
+                            "target": "Stress.Running.Right.X.X2",
+                            "effects": [],
+                            "span": {
+                              "file": 0,
+                              "line": 72,
+                              "col": 11,
+                              "endLine": 72,
+                              "endCol": 24
+                            }
+                          }
+                        ],
+                        "output": null,
+                        "fail": null
+                      },
+                      {
+                        "id": "Stress.Running.Right.X.X2",
+                        "name": "X2",
+                        "kind": "compound",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 74,
+                          "col": 9,
+                          "endLine": 81,
+                          "endCol": 10
+                        },
+                        "initial": "Stress.Running.Right.X.X2.Deep",
+                        "states": [
+                          {
+                            "id": "Stress.Running.Right.X.X2.Deep",
+                            "name": "Deep",
+                            "kind": "compound",
+                            "doc": "",
+                            "span": {
+                              "file": 0,
+                              "line": 76,
+                              "col": 11,
+                              "endLine": 79,
+                              "endCol": 12
+                            },
+                            "initial": "Stress.Running.Right.X.X2.Deep.Deeper",
+                            "states": [
+                              {
+                                "id": "Stress.Running.Right.X.X2.Deep.Deeper",
+                                "name": "Deeper",
+                                "kind": "atomic",
+                                "doc": "",
+                                "span": {
+                                  "file": 0,
+                                  "line": 78,
+                                  "col": 13,
+                                  "endLine": 78,
+                                  "endCol": 53
+                                },
+                                "initial": null,
+                                "states": [],
+                                "entry": [],
+                                "exit": [],
+                                "invoke": null,
+                                "transitions": [
+                                  {
+                                    "trigger": {
+                                      "kind": "event",
+                                      "event": "Go"
+                                    },
+                                    "group": 0,
+                                    "guard": null,
+                                    "target": "Stress.Running.Left.C",
+                                    "effects": [],
+                                    "span": {
+                                      "file": 0,
+                                      "line": 78,
+                                      "col": 28,
+                                      "endLine": 78,
+                                      "endCol": 51
+                                    }
+                                  }
+                                ],
+                                "output": null,
+                                "fail": null
+                              }
+                            ],
+                            "entry": [],
+                            "exit": [],
+                            "invoke": null,
+                            "transitions": [],
+                            "output": null,
+                            "fail": null
+                          }
+                        ],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": null,
+                        "transitions": [
+                          {
+                            "trigger": {
+                              "kind": "event",
+                              "event": "Poke"
+                            },
+                            "group": 0,
+                            "guard": null,
+                            "target": "Stress.Running.Right.X.X1",
+                            "effects": [],
+                            "span": {
+                              "file": 0,
+                              "line": 80,
+                              "col": 11,
+                              "endLine": 80,
+                              "endCol": 24
+                            }
+                          }
+                        ],
+                        "output": null,
+                        "fail": null
+                      }
+                    ],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Stop"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Stress.Running.Right.Y",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 82,
+                          "col": 9,
+                          "endLine": 82,
+                          "endCol": 21
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Stress.Running.Right.Y",
+                    "name": "Y",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 84,
+                      "col": 7,
+                      "endLine": 88,
+                      "endCol": 8
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": {
+                      "kind": "machine",
+                      "src": "Ticker",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        }
+                      ],
+                      "span": {
+                        "file": 0,
+                        "line": 85,
+                        "col": 9,
+                        "endLine": 87,
+                        "endCol": 10
+                      }
+                    },
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "invoke.done"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Stress.Running.Right.RightDone",
+                        "effects": [
+                          {
+                            "kind": "set",
+                            "var": "n",
+                            "value": {
+                              "kind": "ref",
+                              "path": [
+                                "result"
+                              ],
+                              "type": "int",
+                              "text": "result"
+                            }
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 86,
+                          "col": 11,
+                          "endLine": 86,
+                          "endCol": 44
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Stress.Running.Right.RightDone",
+                    "name": "RightDone",
+                    "kind": "final",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 89,
+                      "col": 7,
+                      "endLine": 89,
+                      "endCol": 31
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Stress.Stopped",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 43,
+                  "col": 5,
+                  "endLine": 43,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "done"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Stress.Finished",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 44,
+                  "endCol": 24
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Stress.Stopped",
+            "name": "Stopped",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 93,
+              "col": 3,
+              "endLine": 93,
+              "endCol": 48
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Stress.Running.Right.X.X2",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 93,
+                  "col": 19,
+                  "endLine": 93,
+                  "endCol": 46
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Stress.Finished",
+            "name": "Finished",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 95,
+              "col": 3,
+              "endLine": 95,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "n"
+              ],
+              "type": "int",
+              "text": "n"
+            },
+            "fail": null
+          },
+          {
+            "id": "Stress.Failed",
+            "name": "Failed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 96,
+              "col": 3,
+              "endLine": 96,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "op",
+              "op": "-",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": 0,
+                  "type": "int",
+                  "text": "0"
+                },
+                {
+                  "kind": "lit",
+                  "value": 1,
+                  "type": "int",
+                  "text": "1"
+                }
+              ],
+              "type": "int",
+              "text": "0 - 1"
+            },
+            "fail": null
+          },
+          {
+            "id": "Stress.Expired",
+            "name": "Expired",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 97,
+              "col": 3,
+              "endLine": 97,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "op",
+              "op": "-",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": 0,
+                  "type": "int",
+                  "text": "0"
+                },
+                {
+                  "kind": "lit",
+                  "value": 2,
+                  "type": "int",
+                  "text": "2"
+                }
+              ],
+              "type": "int",
+              "text": "0 - 2"
+            },
+            "fail": null
+          },
+          {
+            "id": "Stress.Quit1",
+            "name": "Quit1",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 98,
+              "col": 3,
+              "endLine": 98,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": 1,
+              "type": "int",
+              "text": "1"
+            },
+            "fail": null
+          },
+          {
+            "id": "Stress.Quit2",
+            "name": "Quit2",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 99,
+              "col": 3,
+              "endLine": 99,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": 2,
+              "type": "int",
+              "text": "2"
+            },
+            "fail": null
+          },
+          {
+            "id": "Stress.Quit3",
+            "name": "Quit3",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 100,
+              "col": 3,
+              "endLine": 100,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": 3,
+              "type": "int",
+              "text": "3"
+            },
+            "fail": null
+          },
+          {
+            "id": "Stress.Quit4",
+            "name": "Quit4",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 101,
+              "col": 3,
+              "endLine": 101,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": 4,
+              "type": "int",
+              "text": "4"
+            },
+            "fail": null
+          },
+          {
+            "id": "Stress.Quit5",
+            "name": "Quit5",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 102,
+              "col": 3,
+              "endLine": 102,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": 5,
+              "type": "int",
+              "text": "5"
+            },
+            "fail": null
+          },
+          {
+            "id": "Stress.Exits",
+            "name": "Exits",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 104,
+              "col": 3,
+              "endLine": 110,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Stress.Quit1",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 105,
+                  "col": 5,
+                  "endLine": 105,
+                  "endCol": 22
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Poke"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Stress.Quit2",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 106,
+                  "col": 5,
+                  "endLine": 106,
+                  "endCol": 22
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Stress.Quit3",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 107,
+                  "col": 5,
+                  "endLine": 107,
+                  "endCol": 22
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                },
+                "group": 3,
+                "guard": null,
+                "target": "Stress.Quit4",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 108,
+                  "col": 5,
+                  "endLine": 108,
+                  "endCol": 22
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 4,
+                "guard": null,
+                "target": "Stress.Quit5",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 109,
+                  "col": 5,
+                  "endLine": 109,
+                  "endCol": 22
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Reset"
+            },
+            "group": 0,
+            "guard": null,
+            "target": "Stress.Start",
+            "effects": [],
+            "span": {
+              "file": 0,
+              "line": 30,
+              "col": 3,
+              "endLine": 30,
+              "endCol": 20
+            }
+          },
+          {
+            "trigger": {
+              "kind": "after",
+              "delay": {
+                "kind": "lit",
+                "value": 3600000,
+                "type": "duration",
+                "text": "1h"
+              }
+            },
+            "group": 1,
+            "guard": null,
+            "target": "Stress.Expired",
+            "effects": [],
+            "span": {
+              "file": 0,
+              "line": 31,
+              "col": 3,
+              "endLine": 31,
+              "endCol": 22
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:11e662e121de80371994703b488b6cf5f5579690d56defbbdfab2d46be872641"
+    }
+  }
+}

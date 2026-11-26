@@ -1,0 +1,4616 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "examples/large/ticket.road"
+    },
+    {
+      "path": "examples/large/types.road"
+    },
+    {
+      "path": "examples/large/survey.road"
+    }
+  ],
+  "types": {
+    "Priority": {
+      "kind": "enum",
+      "variants": [
+        "Low",
+        "Normal",
+        "High",
+        "Urgent"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 3,
+        "col": 1,
+        "endLine": 3,
+        "endCol": 47
+      }
+    },
+    "Category": {
+      "kind": "enum",
+      "variants": [
+        "Billing",
+        "Technical",
+        "Account",
+        "Other"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 56
+      }
+    },
+    "CloseReason": {
+      "kind": "enum",
+      "variants": [
+        "Resolved",
+        "AutoClosed",
+        "Spam",
+        "Duplicate",
+        "Withdrawn",
+        "OutOfScope",
+        "Merged",
+        "Unresolvable"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 104
+      }
+    },
+    "Ticket": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "customerId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "priority",
+          "type": "Priority",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 92
+      }
+    },
+    "Classification": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "category",
+          "type": "Category",
+          "doc": ""
+        },
+        {
+          "name": "priority",
+          "type": "Priority",
+          "doc": ""
+        },
+        {
+          "name": "spamScore",
+          "type": "float",
+          "doc": ""
+        },
+        {
+          "name": "duplicateOf",
+          "type": "string?",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 103
+      }
+    },
+    "SurveyResult": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "answered",
+          "type": "bool",
+          "doc": ""
+        },
+        {
+          "name": "score",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 51
+      }
+    },
+    "Closure": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "ticketId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "reason",
+          "type": "CloseReason",
+          "doc": ""
+        },
+        {
+          "name": "reopens",
+          "type": "int",
+          "doc": ""
+        },
+        {
+          "name": "rating",
+          "type": "int?",
+          "doc": ""
+        }
+      ],
+      "doc": "The machine's output: how the ticket ended.",
+      "span": {
+        "file": 1,
+        "line": 12,
+        "col": 1,
+        "endLine": 12,
+        "endCol": 83
+      }
+    },
+    "ClassifierUnavailable": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 14,
+        "col": 1,
+        "endLine": 14,
+        "endCol": 28
+      }
+    },
+    "NoAgentAvailable": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 15,
+        "col": 1,
+        "endLine": 15,
+        "endCol": 23
+      }
+    },
+    "TrackerUnavailable": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "retryAfter",
+          "type": "duration",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 16,
+        "col": 1,
+        "endLine": 16,
+        "endCol": 53
+      }
+    },
+    "MailBounced": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 17,
+        "col": 1,
+        "endLine": 17,
+        "endCol": 18
+      }
+    },
+    "NotAnsweredYet": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 18,
+        "col": 1,
+        "endLine": 18,
+        "endCol": 21
+      }
+    }
+  },
+  "functions": {
+    "isSpam": {
+      "params": [
+        {
+          "name": "c",
+          "type": "Classification",
+          "doc": ""
+        }
+      ],
+      "returns": "bool",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 37,
+        "col": 1,
+        "endLine": 37,
+        "endCol": 76
+      }
+    },
+    "isDuplicate": {
+      "params": [
+        {
+          "name": "c",
+          "type": "Classification",
+          "doc": ""
+        }
+      ],
+      "returns": "bool",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 38,
+        "col": 1,
+        "endLine": 38,
+        "endCol": 76
+      }
+    },
+    "backoff": {
+      "params": [
+        {
+          "name": "attempt",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "duration",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 39,
+        "col": 1,
+        "endLine": 39,
+        "endCol": 80
+      }
+    },
+    "triageSla": {
+      "params": [
+        {
+          "name": "p",
+          "type": "Priority",
+          "doc": ""
+        }
+      ],
+      "returns": "duration",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 40,
+        "col": 1,
+        "endLine": 40,
+        "endCol": 80
+      }
+    },
+    "resolutionSla": {
+      "params": [
+        {
+          "name": "p",
+          "type": "Priority",
+          "doc": ""
+        }
+      ],
+      "returns": "duration",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 41,
+        "col": 1,
+        "endLine": 41,
+        "endCol": 80
+      }
+    },
+    "closure": {
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        },
+        {
+          "name": "reason",
+          "type": "CloseReason",
+          "doc": ""
+        },
+        {
+          "name": "reopens",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "Closure",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 42,
+        "col": 1,
+        "endLine": 42,
+        "endCol": 79
+      }
+    },
+    "ratedClosure": {
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        },
+        {
+          "name": "reopens",
+          "type": "int",
+          "doc": ""
+        },
+        {
+          "name": "survey",
+          "type": "SurveyResult",
+          "doc": ""
+        }
+      ],
+      "returns": "Closure",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 43,
+        "col": 1,
+        "endLine": 43,
+        "endCol": 79
+      }
+    }
+  },
+  "actions": {
+    "notifyCustomer": {
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        },
+        {
+          "name": "template",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 30,
+        "col": 1,
+        "endLine": 30,
+        "endCol": 56
+      }
+    },
+    "notifyAgent": {
+      "params": [
+        {
+          "name": "agentId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        },
+        {
+          "name": "template",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 31,
+        "col": 1,
+        "endLine": 31,
+        "endCol": 70
+      }
+    },
+    "pageOnCall": {
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        },
+        {
+          "name": "tier",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 32,
+        "col": 1,
+        "endLine": 32,
+        "endCol": 45
+      }
+    },
+    "sendMessage": {
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        },
+        {
+          "name": "body",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 33,
+        "col": 1,
+        "endLine": 33,
+        "endCol": 49
+      }
+    },
+    "addNote": {
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 34,
+        "col": 1,
+        "endLine": 34,
+        "endCol": 45
+      }
+    }
+  },
+  "tasks": {
+    "classify": {
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        }
+      ],
+      "returns": "Classification",
+      "errors": [
+        "ClassifierUnavailable"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 21,
+        "col": 1,
+        "endLine": 21,
+        "endCol": 95
+      }
+    },
+    "routeTicket": {
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        },
+        {
+          "name": "category",
+          "type": "Category",
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [
+        "NoAgentAvailable"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 22,
+        "col": 1,
+        "endLine": 22,
+        "endCol": 90
+      }
+    },
+    "fileBug": {
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [
+        "TrackerUnavailable"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 23,
+        "col": 1,
+        "endLine": 23,
+        "endCol": 92
+      }
+    },
+    "verifyFix": {
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        }
+      ],
+      "returns": "bool",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 24,
+        "col": 1,
+        "endLine": 24,
+        "endCol": 61
+      }
+    },
+    "draftResolution": {
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 25,
+        "col": 1,
+        "endLine": 25,
+        "endCol": 63
+      }
+    },
+    "sendSurvey": {
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [
+        "MailBounced"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 26,
+        "col": 1,
+        "endLine": 26,
+        "endCol": 85
+      }
+    },
+    "pollSurvey": {
+      "params": [
+        {
+          "name": "surveyId",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [
+        "NotAnsweredYet"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 27,
+        "col": 1,
+        "endLine": 27,
+        "endCol": 88
+      }
+    }
+  },
+  "machines": {
+    "SupportTicket": {
+      "doc": "A support ticket from the moment it arrives until it is closed.\nEvery top-level final state is one way a ticket can end.",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 268,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        }
+      ],
+      "returns": "Closure",
+      "errors": [],
+      "vars": [
+        {
+          "name": "classification",
+          "type": "Classification",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 39
+          }
+        },
+        {
+          "name": "priority",
+          "type": "Priority",
+          "init": {
+            "kind": "enum",
+            "variant": "Normal",
+            "type": "Priority",
+            "text": "Priority.Normal"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 51
+          }
+        },
+        {
+          "name": "category",
+          "type": "Category",
+          "init": {
+            "kind": "enum",
+            "variant": "Other",
+            "type": "Category",
+            "text": "Category.Other"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 50
+          }
+        },
+        {
+          "name": "agentId",
+          "type": "string",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 31
+          }
+        },
+        {
+          "name": "classifyAttempts",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 32
+          }
+        },
+        {
+          "name": "bugAttempts",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 18,
+            "col": 3,
+            "endLine": 18,
+            "endCol": 32
+          }
+        },
+        {
+          "name": "retryWait",
+          "type": "duration",
+          "init": {
+            "kind": "lit",
+            "value": 60000,
+            "type": "duration",
+            "text": "1m"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 19,
+            "col": 3,
+            "endLine": 19,
+            "endCol": 38
+          }
+        },
+        {
+          "name": "bugId",
+          "type": "string",
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 20,
+            "col": 3,
+            "endLine": 20,
+            "endCol": 36
+          }
+        },
+        {
+          "name": "reopens",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 21,
+            "col": 3,
+            "endLine": 21,
+            "endCol": 32
+          }
+        },
+        {
+          "name": "resolution",
+          "type": "string",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 22,
+            "col": 3,
+            "endLine": 22,
+            "endCol": 31
+          }
+        },
+        {
+          "name": "survey",
+          "type": "SurveyResult",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 23,
+            "col": 3,
+            "endLine": 23,
+            "endCol": 37
+          }
+        }
+      ],
+      "events": {
+        "Assign": {
+          "fields": [
+            {
+              "name": "agentId",
+              "type": "string",
+              "doc": ""
+            }
+          ],
+          "doc": "An agent claims the ticket by hand.",
+          "span": {
+            "file": 0,
+            "line": 26,
+            "col": 3,
+            "endLine": 26,
+            "endCol": 46
+          }
+        },
+        "AgentReplied": {
+          "fields": [
+            {
+              "name": "body",
+              "type": "string",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 27,
+            "col": 3,
+            "endLine": 27,
+            "endCol": 43
+          }
+        },
+        "CustomerReplied": {
+          "fields": [
+            {
+              "name": "body",
+              "type": "string",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 28,
+            "col": 3,
+            "endLine": 28,
+            "endCol": 43
+          }
+        },
+        "InternalNote": {
+          "fields": [
+            {
+              "name": "text",
+              "type": "string",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 29,
+            "col": 3,
+            "endLine": 29,
+            "endCol": 43
+          }
+        },
+        "Hold": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 30,
+            "col": 3,
+            "endLine": 30,
+            "endCol": 13
+          }
+        },
+        "Unhold": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 31,
+            "col": 3,
+            "endLine": 31,
+            "endCol": 15
+          }
+        },
+        "Escalate": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 32,
+            "col": 3,
+            "endLine": 32,
+            "endCol": 17
+          }
+        },
+        "Deescalate": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 33,
+            "col": 3,
+            "endLine": 33,
+            "endCol": 19
+          }
+        },
+        "Resolve": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 34,
+            "col": 3,
+            "endLine": 34,
+            "endCol": 16
+          }
+        },
+        "FixReleased": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 35,
+            "col": 3,
+            "endLine": 35,
+            "endCol": 20
+          }
+        },
+        "CustomerConfirmed": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 36,
+            "col": 3,
+            "endLine": 36,
+            "endCol": 26
+          }
+        },
+        "Reopen": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 37,
+            "col": 3,
+            "endLine": 37,
+            "endCol": 15
+          }
+        },
+        "CustomerWithdrew": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 38,
+            "col": 3,
+            "endLine": 38,
+            "endCol": 25
+          }
+        },
+        "MarkDuplicate": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 39,
+            "col": 3,
+            "endLine": 39,
+            "endCol": 22
+          }
+        },
+        "MarkOutOfScope": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 40,
+            "col": 3,
+            "endLine": 40,
+            "endCol": 23
+          }
+        },
+        "MergeInto": {
+          "fields": [
+            {
+              "name": "ticketId",
+              "type": "string",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 41,
+            "col": 3,
+            "endLine": 41,
+            "endCol": 47
+          }
+        },
+        "GiveUp": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 42,
+            "col": 3,
+            "endLine": 42,
+            "endCol": 15
+          }
+        }
+      },
+      "root": {
+        "id": "SupportTicket",
+        "name": "SupportTicket",
+        "kind": "compound",
+        "doc": "A support ticket from the moment it arrives until it is closed.\nEvery top-level final state is one way a ticket can end.",
+        "span": {
+          "file": 0,
+          "line": 12,
+          "col": 1,
+          "endLine": 268,
+          "endCol": 2
+        },
+        "initial": "SupportTicket.Intake",
+        "states": [
+          {
+            "id": "SupportTicket.Intake",
+            "name": "Intake",
+            "kind": "compound",
+            "doc": "Classify the new ticket and screen out spam and duplicates.",
+            "span": {
+              "file": 0,
+              "line": 47,
+              "col": 3,
+              "endLine": 79,
+              "endCol": 4
+            },
+            "initial": "SupportTicket.Intake.Classifying",
+            "states": [
+              {
+                "id": "SupportTicket.Intake.Classifying",
+                "name": "Classifying",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 52,
+                  "col": 5,
+                  "endLine": 60,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "task",
+                  "src": "classify",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "ticket"
+                      ],
+                      "type": "Ticket",
+                      "text": "ticket"
+                    }
+                  ],
+                  "span": {
+                    "file": 0,
+                    "line": 53,
+                    "col": 7,
+                    "endLine": 59,
+                    "endCol": 8
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "SupportTicket.Intake.Screening",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "classification",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "result"
+                          ],
+                          "type": "Classification",
+                          "text": "result"
+                        }
+                      },
+                      {
+                        "kind": "set",
+                        "var": "priority",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "result",
+                            "priority"
+                          ],
+                          "type": "Priority",
+                          "text": "result.priority"
+                        }
+                      },
+                      {
+                        "kind": "set",
+                        "var": "category",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "result",
+                            "category"
+                          ],
+                          "type": "Category",
+                          "text": "result.category"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 54,
+                      "col": 9,
+                      "endLine": 54,
+                      "endCol": 139
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "ClassifierUnavailable"
+                    },
+                    "group": 1,
+                    "guard": {
+                      "kind": "op",
+                      "op": "<",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "classifyAttempts"
+                          ],
+                          "type": "int",
+                          "text": "classifyAttempts"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 3,
+                          "type": "int",
+                          "text": "3"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "classifyAttempts < 3"
+                    },
+                    "target": "SupportTicket.Intake.ClassifyBackoff",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 56,
+                      "col": 11,
+                      "endLine": 56,
+                      "endCol": 54
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "ClassifierUnavailable"
+                    },
+                    "group": 1,
+                    "guard": null,
+                    "target": "SupportTicket.Intake.Unclassified",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 57,
+                      "col": 11,
+                      "endLine": 57,
+                      "endCol": 51
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "SupportTicket.Intake.ClassifyBackoff",
+                "name": "ClassifyBackoff",
+                "kind": "atomic",
+                "doc": "Retry loop: the classifier is down, wait and try again.",
+                "span": {
+                  "file": 0,
+                  "line": 63,
+                  "col": 5,
+                  "endLine": 66,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "set",
+                    "var": "classifyAttempts",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "classifyAttempts"
+                          ],
+                          "type": "int",
+                          "text": "classifyAttempts"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "classifyAttempts + 1"
+                    }
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "after",
+                      "delay": {
+                        "kind": "call",
+                        "fn": "backoff",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "classifyAttempts"
+                            ],
+                            "type": "int",
+                            "text": "classifyAttempts"
+                          }
+                        ],
+                        "type": "duration",
+                        "text": "backoff(classifyAttempts)"
+                      }
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "SupportTicket.Intake.Classifying",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 65,
+                      "col": 7,
+                      "endLine": 65,
+                      "endCol": 53
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "SupportTicket.Intake.Screening",
+                "name": "Screening",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 68,
+                  "col": 5,
+                  "endLine": 74,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "call",
+                      "fn": "isSpam",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "classification"
+                          ],
+                          "type": "Classification",
+                          "text": "classification"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "isSpam(classification)"
+                    },
+                    "target": "SupportTicket.Spam",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 70,
+                      "col": 9,
+                      "endLine": 70,
+                      "endCol": 47
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "call",
+                      "fn": "isDuplicate",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "classification"
+                          ],
+                          "type": "Classification",
+                          "text": "classification"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "isDuplicate(classification)"
+                    },
+                    "target": "SupportTicket.Duplicate",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 71,
+                      "col": 9,
+                      "endLine": 71,
+                      "endCol": 52
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "SupportTicket.Intake.Accepted",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 72,
+                      "col": 9,
+                      "endLine": 72,
+                      "endCol": 51
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "SupportTicket.Intake.Unclassified",
+                "name": "Unclassified",
+                "kind": "final",
+                "doc": "The classifier stayed down: carry on with normal priority and no category.",
+                "span": {
+                  "file": 0,
+                  "line": 77,
+                  "col": 5,
+                  "endLine": 77,
+                  "endCol": 32
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "SupportTicket.Intake.Accepted",
+                "name": "Accepted",
+                "kind": "final",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 78,
+                  "col": 5,
+                  "endLine": 78,
+                  "endCol": 77
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "notifyCustomer",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "ticket"
+                        ],
+                        "type": "Ticket",
+                        "text": "ticket"
+                      },
+                      {
+                        "kind": "lit",
+                        "value": "received",
+                        "type": "string",
+                        "text": "\"received\""
+                      }
+                    ]
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "SupportTicket.Triage",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 50,
+                  "col": 5,
+                  "endLine": 50,
+                  "endCol": 19
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "SupportTicket.Triage",
+            "name": "Triage",
+            "kind": "compound",
+            "doc": "Find an owner. Unowned past the triage SLA pages the on-call lead.",
+            "span": {
+              "file": 0,
+              "line": 82,
+              "col": 3,
+              "endLine": 103,
+              "endCol": 4
+            },
+            "initial": "SupportTicket.Triage.Routing",
+            "states": [
+              {
+                "id": "SupportTicket.Triage.Routing",
+                "name": "Routing",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 92,
+                  "col": 5,
+                  "endLine": 97,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "task",
+                  "src": "routeTicket",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "ticket"
+                      ],
+                      "type": "Ticket",
+                      "text": "ticket"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "category"
+                      ],
+                      "type": "Category",
+                      "text": "category"
+                    }
+                  ],
+                  "span": {
+                    "file": 0,
+                    "line": 93,
+                    "col": 7,
+                    "endLine": 96,
+                    "endCol": 8
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "SupportTicket.Triage.Assigned",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "agentId",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "result"
+                          ],
+                          "type": "string",
+                          "text": "result"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 94,
+                      "col": 9,
+                      "endLine": 94,
+                      "endCol": 64
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "NoAgentAvailable"
+                    },
+                    "group": 1,
+                    "guard": null,
+                    "target": "SupportTicket.Triage.Queued",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 95,
+                      "col": 9,
+                      "endLine": 95,
+                      "endCol": 40
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "SupportTicket.Triage.Queued",
+                "name": "Queued",
+                "kind": "atomic",
+                "doc": "Nobody is free: try again every 15 minutes.",
+                "span": {
+                  "file": 0,
+                  "line": 100,
+                  "col": 5,
+                  "endLine": 100,
+                  "endCol": 42
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "after",
+                      "delay": {
+                        "kind": "lit",
+                        "value": 900000,
+                        "type": "duration",
+                        "text": "15m"
+                      }
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "SupportTicket.Triage.Routing",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 100,
+                      "col": 20,
+                      "endLine": 100,
+                      "endCol": 40
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "SupportTicket.Triage.Assigned",
+                "name": "Assigned",
+                "kind": "final",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 102,
+                  "col": 5,
+                  "endLine": 102,
+                  "endCol": 79
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "notifyAgent",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "agentId"
+                        ],
+                        "type": "string",
+                        "text": "agentId"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "ticket"
+                        ],
+                        "type": "Ticket",
+                        "text": "ticket"
+                      },
+                      {
+                        "kind": "lit",
+                        "value": "assigned",
+                        "type": "string",
+                        "text": "\"assigned\""
+                      }
+                    ]
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "call",
+                    "fn": "triageSla",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "priority"
+                        ],
+                        "type": "Priority",
+                        "text": "priority"
+                      }
+                    ],
+                    "type": "duration",
+                    "text": "triageSla(priority)"
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "pageOnCall",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "ticket"
+                        ],
+                        "type": "Ticket",
+                        "text": "ticket"
+                      },
+                      {
+                        "kind": "lit",
+                        "value": 1,
+                        "type": "int",
+                        "text": "1"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 85,
+                  "col": 5,
+                  "endLine": 85,
+                  "endCol": 75
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Assign"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "SupportTicket.Triage.Assigned",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "agentId",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "agentId"
+                      ],
+                      "type": "string",
+                      "text": "event.agentId"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 86,
+                  "col": 5,
+                  "endLine": 86,
+                  "endCol": 78
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "MarkOutOfScope"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "SupportTicket.OutOfScope",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 87,
+                  "col": 5,
+                  "endLine": 87,
+                  "endCol": 44
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "CustomerWithdrew"
+                },
+                "group": 3,
+                "guard": null,
+                "target": "SupportTicket.Withdrawn",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 88,
+                  "col": 5,
+                  "endLine": 88,
+                  "endCol": 43
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "done"
+                },
+                "group": 4,
+                "guard": null,
+                "target": "SupportTicket.Active",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 90,
+                  "col": 5,
+                  "endLine": 90,
+                  "endCol": 19
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "SupportTicket.Active",
+            "name": "Active",
+            "kind": "compound",
+            "doc": "The ticket has an owner and is being worked.",
+            "span": {
+              "file": 0,
+              "line": 106,
+              "col": 3,
+              "endLine": 243,
+              "endCol": 4
+            },
+            "initial": "SupportTicket.Active.Working",
+            "states": [
+              {
+                "id": "SupportTicket.Active.Working",
+                "name": "Working",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 114,
+                  "col": 5,
+                  "endLine": 147,
+                  "endCol": 6
+                },
+                "initial": "SupportTicket.Active.Working.WithAgent",
+                "states": [
+                  {
+                    "id": "SupportTicket.Active.Working.WithAgent",
+                    "name": "WithAgent",
+                    "kind": "atomic",
+                    "doc": "The agent owns the next move. Nudge them after every 2 hours of silence.",
+                    "span": {
+                      "file": 0,
+                      "line": 120,
+                      "col": 7,
+                      "endLine": 126,
+                      "endCol": 8
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "after",
+                          "delay": {
+                            "kind": "lit",
+                            "value": 7200000,
+                            "type": "duration",
+                            "text": "2h"
+                          }
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "SupportTicket.Active.Working.WithAgent",
+                        "effects": [
+                          {
+                            "kind": "do",
+                            "action": "notifyAgent",
+                            "args": [
+                              {
+                                "kind": "ref",
+                                "path": [
+                                  "agentId"
+                                ],
+                                "type": "string",
+                                "text": "agentId"
+                              },
+                              {
+                                "kind": "ref",
+                                "path": [
+                                  "ticket"
+                                ],
+                                "type": "Ticket",
+                                "text": "ticket"
+                              },
+                              {
+                                "kind": "lit",
+                                "value": "nudge",
+                                "type": "string",
+                                "text": "\"nudge\""
+                              }
+                            ]
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 121,
+                          "col": 9,
+                          "endLine": 121,
+                          "endCol": 88
+                        }
+                      },
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "AgentReplied"
+                        },
+                        "group": 1,
+                        "guard": null,
+                        "target": "SupportTicket.Active.Working.WaitingOnCustomer",
+                        "effects": [
+                          {
+                            "kind": "do",
+                            "action": "sendMessage",
+                            "args": [
+                              {
+                                "kind": "ref",
+                                "path": [
+                                  "ticket"
+                                ],
+                                "type": "Ticket",
+                                "text": "ticket"
+                              },
+                              {
+                                "kind": "ref",
+                                "path": [
+                                  "event",
+                                  "body"
+                                ],
+                                "type": "string",
+                                "text": "event.body"
+                              }
+                            ]
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 122,
+                          "col": 9,
+                          "endLine": 122,
+                          "endCol": 82
+                        }
+                      },
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Hold"
+                        },
+                        "group": 2,
+                        "guard": null,
+                        "target": "SupportTicket.Active.Working.OnHold",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 123,
+                          "col": 9,
+                          "endLine": 123,
+                          "endCol": 35
+                        }
+                      },
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Resolve"
+                        },
+                        "group": 3,
+                        "guard": null,
+                        "target": "SupportTicket.Active.Resolving",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 124,
+                          "col": 9,
+                          "endLine": 124,
+                          "endCol": 38
+                        }
+                      },
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "MarkDuplicate"
+                        },
+                        "group": 4,
+                        "guard": null,
+                        "target": "SupportTicket.Duplicate",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 125,
+                          "col": 9,
+                          "endLine": 125,
+                          "endCol": 38
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "SupportTicket.Active.Working.WaitingOnCustomer",
+                    "name": "WaitingOnCustomer",
+                    "kind": "compound",
+                    "doc": "The ball is in the customer's court. Two weeks of silence closes the ticket.",
+                    "span": {
+                      "file": 0,
+                      "line": 129,
+                      "col": 7,
+                      "endLine": 140,
+                      "endCol": 8
+                    },
+                    "initial": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
+                    "states": [
+                      {
+                        "id": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
+                        "name": "Waiting",
+                        "kind": "atomic",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 135,
+                          "col": 9,
+                          "endLine": 135,
+                          "endCol": 87
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": null,
+                        "transitions": [
+                          {
+                            "trigger": {
+                              "kind": "after",
+                              "delay": {
+                                "kind": "lit",
+                                "value": 259200000,
+                                "type": "duration",
+                                "text": "72h"
+                              }
+                            },
+                            "group": 0,
+                            "guard": null,
+                            "target": "SupportTicket.Active.Working.WaitingOnCustomer.Reminded",
+                            "effects": [
+                              {
+                                "kind": "do",
+                                "action": "notifyCustomer",
+                                "args": [
+                                  {
+                                    "kind": "ref",
+                                    "path": [
+                                      "ticket"
+                                    ],
+                                    "type": "Ticket",
+                                    "text": "ticket"
+                                  },
+                                  {
+                                    "kind": "lit",
+                                    "value": "reminder",
+                                    "type": "string",
+                                    "text": "\"reminder\""
+                                  }
+                                ]
+                              }
+                            ],
+                            "span": {
+                              "file": 0,
+                              "line": 135,
+                              "col": 25,
+                              "endLine": 135,
+                              "endCol": 85
+                            }
+                          }
+                        ],
+                        "output": null,
+                        "fail": null
+                      },
+                      {
+                        "id": "SupportTicket.Active.Working.WaitingOnCustomer.Reminded",
+                        "name": "Reminded",
+                        "kind": "atomic",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 137,
+                          "col": 9,
+                          "endLine": 137,
+                          "endCol": 89
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": null,
+                        "transitions": [
+                          {
+                            "trigger": {
+                              "kind": "after",
+                              "delay": {
+                                "kind": "lit",
+                                "value": 345600000,
+                                "type": "duration",
+                                "text": "96h"
+                              }
+                            },
+                            "group": 0,
+                            "guard": null,
+                            "target": "SupportTicket.Active.Working.WaitingOnCustomer.LastCall",
+                            "effects": [
+                              {
+                                "kind": "do",
+                                "action": "notifyCustomer",
+                                "args": [
+                                  {
+                                    "kind": "ref",
+                                    "path": [
+                                      "ticket"
+                                    ],
+                                    "type": "Ticket",
+                                    "text": "ticket"
+                                  },
+                                  {
+                                    "kind": "lit",
+                                    "value": "last_call",
+                                    "type": "string",
+                                    "text": "\"last_call\""
+                                  }
+                                ]
+                              }
+                            ],
+                            "span": {
+                              "file": 0,
+                              "line": 137,
+                              "col": 26,
+                              "endLine": 137,
+                              "endCol": 87
+                            }
+                          }
+                        ],
+                        "output": null,
+                        "fail": null
+                      },
+                      {
+                        "id": "SupportTicket.Active.Working.WaitingOnCustomer.LastCall",
+                        "name": "LastCall",
+                        "kind": "atomic",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 139,
+                          "col": 9,
+                          "endLine": 139,
+                          "endCol": 26
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": null,
+                        "transitions": [],
+                        "output": null,
+                        "fail": null
+                      }
+                    ],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "after",
+                          "delay": {
+                            "kind": "lit",
+                            "value": 1209600000,
+                            "type": "duration",
+                            "text": "336h"
+                          }
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "SupportTicket.AutoClosed",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 132,
+                          "col": 9,
+                          "endLine": 132,
+                          "endCol": 41
+                        }
+                      },
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "CustomerReplied"
+                        },
+                        "group": 1,
+                        "guard": null,
+                        "target": "SupportTicket.Active.Working.WithAgent",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 133,
+                          "col": 9,
+                          "endLine": 133,
+                          "endCol": 40
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "SupportTicket.Active.Working.OnHold",
+                    "name": "OnHold",
+                    "kind": "atomic",
+                    "doc": "Parked by the agent, for example while waiting on a third party.",
+                    "span": {
+                      "file": 0,
+                      "line": 143,
+                      "col": 7,
+                      "endLine": 146,
+                      "endCol": 8
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Unhold"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "SupportTicket.Active.Working.WithAgent",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 144,
+                          "col": 9,
+                          "endLine": 144,
+                          "endCol": 32
+                        }
+                      },
+                      {
+                        "trigger": {
+                          "kind": "after",
+                          "delay": {
+                            "kind": "lit",
+                            "value": 604800000,
+                            "type": "duration",
+                            "text": "168h"
+                          }
+                        },
+                        "group": 1,
+                        "guard": null,
+                        "target": "SupportTicket.Active.Working.WithAgent",
+                        "effects": [
+                          {
+                            "kind": "do",
+                            "action": "notifyAgent",
+                            "args": [
+                              {
+                                "kind": "ref",
+                                "path": [
+                                  "agentId"
+                                ],
+                                "type": "string",
+                                "text": "agentId"
+                              },
+                              {
+                                "kind": "ref",
+                                "path": [
+                                  "ticket"
+                                ],
+                                "type": "Ticket",
+                                "text": "ticket"
+                              },
+                              {
+                                "kind": "lit",
+                                "value": "hold_expired",
+                                "type": "string",
+                                "text": "\"hold_expired\""
+                              }
+                            ]
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 145,
+                          "col": 9,
+                          "endLine": 145,
+                          "endCol": 81
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Escalate"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "SupportTicket.Active.Escalation",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 117,
+                      "col": 7,
+                      "endLine": 117,
+                      "endCol": 32
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "SupportTicket.Active.Escalation",
+                "name": "Escalation",
+                "kind": "compound",
+                "doc": "Escalation tiers. Each tier has a deadline before it moves up.",
+                "span": {
+                  "file": 0,
+                  "line": 150,
+                  "col": 5,
+                  "endLine": 194,
+                  "endCol": 6
+                },
+                "initial": "SupportTicket.Active.Escalation.Tier2",
+                "states": [
+                  {
+                    "id": "SupportTicket.Active.Escalation.Tier2",
+                    "name": "Tier2",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 156,
+                      "col": 7,
+                      "endLine": 159,
+                      "endCol": 8
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [
+                      {
+                        "kind": "do",
+                        "action": "pageOnCall",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "ticket"
+                            ],
+                            "type": "Ticket",
+                            "text": "ticket"
+                          },
+                          {
+                            "kind": "lit",
+                            "value": 2,
+                            "type": "int",
+                            "text": "2"
+                          }
+                        ]
+                      }
+                    ],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "after",
+                          "delay": {
+                            "kind": "lit",
+                            "value": 28800000,
+                            "type": "duration",
+                            "text": "8h"
+                          }
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "SupportTicket.Active.Escalation.Tier3",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 158,
+                          "col": 9,
+                          "endLine": 158,
+                          "endCol": 26
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "SupportTicket.Active.Escalation.Tier3",
+                    "name": "Tier3",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 161,
+                      "col": 7,
+                      "endLine": 164,
+                      "endCol": 8
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [
+                      {
+                        "kind": "do",
+                        "action": "pageOnCall",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "ticket"
+                            ],
+                            "type": "Ticket",
+                            "text": "ticket"
+                          },
+                          {
+                            "kind": "lit",
+                            "value": 3,
+                            "type": "int",
+                            "text": "3"
+                          }
+                        ]
+                      }
+                    ],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "after",
+                          "delay": {
+                            "kind": "lit",
+                            "value": 86400000,
+                            "type": "duration",
+                            "text": "24h"
+                          }
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "SupportTicket.Active.Escalation.Engineering",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 163,
+                          "col": 9,
+                          "endLine": 163,
+                          "endCol": 33
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "SupportTicket.Active.Escalation.Engineering",
+                    "name": "Engineering",
+                    "kind": "compound",
+                    "doc": "Engineering owns it: file a bug and wait for the fix.",
+                    "span": {
+                      "file": 0,
+                      "line": 167,
+                      "col": 7,
+                      "endLine": 193,
+                      "endCol": 8
+                    },
+                    "initial": "SupportTicket.Active.Escalation.Engineering.FilingBug",
+                    "states": [
+                      {
+                        "id": "SupportTicket.Active.Escalation.Engineering.FilingBug",
+                        "name": "FilingBug",
+                        "kind": "atomic",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 172,
+                          "col": 9,
+                          "endLine": 180,
+                          "endCol": 10
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": {
+                          "kind": "task",
+                          "src": "fileBug",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "ticket"
+                              ],
+                              "type": "Ticket",
+                              "text": "ticket"
+                            }
+                          ],
+                          "span": {
+                            "file": 0,
+                            "line": 173,
+                            "col": 11,
+                            "endLine": 179,
+                            "endCol": 12
+                          }
+                        },
+                        "transitions": [
+                          {
+                            "trigger": {
+                              "kind": "invoke.done"
+                            },
+                            "group": 0,
+                            "guard": null,
+                            "target": "SupportTicket.Active.Escalation.Engineering.AwaitingFix",
+                            "effects": [
+                              {
+                                "kind": "set",
+                                "var": "bugId",
+                                "value": {
+                                  "kind": "ref",
+                                  "path": [
+                                    "result"
+                                  ],
+                                  "type": "string",
+                                  "text": "result"
+                                }
+                              }
+                            ],
+                            "span": {
+                              "file": 0,
+                              "line": 174,
+                              "col": 13,
+                              "endLine": 174,
+                              "endCol": 71
+                            }
+                          },
+                          {
+                            "trigger": {
+                              "kind": "invoke.fail",
+                              "error": "TrackerUnavailable"
+                            },
+                            "group": 1,
+                            "guard": {
+                              "kind": "op",
+                              "op": "<",
+                              "args": [
+                                {
+                                  "kind": "ref",
+                                  "path": [
+                                    "bugAttempts"
+                                  ],
+                                  "type": "int",
+                                  "text": "bugAttempts"
+                                },
+                                {
+                                  "kind": "lit",
+                                  "value": 5,
+                                  "type": "int",
+                                  "text": "5"
+                                }
+                              ],
+                              "type": "bool",
+                              "text": "bugAttempts < 5"
+                            },
+                            "target": "SupportTicket.Active.Escalation.Engineering.BugBackoff",
+                            "effects": [
+                              {
+                                "kind": "set",
+                                "var": "retryWait",
+                                "value": {
+                                  "kind": "ref",
+                                  "path": [
+                                    "error",
+                                    "retryAfter"
+                                  ],
+                                  "type": "duration",
+                                  "text": "error.retryAfter"
+                                }
+                              }
+                            ],
+                            "span": {
+                              "file": 0,
+                              "line": 176,
+                              "col": 15,
+                              "endLine": 176,
+                              "endCol": 85
+                            }
+                          },
+                          {
+                            "trigger": {
+                              "kind": "invoke.fail",
+                              "error": "TrackerUnavailable"
+                            },
+                            "group": 1,
+                            "guard": null,
+                            "target": "SupportTicket.Active.Escalation.Engineering.AwaitingFix",
+                            "effects": [
+                              {
+                                "kind": "do",
+                                "action": "notifyAgent",
+                                "args": [
+                                  {
+                                    "kind": "ref",
+                                    "path": [
+                                      "agentId"
+                                    ],
+                                    "type": "string",
+                                    "text": "agentId"
+                                  },
+                                  {
+                                    "kind": "ref",
+                                    "path": [
+                                      "ticket"
+                                    ],
+                                    "type": "Ticket",
+                                    "text": "ticket"
+                                  },
+                                  {
+                                    "kind": "lit",
+                                    "value": "file_bug_by_hand",
+                                    "type": "string",
+                                    "text": "\"file_bug_by_hand\""
+                                  }
+                                ]
+                              }
+                            ],
+                            "span": {
+                              "file": 0,
+                              "line": 177,
+                              "col": 15,
+                              "endLine": 177,
+                              "endCol": 104
+                            }
+                          }
+                        ],
+                        "output": null,
+                        "fail": null
+                      },
+                      {
+                        "id": "SupportTicket.Active.Escalation.Engineering.BugBackoff",
+                        "name": "BugBackoff",
+                        "kind": "atomic",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 182,
+                          "col": 9,
+                          "endLine": 185,
+                          "endCol": 10
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [
+                          {
+                            "kind": "set",
+                            "var": "bugAttempts",
+                            "value": {
+                              "kind": "op",
+                              "op": "+",
+                              "args": [
+                                {
+                                  "kind": "ref",
+                                  "path": [
+                                    "bugAttempts"
+                                  ],
+                                  "type": "int",
+                                  "text": "bugAttempts"
+                                },
+                                {
+                                  "kind": "lit",
+                                  "value": 1,
+                                  "type": "int",
+                                  "text": "1"
+                                }
+                              ],
+                              "type": "int",
+                              "text": "bugAttempts + 1"
+                            }
+                          }
+                        ],
+                        "exit": [],
+                        "invoke": null,
+                        "transitions": [
+                          {
+                            "trigger": {
+                              "kind": "after",
+                              "delay": {
+                                "kind": "ref",
+                                "path": [
+                                  "retryWait"
+                                ],
+                                "type": "duration",
+                                "text": "retryWait"
+                              }
+                            },
+                            "group": 0,
+                            "guard": null,
+                            "target": "SupportTicket.Active.Escalation.Engineering.FilingBug",
+                            "effects": [],
+                            "span": {
+                              "file": 0,
+                              "line": 184,
+                              "col": 11,
+                              "endLine": 184,
+                              "endCol": 39
+                            }
+                          }
+                        ],
+                        "output": null,
+                        "fail": null
+                      },
+                      {
+                        "id": "SupportTicket.Active.Escalation.Engineering.AwaitingFix",
+                        "name": "AwaitingFix",
+                        "kind": "atomic",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 187,
+                          "col": 9,
+                          "endLine": 190,
+                          "endCol": 10
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": null,
+                        "transitions": [
+                          {
+                            "trigger": {
+                              "kind": "event",
+                              "event": "FixReleased"
+                            },
+                            "group": 0,
+                            "guard": null,
+                            "target": "SupportTicket.Active.Escalation.Engineering.FixShipped",
+                            "effects": [],
+                            "span": {
+                              "file": 0,
+                              "line": 188,
+                              "col": 11,
+                              "endLine": 188,
+                              "endCol": 39
+                            }
+                          },
+                          {
+                            "trigger": {
+                              "kind": "event",
+                              "event": "GiveUp"
+                            },
+                            "group": 1,
+                            "guard": null,
+                            "target": "SupportTicket.Unresolvable",
+                            "effects": [],
+                            "span": {
+                              "file": 0,
+                              "line": 189,
+                              "col": 11,
+                              "endLine": 189,
+                              "endCol": 41
+                            }
+                          }
+                        ],
+                        "output": null,
+                        "fail": null
+                      },
+                      {
+                        "id": "SupportTicket.Active.Escalation.Engineering.FixShipped",
+                        "name": "FixShipped",
+                        "kind": "final",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 192,
+                          "col": 9,
+                          "endLine": 192,
+                          "endCol": 34
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": null,
+                        "transitions": [],
+                        "output": null,
+                        "fail": null
+                      }
+                    ],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "done"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "SupportTicket.Active.Resolving",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 170,
+                          "col": 9,
+                          "endLine": 170,
+                          "endCol": 26
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Deescalate"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "SupportTicket.Active.Working",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 153,
+                      "col": 7,
+                      "endLine": 153,
+                      "endCol": 31
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Resolve"
+                    },
+                    "group": 1,
+                    "guard": null,
+                    "target": "SupportTicket.Active.Resolving",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 154,
+                      "col": 7,
+                      "endLine": 154,
+                      "endCol": 33
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "SupportTicket.Active.Resolving",
+                "name": "Resolving",
+                "kind": "parallel",
+                "doc": "Two things at once: check the fix holds, and draft the message to the customer.",
+                "span": {
+                  "file": 0,
+                  "line": 197,
+                  "col": 5,
+                  "endLine": 226,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [
+                  {
+                    "id": "SupportTicket.Active.Resolving.FixCheck",
+                    "name": "FixCheck",
+                    "kind": "compound",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 200,
+                      "col": 7,
+                      "endLine": 213,
+                      "endCol": 8
+                    },
+                    "initial": "SupportTicket.Active.Resolving.FixCheck.Verifying",
+                    "states": [
+                      {
+                        "id": "SupportTicket.Active.Resolving.FixCheck.Verifying",
+                        "name": "Verifying",
+                        "kind": "atomic",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 203,
+                          "col": 9,
+                          "endLine": 210,
+                          "endCol": 10
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": {
+                          "kind": "task",
+                          "src": "verifyFix",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "ticket"
+                              ],
+                              "type": "Ticket",
+                              "text": "ticket"
+                            }
+                          ],
+                          "span": {
+                            "file": 0,
+                            "line": 204,
+                            "col": 11,
+                            "endLine": 209,
+                            "endCol": 12
+                          }
+                        },
+                        "transitions": [
+                          {
+                            "trigger": {
+                              "kind": "invoke.done"
+                            },
+                            "group": 0,
+                            "guard": {
+                              "kind": "ref",
+                              "path": [
+                                "result"
+                              ],
+                              "type": "bool",
+                              "text": "result"
+                            },
+                            "target": "SupportTicket.Active.Resolving.FixCheck.Verified",
+                            "effects": [],
+                            "span": {
+                              "file": 0,
+                              "line": 206,
+                              "col": 15,
+                              "endLine": 206,
+                              "endCol": 36
+                            }
+                          },
+                          {
+                            "trigger": {
+                              "kind": "invoke.done"
+                            },
+                            "group": 0,
+                            "guard": null,
+                            "target": "SupportTicket.Active.Working",
+                            "effects": [
+                              {
+                                "kind": "do",
+                                "action": "notifyAgent",
+                                "args": [
+                                  {
+                                    "kind": "ref",
+                                    "path": [
+                                      "agentId"
+                                    ],
+                                    "type": "string",
+                                    "text": "agentId"
+                                  },
+                                  {
+                                    "kind": "ref",
+                                    "path": [
+                                      "ticket"
+                                    ],
+                                    "type": "Ticket",
+                                    "text": "ticket"
+                                  },
+                                  {
+                                    "kind": "lit",
+                                    "value": "fix_failed",
+                                    "type": "string",
+                                    "text": "\"fix_failed\""
+                                  }
+                                ]
+                              }
+                            ],
+                            "span": {
+                              "file": 0,
+                              "line": 207,
+                              "col": 15,
+                              "endLine": 207,
+                              "endCol": 83
+                            }
+                          }
+                        ],
+                        "output": null,
+                        "fail": null
+                      },
+                      {
+                        "id": "SupportTicket.Active.Resolving.FixCheck.Verified",
+                        "name": "Verified",
+                        "kind": "final",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 212,
+                          "col": 9,
+                          "endLine": 212,
+                          "endCol": 32
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": null,
+                        "transitions": [],
+                        "output": null,
+                        "fail": null
+                      }
+                    ],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "SupportTicket.Active.Resolving.CustomerNotice",
+                    "name": "CustomerNotice",
+                    "kind": "compound",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 215,
+                      "col": 7,
+                      "endLine": 225,
+                      "endCol": 8
+                    },
+                    "initial": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
+                    "states": [
+                      {
+                        "id": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
+                        "name": "Drafting",
+                        "kind": "atomic",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 218,
+                          "col": 9,
+                          "endLine": 222,
+                          "endCol": 10
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": {
+                          "kind": "task",
+                          "src": "draftResolution",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "ticket"
+                              ],
+                              "type": "Ticket",
+                              "text": "ticket"
+                            }
+                          ],
+                          "span": {
+                            "file": 0,
+                            "line": 219,
+                            "col": 11,
+                            "endLine": 221,
+                            "endCol": 12
+                          }
+                        },
+                        "transitions": [
+                          {
+                            "trigger": {
+                              "kind": "invoke.done"
+                            },
+                            "group": 0,
+                            "guard": null,
+                            "target": "SupportTicket.Active.Resolving.CustomerNotice.Drafted",
+                            "effects": [
+                              {
+                                "kind": "set",
+                                "var": "resolution",
+                                "value": {
+                                  "kind": "ref",
+                                  "path": [
+                                    "result"
+                                  ],
+                                  "type": "string",
+                                  "text": "result"
+                                }
+                              }
+                            ],
+                            "span": {
+                              "file": 0,
+                              "line": 220,
+                              "col": 13,
+                              "endLine": 220,
+                              "endCol": 53
+                            }
+                          }
+                        ],
+                        "output": null,
+                        "fail": null
+                      },
+                      {
+                        "id": "SupportTicket.Active.Resolving.CustomerNotice.Drafted",
+                        "name": "Drafted",
+                        "kind": "final",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 224,
+                          "col": 9,
+                          "endLine": 224,
+                          "endCol": 31
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": null,
+                        "transitions": [],
+                        "output": null,
+                        "fail": null
+                      }
+                    ],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "SupportTicket.Active.AwaitingConfirmation",
+                    "effects": [
+                      {
+                        "kind": "do",
+                        "action": "sendMessage",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "ticket"
+                            ],
+                            "type": "Ticket",
+                            "text": "ticket"
+                          },
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "resolution"
+                            ],
+                            "type": "string",
+                            "text": "resolution"
+                          }
+                        ]
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 198,
+                      "col": 7,
+                      "endLine": 198,
+                      "endCol": 71
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "SupportTicket.Active.AwaitingConfirmation",
+                "name": "AwaitingConfirmation",
+                "kind": "atomic",
+                "doc": "Resolved on our side. The customer confirms, reopens or goes quiet.",
+                "span": {
+                  "file": 0,
+                  "line": 229,
+                  "col": 5,
+                  "endLine": 233,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "CustomerConfirmed"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "SupportTicket.Closing",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 230,
+                      "col": 7,
+                      "endLine": 230,
+                      "endCol": 38
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Reopen"
+                    },
+                    "group": 1,
+                    "guard": null,
+                    "target": "SupportTicket.Active.Reopened",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 231,
+                      "col": 7,
+                      "endLine": 231,
+                      "endCol": 39
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "after",
+                      "delay": {
+                        "kind": "lit",
+                        "value": 604800000,
+                        "type": "duration",
+                        "text": "168h"
+                      }
+                    },
+                    "group": 2,
+                    "guard": null,
+                    "target": "SupportTicket.Closing",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 232,
+                      "col": 7,
+                      "endLine": 232,
+                      "endCol": 38
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "SupportTicket.Active.Reopened",
+                "name": "Reopened",
+                "kind": "atomic",
+                "doc": "Reopen loop: back to the agent, or straight to escalation from the third reopen.",
+                "span": {
+                  "file": 0,
+                  "line": 236,
+                  "col": 5,
+                  "endLine": 242,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "set",
+                    "var": "reopens",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "reopens"
+                          ],
+                          "type": "int",
+                          "text": "reopens"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "reopens + 1"
+                    }
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "op",
+                      "op": "<",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "reopens"
+                          ],
+                          "type": "int",
+                          "text": "reopens"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 3,
+                          "type": "int",
+                          "text": "3"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "reopens < 3"
+                    },
+                    "target": "SupportTicket.Active.Working",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 239,
+                      "col": 9,
+                      "endLine": 239,
+                      "endCol": 34
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "SupportTicket.Active.Escalation",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 240,
+                      "col": 9,
+                      "endLine": 240,
+                      "endCol": 37
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "call",
+                    "fn": "resolutionSla",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "priority"
+                        ],
+                        "type": "Priority",
+                        "text": "priority"
+                      }
+                    ],
+                    "type": "duration",
+                    "text": "resolutionSla(priority)"
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "pageOnCall",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "ticket"
+                        ],
+                        "type": "Ticket",
+                        "text": "ticket"
+                      },
+                      {
+                        "kind": "lit",
+                        "value": 2,
+                        "type": "int",
+                        "text": "2"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 109,
+                  "col": 5,
+                  "endLine": 109,
+                  "endCol": 73
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "InternalNote"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "addNote",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "ticket"
+                        ],
+                        "type": "Ticket",
+                        "text": "ticket"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "text"
+                        ],
+                        "type": "string",
+                        "text": "event.text"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 110,
+                  "col": 5,
+                  "endLine": 110,
+                  "endCol": 79
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "CustomerWithdrew"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "SupportTicket.Withdrawn",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 111,
+                  "col": 5,
+                  "endLine": 111,
+                  "endCol": 47
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "MergeInto"
+                },
+                "group": 3,
+                "guard": null,
+                "target": "SupportTicket.Merged",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 112,
+                  "col": 5,
+                  "endLine": 112,
+                  "endCol": 44
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "SupportTicket.Closing",
+            "name": "Closing",
+            "kind": "compound",
+            "doc": "Ask the customer how we did, then close.",
+            "span": {
+              "file": 0,
+              "line": 246,
+              "col": 3,
+              "endLine": 258,
+              "endCol": 4
+            },
+            "initial": "SupportTicket.Closing.Surveying",
+            "states": [
+              {
+                "id": "SupportTicket.Closing.Surveying",
+                "name": "Surveying",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 251,
+                  "col": 5,
+                  "endLine": 255,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "machine",
+                  "src": "SatisfactionSurvey",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "ticket"
+                      ],
+                      "type": "Ticket",
+                      "text": "ticket"
+                    }
+                  ],
+                  "span": {
+                    "file": 0,
+                    "line": 252,
+                    "col": 7,
+                    "endLine": 254,
+                    "endCol": 8
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "SupportTicket.Closing.Surveyed",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "survey",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "result"
+                          ],
+                          "type": "SurveyResult",
+                          "text": "result"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 253,
+                      "col": 9,
+                      "endLine": 253,
+                      "endCol": 46
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "SupportTicket.Closing.Surveyed",
+                "name": "Surveyed",
+                "kind": "final",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 257,
+                  "col": 5,
+                  "endLine": 257,
+                  "endCol": 28
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "SupportTicket.Resolved",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 249,
+                  "col": 5,
+                  "endLine": 249,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "SupportTicket.Resolved",
+            "name": "Resolved",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 260,
+              "col": 3,
+              "endLine": 260,
+              "endCol": 76
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "ratedClosure",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "ticket"
+                  ],
+                  "type": "Ticket",
+                  "text": "ticket"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "reopens"
+                  ],
+                  "type": "int",
+                  "text": "reopens"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "survey"
+                  ],
+                  "type": "SurveyResult",
+                  "text": "survey"
+                }
+              ],
+              "type": "Closure",
+              "text": "ratedClosure(ticket, reopens, survey)"
+            },
+            "fail": null
+          },
+          {
+            "id": "SupportTicket.AutoClosed",
+            "name": "AutoClosed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 261,
+              "col": 3,
+              "endLine": 261,
+              "endCol": 87
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "closure",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "ticket"
+                  ],
+                  "type": "Ticket",
+                  "text": "ticket"
+                },
+                {
+                  "kind": "enum",
+                  "variant": "AutoClosed",
+                  "type": "CloseReason",
+                  "text": "CloseReason.AutoClosed"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "reopens"
+                  ],
+                  "type": "int",
+                  "text": "reopens"
+                }
+              ],
+              "type": "Closure",
+              "text": "closure(ticket, CloseReason.AutoClosed, reopens)"
+            },
+            "fail": null
+          },
+          {
+            "id": "SupportTicket.Spam",
+            "name": "Spam",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 262,
+              "col": 3,
+              "endLine": 262,
+              "endCol": 81
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "closure",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "ticket"
+                  ],
+                  "type": "Ticket",
+                  "text": "ticket"
+                },
+                {
+                  "kind": "enum",
+                  "variant": "Spam",
+                  "type": "CloseReason",
+                  "text": "CloseReason.Spam"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "reopens"
+                  ],
+                  "type": "int",
+                  "text": "reopens"
+                }
+              ],
+              "type": "Closure",
+              "text": "closure(ticket, CloseReason.Spam, reopens)"
+            },
+            "fail": null
+          },
+          {
+            "id": "SupportTicket.Duplicate",
+            "name": "Duplicate",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 263,
+              "col": 3,
+              "endLine": 263,
+              "endCol": 86
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "closure",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "ticket"
+                  ],
+                  "type": "Ticket",
+                  "text": "ticket"
+                },
+                {
+                  "kind": "enum",
+                  "variant": "Duplicate",
+                  "type": "CloseReason",
+                  "text": "CloseReason.Duplicate"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "reopens"
+                  ],
+                  "type": "int",
+                  "text": "reopens"
+                }
+              ],
+              "type": "Closure",
+              "text": "closure(ticket, CloseReason.Duplicate, reopens)"
+            },
+            "fail": null
+          },
+          {
+            "id": "SupportTicket.Withdrawn",
+            "name": "Withdrawn",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 264,
+              "col": 3,
+              "endLine": 264,
+              "endCol": 86
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "closure",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "ticket"
+                  ],
+                  "type": "Ticket",
+                  "text": "ticket"
+                },
+                {
+                  "kind": "enum",
+                  "variant": "Withdrawn",
+                  "type": "CloseReason",
+                  "text": "CloseReason.Withdrawn"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "reopens"
+                  ],
+                  "type": "int",
+                  "text": "reopens"
+                }
+              ],
+              "type": "Closure",
+              "text": "closure(ticket, CloseReason.Withdrawn, reopens)"
+            },
+            "fail": null
+          },
+          {
+            "id": "SupportTicket.OutOfScope",
+            "name": "OutOfScope",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 265,
+              "col": 3,
+              "endLine": 265,
+              "endCol": 87
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "closure",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "ticket"
+                  ],
+                  "type": "Ticket",
+                  "text": "ticket"
+                },
+                {
+                  "kind": "enum",
+                  "variant": "OutOfScope",
+                  "type": "CloseReason",
+                  "text": "CloseReason.OutOfScope"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "reopens"
+                  ],
+                  "type": "int",
+                  "text": "reopens"
+                }
+              ],
+              "type": "Closure",
+              "text": "closure(ticket, CloseReason.OutOfScope, reopens)"
+            },
+            "fail": null
+          },
+          {
+            "id": "SupportTicket.Merged",
+            "name": "Merged",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 266,
+              "col": 3,
+              "endLine": 266,
+              "endCol": 83
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "closure",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "ticket"
+                  ],
+                  "type": "Ticket",
+                  "text": "ticket"
+                },
+                {
+                  "kind": "enum",
+                  "variant": "Merged",
+                  "type": "CloseReason",
+                  "text": "CloseReason.Merged"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "reopens"
+                  ],
+                  "type": "int",
+                  "text": "reopens"
+                }
+              ],
+              "type": "Closure",
+              "text": "closure(ticket, CloseReason.Merged, reopens)"
+            },
+            "fail": null
+          },
+          {
+            "id": "SupportTicket.Unresolvable",
+            "name": "Unresolvable",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 267,
+              "col": 3,
+              "endLine": 267,
+              "endCol": 89
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "closure",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "ticket"
+                  ],
+                  "type": "Ticket",
+                  "text": "ticket"
+                },
+                {
+                  "kind": "enum",
+                  "variant": "Unresolvable",
+                  "type": "CloseReason",
+                  "text": "CloseReason.Unresolvable"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "reopens"
+                  ],
+                  "type": "int",
+                  "text": "reopens"
+                }
+              ],
+              "type": "Closure",
+              "text": "closure(ticket, CloseReason.Unresolvable, reopens)"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:f7cbbd963cff90bf63da00a511d77ccbd1c3b90763693cd39b36e6a96252f836"
+    },
+    "SatisfactionSurvey": {
+      "doc": "Send a satisfaction survey and wait up to a week for the answer.",
+      "span": {
+        "file": 2,
+        "line": 4,
+        "col": 1,
+        "endLine": 33,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "ticket",
+          "type": "Ticket",
+          "doc": ""
+        }
+      ],
+      "returns": "SurveyResult",
+      "errors": [],
+      "vars": [
+        {
+          "name": "surveyId",
+          "type": "string",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 2,
+            "line": 5,
+            "col": 3,
+            "endLine": 5,
+            "endCol": 23
+          }
+        },
+        {
+          "name": "polls",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 2,
+            "line": 6,
+            "col": 3,
+            "endLine": 6,
+            "endCol": 24
+          }
+        },
+        {
+          "name": "score",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 2,
+            "line": 7,
+            "col": 3,
+            "endLine": 7,
+            "endCol": 24
+          }
+        }
+      ],
+      "events": {},
+      "root": {
+        "id": "SatisfactionSurvey",
+        "name": "SatisfactionSurvey",
+        "kind": "compound",
+        "doc": "Send a satisfaction survey and wait up to a week for the answer.",
+        "span": {
+          "file": 2,
+          "line": 4,
+          "col": 1,
+          "endLine": 33,
+          "endCol": 2
+        },
+        "initial": "SatisfactionSurvey.Sending",
+        "states": [
+          {
+            "id": "SatisfactionSurvey.Sending",
+            "name": "Sending",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 2,
+              "line": 11,
+              "col": 3,
+              "endLine": 16,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "sendSurvey",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "ticket"
+                  ],
+                  "type": "Ticket",
+                  "text": "ticket"
+                }
+              ],
+              "span": {
+                "file": 2,
+                "line": 12,
+                "col": 5,
+                "endLine": 15,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "SatisfactionSurvey.Waiting",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "surveyId",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "string",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 2,
+                  "line": 13,
+                  "col": 7,
+                  "endLine": 13,
+                  "endCol": 58
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "MailBounced"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "SatisfactionSurvey.NoAnswer",
+                "effects": [],
+                "span": {
+                  "file": 2,
+                  "line": 14,
+                  "col": 7,
+                  "endLine": 14,
+                  "endCol": 35
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "SatisfactionSurvey.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "Check for an answer once a day.",
+            "span": {
+              "file": 2,
+              "line": 19,
+              "col": 3,
+              "endLine": 19,
+              "endCol": 41
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 86400000,
+                    "type": "duration",
+                    "text": "24h"
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": "SatisfactionSurvey.Polling",
+                "effects": [],
+                "span": {
+                  "file": 2,
+                  "line": 19,
+                  "col": 19,
+                  "endLine": 19,
+                  "endCol": 39
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "SatisfactionSurvey.Polling",
+            "name": "Polling",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 2,
+              "line": 21,
+              "col": 3,
+              "endLine": 29,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "pollSurvey",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "surveyId"
+                  ],
+                  "type": "string",
+                  "text": "surveyId"
+                }
+              ],
+              "span": {
+                "file": 2,
+                "line": 22,
+                "col": 5,
+                "endLine": 28,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "SatisfactionSurvey.Answered",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "score",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 2,
+                  "line": 23,
+                  "col": 7,
+                  "endLine": 23,
+                  "endCol": 58
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "NotAnsweredYet"
+                },
+                "group": 1,
+                "guard": {
+                  "kind": "op",
+                  "op": "<",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "polls"
+                      ],
+                      "type": "int",
+                      "text": "polls"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 7,
+                      "type": "int",
+                      "text": "7"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "polls < 7"
+                },
+                "target": "SatisfactionSurvey.Waiting",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "polls",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "polls"
+                          ],
+                          "type": "int",
+                          "text": "polls"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "polls + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 2,
+                  "line": 25,
+                  "col": 9,
+                  "endLine": 25,
+                  "endCol": 61
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "NotAnsweredYet"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "SatisfactionSurvey.NoAnswer",
+                "effects": [],
+                "span": {
+                  "file": 2,
+                  "line": 26,
+                  "col": 9,
+                  "endLine": 26,
+                  "endCol": 38
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "SatisfactionSurvey.Answered",
+            "name": "Answered",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 2,
+              "line": 31,
+              "col": 3,
+              "endLine": 31,
+              "endCol": 80
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "record",
+              "fields": [
+                {
+                  "name": "answered",
+                  "value": {
+                    "kind": "lit",
+                    "value": true,
+                    "type": "bool",
+                    "text": "true"
+                  }
+                },
+                {
+                  "name": "score",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "score"
+                    ],
+                    "type": "int",
+                    "text": "score"
+                  }
+                }
+              ],
+              "type": "SurveyResult",
+              "text": "SurveyResult { answered: true, score: score }"
+            },
+            "fail": null
+          },
+          {
+            "id": "SatisfactionSurvey.NoAnswer",
+            "name": "NoAnswer",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 2,
+              "line": 32,
+              "col": 3,
+              "endLine": 32,
+              "endCol": 77
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "record",
+              "fields": [
+                {
+                  "name": "answered",
+                  "value": {
+                    "kind": "lit",
+                    "value": false,
+                    "type": "bool",
+                    "text": "false"
+                  }
+                },
+                {
+                  "name": "score",
+                  "value": {
+                    "kind": "lit",
+                    "value": 0,
+                    "type": "int",
+                    "text": "0"
+                  }
+                }
+              ],
+              "type": "SurveyResult",
+              "text": "SurveyResult { answered: false, score: 0 }"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:aa6129bb77d52f1c26219f1c7b39e968e6b7d3cd63449a12ce56bda745669340"
+    }
+  }
+}

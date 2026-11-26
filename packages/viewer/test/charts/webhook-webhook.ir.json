@@ -1,0 +1,1457 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "examples/webhook/webhook.road"
+    },
+    {
+      "path": "examples/webhook/types.road"
+    }
+  ],
+  "types": {
+    "PaymentEventKind": {
+      "kind": "enum",
+      "variants": [
+        "PaymentSucceeded",
+        "PaymentFailed",
+        "Refunded"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 3,
+        "col": 1,
+        "endLine": 3,
+        "endCol": 68
+      }
+    },
+    "PaymentEvent": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "kind",
+          "type": "PaymentEventKind",
+          "doc": ""
+        },
+        {
+          "name": "orderId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "customerId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "amountCents",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "A parsed provider event.",
+      "span": {
+        "file": 1,
+        "line": 6,
+        "col": 1,
+        "endLine": 12,
+        "endCol": 2
+      }
+    },
+    "ApiResponse": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "status",
+          "type": "int",
+          "doc": ""
+        },
+        {
+          "name": "body",
+          "type": "json",
+          "doc": ""
+        }
+      ],
+      "doc": "What the HTTP layer sends back. `body` is any JSON value.",
+      "span": {
+        "file": 1,
+        "line": 15,
+        "col": 1,
+        "endLine": 15,
+        "endCol": 45
+      }
+    },
+    "MalformedPayload": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "reason",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 17,
+        "col": 1,
+        "endLine": 17,
+        "endCol": 42
+      }
+    },
+    "DatabaseBusy": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 18,
+        "col": 1,
+        "endLine": 18,
+        "endCol": 19
+      }
+    }
+  },
+  "functions": {
+    "signatureValid": {
+      "params": [
+        {
+          "name": "body",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "signature",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "secret",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "bool",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 32,
+        "col": 1,
+        "endLine": 32,
+        "endCol": 75
+      }
+    },
+    "retryDelay": {
+      "params": [
+        {
+          "name": "attempt",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "duration",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 33,
+        "col": 1,
+        "endLine": 33,
+        "endCol": 79
+      }
+    },
+    "ok": {
+      "params": [],
+      "returns": "ApiResponse",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 34,
+        "col": 1,
+        "endLine": 34,
+        "endCol": 82
+      }
+    },
+    "problem": {
+      "params": [
+        {
+          "name": "status",
+          "type": "int",
+          "doc": ""
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "ApiResponse",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 35,
+        "col": 1,
+        "endLine": 35,
+        "endCol": 82
+      }
+    }
+  },
+  "actions": {
+    "notifyPaymentFailed": {
+      "params": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "orderId",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 28,
+        "col": 1,
+        "endLine": 28,
+        "endCol": 64
+      }
+    },
+    "notifyRefunded": {
+      "params": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "orderId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "amountCents",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 29,
+        "col": 1,
+        "endLine": 29,
+        "endCol": 77
+      }
+    }
+  },
+  "tasks": {
+    "parsePayload": {
+      "params": [
+        {
+          "name": "body",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "PaymentEvent",
+      "errors": [
+        "MalformedPayload"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 21,
+        "col": 1,
+        "endLine": 21,
+        "endCol": 89
+      }
+    },
+    "alreadyProcessed": {
+      "params": [
+        {
+          "name": "eventId",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "bool",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 22,
+        "col": 1,
+        "endLine": 22,
+        "endCol": 62
+      }
+    },
+    "markOrderPaid": {
+      "params": [
+        {
+          "name": "orderId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "amountCents",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [
+        "DatabaseBusy"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 23,
+        "col": 1,
+        "endLine": 23,
+        "endCol": 85
+      }
+    },
+    "recordRefund": {
+      "params": [
+        {
+          "name": "orderId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "amountCents",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 24,
+        "col": 1,
+        "endLine": 24,
+        "endCol": 53
+      }
+    },
+    "markProcessed": {
+      "params": [
+        {
+          "name": "eventId",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 25,
+        "col": 1,
+        "endLine": 25,
+        "endCol": 36
+      }
+    }
+  },
+  "machines": {
+    "PaymentWebhook": {
+      "doc": "The payment provider's webhook: verify, parse, deduplicate, apply, acknowledge.\nEvery final state is one HTTP response.",
+      "span": {
+        "file": 0,
+        "line": 11,
+        "col": 1,
+        "endLine": 96,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "body",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "signature",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "secret",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "ApiResponse",
+      "errors": [],
+      "vars": [
+        {
+          "name": "payment",
+          "type": "PaymentEvent",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 29
+          }
+        },
+        {
+          "name": "attempts",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 24
+          }
+        }
+      ],
+      "events": {},
+      "root": {
+        "id": "PaymentWebhook",
+        "name": "PaymentWebhook",
+        "kind": "compound",
+        "doc": "The payment provider's webhook: verify, parse, deduplicate, apply, acknowledge.\nEvery final state is one HTTP response.",
+        "span": {
+          "file": 0,
+          "line": 11,
+          "col": 1,
+          "endLine": 96,
+          "endCol": 2
+        },
+        "initial": "PaymentWebhook.Verifying",
+        "states": [
+          {
+            "id": "PaymentWebhook.Verifying",
+            "name": "Verifying",
+            "kind": "atomic",
+            "doc": "The signature check is pure, so it is a guard.",
+            "span": {
+              "file": 0,
+              "line": 18,
+              "col": 3,
+              "endLine": 23,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "call",
+                  "fn": "signatureValid",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "body"
+                      ],
+                      "type": "string",
+                      "text": "body"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "signature"
+                      ],
+                      "type": "string",
+                      "text": "signature"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "secret"
+                      ],
+                      "type": "string",
+                      "text": "secret"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "signatureValid(body, signature, secret)"
+                },
+                "target": "PaymentWebhook.Parsing",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 20,
+                  "col": 7,
+                  "endLine": 20,
+                  "endCol": 60
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "PaymentWebhook.BadSignature",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 7,
+                  "endLine": 21,
+                  "endCol": 65
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "PaymentWebhook.Parsing",
+            "name": "Parsing",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 25,
+              "col": 3,
+              "endLine": 30,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "parsePayload",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "body"
+                  ],
+                  "type": "string",
+                  "text": "body"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 26,
+                "col": 5,
+                "endLine": 29,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "PaymentWebhook.CheckingDuplicate",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "payment",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "PaymentEvent",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 7,
+                  "endLine": 27,
+                  "endCol": 71
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "MalformedPayload"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "PaymentWebhook.Malformed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 7,
+                  "endLine": 28,
+                  "endCol": 41
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "PaymentWebhook.CheckingDuplicate",
+            "name": "CheckingDuplicate",
+            "kind": "atomic",
+            "doc": "Providers redeliver. An event we have already processed is acknowledged and ignored.",
+            "span": {
+              "file": 0,
+              "line": 33,
+              "col": 3,
+              "endLine": 40,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "alreadyProcessed",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "payment",
+                    "id"
+                  ],
+                  "type": "string",
+                  "text": "payment.id"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 34,
+                "col": 5,
+                "endLine": 39,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "ref",
+                  "path": [
+                    "result"
+                  ],
+                  "type": "bool",
+                  "text": "result"
+                },
+                "target": "PaymentWebhook.Acknowledged",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 36,
+                  "col": 9,
+                  "endLine": 36,
+                  "endCol": 34
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "PaymentWebhook.Applying",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 9,
+                  "endLine": 37,
+                  "endCol": 30
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "PaymentWebhook.Applying",
+            "name": "Applying",
+            "kind": "compound",
+            "doc": "Apply the event according to its kind.",
+            "span": {
+              "file": 0,
+              "line": 43,
+              "col": 3,
+              "endLine": 84,
+              "endCol": 4
+            },
+            "initial": "PaymentWebhook.Applying.Routing",
+            "states": [
+              {
+                "id": "PaymentWebhook.Applying.Routing",
+                "name": "Routing",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 48,
+                  "col": 5,
+                  "endLine": 54,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "op",
+                      "op": "==",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "payment",
+                            "kind"
+                          ],
+                          "type": "PaymentEventKind",
+                          "text": "payment.kind"
+                        },
+                        {
+                          "kind": "enum",
+                          "variant": "PaymentSucceeded",
+                          "type": "PaymentEventKind",
+                          "text": "PaymentEventKind.PaymentSucceeded"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "payment.kind == PaymentEventKind.PaymentSucceeded"
+                    },
+                    "target": "PaymentWebhook.Applying.MarkingPaid",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 50,
+                      "col": 9,
+                      "endLine": 50,
+                      "endCol": 76
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "op",
+                      "op": "==",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "payment",
+                            "kind"
+                          ],
+                          "type": "PaymentEventKind",
+                          "text": "payment.kind"
+                        },
+                        {
+                          "kind": "enum",
+                          "variant": "PaymentFailed",
+                          "type": "PaymentEventKind",
+                          "text": "PaymentEventKind.PaymentFailed"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "payment.kind == PaymentEventKind.PaymentFailed"
+                    },
+                    "target": "PaymentWebhook.Applying.NotifyingFailure",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 51,
+                      "col": 9,
+                      "endLine": 51,
+                      "endCol": 81
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "PaymentWebhook.Applying.RecordingRefund",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 52,
+                      "col": 9,
+                      "endLine": 52,
+                      "endCol": 80
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "PaymentWebhook.Applying.MarkingPaid",
+                "name": "MarkingPaid",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 56,
+                  "col": 5,
+                  "endLine": 64,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "task",
+                  "src": "markOrderPaid",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "payment",
+                        "orderId"
+                      ],
+                      "type": "string",
+                      "text": "payment.orderId"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "payment",
+                        "amountCents"
+                      ],
+                      "type": "int",
+                      "text": "payment.amountCents"
+                    }
+                  ],
+                  "span": {
+                    "file": 0,
+                    "line": 57,
+                    "col": 7,
+                    "endLine": 63,
+                    "endCol": 8
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "PaymentWebhook.Applying.Applied",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 58,
+                      "col": 9,
+                      "endLine": 58,
+                      "endCol": 37
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "DatabaseBusy"
+                    },
+                    "group": 1,
+                    "guard": {
+                      "kind": "op",
+                      "op": "<",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "attempts"
+                          ],
+                          "type": "int",
+                          "text": "attempts"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 5,
+                          "type": "int",
+                          "text": "5"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "attempts < 5"
+                    },
+                    "target": "PaymentWebhook.Applying.Backoff",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 60,
+                      "col": 11,
+                      "endLine": 60,
+                      "endCol": 37
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "DatabaseBusy"
+                    },
+                    "group": 1,
+                    "guard": null,
+                    "target": "PaymentWebhook.Unavailable",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 61,
+                      "col": 11,
+                      "endLine": 61,
+                      "endCol": 41
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "PaymentWebhook.Applying.Backoff",
+                "name": "Backoff",
+                "kind": "atomic",
+                "doc": "Wait before the next attempt. The delay grows with each attempt.",
+                "span": {
+                  "file": 0,
+                  "line": 67,
+                  "col": 5,
+                  "endLine": 70,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "set",
+                    "var": "attempts",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "attempts"
+                          ],
+                          "type": "int",
+                          "text": "attempts"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "attempts + 1"
+                    }
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "after",
+                      "delay": {
+                        "kind": "call",
+                        "fn": "retryDelay",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "attempts"
+                            ],
+                            "type": "int",
+                            "text": "attempts"
+                          }
+                        ],
+                        "type": "duration",
+                        "text": "retryDelay(attempts)"
+                      }
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "PaymentWebhook.Applying.MarkingPaid",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 69,
+                      "col": 7,
+                      "endLine": 69,
+                      "endCol": 48
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "PaymentWebhook.Applying.NotifyingFailure",
+                "name": "NotifyingFailure",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 72,
+                  "col": 5,
+                  "endLine": 75,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "notifyPaymentFailed",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "payment",
+                          "customerId"
+                        ],
+                        "type": "string",
+                        "text": "payment.customerId"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "payment",
+                          "orderId"
+                        ],
+                        "type": "string",
+                        "text": "payment.orderId"
+                      }
+                    ]
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "PaymentWebhook.Applying.Applied",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 74,
+                      "col": 7,
+                      "endLine": 74,
+                      "endCol": 24
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "PaymentWebhook.Applying.RecordingRefund",
+                "name": "RecordingRefund",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 77,
+                  "col": 5,
+                  "endLine": 81,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "task",
+                  "src": "recordRefund",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "payment",
+                        "orderId"
+                      ],
+                      "type": "string",
+                      "text": "payment.orderId"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "payment",
+                        "amountCents"
+                      ],
+                      "type": "int",
+                      "text": "payment.amountCents"
+                    }
+                  ],
+                  "span": {
+                    "file": 0,
+                    "line": 78,
+                    "col": 7,
+                    "endLine": 80,
+                    "endCol": 8
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "PaymentWebhook.Applying.Applied",
+                    "effects": [
+                      {
+                        "kind": "do",
+                        "action": "notifyRefunded",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "payment",
+                              "customerId"
+                            ],
+                            "type": "string",
+                            "text": "payment.customerId"
+                          },
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "payment",
+                              "orderId"
+                            ],
+                            "type": "string",
+                            "text": "payment.orderId"
+                          },
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "payment",
+                              "amountCents"
+                            ],
+                            "type": "int",
+                            "text": "payment.amountCents"
+                          }
+                        ]
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 79,
+                      "col": 9,
+                      "endLine": 79,
+                      "endCol": 101
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "PaymentWebhook.Applying.Applied",
+                "name": "Applied",
+                "kind": "final",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 83,
+                  "col": 5,
+                  "endLine": 83,
+                  "endCol": 27
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "PaymentWebhook.MarkingProcessed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 46,
+                  "col": 5,
+                  "endLine": 46,
+                  "endCol": 29
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "PaymentWebhook.MarkingProcessed",
+            "name": "MarkingProcessed",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 86,
+              "col": 3,
+              "endLine": 90,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "markProcessed",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "payment",
+                    "id"
+                  ],
+                  "type": "string",
+                  "text": "payment.id"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 87,
+                "col": 5,
+                "endLine": 89,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "PaymentWebhook.Acknowledged",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 88,
+                  "col": 7,
+                  "endLine": 88,
+                  "endCol": 27
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "PaymentWebhook.Acknowledged",
+            "name": "Acknowledged",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 92,
+              "col": 3,
+              "endLine": 92,
+              "endCol": 43
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "ok",
+              "args": [],
+              "type": "ApiResponse",
+              "text": "ok()"
+            },
+            "fail": null
+          },
+          {
+            "id": "PaymentWebhook.BadSignature",
+            "name": "BadSignature",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 93,
+              "col": 3,
+              "endLine": 93,
+              "endCol": 68
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "problem",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": 401,
+                  "type": "int",
+                  "text": "401"
+                },
+                {
+                  "kind": "lit",
+                  "value": "bad_signature",
+                  "type": "string",
+                  "text": "\"bad_signature\""
+                }
+              ],
+              "type": "ApiResponse",
+              "text": "problem(401, \"bad_signature\")"
+            },
+            "fail": null
+          },
+          {
+            "id": "PaymentWebhook.Malformed",
+            "name": "Malformed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 94,
+              "col": 3,
+              "endLine": 94,
+              "endCol": 72
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "problem",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": 400,
+                  "type": "int",
+                  "text": "400"
+                },
+                {
+                  "kind": "lit",
+                  "value": "malformed_payload",
+                  "type": "string",
+                  "text": "\"malformed_payload\""
+                }
+              ],
+              "type": "ApiResponse",
+              "text": "problem(400, \"malformed_payload\")"
+            },
+            "fail": null
+          },
+          {
+            "id": "PaymentWebhook.Unavailable",
+            "name": "Unavailable",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 95,
+              "col": 3,
+              "endLine": 95,
+              "endCol": 68
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "problem",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": 503,
+                  "type": "int",
+                  "text": "503"
+                },
+                {
+                  "kind": "lit",
+                  "value": "database_busy",
+                  "type": "string",
+                  "text": "\"database_busy\""
+                }
+              ],
+              "type": "ApiResponse",
+              "text": "problem(503, \"database_busy\")"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:d2b796c14884f614182f34199de5abda2093627bc79d9a77916eb1bc8ac465ed"
+    }
+  }
+}
