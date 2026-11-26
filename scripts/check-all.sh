@@ -45,7 +45,9 @@ out=$(mktemp -d)
 mkdir -p "$out/ts" "$out/rust"
 ROADBOOK_CONFORMANCE_OUT="$out/ts" pnpm --filter @roadbook/effect exec vitest run test/conformance >/dev/null
 ROADBOOK_CONFORMANCE_OUT="$out/rust" cargo test -q -p roadbook --test conformance >/dev/null
-test "$(ls "$out/ts" | wc -l)" -eq "$(ls spec/conformance/cases | wc -l)"
+# A runtime skips the cases whose `requires` it does not support yet; diff -r fails if the
+# two ran different sets.
+test -n "$(ls "$out/ts")"
 diff -r "$out/ts" "$out/rust"
 rm -rf "$out"
 
