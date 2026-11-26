@@ -42,6 +42,7 @@ editors/
 | `roadbook viz --diff <git range>` | Write a viewer showing what changed between two revisions. |
 | `roadbook export mermaid\|scxml\|ir` | Other formats. Mermaid renders inline on GitHub. |
 | `roadbook paths <Machine>` | List the paths through a machine, for test generation and coverage. |
+| `roadbook lsp` | The language server, on standard input and output, for editors: diagnostics, go to definition, references, rename, hover, formatting, outline. |
 
 ## Milestones
 

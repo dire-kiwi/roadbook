@@ -15,6 +15,7 @@ path = "src/main.rs"
 clap.workspace = true
 roadbook-compiler = { path = "../roadbook-compiler" }
 roadbook-gen-ts = { path = "../roadbook-gen-ts" }
+roadbook-lsp = { path = "../roadbook-lsp" }
 roadbook-syntax = { path = "../roadbook-syntax" }
 roadbook-ir = { path = "../roadbook-ir" }
 serde_json.workspace = true

@@ -14,7 +14,7 @@ mod commands;
 mod report;
 mod workspace;
 
-use commands::{check, export, fmt, r#gen, viz};
+use commands::{check, export, fmt, r#gen, lsp, viz};
 
 /// Exit codes shared by every command.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,6 +51,8 @@ enum Command {
     /// Write a chart in another format.
     #[command(subcommand)]
     Export(export::Format),
+    /// Run the language server on standard input and output, for editors.
+    Lsp(lsp::Args),
 }
 
 fn main() -> ExitCode {
@@ -61,6 +63,7 @@ fn main() -> ExitCode {
         Command::Gen(args) => r#gen::run(args),
         Command::Viz(args) => viz::run(args),
         Command::Export(format) => export::run(format),
+        Command::Lsp(args) => lsp::run(args),
     };
     ExitCode::from(exit as u8)
 }

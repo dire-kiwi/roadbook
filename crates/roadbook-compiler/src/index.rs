@@ -295,7 +295,8 @@ pub(crate) fn field_text_of(name: &Ident, ty: &TypeRef) -> String {
     format!("{}: {}", name.name, type_text(ty))
 }
 
-pub(crate) fn type_text(t: &TypeRef) -> String {
+/// A type as the formatter writes it: `Order[]`, `ref Upload`, `string?`.
+pub fn type_text(t: &TypeRef) -> String {
     ir_type(t).to_string()
 }
 
@@ -324,8 +325,8 @@ fn result_text(returns: Option<&TypeRef>, errors: &[Ident]) -> String {
     s
 }
 
-/// The kind and one-line signature of a top-level declaration.
-pub(crate) fn declaration(d: &Decl) -> (SymbolKind, String) {
+/// The kind and one-line signature of a top-level declaration, as in [`Symbol::signature`].
+pub fn declaration(d: &Decl) -> (SymbolKind, String) {
     let n = &d.name.name;
     match &d.kind {
         DeclKind::Record { fields } => (SymbolKind::Record, format!("type {n}{}", braces(fields))),

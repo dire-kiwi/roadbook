@@ -1,0 +1,19 @@
+[package]
+name = "roadbook-lsp"
+description = "The Roadbook language server: diagnostics, go to definition, references, rename, hover, formatting and outline for `.road` files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+roadbook-compiler = { path = "../roadbook-compiler" }
+roadbook-syntax = { path = "../roadbook-syntax" }
+lsp-server = "0.10"
+lsp-types = "0.97"
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
