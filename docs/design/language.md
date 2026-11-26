@@ -66,6 +66,8 @@ Everything a machine refers to is declared, with types. Declarations live at the
 
 Built-in types are `string`, `int` (64-bit signed), `float`, `bool`, `duration` and `json` (any JSON value). `T?` is optional and `T[]` is a list.
 
+An alias of an error type is an ordinary alias: it can be used wherever a type goes. Error lists (`! CardDeclined | Gone`) and `fail E` outcomes name the errors themselves, not aliases of them, since an error is matched by its name.
+
 Names starting with an upper-case letter are types, errors, events, states and machines. Names starting with a lower-case letter are variables, fields, functions, actions and tasks. The grammar enforces this, which keeps `invoke chargeCard(...)` (a task) and `invoke Checkout(...)` (a machine) visibly different.
 
 Host functions receive exactly the arguments the chart passes them. They never see the machine's variables or the current event. This is the main difference from xstate, where every guard and action receives the whole context: here the chart is the complete wiring diagram of both control and data, and the host code is a set of small typed functions that know nothing about the machine that calls them.
@@ -76,9 +78,9 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | --- | --- |
 | `var name: T [= expr]` | A machine variable. |
 | `event Name [{ fields }]` | An event the machine accepts from outside. |
-| `initial Name` | The child state entered first. Required, once, when a state has children. |
+| `initial Name` | The child state entered first. Required, once, in a state that has children, except a `parallel state`, which has none: all its children are entered. |
 | `state Name { ... }` | A state. Atomic if it has no children, compound if it does. |
-| `parallel state Name { ... }` | All children are active at once (regions). |
+| `parallel state Name { ... }` | All children are active at once (regions). A region may be any kind of state. |
 | `final state Name { ... }` | Ends the enclosing compound state, or the machine at the top level. |
 
 ## Inside a state
@@ -108,6 +110,17 @@ Inside a transition, three names are in scope besides the machine's variables: `
 A target is resolved like a name in a block-structured language: first among the siblings of the state the transition is written in, then among its parent's siblings, and so on outward. A dotted path such as `Processing.Paying` then descends into a nested state, which is also how a state targets one of its own children. A transition written at machine level resolves among the top-level states. An unknown target is a compile error, and so is a duplicate state name among siblings.
 
 `entry`, `exit`, `on`, `after` and `always` may also be written directly in the machine body, where they apply to the whole machine.
+
+### Which transition is taken
+
+The precise rules are in the [semantics](semantics.md#execution-model) and [`spec/execution.md`](../../spec/execution.md); these are the ones a chart most often depends on.
+
+- **Innermost first.** An event is offered to the active states from the innermost outward. The first state that has an `on` for it tries that `on`'s branches in order, and the first whose guard holds is taken. If none holds, or the state has no `on` for the event, its parent is tried, and so on up to the machine body. So when a state and its ancestor both have `on Resume`, the state's wins whenever its guard holds. A state's `on *` is tried only if that state has no `on` for the event at all. An invoke's outcome is offered only to the state that invokes, and an `after` only to the state it is written in.
+- **A transition with a target is external.** It leaves its source state and enters its target, even when the target is the source itself or one of its children: `-> Self` written in `Self`, or `-> Parent.Child` written in `Parent`, exits `Self` (or `Parent`) and enters it again, running `exit` and `entry` and restarting its `invoke` and its `after` timers. The machine body is the one exception: a transition written there does not leave the machine, so the machine's own `entry`, `exit` and timers are left alone.
+- **A transition with no target is internal.** Nothing is left or entered, and nothing is restarted: only its effects run. An `after` timer starts when its state is entered and is used up when it fires, so an `after` with no target fires once per entry into its state.
+- **The order of a step.** States are exited innermost first, then the transition's effects run, then states are entered outermost first, each running its `entry`. Only then are `always` guards evaluated, and `done` transitions taken, until none applies: an `always` sees what the `entry` effects assigned. Invokes and timers start last, for the states still active.
+- **Events go only to the machine they are sent to.** An invoked child machine receives no events in the first version (messaging between machines comes later, see the end of this page), so a child that waits on `on E` waits until it times out or its parent leaves the invoking state.
+- **A failure that is not a declared error** (a host defect, such as a thrown exception or a panic) is not flow: it fails the whole run and what it started, and propagates to whoever ran it. See [the semantics](semantics.md#work-is-tied-to-states).
 
 ## Expressions
 
@@ -144,6 +157,8 @@ The implicit names have these types:
 - `error`, in an invoke's `fail E`, has type `E`. In `fail *` it has a type only if exactly one declared error is left for `*` to cover.
 
 Outside those transitions the three names are not in scope.
+
+There are no generics, no built-in functions and no list literals, so anything a chart asks of a list goes through a host `fn`. A `json[]` parameter accepts a list of any element type, so one function serves every list: `fn isEmpty(items: json[]) -> bool`, used as `always if isEmpty(problems) -> Accept`. Optionals work the same way: there is no `none` literal and no narrowing, so a chart cannot test for presence and then use the value. When absence changes the flow, make it a declared error of the task that looks the value up (`task findToken(id: string) -> Token ! TokenNotFound`), and build a record whose optional field may be absent in a `fn`.
 
 ## Projects
 
@@ -433,6 +448,14 @@ Rules the grammar does not express:
 - Nesting is at most 64 levels deep, counting states, parentheses, operators (each `+` in `a + b + c` is a level), field reads and type suffixes (`[]`, `?`), so every tool that walks the tree stays within its stack.
 - A final state holds only `entry`, `exit`, `output` and `fail`.
 - Declaration names are unique among the files compiled together: an entry file and everything it imports, directly or not, because the IR is keyed by name. Two charts that do not import one another may use the same names. A file can use only what it declares or imports. An event cannot have the name of a type, error or machine either, because the IR names the type of `event` in `on Name` by the event's name.
+
+Common mistakes, each reported by the compiler but easy to make:
+
+- There is no day unit: 14 days is `336h`.
+- Keywords cannot be names, so a field for an event's kind is `kind`, not `type`; and `event`, `error` and `result` cannot be variables or parameters, since they are the implicit names.
+- A state names its own child through its own name: `-> Parent.Child` written in `Parent`, because a bare `-> Child` is looked up among `Parent`'s siblings.
+- `int` and `float` do not mix: `ratio * 2` is an error for a `float` `ratio`; write `2.0`.
+- A record value as an `after` delay needs parentheses: `after (Cfg { ms: 5 }) -> A`.
 
 Most of these rules, the split between `machineItem` and `stateItem`, and the requirement that a branch does something came from writing the spike's parser against the first draft of this grammar. The spike still implements that draft, which accepts everything above and is slightly more lenient.
 
