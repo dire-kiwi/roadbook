@@ -1,0 +1,87 @@
+{
+  "description": "Cancel arrives while the Checkout child is charging. The transition on the compound Processing exits Paying, cancelling the child run, and Processing, cancelling its timer.",
+  "chart": "charts/shop/place_order.road",
+  "machine": "PlaceOrder",
+  "input": {
+    "token": "tok-1",
+    "draft": {
+      "items": [
+        {
+          "sku": "apple",
+          "qty": 2
+        }
+      ],
+      "coupon": null
+    }
+  },
+  "stub": [],
+  "fns": {
+    "problem": [
+      {
+        "args": [
+          499,
+          "cancelled"
+        ],
+        "returns": {
+          "status": 499,
+          "body": {
+            "code": "cancelled"
+          }
+        }
+      }
+    ]
+  },
+  "script": [
+    {
+      "advance": 10
+    },
+    {
+      "task": "authenticate",
+      "done": {
+        "id": "u1",
+        "role": "Customer"
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "validateOrder",
+      "done": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "apple",
+            "qty": 2
+          }
+        ],
+        "totalCents": 0
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "task": "priceOrder",
+      "done": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "apple",
+            "qty": 2
+          }
+        ],
+        "totalCents": 4200
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "event": {
+        "_tag": "Cancel"
+      }
+    }
+  ],
+  "status": "done"
+}

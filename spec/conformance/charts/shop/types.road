@@ -1,0 +1,32 @@
+// Shared data shapes, errors and host functions for the shop example.
+
+type LineItem   { sku: string, qty: int }
+type OrderDraft { items: LineItem[], coupon: string? }
+type Order      { id: string, items: LineItem[], totalCents: int }
+type Receipt    { chargeId: string, amountCents: int }
+type User       { id: string, role: Role }
+enum Role       { Customer, Admin }
+
+/// What the HTTP layer sends back. `body` is any JSON value.
+type ApiResponse { status: int, body: json }
+
+error Unauthenticated
+error ValidationFailed   { issues: string[] }
+error CardDeclined       { reason: string }
+error GatewayUnavailable
+
+// Tasks: effectful, fallible, cancellable. Implemented in Rust / TypeScript.
+task authenticate(token: string)             -> User    ! Unauthenticated
+task validateOrder(draft: OrderDraft)        -> Order   ! ValidationFailed
+task priceOrder(order: Order, user: User)    -> Order
+task chargeCard(order: Order, user: User)    -> Receipt ! CardDeclined | GatewayUnavailable
+
+// Actions: effectful, cannot fail, awaited in order.
+action sendConfirmationEmail(user: User, order: Order, receipt: Receipt)
+action audit(what: string, order: Order)
+
+// Functions: pure and synchronous.
+fn retryDelay(attempt: int) -> duration
+fn confirmation(order: Order, receipt: Receipt) -> ApiResponse
+fn invalid(issues: string[]) -> ApiResponse
+fn problem(status: int, code: string) -> ApiResponse

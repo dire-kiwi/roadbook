@@ -1,0 +1,70 @@
+{"input":{},"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"started","machine":"Nest","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Nest","t":0}
+{"action":"log","args":{"n":0,"what":"enter Nest"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Nest.Outer","t":0}
+{"kind":"set","run":"r1","t":0,"value":1,"var":"n"}
+{"action":"log","args":{"n":1,"what":"enter Outer"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Nest.Outer.Middle","t":0}
+{"action":"log","args":{"n":1,"what":"enter Middle"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Nest.Outer.Middle.Inner","t":0}
+{"action":"log","args":{"n":1,"what":"enter Inner"},"kind":"action","run":"r1","t":0}
+{"delay":1000,"index":0,"kind":"timer.started","run":"r1","state":"Nest.Outer.Middle","t":0,"timer":1}
+{"args":{"n":1},"invoke":1,"kind":"invoke.started","run":"r1","src":"work","state":"Nest.Outer.Middle.Inner","t":0}
+{"event":{"kind":"event","value":{"_tag":"Bump"}},"kind":"event","run":"r1","t":0}
+{"from":"Nest.Outer","index":1,"kind":"transition","run":"r1","t":0,"to":null}
+{"kind":"set","run":"r1","t":0,"value":11,"var":"n"}
+{"action":"log","args":{"n":11,"what":"bump"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Again"}},"kind":"event","run":"r1","t":0}
+{"from":"Nest.Outer","index":0,"kind":"transition","run":"r1","t":0,"to":"Nest.Outer"}
+{"invoke":1,"kind":"invoke.cancelled","run":"r1","src":"work","state":"Nest.Outer.Middle.Inner","t":0}
+{"action":"log","args":{"n":11,"what":"exit Inner"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Nest.Outer.Middle.Inner","t":0}
+{"index":0,"kind":"timer.cancelled","run":"r1","state":"Nest.Outer.Middle","t":0,"timer":1}
+{"action":"log","args":{"n":11,"what":"exit Middle"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Nest.Outer.Middle","t":0}
+{"action":"log","args":{"n":11,"what":"exit Outer"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Nest.Outer","t":0}
+{"action":"log","args":{"n":11,"what":"again"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Nest.Outer","t":0}
+{"kind":"set","run":"r1","t":0,"value":12,"var":"n"}
+{"action":"log","args":{"n":12,"what":"enter Outer"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Nest.Outer.Middle","t":0}
+{"action":"log","args":{"n":12,"what":"enter Middle"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Nest.Outer.Middle.Inner","t":0}
+{"action":"log","args":{"n":12,"what":"enter Inner"},"kind":"action","run":"r1","t":0}
+{"delay":1000,"index":0,"kind":"timer.started","run":"r1","state":"Nest.Outer.Middle","t":0,"timer":2}
+{"args":{"n":12},"invoke":2,"kind":"invoke.started","run":"r1","src":"work","state":"Nest.Outer.Middle.Inner","t":0}
+{"event":{"kind":"event","value":{"_tag":"Reset"}},"kind":"event","run":"r1","t":0}
+{"from":"Nest.Outer.Middle","index":1,"kind":"transition","run":"r1","t":0,"to":"Nest.Outer.Middle.Inner"}
+{"invoke":2,"kind":"invoke.cancelled","run":"r1","src":"work","state":"Nest.Outer.Middle.Inner","t":0}
+{"action":"log","args":{"n":12,"what":"exit Inner"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Nest.Outer.Middle.Inner","t":0}
+{"index":0,"kind":"timer.cancelled","run":"r1","state":"Nest.Outer.Middle","t":0,"timer":2}
+{"action":"log","args":{"n":12,"what":"exit Middle"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Nest.Outer.Middle","t":0}
+{"action":"log","args":{"n":12,"what":"reset"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Nest.Outer.Middle","t":0}
+{"action":"log","args":{"n":12,"what":"enter Middle"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Nest.Outer.Middle.Inner","t":0}
+{"action":"log","args":{"n":12,"what":"enter Inner"},"kind":"action","run":"r1","t":0}
+{"delay":1000,"index":0,"kind":"timer.started","run":"r1","state":"Nest.Outer.Middle","t":0,"timer":3}
+{"args":{"n":12},"invoke":3,"kind":"invoke.started","run":"r1","src":"work","state":"Nest.Outer.Middle.Inner","t":0}
+{"event":{"kind":"event","value":{"_tag":"Leave"}},"kind":"event","run":"r1","t":0}
+{"from":"Nest.Outer","index":2,"kind":"transition","run":"r1","t":0,"to":"Nest.Away"}
+{"invoke":3,"kind":"invoke.cancelled","run":"r1","src":"work","state":"Nest.Outer.Middle.Inner","t":0}
+{"action":"log","args":{"n":12,"what":"exit Inner"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Nest.Outer.Middle.Inner","t":0}
+{"index":0,"kind":"timer.cancelled","run":"r1","state":"Nest.Outer.Middle","t":0,"timer":3}
+{"action":"log","args":{"n":12,"what":"exit Middle"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Nest.Outer.Middle","t":0}
+{"action":"log","args":{"n":12,"what":"exit Outer"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Nest.Outer","t":0}
+{"kind":"set","run":"r1","t":0,"value":112,"var":"n"}
+{"action":"log","args":{"n":112,"what":"leave"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Nest.Away","t":0}
+{"action":"log","args":{"n":112,"what":"enter Away"},"kind":"action","run":"r1","t":0}
+{"action":"log","args":{"n":112,"what":"exit Away"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Nest.Away","t":0}
+{"action":"log","args":{"n":112,"what":"exit Nest"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Nest","t":0}
+{"kind":"cancelled","run":"r1","t":0}

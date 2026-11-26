@@ -1,0 +1,36 @@
+{
+  "description": "The card is charged on the first attempt: invoke done leads to a final state whose output is the result.",
+  "chart": "charts/shop/checkout.road",
+  "machine": "Checkout",
+  "input": {
+    "order": {
+      "id": "o1",
+      "items": [
+        {
+          "sku": "apple",
+          "qty": 2
+        }
+      ],
+      "totalCents": 4200
+    },
+    "user": {
+      "id": "u1",
+      "role": "Customer"
+    }
+  },
+  "stub": [],
+  "fns": {},
+  "script": [
+    {
+      "advance": 120
+    },
+    {
+      "task": "chargeCard",
+      "done": {
+        "chargeId": "c1",
+        "amountCents": 4200
+      }
+    }
+  ],
+  "status": "done"
+}

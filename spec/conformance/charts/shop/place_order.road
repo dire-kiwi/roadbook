@@ -1,0 +1,73 @@
+import {
+  OrderDraft, Order, Receipt, User, ApiResponse,
+  Unauthenticated, ValidationFailed, CardDeclined, GatewayUnavailable,
+  authenticate, validateOrder, priceOrder, sendConfirmationEmail, audit,
+  confirmation, invalid, problem
+} from "./types.road"
+import { Checkout } from "./checkout.road"
+
+/// POST /orders: authenticate, validate, price, take payment, confirm.
+/// Every final state is one HTTP response.
+machine PlaceOrder(token: string, draft: OrderDraft) -> ApiResponse {
+  var user:    User
+  var order:   Order
+  var receipt: Receipt
+  var issues:  string[]
+
+  /// The client went away before we finished.
+  event Cancel
+
+  initial Authenticating
+
+  /// Turn the bearer token into a user.
+  state Authenticating {
+    invoke authenticate(token) {
+      done                 -> Processing    set user = result
+      fail Unauthenticated -> Unauthorized
+    }
+  }
+
+  /// Everything that happens once we know who is asking.
+  /// Cancel and the 30 second budget apply to every step inside.
+  state Processing {
+    initial Validating
+
+    on Cancel -> Cancelled
+    after 30s -> TimedOut
+
+    state Validating {
+      invoke validateOrder(draft) {
+        done                  -> Pricing  set order = result
+        fail ValidationFailed -> Invalid  set issues = error.issues
+      }
+    }
+
+    /// Apply the user's prices and discounts.
+    state Pricing {
+      invoke priceOrder(order, user) {
+        done -> Paying  set order = result
+      }
+    }
+
+    /// Payment is its own machine: see checkout.road.
+    state Paying {
+      invoke Checkout(order, user) {
+        done                    -> Confirming     set receipt = result
+        fail CardDeclined       -> PaymentFailed  do audit("card_declined", order)
+        fail GatewayUnavailable -> PaymentFailed  do audit("gateway_down", order)
+      }
+    }
+
+    state Confirming {
+      entry do sendConfirmationEmail(user, order, receipt)
+      always -> Confirmed
+    }
+  }
+
+  final state Confirmed     { output confirmation(order, receipt) }
+  final state Unauthorized  { output problem(401, "unauthenticated") }
+  final state Invalid       { output invalid(issues) }
+  final state PaymentFailed { output problem(402, "payment_failed") }
+  final state Cancelled     { output problem(499, "cancelled") }
+  final state TimedOut      { output problem(504, "timeout") }
+}

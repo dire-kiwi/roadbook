@@ -1,0 +1,46 @@
+{
+  "description": "on * catches an event the state has no on for, but not one it has; fail * catches an unlisted error; an event no active state handles is dropped.",
+  "chart": "charts/fetch.road",
+  "machine": "Fetch",
+  "input": {
+    "id": "a1"
+  },
+  "stub": [],
+  "fns": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Poke"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Ping"
+      }
+    },
+    {
+      "task": "fetch",
+      "fail": {
+        "_tag": "Throttled",
+        "retryAfter": 30
+      }
+    },
+    {
+      "event": {
+        "_tag": "Ping"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Retry"
+      }
+    },
+    {
+      "task": "fetch",
+      "fail": {
+        "_tag": "NotFound"
+      }
+    }
+  ],
+  "status": "failed"
+}

@@ -1,0 +1,106 @@
+# The trace
+
+A trace is the record of what machine runs did: one JSON object per line ([JSON Lines](https://jsonlines.org/)). Both runtimes write the same records for the same run, so one format serves debugging, the viewer's replay and coverage modes, and conformance testing. The schema is [`trace.schema.json`](trace.schema.json) (JSON Schema draft 2020-12). When each record is written is defined by [execution.md](execution.md): the core emits the records as `trace` commands, in order, and the driver writes them.
+
+## Common members
+
+Every record has:
+
+| Member | Meaning |
+| --- | --- |
+| `t` | The driver's clock when it wrote the record, in integer milliseconds. Virtual time from 0 in conformance runs; since the Unix epoch otherwise. |
+| `run` | The id of the run that wrote it. The driver names a root run (`r1` in conformance). A child run is named `<parent run>.<invoke id>`: `r1.4` was started by invoke 4 of `r1`. |
+| `parent` | The parent run's id. Present on every record of a child run, and on no record of a root run. |
+| `kind` | The record kind, below. |
+
+The core emits records without these members; the driver adds them.
+
+## Records
+
+States are named by their ids in the IR, transitions by their state's id and their index in its `transitions`, and values are in their JSON form ([values](execution.md#values)). Every member listed is present; none is ever omitted.
+
+| `kind` | Members | Written |
+| --- | --- | --- |
+| `started` | `machine`, `ir`, `input` | First, when the run starts. `ir` is the machine's `hash` from the IR. `input` holds the arguments, keyed by parameter name. |
+| `entered` | `state` | When a state is entered, before its entry effects. The root is entered first and exited last. |
+| `exited` | `state` | When a state is left, after its invoke and timers were cancelled and its exit effects ran. |
+| `event` | `event` | When the run takes an input that enables a transition, before anything it causes. `event` is the input as the core received it (below). |
+| `dropped` | `event` | Instead of `event`, when the input enables no transition. Nothing else happens. |
+| `stale` | `event` | Instead of `event`, when the input is the outcome of an invoke or the expiry of a timer whose id is no longer running: it was cancelled after its outcome or expiry had been queued. Nothing else happens. |
+| `transition` | `from`, `index`, `to` | When a transition is taken, before the exits it causes. `to` is the target state's id, or `null` for an internal transition. `always` and `done` transitions are traced the same way, with no `event` record before them. |
+| `set` | `var`, `value` | When an assignment runs, in an exit, transition or entry effect list. |
+| `action` | `action`, `args` | When an action is run, before the driver runs it. `args` is keyed by parameter name. |
+| `invoke.started` | `invoke`, `state`, `src`, `args` | When a task or child machine is started. `invoke` is its id in the run, from 1. |
+| `invoke.cancelled` | `invoke`, `state`, `src` | When a running invoke is cancelled because its state is left. An invoke whose outcome arrived is not cancelled. |
+| `timer.started` | `timer`, `state`, `index`, `delay` | When an `after` timer is started. `index` is the transition of its `after` block that comes first, and `delay` the evaluated delay in milliseconds. |
+| `timer.cancelled` | `timer`, `state`, `index` | When a running timer is cancelled because its state is left. |
+| `done` | `state`, `output` | Last, when the run reaches a top-level final state with an output. `output` is `null` for a machine that returns nothing. |
+| `failed` | `state`, `error` | Last, when the run reaches a top-level final state with `fail`. |
+| `cancelled` | none | Last, when the run was cancelled from outside, after every state was exited. |
+| `defect` | `defect` | Last, when the run ended with a [defect](execution.md#defects). |
+
+Exactly one of `done`, `failed`, `cancelled` and `defect` ends every run that ends. A trace of a run still in progress has none.
+
+### Inputs in records
+
+The `event` member of `event`, `dropped` and `stale` records is the input exactly as the core received it:
+
+| Input | Form |
+| --- | --- |
+| External event | `{"kind": "event", "value": {"_tag": "Check", "amount": 5}}` |
+| Invoke succeeded | `{"kind": "invoke.done", "invoke": 1, "value": …}` |
+| Invoke failed | `{"kind": "invoke.fail", "invoke": 1, "error": {"_tag": "GatewayUnavailable"}}` |
+| Invoke ended with a defect | `{"kind": "invoke.defect", "invoke": 1, "defect": {"kind": "host", "message": "…"}}` |
+| Timer expired | `{"kind": "after", "timer": 1}` |
+
+The two other inputs, `cancel` and `defect`, are not written as `event` records: the `cancelled` or `defect` record that ends the run shows them. An `invoke.defect` input is written as an `event` record (or `stale`), followed by the run's `defect` record.
+
+### Defects
+
+`{"kind": "host", "message": …}`, `{"kind": "unassigned", "var": …}`, `{"kind": "overflow", "expr": …}`, `{"kind": "undeclared", "error": …}` or `{"kind": "limit"}`; see [execution.md](execution.md#defects).
+
+## Order
+
+**Within a run**, records are in the order the core emitted them, which is fixed by the run's inputs. **Across runs**, a live trace interleaves records as they are written, and that interleaving depends on how the host schedules the parent and the child: on the Effect scheduler, or on how a Rust driver polls a child's future. It is not part of the format.
+
+To compare traces, and in every conformance case, records are **grouped by run**. The groups are ordered by run id, and each keeps its records in their order. Run ids are compared segment by segment, splitting at the dots: the first segment as a string, the others as numbers, and an id before any id it is a prefix of. That is a pre-order walk of the run tree with each run's children in the order their invokes were started: `r1`, `r1.4`, `r1.4.2`, `r1.7`.
+
+Grouping is used instead of a defined global schedule because it asks nothing of either driver's concurrency. A global order would force both drivers to run a child's step synchronously inside the parent's command loop, or to share one deterministic scheduler, neither of which an Effect fiber or a Rust future gives without contortion. Grouped, each run's records only need to be in that run's own order, which both get for free, and `t` still places records from different runs relative to each other. Ordering groups by id rather than by creation time means the order does not depend on when the host actually created a child either.
+
+## Canonical form
+
+For comparison each record is written in the [canonical JSON](ir.md#canonical-json) of RFC 8785 (in Rust, `roadbook_ir::jcs::to_canonical_string`; in TypeScript, `JSON.stringify` with keys sorted), followed by a line feed. A trace file is these lines and nothing else: no blank lines, a line feed after the last record, UTF-8. Two traces are equal when their bytes are.
+
+## Example
+
+A `PlaceOrder` request that times out while its `Checkout` child is waiting to retry, grouped by run (from the conformance case [`place-order-timeout`](conformance/cases/place-order-timeout/trace.jsonl), with `input` and some records left out):
+
+```jsonl
+{"input":{…},"ir":"sha256:2481…","kind":"started","machine":"PlaceOrder","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"PlaceOrder","t":0}
+{"kind":"entered","run":"r1","state":"PlaceOrder.Authenticating","t":0}
+{"args":{"token":"tok-1"},"invoke":1,"kind":"invoke.started","run":"r1","src":"authenticate","state":"PlaceOrder.Authenticating","t":0}
+{"event":{"invoke":1,"kind":"invoke.done","value":{"id":"u1","role":"Customer"}},"kind":"event","run":"r1","t":10}
+{"from":"PlaceOrder.Authenticating","index":0,"kind":"transition","run":"r1","t":10,"to":"PlaceOrder.Processing"}
+{"kind":"exited","run":"r1","state":"PlaceOrder.Authenticating","t":10}
+{"kind":"set","run":"r1","t":10,"value":{"id":"u1","role":"Customer"},"var":"user"}
+{"kind":"entered","run":"r1","state":"PlaceOrder.Processing","t":10}
+{"kind":"entered","run":"r1","state":"PlaceOrder.Processing.Validating","t":10}
+{"delay":30000,"index":1,"kind":"timer.started","run":"r1","state":"PlaceOrder.Processing","t":10,"timer":1}
+…
+{"event":{"kind":"after","timer":1},"kind":"event","run":"r1","t":30010}
+{"from":"PlaceOrder.Processing","index":1,"kind":"transition","run":"r1","t":30010,"to":"PlaceOrder.TimedOut"}
+{"invoke":4,"kind":"invoke.cancelled","run":"r1","src":"Checkout","state":"PlaceOrder.Processing.Paying","t":30010}
+…
+{"kind":"done","output":{"body":{"code":"timeout"},"status":504},"run":"r1","state":"PlaceOrder.TimedOut","t":30010}
+{"input":{…},"ir":"sha256:fa1a…","kind":"started","machine":"Checkout","parent":"r1","run":"r1.4","t":30}
+…
+{"index":0,"kind":"timer.cancelled","parent":"r1","run":"r1.4","state":"Checkout.Backoff","t":30010,"timer":1}
+{"kind":"exited","parent":"r1","run":"r1.4","state":"Checkout.Backoff","t":30010}
+{"kind":"exited","parent":"r1","run":"r1.4","state":"Checkout","t":30010}
+{"kind":"cancelled","parent":"r1","run":"r1.4","t":30010}
+```
+
+## Later
+
+Fields marked `sensitive` in a chart will be redacted in records. Messaging (milestone 5) adds `sent` and `received` records carrying both run ids. Neither changes the records above.

@@ -1,0 +1,33 @@
+{
+  "description": "The card is declined: the failure is routed by its tag, and the final state's fail fails the run with the stored error.",
+  "chart": "charts/shop/checkout.road",
+  "machine": "Checkout",
+  "input": {
+    "order": {
+      "id": "o1",
+      "items": [
+        {
+          "sku": "apple",
+          "qty": 2
+        }
+      ],
+      "totalCents": 4200
+    },
+    "user": {
+      "id": "u1",
+      "role": "Customer"
+    }
+  },
+  "stub": [],
+  "fns": {},
+  "script": [
+    {
+      "task": "chargeCard",
+      "fail": {
+        "_tag": "CardDeclined",
+        "reason": "insufficient funds"
+      }
+    }
+  ],
+  "status": "failed"
+}
