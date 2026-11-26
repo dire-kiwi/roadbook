@@ -106,7 +106,7 @@ This is where Roadbook is stricter than xstate, and it is the part that matters 
 
 ### Child machines
 
-`invoke Checkout(order, user)` starts a child instance with those arguments. Its `output` arrives as `done` and its `fail` as the matching `fail` branch. Leaving the invoking state cancels the child and everything the child started. From the parent's side a child machine and a task are indistinguishable, which is what lets a test replace an entire sub-machine with a single function.
+`invoke Checkout(order, user)` starts a child instance with those arguments. Its `output` arrives as `done` and its `fail` as the matching `fail` branch. Leaving the invoking state cancels the child and everything the child started; the child's exit effects run, and the parent waits for them before it carries on leaving the state. From the parent's chart a child machine and a task are indistinguishable, which is what lets a test replace an entire sub-machine with a single function. Only the driver tells them apart, because a child run claims the invoke context its parent's driver provides ([child runs](../../spec/execution.md#child-runs)).
 
 Machines that exchange messages while they run, rather than only arguments and a result, are covered on the [actors and messaging](actors.md) page.
 
@@ -154,7 +154,7 @@ step(ir, snapshot, event, fns) -> (snapshot', commands[])
 
 `snapshot` is the set of active states plus the variables, and the ids of the invokes and timers that are running, so that a stale outcome can be recognised. `commands` is a list of things for the outside world to do: run an action, start or cancel a task, start or cancel a timer, record a trace entry. `fns` gives the core the host's pure functions, which guards and expressions may call. A `start` function creates the first snapshot, and cancelling from outside is one more input to `step`. Both are specified, with the snapshot's JSON form, in [`spec/execution.md`](../../spec/execution.md).
 
-The **driver** owns the queue and carries out the commands using the host's concurrency: Effect fibers and scopes in TypeScript, futures in Rust. It feeds task outcomes and timer expiries back into the core as events.
+The **driver** owns the queue and carries out the commands using the host's concurrency: Effect fibers and scopes in TypeScript, futures in Rust. Each run has one first-in, first-out queue: external events, task outcomes, timer expiries and child runs' outcomes are all pushed onto it as they arrive, and the core takes them from it one at a time. A child run shares its parent's trace and clock through an ambient invoke context, and is cancelled through it so that its exit effects run.
 
 This split pays for itself three ways. The core is small enough to implement twice and compare. Tests of the core need no async and no fake clock. And the TypeScript core runs in the browser, which is what powers the viewer's simulate mode.
 
