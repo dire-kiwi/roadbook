@@ -1,0 +1,50 @@
+// Text that must be escaped wherever the viewer puts it into HTML or SVG, for the viewer's
+// tests, not an example: every doc, string literal, guard and name-like place holds markup.
+
+action note(what: string)
+task work(s: string) -> string ! Bad | Worse
+/// A bad error </script><img src=x onerror=alert(1)> & "q"
+error Bad
+error Worse
+
+/// Doc </script><script>alert('doc')</script> <img src=x onerror=alert(2)> & "quotes" 'single'
+/// second line <!-- comment
+machine Escape(s: string) -> string ! Bad {
+  /// var doc <b>bold</b> </script>
+  var t: string = "</script><img src=x onerror=alert(3)>"
+  /// event doc <img src=x onerror=alert(4)>
+  event Go { who: string }
+  event Stop
+
+  entry do note("root entry </script>")
+  exit do note("root & exit")
+  on Stop -> Done
+  after 1h -> Done
+
+  initial A
+  /// state doc <img src=x onerror=alert(5)> "q"
+  state A {
+    entry set t = "a\"b&c<d>"
+    exit do note("x: {y} \"z\" #1; ;")
+    on Go {
+      if event.who == "</script><svg onload=alert(6)>" -> B  do note("{curly}: colon")
+      else -> A
+    }
+    on *  do note("ignored # ; :")
+    always if t == "x" -> B
+  }
+  state B {
+    invoke work("<img src=x onerror=alert(7)>") {
+      done -> P  set t = result
+      fail Bad -> Failed
+      fail * -> Failed
+    }
+  }
+  parallel state P {
+    done -> Done
+    state R1 { initial X  state X { always -> XF }  final state XF {} }
+    state R2 { initial Y  state Y { on Go -> YF }  final state YF {} }
+  }
+  final state Done { output t }
+  final state Failed { fail Bad }
+}

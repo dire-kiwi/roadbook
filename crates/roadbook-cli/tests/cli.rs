@@ -537,7 +537,12 @@ fn export_mermaid_nests_and_splits_regions() {
     );
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let m = text(&out.stdout);
-    assert!(m.starts_with("stateDiagram-v2\n  [*] --> Stress\n"), "{m}");
+    assert!(
+        m.starts_with(
+            "stateDiagram-v2\n  [*] --> Stress_machine\n  state \"Stress\" as Stress_machine\n"
+        ),
+        "{m}"
+    );
     assert!(m.contains("    state Running {\n"), "{m}");
     assert!(
         m.contains("\n      --\n"),
@@ -547,7 +552,7 @@ fn export_mermaid_nests_and_splits_regions() {
         m.contains("Running_Right_X_X1 --> Running_Right_X_X1: Poke"),
         "{m}"
     );
-    assert!(m.contains("Stress --> Start: Reset"), "{m}");
+    assert!(m.contains("Stress_machine --> Start: Reset"), "{m}");
     assert!(
         m.contains("Start: on * / do note(#quot;ignored#quot;)")
             || m.contains("Start: on * / do note(\"ignored\")"),
@@ -617,6 +622,8 @@ fn viewer_test_charts_are_fresh() {
         ("examples/webhook/webhook.road", "webhook-webhook"),
         ("examples/import-job/import.road", "import-job-import"),
         ("packages/viewer/test/charts/stress.road", "charts-stress"),
+        ("packages/viewer/test/charts/edges.road", "charts-edges"),
+        ("packages/viewer/test/charts/escape.road", "charts-escape"),
     ] {
         let out = roadbook(&repo(), &["export", "ir", chart]);
         assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
@@ -626,4 +633,59 @@ fn viewer_test_charts_are_fresh() {
             "{name}.ir.json is stale: run packages/viewer/test/charts/regen.sh"
         );
     }
+}
+
+/// `packages/viewer/test/mermaid` holds `export mermaid` of every chart under `examples`,
+/// `spec/conformance/charts` and `packages/viewer/test/charts` that declares a machine, as the
+/// CLI writes it now; the viewer's tests run each through Mermaid's parser.
+#[test]
+fn viewer_mermaid_fixtures_are_fresh() {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        for e in std::fs::read_dir(dir).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                walk(&p, out);
+            } else if p.extension().is_some_and(|x| x == "road") {
+                out.push(p);
+            }
+        }
+    }
+    let root = repo();
+    let mut charts = Vec::new();
+    for dir in [
+        "examples",
+        "spec/conformance/charts",
+        "packages/viewer/test/charts",
+    ] {
+        walk(&root.join(dir), &mut charts);
+    }
+    let fixtures = root.join("packages/viewer/test/mermaid");
+    let mut expected = Vec::new();
+    for chart in charts {
+        let rel = chart.strip_prefix(&root).unwrap();
+        let rel: Vec<String> = rel
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned())
+            .collect();
+        let rel = rel.join("/");
+        let out = roadbook(&root, &["export", "mermaid", &rel]);
+        assert_eq!(out.status.code(), Some(0), "{rel}: {}", text(&out.stderr));
+        if out.stdout.is_empty() {
+            continue;
+        }
+        let name = format!("{}.md", rel.trim_end_matches(".road").replace('/', "-"));
+        let committed = std::fs::read_to_string(fixtures.join(&name)).unwrap_or_default();
+        assert!(
+            text(&out.stdout) == committed,
+            "test/mermaid/{name} is stale: run packages/viewer/test/charts/regen.sh"
+        );
+        expected.push(name);
+    }
+    expected.sort();
+    let mut found: Vec<String> = std::fs::read_dir(&fixtures)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    found.sort();
+    assert_eq!(found, expected, "run packages/viewer/test/charts/regen.sh");
 }

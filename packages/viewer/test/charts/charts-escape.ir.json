@@ -1,0 +1,780 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "packages/viewer/test/charts/escape.road"
+    }
+  ],
+  "types": {
+    "Bad": {
+      "kind": "error",
+      "fields": [],
+      "doc": "A bad error </script><img src=x onerror=alert(1)> & \"q\"",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 10
+      }
+    },
+    "Worse": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 12
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "note": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 26
+      }
+    }
+  },
+  "tasks": {
+    "work": {
+      "params": [
+        {
+          "name": "s",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [
+        "Bad",
+        "Worse"
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 45
+      }
+    }
+  },
+  "machines": {
+    "Escape": {
+      "doc": "Doc </script><script>alert('doc')</script> <img src=x onerror=alert(2)> & \"quotes\" 'single'\nsecond line <!-- comment",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 50,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "s",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [
+        "Bad"
+      ],
+      "vars": [
+        {
+          "name": "t",
+          "type": "string",
+          "init": {
+            "kind": "lit",
+            "value": "</script><img src=x onerror=alert(3)>",
+            "type": "string",
+            "text": "\"</script><img src=x onerror=alert(3)>\""
+          },
+          "doc": "var doc <b>bold</b> </script>",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 58
+          }
+        }
+      ],
+      "events": {
+        "Go": {
+          "fields": [
+            {
+              "name": "who",
+              "type": "string",
+              "doc": ""
+            }
+          ],
+          "doc": "event doc <img src=x onerror=alert(4)>",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 27
+          }
+        },
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 13
+          }
+        }
+      },
+      "root": {
+        "id": "Escape",
+        "name": "Escape",
+        "kind": "compound",
+        "doc": "Doc </script><script>alert('doc')</script> <img src=x onerror=alert(2)> & \"quotes\" 'single'\nsecond line <!-- comment",
+        "span": {
+          "file": 0,
+          "line": 12,
+          "col": 1,
+          "endLine": 50,
+          "endCol": 2
+        },
+        "initial": "Escape.A",
+        "states": [
+          {
+            "id": "Escape.A",
+            "name": "A",
+            "kind": "atomic",
+            "doc": "state doc <img src=x onerror=alert(5)> \"q\"",
+            "span": {
+              "file": 0,
+              "line": 26,
+              "col": 3,
+              "endLine": 35,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "set",
+                "var": "t",
+                "value": {
+                  "kind": "lit",
+                  "value": "a\"b&c<d>",
+                  "type": "string",
+                  "text": "\"a\\\"b&c<d>\""
+                }
+              }
+            ],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "note",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "x: {y} \"z\" #1; ;",
+                    "type": "string",
+                    "text": "\"x: {y} \\\"z\\\" #1; ;\""
+                  }
+                ]
+              }
+            ],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "who"
+                      ],
+                      "type": "string",
+                      "text": "event.who"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": "</script><svg onload=alert(6)>",
+                      "type": "string",
+                      "text": "\"</script><svg onload=alert(6)>\""
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.who == \"</script><svg onload=alert(6)>\""
+                },
+                "target": "Escape.B",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "{curly}: colon",
+                        "type": "string",
+                        "text": "\"{curly}: colon\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 7,
+                  "endLine": 30,
+                  "endCol": 87
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Escape.A",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 31,
+                  "col": 7,
+                  "endLine": 31,
+                  "endCol": 16
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "any"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "ignored # ; :",
+                        "type": "string",
+                        "text": "\"ignored # ; :\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 5,
+                  "endLine": 33,
+                  "endCol": 35
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 2,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "t"
+                      ],
+                      "type": "string",
+                      "text": "t"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": "x",
+                      "type": "string",
+                      "text": "\"x\""
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "t == \"x\""
+                },
+                "target": "Escape.B",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 34,
+                  "col": 5,
+                  "endLine": 34,
+                  "endCol": 28
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Escape.B",
+            "name": "B",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 36,
+              "col": 3,
+              "endLine": 42,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "work",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": "<img src=x onerror=alert(7)>",
+                  "type": "string",
+                  "text": "\"<img src=x onerror=alert(7)>\""
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 37,
+                "col": 5,
+                "endLine": 41,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Escape.P",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "t",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "string",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 38,
+                  "col": 7,
+                  "endLine": 38,
+                  "endCol": 32
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "Bad"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Escape.Failed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 39,
+                  "col": 7,
+                  "endLine": 39,
+                  "endCol": 25
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "*"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Escape.Failed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 40,
+                  "col": 7,
+                  "endLine": 40,
+                  "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Escape.P",
+            "name": "P",
+            "kind": "parallel",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 43,
+              "col": 3,
+              "endLine": 47,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [
+              {
+                "id": "Escape.P.R1",
+                "name": "R1",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 45,
+                  "col": 5,
+                  "endLine": 45,
+                  "endCol": 72
+                },
+                "initial": "Escape.P.R1.X",
+                "states": [
+                  {
+                    "id": "Escape.P.R1.X",
+                    "name": "X",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 45,
+                      "col": 27,
+                      "endLine": 45,
+                      "endCol": 51
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "always"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Escape.P.R1.XF",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 45,
+                          "col": 37,
+                          "endLine": 45,
+                          "endCol": 49
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Escape.P.R1.XF",
+                    "name": "XF",
+                    "kind": "final",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 45,
+                      "col": 53,
+                      "endLine": 45,
+                      "endCol": 70
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Escape.P.R2",
+                "name": "R2",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 46,
+                  "col": 5,
+                  "endLine": 46,
+                  "endCol": 71
+                },
+                "initial": "Escape.P.R2.Y",
+                "states": [
+                  {
+                    "id": "Escape.P.R2.Y",
+                    "name": "Y",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 46,
+                      "col": 27,
+                      "endLine": 46,
+                      "endCol": 50
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Go"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Escape.P.R2.YF",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 46,
+                          "col": 37,
+                          "endLine": 46,
+                          "endCol": 48
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Escape.P.R2.YF",
+                    "name": "YF",
+                    "kind": "final",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 46,
+                      "col": 52,
+                      "endLine": 46,
+                      "endCol": 69
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Escape.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 44,
+                  "endCol": 17
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Escape.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 48,
+              "col": 3,
+              "endLine": 48,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "t"
+              ],
+              "type": "string",
+              "text": "t"
+            },
+            "fail": null
+          },
+          {
+            "id": "Escape.Failed",
+            "name": "Failed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 49,
+              "col": 3,
+              "endLine": 49,
+              "endCol": 34
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "record",
+              "fields": [],
+              "type": "Bad",
+              "text": "Bad"
+            }
+          }
+        ],
+        "entry": [
+          {
+            "kind": "do",
+            "action": "note",
+            "args": [
+              {
+                "kind": "lit",
+                "value": "root entry </script>",
+                "type": "string",
+                "text": "\"root entry </script>\""
+              }
+            ]
+          }
+        ],
+        "exit": [
+          {
+            "kind": "do",
+            "action": "note",
+            "args": [
+              {
+                "kind": "lit",
+                "value": "root & exit",
+                "type": "string",
+                "text": "\"root & exit\""
+              }
+            ]
+          }
+        ],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Stop"
+            },
+            "group": 0,
+            "guard": null,
+            "target": "Escape.Done",
+            "effects": [],
+            "span": {
+              "file": 0,
+              "line": 21,
+              "col": 3,
+              "endLine": 21,
+              "endCol": 18
+            }
+          },
+          {
+            "trigger": {
+              "kind": "after",
+              "delay": {
+                "kind": "lit",
+                "value": 3600000,
+                "type": "duration",
+                "text": "1h"
+              }
+            },
+            "group": 1,
+            "guard": null,
+            "target": "Escape.Done",
+            "effects": [],
+            "span": {
+              "file": 0,
+              "line": 22,
+              "col": 3,
+              "endLine": 22,
+              "endCol": 19
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:3a504ec46c8b3a7f00c662be813ed48ecfb9f6f86fd3b8c57519e8f660f4cbb2"
+    }
+  }
+}

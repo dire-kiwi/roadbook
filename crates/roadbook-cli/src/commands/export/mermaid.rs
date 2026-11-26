@@ -7,8 +7,15 @@
 //! What Mermaid can show: states, nesting, parallel regions (`--`), initial (`[*] -->`) and
 //! final (`--> [*]`) states, transitions labelled with trigger, guard and effects, and a
 //! state's invoke, `entry`, `exit`, internal transitions and `output`/`fail` as its
-//! description. What it loses: the line styles of the kinds of transition, the details
-//! panel, drill-down into invoked machines, and the viewer's layout.
+//! description. Mermaid allows no description on a state with states inside, so a compound or
+//! parallel state (and the machine, when it is drawn as a state) has them in a note beside it.
+//! What it loses: the line styles of the kinds of transition, the details panel, drill-down
+//! into invoked machines, and the viewer's layout.
+//!
+//! Mermaid ids are a state's path below the machine with `.` replaced by `_`, so they read like
+//! the chart. Names are `[A-Z][A-Za-z0-9]*`, so ids outside that space cannot clash with one:
+//! a name Mermaid reads as a keyword (`State`, `Note`, …) gets a trailing `_`, and the machine
+//! drawn as a state is `<Machine>_machine`.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -83,14 +90,60 @@ pub fn markdown(ir: &Ir) -> String {
             .sources
             .get(m.span.file as usize)
             .map_or("?", |s| s.path.as_str());
-        let _ = writeln!(out, "## {name}\n\n`{source}:{}`\n", m.span.line);
+        let _ = writeln!(
+            out,
+            "## {name}\n\n{}\n",
+            code_span(&format!("{source}:{}", m.span.line))
+        );
         if !m.doc.is_empty() {
-            let _ = writeln!(out, "{}\n", m.doc);
+            // Fenced as text, so nothing in it is read as Markdown or HTML or can end a fence.
+            let fence = "`".repeat(3.max(longest_run(&m.doc, '`') + 1));
+            let _ = writeln!(out, "{fence}text\n{}\n{fence}\n", m.doc.trim_end());
         }
         let _ = write!(out, "```mermaid\n{}```\n", diagram(name, m));
     }
     out
 }
+
+/// `text` as an inline code span that nothing in it can end.
+fn code_span(text: &str) -> String {
+    let text = text.replace(['\n', '\r'], " ");
+    let ticks = "`".repeat(longest_run(&text, '`') + 1);
+    let pad = if text.starts_with('`') || text.ends_with('`') {
+        " "
+    } else {
+        ""
+    };
+    format!("{ticks}{pad}{text}{pad}{ticks}")
+}
+
+fn longest_run(text: &str, c: char) -> usize {
+    let (mut best, mut run) = (0, 0);
+    for x in text.chars() {
+        run = if x == c { run + 1 } else { 0 };
+        best = best.max(run);
+    }
+    best
+}
+
+/// Words of Mermaid's state diagram grammar (case-insensitive) that an id equal to one would
+/// be read as: each fails to parse, or (`accTitle`, `accDescr`) silently means something else.
+const KEYWORDS: &[&str] = &[
+    "accdescr",
+    "acctitle",
+    "as",
+    "class",
+    "classdef",
+    "click",
+    "default",
+    "direction",
+    "href",
+    "note",
+    "scale",
+    "state",
+    "statediagram",
+    "style",
+];
 
 /// One machine as `stateDiagram-v2`.
 pub fn diagram(name: &str, m: &Machine) -> String {
@@ -130,17 +183,23 @@ impl Writer<'_> {
         let _ = writeln!(self.out, "{}{text}", "  ".repeat(depth));
     }
 
-    /// A Mermaid id for a state: its path below the machine, `.` replaced by `_`. State names
-    /// have no `_`, so ids are unique, and Mermaid ids are global to the diagram.
+    /// A Mermaid id for a state: its path below the machine, `.` replaced by `_`; a keyword
+    /// gets a trailing `_`, the machine itself is `<Machine>_machine`. State names are
+    /// `[A-Z][A-Za-z0-9]*`, so ids are unique (Mermaid ids are global to the diagram).
     fn id(&self, state_id: &str) -> String {
         if state_id == self.machine {
-            return state_id.to_string();
+            return format!("{state_id}_machine");
         }
-        state_id
+        let id = state_id
             .strip_prefix(self.machine)
             .and_then(|s| s.strip_prefix('.'))
             .unwrap_or(state_id)
-            .replace('.', "_")
+            .replace('.', "_");
+        if KEYWORDS.contains(&id.to_ascii_lowercase().as_str()) {
+            format!("{id}_")
+        } else {
+            id
+        }
     }
 
     /// The states inside `container`, its initial arrow, and every transition whose source
@@ -197,15 +256,26 @@ impl Writer<'_> {
             let line = format!("state \"{}\" as {id}", s.name);
             self.line(depth, &line);
         }
-        for d in description(s) {
-            let line = format!("{id}: {}", escape(&d));
-            self.line(depth, &line);
+        let description = description(s);
+        if s.states.is_empty() {
+            for d in description {
+                let line = format!("{id}: {}", escape(&d));
+                self.line(depth, &line);
+            }
+            return;
         }
-        if !s.states.is_empty() {
-            let line = format!("state {id} {{");
+        let line = format!("state {id} {{");
+        self.line(depth, &line);
+        self.body(s, depth + 1);
+        self.line(depth, "}");
+        // Mermaid refuses a description on a state with states inside: a note instead.
+        if !description.is_empty() {
+            let line = format!("note right of {id}");
             self.line(depth, &line);
-            self.body(s, depth + 1);
-            self.line(depth, "}");
+            for d in description {
+                self.line(depth + 1, &escape(&d));
+            }
+            self.line(depth, "end note");
         }
     }
 }
@@ -305,14 +375,22 @@ fn description(s: &State) -> Vec<String> {
     out
 }
 
-/// Characters Mermaid would read as syntax, as its entity codes.
+/// Text Mermaid would read as syntax, as its entity codes: `#`, `;` and `:`, and the `d` of
+/// `direction`, which Mermaid reads as a statement anywhere in a line.
 fn escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
-    for c in s.chars() {
+    for (i, c) in s.char_indices() {
         match c {
             '#' => out.push_str("#35;"),
             ';' => out.push_str("#59;"),
-            '\n' => out.push(' '),
+            ':' => out.push_str("#58;"),
+            '\n' | '\r' => out.push(' '),
+            'd' | 'D'
+                if s.get(i..i + 9)
+                    .is_some_and(|w| w.eq_ignore_ascii_case("direction")) =>
+            {
+                out.push_str(if c == 'd' { "#100;" } else { "#68;" })
+            }
             c => out.push(c),
         }
     }
