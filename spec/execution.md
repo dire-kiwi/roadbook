@@ -2,27 +2,33 @@
 
 This page is the algorithm both runtimes implement: what the pure core does with a snapshot and an input, what it asks the driver to do, and how the driver carries that out. It is precise enough that two independent implementations produce the same [trace](trace.md) byte for byte, and the [conformance cases](conformance/) hold them to it. The design rationale is in [semantics](../docs/design/semantics.md); this page only says what happens.
 
-It covers atomic, compound and final states, events, guards, `invoke` of tasks and machines, `after`, `always` and `done`, and [messages between runs](#messages-between-runs) (`send`, `emit`, `on name.Event` and `ref`, milestone 5). Parallel states and restoring snapshots (milestone 6) are not specified yet; [the end of this page](#not-yet-specified) lists where they will fit.
+It covers atomic, compound, parallel and final states, events, guards, `invoke` of tasks and machines, `after`, `always` and `done`, [messages between runs](#messages-between-runs) (`send`, `emit`, `on name.Event` and `ref`, milestone 5), and [saving and restoring](#saving-and-restoring) a run (milestone 6). Parallel states change nothing for a machine that has none: every rule below reduces to the one it replaced, and the traces of such machines are unchanged.
 
 ## Terms
 
 - A **run** is one instance of a machine, from `start` until it finishes. A run's **status** is `running`, `done`, `failed`, `cancelled` or `defect`; only `running` is not final.
-- The **active states** are the states the run is in. Without parallel states they form a chain from the root (the machine itself, a compound state whose id is the machine's name) down to one atomic or final state. The root is active for the whole run.
+- The **active states** are the states the run is in. They form a tree from the root (the machine itself, a compound state whose id is the machine's name): an active compound state has exactly one active child, and an active parallel state has all its children active. Without parallel states the tree is a chain from the root down to one atomic or final state. The root is active for the whole run.
+- A **region** is a child of a parallel state. A region may be a state of any kind: compound, parallel, atomic or final.
+- An **active leaf** is an active state with no active child: an atomic or final state. Without parallel states there is exactly one.
 - **Document order** is the order of a pre-order walk of the IR's state tree: a state comes before its children, and children are in `states` order. **Innermost first** means reverse document order; for a chain it is leaf to root.
 - An **input** is what the driver gives the core: an external event, a message or an emitted event from another run, an invoke's outcome, a timer's expiry, or a request to cancel or to fail with a defect.
 - A **top-level run** is one that host code started (`run`, `spawn`), as opposed to a **child run**, which an `invoke` of its parent started ([child runs](#child-runs)). A **peer** of a run is a top-level run it holds a `ref` to.
 - A **message** is an event one run sends to another with `send`. An **emitted event** is one a run emits with `emit`, for its invoker and the runs that hold a `ref` to it. Both are queued for the receiver like any input ([messages between runs](#messages-between-runs)).
-- A **step** is what the core does with one input (or with `start`). It is a **macrostep** in SCXML's terms: one **microstep** for the input's transition, if any, then the microsteps of [settling](#settling), then [starting work](#starting-work).
+- A **step** is what the core does with one input (or with `start`). It is a **macrostep** in SCXML's terms: one **microstep** for the input's transitions, if any, then the microsteps of [settling](#settling), then [starting work](#starting-work). A microstep takes a set of transitions together: one, except when one input or one round of `always` enables transitions in several regions of a parallel state ([selecting](#selecting-a-transition)).
 - `parent(s)` is the state whose `states` contains `s`. A **proper ancestor** of `s` is `parent(s)`, its parent, and so on up to the root. A **proper descendant** is the converse.
+- A state is **in a final state** when it is a final state; when it is a compound state whose active child is a final state; or when it is a parallel state whose children are all active and all in a final state. An atomic state never is, nor is a state that is not active. (This is SCXML's `isInFinalState`.)
 
 ## The core
 
 The core is two pure, synchronous functions. They do no I/O and read no clock.
 
 ```
-start(ir, machine, run, input, fns)  -> (snapshot, commands)
-step(ir, snapshot, input, fns)       -> (snapshot, commands)
+start(ir, machine, run, input, fns)                  -> (snapshot, commands)
+step(ir, snapshot, input, fns)                       -> (snapshot, commands)
+restore(ir, saved, run, now, migrated, fns)          -> (snapshot, commands)
 ```
+
+`restore` starts a run again from a saved snapshot; it is specified under [saving and restoring](#restoring-a-snapshot).
 
 `ir` is the whole IR document, `machine` the name of the machine to run and `run` the run's id ([run ids](#the-driver)), which the core needs only to name its child runs in `sent` records. `input` (for `start`) is the machine's arguments as an object keyed by parameter name. `fns(name, args)` calls the host's pure function `name` with positional argument values and returns its value, or a `host` [defect](#defects) if the host code threw, panicked or returned a value that is not of the declared type. The binding layer turns the positional list into whatever the host implementation takes (an object of named parameters in TypeScript, arguments in Rust), decodes the result, and catches what the host code throws (TypeScript `try`/`catch`, Rust `std::panic::catch_unwind`), so nothing ever unwinds through the core. `snapshot` is never modified in place: `step` returns a new one.
 
@@ -64,6 +70,8 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
 | `nextMessage` | The id the next `send` or `emit` effect will get, from 1. A message is named in traces by its sender's run id and this id. |
 | `result` | `null` while running and when cancelled. `{"output": value}` when done (`value` is `null` for a machine that returns nothing), `{"error": value}` when failed, `{"defect": defect}` when the run ended with a [defect](#defects). |
 
+A **saved snapshot**, the form host code stores, is this snapshot with a format version and each timer's due time added ([saving and restoring](#saving-and-restoring)).
+
 Within a macrostep the core also keeps two transient values that are not part of the snapshot: the set of states **entered during this macrostep**, and the **completion queue** of compound states that reached a final child and have not been exited since.
 
 ### Inputs
@@ -92,10 +100,11 @@ The driver only ever passes events the machine declares, with values of the decl
 | `{"kind": "invoke.cancel", "invoke": 1}` | cancels invoke 1 and waits until it has stopped: at once for a task, after its cancel step for a [child run](#child-runs). Its outcome is not queued after this; one already queued stays queued. |
 | `{"kind": "timer.start", "timer": 1, "delay": 200}` | starts a timer that queues `{"kind": "after", "timer": 1}` after `delay` milliseconds. |
 | `{"kind": "timer.cancel", "timer": 1}` | cancels timer 1. Its expiry is not queued after this; one already queued stays queued. |
+| `{"kind": "timer.fire", "timer": 1}` | queues `{"kind": "after", "timer": 1}` on this run's queue at once, without starting a timer. Only `restore` emits it, for a restored timer that was already due ([restoring](#restoring-a-snapshot)). |
 | `{"kind": "send", "to": "r2", "invoke": null, "message": 1, "value": v}` | queues the message for run `to` and does not wait for it: for the child run of this run's invoke `invoke`, or, when `invoke` is `null`, for the peer `to` ([delivery](#delivering-messages)). |
 | `{"kind": "emit", "message": 2, "value": v}` | queues the emitted event for this run's invoker, if it invoked this run with `as`, and for every run that holds a `ref` to this run. It does not wait for them. |
 
-A trace record is always emitted immediately before the command it describes. Records are listed in [trace.md](trace.md). One record is written by the driver instead of the core: `undelivered`, when it finds that the receiver of a `send` has ended ([delivery](#delivering-messages)).
+A trace record is always emitted immediately before the command it describes. Records are listed in [trace.md](trace.md). Two records are written by the driver instead of the core: `undelivered`, when it finds that the receiver of a `send` has ended ([delivery](#delivering-messages)), and `suspended`, when it stops a run it has saved ([suspending](#suspending-and-resume)).
 
 ## Starting a machine
 
@@ -116,7 +125,16 @@ start(ir, name, run, input, fns):
 
 A variable's initial value may read the parameters and the variables declared before it; reading a later one is a runtime error (`unassigned`). A variable with no initial value starts unassigned, unless its type is optional (`string?`, whose IR type string ends in `?`, or an alias of an optional type, aliases expanded transitively): an optional variable with no initial value starts as `null`, as the [language](../docs/design/language.md#definite-assignment) says, and reading it is never `unassigned`. Initial values are not traced.
 
-`defaultEntry(s)` is `[]` for a state that is not compound, and `[c] + defaultEntry(c)` where `c` is `s.initial` for a compound one. So starting enters the root, then its initial child, and so on down to an atomic or final state, outermost first: the root's `entry` effects run before any other state's. Starting takes no transition, so it writes no `transition` record.
+`defaultEntry(s)` is the list of states entered below `s` when `s` is entered with no more specific target, in document order:
+
+```
+defaultEntry(s):
+  if s.kind == "compound": c = s.initial; return [c] + defaultEntry(c)
+  if s.kind == "parallel": return the concatenation of [c] + defaultEntry(c) for each c in s.states, in order
+  return []
+```
+
+So starting enters the root, then its initial child, and so on down, outermost first, entering every region of a parallel state on the way, the first region and everything below it before the second: the root's `entry` effects run before any other state's. Starting takes no transition, so it writes no `transition` record.
 
 ## Taking an input
 
@@ -137,23 +155,23 @@ step(ir, snap, input, fns):
         failWithDefect(input.defect); return
       if input.kind == "invoke.fail" and input.error._tag is not a declared error of inv.src:
         runtime error { kind: "undeclared", error: input.error._tag }
-      t = selectOutcome(inv, input)
+      T = selectOutcome(inv, input)
     "after":
       tm = the entry of snap.timers with id input.timer
       if none: emit trace { kind: "stale", event: input }; return
       remove tm from snap.timers
-      t = selectAfter(tm)
+      T = selectAfter(tm)
     "event", "message":
-      t = selectEvent(input.value)
+      T = selectEvent(input.value)
     "emitted":
       if input.invoke != null and snap.invokes has no entry with id input.invoke:
         emit trace { kind: "stale", event: input }; return
-      t = selectEmitted(input)
-  if t == null:
+      T = selectEmitted(input)
+  if T is empty:
     emit trace { kind: "dropped", event: input }
     return
   emit trace { kind: "event", event: input }
-  microstep(t)
+  microstep(T)
   settle()
   if snap.status == "running": startWork()
 ```
@@ -167,46 +185,102 @@ step(ir, snap, input, fns):
 
 ## Selecting a transition
 
-A transition is **enabled** if its trigger matches the input and its guard holds. A `null` guard holds. Guards are evaluated in the order given here, and evaluation stops at the first enabled transition, so a guard after it is never evaluated (which matters because a guard can call host functions).
+A transition is **enabled** if its trigger matches the input and its guard holds. A `null` guard holds. Selection gives the list `T` of transitions the input takes, in order: empty when it enables none, one transition, or, with parallel states, one per region that takes the input. Guards are evaluated in the order given here, and evaluation stops at the first enabled transition of each search, so a guard after it is never evaluated (which matters because a guard can call host functions).
 
-**An external event or a message** `{"_tag": N, …}`: for each active state `s`, innermost first, let the candidates be `s`'s transitions with trigger `{"kind": "event", "event": N}`. If `s` has none, the candidates are its `any` (`on *`) transitions instead. Try the candidates' guards in document order; the first that holds is taken. If none holds, go on to the next state outward. An `on *` is not tried in a state that has an `on N` whose guards all failed. `on *` never matches an invoke outcome, a timer or an emitted event. A message is one of the machine's own events, so it is selected exactly as the same event from host code would be; only its record shows who sent it.
+### Searching from the active leaves
 
-**An emitted event** `{"_tag": N, …}` from run `input.from`: for each active state `s`, innermost first, the candidates are `s`'s transitions with trigger kind `emitted`, `event` `N`, and an address `from` that names the sender:
+An external event, a message, an emitted event and `always` are selected by **walks**. Each state has **candidates** for the input, given below, tried in document order; the state **offers** the first candidate whose guard holds, or nothing.
+
+```
+selectByWalks(candidates):
+  enabled = []
+  for a in the active leaves, in document order:
+    for s in [a] + the proper ancestors of a, innermost first:
+      t = the first of candidates(s), in document order, whose guard holds
+      if t != null:
+        if t is not in enabled: append t to enabled
+        break                       # this leaf's walk is over
+  return removeConflicts(enabled)
+```
+
+Without parallel states there is one active leaf and one walk: the active states, innermost first, and the first enabled transition is taken, as before. With parallel states each region's leaves walk outward on their own, so one input can be taken in several regions. Walks that reach the same state search it again; its guards give the same result, since they are pure and nothing changes during selection, and a state that offered a transition offers the same one, which `enabled` holds once, at the position of the first walk that found it. (An implementation may remember what a state offered: searching again calls the same host functions with the same arguments, so the distinct calls made are the same either way, which is all a conformance case's `fns` table can tell.)
+
+**Conflicts.** The **exit set** of a transition with a target is the active states that are proper descendants of its [domain](#a-microstep); a transition with no target has an empty one. Two transitions **conflict** when their exit sets share a state: taking both would exit it twice.
+
+```
+removeConflicts(enabled):
+  kept = []
+  for t1 in enabled, in order:
+    preempted = false; replaced = []
+    for t2 in kept, in order:
+      if exitSet(t1) and exitSet(t2) share a state:
+        if t1's state is a proper descendant of t2's state: append t2 to replaced
+        else: preempted = true; break
+    if not preempted:
+      remove every transition in replaced from kept
+      append t1 to kept
+  return kept
+```
+
+This is SCXML's `removeConflictingTransitions`. Of two conflicting transitions the one found first, by the walk of an earlier leaf (the earlier region), is kept, unless the later one belongs to a state inside the earlier one's state: then the inner one is kept, as innermost first would choose in a chain. A transition with no target never conflicts. `kept` is in the order of the leaves whose walks found its transitions.
+
+### Candidates
+
+**An external event or a message** `{"_tag": N, …}`: the candidates of `s` are its transitions with trigger `{"kind": "event", "event": N}`. If `s` has none, they are its `any` (`on *`) transitions instead. So an `on *` is not tried in a state that has an `on N` whose guards all failed. `on *` never matches an invoke outcome, a timer or an emitted event. A message is one of the machine's own events, so it is selected exactly as the same event from host code would be; only its record shows who sent it. `T = selectByWalks(those candidates)`.
+
+**An emitted event** `{"_tag": N, …}` from run `input.from`: the candidates of `s` are its transitions with trigger kind `emitted`, `event` `N`, and an address `from` that names the sender:
 
 - an address of kind `child` names it when `input.invoke` is not `null` and the entry of `snap.invokes` with id `input.invoke` has `state` equal to the address's `state`. (That entry exists: the input would otherwise have been stale.)
 - an address of kind `ref` names it when `input.invoke` is `null` and the address's `name` is a parameter whose value, or a variable whose value, is the run id `input.from`. (An address names a parameter or variable of type `ref M`, through aliases: never an optional `ref` or a list of them, which the compiler rejects.) A variable with no value names no sender; reading it here is not an `unassigned` defect.
 
-Try the candidates' guards in document order; the first that holds is taken. If none holds, go on to the next state outward. There is no fallback to `on *`. So `on upload.Progress` is taken only for a `Progress` from the child that `upload` names, and from the run that started it, not from an earlier child of the same state: a child restarted by re-entering its state has a new invoke id.
+`T = selectByWalks(those candidates)`. There is no fallback to `on *`. So `on upload.Progress` is taken only for a `Progress` from the child that `upload` names, and from the run that started it, not from an earlier child of the same state: a child restarted by re-entering its state has a new invoke id.
+
+**`always`**: the candidates of `s` are its `always` transitions. `T = selectByWalks(those candidates)`, used by [settling](#settling).
+
+The other inputs search one state and take at most one transition, so `T` is empty or holds the first enabled candidate:
 
 **An invoke outcome** for invoke `inv`: only the state `inv.state` is searched. For `invoke.done` the candidates are its `invoke.done` transitions. For `invoke.fail` with error tag `E`, they are its `invoke.fail` transitions with `error` `E`, or, if it has none, those with `error` `"*"`. Guards are tried in document order.
 
 **A timer expiry** for timer `tm`: the candidates are the transitions of `tm.state` with trigger `after` and the same `group` as the transition at `tm.index`, in document order.
 
-**`always`**: for each active state, innermost first, its `always` transitions in document order.
-
-**`done`** of compound state `p`: `p`'s `done` transitions in document order.
+**`done`** of state `p` (compound or parallel): `p`'s `done` transitions in document order.
 
 `event` is in scope in the guard and effects of an `on` transition (including `on *` and `on name.Event`), `result` in an `invoke.done` transition and `error` in an `invoke.fail` transition, bound to the input's `value` or `error`. For an emitted event `event` has the type `Machine.Name` of the sender's event ([type references](ir.md#type-references)), and its value is the tagged record the sender emitted. Whether a chart may read `event` in an `on *` is the compiler's business. The implicit names are reserved and parameter and variable names are unique, so a name in a `ref` means exactly one thing.
 
 ## A microstep
 
+A microstep takes the transitions of `T` together, as SCXML's microstep does: first every exit they cause, then every transition's effects, then every entry.
+
 ```
-microstep(t):                         # t belongs to state `source`
-  emit trace { kind: "transition", from: source.id, index: t's index in source.transitions, to: t.target }
-  if t.target == null:                # internal: no state is left or entered
-    runEffects(t.effects); return
-  target = the state with id t.target
-  if source is the root: domain = the root
-  else: domain = the nearest proper ancestor of source that is also a proper ancestor of target
-  for s in active states that are proper descendants of domain, innermost first:
-    exitState(s)
-  runEffects(t.effects)
-  enterStates(path(domain, target) + defaultEntry(target))
+microstep(T):                         # each t in T belongs to a state, t.source
+  for t in T, in order:
+    emit trace { kind: "transition", from: t.source.id, index: t's index in t.source.transitions, to: t.target }
+  exits = the union of exitSet(t) for t in T          # computed before anything is exited
+  for s in exits, innermost first: exitState(s)
+  for t in T, in order: runEffects(t.effects)
+  entries = the union of entrySet(t) for t in T with a target
+  enterStates(entries, in document order)
+
+domain(t):                            # for t with a target
+  if t.source is the root: return the root
+  return the nearest proper ancestor of t.source that is a compound state (the root is one)
+         and a proper ancestor of the target
+
+exitSet(t):
+  if t.target == null: return []      # internal: no state is left or entered
+  return the active states that are proper descendants of domain(t)
+
+entrySet(t):
+  path = the states from just below domain(t) down to the target, outermost first
+  set = path + defaultEntry(target)
+  for p in path, other than the target, if p.kind == "parallel":
+    for c in p.states, if c is not in path: set = set + [c] + defaultEntry(c)
+  return set
 ```
 
-`path(domain, target)` is the states from just below `domain` down to `target`, outermost first.
+With one transition this is: the `transition` record; the exits, innermost first; the effects; the entries, outermost first. A transition with no target contributes only its `transition` record and its effects. The transitions of `T` never conflict, so their exit sets are disjoint, and so are their entry sets. Exiting innermost first across regions exits the later region's states before the earlier region's ([exiting](#exiting-and-entering-a-state)), while the effects run in the order of `T`, the earlier region's first.
 
-**Every transition with a target is external**, in SCXML's sense. Unless the source is the root, its domain is the least common compound ancestor of its source and target, which is a proper ancestor of both, so the source itself is always exited and the target always entered:
+**Every transition with a target is external**, in SCXML's sense. Unless the source is the root, its domain is the least common compound ancestor of its source and target, which is a proper ancestor of both, so the source itself is always exited and the target always entered. **The domain is never a parallel state**: a parallel state is skipped when looking for it, as SCXML's `findLCCA` skips it, so a transition between two regions, or from a region to a state inside itself, leaves the parallel state and enters it again with all its regions:
 
 | Transition | Domain | Exited | Entered |
 | --- | --- | --- | --- |
@@ -214,6 +288,12 @@ microstep(t):                         # t belongs to state `source`
 | `A -> A` (self) | `A`'s parent | `A` and its active descendants | `A` and its default entry |
 | `A -> A.C` (into its own child) | `A`'s parent | `A` and its active descendants | `A`, `C` and `C`'s default entry |
 | `A.C -> A` (to its own ancestor) | `A`'s parent | `A` and its active descendants | `A` and its default entry |
+| `P.R.X -> P.R.Y`, within region `R` of parallel `P` | `R` | `X` and its active descendants | `Y` and its default entry |
+| `P.R.X -> P.S.Y`, from region `R` to region `S` | the nearest compound proper ancestor of `P` | `P` and all its active descendants | `P`, `R` and every other region but `S` by default entry, and `S`, then the path down to `Y`, and `Y`'s default entry |
+| `P.R -> P.R.Y`, a region into its own child | the nearest compound proper ancestor of `P` | `P` and all its active descendants | `P`, the path to `Y` and its default entry, and every other region by default entry |
+| `X -> P.S.Y`, from outside `P` | the least common compound ancestor | as for any transition | `P`, every region but `S` by default entry, the path down to `Y` and its default entry |
+
+The entries are in document order, so the regions of a parallel state are entered one after the other, each with everything below it, in the order the regions are written.
 
 Re-entering a state restarts its work: its invoke is cancelled and started again with a new id, and its timers likewise. **A transition with no target is internal**: no state is left or entered, nothing is cancelled or restarted, and only its effects run.
 
@@ -242,7 +322,16 @@ enterStates(list):
     add s to the states entered during this macrostep
     if s.kind == "final":
       if parent(s) is the root: finish(s); return
-      append parent(s) to the completion queue
+      complete(s)
+
+complete(f):                          # a final state f was just entered; parent(f) is not the root
+  s = f
+  if parent(f).kind == "compound":
+    append parent(f) to the completion queue
+    s = parent(f)
+  while parent(s).kind == "parallel" and parent(s) is in a final state:
+    s = parent(s)
+    append s to the completion queue
 
 runEffects(effects):
   for e in effects with kind "set", in order:
@@ -282,7 +371,7 @@ So a state's work stops before its own exit effects run, and the `exited` record
 - **A send to a peer** reads the `ref` parameter or variable the address names, exactly as an expression `ref` would, so a variable with no value is an `unassigned` defect. The address is read before the value is evaluated.
 - **Delivery is the driver's.** The core does not know whether the receiver is still running. If it is not, the driver writes `undelivered` after the `sent` record ([delivery](#delivering-messages)).
 
-In a microstep, then, the order is: the `transition` record; for each state exited, innermost first, its invoke cancelled, its timers cancelled, its exit effects, `exited`; the transition's effects; for each state entered, outermost first, `entered` and its entry effects. No work is started during a microstep.
+In a microstep, then, the order is: the `transition` records, one per transition; for each state exited, innermost first, its invoke cancelled, its timers cancelled, its exit effects, `exited`; the transitions' effects, transition by transition; for each state entered, in document order, `entered` and its entry effects. No work is started during a microstep.
 
 ## Settling
 
@@ -293,19 +382,19 @@ settle():
   count = 0
   loop:
     if snap.status != "running": return
-    t = the first enabled always transition (innermost first, document order)
-    if t == null:
-      while t == null and the completion queue is not empty:
-        p = take the first state from the completion queue
-        t = the first enabled done transition of p
-    if t == null: return
+    T = the enabled always transitions (selectByWalks, conflicts removed)
+    while T is empty and the completion queue is not empty:
+      p = take the first state from the completion queue
+      T = [the first enabled done transition of p], or [] if there is none
+    if T is empty: return
     count = count + 1
     if count > 1000: runtime error { kind: "limit" }
-    microstep(t)
+    microstep(T)
 ```
 
-- `always` transitions take priority over `done` transitions. A `done` is considered only when no `always` is enabled, and completions are considered in the order the final children were entered.
-- A compound state is complete when one of its final children is entered. Its completion is queued once per entry, and removed from the queue when the state is exited (`exitState`), so a state in the queue is always active and still in the final child that completed it. A completion is therefore never taken for a state that was exited after it completed, even if it was entered again in the same macrostep: an `always` that leaves and re-enters it discards the completion. When a completion is taken from the queue, the state's `done` transitions are tried once: if none of their guards holds, it is discarded without a trace record and is not retried later.
+- `always` transitions take priority over `done` transitions. A `done` is considered only when no `always` is enabled, and completions are considered in the order they were queued. The `always` transitions enabled in several regions are taken together, in one microstep, as an input's are.
+- A compound state is complete when one of its final children is entered. A parallel state is complete when it is in a final state: when, after a final state below it is entered, every region is in a final state (`complete`). The entry that completes the last region queues the parallel state, right after that region's own completion, so a region's `done` is tried before its parallel state's. A region that is itself a final state is in a final state from the moment it is entered; a region that is an atomic state never is, so a parallel state with one never completes. A parallel state inside a region of another completes it in turn when the outer one's other regions are in a final state too. Once a region is in a final state it stays so until its parallel state is exited, since a final state has no transitions and every transition that could leave it exits the parallel state.
+- A state's completion is queued once per entry, and removed from the queue when the state is exited (`exitState`), so a state in the queue is always active and still in a final state. A completion is therefore never taken for a state that was exited after it completed, even if it was entered again in the same macrostep: an `always` that leaves and re-enters it discards the completion. When a completion is taken from the queue, the state's `done` transitions are tried once: if none of their guards holds, it is discarded without a trace record and is not retried later.
 - A run that takes more than 1000 microsteps while settling one input has a runtime error `limit`, so a guarded `always` loop cannot hang the host. (The compiler rejects unguarded ones.)
 
 ## Starting work
@@ -330,8 +419,8 @@ startWork():
       emit timer.start { timer: id, delay }
 ```
 
-- Within one state the invoke starts before the timers.
-- A delay is a `duration`, so it is never negative: a host function declared to return `duration` that gives a negative one has returned a value that is not of its type, a `host` defect ([values](#values)). A delay of 0 is a timer like any other: its expiry is queued by the driver's timer, never by the core, and it comes after every input already queued.
+- Within one state the invoke starts before the timers. States are taken in document order, so the work of several regions of a parallel state starts region by region, in the order the regions are written, and gets its invoke and timer ids in that order.
+- A delay is a `duration`, so it is never negative: a host function declared to return `duration` that gives a negative one has returned a value that is not of its type, a `host` defect ([values](#values)). A delay of 0 is a timer like any other: its expiry is queued by the driver's timer, never by the core (except by a `timer.fire` command of `restore`), and it comes after every input already queued.
 - Work starts after every entry effect of the macrostep, including those of states entered while settling. So an `after` delay or an invoke argument sees the variables as the step left them: `Checkout`'s `Backoff` sets `attempts` on entry and its `after retryDelay(attempts)` reads the new value.
 - A state that is entered and left again within one macrostep (`Confirming` in `PlaceOrder`, which an `always` leaves at once) never starts its work. This is SCXML's rule for `invoke`, applied to timers as well.
 - A state that was already active before the input and is not exited keeps its work running.
@@ -340,7 +429,7 @@ Time spent is the driver's business: the core records only the delay. A timer's 
 
 ## Finishing
 
-Entering a final state whose parent is the root finishes the run, in the middle of the microstep that entered it (it is always the last state that microstep enters):
+Entering a final state whose parent is the root finishes the run, in the middle of the microstep that entered it. It is always the last state that microstep enters: its transition's domain is the root, so any other transition taken with it has no target (one with a target would have conflicted with it).
 
 ```
 finish(f):
@@ -359,7 +448,7 @@ The output or error is evaluated right after `f`'s entry effects, before any exi
 
 ## Cancelling from outside
 
-The input `{"kind": "cancel"}` exits every active state, innermost first, exactly as `exitState` does: each state's invoke and timers are cancelled and its exit effects run. Then the status becomes `cancelled` and a `cancelled` record is written. There is no `event` record for a cancel.
+The input `{"kind": "cancel"}` exits every active state, innermost first (in reverse document order, so the later regions of a parallel state first), exactly as `exitState` does: each state's invoke and timers are cancelled and its exit effects run. Then the status becomes `cancelled` and a `cancelled` record is written. There is no `event` record for a cancel.
 
 ```
 cancelRun():
@@ -541,7 +630,7 @@ The core holds a `ref` as a run id ([values](#values)). Host code holds a **hand
 
 ### Delivering messages
 
-- **Open and closed.** A run is **open** from just before its driver calls `start` until the core returns a snapshot whose status is not `running`, from `start` or from any `step`; it is then **closed** for good. A run closes before the commands of its last step are carried out, so a message that another run sends it while it carries them out is undelivered, and an emitted event is not delivered to it. Checking that a receiver is open and pushing onto its queue should be one operation with respect to its closing; a driver where a push can slip in just before the receiver closes loses that message with the receiver's queue, without a record. No conformance case can tell these apart.
+- **Open and closed.** A run is **open** from just before its driver calls `start` (or `restore`) until the core returns a snapshot whose status is not `running`, from `start`, `restore` or any `step`, or until it is [suspended](#suspending-and-resume); it is then **closed** for good. A run closes before the commands of its last step are carried out, so a message that another run sends it while it carries them out is undelivered, and an emitted event is not delivered to it. Checking that a receiver is open and pushing onto its queue should be one operation with respect to its closing; a driver where a push can slip in just before the receiver closes loses that message with the receiver's queue, without a record. No conformance case can tell these apart.
 - **Subscriptions.** Before it calls `start`, the driver subscribes the run to the emitted events of every run it holds a `ref` to: each run whose handle is in its arguments, once however many times it appears there (a parameter of type `ref M`, `ref M?`, `ref M[]` or an alias of one). When the run closes, it is unsubscribed.
 - **Carrying out `send`.** The driver builds the input `{"kind": "message", "from": <this run's id>, "message": …, "value": …}`.
   - With an `invoke`, it is for the child run of that invoke. If a run has claimed the invoke's token and is open, the driver pushes the input onto its queue. If the token has not been claimed yet (the host code has not called `run` yet), the driver keeps the input in the invoke context for the run that claims it. If the run that claimed it has closed, the driver writes `{"kind": "undelivered", "message": …, "to": …, "value": …}` (adding `t`, `run` and `parent` as for any record). If the invoke ends or is cancelled without its token ever being claimed (a stub, a task-like implementation), the inputs kept for it are discarded without a record.
@@ -563,15 +652,112 @@ When a run ends, for whatever reason, the driver discards anything still in its 
 ### Time
 
 - **Records.** `t` in a trace record is the driver's clock when it writes the record, in integer milliseconds: since the Unix epoch in production, and virtual milliseconds from 0 in conformance runs.
-- **Timers.** A timer's expiry is due `delay` milliseconds after the driver carries out `timer.start`. The driver reads the time and waits only through the clock and timer it was given (in TypeScript a `Timer` service whose default sleeps on Effect's `Clock`, in Rust the `Timer` trait), telling the timer the run id, the timer id and the delay when it starts one and the ids when it cancels one. It never completes a timer itself, not even one with delay 0. A test can therefore give it a virtual clock and fire timers itself, as a conformance runner does.
+- **Timers.** A timer's expiry is due `delay` milliseconds after the driver carries out `timer.start`. The driver reads the time and waits only through the clock and timer it was given (in TypeScript a `Timer` service whose default sleeps on Effect's `Clock`, in Rust the `Timer` trait), telling the timer the run id, the timer id and the delay when it starts one and the ids when it cancels one. It never completes a timer itself, not even one with delay 0 (a `timer.fire` command queues an expiry without any timer). A test can therefore give it a virtual clock and fire timers itself, as a conformance runner does.
+- **Due times.** The driver remembers, for each running timer, when it is **due**: the clock when it carried out the `timer.start`, plus the command's `delay`. A timer restored by `timer.fire` keeps the due time it was saved with. A [saved snapshot](#the-saved-snapshot) records these.
 
 How a conformance runner drives virtual time, scripted outcomes and quiescence, and what it may rely on the driver for, is specified in [conformance/README.md](conformance/README.md#how-a-runner-works).
+
+## Saving and restoring
+
+A run can be saved as plain data and started again from it later, in another process or in the other runtime: the request handler of [saving and restoring](../docs/design/semantics.md#saving-and-restoring) loads a snapshot, applies one event, and saves the result. Four operations do it:
+
+- **save** gives a top-level run's [saved snapshot](#the-saved-snapshot), as its last step left it. The run carries on.
+- **suspend** waits until a top-level run is idle, then stops it and gives its saved snapshot ([suspending](#suspending-and-resume)).
+- **restore** checks a saved snapshot and starts a new top-level run from it ([restoring](#restoring-a-snapshot)).
+- **resume** is restore, then one event, then suspend: the request handler's operation.
+
+Only top-level runs are saved: host code holds no handle to a child run.
+
+### The saved snapshot
+
+A saved snapshot is the core's [snapshot](#snapshot), as the run's last step left it, with two additions: `snapshotVersion`, which is `1`, and a `due` member on each timer, from the driver ([time](#time)). Its schema is [`snapshot.schema.json`](snapshot.schema.json).
+
+```jsonc
+{
+  "snapshotVersion": 1,
+  "machine": "Order",
+  "run": "r1",                                  // the id the run had when it was saved
+  "ir": "sha256:6ae1…",
+  "status": "running",
+  "active": ["Order", "Order.AwaitingPayment"],
+  "input": { "id": "o1" },
+  "vars": { "paid": 0, "tracking": "" },
+  "invokes": [],
+  "timers": [{ "id": 1, "state": "Order.AwaitingPayment", "index": 0, "delay": 259200000, "due": 259200000 }],
+  "nextInvoke": 1,
+  "nextTimer": 2,
+  "nextMessage": 1,
+  "result": null
+}
+```
+
+- **`due`** is an absolute time on the driver's clock, in integer milliseconds: since the Unix epoch in production, virtual time in conformance. A deadline is kept rather than the time remaining because the run is in its state the whole time it is saved: an order that waits three days for payment expires three days after it began waiting, however long it spent in a store. A host can also find when to wake a saved run from its earliest `due`.
+- **What is not in it.** Inputs queued but not yet taken (a request handler never has any, since it saves an idle run); the state of child runs, which start again from the beginning ([restoring](#restoring-a-snapshot)); messages kept for a child that has not claimed its invoke; and subscriptions.
+- **The same in both runtimes.** Values are in their JSON form ([values](#values)), `active` is in document order, and `invokes` and `timers` are in the order they were started, so the two runtimes save the same run as the same document, and either restores what the other saved. Conformance compares saved snapshots as [canonical JSON](ir.md#canonical-json).
+
+### Restoring a snapshot
+
+Restoring checks the saved snapshot against the IR the runtime was given, refuses it with a reason if it does not fit, and otherwise starts a new top-level run from it. Nothing is written to the trace before the checks pass. They are made in this order:
+
+| Reason | Refused when |
+| --- | --- |
+| `invalid` | It does not match `snapshot.schema.json`, or its `snapshotVersion` is not `1`. |
+| `machine` | The IR has no machine named `machine`, or it is not the machine restore was asked to restore (TypeScript `OrderLive.restore` restores only `Order`). |
+| `ir` | Its `ir` is not the machine's hash in the IR and no migration was given, or the migration's result has another hash too. |
+| `migration` | The migration failed: it threw, panicked or returned an error. (Its result is checked from the top, so a result that is not a snapshot is `invalid`, one of another machine `machine`, and one that still has another hash `ir`.) |
+| `ended` | Its `status` is not `running`. |
+| `ref` | The machine has a parameter of type `ref M`, `ref M?` or `ref M[]`, or an alias of one ([not yet specified](#not-yet-specified)). |
+| `invalid` | It does not fit the machine: `active` is not a configuration in document order (the root first, each other state's parent active, one active child for each active compound state, every child for each active parallel state); an `invokes` entry's state is not active, has no invoke of `src`, or has two entries; a `timers` entry's state is not active, or its `index` is not the first transition of an `after` block of that state, or two entries have the same state and index; an id is repeated or not below `nextInvoke` or `nextTimer`; `input` does not have exactly the machine's parameters, or `vars` has a name that is not one of its variables, or lacks an optional variable; or a value does not decode as its declared type, as a machine's arguments must. |
+
+**Migration.** When the hashes differ, the host may give a **migration**: a function from the old saved snapshot to a new one, both plain JSON (TypeScript `(saved: Json) => Json`, Rust `Fn(serde_json::Value) -> Result<serde_json::Value, String>`). It is called once, and only when the hashes differ. Its result is checked from the top as if it had been given instead, except that a second migration is never applied. It is how a deployment that changed a chart (renamed a variable, added a state) keeps its saved runs: the migration rewrites `ir`, the names, and whatever else must change. It needs no IR of the old chart; it sees only the data.
+
+**The new run.** The restored run is a new top-level run with an id of its driver's choosing ([run ids](#the-driver)), not the `run` in the snapshot, which named it in the process that saved it. It has no peers. The driver opens it and calls the core:
+
+```
+restore(ir, saved, run, now, migrated, fns):
+  m    = ir.machines[saved.machine]           # every check above has passed
+  snap = saved without snapshotVersion, with run = run and no due on the timers
+  emit trace { kind: "restored", machine: saved.machine, ir: m.hash, migrated, snapshot: saved }
+  for s in snap.active, in document order:
+    if snap.invokes has an entry inv with state s.id:
+      args = the parameter names of s.invoke.src zipped with eval of s.invoke.args, left to right
+      emit trace { kind: "invoke.started", invoke: inv.id, state: s.id, src: inv.src, args }
+      emit invoke.start { invoke: inv.id, state: s.id, src: inv.src, srcKind: s.invoke.kind,
+                          as: s.invoke.as, args }
+    for each entry tm of saved.timers with state s.id, by ascending id, if tm.due > now:
+      emit trace { kind: "timer.started", timer: tm.id, state: s.id, index: tm.index, delay: tm.due - now }
+      emit timer.start { timer: tm.id, delay: tm.due - now }
+  for each entry tm of saved.timers with tm.due <= now, by ascending due, then ascending id:
+    emit timer.fire { timer: tm.id }
+  return (snap, commands)
+```
+
+`now` is the driver's clock, `run` the new run's id, and `migrated` the hash the snapshot had before a migration, or `null` when there was none. Each timer of the core snapshot keeps the `delay` it was saved with, the delay its `after` evaluated to, though a restarted timer's `timer.started` record and command give the time that remains. `snapshot` in the `restored` record is the saved snapshot as restored, after any migration.
+
+- **The work that was running restarts.** Each invoke in `invokes` is started again, with the same id and with its arguments evaluated now, from the snapshot's variables (a function in them is called again). A task runs again from the start, so a machine meant to be saved should wait in states with no `invoke`, or use tasks that are safe to repeat ([semantics](../docs/design/semantics.md#saving-and-restoring)). A child machine runs again from its `start`, as a new child run `<new run id>.<invoke id>`: its own progress, and the messages its parent had sent it, were not saved. An invoke whose outcome had already been taken is not in `invokes` and is not restarted, though its state is active.
+- **Timers keep their deadlines.** A timer not yet due is started again, with the same id, for the time that remains, so it expires at its saved `due`. A timer already due is not started: `timer.fire` queues its expiry at once, before anything else can reach the run's queue, the earliest due first. Its deadline passed while the run was saved, so it is taken before any event given after restoring: an order restored after its payment deadline expires before it sees the payment. Since ids are kept, `nextInvoke` and `nextTimer` do not change; they cannot collide with anything, since the run id is new.
+- **Nothing else happens.** No state is entered or exited, no effect runs and the run does not settle: the snapshot was saved between steps, already settled. The run then takes inputs like any run.
+- **Defects.** A runtime error or a host defect while evaluating an invoke's arguments makes `restore` atomic, like `start`: it returns `failWithDefect(d)` applied to `snap`, with two commands, the `restored` record and the `defect` record. The `invoke.cancel` and `timer.cancel` commands of `failWithDefect` are for work never started, which the driver ignores. The run then ends with the defect like any run.
+- **The driver** carries out the commands and drives the run as `run` does ([the driver](#the-driver)). The due times it keeps are `now + delay` for the timers it starts, which is their saved `due`, and the saved `due` for those whose expiry `timer.fire` queued.
+
+### Suspending and resume
+
+A run is **idle** when it is between steps, its queue is empty, no cancel request is waiting, and it has no running invoke (`snap.invokes` is empty): it waits only for events, messages and timers, and nothing it started is in flight.
+
+**suspend** waits until the run is idle or has ended, taking inputs meanwhile as always: the outcomes of its invokes and the expiries of its timers, which keep running, so a chart's own `after` bounds how long it waits for a task. The driver checks when suspend is called, and after each step's commands (or `start`'s, or `restore`'s) have been carried out. Then:
+
+- If the run is idle, the driver **stops** it: it closes the run ([delivery](#delivering-messages)), cancels its timers through its timer (with no record: they are in the snapshot), discards its queue (empty), writes `{"kind": "suspended"}`, and gives the saved snapshot. Its status is still `running`: the run is not over, it goes on from the snapshot when that is restored. No exit effect runs.
+- If the run has ended with `done`, `failed` or `cancelled`, the driver gives its saved snapshot, whose `status` and `result` say so, and writes nothing. A run that ended with a defect raises it, as `run` does, and gives no snapshot.
+
+A timer that falls due while suspend waits is taken like any input; one still running when the run stops is in the snapshot. An event given to the run while suspend waits is taken if it arrives before the run stops.
+
+**resume**`(saved, event?, migration?)` restores the snapshot, gives the run `event` if there is one, suspends it, and gives the saved snapshot that suspend gives. Expiries that `timer.fire` queued are taken before the event. This is the request handler's operation: it awaits the tasks the event starts (so a snapshot resume gives has no running invokes) and saves the timers with their deadlines. A defect is raised; a refused snapshot is an error of its own, before any run starts ([TypeScript](../docs/design/typescript.md#saving-and-restoring), [Rust](../docs/design/rust.md#saving-and-restoring)).
 
 ## Not yet specified
 
 The formats leave room for these; their rules will be added here.
 
-- **Parallel states** (milestone 6). `active` already lists states in document order and every "innermost first" is reverse document order, as in SCXML, so regions fit without changing the snapshot or trace. Transition selection, conflict resolution between regions and completion of a parallel state are to be specified.
-- **Restoring a snapshot** (milestone 6). A snapshot holds everything the core needs except timer due times, which the driver will have to save alongside it. A restored run restarts its running invokes.
+- **Restoring a run that holds `ref`s.** Its `input` names peers by the run ids of the process that saved it. Restoring it needs host code to give a handle for each of those ids, and the binding layer to rewrite them in `input` and `vars` by their types; until then such a snapshot is refused (`ref`).
+- **Saving a child run**, or a parent together with the state of its children, which is durable execution.
 - **Keyed `spawn`** ([actors and messaging](../docs/design/actors.md#many-children)), and host code receiving a run's emitted events through a handle.
 - **`strict`**, which would turn a dropped event into a failure, is not in the grammar yet.

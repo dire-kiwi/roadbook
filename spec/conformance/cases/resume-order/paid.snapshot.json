@@ -1,0 +1,1 @@
+{"active":["Order","Order.AwaitingDelivery"],"input":{"id":"o1"},"invokes":[],"ir":"sha256:6ae1c132e34692919ad8977d8619a1c8414fb382b9cd13dc7ff5f32d85d9ec6c","machine":"Order","nextInvoke":2,"nextMessage":1,"nextTimer":2,"result":null,"run":"r2","snapshotVersion":1,"status":"running","timers":[],"vars":{"paid":42,"tracking":"t-1"}}

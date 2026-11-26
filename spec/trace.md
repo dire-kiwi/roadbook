@@ -13,7 +13,7 @@ Every record has:
 | `parent` | The parent run's id. Present on every record of a child run, and on no record of a top-level run. |
 | `kind` | The record kind, below. |
 
-The core emits records without these members; the driver adds them. The driver also writes one kind of record itself, `undelivered` after a `sent` record.
+The core emits records without these members; the driver adds them. The driver also writes two kinds of record itself: `undelivered` after a `sent` record, and `suspended`.
 
 ## Records
 
@@ -22,12 +22,13 @@ States are named by their ids in the IR, transitions by their state's id and the
 | `kind` | Members | Written |
 | --- | --- | --- |
 | `started` | `machine`, `ir`, `input` | First, when the run starts. `ir` is the machine's `hash` from the IR. `input` holds the arguments, keyed by parameter name. |
+| `restored` | `machine`, `ir`, `migrated`, `snapshot` | First, instead of `started`, when the run is restored from a saved snapshot ([restoring](execution.md#restoring-a-snapshot)). `ir` is the machine's `hash`. `snapshot` is the [saved snapshot](execution.md#the-saved-snapshot) it was restored from, after any migration, so its `run` is the id the run had when it was saved. `migrated` is the hash the snapshot had before a migration, or `null`. The `invoke.started` and `timer.started` records that follow it, with the ids the snapshot gives, restart the work that was running. |
 | `entered` | `state` | When a state is entered, before its entry effects. The root is entered first and exited last. |
 | `exited` | `state` | When a state is left, after its invoke and timers were cancelled and its exit effects ran. |
 | `event` | `event` | When the run takes an input that enables a transition, before anything it causes. `event` is the input as the core received it (below). |
 | `dropped` | `event` | Instead of `event`, when the input enables no transition. Nothing else happens. |
 | `stale` | `event` | Instead of `event`, when the input is the outcome of an invoke, the expiry of a timer, or an event emitted by a child run, whose invoke or timer is no longer running: it was cancelled after the input had been queued. Nothing else happens. |
-| `transition` | `from`, `index`, `to` | When a transition is taken, before the exits it causes. `to` is the target state's id, or `null` for an internal transition. `always` and `done` transitions are traced the same way, with no `event` record before them. |
+| `transition` | `from`, `index`, `to` | When a transition is taken, before the exits it causes. `to` is the target state's id, or `null` for an internal transition. `always` and `done` transitions are traced the same way, with no `event` record before them. When one microstep takes transitions in several regions of a parallel state, their `transition` records come one after another, before all their exits ([a microstep](execution.md#a-microstep)). |
 | `set` | `var`, `value` | When an assignment runs, in an exit, transition or entry effect list. |
 | `action` | `action`, `args` | When an action is run, before the driver runs it. `args` is keyed by parameter name. |
 | `sent` | `message`, `to`, `value` | When a `send` effect runs, before the driver queues the message. `message` is the message's id in the sending run, from 1, shared with `emitted` and `undelivered`; `to` the receiving run's id; `value` the event, a tagged record. |
@@ -41,8 +42,9 @@ States are named by their ids in the IR, transitions by their state's id and the
 | `failed` | `state`, `error` | Last, when the run reaches a top-level final state with `fail`. |
 | `cancelled` | none | Last, when the run was cancelled from outside, after every state was exited. |
 | `defect` | `defect` | Last, when the run ended with a [defect](execution.md#defects). When an action of the step that would have ended the run had a host defect, it comes right after that action's record, in place of the `done`, `failed` or `cancelled` record and the records between. |
+| `suspended` | none | Last, written by the driver, when it stopped an idle run it had saved ([suspending](execution.md#suspending-and-resume)). The run has not ended: it goes on, as another run, from its saved snapshot. |
 
-Exactly one of `done`, `failed`, `cancelled` and `defect` ends every run that ends. A trace of a run still in progress has none, and neither has one of a Rust run whose future was dropped ([ending a run](execution.md#ending-a-run)).
+Exactly one of `done`, `failed`, `cancelled` and `defect` ends every run that ends. A trace of a run still in progress has none, and neither has one of a Rust run whose future was dropped ([ending a run](execution.md#ending-a-run)) or of a suspended run, which ends with `suspended`.
 
 ### Inputs in records
 
@@ -57,7 +59,7 @@ The `event` member of `event`, `dropped` and `stale` records is the input exactl
 | Invoke succeeded | `{"kind": "invoke.done", "invoke": 1, "value": …}` |
 | Invoke failed | `{"kind": "invoke.fail", "invoke": 1, "error": {"_tag": "GatewayUnavailable"}}` |
 | Invoke ended with a defect | `{"kind": "invoke.defect", "invoke": 1, "defect": {"kind": "host", "message": "…"}}` |
-| Timer expired | `{"kind": "after", "timer": 1}` |
+| Timer expired | `{"kind": "after", "timer": 1}` (also when `timer.fire` queued it on restoring) |
 
 A message or emitted event names its sender by `from` and the sender's `message` id, so every received input points at exactly one `sent` or `emitted` record: the one in run `from`'s group with that `message`.
 

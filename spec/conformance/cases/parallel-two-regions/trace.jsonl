@@ -1,0 +1,33 @@
+{"input":{},"ir":"sha256:fe0781a2aa36f50a5dc9656fd767df98f3b9144cd823e67fd98412acda0b1cd6","kind":"started","machine":"Fork","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Fork","t":0}
+{"kind":"entered","run":"r1","state":"Fork.P","t":0}
+{"kind":"entered","run":"r1","state":"Fork.P.A","t":0}
+{"kind":"entered","run":"r1","state":"Fork.P.A.A1","t":0}
+{"kind":"entered","run":"r1","state":"Fork.P.B","t":0}
+{"kind":"entered","run":"r1","state":"Fork.P.B.B1","t":0}
+{"kind":"entered","run":"r1","state":"Fork.P.C","t":0}
+{"event":{"kind":"event","value":{"_tag":"Go"}},"kind":"event","run":"r1","t":0}
+{"from":"Fork.P.A.A1","index":0,"kind":"transition","run":"r1","t":0,"to":"Fork.P.A.A2"}
+{"from":"Fork.P.B.B1","index":0,"kind":"transition","run":"r1","t":0,"to":"Fork.P.B.B2"}
+{"kind":"exited","run":"r1","state":"Fork.P.B.B1","t":0}
+{"kind":"exited","run":"r1","state":"Fork.P.A.A1","t":0}
+{"kind":"set","run":"r1","t":0,"value":1,"var":"n"}
+{"action":"count","args":{"n":1,"what":"A go"},"kind":"action","run":"r1","t":0}
+{"kind":"set","run":"r1","t":0,"value":11,"var":"n"}
+{"action":"count","args":{"n":11,"what":"B go"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Fork.P.A.A2","t":0}
+{"kind":"entered","run":"r1","state":"Fork.P.B.B2","t":0}
+{"from":"Fork.P.A.A2","index":0,"kind":"transition","run":"r1","t":0,"to":"Fork.P.A.A3"}
+{"from":"Fork.P.B.B2","index":0,"kind":"transition","run":"r1","t":0,"to":"Fork.P.B.B3"}
+{"kind":"exited","run":"r1","state":"Fork.P.B.B2","t":0}
+{"kind":"exited","run":"r1","state":"Fork.P.A.A2","t":0}
+{"action":"count","args":{"n":11,"what":"A always"},"kind":"action","run":"r1","t":0}
+{"action":"log","args":{"what":"B always"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Fork.P.A.A3","t":0}
+{"kind":"entered","run":"r1","state":"Fork.P.B.B3","t":0}
+{"event":{"kind":"event","value":{"_tag":"Go"}},"kind":"event","run":"r1","t":0}
+{"from":"Fork.P.B.B3","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"action":"count","args":{"n":11,"what":"B3 go"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Tick"}},"kind":"event","run":"r1","t":0}
+{"from":"Fork.P.C","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"action":"log","args":{"what":"tick"},"kind":"action","run":"r1","t":0}

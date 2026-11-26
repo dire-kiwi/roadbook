@@ -130,6 +130,32 @@ Closing the scope, `actor.cancel`, or interrupting the fiber of a `run`, cancels
 
 A machine with a parallel state cannot run yet (milestone 6): `implement` throws, naming the state. `make` throws for an IR of another version.
 
+## Saving and restoring
+
+Specified in [execution.md](../../spec/execution.md#saving-and-restoring) (milestone 6); not implemented yet. A saved snapshot is a `Roadbook.Saved`: plain JSON matching [`snapshot.schema.json`](../../spec/snapshot.schema.json), the same document the Rust runtime saves. `Roadbook.Saved` is also an Effect `Schema` of that shape, for a store to decode with; the values inside (`input`, `vars`) are checked against the IR's types when the snapshot is restored, so the generator adds nothing per machine.
+
+```ts
+// The request handler: restore, one event, run until idle, save.
+const next = yield* OrderLive.resume(saved, { _tag: "PaymentReceived", amount: 42 })   // Effect<Saved, RestoreError, R>
+yield* OrderLive.resume(saved)                       // no event: only the timers whose deadline passed
+
+// The first request: spawn, then suspend once idle.
+const created = yield* Effect.scoped(Effect.flatMap(OrderLive.spawn({ id }), (actor) => actor.suspend))
+
+// Long-lived: restore as an actor, and save one without stopping it.
+const actor = yield* OrderLive.restore(saved)        // Effect<Actor, RestoreError, R | Scope>
+const now = yield* actor.save                        // Effect<Saved>: the run carries on
+const last = yield* actor.suspend                    // Effect<Saved>: waits until idle, then stops the run
+
+// A chart that changed: the migration is called only when the hashes differ.
+yield* OrderLive.resume(saved, event, { migrate: (old) => ({ ...old, ir: OrderLive.def.ir.machines.Order.hash }) })
+```
+
+- **`resume(saved, event?, options?)`** is `restore`, `send` and `suspend` in a scope of its own. It succeeds with the saved snapshot whatever the run's status, `done`, `failed` and `cancelled` included (the output or error is its `result`), and dies with a `Defect` if the run ended with one, as `run` does. Interrupting it cancels the run as interrupting `run` does.
+- **`restore(saved, options?)`** spawns the restored run into the scope like `spawn`, and fails with a `RestoreError` before starting anything when the snapshot is refused: an error whose `reason` is `invalid`, `machine`, `ir`, `migration`, `ended` or `ref`, with a message.
+- **`actor.save`** gives the saved snapshot as of the last step; **`actor.suspend`** waits until the run is idle (or has ended), stops it without exit effects, writes `suspended` to the trace and gives the snapshot. Closing the scope of a suspended actor does nothing more.
+- `options.migrate` is `(saved: Core.Json) => Core.Json`; a migration that throws refuses the snapshot with `migration`.
+
 ## How the driver maps onto Effect
 
 | Statechart concept | Effect v4 |

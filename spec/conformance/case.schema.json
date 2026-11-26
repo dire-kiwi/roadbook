@@ -11,7 +11,7 @@
       "description": "Features the case needs beyond the first version's. A runner skips a case that requires a feature it does not implement.",
       "type": "array",
       "uniqueItems": true,
-      "items": { "enum": ["messaging"] }
+      "items": { "enum": ["messaging", "parallel", "snapshots"] }
     },
     "chart": {
       "description": "The entry .road file, relative to spec/conformance. Its IR is the file next to it with .road replaced by .ir.json.",
@@ -121,7 +121,7 @@
       "properties": { "cancel": { "const": true }, "run": { "$ref": "#/$defs/topRunId" } }
     },
     "start": {
-      "description": "Start another top-level run of a machine, as host code spawns one. run is its id: r2 for the first start step, r3 for the next, and so on. A ref argument is the id of a top-level run already started. status is the run's status after the last step.",
+      "description": "Start another top-level run of a machine, as host code spawns one. run is its id: r2 for the first start step (or restore step that is not refused), r3 for the next, and so on. A ref argument is the id of a top-level run already started. status is the run's status after the last step.",
       "type": "object",
       "additionalProperties": false,
       "required": ["start", "run", "input", "status"],
@@ -131,6 +131,43 @@
         "input": { "type": "object" },
         "status": { "$ref": "#/$defs/status" }
       }
+    },
+    "snapshotName": {
+      "description": "A saved snapshot of the case: the file <name>.snapshot.json in the case's directory, in canonical JSON followed by a line feed.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "refusal": { "enum": ["invalid", "machine", "ir", "migration", "ended", "ref"] },
+    "snapshot": {
+      "description": "Save a top-level run (the root run, or the run named by run) as it is now, and compare the saved snapshot byte for byte with the file the name gives. The run carries on.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["snapshot"],
+      "properties": { "snapshot": { "$ref": "#/$defs/snapshotName" }, "run": { "$ref": "#/$defs/topRunId" } }
+    },
+    "restore": {
+      "description": "Restore the saved snapshot the name gives as a new top-level run: run is its id, the next after the runs started before it, and status its status after the last step. With migrate, the host's migration returns the snapshot that name gives. With refused, the restore must be refused for that reason, and no run is started.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["restore"],
+      "properties": {
+        "restore": { "$ref": "#/$defs/snapshotName" },
+        "run": { "$ref": "#/$defs/topRunId" },
+        "status": { "$ref": "#/$defs/status" },
+        "migrate": { "$ref": "#/$defs/snapshotName" },
+        "refused": { "$ref": "#/$defs/refusal" }
+      },
+      "oneOf": [
+        { "required": ["run", "status"], "not": { "required": ["refused"] } },
+        { "required": ["refused"], "not": { "anyOf": [{ "required": ["run"] }, { "required": ["status"] }] } }
+      ]
+    },
+    "suspend": {
+      "description": "Suspend a top-level run (the root run, or the run named by run): once it is idle or has ended, which may be after later steps, compare the saved snapshot it gives byte for byte with the file the name gives.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suspend"],
+      "properties": { "suspend": { "$ref": "#/$defs/snapshotName" }, "run": { "$ref": "#/$defs/topRunId" } }
     },
     "together": {
       "description": "Queue several inputs for one run before it takes the first of them, as when they arrive at the same moment. An advance item queues the expiries of the timers due in its window.",
@@ -155,7 +192,10 @@
         { "$ref": "#/$defs/task" },
         { "$ref": "#/$defs/cancel" },
         { "$ref": "#/$defs/start" },
-        { "$ref": "#/$defs/together" }
+        { "$ref": "#/$defs/together" },
+        { "$ref": "#/$defs/snapshot" },
+        { "$ref": "#/$defs/restore" },
+        { "$ref": "#/$defs/suspend" }
       ]
     }
   }

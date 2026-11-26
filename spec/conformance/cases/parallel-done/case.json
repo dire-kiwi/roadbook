@@ -1,0 +1,25 @@
+{
+  "description": "A parallel state completes when every region is in a final state: a region that is itself a final state is from the start, a compound region once its final child is entered. The first region's completion alone takes its own internal `done`; the last region's final child queues that region's completion (it has no `done`, and is discarded) and then the parallel state's, whose `done` leaves it, exiting every region innermost first.",
+  "requires": [
+    "parallel"
+  ],
+  "chart": "charts/parallel.road",
+  "machine": "Finish",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "A"
+      }
+    },
+    {
+      "event": {
+        "_tag": "B"
+      }
+    }
+  ],
+  "status": "done"
+}

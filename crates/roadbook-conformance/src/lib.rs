@@ -33,13 +33,16 @@ pub const CASE_SCHEMA: &str = include_str!("../../../spec/conformance/case.schem
 /// The schema of one trace record, `spec/trace.schema.json`.
 pub const TRACE_SCHEMA: &str = include_str!("../../../spec/trace.schema.json");
 
+/// The schema of a saved snapshot, `spec/snapshot.schema.json`.
+pub const SNAPSHOT_SCHEMA: &str = include_str!("../../../spec/snapshot.schema.json");
+
 /// The id of the root run in every conformance run: the case's `machine`,
 /// started first. Runs started by [`Step::Start`] are `r2`, `r3`, ….
 pub const ROOT_RUN: &str = "r1";
 
 /// The features a case can require beyond the first version's: a runner
 /// skips a case that requires one it does not implement.
-pub const FEATURES: &[&str] = &["messaging"];
+pub const FEATURES: &[&str] = &["messaging", "parallel", "snapshots"];
 
 /// `spec/conformance` in this repository.
 pub fn conformance_dir() -> PathBuf {
@@ -87,8 +90,10 @@ impl Case {
             .any(|f| !supported.contains(&f.as_str()))
     }
 
-    /// Every top-level run the case starts: the root run `r1` first, then
-    /// each [`Step::Start`] in order, as `(run, machine, input, status)`.
+    /// Every top-level run the case starts from its machine: the root run
+    /// `r1` first, then each [`Step::Start`] in order, as `(run, machine,
+    /// input, status)`. Runs restored from snapshots are in
+    /// [`Case::top_level_statuses`].
     pub fn top_level_runs(&self) -> Vec<(String, &str, &Value, Status)> {
         let mut runs = vec![(
             ROOT_RUN.to_owned(),
@@ -102,6 +107,50 @@ impl Case {
             }
         }
         runs
+    }
+
+    /// The id and expected status of every top-level run, in the order the
+    /// script starts them: the root run, then each [`Step::Start`] and each
+    /// [`Step::Restore`] that is not refused.
+    pub fn top_level_statuses(&self) -> Vec<(String, Status)> {
+        let mut runs = vec![(ROOT_RUN.to_owned(), self.status)];
+        for step in &self.script {
+            match step {
+                Step::Start(s) => runs.push((s.run.clone(), s.status)),
+                Step::Restore(RestoreStep {
+                    run: Some(run),
+                    status: Some(status),
+                    ..
+                }) => runs.push((run.clone(), *status)),
+                _ => {}
+            }
+        }
+        runs
+    }
+
+    /// The names of the snapshot files the script uses, each once: the
+    /// first member says whether a runtime writes it or a migration gives
+    /// it (a `snapshot` or `suspend` step, a `migrate`), so that its hash is
+    /// the chart's current one.
+    pub fn snapshot_names(&self) -> Vec<(String, bool)> {
+        let mut names: Vec<(String, bool)> = Vec::new();
+        let mut add = |n: &str, current: bool| match names.iter_mut().find(|(m, _)| m == n) {
+            Some(e) => e.1 |= current,
+            None => names.push((n.to_owned(), current)),
+        };
+        for step in &self.script {
+            match step {
+                Step::Snapshot(s) | Step::Suspend(s) => add(&s.name, true),
+                Step::Restore(r) => {
+                    add(&r.name, false);
+                    if let Some(m) = &r.migrate {
+                        add(m, true);
+                    }
+                }
+                _ => {}
+            }
+        }
+        names
     }
 }
 
@@ -154,6 +203,48 @@ pub enum Step {
     /// appear here; an advance queues the expiries of the timers due in its
     /// window.
     Together(Vec<Step>),
+    /// Save a top-level run and compare its saved snapshot with a file.
+    Snapshot(SnapshotStep),
+    /// Restore a saved snapshot as a new top-level run, or check that the
+    /// restore is refused.
+    Restore(RestoreStep),
+    /// Suspend a top-level run and, once it is idle or has ended, compare
+    /// the saved snapshot it gives with a file.
+    Suspend(SnapshotStep),
+}
+
+/// `{"snapshot": …}` or `{"suspend": …}`: a top-level run and the snapshot
+/// file to compare its saved snapshot with.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SnapshotStep {
+    /// The snapshot's name: the file `<name>.snapshot.json` in the case's
+    /// directory.
+    pub name: String,
+    /// The run, a top-level run id: the root run when `None`.
+    pub run: Option<String>,
+}
+
+impl SnapshotStep {
+    /// The run the step is about.
+    pub fn run(&self) -> &str {
+        self.run.as_deref().unwrap_or(ROOT_RUN)
+    }
+}
+
+/// `{"restore": …}`: restore a saved snapshot as a new top-level run.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RestoreStep {
+    /// The snapshot to restore: the file `<name>.snapshot.json`.
+    pub name: String,
+    /// The new run's id; `None` exactly when `refused` is set.
+    pub run: Option<String>,
+    /// The new run's status after the last step; `None` exactly when
+    /// `refused` is set.
+    pub status: Option<Status>,
+    /// The snapshot the host's migration returns, if the host gives one.
+    pub migrate: Option<String>,
+    /// The reason the restore must be refused for, if it must be.
+    pub refused: Option<String>,
 }
 
 /// `{"event": …}`: give a top-level run an external event.
@@ -265,6 +356,55 @@ fn step_from_value(v: Value) -> Result<Step, String> {
             run,
             input,
             status,
+        }));
+    }
+    let take_name = |v: Value, what: &str| match v {
+        Value::String(n) => Ok(n),
+        _ => Err(format!("`{what}` is a snapshot name")),
+    };
+    for what in ["snapshot", "suspend"] {
+        if let Some(n) = m.remove(what) {
+            only(&m, &["run"])?;
+            let name = take_name(n, what)?;
+            let run = take_run(&mut m)?;
+            let step = SnapshotStep { name, run };
+            return Ok(if what == "snapshot" {
+                Step::Snapshot(step)
+            } else {
+                Step::Suspend(step)
+            });
+        }
+    }
+    if let Some(n) = m.remove("restore") {
+        only(&m, &["run", "status", "migrate", "refused"])?;
+        let name = take_name(n, "restore")?;
+        let run = take_run(&mut m)?;
+        let status = m
+            .remove("status")
+            .map(|s| Status::deserialize(s).map_err(|e| e.to_string()))
+            .transpose()?;
+        let migrate = m
+            .remove("migrate")
+            .map(|v| take_name(v, "migrate"))
+            .transpose()?;
+        let refused = m
+            .remove("refused")
+            .map(|v| match v {
+                Value::String(r) => Ok(r),
+                _ => Err("`refused` is a reason".to_owned()),
+            })
+            .transpose()?;
+        if refused.is_some() != (run.is_none() && status.is_none())
+            || run.is_some() != status.is_some()
+        {
+            return Err("a restore step has `run` and `status`, or `refused` and neither".into());
+        }
+        return Ok(Step::Restore(RestoreStep {
+            name,
+            run,
+            status,
+            migrate,
+            refused,
         }));
     }
     if let Some(t) = m.remove("together") {
@@ -435,7 +575,13 @@ pub struct LoadedCase {
     pub expected: String,
     /// Its records, one per line.
     pub records: Vec<Value>,
+    /// The snapshot files in the case's directory, by name (the file name
+    /// without `.snapshot.json`), exactly as committed.
+    pub snapshots: std::collections::BTreeMap<String, String>,
 }
+
+/// The suffix of a snapshot file's name.
+pub const SNAPSHOT_SUFFIX: &str = ".snapshot.json";
 
 impl LoadedCase {
     /// The chart's path.
@@ -511,6 +657,15 @@ pub fn load_case(dir: &Path) -> Result<LoadedCase, LoadError> {
         })
         .collect::<Result<Vec<Value>, _>>()?;
 
+    let mut snapshots = std::collections::BTreeMap::new();
+    let entries = std::fs::read_dir(dir).map_err(|e| err(dir, e.to_string()))?;
+    for entry in entries.filter_map(Result::ok) {
+        let file = entry.file_name().to_string_lossy().into_owned();
+        if let Some(name) = file.strip_suffix(SNAPSHOT_SUFFIX) {
+            snapshots.insert(name.to_owned(), read(&entry.path())?);
+        }
+    }
+
     Ok(LoadedCase {
         name: dir
             .file_name()
@@ -523,6 +678,7 @@ pub fn load_case(dir: &Path) -> Result<LoadedCase, LoadError> {
         ir,
         expected,
         records,
+        snapshots,
     })
 }
 
@@ -557,6 +713,18 @@ pub fn trace_validator() -> jsonschema::Validator {
     compile_schema(TRACE_SCHEMA)
 }
 
+/// The compiled `snapshot.schema.json`.
+pub fn snapshot_validator() -> jsonschema::Validator {
+    compile_schema(SNAPSHOT_SCHEMA)
+}
+
+/// The file form of a saved snapshot: canonical JSON and a line feed.
+pub fn snapshot_text(snapshot: &Value) -> String {
+    let mut s = roadbook_ir::jcs::to_canonical_string(snapshot);
+    s.push('\n');
+    s
+}
+
 /// The schema errors of `doc`, one string each, with where they are.
 pub fn schema_errors(v: &jsonschema::Validator, doc: &Value) -> Vec<String> {
     v.iter_errors(doc)
@@ -564,7 +732,8 @@ pub fn schema_errors(v: &jsonschema::Validator, doc: &Value) -> Vec<String> {
         .collect()
 }
 
-/// `trace` with the `ir` member of every `started` record replaced by that
+/// `trace` with the `ir` member of every `started` and `restored` record,
+/// and the `snapshot.ir` member of every `restored` record, replaced by that
 /// machine's hash in `ir`. This is the only edit `regen-ir.sh` makes to the
 /// expected traces. Records of machines missing from `ir` are left alone.
 pub fn restamp_hashes(records: &[Value], ir: &Ir) -> Vec<Value> {
@@ -572,15 +741,34 @@ pub fn restamp_hashes(records: &[Value], ir: &Ir) -> Vec<Value> {
         .iter()
         .map(|r| {
             let mut r = r.clone();
-            if r.get("kind").and_then(Value::as_str) == Some("started") {
+            let kind = r
+                .get("kind")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_owned();
+            if kind == "started" || kind == "restored" {
                 let machine = r.get("machine").and_then(Value::as_str).unwrap_or("");
                 if let Some(m) = ir.machines.get(machine) {
                     r["ir"] = Value::String(m.hash.clone());
+                    if kind == "restored" {
+                        r["snapshot"]["ir"] = Value::String(m.hash.clone());
+                    }
                 }
             }
             r
         })
         .collect()
+}
+
+/// A saved snapshot with its `ir` member replaced by its machine's hash in
+/// `ir`, for the snapshot files a runtime writes or a migration gives.
+pub fn restamp_snapshot(snapshot: &Value, ir: &Ir) -> Value {
+    let mut s = snapshot.clone();
+    let machine = s.get("machine").and_then(Value::as_str).unwrap_or("");
+    if let Some(m) = ir.machines.get(machine) {
+        s["ir"] = Value::String(m.hash.clone());
+    }
+    s
 }
 
 #[cfg(test)]
@@ -655,6 +843,31 @@ mod tests {
             })
         );
         assert!(matches!(&s[4], Step::Together(v) if v.len() == 2));
+        let saved: Vec<Step> = serde_json::from_value(json!([
+            {"snapshot": "s1"},
+            {"suspend": "s2", "run": "r2"},
+            {"restore": "s1", "run": "r3", "status": "running", "migrate": "s3"},
+            {"restore": "s1", "refused": "ir"}
+        ]))
+        .unwrap();
+        assert_eq!(
+            saved[1],
+            Step::Suspend(SnapshotStep {
+                name: "s2".into(),
+                run: Some("r2".into())
+            })
+        );
+        assert_eq!(
+            saved[2],
+            Step::Restore(RestoreStep {
+                name: "s1".into(),
+                run: Some("r3".into()),
+                status: Some(Status::Running),
+                migrate: Some("s3".into()),
+                refused: None
+            })
+        );
+        assert!(matches!(&saved[3], Step::Restore(r) if r.refused.as_deref() == Some("ir")));
         for bad in [
             json!({"task": "t"}),
             json!({"task": "t", "done": 1, "fail": {"_tag": "E"}}),
@@ -666,6 +879,11 @@ mod tests {
             json!({"start": "Order", "input": {}, "status": "done"}),
             json!({"start": "Order", "run": "r2", "input": {}, "status": "over"}),
             json!({"together": [{"advance": 1}, {"start": "A", "run": "r2", "input": {}, "status": "done"}]}),
+            json!({"restore": "s1"}),
+            json!({"restore": "s1", "run": "r2"}),
+            json!({"restore": "s1", "run": "r2", "status": "done", "refused": "ir"}),
+            json!({"snapshot": 1}),
+            json!({"suspend": "s1", "status": "done"}),
         ] {
             assert!(
                 serde_json::from_value::<Step>(bad.clone()).is_err(),

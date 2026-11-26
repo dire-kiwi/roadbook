@@ -1,0 +1,109 @@
+// Conformance chart: saving and restoring snapshots. A machine at rest, one with
+// a running task and a running child machine, one with a running timer, and an
+// order handled one request at a time.
+
+action log(what: string)
+action count(what: string, n: int)
+action refund(order: string, amount: int)
+task quote(amount: int)                   -> int
+task charge(price: int)                   -> string
+task ship(order: string)                  -> string
+
+/// A counter that waits for events in a state with no work.
+machine Counter(start: int) -> int {
+  var n: int = start
+
+  event Add    { by: int }
+  event Finish
+
+  initial Counting
+
+  state Counting {
+    on Add             set n = n + event.by  do count("added", n)
+    on Finish -> Done
+  }
+
+  final state Done { output n }
+}
+
+/// Pays through a child machine.
+machine Shop(amount: int) -> string {
+  var receipt: string = ""
+
+  initial Paying
+
+  state Paying {
+    invoke Pay(amount) {
+      done -> Paid  set receipt = result
+    }
+  }
+
+  final state Paid { output receipt }
+}
+
+/// Quotes a price, then charges it.
+machine Pay(amount: int) -> string {
+  var price:   int = 0
+  var receipt: string = ""
+
+  initial Quoting
+
+  state Quoting {
+    invoke quote(amount) {
+      done -> Charging  set price = result
+    }
+  }
+
+  state Charging {
+    invoke charge(price) {
+      done -> Charged  set receipt = result
+    }
+  }
+
+  final state Charged { output receipt }
+}
+
+/// Rings a second after it starts waiting.
+machine Reminder() {
+  event Snooze
+
+  initial Waiting
+
+  state Waiting { after 1s -> Ringing }
+
+  state Ringing {
+    entry do log("ring")
+
+    on Snooze -> Waiting
+  }
+}
+
+/// An order kept as a snapshot between requests: it waits three days for
+/// payment, ships, and waits for delivery.
+machine Order(id: string) {
+  var paid:     int = 0
+  var tracking: string = ""
+
+  event PaymentReceived { amount: int }
+  event Delivered
+
+  initial AwaitingPayment
+
+  state AwaitingPayment {
+    after 72h -> Expired
+
+    on PaymentReceived -> Shipping  set paid = event.amount
+  }
+
+  state Shipping {
+    invoke ship(id) {
+      done -> AwaitingDelivery  set tracking = result
+    }
+  }
+
+  state AwaitingDelivery { on Delivered -> Complete }
+
+  state Expired { on PaymentReceived do refund(id, event.amount) }
+
+  final state Complete {}
+}

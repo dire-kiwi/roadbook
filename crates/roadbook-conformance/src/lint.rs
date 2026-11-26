@@ -28,7 +28,11 @@ struct Received {
 struct Run {
     machine: String,
     parent: Option<String>,
+    /// The active states, in the order they were entered.
     stack: Vec<String>,
+    /// For a restored run, the invokes and timers of its snapshot, which
+    /// `invoke.started` and `timer.started` records restart with their ids.
+    restarts: Vec<(&'static str, u64)>,
     invokes: BTreeMap<u64, (String, String)>,
     started_invokes: HashMap<u64, (String, String)>,
     next_invoke: u64,
@@ -69,6 +73,15 @@ fn find_state<'a>(s: &'a State, id: &str) -> Option<&'a State> {
     s.states.iter().find_map(|c| find_state(c, id))
 }
 
+fn parent_of(id: &str) -> Option<&str> {
+    id.rsplit_once('.').map(|(p, _)| p)
+}
+
+fn is_below(id: &str, ancestor: &str) -> bool {
+    id.strip_prefix(ancestor)
+        .is_some_and(|rest| rest.starts_with('.'))
+}
+
 /// Checks `records` (a whole trace, as compared) and returns one message per
 /// problem. `status` is the root run's expected status, and the trace has no
 /// other top-level run. With `ir`, state ids, transitions, invokes and
@@ -98,8 +111,10 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
         let t = u64_of(r, "t");
 
         if !runs.contains_key(&id) {
-            if kind != "started" {
-                bad(format!("run {id} does not begin with `started`"));
+            if kind != "started" && kind != "restored" {
+                bad(format!(
+                    "run {id} does not begin with `started` or `restored`"
+                ));
             }
             let machine = str_of(r, "machine").to_owned();
             let parent = r.get("parent").and_then(Value::as_str).map(str::to_owned);
@@ -126,17 +141,60 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     Some(_) => {}
                 }
             }
-            runs.insert(
-                id.clone(),
-                Run {
-                    machine,
-                    parent,
-                    next_invoke: 1,
-                    next_timer: 1,
-                    next_message: 1,
-                    ..Run::default()
-                },
-            );
+            let mut run = Run {
+                machine,
+                parent,
+                next_invoke: 1,
+                next_timer: 1,
+                next_message: 1,
+                ..Run::default()
+            };
+            if kind == "restored" {
+                let snap = &r["snapshot"];
+                if r.get("parent").is_some() {
+                    bad(format!("restored run {id} is a child run"));
+                }
+                if snap["machine"] != r["machine"] || snap["ir"] != r["ir"] {
+                    bad("`restored` has another machine or hash than its snapshot".to_owned());
+                }
+                if snap["status"] != "running" {
+                    bad("restored a snapshot that is not running".to_owned());
+                }
+                let list = |k: &str| {
+                    snap.get(k)
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default()
+                };
+                run.stack = list("active")
+                    .iter()
+                    .filter_map(|s| s.as_str().map(str::to_owned))
+                    .collect();
+                if run.stack.first() != Some(&run.machine) {
+                    bad("the snapshot's active states do not begin with the root".to_owned());
+                }
+                for inv in list("invokes") {
+                    let n = u64_of(&inv, "id");
+                    run.invokes.insert(
+                        n,
+                        (
+                            str_of(&inv, "state").to_owned(),
+                            str_of(&inv, "src").to_owned(),
+                        ),
+                    );
+                    run.restarts.push(("invoke", n));
+                }
+                for tm in list("timers") {
+                    let n = u64_of(&tm, "id");
+                    run.timers
+                        .insert(n, (str_of(&tm, "state").to_owned(), u64_of(&tm, "index")));
+                    run.restarts.push(("timer", n));
+                }
+                run.next_invoke = u64_of(snap, "nextInvoke");
+                run.next_timer = u64_of(snap, "nextTimer");
+                run.next_message = u64_of(snap, "nextMessage");
+            }
+            runs.insert(id.clone(), run);
             order.push(id.clone());
             continue;
         }
@@ -161,19 +219,31 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
         let state_in_ir = |s: &str| machine.is_none_or(|m| find_state(&m.root, s).is_some());
 
         match kind {
-            "started" => bad(format!("run {id} starts twice")),
+            "started" | "restored" => bad(format!("run {id} starts twice")),
             "entered" => {
                 let s = str_of(r, "state");
-                let ok = match run.stack.last() {
-                    None => s == run.machine,
-                    Some(top) => s
+                // With the IR, the active states are a tree: the parent of a
+                // state entered is active, and a compound parent has no other
+                // active child. Without it, they are a chain.
+                let ok = match (run.stack.last(), machine) {
+                    (None, _) => s == run.machine,
+                    (Some(_), Some(m)) => match parent_of(s) {
+                        Some(p) if run.stack.iter().any(|a| a == p) => {
+                            let compound = find_state(&m.root, p)
+                                .is_some_and(|ps| ps.kind == roadbook_ir::StateKind::Compound);
+                            !run.stack.iter().any(|a| a == s)
+                                && !(compound && run.stack.iter().any(|a| parent_of(a) == Some(p)))
+                        }
+                        _ => false,
+                    },
+                    (Some(top), None) => s
                         .strip_prefix(top.as_str())
                         .and_then(|rest| rest.strip_prefix('.'))
                         .is_some_and(|name| !name.is_empty() && !name.contains('.')),
                 };
                 if !ok {
                     bad(format!(
-                        "entered {s} is not a child of the innermost active state"
+                        "entered {s}, whose parent is not active or already has its active child"
                     ));
                 }
                 if !state_in_ir(s) {
@@ -183,15 +253,15 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
             }
             "exited" => {
                 let s = str_of(r, "state");
-                if run.stack.last().map(String::as_str) != Some(s) {
-                    bad(format!("exited {s} is not the innermost active state"));
+                if !run.stack.iter().any(|a| a == s) || run.stack.iter().any(|a| is_below(a, s)) {
+                    bad(format!("exited {s}, which is not an active leaf"));
                 }
                 if run.invokes.values().any(|(st, _)| st == s)
                     || run.timers.values().any(|(st, _)| st == s)
                 {
                     bad(format!("{s} exited with its work still running"));
                 }
-                run.stack.pop();
+                run.stack.retain(|a| a != s);
             }
             "event" | "dropped" | "stale" => {
                 let e = r.get("event").cloned().unwrap_or(Value::Null);
@@ -324,10 +394,17 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 let n = u64_of(r, "invoke");
                 let s = str_of(r, "state").to_owned();
                 let src = str_of(r, "src").to_owned();
-                if n != run.next_invoke {
-                    bad(format!("invoke id {n}, expected {}", run.next_invoke));
+                if let Some(i) = run.restarts.iter().position(|x| *x == ("invoke", n)) {
+                    run.restarts.remove(i);
+                    if run.invokes.remove(&n) != Some((s.clone(), src.clone())) {
+                        bad(format!("restarted invoke {n} is not the snapshot's"));
+                    }
+                } else {
+                    if n != run.next_invoke {
+                        bad(format!("invoke id {n}, expected {}", run.next_invoke));
+                    }
+                    run.next_invoke = n + 1;
                 }
-                run.next_invoke = n + 1;
                 if !run.stack.contains(&s) {
                     bad(format!("invoke started in {s}, which is not active"));
                 }
@@ -355,10 +432,17 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
             "timer.started" => {
                 let n = u64_of(r, "timer");
                 let s = str_of(r, "state").to_owned();
-                if n != run.next_timer {
-                    bad(format!("timer id {n}, expected {}", run.next_timer));
+                if let Some(i) = run.restarts.iter().position(|x| *x == ("timer", n)) {
+                    run.restarts.remove(i);
+                    if run.timers.remove(&n) != Some((s.clone(), u64_of(r, "index"))) {
+                        bad(format!("restarted timer {n} is not the snapshot's"));
+                    }
+                } else {
+                    if n != run.next_timer {
+                        bad(format!("timer id {n}, expected {}", run.next_timer));
+                    }
+                    run.next_timer = n + 1;
                 }
-                run.next_timer = n + 1;
                 if !run.stack.contains(&s) {
                     bad(format!("timer started in {s}, which is not active"));
                 }
@@ -372,6 +456,15 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                         "cancelled timer {n}, which is not running as written"
                     ));
                 }
+            }
+            "suspended" => {
+                if run.parent.is_some() {
+                    bad(format!("child run {id} is suspended"));
+                }
+                if !run.invokes.is_empty() {
+                    bad(format!("run {id} is suspended with an invoke running"));
+                }
+                run.end = Some(r.clone());
             }
             "done" | "failed" | "cancelled" | "defect" => {
                 if kind != "defect" {
@@ -442,7 +535,8 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
             .get(top)
             .and_then(|r| r.end.as_ref())
             .map(|e| str_of(e, "kind").to_owned());
-        if end_kind.as_deref() != status.final_record() {
+        let ended = end_kind.as_deref().filter(|k| *k != "suspended");
+        if ended != status.final_record() {
             problems.push(format!(
                 "run {top} ends with {end_kind:?}, but the case expects status {status:?}"
             ));

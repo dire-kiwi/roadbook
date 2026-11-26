@@ -34,6 +34,24 @@
       "required": ["machine", "ir", "input"]
     },
     {
+      "description": "The run was restored from a saved snapshot: its first record, in place of `started`.",
+      "properties": {
+        "kind": { "const": "restored" },
+        "machine": { "$ref": "#/$defs/upperName" },
+        "ir": { "$ref": "#/$defs/hash" },
+        "migrated": {
+          "description": "The hash the snapshot had before a migration, or null.",
+          "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }]
+        },
+        "snapshot": {
+          "description": "The saved snapshot the run was restored from, after any migration (spec/snapshot.schema.json).",
+          "type": "object",
+          "required": ["snapshotVersion", "machine", "run", "ir", "status", "active", "input", "vars", "invokes", "timers", "nextInvoke", "nextTimer", "nextMessage", "result"]
+        }
+      },
+      "required": ["machine", "ir", "migrated", "snapshot"]
+    },
+    {
       "description": "A state was entered (written before its entry effects).",
       "properties": { "kind": { "const": "entered" }, "state": { "$ref": "#/$defs/stateId" } },
       "required": ["state"]
@@ -183,6 +201,10 @@
     {
       "description": "The run was cancelled from outside. The last record of the run.",
       "properties": { "kind": { "const": "cancelled" } }
+    },
+    {
+      "description": "The driver stopped the run, idle, after saving it. The last record of the run, which has not ended: it goes on from its saved snapshot.",
+      "properties": { "kind": { "const": "suspended" } }
     },
     {
       "description": "The run ended with a defect. The last record of the run.",

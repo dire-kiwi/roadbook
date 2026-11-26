@@ -1,0 +1,27 @@
+{
+  "description": "Invokes and timers in two regions and on the parallel state: work starts in document order, the parallel state's timer first, then each region's invoke and timer, so ids follow the regions' order. An outcome in one region and a timer restarting the other's work leave the other region alone. Leaving the parallel state cancels the work of every region, the second region's first, and the parallel state's own timer last.",
+  "requires": [
+    "parallel"
+  ],
+  "chart": "charts/parallel.road",
+  "machine": "Jobs",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "upload",
+      "done": 7
+    },
+    {
+      "advance": 3000
+    },
+    {
+      "event": {
+        "_tag": "Stop"
+      }
+    }
+  ],
+  "status": "running"
+}

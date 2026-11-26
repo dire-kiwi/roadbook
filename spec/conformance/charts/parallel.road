@@ -1,0 +1,275 @@
+// Conformance chart: parallel states. Entry and exit order across regions, one
+// event taken in several regions, conflicts between them, leaving a parallel
+// state, its completion, and work in several regions.
+
+action log(what: string)
+action count(what: string, n: int)
+task upload()                      -> int
+task download()                    -> int
+
+/// Enters and exits three regions of different kinds, in document order.
+machine Regions() {
+  event Leave
+  event Back
+
+  entry do log("enter Regions")
+  exit do log("exit Regions")
+
+  initial Both
+
+  parallel state Both {
+    entry do log("enter Both")
+    exit do log("exit Both")
+
+    on Leave -> Away  do log("leave")
+
+    state Left {
+      entry do log("enter Left")
+      exit do log("exit Left")
+
+      initial L1
+
+      state L1 {
+        entry do log("enter L1")
+        exit do log("exit L1")
+      }
+    }
+
+    state Right {
+      initial R1
+
+      state R1 {
+        initial R2
+
+        state R2 {
+          entry do log("enter R2")
+          exit do log("exit R2")
+        }
+      }
+    }
+
+    state Lone {
+      entry do log("enter Lone")
+      exit do log("exit Lone")
+    }
+  }
+
+  state Away { on Back -> Both }
+}
+
+/// One event taken in two regions, and `always` transitions in two regions
+/// taken in one microstep.
+machine Fork() {
+  var n: int = 0
+
+  event Go
+  event Tick
+
+  initial P
+
+  parallel state P {
+    state A {
+      initial A1
+
+      state A1 { on Go -> A2  set n = n + 1  do count("A go", n) }
+
+      state A2 { always if n > 1 -> A3  do count("A always", n) }
+
+      state A3 {}
+    }
+
+    state B {
+      initial B1
+
+      state B1 { on Go -> B2  set n = n + 10  do count("B go", n) }
+
+      state B2 { always -> B3  do log("B always") }
+
+      state B3 { on Go do count("B3 go", n) }
+    }
+
+    state C { on Tick do log("tick") }
+  }
+}
+
+/// Two regions' transitions for one event that would exit the same state.
+machine Clash() {
+  event Go
+  event Back
+  event Swap
+
+  initial P
+
+  parallel state P {
+    on Swap -> Out  do log("P swap")
+
+    state A {
+      initial A1
+
+      state A1 { on Go -> Out  do log("A go") }
+    }
+
+    state B {
+      initial B1
+
+      state B1 {
+        on Go   -> B2  do log("B go")
+        on Swap -> B2  do log("B swap")
+      }
+
+      state B2 {}
+    }
+  }
+
+  state Out { on Back -> P }
+}
+
+/// Transitions from inside a region: into another region, and out of the
+/// parallel state.
+machine Escape() {
+  event Cross
+  event Out
+
+  initial P
+
+  parallel state P {
+    exit do log("exit P")
+
+    state A {
+      initial A1
+
+      state A1 {
+        on Cross -> P.B.B1  do log("cross")
+        on Out   -> Done    do log("out")
+      }
+    }
+
+    state B {
+      initial B1
+
+      state B1 {
+        exit do log("exit B1")
+
+        after 1s -> B2
+      }
+
+      state B2 {}
+    }
+  }
+
+  final state Done {}
+}
+
+/// A parallel state completes when every region is in a final state.
+machine Finish() -> string {
+  event A
+  event B
+
+  initial Work
+
+  parallel state Work {
+    done -> Over  do log("work done")
+
+    state Left {
+      done do log("left done")
+
+      initial L1
+
+      state L1 { on A -> L2 }
+
+      final state L2 {}
+    }
+
+    final state Mid {}
+
+    state Right {
+      initial R1
+
+      state R1 { on B -> R2 }
+
+      final state R2 {}
+    }
+  }
+
+  final state Over { output "over" }
+}
+
+/// Invokes and timers in two regions and on the parallel state itself.
+machine Jobs() {
+  event Stop
+
+  initial Busy
+
+  parallel state Busy {
+    after 5s -> Late
+    on Stop  -> Stopped
+
+    state Up {
+      initial Uploading
+
+      state Uploading {
+        invoke upload() {
+          done -> Uploaded
+        }
+
+        after 2s -> Uploaded
+      }
+
+      state Uploaded {}
+    }
+
+    state Down {
+      initial Downloading
+
+      state Downloading {
+        invoke download() {
+          done -> Downloaded
+        }
+
+        after 3s -> Downloading
+      }
+
+      state Downloaded {}
+    }
+  }
+
+  state Late {}
+
+  state Stopped {}
+}
+
+/// A parallel state inside a compound state, left by the compound state's
+/// transition.
+machine Shell() {
+  event Leave
+
+  initial Outer
+
+  state Outer {
+    exit do log("exit Outer")
+
+    on Leave -> Gone  do log("leave")
+
+    initial Split
+
+    parallel state Split {
+      exit do log("exit Split")
+
+      state X { exit do log("exit X") }
+
+      state Y {
+        initial Y1
+
+        state Y1 {
+          exit do log("exit Y1")
+
+          after 1s -> Y2
+        }
+
+        state Y2 {}
+      }
+    }
+  }
+
+  state Gone {}
+}
