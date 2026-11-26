@@ -59,9 +59,14 @@ impl Shared {
         self.lock().claimed
     }
 
+    /// Appends `inputs` to the inbox. After the run has finished nobody drains it, so they
+    /// are dropped.
     pub fn push(&self, inputs: impl IntoIterator<Item = Input>) {
         let waker = {
             let mut g = self.lock();
+            if g.finished.is_some() {
+                return;
+            }
             g.inbox.extend(inputs);
             g.waker.take()
         };
@@ -114,7 +119,7 @@ impl Shared {
     pub fn poll_finished(&self, waker: &Waker) -> Option<Finished> {
         let mut g = self.lock();
         if g.finished.is_none() {
-            g.finish_wakers.push(waker.clone());
+            remember(&mut g.finish_wakers, waker);
         }
         g.finished.clone()
     }
@@ -144,8 +149,16 @@ impl Shared {
         if g.state_version > seen || g.finished.is_some() {
             return Some((g.state_version, g.state.clone()));
         }
-        g.state_wakers.push(waker.clone());
+        remember(&mut g.state_wakers, waker);
         None
+    }
+}
+
+/// Adds `waker` to `wakers` unless one there already wakes the same task, so that a future
+/// polled again and again leaves one waker, not one per poll.
+fn remember(wakers: &mut Vec<Waker>, waker: &Waker) {
+    if !wakers.iter().any(|w| w.will_wake(waker)) {
+        wakers.push(waker.clone());
     }
 }
 
@@ -216,4 +229,50 @@ pub(crate) fn claim_context() -> Option<Arc<InvokeContext>> {
     CONTEXT
         .with(|c| c.borrow().clone())
         .filter(|ctx| ctx.token.try_claim())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::task::Wake;
+
+    use super::*;
+
+    /// Counts its wake-ups; two of them are two tasks.
+    #[derive(Default)]
+    struct Count(AtomicUsize);
+
+    impl Wake for Count {
+        fn wake(self: Arc<Self>) {
+            self.0.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    #[test]
+    fn inputs_pushed_after_the_run_finished_are_dropped() {
+        let s = Shared::default();
+        s.push([Input::Cancel]);
+        assert_eq!(s.lock().inbox.len(), 1);
+        s.finish(Finished::Ok);
+        for _ in 0..3 {
+            s.push([Input::Cancel]);
+        }
+        assert!(s.lock().inbox.is_empty());
+    }
+
+    #[test]
+    fn polling_again_and_again_keeps_one_waker() {
+        let s = Shared::default();
+        let waker = Waker::from(Arc::new(Count::default()));
+        let other = Waker::from(Arc::new(Count::default()));
+        for _ in 0..5 {
+            assert!(s.poll_state(0, &waker).is_none());
+            assert!(s.poll_finished(&waker).is_none());
+        }
+        assert!(s.poll_state(0, &other).is_none());
+        let g = s.lock();
+        assert_eq!(g.state_wakers.len(), 2);
+        assert_eq!(g.finish_wakers.len(), 1);
+    }
 }

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use roadbook_ir::{Ir, Machine, State, StateKind};
+use roadbook_ir::{Ir, Machine, State, StateKind, TypeDef, TypeRef};
 
 /// An IR document, checked and indexed for the interpreter.
 ///
@@ -83,6 +83,34 @@ impl Program {
     /// The IR.
     pub fn ir(&self) -> &Ir {
         &self.ir
+    }
+
+    /// `t` with aliases expanded at the top, transitively: `Money` for `type Money = int` is
+    /// `int`, and `S` for `type S = string?` is `string?`. The compiler rejects alias
+    /// cycles; the bound only keeps a hand-written IR from looping.
+    pub(crate) fn resolve<'t>(&'t self, mut t: &'t TypeRef) -> &'t TypeRef {
+        for _ in 0..64 {
+            match t {
+                TypeRef::Named(n) => match self.ir.types.get(n).map(|d| &d.def) {
+                    Some(TypeDef::Alias { ty }) => t = ty,
+                    _ => break,
+                },
+                _ => break,
+            }
+        }
+        t
+    }
+
+    /// `t` with aliases and `?` removed: the type whose operators an operand of type `t`
+    /// uses.
+    pub(crate) fn scalar<'t>(&'t self, mut t: &'t TypeRef) -> &'t TypeRef {
+        for _ in 0..64 {
+            match self.resolve(t) {
+                TypeRef::Optional(inner) => t = inner,
+                other => return other,
+            }
+        }
+        t
     }
 
     pub(crate) fn machine(&self, name: &str) -> Option<(&Machine, &MachineIndex)> {

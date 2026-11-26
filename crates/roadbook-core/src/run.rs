@@ -2,7 +2,7 @@
 
 use std::collections::VecDeque;
 
-use roadbook_ir::{Effect, Machine, State, StateKind, Transition, Trigger};
+use roadbook_ir::{Effect, Machine, State, StateKind, Transition, Trigger, TypeRef};
 use serde_json::{Map, Value};
 
 use crate::eval::{Fns, Scope, eval};
@@ -188,7 +188,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             if let Some(init) = &v.init {
                 let value = self.eval(init, None)?;
                 self.snap.vars.insert(v.name.clone(), value);
-            } else if v.ty.to_string().ends_with('?') {
+            } else if matches!(self.program.resolve(&v.ty), TypeRef::Optional(_)) {
                 self.snap.vars.insert(v.name.clone(), Value::Null);
             }
         }

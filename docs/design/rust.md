@@ -14,14 +14,15 @@ roadbook::include!("../place_order.road");
 
 The path is relative to the package's directory (`CARGO_MANIFEST_DIR`); the chart's imports and diagnostics are relative to its project root, the nearest directory above it that holds a `roadbook.toml`. The macro is called at module level, at most once per module, and expands, next to the call, to a module per machine plus the shared types:
 
-- A `struct` or `enum` for every `type`, `enum` and `error`, with `serde` derives: fields in `snake_case`, renamed to the chart's names in JSON, and errors carrying `"_tag"` as the [value encoding](../../spec/execution.md#values) requires. `json` is `serde_json::Value` and `duration` is `std::time::Duration`. An `extern type` generates nothing: the application defines it next to the call, with `serde` impls.
+- A `struct` or `enum` for every `type`, `enum` and `error`, with `serde` impls: fields in `snake_case`, renamed to the chart's names in JSON, and errors carrying `"_tag"` as the [value encoding](../../spec/execution.md#values) requires (decoding an error checks its `_tag`). `json` is `serde_json::Value` and `duration` is `std::time::Duration`. An `extern type` generates nothing: the application defines it next to the call, with `serde` impls.
+- Numbers follow the value encoding, not serde's defaults. A JSON number's form does not matter, so an `int` (and a `duration`) accepts any integral number, `2.0` and `2e0` as well as `2`, and refuses `2.5`. A non-finite `float`, which `serde_json` would write as `null`, does not encode: from host code (a function's or task's result, a machine argument, an event) it is a `host` defect. An extern type's JSON is its own `Serialize`'s, so a non-finite float inside one is not caught.
 - For every fallible task and machine, an error `enum` of exactly the errors it declared, with `From` impls so `?` converts into it. Rust has no anonymous unions, so `! CardDeclined | GatewayUnavailable` becomes `ChargeCardError`. If the name is taken, a task's is `<Name>TaskError` and a machine's `<Name>MachineError`.
 - A `Handlers` trait: one method per function, action, task and child machine the chart uses.
 - `State` and `Event` enums. Compound states carry their active child: `State::Processing(Processing::Paying)`. A child enum whose name is taken is prefixed with the names of the states above it.
 - `run` and `spawn` functions, and `run_with` and `spawn_with`, which take a `roadbook::Config` (trace sink, timer, root run id).
 - The IR, embedded as a constant.
 
-A chart error is a Rust compile error, reported at the macro call with the chart's file and line. Cargo rebuilds when any of the chart's files changes: the expansion `include_bytes!`es each of them. A `build.rs` route to the same generator is not built yet.
+A chart error is a Rust compile error, reported at the macro call with the chart's file and line. Cargo rebuilds when any of the chart's files changes, or the `roadbook.toml` that made the project root: the expansion `include_bytes!`es each of them. Stable Rust has no way for a macro to track a file that does not exist, so creating one is not seen: a new `roadbook.toml` between the chart and its project root (or above a chart that has none), which would move the root, takes effect at the next rebuild for another reason (touch the chart). A missing import is a compile error, and Cargo retries a crate that failed on every build, so creating the imported file is seen. A `build.rs` route to the same generator is not built yet.
 
 A chart that imports from another crate gets that crate's chart from the crate itself. Each `include!` also exports a hidden macro that hands its IR to the importer's macro, so nothing has to find files in Cargo's caches ([cross-crate probe](../../spike/cross-crate)). A build script cannot call macros, so the `build.rs` route covers charts without cross-crate imports. Supporting them there would need `links` metadata from the owning crate's build script.
 
@@ -68,19 +69,22 @@ pub async fn post_orders(app: Arc<App>, token: String, draft: OrderDraft) -> Api
 }
 
 // Long-lived: send events, watch state.
-let mut actor = place_order::spawn(app, token, draft);
+let mut actor = place_order::spawn(app.clone(), token.clone(), draft.clone());
 actor.send(place_order::Event::Cancel).await;
 let state = actor.changed().await;
 let response = actor.result().await;       // Result<ApiResponse, roadbook::Stopped<Infallible>>
-// Or cancel it from outside: its exit effects run, and its trace ends with `cancelled`.
-actor.cancel().await;                       // then `result()` is Err(Stopped::Cancelled)
+
+// Or cancel one from outside: its exit effects run, and its trace ends with `cancelled`.
+let actor = place_order::spawn(app.clone(), token.clone(), draft.clone());
+actor.cancel().await;
+assert_eq!(actor.result().await, Err(roadbook::Stopped::Cancelled));
 
 // With a trace and a timer of your own (a test's virtual clock, say).
 let config = roadbook::Config::new().sink(Arc::new(roadbook::JsonLines::new(std::io::stderr()))).timer(timer);
 place_order::run_with(&config, &*app, token, draft).await;
 ```
 
-A machine that declares no errors returns its output directly from `run`. One that does returns `Result<Output, MachineError>`. `spawn` runs the machine on a Tokio task (the default `tokio` feature); dropping the actor stops it like dropping `run`'s future. An actor's `result()` returns `Result<Output, roadbook::Stopped<MachineError>>`, where `Stopped` is `Failed(error)` or `Cancelled`.
+A machine that declares no errors returns its output directly from `run`. One that does returns `Result<Output, MachineError>`. `spawn` runs the machine on a Tokio task (the default `tokio` feature); dropping the actor stops it like dropping `run`'s future. An actor's `result()` returns `Result<Output, roadbook::Stopped<MachineError>>`, where `Stopped` is `Failed(error)` or `Cancelled`. It takes the actor, so dropping its future before it is ready drops the actor and stops the run too: `tokio::time::timeout(d, actor.result())` that times out leaves nothing running. A run that ended with a defect resumes unwinding with its `roadbook::Defect` there, and so does an output or error that its Rust type refuses to decode (an extern type's `Deserialize`, say), as a `host` defect.
 
 ## How the driver maps onto Rust
 
@@ -108,7 +112,9 @@ The rules are in [execution.md](../../spec/execution.md#child-runs); in Rust the
 
 - **The invoke context.** When the driver starts a machine invoke it sets a thread-local invoke context around each `poll` of the method's future (and around the call that creates it), restoring the previous one afterwards, so it works on any executor. It holds the trace sink, the clock and timer, the parent's run id, the invoke id and a cancel token. `checkout::run` finds it, claims the token and runs as child run `r1.4`, writing to the parent's sink. A canned test implementation never calls `run`, never claims the token, and is treated as a task. Functions, actions and tasks are polled with no context.
 - **Cancelling a child.** Dropping a child's future would skip its exit effects. So when its state is left the parent signals the token and keeps polling the future while the child runs its cancel step (exit effects, the `cancelled` record), and drops it once the child reports through the token that it has finished. Leaving the state waits for that, like an action. A task's or a stub's future is dropped at once.
-- **Defects.** The driver wraps functions, actions and invoke futures in `catch_unwind`. A panic whose payload is a `&str` or `String` becomes a host defect with that message, and any other payload one with the message `Box<dyn Any>`. A run that ends with a defect resumes unwinding with a `roadbook::Defect` payload, which the parent's driver recognises and passes on unchanged, so a child's defect reaches the root as it was. A defect in a child's cancel step reaches the parent through the token and ends the parent with that defect.
+- **Defects.** The driver wraps functions, actions and invoke futures in `catch_unwind`, around each call, each poll and each drop. A panic whose payload is a `&str` or `String` becomes a host defect with that message, and any other payload one with the message `Box<dyn Any>`. A run that ends with a defect resumes unwinding with a `roadbook::Defect` payload, which the parent's driver recognises and passes on unchanged, so a child's defect reaches the root as it was. A defect in a child's cancel step reaches the parent through the token and ends the parent with that defect.
+- **Panics while dropping.** What a cancelled invoke does is ignored, so a panic while the driver drops a cancelled task's or stub's future (or a child run's, once its cancel step is done), one whose outcome was queued from outside and taken, or anything a run holds when it is stopped hard, is caught and ignored. A future that panics while it is dropped after it completed is host code failing before its invoke ended: the invoke's outcome is that `host` defect in place of the one it gave, as if the panic had happened in its last poll. The same goes for an action's future: the action fails with the defect.
+- **Encoding.** A machine argument that does not encode (a non-finite `float`) is a `host` defect before the run starts: `run` resumes unwinding with it, with no trace records, and `spawn` gives an actor whose `result()` does. An event that does not encode is queued as a `defect` input, so the run ends with that `host` defect when it takes it.
 - **Cancelling from outside.** Dropping the future of a root `run` is a hard stop: nothing more runs, no exit effects and no final trace record, and everything the run held is dropped with it. Graceful cancellation goes through the actor: `spawn` the machine and call `actor.cancel().await`, which returns once the exit effects have run and the trace has its `cancelled` record.
 
 `roadbook-core` has no async and no I/O. Keeping it `no_std` with `alloc` is a goal to hold onto if it stays cheap, since it would let charts run on embedded targets, but it is not a first-version requirement, and the first version uses `std` (as `roadbook-ir` does).

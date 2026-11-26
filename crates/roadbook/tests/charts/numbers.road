@@ -1,0 +1,67 @@
+// Numbers for include_numbers.rs: non-finite floats from every kind of host code, `int` and
+// `duration` fields read from any integral JSON number, an error with fields whose `_tag` is
+// checked, an output that does not decode, and a run that waits for ever.
+
+extern type Opaque
+
+type Reading { value: float, count: int, wait: duration }
+error Bad    { why: string }
+
+fn ratio(n: int) -> float
+fn opaque()      -> Opaque
+
+task measure(n: int) -> Reading ! Bad
+task forever()
+
+/// A function's float.
+machine Ratio(n: int) -> float {
+  initial Done
+  final state Done { output ratio(n) }
+}
+
+/// A task's float, or its error.
+machine Measure(n: int) -> float ! Bad {
+  var r: float = 0.0
+
+  initial Calling
+
+  state Calling {
+    invoke measure(n) {
+      done     -> Done    set r = result.value
+      fail Bad -> Broken
+    }
+  }
+
+  final state Done   { output r }
+  final state Broken { fail Bad { why: "measure failed" } }
+}
+
+/// A float argument and a float event.
+machine Scale(by: float) -> float {
+  var x: float = by
+
+  event Set { value: float }
+
+  initial Waiting
+
+  state Waiting { on Set -> Done  set x = event.value }
+
+  final state Done { output x }
+}
+
+/// An output whose `Deserialize` refuses it.
+machine Hidden() -> Opaque {
+  initial Done
+  final state Done { output opaque() }
+}
+
+/// Waits until it is stopped.
+machine Forever() {
+  initial Waiting
+  state Waiting {
+    invoke forever() {
+      done -> Done
+    }
+  }
+  final state Done {}
+}

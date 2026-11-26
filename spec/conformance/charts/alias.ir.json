@@ -1,0 +1,1173 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/alias.road"
+    }
+  ],
+  "types": {
+    "Money": {
+      "kind": "alias",
+      "type": "int",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 17
+      }
+    },
+    "Cash": {
+      "kind": "alias",
+      "type": "Money",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 19
+      }
+    },
+    "Ratio": {
+      "kind": "alias",
+      "type": "float",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 19
+      }
+    },
+    "Wait": {
+      "kind": "alias",
+      "type": "duration",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 22
+      }
+    },
+    "Level": {
+      "kind": "enum",
+      "variants": [
+        "Low",
+        "High"
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 11,
+        "col": 1,
+        "endLine": 11,
+        "endCol": 25
+      }
+    },
+    "Tier": {
+      "kind": "alias",
+      "type": "Level",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 12,
+        "endCol": 19
+      }
+    },
+    "Note": {
+      "kind": "alias",
+      "type": "string?",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 13,
+        "col": 1,
+        "endLine": 13,
+        "endCol": 21
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 15,
+        "col": 1,
+        "endLine": 15,
+        "endCol": 25
+      }
+    },
+    "show": {
+      "params": [
+        {
+          "name": "note",
+          "type": "Note",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 16,
+        "col": 1,
+        "endLine": 16,
+        "endCol": 24
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Aliases": {
+      "doc": "Counts up to a limit, comparing what it is sent with what it holds.",
+      "span": {
+        "file": 0,
+        "line": 19,
+        "col": 1,
+        "endLine": 52,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "limit",
+          "type": "Money",
+          "doc": ""
+        }
+      ],
+      "returns": "Cash",
+      "errors": [],
+      "vars": [
+        {
+          "name": "m",
+          "type": "Cash",
+          "init": {
+            "kind": "lit",
+            "value": 5,
+            "type": "int",
+            "text": "5"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 20,
+            "col": 3,
+            "endLine": 20,
+            "endCol": 21
+          }
+        },
+        {
+          "name": "r",
+          "type": "Ratio",
+          "init": {
+            "kind": "lit",
+            "value": 1.5,
+            "type": "float",
+            "text": "1.5"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 21,
+            "col": 3,
+            "endLine": 21,
+            "endCol": 24
+          }
+        },
+        {
+          "name": "w",
+          "type": "Wait",
+          "init": {
+            "kind": "lit",
+            "value": 1000,
+            "type": "duration",
+            "text": "1s"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 22,
+            "col": 3,
+            "endLine": 22,
+            "endCol": 22
+          }
+        },
+        {
+          "name": "t",
+          "type": "Tier",
+          "init": {
+            "kind": "enum",
+            "variant": "Low",
+            "type": "Level",
+            "text": "Level.Low"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 23,
+            "col": 3,
+            "endLine": 23,
+            "endCol": 29
+          }
+        },
+        {
+          "name": "note",
+          "type": "Note",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 24,
+            "col": 3,
+            "endLine": 24,
+            "endCol": 17
+          }
+        }
+      ],
+      "events": {
+        "Bump": {
+          "fields": [
+            {
+              "name": "by",
+              "type": "Money",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 26,
+            "col": 3,
+            "endLine": 26,
+            "endCol": 28
+          }
+        },
+        "Check": {
+          "fields": [
+            {
+              "name": "ratio",
+              "type": "Ratio",
+              "doc": ""
+            },
+            {
+              "name": "wait",
+              "type": "Wait",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 27,
+            "col": 3,
+            "endLine": 27,
+            "endCol": 43
+          }
+        },
+        "Rank": {
+          "fields": [
+            {
+              "name": "tier",
+              "type": "Tier",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 28,
+            "col": 3,
+            "endLine": 28,
+            "endCol": 29
+          }
+        }
+      },
+      "root": {
+        "id": "Aliases",
+        "name": "Aliases",
+        "kind": "compound",
+        "doc": "Counts up to a limit, comparing what it is sent with what it holds.",
+        "span": {
+          "file": 0,
+          "line": 19,
+          "col": 1,
+          "endLine": 52,
+          "endCol": 2
+        },
+        "initial": "Aliases.Counting",
+        "states": [
+          {
+            "id": "Aliases.Counting",
+            "name": "Counting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 32,
+              "col": 3,
+              "endLine": 49,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "show",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "note"
+                    ],
+                    "type": "Note",
+                    "text": "note"
+                  }
+                ]
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Bump"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "<",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "limit"
+                      ],
+                      "type": "Money",
+                      "text": "limit"
+                    },
+                    {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "m"
+                          ],
+                          "type": "Cash",
+                          "text": "m"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "by"
+                          ],
+                          "type": "Money",
+                          "text": "event.by"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "m + event.by"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "limit < m + event.by"
+                },
+                "target": "Aliases.Done",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "m",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "m"
+                          ],
+                          "type": "Cash",
+                          "text": "m"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "by"
+                          ],
+                          "type": "Money",
+                          "text": "event.by"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "m + event.by"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 36,
+                  "col": 7,
+                  "endLine": 36,
+                  "endCol": 76
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Bump"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "limit"
+                      ],
+                      "type": "Money",
+                      "text": "limit"
+                    },
+                    {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "m"
+                          ],
+                          "type": "Cash",
+                          "text": "m"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "by"
+                          ],
+                          "type": "Money",
+                          "text": "event.by"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "m + event.by"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "limit == m + event.by"
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "m",
+                    "value": {
+                      "kind": "op",
+                      "op": "*",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "m"
+                          ],
+                          "type": "Cash",
+                          "text": "m"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 2,
+                          "type": "int",
+                          "text": "2"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "m * 2"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "hit",
+                        "type": "string",
+                        "text": "\"hit\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 7,
+                  "endLine": 37,
+                  "endCol": 84
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Bump"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "and",
+                  "args": [
+                    {
+                      "kind": "op",
+                      "op": "<=",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "m"
+                          ],
+                          "type": "Cash",
+                          "text": "m"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "limit"
+                          ],
+                          "type": "Money",
+                          "text": "limit"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "m <= limit"
+                    },
+                    {
+                      "kind": "op",
+                      "op": "!=",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "m"
+                          ],
+                          "type": "Cash",
+                          "text": "m"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "limit"
+                          ],
+                          "type": "Money",
+                          "text": "limit"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "m != limit"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "m <= limit and m != limit"
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "m",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "m"
+                          ],
+                          "type": "Cash",
+                          "text": "m"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "by"
+                          ],
+                          "type": "Money",
+                          "text": "event.by"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "m + event.by"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "under",
+                        "type": "string",
+                        "text": "\"under\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 38,
+                  "col": 7,
+                  "endLine": 38,
+                  "endCol": 93
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Check"
+                },
+                "group": 1,
+                "guard": {
+                  "kind": "op",
+                  "op": "and",
+                  "args": [
+                    {
+                      "kind": "op",
+                      "op": "<",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "ratio"
+                          ],
+                          "type": "Ratio",
+                          "text": "event.ratio"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "r"
+                          ],
+                          "type": "Ratio",
+                          "text": "r"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "event.ratio < r"
+                    },
+                    {
+                      "kind": "op",
+                      "op": "<=",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "wait"
+                          ],
+                          "type": "Wait",
+                          "text": "event.wait"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "w"
+                          ],
+                          "type": "Wait",
+                          "text": "w"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "event.wait <= w"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.ratio < r and event.wait <= w"
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "smaller",
+                        "type": "string",
+                        "text": "\"smaller\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 41,
+                  "col": 7,
+                  "endLine": 41,
+                  "endCol": 73
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Check"
+                },
+                "group": 1,
+                "guard": {
+                  "kind": "op",
+                  "op": "and",
+                  "args": [
+                    {
+                      "kind": "op",
+                      "op": "==",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "ratio"
+                          ],
+                          "type": "Ratio",
+                          "text": "event.ratio"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "r"
+                          ],
+                          "type": "Ratio",
+                          "text": "r"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "event.ratio == r"
+                    },
+                    {
+                      "kind": "op",
+                      "op": "==",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "wait"
+                          ],
+                          "type": "Wait",
+                          "text": "event.wait"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "w"
+                          ],
+                          "type": "Wait",
+                          "text": "w"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "event.wait == w"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.ratio == r and event.wait == w"
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "same",
+                        "type": "string",
+                        "text": "\"same\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 42,
+                  "col": 7,
+                  "endLine": 42,
+                  "endCol": 70
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Check"
+                },
+                "group": 1,
+                "guard": {
+                  "kind": "op",
+                  "op": "and",
+                  "args": [
+                    {
+                      "kind": "op",
+                      "op": ">=",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "ratio"
+                          ],
+                          "type": "Ratio",
+                          "text": "event.ratio"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "r"
+                          ],
+                          "type": "Ratio",
+                          "text": "r"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "event.ratio >= r"
+                    },
+                    {
+                      "kind": "op",
+                      "op": ">",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "wait"
+                          ],
+                          "type": "Wait",
+                          "text": "event.wait"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "w"
+                          ],
+                          "type": "Wait",
+                          "text": "w"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "event.wait > w"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.ratio >= r and event.wait > w"
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "r",
+                    "value": {
+                      "kind": "op",
+                      "op": "*",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "r"
+                          ],
+                          "type": "Ratio",
+                          "text": "r"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "ratio"
+                          ],
+                          "type": "Ratio",
+                          "text": "event.ratio"
+                        }
+                      ],
+                      "type": "float",
+                      "text": "r * event.ratio"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "larger",
+                        "type": "string",
+                        "text": "\"larger\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 43,
+                  "col": 7,
+                  "endLine": 43,
+                  "endCol": 97
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Rank"
+                },
+                "group": 2,
+                "guard": {
+                  "kind": "op",
+                  "op": "and",
+                  "args": [
+                    {
+                      "kind": "op",
+                      "op": "==",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "tier"
+                          ],
+                          "type": "Tier",
+                          "text": "event.tier"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "t"
+                          ],
+                          "type": "Tier",
+                          "text": "t"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "event.tier == t"
+                    },
+                    {
+                      "kind": "op",
+                      "op": "<",
+                      "args": [
+                        {
+                          "kind": "op",
+                          "op": "neg",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "r"
+                              ],
+                              "type": "Ratio",
+                              "text": "r"
+                            }
+                          ],
+                          "type": "float",
+                          "text": "-r"
+                        },
+                        {
+                          "kind": "op",
+                          "op": "neg",
+                          "args": [
+                            {
+                              "kind": "lit",
+                              "value": 1.0,
+                              "type": "float",
+                              "text": "1.0"
+                            }
+                          ],
+                          "type": "float",
+                          "text": "-1.0"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "-r < -1.0"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.tier == t and -r < -1.0"
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "same tier",
+                        "type": "string",
+                        "text": "\"same tier\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 46,
+                  "col": 7,
+                  "endLine": 46,
+                  "endCol": 75
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Rank"
+                },
+                "group": 2,
+                "guard": {
+                  "kind": "op",
+                  "op": "and",
+                  "args": [
+                    {
+                      "kind": "op",
+                      "op": "!=",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "tier"
+                          ],
+                          "type": "Tier",
+                          "text": "event.tier"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "t"
+                          ],
+                          "type": "Tier",
+                          "text": "t"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "event.tier != t"
+                    },
+                    {
+                      "kind": "op",
+                      "op": ">=",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "m"
+                          ],
+                          "type": "Cash",
+                          "text": "m"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 0,
+                          "type": "int",
+                          "text": "0"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "m >= 0"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.tier != t and m >= 0"
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "t",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "tier"
+                      ],
+                      "type": "Tier",
+                      "text": "event.tier"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "promoted",
+                        "type": "string",
+                        "text": "\"promoted\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 47,
+                  "col": 7,
+                  "endLine": 47,
+                  "endCol": 94
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Aliases.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 51,
+              "col": 3,
+              "endLine": 51,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "m"
+              ],
+              "type": "Cash",
+              "text": "m"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:e78115ff649561cb59aef010405026d2b16d7fb8ed864f834e4c00306da9570c"
+    }
+  }
+}

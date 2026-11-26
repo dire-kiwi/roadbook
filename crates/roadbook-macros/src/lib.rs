@@ -24,7 +24,8 @@ mod names;
 /// the chart that holds a `roadbook.toml`, else the package's directory. A chart error is a
 /// compile error at the macro call, with the chart's file, line and column; warnings are not
 /// reported (run `roadbook check` for those). Cargo rebuilds the crate when any of the
-/// chart's files changes.
+/// chart's files, or the project's `roadbook.toml`, changes; creating a `roadbook.toml` that
+/// would move the project root is not seen until something else changes.
 ///
 /// Call it at module level, at most once per module: it defines items next to the call.
 ///
@@ -48,7 +49,9 @@ mod names;
 ///   or another such enum), it is prefixed with the names of the states above it.
 /// - Types map as `string` to `String`, `int` to `i64`, `float` to `f64`, `bool` to `bool`,
 ///   `duration` to `std::time::Duration` (whole milliseconds in JSON), `json` to
-///   `serde_json::Value`, `T[]` to `Vec<T>` and `T?` to `Option<T>`. `Handlers` methods take
+///   `serde_json::Value`, `T[]` to `Vec<T>` and `T?` to `Option<T>`. An `int` or `duration`
+///   reads any integral JSON number (`2.0` as well as `2`), and a non-finite `float` does not
+///   encode: from host code it is a host defect, not `null`. `Handlers` methods take
 ///   strings, lists, records, errors, extern types, `json` and aliases of those by
 ///   reference (`&str`, `&[T]`, `&T`), and numbers, `bool`, `duration` and enums by value.
 ///
@@ -74,7 +77,8 @@ fn expand(path: &str) -> Tokens {
     };
     let manifest_dir = PathBuf::from(manifest_dir);
     let entry = normalize(&manifest_dir.join(path));
-    let root = project_root(&entry).unwrap_or_else(|| normalize(&manifest_dir));
+    let found = project_root(&entry);
+    let root = found.clone().unwrap_or_else(|| normalize(&manifest_dir));
     let project_path = relative(&root, &entry);
 
     let compilation = match compile(
@@ -92,13 +96,21 @@ fn expand(path: &str) -> Tokens {
         }
     };
 
-    // Every file the chart is made of, so that Cargo rebuilds when one changes, even when the
-    // chart has errors.
-    let tracked = compilation.files.iter().map(|(p, _)| {
-        let abs = root.join(p);
-        let abs = abs.to_string_lossy();
-        quote! { const _: &[u8] = ::core::include_bytes!(#abs); }
-    });
+    // Every file the chart is made of, and the `roadbook.toml` that decided the project root,
+    // so that Cargo rebuilds when one changes or goes away, even when the chart has errors.
+    // A file that does not exist cannot be tracked on stable Rust: creating a `roadbook.toml`
+    // that would move the root is not seen. A missing import is a compile error, which Cargo
+    // retries on every build, so creating it is.
+    let config = found.map(|d| d.join("roadbook.toml"));
+    let tracked = compilation
+        .files
+        .iter()
+        .map(|(p, _)| root.join(p))
+        .chain(config)
+        .map(|abs| {
+            let abs = abs.to_string_lossy().into_owned();
+            quote! { const _: &[u8] = ::core::include_bytes!(#abs); }
+        });
     let tracked = quote! { #(#tracked)* };
 
     if compilation.has_errors() {

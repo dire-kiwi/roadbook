@@ -200,20 +200,33 @@ impl<'a> Gen<'a> {
         }
     }
 
-    /// Whether the type is built from `duration` with `[]` and `?` (through aliases), so its
-    /// JSON form needs `roadbook::__private::ms`.
-    fn is_duration(&self, t: &TypeRef) -> bool {
-        self.is_duration_at(t, 0)
+    /// Whether the type is built from `int`, `float` or `duration` with `[]` and `?` (through
+    /// aliases), so its JSON form goes through `roadbook::__private::wire`: integral numbers
+    /// in any form for an `int`, milliseconds for a `duration`, no non-finite `float`.
+    fn is_wire(&self, t: &TypeRef) -> bool {
+        self.is_wire_at(t, 0)
     }
 
-    fn is_duration_at(&self, t: &TypeRef, depth: usize) -> bool {
+    fn is_wire_at(&self, t: &TypeRef, depth: usize) -> bool {
         match t {
-            TypeRef::Builtin(b) => *b == Builtin::Duration,
-            TypeRef::List(e) | TypeRef::Optional(e) => self.is_duration_at(e, depth),
+            TypeRef::Builtin(b) => matches!(b, Builtin::Int | Builtin::Float | Builtin::Duration),
+            TypeRef::List(e) | TypeRef::Optional(e) => self.is_wire_at(e, depth),
             TypeRef::Named(n) => match self.decl(n) {
-                Some(TypeDef::Alias { ty }) if depth < 64 => self.is_duration_at(ty, depth + 1),
+                Some(TypeDef::Alias { ty }) if depth < 64 => self.is_wire_at(ty, depth + 1),
                 _ => false,
             },
+        }
+    }
+
+    /// Whether the type is optional at the top, through aliases.
+    fn is_optional(&self, t: &TypeRef, depth: usize) -> bool {
+        match t {
+            TypeRef::Optional(_) => true,
+            TypeRef::Named(n) => match self.decl(n) {
+                Some(TypeDef::Alias { ty }) if depth < 64 => self.is_optional(ty, depth + 1),
+                _ => false,
+            },
+            _ => false,
         }
     }
 
@@ -261,12 +274,8 @@ impl<'a> Gen<'a> {
     /// A `Result<T, Defect>` decoding the JSON value `v` as `t`.
     fn decode(&self, t: &TypeRef, v: TokenStream, what: &str) -> TokenStream {
         let ty = self.ty(t, true);
-        if self.is_duration(t) {
-            quote! {
-                <#ty as ::roadbook::__private::ms::Millis>::from_ms(#v).map_err(|e| {
-                    ::roadbook::__private::Defect::host(::std::format!("{} does not decode: {}", #what, e))
-                })
-            }
+        if self.is_wire(t) {
+            quote!(::roadbook::__private::decode_wire::<#ty>(#v, #what))
         } else {
             quote!(::roadbook::__private::decode::<#ty>(#v, #what))
         }
@@ -274,40 +283,29 @@ impl<'a> Gen<'a> {
 
     /// A `Result<T, Defect>` taking argument `name` out of the object `__args`.
     fn decode_arg(&self, t: &TypeRef, name: &str) -> TokenStream {
-        if self.is_duration(t) {
-            let what = format!("argument `{name}`");
-            let v = quote! {
-                __args.remove(#name).unwrap_or(::roadbook::__private::serde_json::Value::Null)
-            };
-            self.decode(t, v, &what)
+        let ty = self.ty(t, true);
+        if self.is_wire(t) {
+            quote!(::roadbook::__private::arg_wire::<#ty>(&mut __args, #name))
         } else {
-            let ty = self.ty(t, true);
             quote!(::roadbook::__private::arg::<#ty>(&mut __args, #name))
         }
     }
 
     /// A `Result<Value, Defect>` encoding `x`, an owned `t`.
     fn encode(&self, t: &TypeRef, x: TokenStream) -> TokenStream {
-        if self.is_duration(t) {
-            quote! {
-                ::core::result::Result::Ok::<_, ::roadbook::__private::Defect>(
-                    ::roadbook::__private::ms::Millis::to_ms(&#x)
-                )
-            }
+        if self.is_wire(t) {
+            quote!(::roadbook::__private::encode_wire(&#x))
         } else {
             quote!(::roadbook::__private::encode(&#x))
         }
     }
 
-    /// A `t` decoded from `v`, a value the core produced, which always has its type.
+    /// A `t` decoded from `v`, a value the core produced. One that does not decode raises
+    /// a host defect.
     fn expect(&self, t: &TypeRef, v: TokenStream) -> TokenStream {
         let ty = self.ty(t, true);
-        if self.is_duration(t) {
-            quote! {
-                <#ty as ::roadbook::__private::ms::Millis>::from_ms(#v).unwrap_or_else(|e| {
-                    ::core::panic!("a machine's result does not decode: {}", e)
-                })
-            }
+        if self.is_wire(t) {
+            quote!(::roadbook::__private::expect_wire::<#ty>(#v))
         } else {
             quote!(::roadbook::__private::expect::<#ty>(#v))
         }
@@ -326,13 +324,14 @@ impl<'a> Gen<'a> {
             }
             let doc = doc(&f.doc);
             let rename = rename(&f.name, &id);
-            let ms = if self.is_duration(&f.ty) {
-                let default = if matches!(f.ty, TypeRef::Optional(_)) {
+            let ms = if self.is_wire(&f.ty) {
+                // `with` loses serde's "a missing `Option` is `None`".
+                let default = if self.is_optional(&f.ty, 0) {
                     quote!(#[serde(default)])
                 } else {
                     TokenStream::new()
                 };
-                quote!(#[serde(with = "::roadbook::__private::ms")] #default)
+                quote!(#[serde(with = "::roadbook::__private::wire")] #default)
             } else {
                 TokenStream::new()
             };
@@ -428,14 +427,41 @@ impl<'a> Gen<'a> {
 
                 impl ::std::error::Error for #id {}
             },
-            TypeDef::Error { fields } => {
-                let fields = self.fields(name, fields, true)?;
+            TypeDef::Error { fields: decl } => {
+                let fields = self.fields(name, decl, true)?;
+                let ids: Vec<Ident> = decl.iter().map(|f| ident(&snake(&f.name))).collect();
+                let expected = format!("the error `{name}`");
                 quote! {
                     #doc
-                    #[derive(::core::fmt::Debug, ::core::clone::Clone, ::core::cmp::PartialEq, #derives)]
+                    #[derive(
+                        ::core::fmt::Debug, ::core::clone::Clone, ::core::cmp::PartialEq,
+                        ::roadbook::__private::serde::Serialize
+                    )]
                     #[serde(crate = "::roadbook::__private::serde", tag = "_tag", rename = #name)]
                     #[allow(dead_code, missing_docs)]
                     pub struct #id { #fields }
+
+                    // serde ignores the tag of a tagged struct when it deserializes one, so
+                    // check `"_tag"` first, as for a bare error, then read the fields.
+                    impl<'de> ::roadbook::__private::serde::Deserialize<'de> for #id {
+                        fn deserialize<__D: ::roadbook::__private::serde::Deserializer<'de>>(
+                            deserializer: __D,
+                        ) -> ::core::result::Result<Self, __D::Error> {
+                            use ::roadbook::__private::serde::de::Error as _;
+                            #[derive(::roadbook::__private::serde::Deserialize)]
+                            #[serde(crate = "::roadbook::__private::serde")]
+                            #[allow(dead_code, missing_docs)]
+                            struct __Fields { #fields }
+                            let value = <::roadbook::__private::serde_json::Value as ::roadbook::__private::serde::Deserialize>::deserialize(deserializer)?;
+                            if value.get("_tag").and_then(::roadbook::__private::serde_json::Value::as_str) != ::core::option::Option::Some(#name) {
+                                return ::core::result::Result::Err(__D::Error::custom(::std::format!(
+                                    "{} is not {}", value, #expected
+                                )));
+                            }
+                            let f: __Fields = ::roadbook::__private::serde_json::from_value(value).map_err(__D::Error::custom)?;
+                            ::core::result::Result::Ok(#id { #( #ids: f.#ids ),* })
+                        }
+                    }
 
                     impl ::core::fmt::Display for #id {
                         fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
@@ -1040,24 +1066,21 @@ impl<'a> Gen<'a> {
         let decl: Vec<TokenStream> = params.iter().map(|(id, ty, _)| quote!(#id: #ty)).collect();
         let names: Vec<&Ident> = params.iter().map(|(id, _, _)| id).collect();
         let input = if params.is_empty() {
-            quote!(::roadbook::__private::Object::new())
+            quote!(::core::result::Result::Ok(
+                ::roadbook::__private::Object::new()
+            ))
         } else {
             let inserts = params.iter().map(|(id, _, p)| {
                 let key = &p.name;
                 let enc = self.encode(&p.ty, quote!(#id));
                 quote! {
-                    __input.insert(
-                        ::std::string::String::from(#key),
-                        (#enc).unwrap_or_else(|d| {
-                            ::core::panic!("cannot encode argument `{}`: {}", #key, d)
-                        }),
-                    );
+                    __input.insert(::std::string::String::from(#key), (#enc)?);
                 }
             });
             quote! {
                 let mut __input = ::roadbook::__private::Object::new();
                 #(#inserts)*
-                __input
+                ::core::result::Result::Ok(__input)
             }
         };
 
@@ -1158,7 +1181,9 @@ impl<'a> Gen<'a> {
         let spawn_with_doc = "Like `spawn`, set up by `config`.";
         let program = quote!(&super::__ROADBOOK_PROGRAM);
         quote! {
-            fn __input(#(#decl),*) -> ::roadbook::__private::Object {
+            /// The arguments in their JSON form, or the host defect encoding one met (a
+            /// non-finite `float`).
+            fn __input(#(#decl),*) -> ::core::result::Result<::roadbook::__private::Object, ::roadbook::__private::Defect> {
                 #input
             }
 
@@ -1168,16 +1193,15 @@ impl<'a> Gen<'a> {
                 #decode_error
             }
 
-            fn __event(e: &Event) -> ::roadbook::__private::serde_json::Value {
-                ::roadbook::__private::serde_json::to_value(e)
-                    .unwrap_or_else(|err| ::core::panic!("cannot encode an event: {}", err))
+            fn __event(e: &Event) -> ::core::result::Result<::roadbook::__private::serde_json::Value, ::roadbook::__private::Defect> {
+                ::roadbook::__private::encode(e)
             }
 
             #[doc = #run_doc]
             #[allow(clippy::unit_arg)]
             pub async fn run<H: Handlers + ?::core::marker::Sized>(handlers: &H, #(#decl),*) #ret {
                 let __host = Bind(handlers);
-                let __end = ::roadbook::__private::run(#program, #name, __input(#(#names),*), &__host).await;
+                let __end = ::roadbook::__private::run(#program, #name, ::roadbook::__private::input(__input(#(#names),*)), &__host).await;
                 #finish
             }
 
@@ -1189,7 +1213,7 @@ impl<'a> Gen<'a> {
                 #(#decl),*
             ) #ret {
                 let __host = Bind(handlers);
-                let __end = ::roadbook::__private::run_with(config, #program, #name, __input(#(#names),*), &__host).await;
+                let __end = ::roadbook::__private::run_with(config, #program, #name, ::roadbook::__private::input(__input(#(#names),*)), &__host).await;
                 #finish
             }
 
