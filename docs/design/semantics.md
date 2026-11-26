@@ -18,7 +18,7 @@ Because both runtimes interpret the same IR the viewer draws, the picture cannot
 
 The IR is fully resolved: state ids are absolute (`PlaceOrder.Processing.Paying`), targets are ids, names are checked, every expression carries its type, and every declaration, state, variable, event, invoke and transition carries its source span and doc comment. It is versioned (`irVersion`) and has a published JSON Schema, so third-party tools can read it and a runtime can refuse an IR it does not understand. The field-by-field reference is [`spec/ir.md`](../../spec/ir.md) and the schema is [`spec/ir.schema.json`](../../spec/ir.schema.json).
 
-An abridged IR for `Checkout` (`/* … */` marks what is left out; the spike emits an earlier draft of this shape, without `type` on expressions, end positions in spans or the hash):
+An abridged IR for `Checkout` (`/* … */` marks what is left out):
 
 ```jsonc
 {
@@ -103,7 +103,7 @@ This is where Roadbook is stricter than xstate, and it is the part that matters 
 - **Timers belong to states.** `after 30s` starts when the state is entered and is cancelled when it is left. Its delay is evaluated when it starts, after the entry effects.
 - **Cancelling a machine from outside exits its states.** Each state's work is cancelled and its `exit` effects run, innermost first, as on any exit. A parent leaving an invoking state cancels a child machine this way.
 - **Actions are awaited.** Each `do` action finishes before the next thing happens, and actions cannot fail. Long or fallible work belongs in a task, where its failure has a visible branch.
-- **Defects are not flow.** A bug in host code (a thrown exception, a panic) is not one of the declared errors. It fails the whole machine run, cancels everything it started, and propagates to whoever ran it: the parent machine's invoke, or the HTTP adapter. No `exit` effect runs. Runtime errors in the chart's own expressions (integer overflow, and until definite assignment exists, reading an unassigned variable) are defects too.
+- **Defects are not flow.** A bug in host code (a thrown exception, a panic) is not one of the declared errors. It fails the whole machine run, cancels everything it started, and propagates to whoever ran it: the parent machine's invoke, or the HTTP adapter. No `exit` effect runs. Runtime errors in the chart's own expressions (integer overflow, and reading an unassigned variable where the compile-time check `RB0403` is skipped, as for files listed in `allow-unassigned`) are defects too.
 
 ### Cancelling from outside
 

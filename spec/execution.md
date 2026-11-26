@@ -478,7 +478,7 @@ A defect ends the run at once. It is never routed to a `fail` branch, and no exi
 | Defect | Cause |
 | --- | --- |
 | `{"kind": "host", "message": "…"}` | Host code failed: a function, action or task threw or panicked, or returned a value that is not of its declared type (a negative `duration`, say). `message` is set as described under [catching host defects](#catching-host-defects); in conformance cases it is given by the script. |
-| `{"kind": "unassigned", "var": "receipt"}` | A variable was read before it had a value. Definite assignment analysis (milestone 6) will make this a compile error. |
+| `{"kind": "unassigned", "var": "receipt"}` | A variable was read before it had a value. The compiler rejects such a read (`RB0403`, definite assignment), so this is a runtime backstop, reachable only where that check is skipped, as for files listed in `allow-unassigned`. |
 | `{"kind": "overflow", "expr": "attempts + 1"}` | Integer arithmetic left the `int` range, or float arithmetic produced a value that is not finite. `expr` is the `text` of the operator's IR node. |
 | `{"kind": "undeclared", "error": "Oops"}` | A task or child machine failed with an error it does not declare. |
 | `{"kind": "limit"}` | Settling took more than 1000 microsteps. |

@@ -6,9 +6,10 @@ One repository, a Cargo workspace and a pnpm workspace side by side.
 
 ```
 spec/
-  language.md              the language reference
-  ir.schema.json           JSON Schema for the IR
-  trace.schema.json        JSON Schema for trace records
+  execution.md             how machines execute: the rules both runtimes follow
+  ir.md, ir.schema.json    the IR, and its JSON Schema
+  trace.md, trace.schema.json  trace records, and their JSON Schema
+  snapshot.schema.json     JSON Schema for saved snapshots
   conformance/             charts, scripts and expected traces
 crates/
   roadbook-syntax           lexer, parser, syntax tree, formatter
@@ -16,8 +17,11 @@ crates/
   roadbook-ir               IR types (serde) and schema
   roadbook-core             pure interpreter
   roadbook-macros           the include! macro and Rust code generation
+  roadbook-gen-ts           the TypeScript generator behind `gen`
   roadbook                  driver, Actor, tracing; re-exports the macro
-  roadbook-cli              check, fmt, gen, viz, export, paths
+  roadbook-cli              check, fmt, gen, viz, export, paths, lsp
+  roadbook-lsp              the language server
+  roadbook-conformance      loads and checks the conformance cases
   roadbook-wasm             the compiler as WebAssembly, for packages/cli
 packages/
   core                     @roadbook/core: pure interpreter, no dependencies
@@ -91,7 +95,7 @@ Progress is recorded on each milestone below as it finishes.
 
 **M7. Review tooling.** Diff mode and coverage mode in the viewer. A CI recipe that attaches the diff viewer to a pull request.
 
-*Done.* `roadbook viz --diff <range>` draws both revisions of each chart as one diagram, with added, removed, changed and moved states, transitions, machines and declarations marked in text and line style as well as colour, and writes `summary.md` and `summary.json`. Coverage (`roadbook viz --coverage`, or traces dropped on a page) shades each state and transition by how often the traces took it and flags the ones never taken. `roadbook paths` lists the paths through a machine for test generation. `docs/ci/roadbook-diff.yml` is a GitHub Actions recipe that builds the diff pages for a pull request, uploads them and comments a summary; this repository has no remote, so it was checked locally and under Node with a stand-in client but never run on GitHub. An independent review found an argument-parsing bug, unescaped chart text in the pull-request comment, and gaps in matching across files; all are fixed.
+*Done.* `roadbook viz --diff <range>` draws both revisions of each chart as one diagram, with added, removed, changed and moved states, transitions, machines and declarations marked in text and line style as well as colour, and writes `summary.md` and `summary.json`. Coverage (`roadbook viz --coverage`, or traces dropped on a page) shades each state and transition by how often the traces took it and flags the ones never taken. `roadbook paths` lists the paths through a machine for test generation. `docs/ci/roadbook-diff.yml` is a GitHub Actions recipe that builds the diff pages for a pull request, uploads them and comments a summary. It has run on GitHub, in the repository's first pull request (dire-kiwi/roadbook#1, a test that changed one chart): it drew the change, uploaded the pages and posted its comment, and on the next push updated that comment instead of adding another. It needed no changes beyond moving its actions to their current major versions. An independent review found an argument-parsing bug, unescaped chart text in the pull-request comment, and gaps in matching across files; all are fixed.
 
 **M8. Editors.** Tree-sitter grammar, language server (diagnostics, go to definition, rename), VS Code extension with live preview.
 
@@ -110,9 +114,9 @@ M3 and M4 are independent once M1 is done and can run in parallel. M2 depends on
 | The language is a poor fit for real programs. | Port two or three real request handlers during M1, before the runtimes exist. The viewer makes shortcomings obvious early. |
 | The two runtimes diverge. | The conformance suite is the specification, and both run it in CI from M4 on. |
 | Agents write the syntax badly. | Small grammar, canonical formatter, machine-readable diagnostics with fixes, and a bundled instructions file for agents. Measure it in M1 by having an agent write charts from prose. |
-| Large charts are unreadable as diagrams. | Collapse compound states by default beyond a size, and push structure into child machines, which the language makes cheap. The spike should be tried on a 40-state chart during M2. |
+| Large charts are unreadable as diagrams. | Collapse compound states by default beyond a size, and push structure into child machines, which the language makes cheap. M2 tried the viewer on the 46-state `examples/large`, which opens with its deep levels collapsed. |
 | Definite assignment is too strict or too slow. | Built in M6 and tuned against the example charts: it is conservative in a few documented places, and takes about 100 ms on a 1,000-state chart in a debug build. The runtime check stays as a backstop. |
-| No editor support at first. | `roadbook viz --watch` gives live feedback from M2. Highlighting needs only the tree-sitter grammar, which can be pulled forward. |
+| No editor support at first. | `roadbook viz --watch` gave live feedback from M2. M8 added the tree-sitter grammar, the language server and the VS Code extension. |
 
 ## Decided questions
 

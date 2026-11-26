@@ -2,7 +2,8 @@
 # Checks the tree-sitter grammar: the committed parser is what grammar.js generates, the corpus
 # tests pass, every chart in the repository parses with no ERROR or MISSING node (except the
 # compiler's fixtures that fail parsing on purpose), and the queries load. Needs the
-# tree-sitter CLI (0.26) and a C compiler.
+# tree-sitter CLI 0.26.9 (the version that generated src/; other releases write a different one)
+# and a C compiler.
 #
 #   editors/tree-sitter-roadbook/check.sh
 set -euo pipefail
@@ -20,13 +21,6 @@ printf '{"parser-directories": ["%s"]}\n' "$(dirname "$here")" >"$work/config.js
 export TREE_SITTER_DIR="$work"
 export TREE_SITTER_LIBDIR="$work/lib"
 mkdir -p "$work/lib"
-
-# Other versions generate a different src/ (array.h, for one), which would read as stale.
-version="$(tree-sitter --version)"
-case "$version" in
-  "tree-sitter 0.26."*) ;;
-  *) echo "the grammar is generated with the tree-sitter CLI 0.26, not $version ($(command -v tree-sitter))" >&2; exit 1 ;;
-esac
 
 step "the committed parser is what grammar.js generates"
 tree-sitter generate --output "$work/src"

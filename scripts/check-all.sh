@@ -92,7 +92,7 @@ step "Editors: the tree-sitter grammar (generated parser, corpus, every chart, q
 if command -v tree-sitter >/dev/null; then
   editors/tree-sitter-roadbook/check.sh
 else
-  echo "skipped: the tree-sitter CLI is not installed (npm install -g tree-sitter-cli@0.26)"
+  echo "skipped: the tree-sitter CLI is not installed (npm install -g tree-sitter-cli@0.26.9)"
 fi
 
 printf '\nAll checks passed.\n'
