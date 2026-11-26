@@ -86,7 +86,10 @@ export type Requirements<H> = H extends { readonly [group: string]: infer G }
 /** A run's state between steps. */
 export interface Snapshot<D extends MachineDef> {
   readonly status: Core.Status
-  /** Ids of every active state, outermost first, the root's included while it runs. */
+  /**
+   * Ids of every active state in document order (outermost first, the regions of a parallel
+   * state in the order they are written), the root's included while it runs.
+   */
   readonly active: ReadonlyArray<D["state"]>
   /** Whether `state` is active. */
   readonly matches: (state: D["state"]) => boolean
@@ -155,10 +158,11 @@ export interface Actor<D extends MachineDef> {
 export interface RestoreOptions {
   /**
    * Called once, only when the snapshot's hash is not the machine's: rewrites the old saved
-   * snapshot (plain JSON) into one of the current machine, which is checked again from the
+   * snapshot into one of the current machine, both plain JSON. The old one has passed the
+   * checks of its shape and version, which come first; the result is checked again from the
    * top. If it throws, the snapshot is refused with reason `migration`.
    */
-  readonly migrate?: (saved: Core.Json) => Core.Json
+  readonly migrate?: (saved: Saved) => Saved
 }
 
 export interface Implemented<D extends MachineDef, R> extends Runnable<D["input"], D["output"], D["error"], R> {

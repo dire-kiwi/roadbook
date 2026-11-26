@@ -666,7 +666,8 @@ export const restore = <D extends MachineDef>(program: Program, saved: unknown, 
       saved,
       migrate === undefined ? undefined : (old) => {
         try {
-          return { value: migrate(old) }
+          // The old snapshot has passed the checks of its shape, so it is a `Saved`.
+          return { value: migrate(old as unknown as Core.Saved) as unknown as Core.Json }
         } catch (error) {
           return { error: error instanceof Error ? error.message : String(error) }
         }

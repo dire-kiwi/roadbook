@@ -337,7 +337,7 @@ export const runCase = (name: string): CaseResult => {
       migrate: (old) => {
         calls += 1
         if (Core.canonicalJson(old) !== Core.canonicalJson(json)) fail("the migration was not given the snapshot being restored")
-        return JSON.parse(readSnapshot(step.migrate!)) as Core.Json
+        return JSON.parse(readSnapshot(step.migrate!)) as Core.Saved
       }
     }
     const before = records.length
