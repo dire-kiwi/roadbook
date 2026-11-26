@@ -101,7 +101,7 @@ impl Cx<'_, '_> {
                             && self.vars.contains_key("key")) =>
                     {
                         Some((
-                        &scope.key,
+                            &scope.key,
                             "a transition taken for a spawned child: `on name.Event`, `on name.done` or `on name.fail` through a `children` collection",
                         ))
                     }

@@ -1007,7 +1007,10 @@ fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
             .map(|(n, e)| (n.clone(), event("emits", n, e))),
     );
     let children = |n: &String, c: &roadbook_ir::ChildrenDecl| {
-        (n.clone(), format!("children {n}: {} by {}", c.machine, c.key))
+        (
+            n.clone(),
+            format!("children {n}: {} by {}", c.machine, c.key),
+        )
     };
     keyed(
         &mut out,

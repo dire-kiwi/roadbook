@@ -475,9 +475,14 @@ pub enum Trigger {
         event: Ident,
     },
     /// `on name.done`: a spawned child of the collection `name` ended with an output.
-    ChildDone { from: Ident },
+    ChildDone {
+        from: Ident,
+    },
     /// `on name.fail Error` or `on name.fail *`: a spawned child of `name` failed.
-    ChildFail { from: Ident, error: Pattern },
+    ChildFail {
+        from: Ident,
+        error: Pattern,
+    },
     /// `after expr`
     After(Expr),
     Always,

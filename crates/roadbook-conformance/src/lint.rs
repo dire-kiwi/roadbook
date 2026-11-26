@@ -328,7 +328,9 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                             ));
                         }
                     } else if !live {
-                        bad(format!("outcome of spawned child {n}, which is not running"));
+                        bad(format!(
+                            "outcome of spawned child {n}, which is not running"
+                        ));
                     } else {
                         run.spawned.remove(&n);
                         let payload = ["value", "error", "defect"]
@@ -465,12 +467,17 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     .iter()
                     .any(|(m, (c, k))| *m != n && *c == children && *k == key)
                 {
-                    bad(format!("spawned child {n} has the key of another running child"));
+                    bad(format!(
+                        "spawned child {n} has the key of another running child"
+                    ));
                 }
                 if let Some(m) = machine {
                     match m.children.get(&children) {
                         Some(c) if c.machine == src => {}
-                        _ => bad(format!("{} has no collection {children} of {src}", run.machine)),
+                        _ => bad(format!(
+                            "{} has no collection {children} of {src}",
+                            run.machine
+                        )),
                     }
                 }
                 run.spawned.insert(n, (children, key));
@@ -536,7 +543,9 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     bad(format!("child run {id} is suspended"));
                 }
                 if !run.invokes.is_empty() || !run.spawned.is_empty() {
-                    bad(format!("run {id} is suspended with an invoke or a spawned child running"));
+                    bad(format!(
+                        "run {id} is suspended with an invoke or a spawned child running"
+                    ));
                 }
                 run.end = Some(r.clone());
             }
@@ -545,7 +554,8 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     if !run.stack.is_empty() {
                         bad(format!("run {id} ended with states still active"));
                     }
-                    if !run.invokes.is_empty() || !run.timers.is_empty() || !run.spawned.is_empty() {
+                    if !run.invokes.is_empty() || !run.timers.is_empty() || !run.spawned.is_empty()
+                    {
                         bad(format!("run {id} ended with work still running"));
                     }
                 }

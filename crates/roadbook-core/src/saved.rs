@@ -282,6 +282,56 @@ impl Program {
                 ));
             }
         }
+        // Spawned children: their ids are invoke ids.
+        let mut keys = HashSet::new();
+        for ch in &s.spawned {
+            let decl = m.children.get(&ch.children).ok_or_else(|| {
+                format!(
+                    "spawned child {} is of `{}`, which is not a collection of `{}`",
+                    ch.id, ch.children, s.machine
+                )
+            })?;
+            if !self.value_fits(&s.machine, &decl.key, &ch.key) {
+                return Err(format!(
+                    "the key of spawned child {} is not a {}",
+                    ch.id, decl.key
+                ));
+            }
+            let child = self
+                .ir()
+                .machines
+                .get(&decl.machine)
+                .ok_or_else(|| format!("no machine `{}`", decl.machine))?;
+            if ch.args.len() != child.params.len() {
+                return Err(format!(
+                    "the arguments of spawned child {} are not exactly `{}`'s parameters",
+                    ch.id, decl.machine
+                ));
+            }
+            for p in &child.params {
+                let v = ch.args.get(&p.name).ok_or_else(|| {
+                    format!("spawned child {} lacks the argument `{}`", ch.id, p.name)
+                })?;
+                if !self.value_fits(&decl.machine, &p.ty, v) {
+                    return Err(format!(
+                        "the argument `{}` of spawned child {} is not a {}",
+                        p.name, ch.id, p.ty
+                    ));
+                }
+            }
+            if !keys.insert((ch.children.as_str(), ch.key.to_string())) {
+                return Err(format!(
+                    "two spawned children of `{}` have the key {}",
+                    ch.children, ch.key
+                ));
+            }
+            if !ids.insert(ch.id) || ch.id >= s.next_invoke {
+                return Err(format!(
+                    "the id {} of a spawned child is repeated or not below nextInvoke",
+                    ch.id
+                ));
+            }
+        }
         // Timers.
         let mut ids = HashSet::new();
         let mut blocks = HashSet::new();
@@ -427,6 +477,12 @@ pub(crate) fn integral_numbers_in(saved: &mut Saved) {
         .input
         .values_mut()
         .chain(saved.vars.values_mut())
+        .chain(
+            saved
+                .spawned
+                .iter_mut()
+                .flat_map(|c| std::iter::once(&mut c.key).chain(c.args.values_mut())),
+        )
         .for_each(integral_numbers);
     if let Some(RunResult::Output(v) | RunResult::Error(v)) = &mut saved.result {
         integral_numbers(v);
@@ -444,7 +500,7 @@ fn integer(v: &Value) -> Option<i64> {
 
 // ---- the schema ----------------------------------------------------------------------------
 
-const MEMBERS: [&str; 14] = [
+const MEMBERS: [&str; 15] = [
     "snapshotVersion",
     "machine",
     "run",
@@ -454,6 +510,7 @@ const MEMBERS: [&str; 14] = [
     "input",
     "vars",
     "invokes",
+    "spawned",
     "timers",
     "nextInvoke",
     "nextTimer",
@@ -464,14 +521,15 @@ const MEMBERS: [&str; 14] = [
 /// The largest integer `spec/snapshot.schema.json` allows, 2^53 − 1.
 const MAX_SAFE: u64 = 9_007_199_254_740_991;
 
-/// Checks `v` against `spec/snapshot.schema.json`, including `snapshotVersion` being 1.
+/// Checks `v` against `spec/snapshot.schema.json`, including `snapshotVersion` being 2.
 pub(crate) fn schema(v: &Value) -> Result<(), String> {
     let o = v.as_object().ok_or("a saved snapshot is an object")?;
     exactly(o, &MEMBERS, "a saved snapshot")?;
     if o["snapshotVersion"].as_u64() != Some(Saved::VERSION) {
         return Err(format!(
-            "its snapshotVersion is {}, not 1",
-            o["snapshotVersion"]
+            "its snapshotVersion is {}, not {}",
+            o["snapshotVersion"],
+            Saved::VERSION
         ));
     }
     string(&o["machine"], "machine", upper_name)?;
@@ -497,6 +555,16 @@ pub(crate) fn schema(v: &Value) -> Result<(), String> {
         natural(&inv["id"], "an invoke's id", 1)?;
         string(&inv["state"], "an invoke's state", state_id)?;
         string(&inv["src"], "an invoke's src", any_name)?;
+    }
+    for ch in o["spawned"].as_array().ok_or("`spawned` is not an array")? {
+        let ch = ch.as_object().ok_or("a spawned child is not an object")?;
+        exactly(ch, &["id", "children", "key", "args"], "a spawned child")?;
+        natural(&ch["id"], "a spawned child's id", 1)?;
+        string(&ch["children"], "a spawned child's collection", lower_name)?;
+        if !(ch["key"].is_string() || ch["key"].is_i64() || ch["key"].is_u64()) {
+            return Err(format!("a spawned child's key is {}", ch["key"]));
+        }
+        args(&ch["args"], "a spawned child's args")?;
     }
     for tm in o["timers"].as_array().ok_or("`timers` is not an array")? {
         let tm = tm.as_object().ok_or("a timer is not an object")?;

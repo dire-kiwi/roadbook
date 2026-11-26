@@ -36,9 +36,9 @@ use serde::Deserialize;
 pub use expr::{Expr, ExprKind, FieldValue, Literal, MAX_SAFE_INTEGER, Op};
 pub use hash::{HASH_PREFIX, HashError, fill_hashes, machine_hash, semantic_view};
 pub use model::{
-    ActionDecl, ChildrenDecl, Address, AddressKind, Effect, EventDecl, Field, FunctionDecl, Invoke, InvokeKind,
-    Ir, Machine, Source, Span, State, StateKind, TaskDecl, Transition, Trigger, TypeDecl, TypeDef,
-    Var,
+    ActionDecl, Address, AddressKind, ChildrenDecl, Effect, EventDecl, Field, FunctionDecl, Invoke,
+    InvokeKind, Ir, Machine, Source, Span, State, StateKind, TaskDecl, Transition, Trigger,
+    TypeDecl, TypeDef, Var,
 };
 pub use types::{Builtin, TypeRef, TypeRefError};
 

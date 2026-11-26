@@ -23,7 +23,9 @@ use std::fmt::Write as _;
 use std::path::PathBuf;
 
 use roadbook_compiler::Ir;
-use roadbook_ir::{AddressKind, Effect, InvokeKind, Machine, State, StateKind, Transition, Trigger};
+use roadbook_ir::{
+    AddressKind, Effect, InvokeKind, Machine, State, StateKind, Transition, Trigger,
+};
 
 use crate::workspace::Workspace;
 use crate::{Exit, report};
@@ -332,7 +334,11 @@ fn effect(e: &Effect) -> String {
             args,
         } => {
             let args: Vec<&str> = args.iter().map(|a| a.text.as_str()).collect();
-            format!("spawn {children}[{}] = {machine}({})", key.text, args.join(", "))
+            format!(
+                "spawn {children}[{}] = {machine}({})",
+                key.text,
+                args.join(", ")
+            )
         }
         Effect::Stop { children, key } => format!("stop {children}[{}]", key.text),
     }

@@ -43,7 +43,7 @@ use serde_json::Value;
 
 /// The features of `spec/conformance/case.schema.json`'s `requires` this runtime
 /// implements.
-const SUPPORTED: &[&str] = &["messaging", "parallel", "snapshots"];
+const SUPPORTED: &[&str] = &["messaging", "parallel", "snapshots", "spawn"];
 
 // ---- the executor ------------------------------------------------------------------------
 

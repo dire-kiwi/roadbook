@@ -830,8 +830,10 @@ impl Parser<'_> {
                 self.bump();
                 let effects = self.effects()?;
                 if effects.is_empty() {
-                    let expected =
-                        format!("`set`, `do`, `send`, `emit`, `spawn` or `stop` after `{}`", self.text(t));
+                    let expected = format!(
+                        "`set`, `do`, `send`, `emit`, `spawn` or `stop` after `{}`",
+                        self.text(t)
+                    );
                     return Err(self.unexpected(&expected));
                 }
                 let hook = Hook {
@@ -1233,10 +1235,8 @@ impl Parser<'_> {
                 let kw = self.bump();
                 let children = self.lower("the children collection to spawn into")?;
                 if !self.at_p(P::LBracket) {
-                    return Err(self.unexpected(&format!(
-                        "`[` and the key after `spawn {}`",
-                        children.name
-                    )));
+                    return Err(self
+                        .unexpected(&format!("`[` and the key after `spawn {}`", children.name)));
                 }
                 let key = self.key()?;
                 self.expect_p(P::Eq, &format!(" after `spawn {}[…]`", children.name))?;
@@ -1260,10 +1260,9 @@ impl Parser<'_> {
                 let kw = self.bump();
                 let children = self.lower("the children collection to stop a child of")?;
                 if !self.at_p(P::LBracket) {
-                    return Err(self.unexpected(&format!(
-                        "`[` and the key after `stop {}`",
-                        children.name
-                    )));
+                    return Err(
+                        self.unexpected(&format!("`[` and the key after `stop {}`", children.name))
+                    );
                 }
                 let key = self.key()?;
                 out.push(Effect::Stop(Stop {

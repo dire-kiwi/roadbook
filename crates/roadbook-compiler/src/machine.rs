@@ -361,7 +361,9 @@ pub(crate) fn lower<'p>(
                     format!("`{}` is already {what} of `{name}`", c.name.name),
                 )
                 .with_secondary(*first, "first declared here")
-                .with_help("a collection shares the machine's names with its parameters and variables"),
+                .with_help(
+                    "a collection shares the machine's names with its parameters and variables",
+                ),
             );
             continue;
         }
@@ -385,9 +387,7 @@ pub(crate) fn lower<'p>(
                 .with_help("keys are compared by value: use `string`, `int` or an enum (or an alias of one)"),
             );
         }
-        let symbol = cx
-            .symbol
-            .and_then(|s| cx.ck.member_symbol(s, &c.name.name));
+        let symbol = cx.symbol.and_then(|s| cx.ck.member_symbol(s, &c.name.name));
         cx.collections.insert(
             c.name.name.clone(),
             Collection {
@@ -885,9 +885,15 @@ impl<'p> Cx<'_, 'p> {
                             Diagnostic::error(
                                 codes::NOT_A_COLLECTION,
                                 span,
-                                format!("`{}` is not a children collection, so it takes no key", to.name),
+                                format!(
+                                    "`{}` is not a children collection, so it takes no key",
+                                    to.name
+                                ),
                             )
-                            .with_help(format!("send to it with `send {}.{}`", to.name, event.name)),
+                            .with_help(format!(
+                                "send to it with `send {}.{}`",
+                                to.name, event.name
+                            )),
                         );
                         None
                     }
@@ -1046,9 +1052,15 @@ impl<'p> Cx<'_, 'p> {
             .iter()
             .any(|n| n.alias.as_ref().is_some_and(|(a, _)| a.name == name.name));
         let what = if self.vars.contains_key(&name.name) {
-            format!("`{}` is a parameter or variable, not a children collection", name.name)
+            format!(
+                "`{}` is a parameter or variable, not a children collection",
+                name.name
+            )
         } else if alias {
-            format!("`{}` names an invoked machine, not a children collection", name.name)
+            format!(
+                "`{}` names an invoked machine, not a children collection",
+                name.name
+            )
         } else {
             format!("unknown children collection `{}`", name.name)
         };
@@ -1611,7 +1623,11 @@ impl<'p> Cx<'_, 'p> {
                 if let Some(c) = self.collection(from, &shown) {
                     scope.key = Implicit::Has(c.key.clone());
                     let machine = c.machine.clone().unwrap_or_default();
-                    let sig = c.machine.as_ref().and_then(|m| self.ck.sigs.get(m)).cloned();
+                    let sig = c
+                        .machine
+                        .as_ref()
+                        .and_then(|m| self.ck.sigs.get(m))
+                        .cloned();
                     // The errors the state lists in its own `on name.fail` triggers.
                     let listed: Vec<String> = self.nodes[idx]
                         .body
@@ -1640,8 +1656,13 @@ impl<'p> Cx<'_, 'p> {
                                     n.span,
                                     format!("`{machine}` does not declare the error `{}`", n.name),
                                 )
-                                .with_secondary(sig.name_span, format!("declared as `{}`", sig.result_text()));
-                                if let Some(s) = suggest(&n.name, sig.errors.iter().map(String::as_str)) {
+                                .with_secondary(
+                                    sig.name_span,
+                                    format!("declared as `{}`", sig.result_text()),
+                                );
+                                if let Some(s) =
+                                    suggest(&n.name, sig.errors.iter().map(String::as_str))
+                                {
                                     d = d.with_help(format!("did you mean `{s}`?")).with_fix(
                                         format!("replace with `{s}`"),
                                         n.span,
@@ -1658,7 +1679,9 @@ impl<'p> Cx<'_, 'p> {
                                 [one] => Implicit::Has(Ty::Named((*one).clone())),
                                 [] => Implicit::Bad(
                                     codes::AMBIGUOUS_ERROR,
-                                    format!("`error` has no type here: `{shown} *` covers none of `{machine}`'s errors"),
+                                    format!(
+                                        "`error` has no type here: `{shown} *` covers none of `{machine}`'s errors"
+                                    ),
                                 ),
                                 more => Implicit::Bad(
                                     codes::AMBIGUOUS_ERROR,
@@ -1938,7 +1961,10 @@ impl<'p> Cx<'_, 'p> {
                                         sp.children.name, sp.machine.name
                                     ),
                                 )
-                                .with_help(format!("spawn a `{m}`, or declare another collection for `{}`", sp.machine.name)),
+                                .with_help(format!(
+                                    "spawn a `{m}`, or declare another collection for `{}`",
+                                    sp.machine.name
+                                )),
                             );
                         }
                     }

@@ -11,7 +11,7 @@ use crate::eval::{Fns, Scope, eval};
 use crate::program::{MachineIndex, Program};
 use crate::{
     Command, Defect, Input, InvokeEntry, Object, Record, RunResult, SETTLE_LIMIT, Saved, Snapshot,
-    SrcKind, Status, TimerEntry,
+    SpawnedEntry, SrcKind, Status, TimerEntry,
 };
 
 /// What `start` and `step` return: the new snapshot and the commands to carry out in order.
@@ -45,6 +45,10 @@ struct Ctx<'p, 'f, 'g> {
     cmds: Vec<Command>,
     entered: Vec<bool>,
     completion: VecDeque<usize>,
+    /// The children spawned during this macrostep, not started yet: collection, key, args.
+    pending: Vec<(String, Value, Object)>,
+    /// `key`, while the transitions an input from a spawned child takes are selected and run.
+    key: Option<Value>,
     fns: &'f mut Fns<'g>,
 }
 
@@ -72,6 +76,7 @@ impl Program {
             input,
             vars: Map::new(),
             invokes: Vec::new(),
+            spawned: Vec::new(),
             timers: Vec::new(),
             next_invoke: 1,
             next_timer: 1,
@@ -186,6 +191,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             cmds: Vec::new(),
             entered: vec![false; idx.parents.len()],
             completion: VecDeque::new(),
+            pending: Vec::new(),
+            key: None,
             fns,
         }
     }
@@ -218,6 +225,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             input: &self.snap.input,
             vars: &self.snap.vars,
             implicit,
+            key: self.key.as_ref(),
         };
         eval(e, &scope, self.fns)
     }
@@ -230,6 +238,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             input: &self.snap.input,
             vars: &self.snap.vars,
             implicit,
+            key: self.key.as_ref(),
         };
         crate::eval::lookup(name, &scope)
     }
@@ -293,6 +302,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     // ---- restore -------------------------------------------------------------------------
 
     fn restart(&mut self, saved: &Saved, now: u64) -> R {
+        for ch in self.snap.spawned.clone() {
+            self.start_child(&ch);
+        }
         for s in self.active.clone() {
             let state = self.state(s);
             if let Some(inv) = self.snap.invokes.iter().find(|i| i.state == state.id) {
@@ -389,6 +401,67 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     _ => unreachable!(),
                 }
             }
+            Input::SpawnDone { spawn, .. }
+            | Input::SpawnFail { spawn, .. }
+            | Input::SpawnDefect { spawn, .. } => {
+                let Some(pos) = self.snap.spawned.iter().position(|c| c.id == *spawn) else {
+                    self.trace(Record::Stale { event: input });
+                    return Ok(());
+                };
+                let ch = self.snap.spawned.remove(pos);
+                let machine = self.collection_machine(&ch.children).to_owned();
+                self.key = Some(ch.key.clone());
+                match &input {
+                    Input::SpawnDefect { defect, .. } => {
+                        let defect = defect.clone();
+                        self.trace(Record::Event { event: input });
+                        self.fail_with_defect(defect);
+                        return Ok(());
+                    }
+                    Input::SpawnDone { value, .. } => {
+                        bound = Some(("result", value.clone()));
+                        let b = ("result", value);
+                        chosen = self.select_walks(|cx, s| {
+                            let state = cx.state(s);
+                            for (i, t) in state.transitions.iter().enumerate() {
+                                if matches!(&t.trigger, Trigger::SpawnDone { children } if *children == ch.children)
+                                    && cx.holds(t, Some(b))?
+                                {
+                                    return Ok(Some((s, i)));
+                                }
+                            }
+                            Ok(None)
+                        })?;
+                    }
+                    Input::SpawnFail { error, .. } => {
+                        let tag = error.get("_tag").and_then(Value::as_str).unwrap_or("");
+                        if !self.declares(&machine, tag) {
+                            return Err(Defect::Undeclared {
+                                error: tag.to_owned(),
+                            });
+                        }
+                        let tag = tag.to_owned();
+                        bound = Some(("error", error.clone()));
+                        let b = ("error", error);
+                        let children = ch.children.clone();
+                        chosen = self.select_walks(|cx, s| {
+                            let state = cx.state(s);
+                            let is = |t: &Trigger, want: &str| {
+                                matches!(t, Trigger::SpawnFail { children: c, error } if *c == children && error == want)
+                            };
+                            let listed = state.transitions.iter().any(|t| is(&t.trigger, &tag));
+                            let want = if listed { tag.as_str() } else { "*" };
+                            for (i, t) in state.transitions.iter().enumerate() {
+                                if is(&t.trigger, want) && cx.holds(t, Some(b))? {
+                                    return Ok(Some((s, i)));
+                                }
+                            }
+                            Ok(None)
+                        })?;
+                    }
+                    _ => unreachable!(),
+                }
+            }
             Input::After { timer } => {
                 let Some(pos) = self.snap.timers.iter().position(|t| t.id == *timer) else {
                     self.trace(Record::Stale { event: input });
@@ -419,10 +492,12 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 ..
             } => {
                 if let Some(i) = invoke {
-                    if !self.snap.invokes.iter().any(|e| e.id == *i) {
+                    let child = self.snap.spawned.iter().find(|c| c.id == *i);
+                    if child.is_none() && !self.snap.invokes.iter().any(|e| e.id == *i) {
                         self.trace(Record::Stale { event: input });
                         return Ok(());
                     }
+                    self.key = child.map(|c| c.key.clone());
                 }
                 bound = Some(("event", value.clone()));
                 chosen = self.select_emitted(from, *invoke, value)?;
@@ -435,11 +510,21 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         }
         self.trace(Record::Event { event: input });
         self.microstep(&chosen, bound.as_ref().map(|(n, v)| (*n, v)))?;
+        self.key = None;
         self.settle()?;
         if self.snap.status == Status::Running {
             self.start_work()?;
         }
         Ok(())
+    }
+
+    /// The machine the children of collection `children` run.
+    fn collection_machine(&self, children: &str) -> &'p str {
+        self.m
+            .children
+            .get(children)
+            .map(|c| c.machine.as_str())
+            .unwrap_or_default()
     }
 
     fn declares(&self, src: &str, tag: &str) -> bool {
@@ -640,6 +725,12 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     .iter()
                     .any(|e| e.id == i && Some(&e.state) == address.state.as_ref())
             }),
+            AddressKind::Children => invoke.is_some_and(|i| {
+                self.snap
+                    .spawned
+                    .iter()
+                    .any(|c| c.id == i && c.children == address.name)
+            }),
             AddressKind::Ref => {
                 invoke.is_none()
                     && self
@@ -833,9 +924,62 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                         args: obj,
                     });
                 }
-                Effect::Send { to, value, .. } => {
+                Effect::Send {
+                    to,
+                    key: None,
+                    value,
+                    ..
+                } if to.kind == AddressKind::Children => {
+                    // `send name.*.E`: the value once, then a message of its own to each child.
+                    let value = self.eval(value, implicit)?;
+                    let children: Vec<u64> = self
+                        .snap
+                        .spawned
+                        .iter()
+                        .filter(|c| c.children == to.name)
+                        .map(|c| c.id)
+                        .collect();
+                    for id in children {
+                        let message = self.next_message();
+                        let to = format!("{}.{id}", self.snap.run);
+                        self.trace(Record::Sent {
+                            message,
+                            to: to.clone(),
+                            value: value.clone(),
+                        });
+                        self.cmds.push(Command::Send {
+                            to,
+                            invoke: Some(id),
+                            message,
+                            value: value.clone(),
+                        });
+                    }
+                }
+                Effect::Send { to, key, value, .. } => {
                     let message = self.next_message();
                     let (to, invoke, value) = match to.kind {
+                        AddressKind::Children => {
+                            let key = match key {
+                                Some(k) => self.eval(k, implicit)?,
+                                None => Value::Null,
+                            };
+                            let value = self.eval(value, implicit)?;
+                            let id = self
+                                .snap
+                                .spawned
+                                .iter()
+                                .find(|c| c.children == to.name && c.key == key)
+                                .map(|c| c.id);
+                            let Some(id) = id else {
+                                self.trace(Record::Undelivered {
+                                    message,
+                                    to: None,
+                                    value,
+                                });
+                                continue;
+                            };
+                            (format!("{}.{id}", self.snap.run), Some(id), value)
+                        }
                         AddressKind::Child => {
                             let inv = self
                                 .snap
@@ -881,9 +1025,81 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     });
                     self.cmds.push(Command::Emit { message, value });
                 }
+                Effect::Spawn {
+                    children,
+                    machine,
+                    key,
+                    args,
+                } => {
+                    let key = self.eval(key, implicit)?;
+                    let params = &self.program.ir().machines[machine.as_str()].params;
+                    let mut obj = Map::new();
+                    for (p, a) in params.iter().zip(args) {
+                        let v = self.eval(a, implicit)?;
+                        obj.insert(p.name.clone(), v);
+                    }
+                    self.stop_child(children, &key);
+                    self.pending.push((children.clone(), key, obj));
+                }
+                Effect::Stop { children, key } => {
+                    let key = self.eval(key, implicit)?;
+                    self.stop_child(children, &key);
+                }
             }
         }
         Ok(())
+    }
+
+    /// Stops the child of `children` with `key`: a running one with a record, a pending one
+    /// silently.
+    fn stop_child(&mut self, children: &str, key: &Value) {
+        self.pending
+            .retain(|(c, k, _)| !(c == children && k == key));
+        if let Some(pos) = self
+            .snap
+            .spawned
+            .iter()
+            .position(|c| c.children == children && c.key == *key)
+        {
+            let ch = self.snap.spawned.remove(pos);
+            self.trace(Record::SpawnStopped {
+                spawn: ch.id,
+                children: ch.children,
+                key: ch.key,
+            });
+            self.cmds.push(Command::SpawnStop { spawn: ch.id });
+        }
+    }
+
+    /// When the run finishes or is cancelled, after every exit: stops every child still
+    /// running, in the order they started, and drops the pending ones.
+    fn stop_children(&mut self) {
+        for ch in std::mem::take(&mut self.snap.spawned) {
+            self.trace(Record::SpawnStopped {
+                spawn: ch.id,
+                children: ch.children,
+                key: ch.key,
+            });
+            self.cmds.push(Command::SpawnStop { spawn: ch.id });
+        }
+        self.pending.clear();
+    }
+
+    /// Writes `spawn.started` for spawned child `ch` and starts it.
+    fn start_child(&mut self, ch: &SpawnedEntry) {
+        let src = self.collection_machine(&ch.children).to_owned();
+        self.trace(Record::SpawnStarted {
+            spawn: ch.id,
+            children: ch.children.clone(),
+            key: ch.key.clone(),
+            src: src.clone(),
+            args: ch.args.clone(),
+        });
+        self.cmds.push(Command::SpawnStart {
+            spawn: ch.id,
+            src,
+            args: ch.args.clone(),
+        });
     }
 
     fn next_message(&mut self) -> u64 {
@@ -921,6 +1137,17 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     }
 
     fn start_work(&mut self) -> R {
+        for (children, key, args) in std::mem::take(&mut self.pending) {
+            let ch = SpawnedEntry {
+                id: self.snap.next_invoke,
+                children,
+                key,
+                args,
+            };
+            self.snap.next_invoke += 1;
+            self.snap.spawned.push(ch.clone());
+            self.start_child(&ch);
+        }
         for s in self.active.clone() {
             if !self.entered[s] {
                 continue;
@@ -1023,6 +1250,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         for s in self.active.clone().into_iter().rev() {
             self.exit_state(s)?;
         }
+        self.stop_children();
         self.snap.result = Some(if status == Status::Done {
             RunResult::Output(value.clone())
         } else {
@@ -1049,6 +1277,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         for s in self.active.clone().into_iter().rev() {
             self.exit_state(s)?;
         }
+        self.stop_children();
         self.snap.status = Status::Cancelled;
         self.trace(Record::Cancelled);
         Ok(())
@@ -1058,6 +1287,10 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         for inv in std::mem::take(&mut self.snap.invokes) {
             self.cmds.push(Command::InvokeCancel { invoke: inv.id });
         }
+        for ch in std::mem::take(&mut self.snap.spawned) {
+            self.cmds.push(Command::SpawnStop { spawn: ch.id });
+        }
+        self.pending.clear();
         for tm in std::mem::take(&mut self.snap.timers) {
             self.cmds.push(Command::TimerCancel { timer: tm.id });
         }

@@ -57,10 +57,12 @@ enum Next {
     Suspend,
 }
 
-/// A running invoke: its future and, for a machine invoke, the context it is polled in.
+/// A running invoke or spawned child: its future and, for a machine, the context it is
+/// polled in. `spawn` says that its outcome is a `spawn.*` input.
 struct Slot<'a> {
     fut: BoxFuture<'a, Outcome>,
     ctx: Option<Arc<InvokeContext>>,
+    spawn: bool,
 }
 
 pub(crate) struct Driver<'a> {
@@ -270,6 +272,7 @@ fn blank() -> Snapshot {
         input: Map::new(),
         vars: Map::new(),
         invokes: Vec::new(),
+        spawned: Vec::new(),
         timers: Vec::new(),
         next_invoke: 1,
         next_timer: 1,
@@ -473,7 +476,8 @@ impl<'a> Driver<'a> {
                 Next::Input(input) => input,
                 Next::Suspend => return self.suspend().await,
             };
-            let (invoke, timer) = (input.invoke_id(), input.timer_id());
+            let invoke = input.invoke_id().or(input.spawn_id());
+            let timer = input.timer_id();
             let (snap, commands) = self.program.step(&self.snap, input, &mut |n, a| {
                 call_function(host, &peers, n, a)
             });
@@ -545,6 +549,7 @@ impl<'a> Driver<'a> {
                 }
                 if self.queue.is_empty()
                     && self.snap.invokes.is_empty()
+                    && self.snap.spawned.is_empty()
                     && self.parent.is_none()
                     && self.suspendable
                     && self.shared.suspend_requested()
@@ -620,15 +625,29 @@ impl<'a> Driver<'a> {
         for (invoke, mut outcome) in ended {
             // A future that panics while it is dropped after giving its outcome is host code
             // failing before its invoke ended: the outcome is that host defect.
+            let mut spawn = false;
             if let Some(slot) = self.invokes.remove(&invoke) {
+                spawn = slot.spawn;
                 if let Err(d) = drop_caught(slot) {
                     outcome = Outcome::Defect(d);
                 }
             }
-            self.queue.push_back(match outcome {
-                Outcome::Done(value) => Input::InvokeDone { invoke, value },
-                Outcome::Fail(error) => Input::InvokeFail { invoke, error },
-                Outcome::Defect(defect) => Input::InvokeDefect { invoke, defect },
+            self.queue.push_back(match (outcome, spawn) {
+                (Outcome::Done(value), false) => Input::InvokeDone { invoke, value },
+                (Outcome::Fail(error), false) => Input::InvokeFail { invoke, error },
+                (Outcome::Defect(defect), false) => Input::InvokeDefect { invoke, defect },
+                (Outcome::Done(value), true) => Input::SpawnDone {
+                    spawn: invoke,
+                    value,
+                },
+                (Outcome::Fail(error), true) => Input::SpawnFail {
+                    spawn: invoke,
+                    error,
+                },
+                (Outcome::Defect(defect), true) => Input::SpawnDefect {
+                    spawn: invoke,
+                    defect,
+                },
             });
         }
         let mut fired = Vec::new();
@@ -713,51 +732,22 @@ impl<'a> Driver<'a> {
                 args,
                 ..
             } => {
-                let ctx = (src_kind == SrcKind::Machine).then(|| {
-                    Arc::new(InvokeContext {
-                        config: self.config.clone(),
-                        parent: self.id.clone(),
-                        invoke,
-                        token: Arc::new(Shared::default()),
-                        parent_queue: self.shared.clone(),
-                        alias,
-                    })
-                });
-                if let Some(ctx) = &ctx {
-                    self.contexts.insert(invoke, ctx.clone());
-                }
-                let ir = self.program.ir();
-                let params = match src_kind {
-                    SrcKind::Task => ir.tasks.get(&src).map(|t| &t.params[..]),
-                    SrcKind::Machine => ir.machines.get(&src).map(|m| &m.params[..]),
-                };
-                let refs = arg_ref_ids(self.program, params.unwrap_or_default(), &args)
-                    .iter()
-                    .filter_map(|(id, _)| self.peers.get(id).cloned())
-                    .collect();
-                let call = Invocation {
-                    kind: src_kind,
-                    src,
-                    args,
-                    refs,
-                    run: self.id.clone(),
-                    invoke,
-                };
-                let host = self.host;
-                let peers = self.peers.clone();
-                let created = with_context(ctx.as_ref(), || {
-                    with_scope(Some(&peers), || {
-                        catch_unwind(AssertUnwindSafe(|| host.invoke(call)))
-                    })
-                });
-                let fut = created.unwrap_or_else(|p| {
-                    let d = defect_from_panic(p);
-                    Box::pin(async move { Outcome::Defect(d) })
-                });
-                self.invokes.insert(invoke, Slot { fut, ctx });
+                self.start_invoke(invoke, src, src_kind, alias, args, false);
                 Ok(())
             }
-            Command::InvokeCancel { invoke } => {
+            // A spawned child is a machine invoke whose emitted events always reach this run.
+            Command::SpawnStart { spawn, src, args } => {
+                self.start_invoke(
+                    spawn,
+                    src,
+                    SrcKind::Machine,
+                    Some(String::new()),
+                    args,
+                    true,
+                );
+                Ok(())
+            }
+            Command::InvokeCancel { invoke } | Command::SpawnStop { spawn: invoke } => {
                 self.contexts.remove(&invoke);
                 match self.invokes.remove(&invoke) {
                     Some(slot) => self.cancel_slot(slot).await,
@@ -833,6 +823,60 @@ impl<'a> Driver<'a> {
                 Ok(())
             }
         }
+    }
+
+    /// Starts an invoke, or (`spawn`) a spawned child, whose outcome is then a `spawn.*` input.
+    fn start_invoke(
+        &mut self,
+        invoke: u64,
+        src: String,
+        src_kind: SrcKind,
+        alias: Option<String>,
+        args: Object,
+        spawn: bool,
+    ) {
+        let ctx = (src_kind == SrcKind::Machine).then(|| {
+            Arc::new(InvokeContext {
+                config: self.config.clone(),
+                parent: self.id.clone(),
+                invoke,
+                token: Arc::new(Shared::default()),
+                parent_queue: self.shared.clone(),
+                alias,
+            })
+        });
+        if let Some(ctx) = &ctx {
+            self.contexts.insert(invoke, ctx.clone());
+        }
+        let ir = self.program.ir();
+        let params = match src_kind {
+            SrcKind::Task => ir.tasks.get(&src).map(|t| &t.params[..]),
+            SrcKind::Machine => ir.machines.get(&src).map(|m| &m.params[..]),
+        };
+        let refs = arg_ref_ids(self.program, params.unwrap_or_default(), &args)
+            .iter()
+            .filter_map(|(id, _)| self.peers.get(id).cloned())
+            .collect();
+        let call = Invocation {
+            kind: src_kind,
+            src,
+            args,
+            refs,
+            run: self.id.clone(),
+            invoke,
+        };
+        let host = self.host;
+        let peers = self.peers.clone();
+        let created = with_context(ctx.as_ref(), || {
+            with_scope(Some(&peers), || {
+                catch_unwind(AssertUnwindSafe(|| host.invoke(call)))
+            })
+        });
+        let fut = created.unwrap_or_else(|p| {
+            let d = defect_from_panic(p);
+            Box::pin(async move { Outcome::Defect(d) })
+        });
+        self.invokes.insert(invoke, Slot { fut, ctx, spawn });
     }
 
     /// Stops a running invoke. A task's or stub's future is dropped at once. A child run is

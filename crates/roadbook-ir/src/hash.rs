@@ -217,7 +217,9 @@ impl Walker<'_> {
         for t in &s.transitions {
             match &t.trigger {
                 Trigger::After { delay } => self.expr(delay)?,
-                Trigger::InvokeFail { error } | Trigger::SpawnFail { error, .. } if error != "*" => {
+                Trigger::InvokeFail { error } | Trigger::SpawnFail { error, .. }
+                    if error != "*" =>
+                {
                     self.type_name(error)?
                 }
                 Trigger::Emitted { from, .. } => self.address(from)?,

@@ -399,11 +399,7 @@ fn recursion(edges: &[(&str, Vec<(&str, Span)>)], diags: &mut Vec<Diagnostic>) {
         let what = if cycle.len() == 1 {
             format!("`{}` starts itself", cycle[0])
         } else {
-            format!(
-                "`{}` starts itself through {}",
-                cycle[0],
-                path.join(" -> ")
-            )
+            format!("`{}` starts itself through {}", cycle[0], path.join(" -> "))
         };
         let mut d = Diagnostic::error(
             codes::UNBOUNDED_RECURSION,
@@ -411,7 +407,9 @@ fn recursion(edges: &[(&str, Vec<(&str, Span)>)], diags: &mut Vec<Diagnostic>) {
             format!("{what} without waiting for an event or an `after` (unbounded recursion)"),
         )
         .with_label("entered without waiting")
-        .with_help("put an `on` or `after` transition on the way to the state that invokes or spawns it");
+        .with_help(
+            "put an `on` or `after` transition on the way to the state that invokes or spawns it",
+        );
         for (i, m) in cycle.iter().enumerate().skip(1) {
             if let Some(s) = span(m, next(i)) {
                 d = d.with_secondary(s, format!("then `{m}` starts `{}`", next(i)));
