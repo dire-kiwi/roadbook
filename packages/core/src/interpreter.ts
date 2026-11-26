@@ -51,7 +51,7 @@ export const start = (ir: Ir, name: string, input: { readonly [param: string]: J
   try {
     for (const v of index.machine.vars) {
       if (v.init !== null) macro.vars[v.name] = macro.eval(v.init, NO_BINDINGS)
-      else if (v.type.endsWith("?")) macro.vars[v.name] = null
+      else if (isOptional(ir, v.type)) macro.vars[v.name] = null
     }
     const root = index.machine.root
     macro.enterStates([root, ...index.defaultEntry(root)])
@@ -650,4 +650,12 @@ export const compareCodePoints = (a: string, b: string): number => {
     j += cb > 0xffff ? 2 : 1
   }
   return (a.length - i) - (b.length - j)
+}
+
+/** Whether a type reference is optional once aliases are expanded (`type Note = string?`). */
+function isOptional(ir: Ir, type: string): boolean {
+  if (type.endsWith("?")) return true
+  if (type.endsWith("[]")) return false
+  const decl = Object.hasOwn(ir.types, type) ? ir.types[type] : undefined
+  return decl !== undefined && decl.kind === "alias" ? isOptional(ir, decl.type) : false
 }

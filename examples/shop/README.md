@@ -40,3 +40,4 @@ Both applications implement the chart's host functions with these fake services,
 | `Bearer good`, `{"items": [{"sku": "declined", "qty": 1}]}` | `402 {"code": "payment_failed"}` |
 | `Bearer good`, `{"items": [{"sku": "flaky", "qty": 1}]}` | `402 {"code": "payment_failed"}`, after three retries |
 | `Bearer good`, `{"items": "nope"}` | `400 {"code": "bad_request"}` |
+| `Bearer good`, `{"items": [{"sku": "apple", "qty": 9007199254740991}]}` | `500 {"code": "internal"}`: pricing overflows `int` in both runtimes |

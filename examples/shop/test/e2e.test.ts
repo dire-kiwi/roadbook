@@ -98,7 +98,7 @@ describe("POST /orders", () => {
     const response = await fetch(`${base}/orders`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: "Bearer good" },
-      body: JSON.stringify({ items: [{ sku: "apple", qty: 9007199254740 }] })
+      body: JSON.stringify({ items: [{ sku: "apple", qty: 9007199254740991 }] })
     })
     expect(response.status).toBe(500)
     expect(await response.json()).toEqual({ code: "internal" })

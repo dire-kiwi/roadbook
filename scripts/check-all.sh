@@ -40,6 +40,15 @@ pnpm -r typecheck
 step "TypeScript: tests"
 pnpm -r test
 
+step "Conformance: the TypeScript and Rust runtimes write identical traces"
+out=$(mktemp -d)
+mkdir -p "$out/ts" "$out/rust"
+ROADBOOK_CONFORMANCE_OUT="$out/ts" pnpm --filter @roadbook/effect exec vitest run test/conformance >/dev/null
+ROADBOOK_CONFORMANCE_OUT="$out/rust" cargo test -q -p roadbook --test conformance >/dev/null
+test "$(ls "$out/ts" | wc -l)" -eq "$(ls spec/conformance/cases | wc -l)"
+diff -r "$out/ts" "$out/rust"
+rm -rf "$out"
+
 step "Viewer: the bundle the CLI embeds is current"
 node packages/viewer/build.mjs --check
 
