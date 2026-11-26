@@ -83,7 +83,22 @@ fn refusals_come_in_the_spec_order() {
     // The schema and the version first, even for a snapshot of no machine.
     assert_eq!(reason(&p, with(&|v| v["extra"] = json!(1))), "invalid");
     assert_eq!(
-        reason(&p, with(&|v| v["snapshotVersion"] = json!(2))),
+        reason(&p, with(&|v| v["snapshotVersion"] = json!(3))),
+        "invalid"
+    );
+    // Version 1, from before `spawned`, is refused, with or without the member.
+    assert_eq!(
+        reason(&p, with(&|v| v["snapshotVersion"] = json!(1))),
+        "invalid"
+    );
+    assert_eq!(
+        reason(
+            &p,
+            with(&|v| {
+                v["snapshotVersion"] = json!(1);
+                v.as_object_mut().unwrap().remove("spawned");
+            })
+        ),
         "invalid"
     );
     assert_eq!(
@@ -367,9 +382,9 @@ fn a_migration_cannot_turn_the_snapshot_into_another_machines() {
     // A valid snapshot of `Peer` (whose `ref` would otherwise be refused later, as `ref`).
     let peer_hash = p.ir().machines["Peer"].hash.clone();
     let peer = json!({
-        "snapshotVersion": 1, "machine": "Peer", "run": "r9", "ir": peer_hash,
+        "snapshotVersion": 2, "machine": "Peer", "run": "r9", "ir": peer_hash,
         "status": "running", "active": ["Peer", "Peer.X"], "input": {"other": "r1"},
-        "vars": {}, "invokes": [], "timers": [], "nextInvoke": 1, "nextTimer": 1,
+        "vars": {}, "invokes": [], "spawned": [], "timers": [], "nextInvoke": 1, "nextTimer": 1,
         "nextMessage": 1, "result": null
     });
     for machine in [None, Some("M")] {
@@ -385,7 +400,7 @@ fn a_migration_cannot_turn_the_snapshot_into_another_machines() {
 fn a_number_s_form_does_not_matter() {
     let p = program();
     let mut v = saved(&p);
-    v["snapshotVersion"] = json!(1.0);
+    v["snapshotVersion"] = json!(2.0);
     v["nextTimer"] = json!(3.0);
     v["timers"][0]["due"] = json!(1000.0);
     v["timers"][0]["index"] = json!(0.0);

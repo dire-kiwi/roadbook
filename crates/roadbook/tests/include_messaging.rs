@@ -257,9 +257,21 @@ async fn a_batch_spawns_an_upload_per_file_and_hears_from_each_by_key() {
     let uploads = Arc::new(Uploads::default());
     let actor = batch::batch::spawn_with(config(&sink), uploads.clone());
     let run = actor.id().to_owned();
-    actor.send(Event::Add { file: file("a.jpg", 200) }).await;
-    actor.send(Event::Add { file: file("b.jpg", 100) }).await;
-    actor.send(Event::Add { file: file("bad", 100) }).await;
+    actor
+        .send(Event::Add {
+            file: file("a.jpg", 200),
+        })
+        .await;
+    actor
+        .send(Event::Add {
+            file: file("b.jpg", 100),
+        })
+        .await;
+    actor
+        .send(Event::Add {
+            file: file("bad", 100),
+        })
+        .await;
     until(|| uploads.shown().len() == 4).await;
     let mut first = uploads.shown();
     first.sort();
@@ -285,8 +297,16 @@ async fn a_batch_spawns_an_upload_per_file_and_hears_from_each_by_key() {
     );
 
     // An upload cancelled before it finishes; closing ends the batch.
-    actor.send(Event::Add { file: file("c.jpg", 300) }).await;
-    actor.send(Event::Cancel { name: "c.jpg".into() }).await;
+    actor
+        .send(Event::Add {
+            file: file("c.jpg", 300),
+        })
+        .await;
+    actor
+        .send(Event::Cancel {
+            name: "c.jpg".into(),
+        })
+        .await;
     actor.send(Event::Close).await;
     assert_eq!(actor.result().await.unwrap(), 2);
 
