@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use roadbook_compiler::{FsLoader, Loaded, Loader, MemoryLoader, Options, compile};
-use roadbook_gen_ts::{GenError, generate};
+use roadbook_gen_ts::{GenError, PackageModule, generate};
 use roadbook_ir::Ir;
 
 fn ir(loader: &mut dyn Loader, entry: &str) -> Ir {
@@ -296,14 +296,34 @@ fn messaging_and_other_packages() {
         .with("shop/shop.road", SHOP)
         .with_package("stock", "stock.road", Loaded::Source(STOCK.into()));
     let shop = ir(&mut loader.clone(), "shop/shop.road");
-    // A package mapped to a directory is imported by a relative path to it, any other by its
-    // package specifier.
-    let mapped = roadbook_gen_ts::Options::default()
-        .with_packages([("stock".to_owned(), "vendor/stock/".to_owned())].into());
+    // A package file is imported as `Options::modules` says: by a relative path to where it
+    // is, or by a specifier; otherwise by `<package>/<path>.js`.
+    let at = |m: PackageModule| {
+        roadbook_gen_ts::Options::default()
+            .with_modules([(("stock".to_owned(), "stock.road".to_owned()), m)].into())
+    };
+    let mapped = at(PackageModule::Path("vendor/stock/charts/stock.road".into()));
     let code = generate(&shop, &mapped).unwrap();
     insta::with_settings!({ prepend_module_to_snapshot => false, omit_expression => true }, {
         insta::assert_snapshot!("messaging", without_ir(&shop, &code));
     });
+    for (m, specifier) in [
+        // Outside the project root, as an absolute `[packages]` directory can be.
+        (
+            PackageModule::Path("../../elsewhere/stock/stock.road".into()),
+            "../../../elsewhere/stock/stock.road.js",
+        ),
+        (
+            PackageModule::Specifier("stock/dist/stock.road.js".into()),
+            "stock/dist/stock.road.js",
+        ),
+    ] {
+        let code = generate(&shop, &at(m)).unwrap();
+        assert!(
+            code.contains(&format!("type StockDef }} from \"{specifier}\"")),
+            "{code}"
+        );
+    }
     let unmapped = gen_ok(&shop);
     assert!(
         unmapped.contains("import { Item, type StockDef } from \"stock/stock.road.js\""),

@@ -85,11 +85,6 @@ impl Workspace {
         loader
     }
 
-    /// The `[packages]` table: each package's name and directory, relative to the root.
-    pub fn packages(&self) -> &[(String, String)] {
-        &self.packages
-    }
-
     /// The project path of a file: relative to the root, `/`-separated.
     pub fn project_path(&self, path: &Path) -> String {
         let cwd = std::env::current_dir().unwrap_or_default();

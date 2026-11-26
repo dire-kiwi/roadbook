@@ -10,7 +10,11 @@
 
 use std::path::PathBuf;
 
-use roadbook_compiler::Options;
+use std::collections::BTreeMap;
+
+use roadbook_compiler::loader::{FileRef, NotExported, export_of, relative_path};
+use roadbook_compiler::{FsLoader, Ir, Options};
+use roadbook_gen_ts::PackageModule;
 
 use crate::workspace::Workspace;
 use crate::{Exit, report};
@@ -34,9 +38,6 @@ pub fn run(args: Args) -> Exit {
         Ok(f) => f,
         Err(e) => return report::fatal(e),
     };
-    // A module imports a file of a `[packages]` package by a relative path into its directory.
-    let options =
-        roadbook_gen_ts::Options::default().with_packages(ws.packages().iter().cloned().collect());
     let mut exit = Exit::Ok;
     match orphans(&ws, &args.paths) {
         Ok(orphans) => {
@@ -54,7 +55,8 @@ pub fn run(args: Args) -> Exit {
         Err(e) => return report::fatal(e),
     }
     for file in files {
-        let out = match roadbook_compiler::compile(&mut ws.loader(), &file, &Options::default()) {
+        let mut loader = ws.loader();
+        let out = match roadbook_compiler::compile(&mut loader, &file, &Options::default()) {
             Ok(out) => out,
             Err(e) => return report::fatal(e),
         };
@@ -64,6 +66,15 @@ pub fn run(args: Args) -> Exit {
             exit = Exit::Errors;
             continue;
         };
+        let modules = match package_modules(&ws, &loader, ir) {
+            Ok(m) => m,
+            Err(e) => {
+                eprintln!("error: `{file}`: {e}");
+                exit = Exit::Errors;
+                continue;
+            }
+        };
+        let options = roadbook_gen_ts::Options::default().with_modules(modules);
         let code = match roadbook_gen_ts::generate(ir, &options) {
             Ok(code) => code,
             Err(mut e) => {
@@ -97,6 +108,61 @@ pub fn run(args: Args) -> Exit {
         }
     }
     exit
+}
+
+/// The conditions TypeScript and Node match in an `exports` map when the generated module
+/// imports another package's module.
+const MODULE_CONDITIONS: &[&str] = &["types", "import", "node", "default"];
+
+/// How the module generated from `ir` imports the modules of the files of other packages.
+/// A file of a `[packages]` package is imported by a relative path to where it was found
+/// (`exports` applied). A file of a package in `node_modules` is imported by the specifier
+/// that the package's `exports` maps to the module next to the file: the file's own path
+/// with `.js` added if the package has no `exports`; a package whose `exports` maps no
+/// subpath there is an error, since Node and TypeScript could not resolve the import.
+fn package_modules(
+    ws: &Workspace,
+    loader: &FsLoader,
+    ir: &Ir,
+) -> Result<BTreeMap<(String, String), PackageModule>, String> {
+    let mut out = BTreeMap::new();
+    for source in &ir.sources {
+        let Some(package) = &source.package else {
+            continue;
+        };
+        let Some(found) = loader.package_file(&FileRef::in_package(package, &source.path)) else {
+            continue;
+        };
+        let module = if found.listed {
+            PackageModule::Path(relative_path(&ws.root, &found.disk))
+        } else {
+            let inside = relative_path(&found.dir, &found.disk);
+            let json = std::fs::read_to_string(found.dir.join("package.json")).unwrap_or_default();
+            let targets = [format!("{inside}.js"), format!("{inside}.ts")];
+            match export_of(&json, &targets, MODULE_CONDITIONS) {
+                Ok(None) => PackageModule::Specifier(format!("{package}/{inside}.js")),
+                Ok(Some(subpath)) => PackageModule::Specifier(format!("{package}/{subpath}")),
+                Err(why) => {
+                    let why = match why {
+                        NotExported::Missing => format!(
+                            "its `package.json` `exports` maps no subpath to `./{inside}.js`; \
+                             export the generated modules next to the charts, as \
+                             `\"./{}.js\": \"./{inside}.js\"` or a pattern such as \
+                             `\"./*.road.js\": \"./<dir>/*.road.js\"`",
+                            source.path
+                        ),
+                        NotExported::Invalid(why) => why,
+                    };
+                    return Err(format!(
+                        "cannot import the generated module of `{package}/{}`: {why}",
+                        source.path
+                    ));
+                }
+            }
+        };
+        out.insert((package.clone(), source.path.clone()), module);
+    }
+    Ok(out)
 }
 
 /// The first line from `from` on (1-based) where `field` is declared: the name as a whole

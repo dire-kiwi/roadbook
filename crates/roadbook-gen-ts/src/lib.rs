@@ -15,10 +15,11 @@
 //!   handle made by `Roadbook.make` from the compiled IR, which is inlined once per module.
 //!
 //! Declarations of other files are imported from their own generated modules: a file of the
-//! project by relative path (`./types.road.js`), a file of another package by a relative path
-//! to the generated module in the package's directory when [`Options::packages`] maps it (as
-//! the `[packages]` table of `roadbook.toml` does), else by the package specifier
-//! (`inventory/inventory.road.js`), which Node resolves in `node_modules`.
+//! project by relative path (`./types.road.js`), a file of another package as
+//! [`Options::modules`] says (`roadbook gen` gives a relative path to where the file was found
+//! for a package of the `[packages]` table of `roadbook.toml`, and for one in `node_modules`
+//! the specifier its `exports` maps to the generated module), else by the package specifier
+//! `<package>/<path>.js` (`inventory/inventory.road.js`).
 //!
 //! # Types the generator maps specially
 //!
@@ -55,17 +56,26 @@ const RUNTIME: &str = "@roadbook/effect";
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Options {
-    /// The directories of other packages, by package name, as project paths (relative to the
-    /// project root, `/`-separated): the `[packages]` table of `roadbook.toml`. A module
-    /// imports a file of a package listed here by a relative path to the package's directory,
-    /// and a file of any other package by the package specifier.
-    pub packages: BTreeMap<String, String>,
+    /// How a module imports the generated module of a file of another package, by the file's
+    /// package and path as in `ir.sources`. A file of a package not listed here is imported
+    /// by the specifier `<package>/<path>.js`.
+    pub modules: BTreeMap<(String, String), PackageModule>,
+}
+
+/// Where the generated module of a file of another package is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PackageModule {
+    /// Next to the file, which is at this project path (relative to the project root,
+    /// `/`-separated, starting with `..` if it is outside): imported by a relative path.
+    Path(String),
+    /// Imported by this specifier, as it is: `@shop/inventory/inventory.road.js`.
+    Specifier(String),
 }
 
 impl Options {
-    /// These options with `packages` as the package directories.
-    pub fn with_packages(mut self, packages: BTreeMap<String, String>) -> Options {
-        self.packages = packages;
+    /// These options with `modules` as the modules of other packages' files.
+    pub fn with_modules(mut self, modules: BTreeMap<(String, String), PackageModule>) -> Options {
+        self.modules = modules;
         self
     }
 }
@@ -256,16 +266,9 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
         let path = source.map(|s| s.path.as_str()).unwrap_or_default();
         let specifier = match source.and_then(|s| s.package.as_deref()) {
             None => relative(&entry.path, path),
-            Some(package) => match options.packages.get(package) {
-                Some(dir) => {
-                    let dir = dir.trim_start_matches("./").trim_end_matches('/');
-                    let path = if dir.is_empty() || dir == "." {
-                        path.to_owned()
-                    } else {
-                        format!("{dir}/{path}")
-                    };
-                    relative(&entry.path, &path)
-                }
+            Some(package) => match options.modules.get(&(package.to_owned(), path.to_owned())) {
+                Some(PackageModule::Path(at)) => relative(&entry.path, at),
+                Some(PackageModule::Specifier(s)) => s.clone(),
                 None => format!("{package}/{path}.js"),
             },
         };
@@ -1024,10 +1027,10 @@ fn relative(from: &str, to: &str) -> String {
         .take_while(|(a, b)| a == b)
         .count();
     let mut parts = vec![".."; from_dir.len() - common];
-    if parts.is_empty() {
-        parts.push(".");
-    }
     parts.extend(&to[common..]);
+    if parts[0] != ".." {
+        parts.insert(0, ".");
+    }
     format!("{}.js", parts.join("/"))
 }
 
@@ -1042,6 +1045,8 @@ mod tests {
         assert_eq!(relative("a/b.road", "c.road"), "../c.road.js");
         assert_eq!(relative("a/x/b.road", "a/y/c.road"), "../y/c.road.js");
         assert_eq!(relative("b.road", "a/c.road"), "./a/c.road.js");
+        assert_eq!(relative("a/b.road", "../x/c.road"), "../../x/c.road.js");
+        assert_eq!(relative("b.road", "../../x/c.road"), "../../x/c.road.js");
     }
 
     #[test]

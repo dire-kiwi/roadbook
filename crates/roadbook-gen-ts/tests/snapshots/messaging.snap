@@ -5,7 +5,7 @@ source: crates/roadbook-gen-ts/tests/gen.rs
 
 import { Schema } from "effect"
 import * as Roadbook from "@roadbook/effect"
-import { Item, type StockDef } from "../vendor/stock/stock.road.js"
+import { Item, type StockDef } from "../vendor/stock/charts/stock.road.js"
 
 // ---- types ----
 
