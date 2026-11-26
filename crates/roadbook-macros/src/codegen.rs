@@ -173,6 +173,74 @@ struct Gen<'a> {
     foreign: &'a HashMap<String, TokenStream>,
     /// The hidden static the machines' runners read the program from.
     program: Ident,
+    /// For each type, the types its Rust form contains in place (not behind a `Vec`): those
+    /// of its fields or, for an alias, its target, through `?`, and theirs in turn.
+    contains: HashMap<&'a str, HashSet<&'a str>>,
+}
+
+/// The types `t` names in place, not inside a list, each with whether it is behind a `?`.
+fn in_place(t: &TypeRef, optional: bool, out: &mut Vec<(String, bool)>) {
+    match t {
+        TypeRef::Named(n) => out.push((n.clone(), optional)),
+        TypeRef::Optional(e) => in_place(e, true, out),
+        TypeRef::Builtin(_) | TypeRef::List(_) | TypeRef::Ref(_) => {}
+    }
+}
+
+/// The types a declaration's Rust form holds in place, each with whether it is behind a `?`.
+fn holds(def: &TypeDef) -> Vec<(String, bool)> {
+    let mut out = Vec::new();
+    match def {
+        TypeDef::Record { fields } | TypeDef::Error { fields } => {
+            for f in fields {
+                in_place(&f.ty, false, &mut out);
+            }
+        }
+        TypeDef::Alias { ty } => in_place(ty, false, &mut out),
+        TypeDef::Enum { .. } | TypeDef::Extern => {}
+    }
+    out
+}
+
+/// Every type reachable from `from` along `edges`, not counting `from` unless on a cycle.
+fn reachable<'a>(from: &'a str, edges: &HashMap<&'a str, Vec<&'a str>>) -> HashSet<&'a str> {
+    let mut seen = HashSet::new();
+    let mut stack: Vec<&str> = edges.get(from).cloned().unwrap_or_default();
+    while let Some(n) = stack.pop() {
+        if seen.insert(n) {
+            stack.extend(edges.get(n).into_iter().flatten().copied());
+        }
+    }
+    seen
+}
+
+/// For each type of `ir`, the types it contains in place; or the error for a type that
+/// contains itself with no `?` on the way, which has no finite value.
+fn containment(ir: &Ir) -> Result<HashMap<&str, HashSet<&str>>, String> {
+    let mut all: HashMap<&str, Vec<&str>> = HashMap::new();
+    let mut plain: HashMap<&str, Vec<&str>> = HashMap::new();
+    for (name, decl) in &ir.types {
+        for (n, optional) in holds(&decl.def) {
+            let Some((n, _)) = ir.types.get_key_value(&n) else {
+                continue;
+            };
+            all.entry(name.as_str()).or_default().push(n.as_str());
+            if !optional {
+                plain.entry(name.as_str()).or_default().push(n.as_str());
+            }
+        }
+    }
+    let mut out = HashMap::new();
+    for name in ir.types.keys() {
+        if reachable(name, &plain).contains(name.as_str()) {
+            return Err(format!(
+                "type `{name}` contains itself with no `?` or `[]` on the way, so it has no \
+                 finite value"
+            ));
+        }
+        out.insert(name.as_str(), reachable(name, &all));
+    }
+    Ok(out)
 }
 
 impl<'a> Gen<'a> {
@@ -224,6 +292,7 @@ impl<'a> Gen<'a> {
             error_enums,
             foreign: &foreign.krate,
             program: program_static(""),
+            contains: containment(ir)?,
         })
     }
 
@@ -235,6 +304,13 @@ impl<'a> Gen<'a> {
 
     /// The owned Rust type. Inside a machine's module (`sup`), chart types are `super::Name`.
     fn ty(&self, t: &TypeRef, sup: bool) -> TokenStream {
+        self.ty_in(t, sup, None)
+    }
+
+    /// The owned Rust type of a field of type `owner`, or of alias `owner`'s target: a `T?`
+    /// where `T` contains `owner` in place is `Option<Box<T>>`, which closes the cycle with
+    /// a pointer, as Rust requires. A list needs no `Box`: a `Vec` is one.
+    fn ty_in(&self, t: &TypeRef, sup: bool, owner: Option<&str>) -> TokenStream {
         match t {
             TypeRef::Builtin(b) => match b {
                 Builtin::String => quote!(::std::string::String),
@@ -253,8 +329,22 @@ impl<'a> Gen<'a> {
                 quote!(::std::vec::Vec<#e>)
             }
             TypeRef::Optional(e) => {
-                let e = self.ty(e, sup);
-                quote!(::core::option::Option<#e>)
+                let cycle = match (&**e, owner) {
+                    (TypeRef::Named(n), Some(owner)) => {
+                        n == owner
+                            || self
+                                .contains
+                                .get(n.as_str())
+                                .is_some_and(|c| c.contains(owner))
+                    }
+                    _ => false,
+                };
+                let e = self.ty_in(e, sup, owner);
+                if cycle {
+                    quote!(::core::option::Option<::std::boxed::Box<#e>>)
+                } else {
+                    quote!(::core::option::Option<#e>)
+                }
             }
             TypeRef::Ref(m) => {
                 let module = ident(&snake(m));
@@ -404,7 +494,8 @@ impl<'a> Gen<'a> {
             } else {
                 TokenStream::new()
             };
-            let ty = self.ty(&f.ty, !public);
+            // Only a type's fields can close a cycle: an event is no type.
+            let ty = self.ty_in(&f.ty, !public, public.then_some(owner));
             let vis = if public {
                 quote!(pub)
             } else {
@@ -542,7 +633,7 @@ impl<'a> Gen<'a> {
                 }
             }
             TypeDef::Alias { ty } => {
-                let ty = self.ty(ty, false);
+                let ty = self.ty_in(ty, false, Some(name));
                 quote! {
                     #doc
                     #[allow(dead_code, missing_docs)]

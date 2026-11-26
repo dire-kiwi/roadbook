@@ -1,0 +1,44 @@
+// Types that refer to themselves, for include_recursive.rs: a record through `?`, two records
+// through each other, an error through `?`, a record through an alias, and a list (which
+// needs no `Box`).
+
+/// A linked list.
+type Node { value: int, next: Node? }
+
+/// Two records that each may hold the other.
+type A { name: string, b: B? }
+type B { name: string, a: A? }
+
+/// An error with the error that caused it.
+error Chain { reason: string, cause: Chain? }
+
+/// A link through an alias of an optional.
+type MaybeLink = Link?
+type Link      { value: int, next: MaybeLink }
+
+/// A tree: its children are a list.
+type Tree { value: int, children: Tree[] }
+
+/// Prepends a node, or fails with a chain of errors.
+task extend(node: Node, a: A, link: Link, tree: Tree) -> Node ! Chain
+
+/// Extends a list once, and outputs it, or fails as the task does.
+machine Grow(node: Node, a: A, link: Link, tree: Tree) -> Node ! Chain {
+  var grown:   Node
+  var failure: Chain
+
+  event Swap { node: Node? }
+
+  initial Extending
+
+  state Extending {
+    invoke extend(node, a, link, tree) {
+      done       -> Done    set grown = result
+      fail Chain -> Failed  set failure = error
+    }
+    on Swap -> Extending
+  }
+
+  final state Done   { output grown }
+  final state Failed { fail failure }
+}

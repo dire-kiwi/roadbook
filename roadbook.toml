@@ -32,6 +32,8 @@ inventory = "examples/inventory"
 # The fixture crates of `crates/roadbook/tests/include_crates.rs`.
 chain0 = "crates/roadbook/tests/crates/chain0"
 chain1 = "crates/roadbook/tests/crates/chain1"
+errchain0 = "crates/roadbook/tests/crates/errchain0"
+errchain1 = "crates/roadbook/tests/crates/errchain1"
 hyphen-stock = "crates/roadbook/tests/crates/hyphen-stock"
 left = "crates/roadbook/tests/crates/left"
 nested-owner = "crates/roadbook/tests/crates/nested-owner"

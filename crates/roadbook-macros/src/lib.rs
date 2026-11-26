@@ -60,11 +60,14 @@ mod names;
 ///   in all its regions at once, and `State` names the parallel state.
 /// - Types map as `string` to `String`, `int` to `i64`, `float` to `f64`, `bool` to `bool`,
 ///   `duration` to `std::time::Duration` (whole milliseconds in JSON), `json` to
-///   `serde_json::Value`, `T[]` to `Vec<T>` and `T?` to `Option<T>`. An `int` or `duration`
-///   reads any integral JSON number (`2.0` as well as `2`), and a non-finite `float` does not
-///   encode: from host code it is a host defect, not `null`. `Handlers` methods take
-///   strings, lists, records, errors, extern types, `json` and aliases of those by
-///   reference (`&str`, `&[T]`, `&T`), and numbers, `bool`, `duration` and enums by value.
+///   `serde_json::Value`, `T[]` to `Vec<T>` and `T?` to `Option<T>`; but a `T?` that closes
+///   a cycle of types (a record's or error's field, or an alias's target, where `T` holds the
+///   declaring type: `type Node { next: Node? }`) is `Option<Box<T>>`, with the same JSON. An
+///   `int` or `duration` reads any integral JSON number (`2.0` as well as `2`), and a
+///   non-finite `float` does not encode: from host code it is a host defect, not `null`.
+///   `Handlers` methods take strings, lists, records, errors, extern types, `json` and
+///   aliases of those by reference (`&str`, `&[T]`, `&T`), and numbers, `bool`, `duration`
+///   and enums by value.
 ///   `ref M` is `m::Ref`, taken by reference too.
 ///
 /// **Charts of other crates.** An import of another package's file,

@@ -1,0 +1,4 @@
+// A record that contains itself with no `?` or `[]` on the way: it has no finite value.
+
+type Pair { left: Half, right: int }
+type Half { pair: Pair }
