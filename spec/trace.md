@@ -17,7 +17,7 @@ The core emits records without these members; the driver adds them. The driver a
 
 ## Records
 
-States are named by their ids in the IR, transitions by their state's id and their index in its `transitions`, and values are in their JSON form ([values](execution.md#values)). Every member listed is present; none is ever omitted.
+States are named by their ids in the IR, transitions by their state's id and their index in its `transitions`, and values are in their JSON form ([values](execution.md#values)), with what the chart marks `sensitive` redacted ([redaction](#redaction)). Every member listed is present; none is ever omitted.
 
 | `kind` | Members | Written |
 | --- | --- | --- |
@@ -115,6 +115,43 @@ A `PlaceOrder` request that times out while its `Checkout` child is waiting to r
 {"kind":"cancelled","parent":"r1","run":"r1.4","t":30010}
 ```
 
-## Later
+## Redaction
 
-Fields marked `sensitive` in a chart will be redacted in records. That does not change the records above.
+A chart marks the fields, parameters and variables whose values must not appear in a trace as `sensitive` ([language](../docs/design/language.md#sensitive-values)), and the IR carries the mark ([`sensitive`](ir.md#fields-and-parameters)). Every value a record shows of one of them is replaced by the JSON string `"<redacted>"`. The records keep the members and the form above: only values change, and a trace of a chart that marks nothing is exactly what it was before marks existed.
+
+**Where.** The core redacts each record as it emits it ([execution](execution.md#redaction)), so both runtimes write the same bytes, and no driver, sink or exporter ever holds the real value of a record. Records are the only thing redacted: the core's snapshot, the commands (an action's and an invoke's arguments, the value of a `send` or `emit`), what host code receives and returns, and **saved snapshots keep the real values**, since a run restored from one must go on with them. A saved snapshot is as sensitive as the data it holds; store it accordingly. Only the copy of it in a `restored` record is redacted, and that copy cannot be restored.
+
+**By type.** A value is redacted by its declared type, from the IR, through aliases (in any file or package):
+
+- a value of a sensitive field, parameter or variable is `"<redacted>"` whole, whatever its type, `null`, a list or a record included;
+- a record or error: each member that is one of its sensitive fields is `"<redacted>"`; each other declared field is redacted by its type; a member it does not declare (`_tag`) is left as it is;
+- a list: each item, by the item type. An optional: `null` is left as it is, a value is redacted by the inner type;
+- any other type (`string`, `int`, `float`, `bool`, `duration`, `json`, an enum, an `extern` type, a `ref`): left as it is;
+- an object where a record is expected, a list where a list is: only those are walked; a value of another shape is left as it is.
+
+Values of a type that holds no sensitive field, at any depth, are never changed.
+
+**Which type.** Each record member is redacted as the value of:
+
+| Record | Member | Type |
+| --- | --- | --- |
+| `started` | `input` | each by its parameter of the machine |
+| `restored` | `snapshot` | its `input` by the machine's parameters, its `vars` by its variables, a `result`'s `output` by the machine's result type and its `error` by its tag; nothing else in it is a value |
+| `set` | `value` | the variable |
+| `action` | `args` | each by its parameter of the action |
+| `invoke.started` | `args` | each by its parameter of the task or machine |
+| `sent`, `undelivered` | `value` | the receiving machine's event of its `_tag` (the address's machine) |
+| `emitted` | `value` | the run's own emitted event of its `_tag` |
+| `done` | `output` | the machine's result type |
+| `failed` | `error` | the error type its `_tag` names |
+| `event`, `dropped`, `stale` | `event` | by the input's kind, below |
+
+The `undelivered` record a driver writes repeats the value of the `sent` record before it, which the core has redacted. In an input, an `event` or `message` value is redacted as the run's own event of its `_tag`; an `invoke.fail` error as the error type its `_tag` names; an `invoke.done` value as the result type of the running invoke's task or machine. Two inputs come from something the receiving run cannot always name, and are redacted under every type they could have, one after the other in IR order:
+
+- an `emitted` value, under the emitted event of its `_tag` of **every** machine of the IR that emits one (a holder of a `ref` does not know which machine sent it, and a parent may have left the invoking state);
+- a `stale` `invoke.done` value, whose invoke has ended, under the result type of **every** task and then every machine of the IR.
+
+Each of those redacts a superset of what the sender's own type would, so nothing it marks is shown; a field that only a different type of the same name marks sensitive is redacted too.
+
+**What it does not cover.** A computed value is not sensitive: a function's result, an operator's (`attempts + 1`), a guard. A host defect's `message` is whatever host code raised, and is written as it is; so is a defect's `expr` (a chart's own text). The compiler keeps a sensitive value from being copied where it would be shown as it is (`RB0317`, `RB0318`), but not from being computed into one: `set shown = describe(password)` writes what `describe` returns.
+

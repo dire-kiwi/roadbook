@@ -199,7 +199,7 @@ Every runtime can emit a trace: an ordered stream of JSON records describing wha
 
 Records name states and transitions by the ids in the IR, so the viewer can light up exactly what ran. A child machine's records carry their own `run` id and the parent's: the child started by invoke 4 of run `r1` is `r1.4`, so a trace of a whole request nests the way the charts do. Within one run, records are in the order things happened. Across runs, the interleaving depends on how the host schedules fibers or futures, so traces are compared with each run's records grouped together, in run order.
 
-Values in a trace go through the generated schemas. Fields can be marked `sensitive` in the chart to be redacted. Trace output is off by default and goes wherever the application points it: a file, stdout, an OpenTelemetry exporter (each state becomes a span, each transition a span event), or a live connection to the viewer.
+Values in a trace go through the generated schemas. Fields, parameters and variables marked `sensitive` in the chart are shown as `"<redacted>"`: the core redacts every record as it emits it, by the declared types, so no driver or exporter holds the real value and both runtimes write the same bytes ([redaction](../../spec/trace.md#redaction)). Saved snapshots keep the real values. Trace output is off by default and goes wherever the application points it: a file, stdout, an OpenTelemetry exporter (each state becomes a span, each transition a span event), or a live connection to the viewer.
 
 ## Conformance
 
