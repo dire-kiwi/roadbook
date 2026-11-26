@@ -1,0 +1,61 @@
+{
+  "description": "A pool saved with two spawned children running: the snapshot lists them, with their ids, `int` keys and the arguments they were spawned with, and nothing of their own progress. Restoring starts each again, before anything else, as a new child run of the restored run that starts from the beginning. Once one has left and the other has been stopped (its stale emitted event taken), the restored run is idle and suspends with no spawned child. A snapshot whose spawned child is of no collection of the machine is refused as `invalid`.",
+  "requires": [
+    "messaging",
+    "spawn",
+    "snapshots"
+  ],
+  "chart": "charts/hub.road",
+  "machine": "Pool",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Open",
+        "n": 1,
+        "name": "x"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Open",
+        "n": 2,
+        "name": "y"
+      }
+    },
+    {
+      "snapshot": "two"
+    },
+    {
+      "restore": "two",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Leave",
+        "n": 1
+      },
+      "run": "r2"
+    },
+    {
+      "event": {
+        "_tag": "Close",
+        "n": 2
+      },
+      "run": "r2"
+    },
+    {
+      "suspend": "after",
+      "run": "r2"
+    },
+    {
+      "restore": "stray",
+      "refused": "invalid"
+    }
+  ],
+  "status": "running"
+}

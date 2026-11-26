@@ -218,6 +218,13 @@ fn top_level_runs_are_started_in_order() {
                 "{}: `requires` must list `parallel` exactly when its chart has a parallel state",
                 c.name
             );
+            let spawn = ir.machines.values().any(|m| !m.children.is_empty());
+            assert_eq!(
+                spawn,
+                requires("spawn"),
+                "{}: `requires` must list `spawn` exactly when its chart has a `children` collection",
+                c.name
+            );
         }
     }
 }
@@ -234,7 +241,7 @@ fn charts_exist_and_scripts_name_known_things() {
         let started: BTreeSet<&str> = c
             .records
             .iter()
-            .filter(|r| r["kind"] == "invoke.started")
+            .filter(|r| r["kind"] == "invoke.started" || r["kind"] == "spawn.started")
             .filter_map(|r| r["src"].as_str())
             .collect();
         let mut steps: Vec<&Step> = c.case.script.iter().collect();

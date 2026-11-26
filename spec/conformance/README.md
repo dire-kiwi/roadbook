@@ -55,11 +55,11 @@ Every member is required. Values are in their JSON form ([values](../execution.m
 | Member | Meaning |
 | --- | --- |
 | `description` | What the case checks. |
-| `requires` | The features the case needs beyond the first version's, any of: `messaging` for a case whose chart uses `send`, `emit`, `emits`, `on name.Event`, `invoke … as` or `ref`, or that starts several top-level runs (milestone 5); `parallel` for a case whose chart has a parallel state, and `snapshots` for a case whose script has `snapshot`, `restore` or `suspend` steps (milestone 6). `[]` for none. A runner skips, and does not fail, a case that requires a feature its runtime does not implement yet. |
+| `requires` | The features the case needs beyond the first version's, any of: `messaging` for a case whose chart uses `send`, `emit`, `emits`, `on name.Event`, `invoke … as` or `ref`, or that starts several top-level runs (milestone 5); `parallel` for a case whose chart has a parallel state, and `snapshots` for a case whose script has `snapshot`, `restore` or `suspend` steps (milestone 6); `spawn` for a case whose chart has a `children` collection (keyed `spawn`), which also needs `messaging`. `[]` for none. A runner skips, and does not fail, a case that requires a feature its runtime does not implement yet. |
 | `chart` | The entry chart, relative to this directory. |
 | `machine` | The machine run as the root run, `r1`, which is started first. |
 | `input` | Its arguments, keyed by parameter name. Since no other run exists yet, it has no `ref` argument. |
-| `stub` | Machines that are scripted like tasks when invoked. Every other invoked machine runs from the chart as a child run. |
+| `stub` | Machines that are scripted like tasks when invoked or spawned. Every other invoked or spawned machine runs from the chart as a child run. |
 | `fns` | For each function, a list of `{"args": [...], "returns": value}`: the result for those positional arguments. A call whose arguments match no entry (compared as canonical JSON) fails the case. Entries that are never called are allowed. |
 | `actions` | For each action, a list of `{"args": {...}, "defect": "message"}`: every call of that action with those arguments (keyed by parameter name, compared as canonical JSON) has the host defect `{"kind": "host", "message": "message"}`. Every other action call does nothing and returns at once. |
 | `script` | The steps, in order. |
@@ -82,7 +82,7 @@ Script steps:
 | `{"restore": "s1", "refused": "ir"}` | The same, but the restore must be refused with that reason (`invalid`, `machine`, `ir`, `migration`, `ended` or `ref`). No run is started, nothing is written to the trace, and no run id is used. |
 | `{"suspend": "s2", "run": "r3"}` | Suspends that top-level run (the root run with no `run`): once it is idle or has ended ([suspending](../execution.md#suspending-and-resume)), compares the saved snapshot suspend gives with `s2.snapshot.json`. A run with a running invoke is idle only after later steps have ended it. |
 
-`task` names a task or a stubbed machine. It refers to the one invoke of that name that is running (started, not cancelled, no outcome given yet) in any run; if several runs have one, `"run": "r1.4"` picks one. No match, or an ambiguous one, fails the case.
+`task` names a task or a stubbed machine. It refers to the one invoke (or spawned child) of that name that is running (started, not cancelled, no outcome given yet) in any run; if several runs have one, `"run": "r1.4"` picks one. No match, or an ambiguous one, fails the case.
 
 **Run ids.** The root run is `r1`, the runs of `start` steps and of `restore` steps that are not refused `r2`, `r3`, … in order, and child runs are named as always ([run ids](../execution.md#the-driver)), so `r2.1` is the child started by invoke 1 of `r2`. A `ref` in a trace is one of these ids ([values](../execution.md#values)). The trace groups each top-level run's tree after the previous one's: `r1`, `r1.1`, `r2`, `r2.1`, `r3`. Cases start at most eight other runs, so ids compare as numbers would.
 
@@ -178,4 +178,10 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `snapshot-refusals` | A migration whose result is a snapshot of another machine is refused (`machine`); a running snapshot with a `result` does not fit (`invalid`); a snapshot that ended with a defect of an unknown kind matches the schema and is refused as `ended`. |
 | `snapshot-ended` | Saving a run that has ended gives its final snapshot: `done`, `cancelled` and `defect`. |
 | `float-forms` | Integers written as floats (`1.0`, `-0.0`, `10000.0`) in a snapshot and an event are the integers, and are saved in integer form. |
+| `spawn-basic` | Children spawned under keys start once the step has settled, as `r1.1` and `r1.2`; a send by key, and the emitted event it causes taken with `key`; `send sessions.*` as one message per running child, in the order they started; a child that ends by itself emits from its exit effects before its outcome reaches `on sessions.done`; `stop` runs the child's cancel step, whose emitted event is stale; the hub's exit effects run before it stops the child still running. |
+| `spawn-replace` | A spawn under a key in use stops the old child first; a send to a child spawned in the same step, or to a key with no child, is undelivered with `to` null; a stop of a key with no child does nothing; two spawns under one key in a step start only the second; a spawn in the step that ends the run never starts; the children left are stopped in the order they started. |
+| `spawn-outcomes` | A child's declared failure reaches `on sessions.fail *` with `error` and `key`; a child's defect ends the parent with the same defect, which stops its other child with no record. |
+| `spawn-cancel` | `int` keys; a child's emitted event and failure with no `on` are dropped; a parent cancelled from outside exits its states, then stops its children, then writes `cancelled`. |
+| `spawn-snapshot` | A saved snapshot lists the running spawned children with their keys and arguments; restoring starts each again from the beginning, before the states' work; the restored run suspends once no child runs; a spawned child of no collection is `invalid`. |
+| `spawn-suspend` | Suspending waits until no spawned child runs: a stubbed spawned child, ended by a `task` step. |
 | `resume-order` | The request-handler flow: create and suspend, restore and pay (suspend waits for the task the payment started), restore and deliver, and a late payment to a restored order whose deadline passed, which expires first. |
