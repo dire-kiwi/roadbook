@@ -1,0 +1,67 @@
+// Maps and generic types for include_generic.rs: `BTreeMap`s, generic structs and aliases
+// whose fields go through `Wire` (durations as milliseconds, integers in any form, inside
+// maps and type arguments too), an extern type as a type argument, and the boxes that close
+// cycles through type arguments.
+
+extern type Money
+
+type UserId     = string
+type Page<T>    { items: T[], next: string? }
+type Pair<A, B> { first: A, second: B }
+type Timed<T>   { value: T, wait: duration }
+type Tree<T>    { value: T, children: Tree<T>[] }
+type Link<T>    { value: T, next: Link<T>? }
+type Wrap<T>    { inner: T }
+// `Self` cannot name a Rust type parameter: it is `Self_`.
+type Odd<Self> { me: Self }
+type Node      { label: string, kids: Page<Node>, wrapped: Wrap<Node?> }
+type Dict<T>   = map<string, T>
+type First<T>  = T
+type Maybe<T>  = T?
+type Opt<T>    { v: T? }
+type Gen<T>    { w: Wrap<T?> }
+// Cycles through a `?` inside a generic type: `Opt<T>` and `Gen<T>` box theirs, and
+// `Maybe<Self1>` is written as the boxed `Option` it stands for.
+type Self1 { label: string, o: Opt<Self1>, m: Maybe<Self1>, g: Gen<Self1> }
+
+fn waits(names: UserId[])            -> map<UserId, duration>
+fn longest(waits: Dict<duration>)    -> Timed<string>
+fn total(prices: map<string, Money>) -> Wrap<Money>
+fn twice(n: First<int>)              -> First<int>
+
+task fetch(page: Page<int>) -> Page<Pair<string, int>>
+
+/// Fetches a page, and gives the longest wait of `names`.
+machine Gather(names: UserId[], first: Page<int>) -> Timed<string> {
+  var waits: map<UserId, duration>
+  var got:   Page<Pair<string, int>>
+
+  initial Fetching
+
+  state Fetching {
+    entry set waits = waits(names)
+    invoke fetch(first) {
+      done -> Done  set got = result
+    }
+  }
+
+  final state Done { output longest(waits) }
+}
+
+/// Gives back what it is given, in a pair.
+machine Shapes(tree: Tree<int>, link: Link<duration>, node: Node) -> Pair<Tree<int>, Link<duration>> {
+  initial Done
+  final state Done { output Pair { first: tree, second: link } }
+}
+
+/// An extern type inside a map and a type argument.
+machine Price(prices: map<string, Money>) -> Wrap<Money> {
+  initial Done
+  final state Done { output total(prices) }
+}
+
+/// A generic alias of a scalar is passed by value, as the scalar is.
+machine Twice(n: int) -> int {
+  initial Done
+  final state Done { output twice(n) }
+}

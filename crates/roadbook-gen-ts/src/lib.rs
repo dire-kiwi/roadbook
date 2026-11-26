@@ -151,10 +151,11 @@ impl fmt::Display for GenError {
             ),
             GenError::Clash { name } => write!(
                 f,
-                "the generated module would declare `{name}` twice; rename a declaration \
-                 (machine `M` also declares `MDef`; an event declared by two machines of the \
-                 file is named `<Machine><Event>`; `Schema`, `Duration` and `Roadbook` are \
-                 imported names)"
+                "the generated module would declare `{name}` twice, or hide a name it uses; \
+                 rename a declaration or type parameter (machine `M` also declares `MDef`; an \
+                 event declared by two machines of the file is named `<Machine><Event>`; \
+                 `Schema`, `Duration` and `Roadbook` are imported names, and `Record`, \
+                 `Readonly` and `ReadonlyArray` are TypeScript's)"
             ),
             GenError::ErrorField {
                 file,
@@ -186,11 +187,13 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
         schema: false,
         duration: false,
         roadbook: false,
+        globals: BTreeSet::new(),
         cycle: cycles(ir)?,
         lazy: (1..ir.sources.len())
             .filter(|&f| reached[f] && reach(&refs, f)[0])
             .map(|f| f as u32)
             .collect(),
+        params: &[],
     };
     let mut items: Vec<String> = Vec::new();
     let mut names: Vec<String> = Vec::new();
@@ -317,6 +320,25 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
         imports.push(list(head, &imported, &format!(" from \"{specifier}\"")));
     }
 
+    names.extend(g.globals.iter().map(|n| n.to_string()));
+    // A type parameter hides, inside its declaration, the names the declaration's code uses.
+    for (_, decl) in ir.types.iter().filter(|(_, d)| d.span.file == 0) {
+        if let TypeDef::Record { params, .. } | TypeDef::Alias { params, .. } = &decl.def
+            && let Some(p) = params.iter().find(|p| {
+                [
+                    "Schema",
+                    "Duration",
+                    "Roadbook",
+                    "Record",
+                    "Readonly",
+                    "ReadonlyArray",
+                ]
+                .contains(&p.as_str())
+            })
+        {
+            return Err(GenError::Clash { name: p.clone() });
+        }
+    }
     let mut seen = HashSet::new();
     if let Some(name) = names.into_iter().find(|n| !seen.insert(n.clone())) {
         return Err(GenError::Clash { name });
@@ -349,14 +371,12 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
 /// Other names, `cause` and `constructor` among them, give the field its declared type.
 pub fn error_field_conflict(ir: &Ir, field: &Field) -> Option<&'static str> {
     fn stringish(ir: &Ir, t: &TypeRef) -> bool {
-        match t {
+        match &*ir.expand_top(t) {
             TypeRef::Builtin(b) => *b == Builtin::String,
-            TypeRef::Named(n) => match ir.types.get(n).map(|d| &d.def) {
-                Some(TypeDef::Enum { .. }) => true,
-                Some(TypeDef::Alias { ty }) => stringish(ir, ty),
-                _ => false,
-            },
-            TypeRef::List(_) | TypeRef::Optional(_) | TypeRef::Ref(_) => false,
+            TypeRef::Named(n) => {
+                matches!(ir.types.get(n).map(|d| &d.def), Some(TypeDef::Enum { .. }))
+            }
+            _ => false,
         }
     }
     match field.name.as_str() {
@@ -401,17 +421,26 @@ struct Gen<'a> {
     duration: bool,
     /// Whether `Roadbook` is used outside a machine's section (a `ref` in a type).
     roadbook: bool,
+    /// The TypeScript globals the module's types use (`ReadonlyArray`, `Record`, `Readonly`),
+    /// which a declaration of the same name would hide.
+    globals: BTreeSet<&'static str>,
     /// For each type on a cycle, the index (in `ir.types`) of its cycle's first type.
     cycle: HashMap<&'a str, usize>,
     /// The files whose modules may import this one, directly or not: what this module imports
     /// from them it reads only when first needed (`Schema.suspend`, a getter), since in an
     /// import cycle the module that is loaded first runs after the others.
     lazy: HashSet<u32>,
+    /// The type parameters of the generic declaration being generated, which its schema
+    /// function takes as arguments of the same names.
+    params: &'a [String],
 }
 
 impl<'a> Gen<'a> {
     /// The declaration named `name`, imported if another file declares it.
     fn named(&mut self, name: &str) -> Result<&'a str, GenError> {
+        if let Some(p) = self.params.iter().find(|p| *p == name) {
+            return Ok(p);
+        }
         let (key, decl) =
             self.ir
                 .types
@@ -421,7 +450,7 @@ impl<'a> Gen<'a> {
                     name: name.to_owned(),
                 })?;
         if decl.span.file != 0 {
-            let type_only = matches!(&decl.def, TypeDef::Alias { ty } if self.has_ref(ty));
+            let type_only = matches!(&decl.def, TypeDef::Alias { ty, .. } if self.has_ref(ty));
             self.imports
                 .entry(decl.span.file)
                 .or_default()
@@ -460,14 +489,7 @@ impl<'a> Gen<'a> {
 
     /// Whether a type has a `ref` in it, through aliases.
     fn has_ref(&self, t: &TypeRef) -> bool {
-        match t.base() {
-            TypeRef::Ref(_) => true,
-            TypeRef::Named(n) => match self.ir.types.get(n).map(|d| &d.def) {
-                Some(TypeDef::Alias { ty }) => self.has_ref(ty),
-                _ => false,
-            },
-            _ => false,
-        }
+        has_ref(self.ir, t, 0)
     }
 
     /// The TypeScript type of a type reference.
@@ -487,7 +509,22 @@ impl<'a> Gen<'a> {
                 }
             },
             TypeRef::Named(n) => self.named(n)?.to_owned(),
-            TypeRef::List(t) => format!("ReadonlyArray<{}>", self.ts(t)?),
+            TypeRef::Generic(n, args) => {
+                let n = self.named(n)?;
+                let args = args
+                    .iter()
+                    .map(|a| self.ts(a))
+                    .collect::<Result<Vec<_>, _>>()?;
+                format!("{n}<{}>", args.join(", "))
+            }
+            TypeRef::Map(k, v) => {
+                self.globals.extend(["Readonly", "Record"]);
+                format!("Readonly<Record<{}, {}>>", self.ts(k)?, self.ts(v)?)
+            }
+            TypeRef::List(t) => {
+                self.globals.insert("ReadonlyArray");
+                format!("ReadonlyArray<{}>", self.ts(t)?)
+            }
             TypeRef::Optional(t) => format!("{} | null", self.ts(t)?),
             TypeRef::Ref(m) => self.handle(m)?,
         })
@@ -506,6 +543,7 @@ impl<'a> Gen<'a> {
                 Builtin::Json => "Schema.Json",
             }
             .to_owned(),
+            TypeRef::Named(n) if self.params.contains(n) => n.clone(),
             TypeRef::Named(n) => {
                 let n = self.named(n)?;
                 if cycle.is_some() && self.cycle.get(n).copied() == cycle {
@@ -515,6 +553,28 @@ impl<'a> Gen<'a> {
                 } else {
                     n.to_owned()
                 }
+            }
+            TypeRef::Generic(n, args) => {
+                let n = self.named(n)?;
+                let args = args
+                    .iter()
+                    .map(|a| self.schema(a, cycle))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let call = format!("{n}({})", args.join(", "));
+                // A generic type on a cycle has an annotated schema function, so a call of it
+                // needs no annotation of its own.
+                if (cycle.is_some() && self.cycle.get(n).copied() == cycle)
+                    || self.lazy.contains(&self.ir.types[n].span.file)
+                {
+                    format!("Schema.suspend(() => {call})")
+                } else {
+                    call
+                }
+            }
+            // The keys are strings whatever alias names them, and a key schema must be a
+            // string schema itself: a `Schema.suspend` of one is refused when the module loads.
+            TypeRef::Map(_, v) => {
+                format!("Schema.Record(Schema.String, {})", self.schema(v, cycle)?)
             }
             TypeRef::List(t) => format!("Schema.Array({})", self.schema(t, cycle)?),
             TypeRef::Optional(t) => format!("Schema.NullOr({})", self.schema(t, cycle)?),
@@ -601,7 +661,31 @@ impl<'a> Gen<'a> {
         let decl = &self.ir.types[name];
         let cycle = self.cycle.get(name).copied();
         let body = match &decl.def {
-            TypeDef::Record { fields } => {
+            TypeDef::Record { params, fields } if !params.is_empty() => {
+                self.params = params;
+                let schema = block("Schema.Struct(", &self.schema_fields(fields, cycle)?, ")");
+                let head = format!("export interface {name}<{}> ", params.join(", "));
+                let ty = self.params(fields)?.render(0, head.len());
+                self.params = &[];
+                format!(
+                    "{}
+{head}{ty}",
+                    generic_schema(name, params, cycle.is_some(), &schema)
+                )
+            }
+            TypeDef::Alias { params, ty } if !params.is_empty() => {
+                self.params = params;
+                let schema = self.schema(ty, cycle)?;
+                let ts = self.ts(ty)?;
+                self.params = &[];
+                format!(
+                    "{}
+export type {name}<{}> = {ts}",
+                    generic_schema(name, params, cycle.is_some(), &schema),
+                    params.join(", ")
+                )
+            }
+            TypeDef::Record { fields, .. } => {
                 let schema = block(
                     &format!("export const {name} = Schema.Struct("),
                     &self.schema_fields(fields, cycle)?,
@@ -617,10 +701,10 @@ impl<'a> Gen<'a> {
                     )
                 }
             }
-            TypeDef::Alias { ty } if self.has_ref(ty) => {
+            TypeDef::Alias { ty, .. } if self.has_ref(ty) => {
                 format!("export type {name} = {}", self.ts(ty)?)
             }
-            TypeDef::Alias { ty } => {
+            TypeDef::Alias { ty, .. } => {
                 let schema = self.schema(ty, cycle)?;
                 let ts = if cycle.is_some() {
                     self.ts(ty)?
@@ -899,13 +983,79 @@ impl<'a> Uses<'a> {
 
 /// The names of the types a type's schema refers to.
 fn deps(decl: &TypeDecl) -> Vec<&str> {
+    let mut out = Vec::new();
     match &decl.def {
-        TypeDef::Record { fields } | TypeDef::Error { fields } => {
-            fields.iter().filter_map(|f| f.ty.named_base()).collect()
+        TypeDef::Record { params, fields } => {
+            for f in fields {
+                f.ty.for_each_name(&mut |n| out.push(n));
+            }
+            out.retain(|n| !params.iter().any(|p| p == n));
         }
-        TypeDef::Alias { ty } => ty.named_base().into_iter().collect(),
-        TypeDef::Enum { .. } | TypeDef::Extern => Vec::new(),
+        TypeDef::Error { fields } => {
+            for f in fields {
+                f.ty.for_each_name(&mut |n| out.push(n));
+            }
+        }
+        TypeDef::Alias { params, ty } => {
+            ty.for_each_name(&mut |n| out.push(n));
+            out.retain(|n| !params.iter().any(|p| p == n));
+        }
+        TypeDef::Enum { .. } | TypeDef::Extern => {}
     }
+    out
+}
+
+/// Whether a type has a `ref` in it, through aliases.
+fn has_ref(ir: &Ir, t: &TypeRef, depth: usize) -> bool {
+    if t.mentions_ref() {
+        return true;
+    }
+    let mut found = false;
+    t.for_each_name(&mut |n| {
+        if let Some(TypeDef::Alias { ty, .. }) = ir.types.get(n).map(|d| &d.def) {
+            found |= depth < 64 && has_ref(ir, ty, depth + 1);
+        }
+    });
+    found
+}
+
+/// The schema of a generic record or alias: a function from the schemas of its type arguments,
+/// named as its parameters. One on a cycle has its result annotated, since it calls itself, and
+/// its body cast to that type: `tsc` cannot relate a struct of generic fields to the
+/// recursive interface it builds, so the annotation, which callers are checked against, is the
+/// schema's type.
+fn generic_schema(name: &str, params: &[String], cycle: bool, body: &str) -> String {
+    let args: Vec<String> = params.iter().map(|p| format!("{p}: {p}")).collect();
+    let bounds: Vec<String> = params
+        .iter()
+        .map(|p| format!("{p} extends Schema.Top"))
+        .collect();
+    let annotation = if cycle {
+        let view = |member: &str| {
+            let v: Vec<String> = params
+                .iter()
+                .map(|p| format!("{p}[\"{member}\"]"))
+                .collect();
+            v
+        };
+        let services = |member: &str| view(member).join(" | ");
+        format!(
+            ": Schema.Codec<{name}<{}>, {name}<{}>, {}, {}>",
+            view("Type").join(", "),
+            view("Encoded").join(", "),
+            services("DecodingServices"),
+            services("EncodingServices")
+        )
+    } else {
+        String::new()
+    };
+    let cast = if cycle { " as never" } else { "" };
+    format!(
+        "export const {name} = <{}>({}){annotation} =>\n  {}{cast}",
+        bounds.join(", "),
+        args.join(", "),
+        body.replace('\n', "\n  ")
+    )
 }
 
 /// For each source, the sources its declarations refer to: by a type or a `ref`, through the
@@ -917,12 +1067,15 @@ fn deps(decl: &TypeDecl) -> Vec<&str> {
 /// the module nothing to import.)
 fn file_refs(ir: &Ir) -> Vec<BTreeSet<u32>> {
     let mut out = vec![BTreeSet::new(); ir.sources.len()];
-    let ty = |t: &TypeRef| match t.base() {
-        TypeRef::Named(n) => ir.types.get(n).map(|d| d.span.file),
-        TypeRef::Ref(m) => ir.machines.get(m).map(|d| d.span.file),
-        _ => None,
+    let ty = |t: &TypeRef| {
+        let mut files = Vec::new();
+        t.for_each_name(&mut |n| files.extend(ir.types.get(n).map(|d| d.span.file)));
+        refs_in(t, &mut |m| {
+            files.extend(ir.machines.get(m).map(|d| d.span.file))
+        });
+        files
     };
-    let fields = |fields: &[Field]| fields.iter().filter_map(|f| ty(&f.ty)).collect::<Vec<_>>();
+    let fields = |fields: &[Field]| fields.iter().flat_map(|f| ty(&f.ty)).collect::<Vec<_>>();
     let errors = |errors: &[String]| {
         errors
             .iter()
@@ -936,30 +1089,30 @@ fn file_refs(ir: &Ir) -> Vec<BTreeSet<u32>> {
     };
     for d in ir.types.values() {
         let to = match &d.def {
-            TypeDef::Record { fields: f } | TypeDef::Error { fields: f } => fields(f),
-            TypeDef::Alias { ty: t } => ty(t).into_iter().collect(),
+            TypeDef::Record { fields: f, .. } | TypeDef::Error { fields: f } => fields(f),
+            TypeDef::Alias { ty: t, .. } => ty(t),
             TypeDef::Enum { .. } | TypeDef::Extern => Vec::new(),
         };
         add(d.span.file, to);
     }
     for d in ir.functions.values() {
         add(d.span.file, fields(&d.params));
-        add(d.span.file, ty(&d.returns).into_iter().collect());
+        add(d.span.file, ty(&d.returns));
     }
     for d in ir.actions.values() {
         add(d.span.file, fields(&d.params));
     }
     for d in ir.tasks.values() {
         add(d.span.file, fields(&d.params));
-        add(d.span.file, d.returns.iter().filter_map(ty).collect());
+        add(d.span.file, d.returns.iter().flat_map(ty).collect());
         add(d.span.file, errors(&d.errors));
     }
     for m in ir.machines.values() {
         let file = m.span.file;
         add(file, fields(&m.params));
-        add(file, m.returns.iter().filter_map(ty).collect());
+        add(file, m.returns.iter().flat_map(ty).collect());
         add(file, errors(&m.errors));
-        add(file, m.vars.iter().filter_map(|v| ty(&v.ty)).collect());
+        add(file, m.vars.iter().flat_map(|v| ty(&v.ty)).collect());
         for e in m.events.values().chain(m.emits.values()) {
             add(file, fields(&e.fields));
         }
@@ -985,6 +1138,20 @@ fn file_refs(ir: &Ir) -> Vec<BTreeSet<u32>> {
         add(file, used.collect());
     }
     out
+}
+
+/// Calls `f` with the machine of every `ref` in `t`.
+fn refs_in(t: &TypeRef, f: &mut impl FnMut(&str)) {
+    match t {
+        TypeRef::Ref(m) => f(m),
+        TypeRef::Generic(_, args) => args.iter().for_each(|a| refs_in(a, f)),
+        TypeRef::Map(k, v) => {
+            refs_in(k, f);
+            refs_in(v, f);
+        }
+        TypeRef::List(e) | TypeRef::Optional(e) => refs_in(e, f),
+        TypeRef::Builtin(_) | TypeRef::Named(_) => {}
+    }
 }
 
 /// Which sources `from` reaches through `refs`, itself included.

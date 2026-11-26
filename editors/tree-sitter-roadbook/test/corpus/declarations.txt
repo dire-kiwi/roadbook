@@ -296,3 +296,70 @@ machine M(sensitive pin: string) {
         name: (identifier)
         type: (builtin_type)
         value: (integer)))))
+
+================================================================================
+Generic types and maps
+================================================================================
+
+type Page<T, U,> { items: T[], next: map<string, Page<U>?>[] }
+type Dict<T> = map<UserId, T,>
+machine M(m: map<string, int>) {
+  var x: Page<int, map<string, bool>>= f()
+  var map: int = 0
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (type_declaration
+    name: (type_identifier)
+    parameters: (type_parameters
+      parameter: (type_identifier)
+      parameter: (type_identifier))
+    fields: (fields
+      (field_declaration
+        name: (identifier)
+        type: (list_type
+          element: (type_identifier)))
+      (field_declaration
+        name: (identifier)
+        type: (list_type
+          element: (map_type
+            key: (builtin_type)
+            value: (optional_type
+              type: (generic_type
+                name: (type_identifier)
+                arguments: (type_arguments
+                  argument: (type_identifier)))))))))
+  (type_declaration
+    name: (type_identifier)
+    parameters: (type_parameters
+      parameter: (type_identifier))
+    type: (map_type
+      key: (type_identifier)
+      value: (type_identifier)))
+  (machine_declaration
+    name: (type_identifier)
+    parameters: (parameters
+      (parameter
+        name: (identifier)
+        type: (map_type
+          key: (builtin_type)
+          value: (builtin_type))))
+    body: (machine_body
+      (variable_declaration
+        name: (identifier)
+        type: (generic_type
+          name: (type_identifier)
+          arguments: (type_arguments
+            argument: (builtin_type)
+            argument: (map_type
+              key: (builtin_type)
+              value: (builtin_type))))
+        value: (call
+          function: (identifier)
+          arguments: (arguments)))
+      (variable_declaration
+        name: (identifier)
+        type: (builtin_type)
+        value: (integer)))))

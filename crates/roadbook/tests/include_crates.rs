@@ -32,6 +32,28 @@ async fn a_chain_of_three_crates() {
     let _: chain2::Greeting = chain0::Greeting {
         text: "same".into(),
     };
+    // A generic type of `chain0` instantiated in `chain1`, with a type of either crate, keeps
+    // the JSON form of its arguments.
+    let timed: chain1::TimedLocal = chain0::Timed {
+        value: chain1::Local { n: 2 },
+        wait: std::time::Duration::from_millis(1500),
+    };
+    assert_eq!(
+        serde_json::to_value(&timed).unwrap(),
+        serde_json::json!({"value": {"n": 2}, "wait": 1500})
+    );
+    let greetings: chain1::TimedGreeting = [(
+        "a".to_owned(),
+        chain0::Timed {
+            value: chain0::Greeting { text: "hi".into() },
+            wait: std::time::Duration::from_millis(5),
+        },
+    )]
+    .into();
+    assert_eq!(
+        serde_json::to_value(&greetings).unwrap(),
+        serde_json::json!({"a": {"value": {"text": "hi"}, "wait": 5}})
+    );
     let two = chain2::two::spawn(host.clone(), handle);
     two.send(chain2::two::Event::Go).await;
     two.result().await.unwrap();

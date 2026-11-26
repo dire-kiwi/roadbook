@@ -202,9 +202,9 @@ impl Program {
 
     /// Whether `ty` is `ref M`, `ref M?` or `ref M[]`, through aliases.
     fn holds_ref(&self, ty: &TypeRef) -> bool {
-        match self.resolve(ty) {
+        match &*self.resolve(ty) {
             TypeRef::Ref(_) => true,
-            TypeRef::Optional(t) | TypeRef::List(t) => self.holds_ref(t),
+            TypeRef::Optional(t) | TypeRef::List(t) | TypeRef::Map(_, t) => self.holds_ref(t),
             _ => false,
         }
     }
@@ -399,7 +399,7 @@ impl Program {
             }
         }
         for var in &m.vars {
-            if matches!(self.resolve(&var.ty), TypeRef::Optional(_))
+            if matches!(*self.resolve(&var.ty), TypeRef::Optional(_))
                 && !s.vars.contains_key(&var.name)
             {
                 return Err(format!("`vars` lacks the optional variable `{}`", var.name));
@@ -476,7 +476,7 @@ impl Program {
     /// Whether `v` is a value of type `ty` in its JSON form, in machine `machine` (whose own
     /// events a bare event name means).
     fn value_fits(&self, machine: &str, ty: &TypeRef, v: &Value) -> bool {
-        match self.resolve(ty) {
+        match &*self.resolve(ty) {
             TypeRef::Builtin(b) => match b {
                 Builtin::String => v.is_string(),
                 Builtin::Int => integer(v).is_some(),
@@ -490,8 +490,15 @@ impl Program {
             TypeRef::List(t) => v
                 .as_array()
                 .is_some_and(|a| a.iter().all(|x| self.value_fits(machine, t, x))),
+            TypeRef::Map(_, t) => v
+                .as_object()
+                .is_some_and(|o| o.values().all(|x| self.value_fits(machine, t, x))),
+            t @ TypeRef::Generic(..) => match self.ir().fields_of(t) {
+                Some((_, false, fields)) => self.fields_fit(machine, None, &fields, v),
+                _ => false,
+            },
             TypeRef::Named(n) => match self.ir().types.get(n).map(|d| &d.def) {
-                Some(TypeDef::Record { fields }) => self.fields_fit(machine, None, fields, v),
+                Some(TypeDef::Record { fields, .. }) => self.fields_fit(machine, None, fields, v),
                 Some(TypeDef::Error { fields }) => self.fields_fit(machine, Some(n), fields, v),
                 Some(TypeDef::Enum { variants }) => {
                     v.as_str().is_some_and(|s| variants.iter().any(|x| x == s))

@@ -385,7 +385,7 @@ fn a_peer_contributes_only_its_interface_to_the_hash() {
     changed.machines["Inventory"].emits["Rejected"].fields.pop();
     assert_ne!(machine_hash(&changed, "Order").unwrap(), order);
     let mut changed = ir.clone();
-    let roadbook_ir::TypeDef::Record { fields } = &mut changed.types["Item"].def else {
+    let roadbook_ir::TypeDef::Record { fields, .. } = &mut changed.types["Item"].def else {
         panic!("Item is a record")
     };
     fields[1].ty = "float".parse().unwrap();
@@ -395,4 +395,32 @@ fn a_peer_contributes_only_its_interface_to_the_hash() {
     let mut missing = ir.clone();
     missing.machines.shift_remove("Inventory");
     assert!(machine_hash(&missing, "Order").is_err());
+}
+
+/// An alias that refers to itself, which only a hand-written IR can have, is found, through
+/// type arguments and maps too; the compiled IR has none.
+#[test]
+fn alias_cycles_are_found() {
+    let mut ir = fixture();
+    assert_eq!(ir.alias_cycle(), None);
+    let span = ir.types["Order"].span;
+    let alias = |params: &[&str], ty: &str| roadbook_ir::TypeDecl {
+        def: roadbook_ir::TypeDef::Alias {
+            params: params.iter().map(|p| p.to_string()).collect(),
+            ty: ty.parse().unwrap(),
+        },
+        doc: String::new(),
+        span,
+    };
+    let (a, b) = (
+        alias(&["T"], "Boom<Pair<T, T>>"),
+        alias(&[], "map<string, Loop>[]"),
+    );
+    ir.types.insert("Boom".into(), a);
+    assert_eq!(ir.alias_cycle(), Some("Boom"));
+    ir.types.shift_remove("Boom");
+    let c = alias(&[], "Twice");
+    ir.types.insert("Loop".into(), b);
+    ir.types.insert("Twice".into(), c);
+    assert!(matches!(ir.alias_cycle(), Some("Loop" | "Twice")));
 }

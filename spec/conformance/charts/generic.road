@@ -1,0 +1,47 @@
+// Conformance chart: maps and generic types. Values of map and generic types
+// travel through the input, events, function and action arguments, function
+// and task results, variables and the output in their JSON form. A record value
+// of a generic type is built from its fields, a field is read through an
+// instance, and operators work on a generic alias of a scalar. The cases give
+// maps with keys that a JavaScript object orders otherwise than canonical JSON
+// does (integer-like keys), and the key `__proto__`, which must stay a key like
+// any other.
+
+type Page<T>  { items: T[], next: string? }
+type Timed<T> { value: T, wait: duration }
+type First<T> = T
+type Dict<T>  = map<string, T>
+
+fn longest(waits: Dict<duration>)           -> Timed<string>
+fn merge(a: map<string, int>, b: Dict<int>) -> map<string, int>
+
+action log(total: map<string, int>, page: Page<Timed<int>>)
+
+task fetch(from: string) -> Page<Timed<int>>
+
+/// Waits for more counts or for the longest wait, then fetches a page after the
+/// longest one.
+machine Gather(waits: map<string, duration>, counts: Dict<int>) -> Page<Timed<int>> {
+  var total: map<string, int>
+  var best:  Timed<string>
+  var page:  Page<Timed<int>>
+  var adds:  First<int> = 0
+
+  event Add { more: map<string, int> }
+
+  initial Waiting
+
+  state Waiting {
+    entry set best = longest(waits)
+    on Add          -> Fetching  set total = merge(counts, event.more), adds = adds + 1
+    after best.wait -> Fetching  set total = counts
+  }
+
+  state Fetching {
+    invoke fetch(best.value) {
+      done -> Done  set page = result  do log(total, result)
+    }
+  }
+
+  final state Done { output Page { items: page.items, next: best.value } }
+}

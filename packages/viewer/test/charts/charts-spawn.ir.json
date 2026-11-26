@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "packages/viewer/test/charts/spawn.road",
@@ -9,6 +9,7 @@
   "types": {
     "SessionId": {
       "kind": "alias",
+      "params": [],
       "type": "string",
       "doc": "A connection's id.",
       "span": {

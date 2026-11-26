@@ -3,8 +3,9 @@
  * starts a run from one (execution.md, "Restoring a snapshot"), in the order the spec gives
  * them, each refusal with its reason.
  */
-import { childrenOf, type Field, type Ir, isHistory, type Machine, parseTypeRef, refMachine, type State } from "./ir.ts"
+import { childrenOf, type Field, type Ir, isHistory, type Machine, type State } from "./ir.ts"
 import { copyJson, type Json } from "./json.ts"
+import { expandType, fieldsOf, isOptionalType, type TypeRef } from "./typeref.ts"
 import type { Saved, Snapshot } from "./types.ts"
 
 /**
@@ -394,88 +395,94 @@ const recordIssue = (
   return undefined
 }
 
-/** Whether a type reference is optional once aliases are expanded. */
-const isOptionalType = (ir: Ir, type: string): boolean => {
-  const { base, suffixes } = parseTypeRef(type)
-  if (suffixes.length > 0) return suffixes[suffixes.length - 1] === "?"
-  const decl = Object.hasOwn(ir.types, base) ? ir.types[base] : undefined
-  return decl?.kind === "alias" ? isOptionalType(ir, decl.type) : false
-}
-
-/** Whether a parameter type is a `ref`, an optional one or a list of them, through aliases. */
-const holdsRef = (ir: Ir, type: string): boolean => {
-  const { base } = parseTypeRef(type)
-  if (refMachine(base) !== undefined) return true
-  const decl = Object.hasOwn(ir.types, base) ? ir.types[base] : undefined
-  return decl?.kind === "alias" ? holdsRef(ir, decl.type) : false
+/** Whether a parameter type holds a `ref`: a `ref`, or an optional, list or map of them, through aliases. */
+const holdsRef = (ir: Ir, type: TypeRef | string): boolean => {
+  const t = expandType(ir, type)
+  switch (t.kind) {
+    case "ref":
+      return true
+    case "optional":
+    case "list":
+      return holdsRef(ir, t.of)
+    case "map":
+      return holdsRef(ir, t.value)
+    default:
+      return false
+  }
 }
 
 // ---- values ---------------------------------------------------------------------------------
 
 /**
  * What makes JSON value `value` not the JSON form of type `type` (execution.md, "Values"), or
- * `undefined`. A record, error or event has exactly its fields (an optional one as `null`).
+ * `undefined`. A record, error or event has exactly its fields (an optional one as `null`); a
+ * map is an object, each member a value of its value type.
  */
-export const valueIssue = (ir: Ir, type: string, value: Json, what: string): string | undefined => {
-  const { base, suffixes } = parseTypeRef(type)
-  return refIssue(ir, base, suffixes, suffixes.length, value, what)
-}
-
-const refIssue = (
-  ir: Ir,
-  base: string,
-  suffixes: ReadonlyArray<"[]" | "?">,
-  n: number,
-  value: Json,
-  what: string
-): string | undefined => {
-  if (n > 0) {
-    if (suffixes[n - 1] === "?") return value === null ? undefined : refIssue(ir, base, suffixes, n - 1, value, what)
-    if (!Array.isArray(value)) return `${what} is not a list`
-    for (let i = 0; i < value.length; i++) {
-      const issue = refIssue(ir, base, suffixes, n - 1, value[i] ?? null, `${what}[${i}]`)
-      if (issue !== undefined) return issue
-    }
-    return undefined
-  }
+export const valueIssue = (ir: Ir, type: TypeRef | string, value: Json, what: string): string | undefined => {
+  const t = expandType(ir, type)
   const fail = (expected: string) => `${what} is not ${expected}`
-  switch (base) {
-    case "string":
-      return typeof value === "string" ? undefined : fail("a string")
-    case "int":
-      return Number.isSafeInteger(value) ? undefined : fail("an int within ±(2^53 - 1)")
-    case "float":
-      return typeof value === "number" && Number.isFinite(value) ? undefined : fail("a float")
-    case "bool":
-      return typeof value === "boolean" ? undefined : fail("a bool")
-    case "duration":
-      return isNatural(value) ? undefined : fail("a duration in whole milliseconds")
-    case "json":
+  switch (t.kind) {
+    case "optional":
+      return value === null ? undefined : valueIssue(ir, t.of, value, what)
+    case "list": {
+      if (!Array.isArray(value)) return fail("a list")
+      for (let i = 0; i < value.length; i++) {
+        const issue = valueIssue(ir, t.of, value[i] ?? null, `${what}[${i}]`)
+        if (issue !== undefined) return issue
+      }
       return undefined
-  }
-  if (refMachine(base) !== undefined) return typeof value === "string" ? undefined : fail("a run id")
-  const dot = base.indexOf(".")
-  if (dot !== -1) {
-    // An event type, `Machine.Name`: one the machine accepts or emits.
-    const m = ir.machines[base.slice(0, dot)]
-    const name = base.slice(dot + 1)
-    const decl = m === undefined ? undefined : Object.hasOwn(m.events, name) ? m.events[name] : m.emits[name]
-    if (decl === undefined) return `${what} has unknown type ${base}`
-    return taggedIssue(ir, name, decl.fields, value, what)
-  }
-  const decl = Object.hasOwn(ir.types, base) ? ir.types[base] : undefined
-  if (decl === undefined) return `${what} has unknown type ${base}`
-  switch (decl.kind) {
-    case "alias":
-      return valueIssue(ir, decl.type, value, what)
-    case "enum":
-      return typeof value === "string" && decl.variants.includes(value) ? undefined : fail(`a variant of ${base}`)
-    case "record":
-      return fieldsIssue(ir, decl.fields, value, what, [])
-    case "error":
-      return taggedIssue(ir, base, decl.fields, value, what)
-    case "extern":
+    }
+    case "map": {
+      if (!isObject(value)) return fail("a map")
+      for (const key of Object.keys(value)) {
+        const issue = valueIssue(ir, t.value, value[key] as Json, `${what}[${JSON.stringify(key)}]`)
+        if (issue !== undefined) return issue
+      }
       return undefined
+    }
+    case "builtin":
+      switch (t.name) {
+        case "string":
+          return typeof value === "string" ? undefined : fail("a string")
+        case "int":
+          return Number.isSafeInteger(value) ? undefined : fail("an int within ±(2^53 - 1)")
+        case "float":
+          return typeof value === "number" && Number.isFinite(value) ? undefined : fail("a float")
+        case "bool":
+          return typeof value === "boolean" ? undefined : fail("a bool")
+        case "duration":
+          return isNatural(value) ? undefined : fail("a duration in whole milliseconds")
+        case "json":
+          return undefined
+      }
+    case "ref":
+      return typeof value === "string" ? undefined : fail("a run id")
+    case "event": {
+      // One the machine accepts or emits.
+      const m = Object.hasOwn(ir.machines, t.machine) ? ir.machines[t.machine] : undefined
+      const decl = m === undefined ? undefined : Object.hasOwn(m.events, t.event) ? m.events[t.event] : m.emits[t.event]
+      if (decl === undefined) return `${what} has unknown type ${t.machine}.${t.event}`
+      return taggedIssue(ir, t.event, decl.fields, value, what)
+    }
+    case "named": {
+      const decl = Object.hasOwn(ir.types, t.name) ? ir.types[t.name] : undefined
+      if (decl === undefined) return `${what} has unknown type ${t.name}`
+      switch (decl.kind) {
+        case "enum":
+          return typeof value === "string" && decl.variants.includes(value) ? undefined : fail(`a variant of ${t.name}`)
+        case "extern":
+          return undefined
+        case "record":
+        case "error": {
+          const record = fieldsOf(ir, t)!
+          return record.error
+            ? taggedIssue(ir, t.name, record.fields, value, what)
+            : fieldsIssue(ir, record.fields, value, what, [])
+        }
+        case "alias":
+          return `${what} has a type whose aliases nest too deep`
+      }
+    }
   }
 }
 

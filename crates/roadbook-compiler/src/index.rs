@@ -62,6 +62,9 @@ pub enum SymbolKind {
     State,
     /// The name of `invoke Machine(…) as name`; its parent is the invoking state.
     InvokeName,
+    /// A type parameter of a generic record or alias (`T` in `type Page<T>`); its parent is
+    /// the declaration.
+    TypeParameter,
     /// A `children` collection of a machine; its parent is the machine.
     Children,
 }
@@ -99,6 +102,7 @@ impl SymbolKind {
                 | SymbolKind::Event
                 | SymbolKind::EmittedEvent
                 | SymbolKind::State
+                | SymbolKind::TypeParameter
         )
     }
 
@@ -122,6 +126,7 @@ impl SymbolKind {
             SymbolKind::EmittedEvent => "emitted event",
             SymbolKind::State => "state",
             SymbolKind::InvokeName => "invoked machine's name",
+            SymbolKind::TypeParameter => "type parameter",
             SymbolKind::Children => "children collection",
         }
     }
@@ -333,14 +338,26 @@ fn result_text(returns: Option<&TypeRef>, errors: &[Ident]) -> String {
     s
 }
 
+/// `<T, U>`, or nothing for a declaration that is not generic.
+fn type_params(params: &[Ident]) -> String {
+    if params.is_empty() {
+        return String::new();
+    }
+    let names: Vec<&str> = params.iter().map(|p| p.name.as_str()).collect();
+    format!("<{}>", names.join(", "))
+}
+
 /// The kind and one-line signature of a top-level declaration, as in [`Symbol::signature`].
 pub fn declaration(d: &Decl) -> (SymbolKind, String) {
     let n = &d.name.name;
     match &d.kind {
-        DeclKind::Record { fields } => (SymbolKind::Record, format!("type {n}{}", braces(fields))),
-        DeclKind::Alias { target } => (
+        DeclKind::Record { params, fields } => (
+            SymbolKind::Record,
+            format!("type {n}{}{}", type_params(params), braces(fields)),
+        ),
+        DeclKind::Alias { params, target } => (
             SymbolKind::Alias,
-            format!("type {n} = {}", type_text(target)),
+            format!("type {n}{} = {}", type_params(params), type_text(target)),
         ),
         DeclKind::Enum { variants } => {
             let vs: Vec<&str> = variants.iter().map(|v| v.name.as_str()).collect();

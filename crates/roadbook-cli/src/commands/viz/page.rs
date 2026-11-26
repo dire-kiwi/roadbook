@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use roadbook_compiler::Ir;
-use roadbook_ir::{Effect, InvokeKind, Machine, Source, State, Trigger, TypeDef, TypeRef};
+use roadbook_ir::{Effect, InvokeKind, Machine, Source, State, Trigger, TypeRef};
 use serde_json::{Value, json};
 
 /// The project index's file name.
@@ -406,14 +406,11 @@ fn talks(ir: &Ir, m: &Machine) -> Talks {
 
 /// The machine a type is a handle to: `ref M`, with any suffixes, or an alias of one.
 fn ref_machine(ir: &Ir, ty: &TypeRef) -> Option<String> {
-    let mut ty = ty;
+    let mut ty = ty.clone();
     for _ in 0..32 {
-        match ty.base() {
-            TypeRef::Ref(m) => return Some(m.clone()),
-            TypeRef::Named(n) => match ir.types.get(n).map(|d| &d.def) {
-                Some(TypeDef::Alias { ty: next }) => ty = next,
-                _ => return None,
-            },
+        match ir.expand_top(ty.base()).into_owned() {
+            TypeRef::Ref(m) => return Some(m),
+            next @ (TypeRef::List(_) | TypeRef::Optional(_)) => ty = next,
             _ => return None,
         }
     }

@@ -72,8 +72,13 @@ pub(crate) struct Checker<'p> {
     pub machines: Vec<MachineInfo>,
     /// Whether every declared type is resolved, so that aliases can be expanded.
     types_resolved: bool,
-    /// The optional types `(e?, e, e resolved)` met before then, checked once it is.
-    optionals: Vec<(ast::TypeRef, ast::TypeRef, Ty)>,
+    /// The checks of types met before then that need aliases expanded, made once it is.
+    deferred: Vec<Deferred>,
+    /// While a generic declaration's members are resolved: its symbol and its parameters,
+    /// which its fields or target may name.
+    type_params: Option<(SymbolId, Vec<String>)>,
+    /// For each generic type, which of its parameters it makes optional, once worked out.
+    optional_params: Option<HashMap<String, Vec<bool>>>,
     /// Every name declared and used, built as names are resolved.
     pub index: SymbolIndex,
     /// The symbol of each declaration, by [`DeclId`](crate::names::DeclId).
@@ -98,11 +103,71 @@ pub(crate) fn doc(d: &Option<ast::Doc>) -> String {
     d.as_ref().map(|d| d.text.clone()).unwrap_or_default()
 }
 
-fn base(t: &Ty) -> &Ty {
-    match t {
-        Ty::List(e) | Ty::Optional(e) => base(e),
-        t => t,
+/// A check of a type as written that needs every alias resolved.
+enum Deferred {
+    /// `e?`, with `e` resolved: not optional already.
+    Optional(ast::TypeRef, ast::TypeRef, Ty),
+    /// The key type of a `map`: `string`, through aliases.
+    MapKey(Span, Ty),
+    /// An instance of a generic type: none of its members optional twice.
+    Instance(Span, Ty),
+}
+
+/// The type parameters of a declaration, as written: empty unless it is a generic record or
+/// alias.
+pub(crate) fn ast_params(kind: &DeclKind) -> &[Ident] {
+    match kind {
+        DeclKind::Record { params, .. } | DeclKind::Alias { params, .. } => params,
+        _ => &[],
     }
+}
+
+/// Every name a type as written mentions.
+fn names_written<'a>(t: &'a ast::TypeRef, out: &mut HashSet<&'a str>) {
+    match &t.kind {
+        ast::TypeKind::Named(n) | ast::TypeKind::Ref(n) => {
+            out.insert(&n.name);
+        }
+        ast::TypeKind::Generic(n, args) => {
+            out.insert(&n.name);
+            for a in args {
+                names_written(a, out);
+            }
+        }
+        ast::TypeKind::Map(k, v) => {
+            names_written(k, out);
+            names_written(v, out);
+        }
+        ast::TypeKind::List(e) | ast::TypeKind::Optional(e) => names_written(e, out),
+        ast::TypeKind::Builtin(_) => {}
+    }
+}
+
+/// Every `Name<…>` in a type as written, outermost first.
+fn generic_uses<'a>(t: &'a ast::TypeRef, out: &mut Vec<&'a ast::TypeRef>) {
+    match &t.kind {
+        ast::TypeKind::Generic(_, args) => {
+            out.push(t);
+            for a in args {
+                generic_uses(a, out);
+            }
+        }
+        ast::TypeKind::Map(k, v) => {
+            generic_uses(k, out);
+            generic_uses(v, out);
+        }
+        ast::TypeKind::List(e) | ast::TypeKind::Optional(e) => generic_uses(e, out),
+        _ => {}
+    }
+}
+
+/// Every declared name a type mentions (type parameters excepted), outermost first.
+fn names_in(t: &Ty, out: &mut Vec<String>) {
+    t.walk(&mut |t| {
+        if let Ty::Named(n) | Ty::Generic(n, _) = t {
+            out.push(n.clone());
+        }
+    });
 }
 
 fn ir_fields(fields: &[Field]) -> Vec<ir::Field> {
@@ -132,7 +197,9 @@ impl<'p> Checker<'p> {
             used: HashSet::new(),
             machines: Vec::new(),
             types_resolved: false,
-            optionals: Vec::new(),
+            deferred: Vec::new(),
+            type_params: None,
+            optional_params: None,
             index: SymbolIndex::default(),
             decl_symbols: Vec::new(),
             members: HashMap::new(),
@@ -141,9 +208,10 @@ impl<'p> Checker<'p> {
         c.index_declarations();
         c.resolve_types();
         c.types_resolved = true;
-        for (t, e, inner) in std::mem::take(&mut c.optionals) {
-            c.double_optional(&t, &e, &inner);
+        for d in std::mem::take(&mut c.deferred) {
+            c.deferred_check(d);
         }
+        c.check_generics();
         c.no_ref_in_fields();
         c.resolve_signatures();
         c.resolve_interfaces();
@@ -164,8 +232,12 @@ impl<'p> Checker<'p> {
             let (kind, signature) = index::declaration(d);
             let id = self.define(kind, &d.name, d.span, None, &d.doc, signature);
             self.decl_symbols.push(id);
+            for p in ast_params(&d.kind) {
+                let signature = format!("{}<{}>", d.name.name, p.name);
+                self.member(id, SymbolKind::TypeParameter, p, p.span, &None, signature);
+            }
             match &d.kind {
-                DeclKind::Record { fields } | DeclKind::Error { fields } => {
+                DeclKind::Record { fields, .. } | DeclKind::Error { fields } => {
                     self.index_fields(id, fields);
                 }
                 DeclKind::Enum { variants } => {
@@ -319,7 +391,7 @@ impl<'p> Checker<'p> {
 
     fn no_ref_in_fields(&mut self) {
         for (file, d) in self.decls() {
-            let (DeclKind::Record { fields } | DeclKind::Error { fields }) = &d.kind else {
+            let (DeclKind::Record { fields, .. } | DeclKind::Error { fields }) = &d.kind else {
                 continue;
             };
             let resolved: Vec<Ty> = match self.env.defs.get(&d.name.name) {
@@ -395,14 +467,103 @@ impl<'p> Checker<'p> {
                     }
                 } else {
                     // An alias it names may not be resolved yet.
-                    self.optionals
-                        .push((t.clone(), (**e).clone(), inner.clone()));
+                    self.deferred
+                        .push(Deferred::Optional(t.clone(), (**e).clone(), inner.clone()));
                 }
                 Ty::Optional(Box::new(inner))
             }
             ast::TypeKind::Named(n) => {
+                if let Some(p) = self.type_param(file, n) {
+                    return p;
+                }
                 self.refer_decl(file, n);
-                self.named_type(file, n)
+                let ty = self.named_type(file, n);
+                if let Ty::Named(name) = &ty
+                    && let Some(id) = self.names.global.get(name.as_str()).copied()
+                {
+                    let params = ast_params(&self.names.decl(id).kind);
+                    if !params.is_empty() {
+                        let list: Vec<&str> = params.iter().map(|p| p.name.as_str()).collect();
+                        self.diags.push(
+                            Diagnostic::error(
+                                codes::TYPE_ARGUMENT_COUNT,
+                                n.span,
+                                format!(
+                                    "`{}` is generic: it takes {} type argument{}",
+                                    n.name,
+                                    params.len(),
+                                    if params.len() == 1 { "" } else { "s" }
+                                ),
+                            )
+                            .with_help(format!(
+                                "write `{}<{}>` with a type for each",
+                                n.name,
+                                list.join(", ")
+                            )),
+                        );
+                        return Ty::Unknown;
+                    }
+                }
+                ty
+            }
+            ast::TypeKind::Generic(n, args) => {
+                if self.type_param(file, n).is_some() {
+                    self.diags.push(Diagnostic::error(
+                        codes::TYPE_ARGUMENT_COUNT,
+                        n.span,
+                        format!("type parameter `{}` takes no type arguments", n.name),
+                    ));
+                    return Ty::Unknown;
+                }
+                self.refer_decl(file, n);
+                let ty = self.named_type(file, n);
+                let resolved: Vec<Ty> = args.iter().map(|a| self.resolve(file, a)).collect();
+                let Ty::Named(name) = ty else {
+                    return Ty::Unknown;
+                };
+                let Some(id) = self.names.global.get(name.as_str()).copied() else {
+                    return Ty::Unknown;
+                };
+                let params = ast_params(&self.names.decl(id).kind);
+                if params.len() != args.len() {
+                    let message = if params.is_empty() {
+                        format!("`{name}` is not generic: it takes no type arguments")
+                    } else {
+                        format!(
+                            "`{name}` takes {} type argument{}, not {}",
+                            params.len(),
+                            if params.len() == 1 { "" } else { "s" },
+                            args.len()
+                        )
+                    };
+                    let mut d = Diagnostic::error(codes::TYPE_ARGUMENT_COUNT, t.span, message);
+                    if params.is_empty() {
+                        d = d.with_fix(format!("write `{name}`"), t.span, name.clone());
+                    }
+                    self.diags.push(d);
+                    return Ty::Unknown;
+                }
+                let inst = Ty::Generic(name, resolved);
+                if self.is_compiled(file) {
+                    // Checked when it was compiled.
+                } else if self.types_resolved {
+                    self.check_instance(t.span, &inst);
+                } else {
+                    self.deferred.push(Deferred::Instance(t.span, inst.clone()));
+                }
+                inst
+            }
+            ast::TypeKind::Map(k, v) => {
+                let key = self.resolve(file, k);
+                let value = self.resolve(file, v);
+                if self.is_compiled(file) {
+                    // Checked when it was compiled.
+                } else if self.types_resolved {
+                    self.check_map_key(k.span, &key);
+                } else {
+                    self.deferred.push(Deferred::MapKey(k.span, key.clone()));
+                }
+                Ty::Map(Box::new(key), Box::new(value))
             }
             ast::TypeKind::Ref(n) => {
                 self.refer_decl(file, n);
@@ -426,6 +587,290 @@ impl<'p> Checker<'p> {
                         self.diags.push(d);
                         Ty::Unknown
                     }
+                }
+            }
+        }
+    }
+
+    /// The type parameter `n` names, inside the declaration of a generic type that has it.
+    fn type_param(&mut self, file: usize, n: &Ident) -> Option<Ty> {
+        let (owner, params) = self.type_params.as_ref()?;
+        if !params.contains(&n.name) {
+            return None;
+        }
+        let owner = *owner;
+        self.refer_member(file, Some(owner), n);
+        Some(Ty::Param(n.name.clone()))
+    }
+
+    fn deferred_check(&mut self, d: Deferred) {
+        match d {
+            Deferred::Optional(t, e, inner) => {
+                self.double_optional(&t, &e, &inner);
+            }
+            Deferred::MapKey(span, key) => self.check_map_key(span, &key),
+            Deferred::Instance(span, inst) => self.check_instance(span, &inst),
+        }
+    }
+
+    /// Reports a map key type that is not `string`, through aliases.
+    fn check_map_key(&mut self, span: Span, key: &Ty) {
+        if matches!(
+            self.env.expand(key),
+            Ty::Builtin(ir::Builtin::String) | Ty::Unknown
+        ) {
+            return;
+        }
+        self.diags.push(
+            Diagnostic::error(
+                codes::MAP_KEY,
+                span,
+                format!("a map's keys are strings: `{key}` is not `string` or an alias of it"),
+            )
+            .with_help("a map is a JSON object, whose keys are strings; write `map<string, …>`"),
+        );
+    }
+
+    /// Checks an instance of a generic type written at `span` (or inferred for a record value
+    /// there): no argument holds a `ref`, and none is optional where the type makes its
+    /// parameter optional, which would make a member optional twice.
+    pub(crate) fn check_instance(&mut self, span: Span, inst: &Ty) {
+        let Ty::Generic(name, args) = inst else {
+            return;
+        };
+        if let Some(a) = args.iter().find(|a| self.env.has_ref(a)) {
+            self.diags.push(
+                Diagnostic::error(
+                    codes::REF_NOT_ALLOWED,
+                    span,
+                    format!("a type argument cannot be `{a}`: it holds a `ref`"),
+                )
+                .with_help(format!("the type arguments of `{name}` become its fields, which cannot hold a `ref`; pass the handle as a parameter instead")),
+            );
+            return;
+        }
+        let optional = self
+            .optional_params()
+            .get(name)
+            .cloned()
+            .unwrap_or_default();
+        let params = self.env.params_of(name).to_vec();
+        for ((a, p), opt) in args.iter().zip(&params).zip(optional) {
+            if opt && matches!(self.env.expand(a), Ty::Optional(_)) {
+                self.diags.push(
+                    Diagnostic::error(
+                        codes::DOUBLE_OPTIONAL,
+                        span,
+                        format!(
+                            "`{inst}` makes a type optional twice: `{name}` makes its parameter `{p}` optional, and `{a}` already is"
+                        ),
+                    )
+                    .with_help("a value is either present or absent; pass a type argument that is not optional"),
+                );
+                return;
+            }
+        }
+    }
+
+    /// For each generic type, which of its parameters it makes optional: a parameter written
+    /// `T?` in its fields or aliased type, or passed where another generic type makes its
+    /// parameter optional, or passed transparently (`type Id<T> = T`) under a `?`. Worked out
+    /// once per declaration, to a fixed point, so that checking an instance never expands it.
+    fn optional_params(&mut self) -> &HashMap<String, Vec<bool>> {
+        if self.optional_params.is_none() {
+            let mut opt: HashMap<String, Vec<bool>> = HashMap::new();
+            // Whether an alias is, at the top, its parameter: `type Id<T> = T`.
+            let mut transparent: HashMap<String, Vec<bool>> = HashMap::new();
+            for (n, ps) in &self.env.params {
+                opt.insert(n.clone(), vec![false; ps.len()]);
+                transparent.insert(n.clone(), vec![false; ps.len()]);
+            }
+            fn walk(
+                t: &Ty,
+                under: bool,
+                params: &[String],
+                opt: &HashMap<String, Vec<bool>>,
+                transparent: &HashMap<String, Vec<bool>>,
+                out: &mut [bool],
+            ) {
+                match t {
+                    Ty::Param(p) => {
+                        if under && let Some(i) = params.iter().position(|x| x == p) {
+                            out[i] = true;
+                        }
+                    }
+                    Ty::Optional(e) => walk(e, true, params, opt, transparent, out),
+                    Ty::List(e) => walk(e, false, params, opt, transparent, out),
+                    Ty::Map(k, v) => {
+                        walk(k, false, params, opt, transparent, out);
+                        walk(v, false, params, opt, transparent, out);
+                    }
+                    Ty::Generic(h, args) => {
+                        for (j, a) in args.iter().enumerate() {
+                            let made = opt.get(h).and_then(|o| o.get(j)).copied().unwrap_or(false);
+                            let through = transparent
+                                .get(h)
+                                .and_then(|o| o.get(j))
+                                .copied()
+                                .unwrap_or(false);
+                            walk(a, made || (under && through), params, opt, transparent, out);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            loop {
+                let mut changed = false;
+                for (n, ps) in &self.env.params {
+                    let members: Vec<&Ty> = match self.env.defs.get(n) {
+                        Some(TypeDef::Record(fs)) => fs.iter().map(|(_, t)| t).collect(),
+                        Some(TypeDef::Alias(t)) => vec![t],
+                        _ => continue,
+                    };
+                    let mut now = vec![false; ps.len()];
+                    for m in &members {
+                        walk(m, false, ps, &opt, &transparent, &mut now);
+                    }
+                    let mut through = vec![false; ps.len()];
+                    if let Some(TypeDef::Alias(t)) = self.env.defs.get(n) {
+                        match t {
+                            Ty::Param(p) => {
+                                if let Some(i) = ps.iter().position(|x| x == p) {
+                                    through[i] = true;
+                                }
+                            }
+                            Ty::Generic(h, args) => {
+                                for (j, a) in args.iter().enumerate() {
+                                    if let Ty::Param(p) = a
+                                        && transparent.get(h).and_then(|o| o.get(j)) == Some(&true)
+                                        && let Some(i) = ps.iter().position(|x| x == p)
+                                    {
+                                        through[i] = true;
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    for (old, new) in [(opt.get_mut(n), now), (transparent.get_mut(n), through)] {
+                        if let Some(old) = old {
+                            for (o, x) in old.iter_mut().zip(new) {
+                                if x && !*o {
+                                    *o = true;
+                                    changed = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                if !changed {
+                    break;
+                }
+            }
+            self.optional_params = Some(opt);
+        }
+        self.optional_params.as_ref().expect("just computed")
+    }
+
+    /// The checks of generic declarations, once every type is resolved: every parameter is
+    /// used, and a generic type refers to itself, directly or through other types, only with
+    /// its own parameters, so that it has finitely many instances.
+    fn check_generics(&mut self) {
+        // The types each type's definition names.
+        let mut edges: HashMap<String, Vec<String>> = HashMap::new();
+        for (name, def) in &self.env.defs {
+            let mut out = Vec::new();
+            match def {
+                TypeDef::Record(fs) | TypeDef::Error(fs) => {
+                    for (_, t) in fs {
+                        names_in(t, &mut out);
+                    }
+                }
+                TypeDef::Alias(t) => names_in(t, &mut out),
+                TypeDef::Enum(_) | TypeDef::Extern => {}
+            }
+            edges.insert(name.clone(), out);
+        }
+        let reaches = |from: &str, to: &str| -> bool {
+            let mut seen: HashSet<&str> = HashSet::new();
+            let mut stack = vec![from];
+            while let Some(n) = stack.pop() {
+                if n == to {
+                    return true;
+                }
+                if seen.insert(n) {
+                    stack.extend(edges.get(n).into_iter().flatten().map(String::as_str));
+                }
+            }
+            false
+        };
+        for (file, d) in self.decls() {
+            let params = ast_params(&d.kind);
+            if params.is_empty() || self.is_compiled(file) {
+                continue;
+            }
+            // Uses as written, so that a use the checker refused still counts.
+            let mut used: HashSet<&str> = HashSet::new();
+            match &d.kind {
+                DeclKind::Record { fields, .. } => {
+                    for f in fields {
+                        names_written(&f.ty, &mut used);
+                    }
+                }
+                DeclKind::Alias { target, .. } => names_written(target, &mut used),
+                _ => {}
+            }
+            for p in params {
+                if !used.contains(p.name.as_str()) {
+                    self.diags.push(
+                        Diagnostic::error(
+                            codes::UNUSED_TYPE_PARAMETER,
+                            p.span,
+                            format!(
+                                "type parameter `{}` of `{}` is not used",
+                                p.name, d.name.name
+                            ),
+                        )
+                        .with_help("use it in a field or the aliased type, or remove it"),
+                    );
+                }
+            }
+            let mut uses: Vec<&ast::TypeRef> = Vec::new();
+            match &d.kind {
+                DeclKind::Record { fields, .. } => {
+                    for f in fields {
+                        generic_uses(&f.ty, &mut uses);
+                    }
+                }
+                DeclKind::Alias { target, .. } => generic_uses(target, &mut uses),
+                _ => {}
+            }
+            for u in uses {
+                let ast::TypeKind::Generic(n, args) = &u.kind else {
+                    continue;
+                };
+                if !reaches(&n.name, &d.name.name) {
+                    continue;
+                }
+                let own = args.len() == params.len()
+                    && args.iter().zip(params).all(
+                        |(a, p)| matches!(&a.kind, ast::TypeKind::Named(x) if x.name == p.name),
+                    );
+                if !own {
+                    let list: Vec<&str> = params.iter().map(|p| p.name.as_str()).collect();
+                    self.diags.push(
+                        Diagnostic::error(
+                            codes::IRREGULAR_RECURSION,
+                            u.span,
+                            format!(
+                                "`{}` refers back to `{}` with other type arguments than its parameters `<{}>`",
+                                ir_type(u),
+                                d.name.name,
+                                list.join(", ")
+                            ),
+                        )
+                        .with_help("a generic type can refer to itself, directly or through other types, only with its own parameters, in order, so that it has finitely many instances"),
+                    );
                 }
             }
         }
@@ -534,10 +979,42 @@ impl<'p> Checker<'p> {
 
     fn resolve_types(&mut self) {
         for (file, d) in self.decls() {
+            let params = ast_params(&d.kind);
+            if !params.is_empty() {
+                self.unique(params.iter(), "type parameter");
+                for p in params {
+                    if self.is_compiled(file) {
+                        break;
+                    }
+                    if let Some(&id) = self.names.global.get(p.name.as_str()) {
+                        let other = self.names.decl(id);
+                        self.diags.push(
+                            Diagnostic::error(
+                                codes::DUPLICATE_DECLARATION,
+                                p.span,
+                                format!(
+                                    "type parameter `{}` has the name of {} `{}`",
+                                    p.name,
+                                    crate::names::kind_phrase(&other.kind),
+                                    other.name.name
+                                ),
+                            )
+                            .with_secondary(other.name.span, "declared here")
+                            .with_help("a type parameter cannot have the name of a declaration; `T`, `U` and so on are usual"),
+                        );
+                    }
+                }
+                let names: Vec<String> = params.iter().map(|p| p.name.clone()).collect();
+                self.env.params.insert(d.name.name.clone(), names.clone());
+                let symbol = self.decl_symbol(&d.name.name);
+                self.type_params = symbol.map(|s| (s, names));
+            }
             let def = match &d.kind {
-                DeclKind::Record { fields } => TypeDef::Record(self.fields(file, fields, "field")),
+                DeclKind::Record { fields, .. } => {
+                    TypeDef::Record(self.fields(file, fields, "field"))
+                }
                 DeclKind::Error { fields } => TypeDef::Error(self.fields(file, fields, "field")),
-                DeclKind::Alias { target } => TypeDef::Alias(self.resolve(file, target)),
+                DeclKind::Alias { target, .. } => TypeDef::Alias(self.resolve(file, target)),
                 DeclKind::Enum { variants } => {
                     self.unique(variants.iter(), "variant");
                     TypeDef::Enum(variants.iter().map(|v| v.name.clone()).collect())
@@ -545,55 +1022,87 @@ impl<'p> Checker<'p> {
                 DeclKind::Extern => TypeDef::Extern,
                 _ => continue,
             };
+            self.type_params = None;
             self.env.defs.insert(d.name.name.clone(), def);
         }
-        // Break alias cycles, reporting each once, at the alias declared first.
+        // Break alias cycles, reporting each once, at the alias declared first. An alias is
+        // transparent, so one that refers to itself anywhere in its target (through `[]`, `?`,
+        // `map` or a type argument) would be an infinite type.
         let aliases: Vec<(usize, &'p ast::Decl)> = self
             .decls()
             .into_iter()
             .filter(|(_, d)| matches!(d.kind, DeclKind::Alias { .. }))
             .collect();
+        let alias_edges = |env: &TypeEnv, name: &str| -> Vec<String> {
+            let mut out = Vec::new();
+            if let Some(TypeDef::Alias(t)) = env.defs.get(name) {
+                names_in(t, &mut out);
+            }
+            out.retain(|n| matches!(env.defs.get(n), Some(TypeDef::Alias(_))));
+            out
+        };
         let mut broken: HashSet<String> = HashSet::new();
         for (_, d) in aliases {
             let start = d.name.name.clone();
             if broken.contains(&start) {
                 continue;
             }
-            let mut chain = vec![start.clone()];
-            let mut cur = start.clone();
-            // An alias is transparent, so one that refers to itself through `[]` or `?` would
-            // be an infinite type.
-            while let Some(TypeDef::Alias(t)) = self.env.defs.get(&cur) {
-                let Ty::Named(next) = base(t) else {
+            // Breadth first, so that the path reported is a shortest one.
+            let mut parent: HashMap<String, String> = HashMap::new();
+            let mut queue: std::collections::VecDeque<String> = alias_edges(&self.env, &start)
+                .into_iter()
+                .inspect(|n| {
+                    parent.entry(n.clone()).or_insert_with(|| start.clone());
+                })
+                .collect();
+            let mut found = false;
+            let mut visited: HashSet<String> = HashSet::new();
+            while let Some(n) = queue.pop_front() {
+                if n == start {
+                    found = true;
                     break;
-                };
-                let next = next.clone();
-                if next == start {
-                    let path = chain
-                        .iter()
-                        .chain(std::iter::once(&start))
-                        .map(|n| format!("`{n}`"))
-                        .collect::<Vec<_>>()
-                        .join(" = ");
-                    self.diags.push(
-                        Diagnostic::error(
-                            codes::ALIAS_CYCLE,
-                            d.name.span,
-                            format!("type alias `{start}` refers to itself: {path}"),
-                        )
-                        .with_help("an alias must end in a built-in or a declared record, enum, error or extern type"),
-                    );
-                    for n in &chain {
-                        broken.insert(n.clone());
-                        self.env.defs.insert(n.clone(), TypeDef::Alias(Ty::Unknown));
+                }
+                if !visited.insert(n.clone()) {
+                    continue;
+                }
+                for m in alias_edges(&self.env, &n) {
+                    if !parent.contains_key(&m) {
+                        parent.insert(m.clone(), n.clone());
                     }
-                    break;
+                    queue.push_back(m);
                 }
-                if chain.contains(&next) {
-                    break; // a cycle not through `start`: reported from its own members
-                }
-                chain.push(next.clone());
-                cur = next;
+            }
+            if !found {
+                continue;
+            }
+            let mut chain = vec![start.clone()];
+            let mut cur = parent[&start].clone();
+            while cur != start {
+                chain.push(cur.clone());
+                cur = parent[&cur].clone();
+            }
+            chain[1..].reverse();
+            let path = match (&d.kind, chain.len()) {
+                // Directly: say what it is.
+                (DeclKind::Alias { target, .. }, 1) => format!("`{start}` = `{}`", ir_type(target)),
+                _ => chain
+                    .iter()
+                    .chain(std::iter::once(&start))
+                    .map(|n| format!("`{n}`"))
+                    .collect::<Vec<_>>()
+                    .join(" = "),
+            };
+            self.diags.push(
+                Diagnostic::error(
+                    codes::ALIAS_CYCLE,
+                    d.name.span,
+                    format!("type alias `{start}` refers to itself: {path}"),
+                )
+                .with_help("an alias must end in a built-in or a declared record, enum, error or extern type"),
+            );
+            for n in &chain {
+                broken.insert(n.clone());
+                self.env.defs.insert(n.clone(), TypeDef::Alias(Ty::Unknown));
             }
         }
     }
@@ -676,13 +1185,15 @@ impl<'p> Checker<'p> {
             }
             let (doc, span) = (doc(&d.doc), ir_span(d.span));
             let def = match &d.kind {
-                DeclKind::Record { fields } => Some(ir::TypeDef::Record {
+                DeclKind::Record { params, fields } => Some(ir::TypeDef::Record {
+                    params: params.iter().map(|p| p.name.clone()).collect(),
                     fields: ir_fields(fields),
                 }),
                 DeclKind::Error { fields } => Some(ir::TypeDef::Error {
                     fields: ir_fields(fields),
                 }),
-                DeclKind::Alias { target } => Some(ir::TypeDef::Alias {
+                DeclKind::Alias { params, target } => Some(ir::TypeDef::Alias {
+                    params: params.iter().map(|p| p.name.clone()).collect(),
                     ty: ir_type(target),
                 }),
                 DeclKind::Enum { variants } => Some(ir::TypeDef::Enum {

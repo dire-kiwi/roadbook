@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "spec/conformance/charts/lockers.road",
@@ -9,6 +9,7 @@
   "types": {
     "Code": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "label",

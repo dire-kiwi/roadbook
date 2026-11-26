@@ -8,7 +8,6 @@
 import type { Address, Effect, EventDecl, Ir, State, TaskDecl, Machine } from './ir.ts'
 import { own } from './ir.ts'
 import {
-  baseType,
   childStates,
   effectEvent,
   effectText,
@@ -32,6 +31,7 @@ import {
   triggerSource,
   triggerText,
   typeDeclText,
+  typeNamesOf,
   walkStates,
 } from './model.ts'
 import type { EventRef, MessageSite, SpawnSite } from './model.ts'
@@ -137,7 +137,7 @@ function head(title: string, chip: string, closable: boolean): string {
 
 /** Declarations of the user types a signature mentions, one per line. */
 function typesOf(ir: Ir, decl: { params: { type: string }[]; returns?: string | null; errors?: string[] }): string {
-  const names = [...decl.params.map((p) => p.type), decl.returns ?? null, ...(decl.errors ?? [])].filter((t): t is string => !!t).map(baseType)
+  const names = [...decl.params.map((p) => p.type), decl.returns ?? null, ...(decl.errors ?? [])].filter((t): t is string => !!t).flatMap(typeNamesOf)
   const lines = [...new Set(names)].flatMap((n) => {
     const t = own(ir.types, n)
     return t ? [typeDeclText(n, t)] : []

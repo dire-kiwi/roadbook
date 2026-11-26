@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0316]: a type argument cannot be `ref Peer`: it holds a `ref`
+  --> RB0316-ref-inferred.road:12:36
+   |
+12 |   final state Done { entry do poke(Box { value: p }.value) }
+   |                                    ^^^^^^^^^^^^^^^^
+   |
+   = help: the type arguments of `Box` become its fields, which cannot hold a `ref`; pass the handle as a parameter instead

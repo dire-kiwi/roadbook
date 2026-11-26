@@ -1,4 +1,4 @@
-# The Roadbook IR, version 0.5
+# The Roadbook IR, version 0.6
 
 The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with messaging and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
@@ -22,7 +22,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 ```jsonc
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources":   [{ "path": "examples/shop/place_order.road", "package": null },
                 { "path": "examples/shop/types.road", "package": null }],
   "types":     { /* Name: type declaration */ },
@@ -56,20 +56,28 @@ A file of another package is named by its package and its path in the package, n
 
 ## Type references
 
-Wherever the IR names a type it uses a string in canonical source form: a base followed by any number of `[]` (list of) and `?` (optional) suffixes, applied left to right, with no spaces after the base. `LineItem[]` is a list of `LineItem`, `string?` an optional string, `string[]?` an optional list of strings, and `string?[]` a list of optional strings. The base is one of:
+Wherever the IR names a type it uses a string in canonical source form: a base followed by any number of `[]` (list of) and `?` (optional) suffixes, applied left to right. `LineItem[]` is a list of `LineItem`, `string?` an optional string, `string[]?` an optional list of strings, and `string?[]` a list of optional strings. The base is one of:
 
 | Base | Meaning |
 | --- | --- |
 | `string`, `int`, `float`, `bool`, `duration`, `json` | A built-in. |
-| `Name` | A key of `types`; or, inside a machine, one of that machine's own events, a key of its `events` or `emits` (see below). |
+| `Name` | A key of `types`; inside a generic declaration, one of its `params`; or, inside a machine, one of that machine's own events, a key of its `events` or `emits` (see below). |
+| `Name<A, B>` | An instance of the generic record or alias `Name`, a key of `types` with as many `params` as there are arguments, each a type reference. See [generic types](#generic-types). |
+| `map<K, V>` | A map from keys of type `K` to values of type `V`. `K` is `string` once aliases are expanded: `string`, `UserId` after `type UserId = string`. |
 | `Machine.Name` | Event `Name` of machine `Machine`: a key of `machines`, then of that machine's `events` or `emits`. |
 | `ref Machine` | A handle to a running machine `Machine`, a key of `machines`. One space after `ref`. `ref Inventory[]` is a list of handles. |
 
-Pattern: `^(string|int|float|bool|duration|json|[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)?|ref [A-Z][A-Za-z0-9]*)(\[\]|\?)*$`.
+There is no whitespace other than one space after `ref` and one after each `,` between type arguments, as the formatter writes them: `map<string, Order[]>?`, `Page<Pair<string, int>>[]`. The grammar, whose nesting a regular expression cannot check (the schema checks only the tokens):
+
+```
+type  = base { "[]" | "?" }
+base  = builtin | Upper [ "<" type { ", " type } ">" ] | Upper "." Upper | "ref " Upper
+      | "map<" type ", " type ">"
+```
 
 **Event types.** Events are not declared types: an event's type is named after the event. Inside machine `M`, a bare name that is one of `M`'s events or emitted events is that event: the type of `event` in `on Name`, and of the value of `emit Name { … }`. The event of another machine, or of a machine reached through a `ref` or a child, is written `Machine.Name`: the type of `event` in `on upload.Progress` is `Upload.Progress`, and the value of `send upload.Pause` has type `Upload.Pause`, also when the other machine is `M` itself. Names never collide: an event never has the name of a type, error or machine of the document, and a machine's `events` and `emits` never share a name, so a bare name is a key of `types` or of the current machine's `events` or `emits`, never two of them.
 
-**Where a `ref` can be.** Machine parameters, variables, and the parameters of functions, actions and tasks may have a `ref` type, directly or through an alias. Fields of records, errors and events, and the results of functions, tasks and machines, never do, so a machine can only get a handle from its own signature or from `invoke … as`. A `ref` value is never a literal, never compared, never passed where `json` is expected, and a runtime passes it to host code as its own handle type. In snapshots and traces it is the id of the run it refers to ([values](execution.md#values)).
+**Where a `ref` can be.** Machine parameters, variables, and the parameters of functions, actions and tasks may have a `ref` type, directly or through an alias, also inside a list, an optional or a map's values. Fields of records, errors and events, type arguments, and the results of functions, tasks and machines, never do, so a machine can only get a handle from its own signature or from `invoke … as`. A `ref` value is never a literal, never compared, never passed where `json` is expected, and a runtime passes it to host code as its own handle type. In snapshots and traces it is the id of the run it refers to ([values](execution.md#values)).
 
 ## Declarations
 
@@ -89,8 +97,8 @@ Each entry of `types` has a `kind`, the kind's members, then `doc` and `span`. T
 
 | `kind` | Source | Members |
 | --- | --- | --- |
-| `record` | `type Name { fields }` | `fields`: fields, in order. |
-| `alias` | `type Name = T` | `type`: the aliased type reference. |
+| `record` | `type Name<params> { fields }` | `params`: the type parameters, in order, `[]` unless generic. `fields`: fields, in order. |
+| `alias` | `type Name<params> = T` | `params`, as for a record. `type`: the aliased type reference. |
 | `enum` | `enum Name { A, B }` | `variants`: variant names, in order. At least one. |
 | `error` | `error Name { fields }`, or `error Name` | `fields`, `[]` for a bare error. |
 | `extern` | `extern type Name` | none. |
@@ -103,6 +111,20 @@ Each entry of `types` has a `kind`, the kind's members, then `doc` and `span`. T
   "span": { "file": 1, "line": 15, "col": 1, "endLine": 15, "endCol": 44 }
 }
 ```
+
+### Generic types
+
+A record or alias with `params` is generic. Inside it, a bare type name that is one of its `params` is that parameter; no parameter has the name of a key of `types` or `machines`.
+
+```json
+"Page": { "kind": "record", "params": ["T"],
+          "fields": [{ "name": "items", "type": "T[]", "doc": "" }, { "name": "next", "type": "string?", "doc": "" }], … },
+"Dict": { "kind": "alias", "params": ["T"], "type": "map<string, T>", … }
+```
+
+Every use of a generic type is an instance with one argument per parameter, `Page<Order>`, never the bare name. The instance's fields, or its aliased type, are the declaration's with each parameter replaced by its argument: `Page<Order>` has `items: Order[]`, and `Dict<Order>` is `map<string, Order>`, an alias being the type it names. A reader resolves a type reference by expanding aliases and substituting arguments as it goes (in Rust, `Ir::expand_top` and `Ir::fields_of`). The IR is not monomorphised: `types` holds each declaration once, so code generators can generate generic code, and there is no entry per instance.
+
+The compiler guarantees what a reader needs to stay finite, and a runtime refuses an IR in which an alias refers to itself (in Rust, `Ir::alias_cycle`): aliases do not refer to themselves (through anything, type arguments included), and a generic type refers to itself, directly or through other types, only with its own parameters in order, so a type has finitely many instances. A type argument holds no `ref` and is never an event type. Records, errors and events of a generic type have no `_tag` of their own: only `record` declarations and aliases are generic.
 
 ### Functions, actions and tasks
 
@@ -292,7 +314,7 @@ Every expression node is an object with `kind`, the kind's own members, then two
 | `field` | `confirmation(order, receipt).status` | `of`: the expression whose field is read, when it is not a variable. `name`: the field. |
 | `call` | `retryDelay(attempts)` | `fn`: a key of `functions`. `args`: expressions, positional, in parameter order. |
 | `op` | `a + b`, `not ok`, `-n` | `op`: one of `==` `!=` `<` `<=` `>` `>=` `+` `-` `*` `and` `or` (two `args`, left then right) or `not` `neg` (one `args`). |
-| `record` | `CardDeclined { reason: "expired" }`, `GatewayUnavailable` | `fields`: `[{"name", "value"}]`, in the order written. `type` is the record or error type being built, or, for the value of a `send` or `emit`, the [event type](#type-references). A field-less error or event written bare is a record with no fields. Its `text` is the value as written after `send name.` or `emit`: `Reserve { orderId: id }`. |
+| `record` | `CardDeclined { reason: "expired" }`, `GatewayUnavailable`, `Page { items: orders }` | `fields`: `[{"name", "value"}]`, in the order written. `type` is the record or error type being built: its name, or for a generic record its instance with the arguments the compiler worked out (`Page<Order>`); or, for the value of a `send` or `emit`, the [event type](#type-references). A field-less error or event written bare is a record with no fields. Its `text` is the value as written after `send name.` or `emit`: `Reserve { orderId: id }`. |
 | `enum` | `Role.Admin` | `variant`. `type` is the enum. |
 
 **Literal values.** Read a literal by its `type`, never by the form of its JSON number, since JavaScript and canonical JSON do not keep the difference between `2` and `2.0`.
@@ -345,19 +367,30 @@ A machine's `hash` is `"sha256:"` followed by the 64 lowercase hexadecimal digit
 - **M** is the machine itself and every machine it invokes or spawns (the `machine` of its `children` collections), directly or through other machines. A machine that invokes itself is included once. (Including the whole set, rather than each child's hash, is what makes the hash defined for recursive machines.)
 - **F**, **A** and **K** are the functions called (`call`), the actions run (`do`) and the tasks invoked by the machines in M.
 - **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send` or an `emitted` trigger), or by an event type `Machine.Name`. Only its interface, its `events` and `emits`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts or emits changes, and not when how the peer works inside does. (A child addressed with `as` is invoked, and a collection's machine is spawned, so they are in M whole.)
-- **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by the base of any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`), by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, or `Machine.Name`), and the machine of a `ref`, are not part of T.
-- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `children` map, which are kept whatever they are. The other name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed: `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that spawns nothing has the hash it had before keyed spawn.
+- **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`) whose base, type arguments or map key or value names it, at any depth, by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, or `Machine.Name`), a type parameter inside its declaration, and the machine of a `ref`, are not part of T.
+- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `children` map, which are kept whatever they are, and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed: `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that spawns nothing has the hash it had before keyed spawn, and a type that is not generic the hash it had before generic types.
 
 So comments, formatting, source positions, file names, packages, declaration order, `sensitive` marks and unused declarations do not change a machine's hash (a run compiled without a peer's marks therefore talks to it all the same, and shows what the peer marks: build the runs that talk to each other from the same charts), and any change to what the machine does, to a type it uses, to a machine it invokes, or to the interface of a machine it talks to does. A declaration copied from another package's compiled IR therefore keeps the hash it had there. In Rust, `roadbook_ir::machine_hash(&ir, name)` computes it, `roadbook_ir::semantic_view` returns the view, and `roadbook_ir::fill_hashes(&mut ir)` sets every machine's `hash`; the compiler calls the last after type checking. Snapshots and traces record the hash, so restoring a snapshot into a changed machine is refused and the viewer can tell when a trace came from another version of a chart.
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.5`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.6`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
+
+## Changes from 0.5
+
+Version 0.6 adds maps and generic types ([maps and generic types](../docs/design/language.md#maps-and-generic-types)). Every `record` and `alias` has the new member `params`, so a 0.5 document is not a 0.6 document. The [machine hash](#the-machine-hash) strips `params` when it is `[]`, so a machine that uses no generic type has the hash it had in 0.5, and its saved snapshots still restore.
+
+- [Type references](#type-references) may be `map<K, V>` and `Name<A, B>`, nested.
+- `record` and `alias` declarations have [`params`](#generic-types); inside a generic declaration a bare name may be a parameter.
+- The `type` of a `record` expression may be an instance, `Page<Order>`.
+- In the [semantic view](#the-machine-hash), T takes the types named anywhere in a type reference, not only its base.
+
+What a runtime does with the new values is in [`execution.md`](execution.md#values): a map is a JSON object, an instance takes the form of its declaration, and a trace redacts the sensitive fields inside either by their declared types.
 
 ## Changes from 0.4
 

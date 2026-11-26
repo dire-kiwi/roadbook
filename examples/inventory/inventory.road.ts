@@ -68,7 +68,7 @@ export interface InventoryDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "examples/inventory/inventory.road",
@@ -78,6 +78,7 @@ const ir: unknown = {
   "types": {
     "Item": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "sku",

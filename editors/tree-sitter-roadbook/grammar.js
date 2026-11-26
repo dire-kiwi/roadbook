@@ -22,8 +22,8 @@ module.exports = grammar({
   word: ($) => $.identifier,
 
   // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref`, `sensitive`,
-  // `history`, `deep`, `children`, `by`, `spawn`, `stop` and the built-in type names are not,
-  // because they mean something only where no name can appear.
+  // `history`, `deep`, `children`, `by`, `spawn`, `stop`, `map` and the built-in type names are
+  // not, because they mean something only where no name can appear.
   reserved: {
     global: (_) => [
       'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'var',
@@ -72,6 +72,7 @@ module.exports = grammar({
       seq(
         'type',
         field('name', $.type_identifier),
+        optional(field('parameters', $.type_parameters)),
         choice(seq('=', field('type', $._type)), field('fields', $.fields)),
       ),
 
@@ -129,11 +130,32 @@ module.exports = grammar({
 
     // ───────────── types ─────────────
 
-    _type: ($) => choice($.type_identifier, $.builtin_type, $.ref_type, $.list_type, $.optional_type),
+    // `type Page<T, U>`
+    type_parameters: ($) => seq('<', commaSep1(field('parameter', $.type_identifier)), '>'),
+
+    _type: ($) =>
+      choice(
+        $.type_identifier,
+        $.generic_type,
+        $.builtin_type,
+        $.ref_type,
+        $.map_type,
+        $.list_type,
+        $.optional_type,
+      ),
 
     builtin_type: (_) => choice('string', 'int', 'float', 'bool', 'duration', 'json'),
 
     ref_type: ($) => seq('ref', field('machine', $.type_identifier)),
+
+    // `Page<Order>`
+    generic_type: ($) => seq(field('name', $.type_identifier), field('arguments', $.type_arguments)),
+
+    type_arguments: ($) => seq('<', commaSep1(field('argument', $._type)), '>'),
+
+    // `map<string, Order>`
+    map_type: ($) =>
+      seq('map', '<', field('key', $._type), ',', field('value', $._type), optional(','), '>'),
 
     list_type: ($) => seq(field('element', $._type), '[', ']'),
 

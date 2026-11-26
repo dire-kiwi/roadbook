@@ -5,11 +5,13 @@
  * (`roadbook-core`'s `redact.rs`) does the same, so both runtimes write the same bytes.
  *
  * A value is redacted by its declared type, which the IR gives: a record's or error's sensitive
- * fields are replaced, and its other fields, list items and present optional values are
- * redacted by their own types, through aliases. A member a type does not declare is left as it
- * is. Values are never changed in place: what is redacted is a copy.
+ * fields are replaced, and its other fields, list items, map values and present optional values
+ * are redacted by their own types, through aliases, with the arguments of an instance of a
+ * generic type substituted. A member a type does not declare is left as it is. Values are never
+ * changed in place: what is redacted is a copy.
  */
-import { type Field, type Ir, type Machine, parseTypeRef } from "./ir.ts"
+import type { Field, Ir, Machine } from "./ir.ts"
+import { expandType, fieldsOf, parseTypeRef, type TypeRef } from "./typeref.ts"
 import type { Json } from "./json.ts"
 import type { CoreRecord, Input, InvokeEntry, Saved, SpawnedEntry } from "./types.ts"
 
@@ -46,15 +48,30 @@ const marks = (ir: Ir): Marks => {
     )
   const carries = new Map<string, boolean>()
   if (any) {
+    // Whether a value of declared type `name` can hold a sensitive value whatever its type
+    // arguments: a type parameter (not a key of `types`) carries nothing of its own.
     const named = (name: string, seen: Set<string>): boolean => {
       if (seen.has(name)) return false
       seen.add(name)
       const decl = own(ir.types, name)
       if (decl === undefined) return false
       if (decl.kind === "record" || decl.kind === "error") {
-        return decl.fields.some((f) => f.sensitive || named(parseTypeRef(f.type).base, seen))
+        return decl.fields.some((f) => f.sensitive || ref(parseTypeRef(f.type), seen))
       }
-      return decl.kind === "alias" && named(parseTypeRef(decl.type).base, seen)
+      return decl.kind === "alias" && ref(parseTypeRef(decl.type), seen)
+    }
+    const ref = (t: TypeRef, seen: Set<string>): boolean => {
+      switch (t.kind) {
+        case "named":
+          return named(t.name, seen) || t.args.some((a) => ref(a, seen))
+        case "list":
+        case "optional":
+          return ref(t.of, seen)
+        case "map":
+          return ref(t.value, seen)
+        default:
+          return false
+      }
     }
     for (const name of Object.keys(ir.types)) carries.set(name, named(name, new Set()))
   }
@@ -76,32 +93,62 @@ class Redactor {
     this.carryNamed = m.carries
   }
 
-  /** Whether a value of type `type` can hold a sensitive value. */
-  private carries(type: string): boolean {
-    return this.carryNamed.get(parseTypeRef(type).base) === true
+  /**
+   * Whether a value of type `t` can hold a sensitive value. An instance of a generic type can if
+   * its type can whatever the arguments, or if an argument can: the compiler makes every type
+   * parameter used, so each argument's values are in the instance's.
+   */
+  private carries(t: TypeRef | string): boolean {
+    const type = typeof t === "string" ? parseTypeRef(t) : t
+    switch (type.kind) {
+      case "named":
+        return this.carryNamed.get(type.name) === true || type.args.some((a) => this.carries(a))
+      case "list":
+      case "optional":
+        return this.carries(type.of)
+      case "map":
+        return this.carries(type.value)
+      default:
+        return false
+    }
   }
 
   /**
    * `v`, a value of type `type`, redacted. A value of a type that can hold a sensitive value
    * is redacted whole when it does not have the type's shape (a list that is not an array, a
-   * record that is not an object), so a value host code got wrong shows nothing.
+   * record or map that is not an object), so a value host code got wrong shows nothing.
    */
-  value(type: string, v: Json): Json {
-    if (!this.carries(type)) return v
-    const t = parseTypeRef(type)
-    return this.typed(t.base, t.suffixes, t.suffixes.length, v)
-  }
-
-  /** `v` redacted as a value of `base` with the first `n` of `suffixes` applied. */
-  private typed(base: string, suffixes: ReadonlyArray<"[]" | "?">, n: number, v: Json): Json {
-    if (n > 0) {
-      if (suffixes[n - 1] === "?") return v === null ? v : this.typed(base, suffixes, n - 1, v)
-      return Array.isArray(v) ? v.map((item: Json) => this.typed(base, suffixes, n - 1, item)) : REDACTED
+  value(type: TypeRef | string, v: Json): Json {
+    const t = typeof type === "string" ? parseTypeRef(type) : type
+    if (!this.carries(t)) return v
+    switch (t.kind) {
+      case "optional":
+        return v === null ? v : this.value(t.of, v)
+      case "list":
+        return Array.isArray(v) ? v.map((item: Json) => this.value(t.of, item)) : REDACTED
+      case "map": {
+        if (!isObject(v)) return REDACTED
+        const out: Record<string, Json> = {}
+        for (const key of Object.keys(v)) {
+          // defineProperty, so that a key `__proto__` stays a key.
+          Object.defineProperty(out, key, {
+            value: this.value(t.value, v[key]!),
+            enumerable: true,
+            writable: true,
+            configurable: true
+          })
+        }
+        return out
+      }
+      case "named": {
+        const record = fieldsOf(this.ir, t)
+        if (record !== undefined) return this.fields(record.fields, v)
+        const expanded = expandType(this.ir, t)
+        return expanded === t ? v : this.value(expanded, v)
+      }
+      default:
+        return v
     }
-    const decl = own(this.ir.types, base)
-    if (decl?.kind === "record" || decl?.kind === "error") return this.fields(decl.fields, v)
-    if (decl?.kind === "alias") return this.value(decl.type, v)
-    return v
   }
 
   /** `v`, a record, error or event with these fields that can hold a sensitive value. */

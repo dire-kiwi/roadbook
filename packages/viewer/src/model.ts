@@ -2,6 +2,7 @@
 // Pure and DOM-free. Layout (to size boxes) and render (to draw them) both call it, so the
 // two always agree on what goes where.
 
+import { expandType, parseTypeRef, type TypeRef, typeNames } from '@roadbook/core'
 import type { Address, Effect, EventDecl, Field, Invoke, Ir, Machine, Span, State, Transition, Trigger, TypeDecl } from './ir.ts'
 import { own } from './ir.ts'
 
@@ -456,23 +457,37 @@ export function sourceText(ir: Ir, span: Span): string {
 /** A type declaration in source form, on one line. */
 export function typeDeclText(name: string, t: TypeDecl): string {
   const fields = (fs: Field[]) => (fs.length ? ` { ${fs.map((f) => `${f.name}: ${f.type}`).join(', ')} }` : '')
+  const params = (ps: string[]) => (ps.length ? `<${ps.join(', ')}>` : '')
   switch (t.kind) {
     case 'record':
-      return `type ${name}${fields(t.fields)}`
+      return `type ${name}${params(t.params)}${fields(t.fields)}`
     case 'error':
       return `error ${name}${fields(t.fields)}`
     case 'enum':
       return `enum ${name} { ${t.variants.join(', ')} }`
     case 'alias':
-      return `type ${name} = ${t.type}`
+      return `type ${name}${params(t.params)} = ${t.type}`
     case 'extern':
       return `extern type ${name}`
   }
 }
 
-/** The base name of a type reference: `LineItem[]?` is `LineItem`. */
-export function baseType(ref: string): string {
-  return ref.replace(/(\[\]|\?)+$/, '')
+/** A type reference read, or undefined if it is not one. */
+function readType(ref: string): TypeRef | undefined {
+  try {
+    return parseTypeRef(ref)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The names of declared types a type reference mentions, outermost first: `LineItem[]?` gives
+ * `LineItem`, `map<UserId, Page<Order>>` gives `UserId`, `Page` and `Order`.
+ */
+export function typeNamesOf(ref: string): string[] {
+  const t = readType(ref)
+  return t ? typeNames(t) : []
 }
 
 /** The machines a machine invokes, directly, in the order their states are written. */
@@ -508,16 +523,15 @@ export function openingMachine(ir: Ir, wanted: string): string | undefined {
 
 /**
  * The machine a type is a handle to: `ref Inventory`, `ref Inventory[]?`, or an alias of one.
- * Null for any other type.
+ * Null for any other type, a map of handles among them.
  */
 export function refMachine(ir: Ir, type: string): string | null {
-  let t = type
-  for (let depth = 0; depth < 32; depth++) {
-    const base = baseType(t)
-    if (base.startsWith('ref ')) return base.slice(4)
-    const decl = own(ir.types, base)
-    if (!decl || decl.kind !== 'alias') return null
-    t = decl.type
+  let t = readType(type)
+  for (let depth = 0; t && depth < 32; depth++) {
+    t = expandType(ir, t)
+    if (t.kind === 'ref') return t.machine
+    if (t.kind !== 'list' && t.kind !== 'optional') return null
+    t = t.of
   }
   return null
 }

@@ -12,6 +12,10 @@ pub const CASES: &[(&str, &str)] = &[
         "records_and_aliases",
         "type A { x: int, y: string[]?, z: B? }\ntype Id = string\ntype Empty {}\ntype Lists = int[][]\n",
     ),
+    (
+        "generics_and_maps",
+        "type Page<T> { items: T[], next: string? }\ntype Pair<A, B,> { first: A, second: B }\ntype Dict<T> = map<string, T>\ntype Deep = map<UserId, Page<Pair<int, map<string, bool[]>?>>[]>?\nfn f(m: Dict<int>, p: Page<Order>[]) -> map<string, int,>\n",
+    ),
     ("enum", "enum Role { Customer, Admin, }\n"),
     (
         "errors",

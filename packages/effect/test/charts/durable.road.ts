@@ -36,7 +36,7 @@ export interface PipelineDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable.road",

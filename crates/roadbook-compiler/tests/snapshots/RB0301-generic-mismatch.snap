@@ -1,0 +1,14 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0301]: mismatched types: expected `Dict<int>`, found `map<string, string>`
+ --> RB0301-generic-mismatch.road:8:27
+  |
+8 |   var counts: Dict<int> = names()
+  |                           ^^^^^^^ the initial value of `counts` must be `Dict<int>`
+
+error[RB0301]: mismatched types: expected `string[]`, found `int[]`
+  --> RB0301-generic-mismatch.road:11:43
+   |
+11 |   final state Done { output Page { items: ints() } }
+   |                                           ^^^^^^ field `items` of `Page` must be `string[]`

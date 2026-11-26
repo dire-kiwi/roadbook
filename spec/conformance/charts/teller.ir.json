@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "spec/conformance/charts/teller.road",
@@ -13,6 +13,7 @@
   "types": {
     "Credentials": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "user",
@@ -38,6 +39,7 @@
     },
     "Login": {
       "kind": "alias",
+      "params": [],
       "type": "Credentials",
       "doc": "The same, as the machines name it.",
       "span": {
@@ -50,6 +52,7 @@
     },
     "Logins": {
       "kind": "alias",
+      "params": [],
       "type": "Login[]",
       "doc": "An alias of a list of an alias.",
       "span": {
@@ -62,6 +65,7 @@
     },
     "Session": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "id",
@@ -93,6 +97,7 @@
     },
     "Card": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "last4",
@@ -118,6 +123,7 @@
     },
     "Profile": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "name",

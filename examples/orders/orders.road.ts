@@ -50,7 +50,7 @@ export interface OrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "examples/orders/orders.road",
@@ -64,6 +64,7 @@ const ir: unknown = {
   "types": {
     "OrderDraft": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "items",
@@ -89,6 +90,7 @@ const ir: unknown = {
     },
     "Receipt": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "orderId",
@@ -126,6 +128,7 @@ const ir: unknown = {
     },
     "Item": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "sku",

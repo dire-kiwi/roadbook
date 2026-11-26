@@ -1,0 +1,26 @@
+{
+  "description": "Redaction through maps and generic types. The input's map of `Login`s, one under the key `__proto__`, shows each login's `password` as \"<redacted>\" and keeps its keys; `vault.secret`, a sensitive field whose type is the parameter `T` (here a map), is redacted whole. The task's arguments, its result (a `Page<Pair<string, Login>>`, by the declared type with the arguments substituted), the variable it is assigned to, the action's argument and the output are redacted alike. A run sees the real values: only the trace is redacted.",
+  "requires": [],
+  "chart": "charts/sealed.road",
+  "machine": "Keep",
+  "input": {
+    "users": {
+      "ada": { "user": "ada", "password": "a-secret" },
+      "__proto__": { "user": "root", "password": "r-secret" }
+    },
+    "vault": { "label": "pins", "secret": { "front": 1234 } }
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "fetch",
+      "done": {
+        "items": [{ "first": "ada", "second": { "user": "ada", "password": "a-secret" } }],
+        "next": null
+      }
+    }
+  ],
+  "status": "done"
+}

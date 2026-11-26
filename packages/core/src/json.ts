@@ -38,6 +38,14 @@ export const copyJson = <T>(value: T): T => {
   if (typeof value !== "object" || value === null) return value
   if (Array.isArray(value)) return value.map(copyJson) as T
   const copy: Record<string, unknown> = {}
-  for (const key of Object.keys(value)) copy[key] = copyJson((value as Record<string, unknown>)[key])
+  for (const key of Object.keys(value)) {
+    // defineProperty, so that a member named `__proto__` (a map's key) stays a member.
+    Object.defineProperty(copy, key, {
+      value: copyJson((value as Record<string, unknown>)[key]),
+      enumerable: true,
+      writable: true,
+      configurable: true
+    })
+  }
   return copy as T
 }

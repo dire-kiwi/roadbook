@@ -11,7 +11,7 @@ use roadbook_core::{
     Command, Defect, Input, Object, Program, Record, RestoreError, RunResult, Saved, Snapshot,
     SrcKind, Status,
 };
-use roadbook_ir::{Field, TypeDef, TypeRef};
+use roadbook_ir::{Field, TypeRef};
 use serde_json::{Map, Value};
 
 use crate::defect::defect_from_panic;
@@ -117,28 +117,19 @@ fn call_function(
     })
 }
 
-/// `ty` with aliases expanded at the top, transitively.
-fn resolve<'t>(program: &'t Program, mut ty: &'t TypeRef) -> &'t TypeRef {
-    for _ in 0..64 {
-        match ty {
-            TypeRef::Named(n) => match program.ir().types.get(n).map(|d| &d.def) {
-                Some(TypeDef::Alias { ty: t }) => ty = t,
-                _ => break,
-            },
-            _ => break,
-        }
-    }
-    ty
-}
-
 /// The run ids in `value`, a value of type `ty`, each with the machine its `ref` type names:
 /// the `ref`s in it.
 fn ref_ids(program: &Program, ty: &TypeRef, value: &Value, out: &mut Vec<(String, String)>) {
-    match (resolve(program, ty), value) {
+    match (&*program.ir().expand_top(ty), value) {
         (TypeRef::Ref(m), Value::String(id)) => out.push((id.clone(), m.clone())),
         (TypeRef::Optional(t), v) if !v.is_null() => ref_ids(program, t, v, out),
         (TypeRef::List(t), Value::Array(items)) => {
             for v in items {
+                ref_ids(program, t, v, out);
+            }
+        }
+        (TypeRef::Map(_, t), Value::Object(entries)) => {
+            for v in entries.values() {
                 ref_ids(program, t, v, out);
             }
         }

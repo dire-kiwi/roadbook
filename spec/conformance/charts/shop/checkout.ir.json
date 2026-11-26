@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "spec/conformance/charts/shop/checkout.road",
@@ -13,6 +13,7 @@
   "types": {
     "LineItem": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "sku",
@@ -38,6 +39,7 @@
     },
     "OrderDraft": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "items",
@@ -63,6 +65,7 @@
     },
     "Order": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "id",
@@ -94,6 +97,7 @@
     },
     "Receipt": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "chargeId",
@@ -119,6 +123,7 @@
     },
     "User": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "id",
@@ -159,6 +164,7 @@
     },
     "ApiResponse": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "status",

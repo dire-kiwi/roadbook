@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "spec/conformance/charts/alias.road",
@@ -9,6 +9,7 @@
   "types": {
     "Money": {
       "kind": "alias",
+      "params": [],
       "type": "int",
       "doc": "",
       "span": {
@@ -21,6 +22,7 @@
     },
     "Cash": {
       "kind": "alias",
+      "params": [],
       "type": "Money",
       "doc": "",
       "span": {
@@ -33,6 +35,7 @@
     },
     "Ratio": {
       "kind": "alias",
+      "params": [],
       "type": "float",
       "doc": "",
       "span": {
@@ -45,6 +48,7 @@
     },
     "Wait": {
       "kind": "alias",
+      "params": [],
       "type": "duration",
       "doc": "",
       "span": {
@@ -72,6 +76,7 @@
     },
     "Tier": {
       "kind": "alias",
+      "params": [],
       "type": "Level",
       "doc": "",
       "span": {
@@ -84,6 +89,7 @@
     },
     "Note": {
       "kind": "alias",
+      "params": [],
       "type": "string?",
       "doc": "",
       "span": {

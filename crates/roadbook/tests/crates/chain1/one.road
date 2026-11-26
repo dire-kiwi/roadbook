@@ -1,6 +1,12 @@
 // A fixture of roadbook's tests: the middle chart of a chain of crates.
 import { Zero } from "chain0/zero.road"
-import { Greeting } from "chain0/extra.road"
+import { Greeting, Timed } from "chain0/extra.road"
+
+type Local { n: int }
+
+// Instances of `chain0`'s generic type, with this crate's type and with `chain0`'s.
+type TimedLocal    = Timed<Local>
+type TimedGreeting = map<string, Timed<Greeting>>
 
 /// Pings its Zero when told to.
 machine One(z: ref Zero, hello: Greeting) -> string {

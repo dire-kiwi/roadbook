@@ -54,7 +54,7 @@ export interface PublishDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -68,6 +68,7 @@ const ir: unknown = {
   "types": {
     "Draft": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "title",
@@ -93,6 +94,7 @@ const ir: unknown = {
     },
     "Post": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "title",
@@ -118,6 +120,7 @@ const ir: unknown = {
     },
     "File": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "name",
@@ -143,6 +146,7 @@ const ir: unknown = {
     },
     "Url": {
       "kind": "alias",
+      "params": [],
       "type": "string",
       "doc": "Where a stored file can be fetched.",
       "span": {

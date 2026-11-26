@@ -1,0 +1,10 @@
+// Each level doubles the instance: refused at once, without expanding it.
+type Pair<A, B> { first: A, second: B }
+type Boom<T> { inner: Boom<Pair<T, T>>?, v: T }
+
+machine M() {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0323 at 3:23

@@ -1,0 +1,34 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0318]: `map<string, Login>` has sensitive fields, and argument `v` of `show` is `json`
+  --> RB0318-sensitive-generic-into-json.road:14:19
+   |
+14 |     entry do show(logins), show(page), shown(page), keys(logins), fine(page, logins)
+   |                   ^^^^^^ a trace would show these fields
+   |
+   = help: traces redact a value by its type, and `json` has no fields to redact by: give parameter `v` of `show` the value's own type, or mark it `sensitive`
+
+error[RB0318]: `Page<Login>` has sensitive fields, and argument `v` of `show` is `json`
+  --> RB0318-sensitive-generic-into-json.road:14:33
+   |
+14 |     entry do show(logins), show(page), shown(page), keys(logins), fine(page, logins)
+   |                                 ^^^^ a trace would show these fields
+   |
+   = help: traces redact a value by its type, and `json` has no fields to redact by: give parameter `v` of `show` the value's own type, or mark it `sensitive`
+
+error[RB0318]: `Page<Login>` has sensitive fields, and argument `p` of `shown` is `Page<json>`
+  --> RB0318-sensitive-generic-into-json.road:14:46
+   |
+14 |     entry do show(logins), show(page), shown(page), keys(logins), fine(page, logins)
+   |                                              ^^^^ a trace would show these fields
+   |
+   = help: traces redact a value by its type, and `json` has no fields to redact by: give parameter `p` of `shown` the value's own type, or mark it `sensitive`
+
+error[RB0318]: `map<string, Login>` has sensitive fields, and argument `m` of `keys` is `map<string, json>`
+  --> RB0318-sensitive-generic-into-json.road:14:58
+   |
+14 |     entry do show(logins), show(page), shown(page), keys(logins), fine(page, logins)
+   |                                                          ^^^^^^ a trace would show these fields
+   |
+   = help: traces redact a value by its type, and `json` has no fields to redact by: give parameter `m` of `keys` the value's own type, or mark it `sensitive`

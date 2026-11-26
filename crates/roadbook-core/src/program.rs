@@ -3,7 +3,9 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use roadbook_ir::{Ir, Machine, State, TypeDef, TypeRef};
+use std::borrow::Cow;
+
+use roadbook_ir::{Ir, Machine, State, TypeRef};
 
 use crate::redact::{Marks, Redactor};
 
@@ -57,6 +59,11 @@ impl Program {
     /// Indexes `ir`. An IR whose transition targets or initial states name states their
     /// machine does not have is refused.
     pub fn new(ir: Ir) -> Result<Program, ProgramError> {
+        if let Some(alias) = ir.alias_cycle() {
+            return Err(ProgramError::Read(format!(
+                "type alias `{alias}` refers to itself, so it cannot be expanded"
+            )));
+        }
         let mut machines = HashMap::new();
         for (name, m) in &ir.machines {
             let mut idx = MachineIndex {
@@ -125,30 +132,23 @@ impl Program {
         }
     }
 
-    /// `t` with aliases expanded at the top, transitively: `Money` for `type Money = int` is
-    /// `int`, and `S` for `type S = string?` is `string?`. The compiler rejects alias
-    /// cycles; the bound only keeps a hand-written IR from looping.
-    pub(crate) fn resolve<'t>(&'t self, mut t: &'t TypeRef) -> &'t TypeRef {
-        for _ in 0..64 {
-            match t {
-                TypeRef::Named(n) => match self.ir.types.get(n).map(|d| &d.def) {
-                    Some(TypeDef::Alias { ty }) => t = ty,
-                    _ => break,
-                },
-                _ => break,
-            }
-        }
-        t
+    /// `t` with aliases expanded at the top, transitively ([`Ir::expand_top`]).
+    pub(crate) fn resolve<'t>(&'t self, t: &'t TypeRef) -> Cow<'t, TypeRef> {
+        self.ir.expand_top(t)
     }
 
     /// `t` with aliases and `?` removed: the type whose operators an operand of type `t`
     /// uses.
-    pub(crate) fn scalar<'t>(&'t self, mut t: &'t TypeRef) -> &'t TypeRef {
+    pub(crate) fn scalar<'t>(&'t self, t: &'t TypeRef) -> Cow<'t, TypeRef> {
+        let mut t = self.resolve(t);
         for _ in 0..64 {
-            match self.resolve(t) {
-                TypeRef::Optional(inner) => t = inner,
+            t = match t {
+                Cow::Borrowed(TypeRef::Optional(inner)) => self.resolve(inner),
+                Cow::Owned(TypeRef::Optional(inner)) => {
+                    Cow::Owned(self.resolve(&inner).into_owned())
+                }
                 other => return other,
-            }
+            };
         }
         t
     }

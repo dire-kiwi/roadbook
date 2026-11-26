@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "examples/webhook/webhook.road",
@@ -29,6 +29,7 @@
     },
     "PaymentEvent": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "id",
@@ -72,6 +73,7 @@
     },
     "ApiResponse": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "status",

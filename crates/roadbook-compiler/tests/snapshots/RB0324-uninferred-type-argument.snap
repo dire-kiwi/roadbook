@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0324]: cannot tell what `T` of `Pair` is: the fields give `int` and `string`
+  --> RB0324-uninferred-type-argument.road:10:42
+   |
+10 |     on Ping -> Idle  set text = describe(Pair { first: 1, second: "one" })
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use the value where a `Pair<…>` is expected, such as a `set` of a variable of that type, so that its type arguments are known
+
+error[RB0324]: `T` of `Pair` would be `event Ping`, and an event cannot be a type argument
+  --> RB0324-uninferred-type-argument.road:14:42
+   |
+14 |     on Ping -> Idle  set text = describe(Pair { first: event, second: event })
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: give the value a declared type: `set` it to a variable of type `Pair<…>`, or pass it where one is expected

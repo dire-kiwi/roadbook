@@ -77,7 +77,7 @@ export interface ConfirmPasswordResetDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "examples/password-reset/confirm.road",
@@ -91,6 +91,7 @@ const ir: unknown = {
   "types": {
     "UserId": {
       "kind": "alias",
+      "params": [],
       "type": "string",
       "doc": "",
       "span": {
@@ -103,6 +104,7 @@ const ir: unknown = {
     },
     "ResetToken": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "tokenId",
@@ -128,6 +130,7 @@ const ir: unknown = {
     },
     "ApiResponse": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "status",

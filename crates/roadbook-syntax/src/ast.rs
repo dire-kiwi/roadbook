@@ -112,12 +112,16 @@ pub struct Decl {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum DeclKind {
-    /// `type Name { fields }`
+    /// `type Name<params> { fields }`. `params` is empty unless the type is generic.
     Record {
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        params: Vec<Ident>,
         fields: Vec<Field>,
     },
-    /// `type Name = T`
+    /// `type Name<params> = T`
     Alias {
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        params: Vec<Ident>,
         target: TypeRef,
     },
     /// `enum Name { A, B }`
@@ -188,8 +192,13 @@ pub struct TypeRef {
 #[serde(rename_all = "camelCase")]
 pub enum TypeKind {
     Builtin(Builtin),
-    /// A declared type: record, alias, enum, error or extern.
+    /// A declared type: record, alias, enum, error or extern; or, inside a generic
+    /// declaration, one of its type parameters.
     Named(Ident),
+    /// `Name<A, B>`: a generic declared type with its type arguments.
+    Generic(Ident, Vec<TypeRef>),
+    /// `map<K, V>`
+    Map(Box<TypeRef>, Box<TypeRef>),
     /// `T[]`
     List(Box<TypeRef>),
     /// `T?`

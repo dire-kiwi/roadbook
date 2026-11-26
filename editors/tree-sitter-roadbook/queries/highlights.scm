@@ -81,6 +81,24 @@
 
 (builtin_type) @type.builtin
 
+(map_type
+  "map" @type.builtin)
+
+(type_parameters
+  parameter: (type_identifier) @type.parameter)
+
+(generic_type
+  name: (type_identifier) @type)
+
+(type_arguments
+  argument: (type_identifier) @type)
+
+(map_type
+  key: (type_identifier) @type)
+
+(map_type
+  value: (type_identifier) @type)
+
 (type_declaration
   name: (type_identifier) @type.definition)
 

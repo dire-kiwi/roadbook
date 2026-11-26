@@ -1,0 +1,28 @@
+{
+  "description": "A run with variables of map and generic types saved while its task runs, after its `after best.wait` (a delay read through a generic instance) fired. The saved snapshot holds the maps, the key `__proto__` among them, and the instance in their JSON form; restoring it starts the task again with the same arguments, and the restored run ends as the original does.",
+  "requires": ["snapshots"],
+  "chart": "charts/generic.road",
+  "machine": "Gather",
+  "input": {
+    "waits": { "a": 100, "__proto__": 400 },
+    "counts": { "__proto__": 1, "10": 2, "9": 3 }
+  },
+  "stub": [],
+  "fns": {
+    "longest": [
+      {
+        "args": [{ "a": 100, "__proto__": 400 }],
+        "returns": { "value": "__proto__", "wait": 400 }
+      }
+    ]
+  },
+  "actions": {},
+  "script": [
+    { "advance": 400 },
+    { "snapshot": "fetching" },
+    { "restore": "fetching", "run": "r2", "status": "done" },
+    { "task": "fetch", "run": "r1", "done": { "items": [], "next": null } },
+    { "task": "fetch", "run": "r2", "done": { "items": [{ "value": 1, "wait": 0 }], "next": null } }
+  ],
+  "status": "done"
+}

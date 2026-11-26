@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Roadbook IR 0.5",
+  "title": "Roadbook IR 0.6",
   "description": "The compiled form of a Roadbook project: one document per entry file. See spec/ir.md for what each member means. Every member listed is required; absent values are null, missing docs are \"\", and empty lists and maps are [] and {}.",
   "type": "object",
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.5" },
+    "irVersion": { "const": "0.6" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -43,14 +43,25 @@
     "upperName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
     "lowerName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "typeRef": {
-      "description": "A type in canonical source form: a built-in, a declared name, an event type Machine.Event, or ref Machine, then any number of [] and ? suffixes.",
+      "description": "A type in canonical source form: a built-in, a declared name with optional type arguments (Page<Order>), an event type Machine.Event, ref Machine, or map<K, V>, then any number of [] and ? suffixes. The pattern checks the tokens only; spec/ir.md gives the exact grammar, whose nesting a regular expression cannot check.",
       "type": "string",
-      "pattern": "^(string|int|float|bool|duration|json|[A-Z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?|ref [A-Z][A-Za-z0-9]*)(\\[\\]|\\?)*$"
+      "pattern": "^(ref [A-Z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?)(<|, |>|\\[\\]|\\?|ref [A-Z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?)*$"
+    },
+    "typeParams": {
+      "description": "The type parameters of a generic record or alias, in order; [] unless it is generic.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/upperName" },
+      "uniqueItems": true
     },
     "eventType": {
       "description": "The type of an event value: an event of the machine by its bare name, or Machine.Event.",
       "type": "string",
       "pattern": "^[A-Z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?$"
+    },
+    "instanceType": {
+      "description": "The type of a value of a generic record: its name and type arguments, as in typeRef.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*<.*>$"
     },
     "stateId": {
       "description": "Absolute dotted path of a state, starting with the machine name.",
@@ -119,9 +130,10 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "fields", "doc", "span"],
+          "required": ["kind", "params", "fields", "doc", "span"],
           "properties": {
             "kind": { "const": "record" },
+            "params": { "$ref": "#/$defs/typeParams" },
             "fields": { "$ref": "#/$defs/fields" },
             "doc": { "$ref": "#/$defs/doc" },
             "span": { "$ref": "#/$defs/span" }
@@ -130,9 +142,10 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "type", "doc", "span"],
+          "required": ["kind", "params", "type", "doc", "span"],
           "properties": {
             "kind": { "const": "alias" },
+            "params": { "$ref": "#/$defs/typeParams" },
             "type": { "$ref": "#/$defs/typeRef" },
             "doc": { "$ref": "#/$defs/doc" },
             "span": { "$ref": "#/$defs/span" }
@@ -601,7 +614,7 @@
                 }
               }
             },
-            "type": { "$ref": "#/$defs/eventType" },
+            "type": { "oneOf": [{ "$ref": "#/$defs/eventType" }, { "$ref": "#/$defs/instanceType" }] },
             "text": { "type": "string" }
           }
         },

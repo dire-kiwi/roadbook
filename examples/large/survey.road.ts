@@ -45,7 +45,7 @@ export interface SatisfactionSurveyDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.5",
+  "irVersion": "0.6",
   "sources": [
     {
       "path": "examples/large/survey.road",
@@ -114,6 +114,7 @@ const ir: unknown = {
     },
     "Ticket": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "id",
@@ -151,6 +152,7 @@ const ir: unknown = {
     },
     "Classification": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "category",
@@ -188,6 +190,7 @@ const ir: unknown = {
     },
     "SurveyResult": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "answered",
@@ -213,6 +216,7 @@ const ir: unknown = {
     },
     "Closure": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "ticketId",

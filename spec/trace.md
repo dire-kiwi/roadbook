@@ -126,13 +126,14 @@ A chart marks the fields, parameters and variables whose values must not appear 
 
 **Where.** The core redacts each record as it emits it ([execution](execution.md#redaction)), so both runtimes write the same bytes, and no driver, sink or exporter ever holds the real value of a record. Records are the only thing redacted: the core's snapshot, the commands (an action's and an invoke's arguments, the value of a `send` or `emit`), what host code receives and returns, and **saved snapshots keep the real values**, since a run restored from one must go on with them. A saved snapshot is as sensitive as the data it holds; store it accordingly. Only the copy of it in a `restored` record is redacted, and that copy cannot be restored.
 
-**By type.** A value is redacted by its declared type, from the IR, through aliases (in any file or package). A type **holds** a sensitive value if it is a record or error with a sensitive field, or with a field whose type holds one, or a list or optional of such a type, or an alias of one. Then:
+**By type.** A value is redacted by its declared type, from the IR, through aliases (in any file or package). A type **holds** a sensitive value if it is a record or error with a sensitive field, or with a field whose type holds one, or a list, optional or map of such a type, or an alias of one; or an instance of a generic type that holds one whatever its type arguments (a field of a type parameter's type holds none of its own), or one with a type argument that holds one. Then:
 
 - a value of a sensitive field, parameter or variable is `"<redacted>"` whole, whatever its type, `null`, a list or a record included;
 - a value of a type that holds no sensitive value is left as it is: `string`, `int`, `float`, `bool`, `duration`, `json`, an enum, an `extern` type, a `ref`, and records and lists without marks at any depth. A trace of a chart that marks nothing is unchanged;
 - a record or error that holds one: each member that is one of its sensitive fields is `"<redacted>"`, each other declared field is redacted by its type, `_tag` is left as it is, and **any other member is `"<redacted>"`**;
-- a list that holds one: each item, by the item type. An optional: `null` is left as it is, a value is redacted by the inner type;
-- **a value without the shape of a type that holds one** (not an object where such a record is expected, not an array where such a list is) is `"<redacted>"` whole.
+- a list that holds one: each item, by the item type. An optional: `null` is left as it is, a value is redacted by the inner type. A map: each value, by the value type, its keys left as they are;
+- an instance of a generic type (`Page<Login>`): as its declaration, with each type parameter replaced by its argument;
+- **a value without the shape of a type that holds one** (not an object where such a record or map is expected, not an array where such a list is) is `"<redacted>"` whole.
 
 The last two rules are for values a runtime is not meant to see at all: host code that bypasses the generated types (raw JSON in Rust's dynamic API) can give one, and what it gives is not shown. Records' argument objects (`input`, `args`, a snapshot's `input` and `vars`) are redacted like records whose fields are the parameters or variables: a member that is none of them is `"<redacted>"`.
 

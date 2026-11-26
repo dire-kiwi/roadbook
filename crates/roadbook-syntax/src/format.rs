@@ -435,9 +435,17 @@ impl Formatter<'_> {
         let start = d.span.start.offset;
         let whole = off(d.span);
         let kw = d.kind.keyword();
-        let head = format!("{kw} {name}");
+        let head = match &d.kind {
+            DeclKind::Record { params, .. } | DeclKind::Alias { params, .. }
+                if !params.is_empty() =>
+            {
+                let names: Vec<&str> = params.iter().map(|p| p.name.as_str()).collect();
+                format!("{kw} {name}<{}>", names.join(", "))
+            }
+            _ => format!("{kw} {name}"),
+        };
         match &d.kind {
-            DeclKind::Record { fields } | DeclKind::Error { fields }
+            DeclKind::Record { fields, .. } | DeclKind::Error { fields }
                 if !fields.is_empty() || kw == "type" =>
             {
                 if let Some(text) = self.brace_list(
@@ -460,7 +468,7 @@ impl Formatter<'_> {
             DeclKind::Record { .. } | DeclKind::Error { .. } | DeclKind::Extern => {
                 self.row(whole, 0, vec![head], "", Some(Group::Data))
             }
-            DeclKind::Alias { target } => self.row(
+            DeclKind::Alias { target, .. } => self.row(
                 whole,
                 0,
                 vec![head, format!("= {}", ty(target))],
@@ -886,6 +894,11 @@ fn ty(t: &TypeRef) -> String {
     match &t.kind {
         TypeKind::Builtin(b) => b.as_str().into(),
         TypeKind::Named(n) => n.name.clone(),
+        TypeKind::Generic(n, args) => {
+            let args: Vec<String> = args.iter().map(ty).collect();
+            format!("{}<{}>", n.name, args.join(", "))
+        }
+        TypeKind::Map(k, v) => format!("map<{}, {}>", ty(k), ty(v)),
         TypeKind::List(t) => format!("{}[]", ty(t)),
         TypeKind::Optional(t) => format!("{}?", ty(t)),
         TypeKind::Ref(n) => format!("ref {}", n.name),

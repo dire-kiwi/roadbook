@@ -166,6 +166,24 @@ pub const SENSITIVE_INTO_JSON: Code = Code(318);
 /// A `children` key type that is not `string`, `int` or an enum, or an alias of one.
 pub const BAD_KEY_TYPE: Code = Code(319);
 
+/// A `map` whose key type is not `string` or an alias of it.
+pub const MAP_KEY: Code = Code(320);
+
+/// A generic type without its type arguments or with the wrong number of them, or type
+/// arguments on a type that takes none.
+pub const TYPE_ARGUMENT_COUNT: Code = Code(321);
+
+/// A type parameter its declaration does not use.
+pub const UNUSED_TYPE_PARAMETER: Code = Code(322);
+
+/// A generic type that refers to itself, directly or through other types, with other type
+/// arguments than its own parameters.
+pub const IRREGULAR_RECURSION: Code = Code(323);
+
+/// A record value of a generic type whose type arguments cannot be told from the expected
+/// type or the field values.
+pub const UNINFERRED_TYPE_ARGUMENT: Code = Code(324);
+
 // ───────────── analyses ─────────────
 
 /// A cycle of unguarded `always` transitions, or an unguarded `always` with no target.
@@ -261,6 +279,11 @@ pub const ALL: &[Code] = &[
     SENSITIVE_VALUE,
     SENSITIVE_INTO_JSON,
     BAD_KEY_TYPE,
+    MAP_KEY,
+    TYPE_ARGUMENT_COUNT,
+    UNUSED_TYPE_PARAMETER,
+    IRREGULAR_RECURSION,
+    UNINFERRED_TYPE_ARGUMENT,
     ALWAYS_CYCLE,
     UNBOUNDED_RECURSION,
     UNASSIGNED_READ,
