@@ -54,6 +54,10 @@ pub(crate) struct Checker<'p> {
     /// Names of the functions, actions, tasks and machines something uses.
     pub used: HashSet<String>,
     pub machines: Vec<MachineInfo>,
+    /// Whether every declared type is resolved, so that aliases can be expanded.
+    types_resolved: bool,
+    /// The optional types `(e?, e, e resolved)` met before then, checked once it is.
+    optionals: Vec<(ast::TypeRef, ast::TypeRef, Ty)>,
 }
 
 pub(crate) fn ir_span(s: Span) -> ir::Span {
@@ -99,8 +103,14 @@ impl<'p> Checker<'p> {
             diags,
             used: HashSet::new(),
             machines: Vec::new(),
+            types_resolved: false,
+            optionals: Vec::new(),
         };
         c.resolve_types();
+        c.types_resolved = true;
+        for (t, e, inner) in std::mem::take(&mut c.optionals) {
+            c.double_optional(&t, &e, &inner);
+        }
         c.resolve_signatures();
         c
     }
@@ -121,23 +131,16 @@ impl<'p> Checker<'p> {
             ast::TypeKind::Builtin(b) => Ty::Builtin(builtin(*b)),
             ast::TypeKind::List(e) => Ty::List(Box::new(self.resolve(file, e))),
             ast::TypeKind::Optional(e) => {
-                if matches!(e.kind, ast::TypeKind::Optional(_)) {
-                    self.diags.push(
-                        Diagnostic::error(
-                            codes::DOUBLE_OPTIONAL,
-                            t.span,
-                            format!("`{}` is optional twice", ir_type(t)),
-                        )
-                        .with_help("a value is either present or absent; one `?` says so")
-                        .with_fix(
-                            "remove the second `?`",
-                            t.span,
-                            ir_type(e).to_string(),
-                        ),
-                    );
-                    return self.resolve(file, e);
+                let inner = self.resolve(file, e);
+                if self.types_resolved {
+                    if self.double_optional(t, e, &inner) {
+                        return inner;
+                    }
+                } else {
+                    // An alias it names may not be resolved yet.
+                    self.optionals.push((t.clone(), (**e).clone(), inner.clone()));
                 }
-                Ty::Optional(Box::new(self.resolve(file, e)))
+                Ty::Optional(Box::new(inner))
             }
             ast::TypeKind::Named(n) => match self.names.lookup(file, &n.name) {
                 Found::Decl(id) if is_type(&self.names.decl(id).kind) => Ty::Named(n.name.clone()),
@@ -156,6 +159,30 @@ impl<'p> Checker<'p> {
                 }
             },
         }
+    }
+
+    /// Reports `t`, written `e?`, if `e` (resolved as `inner`, through aliases) is already
+    /// optional: `string??`, or `S?` with `type S = string?`.
+    fn double_optional(&mut self, t: &ast::TypeRef, e: &ast::TypeRef, inner: &Ty) -> bool {
+        if !matches!(self.env.expand(inner), Ty::Optional(_)) {
+            return false;
+        }
+        let message = if matches!(e.kind, ast::TypeKind::Optional(_)) {
+            format!("`{}` is optional twice", ir_type(t))
+        } else {
+            format!(
+                "`{}` is optional twice: `{}` is `{}`",
+                ir_type(t),
+                ir_type(e),
+                self.env.expand(inner)
+            )
+        };
+        self.diags.push(
+            Diagnostic::error(codes::DOUBLE_OPTIONAL, t.span, message)
+                .with_help("a value is either present or absent; one `?` says so")
+                .with_fix("remove the last `?`", t.span, ir_type(e).to_string()),
+        );
+        true
     }
 
     /// An entry of an `errors` list (`! A | B`), which must name an error type.

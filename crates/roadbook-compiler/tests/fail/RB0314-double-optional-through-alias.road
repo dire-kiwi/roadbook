@@ -1,0 +1,18 @@
+// The alias is declared after its first use.
+type Order { note: S? }
+type S = string?
+type O = S
+type Fine = string?
+
+fn f(x: O?) -> int
+fn g(x: Fine) -> int
+
+machine M(order: Order) {
+  var x: S?
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0314 at 2:20
+// expect: RB0314 at 7:9
+// expect: RB0314 at 11:10
