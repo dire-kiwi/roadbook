@@ -44,6 +44,9 @@ pub(crate) struct Names<'p> {
     /// `(file, name)` for which a fix importing `name` into `file` was offered. Offered once:
     /// applying two identical fixes would import the name twice.
     import_fixes: HashSet<(usize, String)>,
+    /// Each name of an import list that names a declaration of the imported file, with that
+    /// declaration: uses, for the symbol index.
+    pub imported: Vec<(Span, DeclId)>,
 }
 
 /// How a declaration kind is called in messages: "a record type", "an action".
@@ -84,6 +87,7 @@ impl<'p> Names<'p> {
             poisoned: vec![HashSet::new(); project.files.len()],
             duplicated: HashSet::new(),
             import_fixes: HashSet::new(),
+            imported: Vec::new(),
         };
         let mut own: Vec<HashMap<&'p str, DeclId>> = vec![HashMap::new(); project.files.len()];
         for (fi, file) in project.files.iter().enumerate() {
@@ -171,6 +175,7 @@ impl<'p> Names<'p> {
                     match own[target].get(n.name.as_str()) {
                         Some(&id) => {
                             names.scopes[fi].entry(n.name.as_str()).or_insert(id);
+                            names.imported.push((n.span, id));
                         }
                         None => {
                             let target_path = &project.files[target].path;

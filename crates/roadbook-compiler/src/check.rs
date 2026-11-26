@@ -9,6 +9,7 @@ use roadbook_syntax::ast::{self, DeclKind, Field, Ident};
 use roadbook_syntax::{Diagnostic, Span};
 
 use crate::codes;
+use crate::index::{self, Symbol, SymbolId, SymbolIndex, SymbolKind};
 use crate::machine::MachineInfo;
 use crate::names::{Found, Names, is_type};
 use crate::project::Project;
@@ -70,6 +71,14 @@ pub(crate) struct Checker<'p> {
     types_resolved: bool,
     /// The optional types `(e?, e, e resolved)` met before then, checked once it is.
     optionals: Vec<(ast::TypeRef, ast::TypeRef, Ty)>,
+    /// Every name declared and used, built as names are resolved.
+    pub index: SymbolIndex,
+    /// The symbol of each declaration, by [`DeclId`](crate::names::DeclId).
+    decl_symbols: Vec<SymbolId>,
+    /// The members of a symbol by name: the fields of a record, error or event, the variants
+    /// of an enum, and the parameters, variables, events and emitted events of a machine. The
+    /// first declared wins, as it does for the compiler.
+    members: HashMap<(SymbolId, String), SymbolId>,
 }
 
 pub(crate) fn ir_span(s: Span) -> ir::Span {
@@ -119,7 +128,11 @@ impl<'p> Checker<'p> {
             machines: Vec::new(),
             types_resolved: false,
             optionals: Vec::new(),
+            index: SymbolIndex::default(),
+            decl_symbols: Vec::new(),
+            members: HashMap::new(),
         };
+        c.index_declarations();
         c.resolve_types();
         c.types_resolved = true;
         for (t, e, inner) in std::mem::take(&mut c.optionals) {
@@ -135,6 +148,136 @@ impl<'p> Checker<'p> {
     /// compiled.
     pub fn is_compiled(&self, file: usize) -> bool {
         self.names.project.files[file].compiled.is_some()
+    }
+
+    /// Adds every declaration to the symbol index, with its members, and the names of import
+    /// lists as uses.
+    fn index_declarations(&mut self) {
+        for i in 0..self.names.decls.len() {
+            let d = self.names.decls[i].decl;
+            let (kind, signature) = index::declaration(d);
+            let id = self.define(kind, &d.name, d.span, None, &d.doc, signature);
+            self.decl_symbols.push(id);
+            match &d.kind {
+                DeclKind::Record { fields } | DeclKind::Error { fields } => {
+                    self.index_fields(id, fields);
+                }
+                DeclKind::Enum { variants } => {
+                    for v in variants {
+                        let signature = format!("{}.{}", d.name.name, v.name);
+                        self.member(id, SymbolKind::Variant, v, v.span, &None, signature);
+                    }
+                }
+                DeclKind::Machine(m) => {
+                    for p in &m.params {
+                        let signature = index::field_text(p);
+                        self.member(id, SymbolKind::Parameter, &p.name, p.span, &None, signature);
+                    }
+                    for v in m.body.vars() {
+                        let mut signature = format!("var {}", index::field_text_of(&v.name, &v.ty));
+                        if let Some(init) = &v.init {
+                            signature.push_str(&format!(" = {}", roadbook_syntax::expr_text(init)));
+                        }
+                        self.member(id, SymbolKind::Variable, &v.name, v.span, &v.doc, signature);
+                    }
+                    for item in &m.body.items {
+                        let (kind, word, e) = match item {
+                            ast::Item::Event(e) => (SymbolKind::Event, "event", e),
+                            ast::Item::Emits(e) => (SymbolKind::EmittedEvent, "emits", e),
+                            _ => continue,
+                        };
+                        let signature =
+                            format!("{word} {}{}", e.name.name, index::braces(&e.fields));
+                        let ev = self.member(id, kind, &e.name, e.span, &e.doc, signature);
+                        self.index_fields(ev, &e.fields);
+                    }
+                }
+                _ => {}
+            }
+        }
+        for (span, id) in std::mem::take(&mut self.names.imported) {
+            let symbol = self.decl_symbols[id.0];
+            self.index.refer(symbol, span);
+        }
+    }
+
+    fn index_fields(&mut self, owner: SymbolId, fields: &[Field]) {
+        for f in fields {
+            let signature = index::field_text(f);
+            self.member(owner, SymbolKind::Field, &f.name, f.span, &None, signature);
+        }
+    }
+
+    pub(crate) fn define(
+        &mut self,
+        kind: SymbolKind,
+        name: &Ident,
+        decl_span: Span,
+        parent: Option<SymbolId>,
+        doc: &Option<ast::Doc>,
+        signature: String,
+    ) -> SymbolId {
+        self.index.define(Symbol {
+            kind,
+            name: name.name.clone(),
+            span: name.span,
+            decl_span,
+            parent,
+            doc: doc.as_ref().map(|d| d.text.clone()),
+            signature,
+        })
+    }
+
+    /// Defines a member of `owner`, findable by name with [`Checker::member_symbol`].
+    pub(crate) fn member(
+        &mut self,
+        owner: SymbolId,
+        kind: SymbolKind,
+        name: &Ident,
+        decl_span: Span,
+        doc: &Option<ast::Doc>,
+        signature: String,
+    ) -> SymbolId {
+        let id = self.define(kind, name, decl_span, Some(owner), doc, signature);
+        self.members.entry((owner, name.name.clone())).or_insert(id);
+        id
+    }
+
+    /// The member of `owner` named `name`, if it has one.
+    pub(crate) fn member_symbol(&self, owner: SymbolId, name: &str) -> Option<SymbolId> {
+        self.members.get(&(owner, name.to_string())).copied()
+    }
+
+    /// The symbol of the declaration named `name` in the compilation.
+    pub(crate) fn decl_symbol(&self, name: &str) -> Option<SymbolId> {
+        let id = self.names.global.get(name)?;
+        Some(self.decl_symbols[id.0])
+    }
+
+    /// The symbol of the declaration `name` means in `file`, if it means one.
+    pub(crate) fn lookup_symbol(&self, file: usize, name: &str) -> Option<SymbolId> {
+        match self.names.lookup(file, name) {
+            Found::Decl(id) => Some(self.decl_symbols[id.0]),
+            _ => None,
+        }
+    }
+
+    /// Records a use of the declaration `n` names in `file`, if it names one.
+    pub(crate) fn refer_decl(&mut self, file: usize, n: &Ident) {
+        if !self.is_compiled(file)
+            && let Some(id) = self.lookup_symbol(file, &n.name)
+        {
+            self.index.refer(id, n.span);
+        }
+    }
+
+    /// Records a use of the member `n` of `owner`, if it has one.
+    pub(crate) fn refer_member(&mut self, file: usize, owner: Option<SymbolId>, n: &Ident) {
+        if !self.is_compiled(file)
+            && let Some(id) = owner.and_then(|o| self.member_symbol(o, &n.name))
+        {
+            self.index.refer(id, n.span);
+        }
     }
 
     /// Reports a `ref` where none can be: in a field of a record, error or event, or in what a
@@ -238,31 +381,12 @@ impl<'p> Checker<'p> {
                 }
                 Ty::Optional(Box::new(inner))
             }
-            ast::TypeKind::Named(n) => match self.names.lookup(file, &n.name) {
-                Found::Decl(id) if is_type(&self.names.decl(id).kind) => Ty::Named(n.name.clone()),
-                Found::Decl(id) => {
-                    let mut d = self.names.wrong_kind(n, id, "a type");
-                    if matches!(self.names.decl(id).kind, DeclKind::Machine(_)) {
-                        d = d
-                            .with_help(format!(
-                                "a handle to a running `{}` is written `ref {}`",
-                                n.name, n.name
-                            ))
-                            .with_fix("write `ref`", n.span.shrink_to_start(), "ref ");
-                    }
-                    self.diags.push(d);
-                    Ty::Unknown
-                }
-                Found::Poisoned => Ty::Unknown,
-                Found::Missing => {
-                    let d = self
-                        .names
-                        .unknown(file, n, codes::UNKNOWN_TYPE, "type", is_type);
-                    self.diags.push(d);
-                    Ty::Unknown
-                }
-            },
+            ast::TypeKind::Named(n) => {
+                self.refer_decl(file, n);
+                self.named_type(file, n)
+            }
             ast::TypeKind::Ref(n) => {
+                self.refer_decl(file, n);
                 let is_machine = |k: &DeclKind| matches!(k, DeclKind::Machine(_));
                 match self.names.lookup(file, &n.name) {
                     Found::Decl(id) if is_machine(&self.names.decl(id).kind) => {
@@ -284,6 +408,34 @@ impl<'p> Checker<'p> {
                         Ty::Unknown
                     }
                 }
+            }
+        }
+    }
+
+    /// A declared type named in `file`.
+    fn named_type(&mut self, file: usize, n: &Ident) -> Ty {
+        match self.names.lookup(file, &n.name) {
+            Found::Decl(id) if is_type(&self.names.decl(id).kind) => Ty::Named(n.name.clone()),
+            Found::Decl(id) => {
+                let mut d = self.names.wrong_kind(n, id, "a type");
+                if matches!(self.names.decl(id).kind, DeclKind::Machine(_)) {
+                    d = d
+                        .with_help(format!(
+                            "a handle to a running `{}` is written `ref {}`",
+                            n.name, n.name
+                        ))
+                        .with_fix("write `ref`", n.span.shrink_to_start(), "ref ");
+                }
+                self.diags.push(d);
+                Ty::Unknown
+            }
+            Found::Poisoned => Ty::Unknown,
+            Found::Missing => {
+                let d = self
+                    .names
+                    .unknown(file, n, codes::UNKNOWN_TYPE, "type", is_type);
+                self.diags.push(d);
+                Ty::Unknown
             }
         }
     }
@@ -314,6 +466,7 @@ impl<'p> Checker<'p> {
 
     /// An entry of an `errors` list (`! A | B`), which must name an error type.
     pub fn resolve_error(&mut self, file: usize, n: &Ident) -> bool {
+        self.refer_decl(file, n);
         let is_error = |k: &DeclKind| matches!(k, DeclKind::Error { .. });
         match self.names.lookup(file, &n.name) {
             Found::Decl(id) if is_error(&self.names.decl(id).kind) => true,

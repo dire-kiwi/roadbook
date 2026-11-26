@@ -6,6 +6,7 @@ use roadbook_syntax::{Diagnostic, expr_text};
 
 use crate::check::SigKind;
 use crate::codes;
+use crate::index::SymbolId;
 use crate::machine::{Cx, Implicit, Scope};
 use crate::names::{Found, is_type, suggest};
 use crate::types::{BOOL, Ty, TypeDef};
@@ -113,6 +114,7 @@ impl Cx<'_, '_> {
                     }
                     None => match self.vars.get(&n.name) {
                         Some(v) => {
+                            self.ck.refer_member(self.file, self.symbol, n);
                             if !v.param {
                                 self.reads.push((n.name.clone(), n.span));
                             }
@@ -160,6 +162,8 @@ impl Cx<'_, '_> {
             ExprKind::Enum(t, v) => {
                 let ty = match self.type_value(t, "an enum") {
                     Some((name, TypeDef::Enum(variants))) => {
+                        let owner = self.ck.decl_symbol(&name);
+                        self.ck.refer_member(self.file, owner, v);
                         if !variants.contains(&v.name) {
                             let mut d = Diagnostic::error(
                                 codes::UNKNOWN_VARIANT,
@@ -345,7 +349,9 @@ impl Cx<'_, '_> {
     ) -> Vec<ir::FieldValue> {
         let mut seen: Vec<&str> = Vec::new();
         let mut out = Vec::new();
+        let owner = self.type_symbol(ty);
         for fv in fields {
+            self.ck.refer_member(self.file, owner, &fv.name);
             let declared = decl_fields
                 .and_then(|fs| fs.iter().find(|(n, _)| *n == fv.name.name))
                 .map(|(_, t)| t.clone());
@@ -504,7 +510,11 @@ impl Cx<'_, '_> {
             return Ty::Unknown;
         }
         match fields.iter().find(|(n, _)| *n == f.name) {
-            Some((_, ft)) => ft.clone(),
+            Some((_, ft)) => {
+                let owner = self.type_symbol(&expanded);
+                self.ck.refer_member(self.file, owner, f);
+                ft.clone()
+            }
             None => {
                 let names: Vec<&str> = fields.iter().map(|(n, _)| n.as_str()).collect();
                 let d = self.no_such_field(t, f, &names);
@@ -534,6 +544,22 @@ impl Cx<'_, '_> {
         d
     }
 
+    /// The symbol that declares the fields of values of type `t`: a record or error type, or
+    /// an event.
+    fn type_symbol(&self, t: &Ty) -> Option<SymbolId> {
+        match self.ck.env.expand(t) {
+            Ty::Named(n) => self.ck.decl_symbol(&n),
+            Ty::Event(name) => match name.split_once('.') {
+                Some((machine, event)) => {
+                    let m = self.ck.decl_symbol(machine)?;
+                    self.ck.member_symbol(m, event)
+                }
+                None => self.ck.member_symbol(self.symbol?, &name),
+            },
+            _ => None,
+        }
+    }
+
     /// The declared type an enum or record value names, resolved through aliases: its name
     /// and definition. Reports a missing name or one that is not a type.
     fn type_value(
@@ -541,6 +567,7 @@ impl Cx<'_, '_> {
         t: &roadbook_syntax::ast::Ident,
         wanted: &str,
     ) -> Option<(String, TypeDef)> {
+        self.ck.refer_decl(self.file, t);
         match self.ck.names.lookup(self.file, &t.name) {
             Found::Decl(id) if is_type(&self.ck.names.decl(id).kind) => {
                 match self.ck.env.expand(&Ty::Named(t.name.clone())) {
