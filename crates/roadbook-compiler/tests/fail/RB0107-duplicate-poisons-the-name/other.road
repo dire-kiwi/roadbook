@@ -1,0 +1,13 @@
+// Uses of `log` are not checked against either declaration: which one was meant is unknown.
+action log(x: int, y: int)
+
+machine Run() {
+  initial A
+  state A {
+    entry do log(1, 2)
+    always -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0107 at 2:8

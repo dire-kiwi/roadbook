@@ -38,6 +38,9 @@ pub(crate) struct Names<'p> {
     /// Per file, the names it can use.
     scopes: Vec<HashMap<&'p str, DeclId>>,
     poisoned: Vec<HashSet<&'p str>>,
+    /// Names declared more than once. Already reported, and poisoned in every file: which
+    /// declaration a use meant is unknown, so checking it against either would mislead.
+    duplicated: HashSet<&'p str>,
 }
 
 /// How a declaration kind is called in messages: "a record type", "an action".
@@ -76,6 +79,7 @@ impl<'p> Names<'p> {
             global: HashMap::new(),
             scopes: vec![HashMap::new(); project.files.len()],
             poisoned: vec![HashSet::new(); project.files.len()],
+            duplicated: HashSet::new(),
         };
         let mut own: Vec<HashMap<&'p str, DeclId>> = vec![HashMap::new(); project.files.len()];
         for (fi, file) in project.files.iter().enumerate() {
@@ -98,6 +102,7 @@ impl<'p> Names<'p> {
                                 "declaration names are unique across a project, because the IR is keyed by name",
                             ),
                         );
+                        names.duplicated.insert(name);
                         true
                     }
                     None => {
@@ -163,7 +168,9 @@ impl<'p> Names<'p> {
     }
 
     pub fn lookup(&self, file: usize, name: &str) -> Found {
-        if let Some(&id) = self.scopes[file].get(name) {
+        if self.duplicated.contains(name) {
+            Found::Poisoned
+        } else if let Some(&id) = self.scopes[file].get(name) {
             Found::Decl(id)
         } else if self.poisoned[file].contains(name) {
             Found::Poisoned
