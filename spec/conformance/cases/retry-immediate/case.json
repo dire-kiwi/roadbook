@@ -1,0 +1,29 @@
+{
+  "description": "`retry 1` with no delay and `fail *`: a failure re-enters Attempt at once, restarting the invoke with no timer, and the second attempt's `done` is taken.",
+  "requires": [],
+  "chart": "charts/retry.road",
+  "machine": "Fetcher",
+  "input": {
+    "id": "d1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "fetch",
+      "done": "doc"
+    },
+    {
+      "task": "save",
+      "fail": {
+        "_tag": "Busy"
+      }
+    },
+    {
+      "task": "save",
+      "done": null
+    }
+  ],
+  "status": "done"
+}
