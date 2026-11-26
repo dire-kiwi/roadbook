@@ -37,9 +37,9 @@ States are named by their ids in the IR, transitions by their state's id and the
 | `done` | `state`, `output` | Last, when the run reaches a top-level final state with an output. `output` is `null` for a machine that returns nothing. |
 | `failed` | `state`, `error` | Last, when the run reaches a top-level final state with `fail`. |
 | `cancelled` | none | Last, when the run was cancelled from outside, after every state was exited. |
-| `defect` | `defect` | Last, when the run ended with a [defect](execution.md#defects). |
+| `defect` | `defect` | Last, when the run ended with a [defect](execution.md#defects). When an action of the step that would have ended the run had a host defect, it comes right after that action's record, in place of the `done`, `failed` or `cancelled` record and the records between. |
 
-Exactly one of `done`, `failed`, `cancelled` and `defect` ends every run that ends. A trace of a run still in progress has none.
+Exactly one of `done`, `failed`, `cancelled` and `defect` ends every run that ends. A trace of a run still in progress has none, and neither has one of a Rust run whose future was dropped ([ending a run](execution.md#ending-a-run)).
 
 ### Inputs in records
 
