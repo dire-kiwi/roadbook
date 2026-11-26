@@ -1,0 +1,56 @@
+//! The Roadbook interpreter: the pure core of `spec/execution.md`.
+//!
+//! Two synchronous functions do all the work, with no I/O, no clock and no async:
+//!
+//! - [`Program::start`] starts a machine and returns its first [`Snapshot`] and the
+//!   [`Command`]s to carry out;
+//! - [`Program::step`] takes one [`Input`] and returns the next snapshot and commands.
+//!
+//! A snapshot is never modified in place. Host functions are called through the `fns`
+//! callback ([`Fns`]), which returns a value or a [`Defect`]; the binding layer catches
+//! panics, so nothing unwinds through the core. Trace records are commands too
+//! ([`Command::Trace`]), so they interleave with the work exactly as the spec says. The
+//! driver, the part with queues, futures and timers, is the `roadbook` crate.
+//!
+//! Values are `serde_json::Value`s in the JSON form of `spec/execution.md#values`. `int` is
+//! `i64`, and arithmetic outside it is an `overflow` defect.
+//!
+//! Parallel states and restoring snapshots are milestone 6: [`Program::new`] refuses an IR
+//! with a parallel state.
+//!
+//! ```
+//! use roadbook_core::{Command, Input, Program, Record, Status};
+//! use serde_json::{Map, Value, json};
+//!
+//! let ir = roadbook_compiler::compile_source(
+//!     "tick.road",
+//!     "machine Tick() -> int {\n  event Go\n  initial A\n  state A { on Go -> B }\n  final state B { output 1 }\n}\n",
+//!     &Default::default(),
+//! )
+//! .ir
+//! .unwrap();
+//! let program = Program::new(ir).unwrap();
+//! let mut no_fns = |_: &str, _: Vec<Value>| unreachable!();
+//! let (snap, _) = program.start("Tick", Map::new(), &mut no_fns).unwrap();
+//! assert_eq!(snap.active, ["Tick", "Tick.A"]);
+//! let go = Input::Event { value: json!({"_tag": "Go"}) };
+//! let (snap, commands) = program.step(&snap, go, &mut no_fns);
+//! assert_eq!(snap.status, Status::Done);
+//! assert!(matches!(commands.last(), Some(Command::Trace { record: Record::Done { .. } })));
+//! ```
+
+mod eval;
+mod program;
+mod run;
+mod types;
+
+pub use eval::Fns;
+pub use program::{Program, ProgramError};
+pub use run::{StepResult, UnknownMachine};
+pub use types::{
+    Command, Defect, Input, InvokeEntry, Object, Record, RunResult, Snapshot, SrcKind, Status,
+    TimerEntry,
+};
+
+/// The most microsteps settling may take for one input before it is a `limit` defect.
+pub const SETTLE_LIMIT: usize = 1000;
