@@ -321,3 +321,128 @@ fn packages_on_disk() {
         out.render()
     );
 }
+
+const INV: &str = "\
+machine Inv() {
+  event Reserve { n: int }
+  emits Reserved { n: int }
+  initial A
+  state A { on Reserve -> A  emit Reserved { n: event.n } }
+}
+";
+
+fn sources(out: &roadbook_compiler::Compilation) -> Vec<(String, Option<String>)> {
+    out.ir
+        .as_ref()
+        .unwrap()
+        .sources
+        .iter()
+        .map(|s| (s.path.clone(), s.package.clone()))
+        .collect()
+}
+
+#[test]
+fn a_file_reached_by_a_relative_path_and_as_a_package_is_one_file() {
+    let t = TempDir::new("same-file");
+    t.write("inv/inv.road", &format!("{INV}type Qty {{ n: int }}\n"));
+    let order = |first: &str, second: &str| {
+        format!(
+            "import {{ Inv }} from \"{first}\"\nimport {{ Qty }} from \"{second}\"\n\
+             machine Order(i: ref Inv, q: Qty) {{\n  initial A\n  state A {{\n    \
+             on i.Reserved -> A\n  }}\n}}\n"
+        )
+    };
+    // It keeps the name it is first reached by.
+    for (first, second, name) in [
+        ("../inv/inv.road", "inv/inv.road", ("inv/inv.road", None)),
+        ("inv/inv.road", "../inv/inv.road", ("inv.road", Some("inv"))),
+    ] {
+        t.write("app/order.road", &order(first, second));
+        let mut l = FsLoader::new(&t.0).with_package("inv", "inv");
+        let out = compile(&mut l, "app/order.road", &Options::default()).unwrap();
+        assert!(out.diagnostics.is_empty(), "{}", out.render());
+        assert_eq!(out.files.len(), 2);
+        assert_eq!(out.files[1].0, "inv/inv.road");
+        assert_eq!(
+            sources(&out)[1],
+            (name.0.to_string(), name.1.map(String::from))
+        );
+    }
+}
+
+#[test]
+fn packages_that_import_each_other() {
+    let t = TempDir::new("mutual");
+    t.write(
+        "a/a.road",
+        "import { B } from \"b/b.road\"\ntype Item { s: string }\nmachine A(b: ref B) {\n  event Go\n  emits Hi\n  initial X\n  state X { on Go -> X  send b.Poke  emit Hi }\n}\n",
+    );
+    t.write(
+        "b/b.road",
+        "import { A } from \"a/a.road\"\nmachine B(a: ref A) {\n  event Poke\n  initial X\n  state X { on Poke -> X  on a.Hi -> X }\n}\n",
+    );
+    t.write(
+        "app.road",
+        "import { A } from \"a/a.road\"\nmachine App(a: ref A) {\n  initial X\n  final state X {}\n}\n",
+    );
+    let loader = || {
+        FsLoader::new(&t.0)
+            .with_package("a", "a")
+            .with_package("b", "b")
+    };
+    // The whole project, as `roadbook check` does: each package's file is also a root.
+    let roots: Vec<String> = ["a/a.road", "app.road", "b/b.road"]
+        .map(String::from)
+        .into();
+    let out = roadbook_compiler::check(&mut loader(), &roots, &Options::default()).unwrap();
+    assert!(!out.has_errors(), "{}", out.render());
+    for root in &roots {
+        let out = compile(&mut loader(), root, &Options::default()).unwrap();
+        assert!(!out.has_errors(), "{root}: {}", out.render());
+    }
+    let out = compile(&mut loader(), "app.road", &Options::default()).unwrap();
+    assert_eq!(
+        sources(&out),
+        [
+            ("app.road".to_string(), None),
+            ("a.road".to_string(), Some("a".to_string())),
+            ("b.road".to_string(), Some("b".to_string()))
+        ]
+    );
+    check_schema(&out);
+}
+
+#[test]
+fn exports_with_a_main_entry_and_specific_patterns() {
+    let t = TempDir::new("exports");
+    t.write(
+        "node_modules/pk/package.json",
+        r#"{ "name": "pk", "exports": { ".": "./index.js", "./*.road": "./charts/*.road", "./legacy/*.road": "./old/*.road" } }"#,
+    );
+    t.write(
+        "node_modules/pk/charts/y.road",
+        "type InCharts { s: string }\n",
+    );
+    t.write(
+        "node_modules/pk/charts/legacy/x.road",
+        "type FromCharts { s: string }\n",
+    );
+    t.write("node_modules/pk/old/x.road", "type FromOld { s: string }\n");
+    t.write(
+        "app.road",
+        "import { InCharts } from \"pk/y.road\"\nimport { FromOld } from \"pk/legacy/x.road\"\n\
+         machine M(a: InCharts, b: FromOld) {\n  initial X\n  final state X {}\n}\n",
+    );
+    let mut l = FsLoader::new(&t.0).with_node_modules(true);
+    let out = compile(&mut l, "app.road", &Options::default()).unwrap();
+    assert!(out.diagnostics.is_empty(), "{}", out.render());
+    let names: Vec<&str> = out.files.iter().map(|(p, _)| p.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "app.road",
+            "node_modules/pk/charts/y.road",
+            "node_modules/pk/old/x.road"
+        ]
+    );
+}

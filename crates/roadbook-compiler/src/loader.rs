@@ -16,6 +16,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
+use indexmap::IndexMap;
 use roadbook_ir::Ir;
 
 /// A file of a compilation: a path in the project (`package` is `None`) or in a package.
@@ -69,8 +70,9 @@ pub enum Loaded {
     /// output stays self-contained. They are not checked again, and they are copied into the
     /// output IR unchanged, except that their spans are renumbered and their files are
     /// marked as belonging to the package (see `spec/ir.md`, "Sources"). Each file of the IR
-    /// is identified with the file of the same package and path if the compilation has
-    /// already loaded one, and its copy of the declarations is then left out.
+    /// is identified with the file of the same package and path, or of the same
+    /// [`Loader::location`], if the compilation has already loaded one, and its copy of the
+    /// declarations is then left out.
     Compiled(Box<Ir>),
 }
 
@@ -85,6 +87,14 @@ pub trait Loader {
 
     /// Read a file. The error is a short reason, shown in the diagnostic.
     fn load(&mut self, file: &FileRef) -> Result<Loaded, String>;
+
+    /// Where the file is, to tell files apart: files at the same location are one file, however
+    /// each was named (a file of a package in the project can be imported by a relative path
+    /// and as a file of the package). `None`, the default, identifies a file by its
+    /// [`FileRef`] alone. [`FsLoader`] gives the canonical path on disk.
+    fn location(&self, _file: &FileRef) -> Option<PathBuf> {
+        None
+    }
 
     /// How diagnostics name the file. The default is the file's import path; [`FsLoader`]
     /// names a package's file by where it is on disk, relative to the project root.
@@ -150,11 +160,15 @@ fn split_package(spec: &str) -> Option<(&str, &str)> {
 /// enabled, as Node does, in `node_modules/<package>` of the importing file's directory and
 /// of each directory above it.
 ///
-/// In a package found in `node_modules`, a `package.json` with an `exports` map whose keys
-/// are subpaths (`"./*.road": "./charts/*.road"`) is honoured when the entry for the file is
-/// a plain string, or an object with a string `default`, with at most one `*`; a file that
-/// such a map does not list is not exported. Any other form of `exports` is ignored and the
-/// path is taken inside the package's directory, so a package's charts must be shipped in it.
+/// When a package's directory (found either way) has a `package.json` with `exports`, a file
+/// of the package is where `exports` maps it, as Node resolves it, with the conditions
+/// [`LOAD_CONDITIONS`]; a file the map does not export cannot be imported. See [`exported`]
+/// for the subset of Node's rules followed. Without `exports`, a file's path is taken inside
+/// the package's directory.
+///
+/// A file's identity ([`Loader::location`]) is its canonical path on disk, so a file reached
+/// both by a relative path and as a file of a package, or through a symbolic link, is loaded
+/// once.
 #[derive(Clone, Debug)]
 pub struct FsLoader {
     pub root: PathBuf,
@@ -166,6 +180,18 @@ pub struct FsLoader {
     found: HashMap<FileRef, PathBuf>,
     /// The directory each package was found in, once found.
     dirs: HashMap<String, PathBuf>,
+}
+
+/// Where [`FsLoader`] found a file of a package.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PackageFile {
+    /// The file.
+    pub disk: PathBuf,
+    /// The package's directory.
+    pub dir: PathBuf,
+    /// Whether the package is one of [`FsLoader::packages`], as opposed to one found in
+    /// `node_modules`.
+    pub listed: bool,
 }
 
 impl FsLoader {
@@ -204,6 +230,16 @@ impl FsLoader {
         }
     }
 
+    /// Where a file of a package was found, for a file [`Loader::resolve`] has returned.
+    pub fn package_file(&self, file: &FileRef) -> Option<PackageFile> {
+        let package = file.package.as_ref()?;
+        Some(PackageFile {
+            disk: self.disk_path(file)?,
+            dir: self.dirs.get(package)?.clone(),
+            listed: self.packages.contains_key(package),
+        })
+    }
+
     fn package_dir(&self, package: &str, from: &Path) -> Result<PathBuf, String> {
         if let Some(d) = self.packages.get(package) {
             return Ok(self.root.join(d));
@@ -229,46 +265,242 @@ impl FsLoader {
     }
 }
 
-/// The target of `exports` for `./path`, if the map is one this loader honours. `Ok(None)`
-/// means the map is not honoured and the path is taken as it is.
-fn exported(package_json: &str, path: &str) -> Result<Option<String>, ()> {
-    let Ok(json) = serde_json::from_str::<serde_json::Value>(package_json) else {
+/// The conditions [`FsLoader`] matches in an `exports` map, in addition to the order written:
+/// an object of conditions resolves to its first member named one of these.
+pub const LOAD_CONDITIONS: &[&str] = &["roadbook", "default"];
+
+/// Why `exports` does not give a file.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NotExported {
+    /// The map has no entry for it, or the entry is `null`.
+    Missing,
+    /// The map is one Node would reject, or uses a form this loader does not follow.
+    Invalid(String),
+}
+
+/// A package's `exports`, with the members of an object in the order written.
+#[derive(serde::Deserialize)]
+#[serde(untagged)]
+enum Exports {
+    Str(String),
+    Arr(Vec<Exports>),
+    Obj(IndexMap<String, Exports>),
+    Other(serde_json::Value),
+}
+
+#[derive(serde::Deserialize)]
+struct PackageJson {
+    exports: Option<Exports>,
+}
+
+fn exports_of(package_json: &str) -> Option<Exports> {
+    serde_json::from_str::<PackageJson>(package_json)
+        .ok()?
+        .exports
+}
+
+/// The subpath map of `exports`, or `None` if `exports` names only the package's main entry
+/// (a string, an array, or an object of conditions).
+fn subpath_map(exports: &Exports) -> Result<Option<&IndexMap<String, Exports>>, NotExported> {
+    let Exports::Obj(map) = exports else {
         return Ok(None);
     };
-    let Some(serde_json::Value::Object(exports)) = json.get("exports") else {
-        return Ok(None);
-    };
-    if exports.is_empty() || !exports.keys().all(|k| k.starts_with("./")) {
-        return Ok(None);
+    let dotted = map.keys().filter(|k| k.starts_with('.')).count();
+    if dotted == 0 {
+        Ok(None)
+    } else if dotted == map.len() {
+        Ok(Some(map))
+    } else {
+        Err(NotExported::Invalid(
+            "its `exports` mixes subpaths (keys starting with `.`) and conditions".into(),
+        ))
     }
-    let target = |v: &serde_json::Value| match v {
-        serde_json::Value::String(s) => Some(s.clone()),
-        serde_json::Value::Object(o) => o.get("default").and_then(|d| d.as_str()).map(String::from),
-        _ => None,
+}
+
+/// Where a package's `exports` maps the file `path` of the package (a path as imported,
+/// without `./`), as Node resolves it: the path inside the package's directory, normalised.
+/// `Ok(None)` if the package has no `exports`, so that every file is exported as itself.
+///
+/// The subset of Node's rules followed: an exact key (`"./a.road"`) wins; otherwise the
+/// pattern key with one `*` (`"./charts/*.road"`) whose part before the `*` is longest, then
+/// whose key is longest, as Node orders them. A target is a string starting with `./` (every
+/// `*` in it is replaced by what the key's `*` matched), `null` (not exported), an object of
+/// conditions (the first member, in the order written, named one of `conditions`; nested
+/// objects too), or an array (its first entry that resolves). `exports` that is a string, an
+/// array or an object of conditions names only the main entry (`"."`), so no file is
+/// exported. Keys ending in `/` (folder mappings, removed from Node) are not followed.
+pub fn exported(
+    package_json: &str,
+    path: &str,
+    conditions: &[&str],
+) -> Result<Option<String>, NotExported> {
+    let Some(exports) = exports_of(package_json) else {
+        return Ok(None);
+    };
+    let Some(map) = subpath_map(&exports)? else {
+        return Err(NotExported::Missing);
     };
     let want = format!("./{path}");
-    if let Some(v) = exports.get(&want) {
-        return target(v).map(Some).ok_or(());
+    let (target, middle) = match_subpath(map, &want).ok_or(NotExported::Missing)?;
+    match resolve_target(target, middle, conditions)? {
+        Some(path) => Ok(Some(path)),
+        None => Err(NotExported::Missing),
     }
-    for (key, v) in exports {
-        let Some((pre, post)) = key.split_once('*') else {
+}
+
+/// The entry of `map` for `want` (`./…`), and what its key's `*` matched.
+fn match_subpath<'a>(
+    map: &'a IndexMap<String, Exports>,
+    want: &'a str,
+) -> Option<(&'a Exports, Option<&'a str>)> {
+    if !want.contains('*')
+        && let Some(v) = map.get(want)
+    {
+        return Some((v, None));
+    }
+    let mut best: Option<(&str, &Exports, &str)> = None;
+    for (key, v) in map {
+        let Some(star) = key.find('*') else {
             continue;
         };
-        if post.contains('*') || want.len() < pre.len() + post.len() {
+        let (pre, post) = (&key[..star], &key[star + 1..]);
+        if post.contains('*')
+            || want.len() < key.len()
+            || !want.starts_with(pre)
+            || !want.ends_with(post)
+        {
             continue;
         }
-        if let Some(middle) = want
-            .strip_prefix(pre)
-            .and_then(|rest| rest.strip_suffix(post))
-        {
-            let t = target(v).ok_or(())?;
-            if t.matches('*').count() > 1 {
-                return Ok(None);
-            }
-            return Ok(Some(t.replace('*', middle)));
+        // Node's PATTERN_KEY_COMPARE: the longer part before the `*`, then the longer key.
+        let better = best.is_none_or(|(b, ..)| {
+            let b_star = b.find('*').unwrap_or(b.len());
+            star > b_star || (star == b_star && key.len() > b.len())
+        });
+        if better {
+            best = Some((key, v, &want[star..want.len() - post.len()]));
         }
     }
-    Err(())
+    best.map(|(_, v, middle)| (v, Some(middle)))
+}
+
+/// The path a target resolves to, `Ok(None)` if no condition of an object matched.
+fn resolve_target(
+    target: &Exports,
+    middle: Option<&str>,
+    conditions: &[&str],
+) -> Result<Option<String>, NotExported> {
+    match target {
+        Exports::Str(s) => {
+            if !s.starts_with("./") {
+                return Err(NotExported::Invalid(format!(
+                    "the target `{s}` does not start with `./`"
+                )));
+            }
+            let s = middle.map_or_else(|| s.clone(), |m| s.replace('*', m));
+            let path = normalize(&s);
+            let outside = path.is_empty()
+                || path == ".."
+                || path.starts_with("../")
+                || path.split('/').any(|seg| seg == "node_modules");
+            if outside {
+                return Err(NotExported::Invalid(format!(
+                    "the target `{s}` is not a file inside the package"
+                )));
+            }
+            Ok(Some(path))
+        }
+        Exports::Obj(obj) => {
+            for (condition, v) in obj {
+                if conditions.contains(&condition.as_str())
+                    && let Some(path) = resolve_target(v, middle, conditions)?
+                {
+                    return Ok(Some(path));
+                }
+            }
+            Ok(None)
+        }
+        Exports::Arr(items) => {
+            let mut last = Ok(None);
+            for item in items {
+                match resolve_target(item, middle, conditions) {
+                    Ok(Some(path)) => return Ok(Some(path)),
+                    Err(NotExported::Missing) => return Err(NotExported::Missing),
+                    other => last = other,
+                }
+            }
+            last
+        }
+        Exports::Other(serde_json::Value::Null) => Err(NotExported::Missing),
+        Exports::Other(v) => Err(NotExported::Invalid(format!(
+            "the target `{v}` is not a string, an object or an array"
+        ))),
+    }
+}
+
+/// The reverse of [`exported`]: a subpath (without `./`) that the package's `exports` maps to
+/// one of `targets` (paths inside the package's directory). `Ok(None)` if the package has no
+/// `exports`, so that every file is exported as itself. Each key is tried in the order
+/// written, and a candidate counts only if [`exported`] maps it back to a target, so that
+/// precedence is respected.
+pub fn export_of(
+    package_json: &str,
+    targets: &[String],
+    conditions: &[&str],
+) -> Result<Option<String>, NotExported> {
+    let Some(exports) = exports_of(package_json) else {
+        return Ok(None);
+    };
+    let Some(map) = subpath_map(&exports)? else {
+        return Err(NotExported::Missing);
+    };
+    let back = |candidate: &str| {
+        let sub = candidate.strip_prefix("./")?;
+        let to = exported(package_json, sub, conditions).ok()??;
+        targets.contains(&to).then(|| sub.to_string())
+    };
+    for (key, v) in map {
+        if key == "." {
+            continue;
+        }
+        if !key.contains('*') {
+            if let Some(sub) = back(key) {
+                return Ok(Some(sub));
+            }
+            continue;
+        }
+        let mut leaves = Vec::new();
+        string_leaves(v, &mut leaves);
+        for leaf in leaves {
+            let Some((pre, post)) = leaf.split_once('*') else {
+                continue;
+            };
+            if post.contains('*') {
+                continue;
+            }
+            for t in targets {
+                let t = format!("./{t}");
+                if t.len() < pre.len() + post.len() {
+                    continue;
+                }
+                let Some(middle) = t.strip_prefix(pre).and_then(|r| r.strip_suffix(post)) else {
+                    continue;
+                };
+                if let Some(sub) = back(&key.replace('*', middle)) {
+                    return Ok(Some(sub));
+                }
+            }
+        }
+    }
+    Err(NotExported::Missing)
+}
+
+fn string_leaves<'a>(e: &'a Exports, out: &mut Vec<&'a str>) {
+    match e {
+        Exports::Str(s) => out.push(s),
+        Exports::Arr(items) => items.iter().for_each(|i| string_leaves(i, out)),
+        Exports::Obj(obj) => obj.values().for_each(|v| string_leaves(v, out)),
+        Exports::Other(_) => {}
+    }
 }
 
 impl Loader for FsLoader {
@@ -308,13 +540,19 @@ impl Loader for FsLoader {
         };
         let mut disk = dir.join(&file.path);
         if let Ok(text) = std::fs::read_to_string(dir.join("package.json")) {
-            match exported(&text, &file.path) {
-                Ok(Some(target)) => disk = dir.join(normalize(&target)),
+            match exported(&text, &file.path, LOAD_CONDITIONS) {
+                Ok(Some(target)) => disk = dir.join(target),
                 Ok(None) => {}
-                Err(()) => {
+                Err(NotExported::Missing) => {
                     return Err(format!(
                         "package `{package}` does not export `./{}`: its `package.json` \
                          `exports` has no entry for it",
+                        file.path
+                    ));
+                }
+                Err(NotExported::Invalid(why)) => {
+                    return Err(format!(
+                        "cannot follow the `exports` of package `{package}` for `./{}`: {why}",
                         file.path
                     ));
                 }
@@ -336,6 +574,11 @@ impl Loader for FsLoader {
             .map_err(|e| e.to_string())
     }
 
+    fn location(&self, file: &FileRef) -> Option<PathBuf> {
+        let disk = self.disk_path(file)?;
+        Some(std::fs::canonicalize(&disk).unwrap_or(disk))
+    }
+
     fn display(&self, file: &FileRef) -> String {
         match (&file.package, self.disk_path(file)) {
             (Some(_), Some(disk)) => relative_path(&self.root, &disk),
@@ -346,7 +589,7 @@ impl Loader for FsLoader {
 
 /// `to` relative to the directory `from`, lexically, with `/` separators and `..` where it is
 /// outside.
-fn relative_path(from: &Path, to: &Path) -> String {
+pub fn relative_path(from: &Path, to: &Path) -> String {
     let norm = |p: &Path| -> Vec<String> {
         let mut out: Vec<String> = Vec::new();
         for c in p.components() {
@@ -510,28 +753,152 @@ mod tests {
     }
 
     #[test]
-    fn honours_simple_exports() {
+    fn follows_exports_as_node_does() {
         let pkg = |exports: &str| format!("{{\"name\": \"x\", \"exports\": {exports}}}");
-        let e = |exports: &str, path: &str| exported(&pkg(exports), path);
+        let e = |exports: &str, path: &str| exported(&pkg(exports), path, LOAD_CONDITIONS);
+        let found = |s: &str| Ok(Some(s.to_string()));
         assert_eq!(
-            e("{\"./*.road\": \"./charts/*.road\"}", "a.road"),
-            Ok(Some("./charts/a.road".into()))
+            e(r#"{"./*.road": "./charts/*.road"}"#, "a/b.road"),
+            found("charts/a/b.road")
         );
         assert_eq!(
-            e("{\"./a.road\": \"./src/a.road\"}", "a.road"),
-            Ok(Some("./src/a.road".into()))
+            e(r#"{"./a.road": "./src/a.road"}"#, "a.road"),
+            found("src/a.road")
+        );
+        // A main entry does not hide the subpaths.
+        let with_main = r#"{".": "./index.js", "./*.road": "./charts/*.road"}"#;
+        assert_eq!(e(with_main, "y.road"), found("charts/y.road"));
+        assert_eq!(e(with_main, "x.js"), Err(NotExported::Missing));
+        // The most specific pattern wins, whatever the order; an exact key wins over all.
+        let specific = r#"{"./*": "./all/*", "./legacy/*.road": "./old/*.road", "./legacy/*": "./mid/*", "./legacy/x.road": "./exact.road"}"#;
+        assert_eq!(e(specific, "legacy/y.road"), found("old/y.road"));
+        assert_eq!(e(specific, "legacy/y.txt"), found("mid/y.txt"));
+        assert_eq!(e(specific, "legacy/x.road"), found("exact.road"));
+        assert_eq!(e(specific, "z.road"), found("all/z.road"));
+        // Equal prefixes: the longer key.
+        assert_eq!(
+            e(
+                r#"{"./a/*": "./1/*", "./a/*.road": "./2/*.road"}"#,
+                "a/b.road"
+            ),
+            found("2/b.road")
+        );
+        // Conditions: the first member, in the order written, that is `roadbook` or `default`.
+        assert_eq!(
+            e(
+                r#"{"./*": {"types": "./t/*", "default": "./d/*"}}"#,
+                "a.road"
+            ),
+            found("d/a.road")
         );
         assert_eq!(
             e(
-                "{\"./*\": {\"types\": \"./t/*\", \"default\": \"./d/*\"}}",
+                r#"{"./*": {"roadbook": "./r/*", "default": "./d/*"}}"#,
                 "a.road"
             ),
-            Ok(Some("./d/a.road".into()))
+            found("r/a.road")
         );
-        assert_eq!(e("{\"./*.js\": \"./dist/*.js\"}", "a.road"), Err(()));
-        assert_eq!(e("\"./index.js\"", "a.road"), Ok(None));
-        assert_eq!(e("{\"import\": \"./index.js\"}", "a.road"), Ok(None));
-        assert_eq!(exported("{\"name\": \"x\"}", "a.road"), Ok(None));
+        assert_eq!(
+            e(
+                r#"{"./*": {"default": "./d/*", "roadbook": "./r/*"}}"#,
+                "a.road"
+            ),
+            found("d/a.road")
+        );
+        assert_eq!(
+            e(
+                r#"{"./*": {"node": {"default": "./n/*"}}, "./*.road": {"import": "./i/*"}}"#,
+                "a.road"
+            ),
+            Err(NotExported::Missing)
+        );
+        assert_eq!(
+            e(r#"{"./*": [{"import": "./i/*"}, "./f/*"]}"#, "a.road"),
+            found("f/a.road")
+        );
+        // Every `*` of the target is replaced.
+        assert_eq!(
+            e(r#"{"./*.road": "./*/*.road"}"#, "a.road"),
+            found("a/a.road")
+        );
+        // Excluded, or not listed.
+        assert_eq!(
+            e(r#"{"./*": "./*", "./private/*": null}"#, "private/a.road"),
+            Err(NotExported::Missing)
+        );
+        assert_eq!(
+            e(r#"{"./*.js": "./dist/*.js"}"#, "a.road"),
+            Err(NotExported::Missing)
+        );
+        // `exports` naming only the main entry exports no file.
+        assert_eq!(e(r#""./index.js""#, "a.road"), Err(NotExported::Missing));
+        assert_eq!(
+            e(r#"{"import": "./index.js"}"#, "a.road"),
+            Err(NotExported::Missing)
+        );
+        // Forms Node rejects.
+        for bad in [
+            r#"{".": "./index.js", "import": "./index.js"}"#,
+            r#"{"./*": "*"}"#,
+            r#"{"./*": "./../*"}"#,
+            r#"{"./*": 1}"#,
+        ] {
+            assert!(
+                matches!(e(bad, "a.road"), Err(NotExported::Invalid(_))),
+                "{bad}"
+            );
+        }
+        // No `exports`: every file is exported as itself.
+        assert_eq!(
+            exported(r#"{"name": "x"}"#, "a.road", LOAD_CONDITIONS),
+            Ok(None)
+        );
+        assert_eq!(e("null", "a.road"), Ok(None));
+    }
+
+    #[test]
+    fn finds_the_subpath_exports_maps_to_a_file() {
+        let pkg = |exports: &str| format!("{{\"name\": \"x\", \"exports\": {exports}}}");
+        let conditions = &["types", "import", "node", "default"];
+        let r = |exports: &str, target: &str| {
+            export_of(&pkg(exports), &[target.to_string()], conditions)
+        };
+        assert_eq!(
+            r(
+                r#"{".": "./i.js", "./*.road": "./charts/*.road", "./*.road.js": "./charts/*.road.js"}"#,
+                "charts/a/b.road.js"
+            ),
+            Ok(Some("a/b.road.js".into()))
+        );
+        assert_eq!(
+            r(r#"{"./*": "./charts/*"}"#, "charts/b.road.js"),
+            Ok(Some("b.road.js".into()))
+        );
+        assert_eq!(
+            r(
+                r#"{"./x.js": {"import": "./charts/x.road.js"}}"#,
+                "charts/x.road.js"
+            ),
+            Ok(Some("x.js".into()))
+        );
+        // Only `./*.road` is exported: nothing maps to the module.
+        assert_eq!(
+            r(r#"{"./*.road": "./charts/*.road"}"#, "charts/b.road.js"),
+            Err(NotExported::Missing)
+        );
+        // A candidate that a more specific key takes elsewhere does not count.
+        assert_eq!(
+            r(
+                r#"{"./*": "./charts/*", "./b.road.js": "./other.js"}"#,
+                "charts/b.road.js"
+            ),
+            Err(NotExported::Missing)
+        );
+        assert_eq!(
+            r(r#"{"./a.js": "./a.js"}"#, "charts/b.road.js"),
+            Err(NotExported::Missing)
+        );
+        assert_eq!(export_of(r#"{"name": "x"}"#, &[], conditions), Ok(None));
     }
 
     #[test]
