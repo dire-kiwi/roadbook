@@ -9,8 +9,11 @@
 //! state's invoke, `entry`, `exit`, internal transitions and `output`/`fail` as its
 //! description. Messaging is written as in the chart: `on upload.Progress` as the trigger
 //! `upload.Progress`, `send upload.Pause` and `emit Progress { … }` as effects, and
-//! `invoke machine Upload(file) as upload`. Mermaid allows no description on a state with states inside, so a compound or
-//! parallel state (and the machine, when it is drawn as a state) has them in a note beside it.
+//! `invoke machine Upload(file) as upload`; so are calls: `on reserve` as the trigger
+//! `reserve`, `reply pending done x` as an effect, `invoke inventory.reserve(id)` with its `done`,
+//! `fail E` and `fail Unanswered` branches as a task's. Mermaid allows no description on a
+//! state with states inside, so a compound or parallel state (and the machine, when it is drawn
+//! as a state) has them in a note beside it.
 //! What it loses: the line styles of the kinds of transition, the details panel, drill-down
 //! into invoked machines, and the viewer's layout.
 //!
@@ -394,7 +397,7 @@ fn description(s: &State) -> Vec<String> {
     out.extend(s.exit.iter().map(|e| format!("exit {}", effect(e))));
     for t in s.transitions.iter().filter(|t| t.target.is_none()) {
         let head = match &t.trigger {
-            Trigger::Event { .. } | Trigger::Emitted { .. } => {
+            Trigger::Event { .. } | Trigger::Emitted { .. } | Trigger::Call { .. } => {
                 format!("on {}", trigger(&t.trigger))
             }
             other => trigger(other),

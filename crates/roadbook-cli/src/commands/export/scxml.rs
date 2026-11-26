@@ -20,26 +20,31 @@
 //!   or transitions: then a `<state>` with the machine's id inside it holds them, and its
 //!   transitions with a target inside it are `type="internal"`, so they do not leave the
 //!   machine. Top-level final states stay children of `<scxml>`, so reaching one ends the run.
-//! - **Triggers** are event names: `on E` is `E`; `on x.E` is `x.E`; `on *` lists the machine's
-//!   events the state has no `on` for; `after d` is a `<send>` of `roadbook.after.<state>.<group>`
-//!   on entry, cancelled on exit; `always` has no event; `done` is `done.state.<state>`; an
-//!   invoke's `done` is `done.invoke.<invoke>` and its `fail E` is `error.E.<invoke>`, `fail *`
-//!   the declared errors no other branch lists.
+//! - **Triggers** are event names: `on E` is `E`; `on x.E` is `x.E`; `on c`, which takes a call,
+//!   is `call.c` (see [`call_event`]); `on *` lists the machine's events the state has no `on`
+//!   for, never a call; `after d` is a `<send>` of `roadbook.after.<state>.<group>` on entry,
+//!   cancelled on exit; `always` has no event; `done` is `done.state.<state>`; an invoke's `done`
+//!   is `done.invoke.<invoke>` and its `fail E` is `error.E.<invoke>`, `fail *` the declared
+//!   errors no other branch lists, and for a call `Unanswered` too.
 //! - **Effects** are executable content: `set` is `<assign>`; `send x.E` a `<send>` to the
 //!   child's invoke (`#_<invoke>`) or to the machine a `ref` holds (`targetexpr`); `emit E` a
-//!   `<send>` of type `urn:roadbook:emit`; `do f(…)` the extension element `<rb:do>`. Event
-//!   fields and arguments are `<param>`s.
+//!   `<send>` of type `urn:roadbook:emit`; `reply x done v` a `<send>` of type
+//!   `urn:roadbook:reply` to the pending call (`targetexpr="x"`) with the event `done`, and
+//!   `reply x fail e` the same with the event `error.E`, `E` the error's type; `do f(…)` the
+//!   extension element `<rb:do>`. Event fields, a record reply's fields and arguments are
+//!   `<param>`s; any other value is the `<content>`.
 //! - **Invokes** of a task have type `urn:roadbook:task` and the task's name as `src`; of a
-//!   machine, SCXML's type and `src="<Machine>.scxml"`. A final state's `output` is its
-//!   `<donedata>`, its `fail` the attribute `rb:fail`.
+//!   machine, SCXML's type and `src="<Machine>.scxml"`; of a call, type `urn:roadbook:call` and
+//!   `src="x.c"`, the `ref` and the call as the invoke writes them. A final state's `output` is
+//!   its `<donedata>`, its `fail` the attribute `rb:fail`.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
 use roadbook_compiler::Ir;
 use roadbook_ir::{
-    AddressKind, Effect, Expr, ExprKind, Field, InvokeKind, Literal, Machine, State, StateKind,
-    Transition, Trigger,
+    AddressKind, Effect, Expr, ExprKind, Field, InvokeKind, Literal, Machine, ReplyOutcome, State,
+    StateKind, Transition, Trigger, TypeRef,
 };
 
 use crate::workspace::Workspace;
@@ -51,6 +56,11 @@ pub const RB_NS: &str = "urn:roadbook:scxml";
 pub const TASK_TYPE: &str = "urn:roadbook:task";
 /// The `<send type>` of `emit`: to the invoker and every holder of a `ref`.
 pub const EMIT_TYPE: &str = "urn:roadbook:emit";
+/// The `<invoke type>` of a call of the run a `ref` holds.
+pub const CALL_TYPE: &str = "urn:roadbook:call";
+/// The `<send type>` of `reply`: to the caller of a pending call alone, whose invoke takes it
+/// as `done.invoke.<invoke>` or `error.E.<invoke>`.
+pub const REPLY_TYPE: &str = "urn:roadbook:reply";
 const SCXML_TYPE: &str = "http://www.w3.org/TR/scxml/";
 
 #[derive(clap::Args)]
@@ -136,6 +146,14 @@ pub fn xml_id(state_id: &str) -> String {
 
 fn invoke_id(state_id: &str) -> String {
     format!("{}_invoke", xml_id(state_id))
+}
+
+/// The event a callee takes a call `c` as: `call.c`. It is named like an emitted event, after
+/// the name the receiver knows the sender by, which in `on c` is the implicit `call`. `call` is
+/// a keyword, so no address is named `call` and `call.c` is no emitted event; an event's name
+/// is upper-case, and SCXML's own events start `done.` or `error.`, and timers `roadbook.`.
+pub fn call_event(call: &str) -> String {
+    format!("call.{call}")
 }
 
 /// One machine as an SCXML document.
@@ -343,9 +361,8 @@ impl Writer<'_> {
                     format!("{}.scxml", inv.src),
                     self.ir.machines.get(&inv.src).map(|m| &m.params),
                 ),
-                // Shown like a task named `inventory.reserve` for now.
                 InvokeKind::Call => (
-                    TASK_TYPE,
+                    CALL_TYPE,
                     inv.callee(),
                     inv.to
                         .as_ref()
@@ -387,8 +404,7 @@ impl Writer<'_> {
         let event = match &t.trigger {
             Trigger::Event { event } => Some(event.clone()),
             Trigger::Emitted { from, event } => Some(format!("{}.{event}", from.name)),
-            // Shown like an event named after the call for now.
-            Trigger::Call { call } => Some(call.clone()),
+            Trigger::Call { call } => Some(call_event(call)),
             Trigger::Any => {
                 let handled: Vec<&str> = s
                     .transitions
@@ -528,13 +544,27 @@ impl Writer<'_> {
                     let attrs = vec![("event", event.clone()), ("type", EMIT_TYPE.into())];
                     self.send(depth, attrs, value);
                 }
-                // Not exported yet: shown as a comment.
-                Effect::Reply { call, outcome, .. } => {
-                    let outcome = match outcome {
-                        roadbook_ir::ReplyOutcome::Done => "done",
-                        roadbook_ir::ReplyOutcome::Fail => "fail",
+                Effect::Reply {
+                    call,
+                    outcome,
+                    value,
+                } => {
+                    let event = match (outcome, value.as_ref().map(|v| &v.ty)) {
+                        (ReplyOutcome::Done, _) => "done".to_string(),
+                        (ReplyOutcome::Fail, Some(TypeRef::Named(error))) => {
+                            format!("error.{error}")
+                        }
+                        (ReplyOutcome::Fail, _) => "error".to_string(),
                     };
-                    self.comment(depth, &format!("reply {} {outcome}", call.text));
+                    let attrs = vec![
+                        ("event", event),
+                        ("type", REPLY_TYPE.into()),
+                        ("targetexpr", call.text.clone()),
+                    ];
+                    match value {
+                        Some(value) => self.send(depth, attrs, value),
+                        None => self.open(depth, "send", &attrs, true),
+                    }
                 }
             }
         }

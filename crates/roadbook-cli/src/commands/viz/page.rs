@@ -233,7 +233,8 @@ fn source_path(src: Option<&Source>) -> String {
 /// The data of the project index (`ProjectIndex` in `packages/viewer/src/project.ts`, which
 /// builds the same from IRs): every machine once, identified by its name and source file,
 /// with the first page that draws it, which machines it invokes, and which it talks to: the
-/// machines it holds a `ref` to, the events it sends, and the emitted events it handles.
+/// machines it holds a `ref` to, the events it sends, the emitted events it handles, and the
+/// calls it makes (`invoke inventory.reserve(…)`), each as `{"to": i, "calls": ["reserve"]}`.
 pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> Value {
     let key = |ir: &Ir, name: &str, m: &Machine| {
         let file = source_path(ir.sources.get(m.span.file as usize));
@@ -260,6 +261,7 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
                 "refs": [],
                 "sends": [],
                 "receives": [],
+                "calls": [],
             }));
         }
     }
@@ -308,6 +310,11 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
                         "receives",
                         json!({ "from": sender, "events": events }),
                     );
+                }
+            }
+            for (machine, calls) in t.calls {
+                if let Some(to) = at(&machine) {
+                    push(entry, "calls", json!({ "to": to, "calls": calls }));
                 }
             }
         }
@@ -368,6 +375,8 @@ struct Talks {
     sends: Grouped,
     /// Events of other machines' `emits` it handles, by sending machine.
     receives: Grouped,
+    /// Calls it makes, by called machine.
+    calls: Grouped,
 }
 
 fn talks(ir: &Ir, m: &Machine) -> Talks {
@@ -375,6 +384,7 @@ fn talks(ir: &Ir, m: &Machine) -> Talks {
         refs: Vec::new(),
         sends: Vec::new(),
         receives: Vec::new(),
+        calls: Vec::new(),
     };
     for (name, ty) in m
         .params
@@ -406,8 +416,8 @@ fn ref_machine(ir: &Ir, ty: &TypeRef) -> Option<String> {
     None
 }
 
-/// The sends and handled emitted events of `s` and the states inside it, in document order:
-/// each state's `entry`, `exit`, then each transition's trigger and effects.
+/// The sends, handled emitted events and calls of `s` and the states inside it, in document
+/// order: each state's call invoke, `entry`, `exit`, then each transition's trigger and effects.
 fn messages(s: &State, t: &mut Talks) {
     fn effects(list: &[Effect], t: &mut Talks) {
         for e in list {
@@ -415,6 +425,12 @@ fn messages(s: &State, t: &mut Talks) {
                 group(&mut t.sends, &to.machine, event);
             }
         }
+    }
+    if let Some(inv) = &s.invoke
+        && inv.kind == InvokeKind::Call
+        && let Some(to) = &inv.to
+    {
+        group(&mut t.calls, &to.machine, &inv.src);
     }
     effects(&s.entry, t);
     effects(&s.exit, t);
@@ -481,6 +497,45 @@ mod tests {
             "./a%20b%23c%3Fd%22e%3Cf%3E.html"
         );
         assert_eq!(href("ü.html"), "./%C3%BC.html");
+    }
+
+    /// A call is an edge from the caller to the callee, with the calls made: `calls` beside
+    /// `sends` (`IndexMachine` in `packages/viewer/src/project.ts`).
+    #[test]
+    fn the_index_lists_the_calls_each_machine_makes() {
+        let src = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../spec/conformance/charts/calls.road"),
+        )
+        .unwrap();
+        let out = roadbook_compiler::compile_source("calls.road", &src, &Default::default());
+        assert!(!out.has_errors(), "{}", out.render());
+        let ir = out.ir.unwrap();
+        let index = project_index("t", &[("calls.road", &ir)], &["calls.html".into()]);
+        let machines = index["machines"].as_array().unwrap();
+        let names: Vec<&str> = machines
+            .iter()
+            .map(|m| m["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(names, ["Inventory", "Order", "Counter"]);
+        assert_eq!(machines[0]["calls"], json!([]));
+        assert_eq!(
+            machines[1]["calls"].to_string(),
+            r#"[{"calls":["reserve"],"to":0}]"#
+        );
+        assert_eq!(
+            machines[2]["calls"],
+            json!([{ "to": 0, "calls": ["count"] }])
+        );
+        // A call is neither an invoke of a machine nor a send.
+        for m in machines {
+            assert_eq!(m["invokes"], json!([]), "{m}");
+            assert_eq!(m["sends"], json!([]), "{m}");
+        }
+        assert_eq!(
+            machines[1]["refs"],
+            json!([{ "to": 0, "names": ["inventory"] }])
+        );
     }
 
     #[test]

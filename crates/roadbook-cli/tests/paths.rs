@@ -1,5 +1,6 @@
 //! `roadbook paths`, run as a user would.
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -332,6 +333,62 @@ fn loops_are_taken_once_stuck_states_end_and_nested_finals_take_the_parents_done
 4. Work.Trying --Finish--> Work.Finished --done--> Done (final)
 5. Work.Trying --Next--> Ping --Next--> Pong --Next--> Ping (loops)
 "
+    );
+}
+
+/// A call's outcomes are steps like a task's, `Unanswered` among them, and a callee's `on c`
+/// is a step labelled `c`, like an event; an `on c` with no target (a reply at once) is none.
+#[test]
+fn calls_are_steps_of_the_caller_and_of_the_callee() {
+    let chart = "spec/conformance/charts/calls.road";
+    let out = roadbook(&repo(), &["paths", "Order", chart]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(
+        text(&out.stdout),
+        "Order: 4 paths
+1. Reserving --done--> Reserved (final: output reservation)
+2. Reserving --fail OutOfStock--> Failed (final: fail problem)
+3. Reserving --fail Unanswered--> Failed (final: fail problem)
+4. Reserving --after 5s--> Failed (final: fail problem)
+"
+    );
+    let out = roadbook(&repo(), &["paths", "Counter", chart]);
+    assert_eq!(
+        text(&out.stdout),
+        "Counter: 2 paths\n1. Asking --done--> Got (final: output n)\n2. Asking --fail *--> Gave (final: output 0)\n"
+    );
+    let v = json_of(&roadbook(&repo(), &["paths", "Inventory", chart, "--json"]));
+    assert_eq!(
+        v["paths"][4],
+        json!({
+            "end": "final",
+            "state": "Inventory.Closed",
+            "steps": [
+                { "from": "Inventory.Ready", "index": 0, "trigger": "reserve",
+                  "guard": null, "to": "Inventory.Reserving" },
+                { "from": "Inventory.Reserving", "index": 4, "trigger": "Close",
+                  "guard": null, "to": "Inventory.Closed" },
+            ]
+        })
+    );
+    // Neither `on count` (the machine's, internal) nor Reserving's `on reserve` is a step.
+    let triggers: HashSet<&str> = v["paths"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|p| p["steps"].as_array().unwrap())
+        .map(|s| s["trigger"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        triggers,
+        HashSet::from([
+            "reserve",
+            "done",
+            "fail OutOfStock",
+            "Pause",
+            "Resume",
+            "Close"
+        ])
     );
 }
 

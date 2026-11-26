@@ -105,7 +105,7 @@ impl Counts {
 #[derive(Clone, Debug)]
 pub struct MachineDiff {
     pub status: Status,
-    /// Changes to the machine itself: its signature, doc comment, variables and events, the
+    /// Changes to the machine itself: its signature, doc comment, variables, events and calls, the
     /// file it is declared in, and what its body has as a state would (`initial`, `entry`,
     /// `exit`). Its transitions are with the others, under the machine's id.
     pub changes: Vec<Change>,
@@ -290,14 +290,7 @@ pub fn diff(before: Option<&Ir>, after: Option<&Ir>, before_label: &str) -> Char
         fields_text(&f.params)
     ));
     decls!(tasks, |n: &str, t: &roadbook_ir::TaskDecl| {
-        let mut s = format!("task {n}({})", fields_text(&t.params));
-        if let Some(r) = &t.returns {
-            s.push_str(&format!(" -> {r}"));
-        }
-        if !t.errors.is_empty() {
-            s.push_str(&format!(" ! {}", t.errors.join(" | ")));
-        }
-        s
+        signature_text("task", n, &t.params, t.returns.as_ref(), &t.errors)
     });
 
     let mut machines = Vec::new();
@@ -414,6 +407,9 @@ pub fn shift_machine(m: &mut Machine, offset: u32) {
     for e in m.events.values_mut().chain(m.emits.values_mut()) {
         e.span.file += offset;
     }
+    for c in m.calls.values_mut() {
+        c.span.file += offset;
+    }
     shift_state(&mut m.root, offset);
 }
 
@@ -467,11 +463,11 @@ pub fn users(ir: &Ir, name: &str) -> Vec<String> {
 }
 
 /// The identifiers in the text of an IR value that can name a declaration: those in its
-/// types, expressions, invokes, actions and errors, not in state names, targets, event names
-/// or doc comments.
+/// types, expressions, invokes, actions and errors, not in state names, targets, event names,
+/// the call of an `on c` or a `reply`, or doc comments.
 fn names_in(v: &Value) -> HashSet<String> {
     const NOT: &[&str] = &[
-        "id", "name", "doc", "target", "initial", "hash", "event", "kind", "span", "path",
+        "id", "name", "doc", "target", "initial", "hash", "event", "call", "kind", "span", "path",
     ];
     fn walk(v: &Value, out: &mut HashSet<String>) {
         match v {
@@ -943,7 +939,8 @@ fn type_text(name: &str, t: &roadbook_ir::TypeDecl) -> String {
     }
 }
 
-/// Changes to a machine itself: signature, doc comment, variables, events and emitted events.
+/// Changes to a machine itself: signature, doc comment, variables, events, emitted events and
+/// calls.
 fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
     let mut out = Vec::new();
     let (sb, sa) = (page::signature(name, b), page::signature(name, a));
@@ -995,7 +992,36 @@ fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
             .iter()
             .map(|(n, e)| (n.clone(), event("emits", n, e))),
     );
+    keyed(
+        &mut out,
+        "call",
+        b.calls.iter().map(|(n, c)| (n.clone(), call_text(n, c))),
+        a.calls.iter().map(|(n, c)| (n.clone(), call_text(n, c))),
+    );
     out
+}
+
+/// `call reserve(orderId: string, items: Item[]) -> Reservation ! OutOfStock`
+fn call_text(name: &str, c: &roadbook_ir::Call) -> String {
+    signature_text("call", name, &c.params, c.returns.as_ref(), &c.errors)
+}
+
+/// `kw name(p: T) -> R ! E | F`, the signature of a task or a call.
+fn signature_text(
+    kw: &str,
+    name: &str,
+    params: &[roadbook_ir::Field],
+    returns: Option<&roadbook_ir::TypeRef>,
+    errors: &[String],
+) -> String {
+    let mut s = format!("{kw} {name}({})", fields_text(params));
+    if let Some(r) = returns {
+        s.push_str(&format!(" -> {r}"));
+    }
+    if !errors.is_empty() {
+        s.push_str(&format!(" ! {}", errors.join(" | ")));
+    }
+    s
 }
 
 /// Changes between two lists of named texts: `var attempts`, before and after.
@@ -1254,6 +1280,91 @@ machine M(n: int) -> int ! Declined {
         let whats: Vec<&str> = m.changes.iter().map(|c| c.what.as_str()).collect();
         assert_eq!(whats, ["var tries", "var extra", "event Pause"]);
         assert_eq!(m.changes[0].after.as_deref(), Some("var tries: int = 1"));
+    }
+
+    const CALLS: &str = r#"
+error Busy
+
+machine P() {
+  call ask(n: int) -> int
+  call gone()
+  var pending: call ask
+  event Go
+  initial A
+  state A {
+    on ask -> B  set pending = call
+  }
+  state B {
+    on Go -> A  reply pending done 1
+  }
+}
+
+machine Q(p: ref P) {
+  initial S
+  state S {
+    invoke p.ask(1) {
+      done   -> T
+      fail * -> T
+    }
+  }
+  final state T {}
+}
+"#;
+
+    #[test]
+    fn calls_are_declarations_of_the_machine_and_their_uses_are_compared() {
+        let after = CALLS
+            .replace(
+                "call ask(n: int) -> int\n  call gone()",
+                "call ask(n: int, m: int) -> int ! Busy\n  call fresh() -> bool",
+            )
+            .replace(
+                "    on ask -> B  set pending = call\n",
+                "    on ask -> B  set pending = call\n    on fresh reply call done true\n",
+            )
+            .replace("reply pending done 1", "reply pending done 2")
+            .replace("invoke p.ask(1)", "invoke p.ask(1, 2)");
+        let d = diff(Some(&ir(CALLS)), Some(&ir(&after)), "main");
+        let p = &d.machines[0].1;
+        assert_eq!(p.status, Status::Changed);
+        let what: Vec<&str> = p.changes.iter().map(|c| c.what.as_str()).collect();
+        assert_eq!(what, ["call ask", "call fresh", "call gone"]);
+        let texts: Vec<(Option<&str>, Option<&str>)> = p
+            .changes
+            .iter()
+            .map(|c| (c.before.as_deref(), c.after.as_deref()))
+            .collect();
+        assert_eq!(
+            texts,
+            [
+                (
+                    Some("call ask(n: int) -> int"),
+                    Some("call ask(n: int, m: int) -> int ! Busy")
+                ),
+                (None, Some("call fresh() -> bool")),
+                (Some("call gone()"), None),
+            ]
+        );
+        // `on fresh` is a new transition beside `on ask`, matched by its trigger.
+        assert_eq!(transition_of(&d, "P.A", 0), None);
+        let added = transition_of(&d, "P.A", 1).unwrap();
+        assert_eq!(added.status, Status::Added);
+        let b = transition_of(&d, "P.B", 0).unwrap();
+        assert_eq!(whats(b), ["effects"]);
+        assert_eq!(b.changes[0].before.as_deref(), Some("reply pending done 1"));
+        assert_eq!(b.changes[0].after.as_deref(), Some("reply pending done 2"));
+        // The caller: its invoke, written as the chart writes it.
+        let (name, q) = &d.machines[1];
+        assert_eq!(name, "Q");
+        let (id, s) = &q.states[0];
+        assert_eq!(id, "Q.S");
+        assert_eq!(whats(s), ["invoke"]);
+        assert_eq!(s.changes[0].before.as_deref(), Some("p.ask(1)"));
+        assert_eq!(s.changes[0].after.as_deref(), Some("p.ask(1, 2)"));
+        // A removed machine's calls point into the before version's sources.
+        let d = diff(Some(&ir(CALLS)), Some(&ir("")), "main");
+        let p = &d.ir.machines["P"];
+        assert_eq!(p.calls["ask"].span.file, p.span.file);
     }
 
     #[test]

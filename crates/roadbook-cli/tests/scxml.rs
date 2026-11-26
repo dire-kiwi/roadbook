@@ -57,6 +57,23 @@ fn export_scxml_snapshots_the_shop() {
     assert!(text(&out.stdout).contains("name=\"Top\""));
 }
 
+/// Calls: the callee takes `on c` as the event `call.c` and answers with a `<send>` of type
+/// `urn:roadbook:reply`; the caller's invoke has type `urn:roadbook:call`, and its `fail *`
+/// covers `Unanswered`.
+#[test]
+fn export_scxml_snapshots_calls() {
+    let chart = "spec/conformance/charts/calls.road";
+    for (machine, snapshot) in [
+        ("Inventory", "calls_inventory_scxml"),
+        ("Order", "calls_order_scxml"),
+        ("Counter", "calls_counter_scxml"),
+    ] {
+        let out = roadbook(&repo(), &["export", "scxml", chart, "--machine", machine]);
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        insta::assert_snapshot!(snapshot, text(&out.stdout));
+    }
+}
+
 fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     for e in std::fs::read_dir(dir).unwrap() {
         let e = e.unwrap();
