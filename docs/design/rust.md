@@ -2,7 +2,7 @@
 
 The Rust side mirrors the TypeScript side: `roadbook-core` is the pure interpreter, and `roadbook` is the driver, the macro and the public API.
 
-The API on this page is implemented by [`crates/roadbook-core`](../../crates/roadbook-core) (the interpreter), [`crates/roadbook-macros`](../../crates/roadbook-macros) (`include!`) and [`crates/roadbook`](../../crates/roadbook) (the driver, re-exporting the macro). The runtime passes every conformance case byte for byte, and [`examples/shop/axum`](../../examples/shop/axum) serves the shop example with it. [`examples/inventory`](../../examples/inventory) and [`examples/orders`](../../examples/orders) are two crates whose machines message each other.
+The API on this page is implemented by [`crates/roadbook-core`](../../crates/roadbook-core) (the interpreter), [`crates/roadbook-macros`](../../crates/roadbook-macros) (`include!`) and [`crates/roadbook`](../../crates/roadbook) (the driver, re-exporting the macro). The runtime passes every conformance case byte for byte, and [`examples/shop/axum`](../../examples/shop/axum) serves the shop example with it. [`examples/inventory`](../../examples/inventory) and [`examples/orders`](../../examples/orders) are two crates whose machines call and message each other.
 
 ## What gets generated
 

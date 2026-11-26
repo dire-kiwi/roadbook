@@ -268,7 +268,7 @@ What is decided:
 - **Replies are directed.** Only the caller receives the reply, so there is no fan-out and no guard on an id.
 - **The callee takes a call as an input** from its queue, one at a time like any other, so order per pair still holds. It must be able to reply in a later step (Inventory replies once its own work is done), so it keeps the pending call as a value until it replies. That is a new kind of value, and like a `ref` it cannot leave the machine: not in a record, an event or a result.
 - **A peer that has ended fails the call.** A call to a peer that is not running, and a call still pending when the callee ends, fail on the caller's side. This is the one place where a peer's end reaches another machine before [supervision](#supervision) is designed.
-- **The existing pattern keeps working.** Moving to `call` is optional; [`examples/orders`](../../examples/orders) should be its first user.
+- **The existing pattern keeps working.** Moving to `call` is optional; [`examples/orders`](../../examples/orders) is its first user.
 
 Three questions were left to the implementation, and decided with it:
 
