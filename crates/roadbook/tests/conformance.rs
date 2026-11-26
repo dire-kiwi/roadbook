@@ -43,7 +43,7 @@ use serde_json::Value;
 
 /// The features of `spec/conformance/case.schema.json`'s `requires` this runtime
 /// implements.
-const SUPPORTED: &[&str] = &["messaging", "parallel", "snapshots"];
+const SUPPORTED: &[&str] = &["messaging", "parallel", "snapshots", "calls"];
 
 // ---- the executor ------------------------------------------------------------------------
 
@@ -1040,6 +1040,51 @@ fn the_saved_snapshot_check_agrees_with_the_schema() {
             serde_json::json!([{"id": 1, "state": "A", "src": "x_y"}]),
         ),
         ("invokes", serde_json::json!([{"id": 1, "state": "A"}])),
+        (
+            "invokes",
+            serde_json::json!([{"id": 1, "state": "A", "src": "inventory.reserve"}]),
+        ),
+        (
+            "invokes",
+            serde_json::json!([{"id": 1, "state": "A", "src": "Inventory.reserve"}]),
+        ),
+        (
+            "invokes",
+            serde_json::json!([{"id": 1, "state": "A", "src": "a.b.c"}]),
+        ),
+        (
+            "calls",
+            serde_json::json!([{"from": "r2", "invoke": 1, "call": "reserve"}]),
+        ),
+        (
+            "calls",
+            serde_json::json!([{"from": "r2.3", "invoke": 9, "call": "count"}, {"from": "x", "invoke": 1, "call": "c"}]),
+        ),
+        ("calls", serde_json::json!([])),
+        ("calls", serde_json::json!({})),
+        ("calls", serde_json::json!(null)),
+        (
+            "calls",
+            serde_json::json!([{"from": "r2", "invoke": 0, "call": "reserve"}]),
+        ),
+        (
+            "calls",
+            serde_json::json!([{"from": "r2", "invoke": 1.5, "call": "reserve"}]),
+        ),
+        ("calls", serde_json::json!([{"from": "r2", "invoke": 1}])),
+        (
+            "calls",
+            serde_json::json!([{"from": "r2", "invoke": 1, "call": "reserve", "x": 1}]),
+        ),
+        (
+            "calls",
+            serde_json::json!([{"from": "r 2", "invoke": 1, "call": "reserve"}]),
+        ),
+        (
+            "calls",
+            serde_json::json!([{"from": "r2", "invoke": 1, "call": "Reserve"}]),
+        ),
+        ("calls", serde_json::json!(["r2"])),
         (
             "timers",
             serde_json::json!([{"id": 1, "state": "A", "index": 0, "delay": 1}]),

@@ -192,6 +192,7 @@ impl Host for Dyn<'_> {
                 }
             }),
             SrcKind::Task => Box::pin(std::future::pending()),
+            SrcKind::Call => unreachable!("the driver makes calls itself"),
         }
     }
 }

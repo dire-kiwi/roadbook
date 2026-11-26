@@ -1,6 +1,6 @@
 //! Checking a saved snapshot before it is restored (`spec/execution.md#restoring-a-snapshot`):
-//! the schema, the machine, the hash and a migration, the status, `ref` parameters, and
-//! whether it fits the machine. The checks are made in the order the spec lists them, and the
+//! the schema, the machine, the hash and a migration, the status, `ref` parameters, pending
+//! calls, and whether it fits the machine. The checks are made in the order the spec lists them, and the
 //! first that fails gives the reason.
 
 use std::collections::HashSet;
@@ -30,11 +30,13 @@ pub enum Refusal {
     /// The machine has a `ref` parameter: restoring a run that holds `ref`s is not specified
     /// yet.
     Ref,
+    /// It has pending calls, whose callers belong to the process that saved it.
+    Calls,
 }
 
 impl Refusal {
-    /// The reason as the spec names it: `invalid`, `machine`, `ir`, `migration`, `ended` or
-    /// `ref`.
+    /// The reason as the spec names it: `invalid`, `machine`, `ir`, `migration`, `ended`,
+    /// `ref` or `calls`.
     pub fn as_str(self) -> &'static str {
         match self {
             Refusal::Invalid => "invalid",
@@ -43,6 +45,7 @@ impl Refusal {
             Refusal::Migration => "migration",
             Refusal::Ended => "ended",
             Refusal::Ref => "ref",
+            Refusal::Calls => "calls",
         }
     }
 }
@@ -73,7 +76,7 @@ impl RestoreError {
         RestoreError::new(Refusal::Invalid, message)
     }
 
-    /// The reason: `invalid`, `machine`, `ir`, `migration`, `ended` or `ref`.
+    /// The reason: `invalid`, `machine`, `ir`, `migration`, `ended`, `ref` or `calls`.
     pub fn reason(&self) -> &'static str {
         self.refusal.as_str()
     }
@@ -167,6 +170,17 @@ impl Program {
                     "`{name}` has the `ref` parameter `{}`; restoring a run that holds `ref`s \
                      is not supported yet",
                     p.name
+                ),
+            ));
+        }
+        if let Some(calls) = saved.get("calls").and_then(Value::as_array)
+            && !calls.is_empty()
+        {
+            return Err(RestoreError::new(
+                Refusal::Calls,
+                format!(
+                    "it has {} pending call(s), whose callers belong to the process that saved it",
+                    calls.len()
                 ),
             ));
         }
@@ -266,7 +280,7 @@ impl Program {
                     inv.id
                 ));
             };
-            if idx.state(m, i).invoke.as_ref().map(|v| &v.src) != Some(&inv.src) {
+            if idx.state(m, i).invoke.as_ref().map(|v| v.callee()) != Some(inv.src.clone()) {
                 return Err(format!(
                     "the state `{}` has no invoke of `{}`",
                     inv.state, inv.src
@@ -361,8 +375,14 @@ impl Program {
                 Builtin::Json => true,
             },
             TypeRef::Ref(_) => v.is_string(),
-            // `Program::new` refuses an IR with calls, so no saved variable holds one.
-            TypeRef::Call(_) => false,
+            // A pending-call value: the caller's run id and the id of its invoke.
+            TypeRef::Call(_) => v.as_object().is_some_and(|o| {
+                o.len() == 2
+                    && o.get("from").and_then(Value::as_str).is_some_and(is_run_id)
+                    && o.get("invoke")
+                        .and_then(Value::as_u64)
+                        .is_some_and(|i| i >= 1)
+            }),
             TypeRef::Optional(t) => v.is_null() || self.value_fits(machine, t, v),
             TypeRef::List(t) => v
                 .as_array()
@@ -446,6 +466,7 @@ fn integer(v: &Value) -> Option<i64> {
 
 // ---- the schema ----------------------------------------------------------------------------
 
+/// The members every saved snapshot has. `calls` is the one optional member.
 const MEMBERS: [&str; 14] = [
     "snapshotVersion",
     "machine",
@@ -469,7 +490,9 @@ const MAX_SAFE: u64 = 9_007_199_254_740_991;
 /// Checks `v` against `spec/snapshot.schema.json`, including `snapshotVersion` being 1.
 pub(crate) fn schema(v: &Value) -> Result<(), String> {
     let o = v.as_object().ok_or("a saved snapshot is an object")?;
-    exactly(o, &MEMBERS, "a saved snapshot")?;
+    let mut required = o.clone();
+    let calls = required.remove("calls");
+    exactly(&required, &MEMBERS, "a saved snapshot")?;
     if o["snapshotVersion"].as_u64() != Some(Saved::VERSION) {
         return Err(format!(
             "its snapshotVersion is {}, not 1",
@@ -498,7 +521,24 @@ pub(crate) fn schema(v: &Value) -> Result<(), String> {
         exactly(inv, &["id", "state", "src"], "an invoke")?;
         natural(&inv["id"], "an invoke's id", 1)?;
         string(&inv["state"], "an invoke's state", state_id)?;
-        string(&inv["src"], "an invoke's src", any_name)?;
+        string(&inv["src"], "an invoke's src", |s| {
+            any_name(s)
+                || s.split_once('.')
+                    .is_some_and(|(a, c)| lower_name(a) && lower_name(c))
+        })?;
+    }
+    if let Some(calls) = calls {
+        let calls = calls.as_array().ok_or("`calls` is not an array")?;
+        if calls.is_empty() {
+            return Err("`calls` is empty, which the schema does not allow".into());
+        }
+        for c in calls {
+            let c = c.as_object().ok_or("a call is not an object")?;
+            exactly(c, &["from", "invoke", "call"], "a call")?;
+            string(&c["from"], "a call's from", is_run_id)?;
+            natural(&c["invoke"], "a call's invoke", 1)?;
+            string(&c["call"], "a call's name", lower_name)?;
+        }
     }
     for tm in o["timers"].as_array().ok_or("`timers` is not an array")? {
         let tm = tm.as_object().ok_or("a timer is not an object")?;

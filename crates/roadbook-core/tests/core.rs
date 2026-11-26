@@ -237,3 +237,139 @@ fn an_optional_alias_var_starts_as_null() {
     let (s, _) = p.start("M", "r1", Map::new(), &mut no_fns).unwrap();
     assert_eq!(s.vars.get("s"), Some(&Value::Null));
 }
+
+/// A callee that keeps a pending call in a variable, and a caller.
+const CALLS: &str = "error Nope {}\n\
+machine S() {\n  call ask(n: int) -> int ! Nope\n  var p: call ask\n  var m: int = 0\n  event Go\n  event Again\n  \
+initial A\n  state A { on ask -> B  set p = call, m = event.n }\n  \
+state B {\n    on Go     reply p done m\n    on Again  reply p done 2\n  }\n}\n\
+machine C(s: ref S) -> int {\n  var r: int = 0\n  initial W\n  \
+state W { invoke s.ask(4) { done -> D  set r = result\n  fail * -> E } }\n  \
+final state D { output r }\n  final state E { output 0 }\n}\n";
+
+fn ask(from: &str, invoke: u64, n: i64) -> Input {
+    Input::Call {
+        from: from.into(),
+        invoke,
+        call: "ask".into(),
+        args: json!({ "n": n }).as_object().unwrap().clone(),
+    }
+}
+
+#[test]
+fn a_call_is_pending_until_a_reply_answers_it_once() {
+    let p = program(CALLS);
+    let (s, _) = p.start("S", "r1", Map::new(), &mut no_fns).unwrap();
+    assert_eq!(serde_json::to_value(&s).unwrap()["calls"], json!([]));
+    let (s, cmds) = p.step(&s, ask("r2", 3, 7), &mut no_fns);
+    assert!(matches!(records(&cmds)[0], Record::Event { .. }));
+    // `call` is the pending-call value, kept in `p`; the call is pending.
+    assert_eq!(s.vars["p"], json!({"from": "r2", "invoke": 3}));
+    assert_eq!(
+        serde_json::to_value(&s).unwrap()["calls"],
+        json!([{"from": "r2", "invoke": 3, "call": "ask"}])
+    );
+    let (s, cmds) = p.step(&s, go(), &mut no_fns);
+    let replied = Record::Replied {
+        to: "r2".into(),
+        invoke: 3,
+        call: "ask".into(),
+        outcome: roadbook_core::ReplyOutcome::Done,
+        value: json!(7),
+    };
+    assert_eq!(records(&cmds).last(), Some(&&replied));
+    assert_eq!(
+        serde_json::to_value(cmds.last().unwrap()).unwrap(),
+        json!({"kind": "reply", "to": "r2", "invoke": 3, "call": "ask", "outcome": "done", "value": 7})
+    );
+    assert!(s.calls.is_empty());
+    // A second reply through the same value: the call is no longer pending.
+    let again = Input::Event {
+        value: json!({"_tag": "Again"}),
+    };
+    let (s2, cmds) = p.step(&s, again, &mut no_fns);
+    assert_eq!(s2.status, Status::Defect);
+    assert_eq!(
+        records(&cmds),
+        [&Record::Defect {
+            defect: Defect::Answered { call: "ask".into() }
+        }]
+    );
+    assert_eq!(
+        Defect::Answered { call: "ask".into() }.to_value(),
+        json!({"kind": "answered", "call": "ask"})
+    );
+}
+
+#[test]
+fn a_call_that_enables_nothing_is_dropped_and_answered_unanswered() {
+    let p = program(CALLS);
+    let (s, _) = p.start("S", "r1", Map::new(), &mut no_fns).unwrap();
+    let (s, _) = p.step(&s, ask("r2", 1, 7), &mut no_fns);
+    // `B` has no `on ask`, and the machine body none either.
+    let (s, cmds) = p.step(&s, ask("r3", 1, 8), &mut no_fns);
+    let cmds: Vec<Value> = cmds
+        .iter()
+        .map(|c| serde_json::to_value(c).unwrap())
+        .collect();
+    assert_eq!(cmds.len(), 3);
+    assert_eq!(cmds[0]["record"]["kind"], "dropped");
+    assert_eq!(
+        cmds[1]["record"],
+        json!({"kind": "replied", "to": "r3", "invoke": 1, "call": "ask", "outcome": "fail",
+               "value": {"_tag": "Unanswered"}})
+    );
+    assert_eq!(cmds[2]["kind"], "reply");
+    // Only the first call is pending; `event` was the call's arguments.
+    assert_eq!(s.calls.len(), 1);
+    let (_, cmds) = p.step(&s, go(), &mut no_fns);
+    assert_eq!(
+        serde_json::to_value(cmds.last().unwrap()).unwrap()["value"],
+        7
+    );
+}
+
+#[test]
+fn a_call_invoke_names_its_peer_and_takes_unanswered() {
+    let p = program(CALLS);
+    let input = json!({"s": "r1"}).as_object().unwrap().clone();
+    let (s, cmds) = p.start("C", "r2", input.clone(), &mut no_fns).unwrap();
+    let start = cmds
+        .iter()
+        .find(|c| matches!(c, Command::InvokeStart { .. }))
+        .unwrap();
+    assert_eq!(
+        serde_json::to_value(start).unwrap(),
+        json!({"kind": "invoke.start", "invoke": 1, "state": "C.W", "src": "ask",
+               "srcKind": "call", "to": "r1", "as": null, "args": {"n": 4}})
+    );
+    assert!(records(&cmds).iter().any(|r| matches!(
+        r, Record::InvokeStarted { src, .. } if src == "s.ask"
+    )));
+    assert_eq!(s.invokes[0].src, "s.ask");
+    let fail = |tag: &str| Input::InvokeFail {
+        invoke: 1,
+        error: json!({ "_tag": tag }),
+    };
+    // `Unanswered` and the declared errors are taken by `fail *`; any other is undeclared.
+    for tag in ["Unanswered", "Nope"] {
+        let (s, _) = p.step(&s, fail(tag), &mut no_fns);
+        assert_eq!(s.result, Some(roadbook_core::RunResult::Output(json!(0))));
+    }
+    let (s2, _) = p.step(&s, fail("Other"), &mut no_fns);
+    assert_eq!(
+        s2.result,
+        Some(roadbook_core::RunResult::Defect(Defect::Undeclared {
+            error: "Other".into()
+        }))
+    );
+    let (s, _) = p.step(
+        &s,
+        Input::InvokeDone {
+            invoke: 1,
+            value: json!(9),
+        },
+        &mut no_fns,
+    );
+    assert_eq!(s.result, Some(roadbook_core::RunResult::Output(json!(9))));
+}

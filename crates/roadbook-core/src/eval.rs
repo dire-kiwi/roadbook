@@ -10,14 +10,15 @@ use crate::program::Program;
 /// a host defect.
 pub type Fns<'a> = dyn FnMut(&str, Vec<Value>) -> Result<Value, Defect> + 'a;
 
-/// What an expression can read besides the parameters: the variables, and the implicit name
-/// bound by the transition being tried (`event`, `result` or `error`).
+/// What an expression can read besides the parameters: the variables, and the implicit names
+/// bound by the transition being tried (`event`, `result` or `error`, and `call` with `event`
+/// in an `on c` transition).
 pub(crate) struct Scope<'a> {
     pub program: &'a Program,
     pub machine: &'a roadbook_ir::Machine,
     pub input: &'a Map<String, Value>,
     pub vars: &'a Map<String, Value>,
-    pub implicit: Option<(&'static str, &'a Value)>,
+    pub implicit: &'a [(&'static str, Value)],
 }
 
 pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, Defect> {
@@ -99,10 +100,8 @@ pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, 
 }
 
 pub(crate) fn lookup(name: &str, s: &Scope<'_>) -> Result<Value, Defect> {
-    if let Some((n, v)) = s.implicit {
-        if n == name {
-            return Ok(v.clone());
-        }
+    if let Some((_, v)) = s.implicit.iter().find(|(n, _)| *n == name) {
+        return Ok(v.clone());
     }
     if s.machine.vars.iter().any(|v| v.name == name) {
         return s.vars.get(name).cloned().ok_or_else(|| Defect::Unassigned {

@@ -9,8 +9,8 @@ use std::collections::{HashMap, HashSet};
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{format_ident, quote};
 use roadbook_ir::{
-    Builtin, Effect, Expr, ExprKind, Field, Ir, Machine, State, StateKind, Trigger, TypeDef,
-    TypeRef,
+    Builtin, Effect, Expr, ExprKind, Field, InvokeKind, Ir, Machine, State, StateKind, Trigger,
+    TypeDef, TypeRef,
 };
 
 use crate::names::{camel, ident, plain, snake};
@@ -355,7 +355,7 @@ impl<'a> Gen<'a> {
                 }
             }
             // Only a machine variable is a pending call, and no generated item has a
-            // variable's type; the runtime does not run calls yet.
+            // variable's type: host code never sees one.
             TypeRef::Call(_) => quote!(::roadbook::__private::serde_json::Value),
         }
     }
@@ -1542,7 +1542,8 @@ impl<'a> Gen<'a> {
 struct Uses {
     functions: HashSet<String>,
     actions: HashSet<String>,
-    /// Tasks and machines it invokes.
+    /// Tasks and machines it invokes. Not the calls it makes: the driver makes those itself,
+    /// so they are no `Handlers` method.
     invokes: HashSet<String>,
 }
 
@@ -1552,7 +1553,9 @@ impl Uses {
             self.effect(e);
         }
         if let Some(i) = &s.invoke {
-            self.invokes.insert(i.src.clone());
+            if i.kind != InvokeKind::Call {
+                self.invokes.insert(i.src.clone());
+            }
             i.args.iter().for_each(|a| self.expr(a));
         }
         for t in &s.transitions {
