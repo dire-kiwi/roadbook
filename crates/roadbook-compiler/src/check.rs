@@ -138,7 +138,8 @@ impl<'p> Checker<'p> {
                     }
                 } else {
                     // An alias it names may not be resolved yet.
-                    self.optionals.push((t.clone(), (**e).clone(), inner.clone()));
+                    self.optionals
+                        .push((t.clone(), (**e).clone(), inner.clone()));
                 }
                 Ty::Optional(Box::new(inner))
             }
@@ -334,7 +335,7 @@ impl<'p> Checker<'p> {
         }
     }
 
-    /// Checks every machine and lowers the whole project to an IR document. The document is
+    /// Checks every machine and lowers the compilation to an IR document. The document is
     /// only meaningful if no errors were reported.
     pub fn lower(&mut self, project: &Project) -> ir::Ir {
         let mut out = ir::Ir {

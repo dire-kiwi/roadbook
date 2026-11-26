@@ -87,6 +87,9 @@ impl<'p> Names<'p> {
         };
         let mut own: Vec<HashMap<&'p str, DeclId>> = vec![HashMap::new(); project.files.len()];
         for (fi, file) in project.files.iter().enumerate() {
+            if file.syntax_errors {
+                continue;
+            }
             for decl in file.ast.decls() {
                 let id = DeclId(names.decls.len());
                 let name = decl.name.name.as_str();
@@ -103,7 +106,7 @@ impl<'p> Names<'p> {
                             Diagnostic::error(codes::DUPLICATE_DECLARATION, decl.name.span, message)
                             .with_secondary(first.decl.name.span, "first declared here")
                             .with_help(
-                                "declaration names are unique across a project, because the IR is keyed by name",
+                                "declaration names are unique among the files compiled together (an entry file and what it imports), because the IR is keyed by name",
                             ),
                         );
                         names.duplicated.insert(name);
@@ -124,6 +127,9 @@ impl<'p> Names<'p> {
             }
         }
         for (fi, file) in project.files.iter().enumerate() {
+            if file.syntax_errors {
+                continue;
+            }
             let mut imported: HashMap<&str, Span> = HashMap::new();
             for n in file.ast.imports().flat_map(|i| &i.names) {
                 if let Some(first) = imported.get(n.name.as_str()) {
@@ -141,7 +147,7 @@ impl<'p> Names<'p> {
                 }
             }
             for (import, target) in file.ast.imports().zip(&file.imports) {
-                let Some(target) = *target else {
+                let Some(target) = target.filter(|&t| !project.files[t].syntax_errors) else {
                     for n in &import.names {
                         names.poisoned[fi].insert(n.name.as_str());
                     }

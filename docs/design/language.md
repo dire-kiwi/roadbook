@@ -145,6 +145,24 @@ The implicit names have these types:
 
 Outside those transitions the three names are not in scope.
 
+## Projects
+
+A project is a directory tree of `.road` files. Its root is the nearest directory holding a `roadbook.toml`, searched upward from the first path given to a command (or the current directory), else the current directory. Files are named by their path relative to the root, with `/` separators, in diagnostics and in the IR's `sources`.
+
+Every command works file by file. `roadbook check` compiles each file it is given as an entry, together with everything it imports, and reports each diagnostic once even when several entries import the file it is about. A directory stands for every `.road` file under it, and no path for the whole project. `target`, `node_modules` and `.git` directories are never searched, and links to directories are not followed. `roadbook export ir <file>` compiles one entry.
+
+`roadbook.toml` may be empty. Its keys so far:
+
+| Key | Meaning |
+| --- | --- |
+| `exclude = ["glob", …]` | Files and directories that a directory search skips, as globs over project paths: `*` matches within one path segment, `**` across segments and `?` one character. A directory that matches is skipped whole. A file named on the command line is checked even if it matches. |
+
+```toml
+exclude = ["crates/roadbook-compiler/tests/fail", "spike"]
+```
+
+Other keys, such as the host types bound to `extern type`s, come with the code generators.
+
 ## What the compiler checks
 
 Errors (the build fails):
@@ -165,10 +183,10 @@ Warnings:
 
 - States that cannot be reached from the initial state, following every transition whatever its guard. Only the outermost unreachable state is reported.
 - Non-final states with no way out: an atomic state that is reachable, where neither it nor any state containing it has a transition with a target (a `done` does not count: it needs a final child).
-- Events, functions, actions or tasks that are declared but never used: an event no `on` of its machine names, or a function, action or task that nothing in the compilation calls, runs or invokes. Only declarations in the files being checked are reported, so checking a file of shared declarations on its own reports everything only other files use; check the whole project instead.
+- Events, functions, actions or tasks that are declared but never used: an event no `on` of its machine names, or a function, action or task that nothing in the compilation calls, runs or invokes. Only declarations in the files being checked are reported, and a use from any file checked at the same time counts, so checking a file of shared declarations on its own reports everything only other files use; check them together (`roadbook check` with no paths checks the whole project).
 - A state with an `invoke` and no timeout anywhere above it: neither the state nor any state containing it has an `after` (off by default; `roadbook check --warn invoke-timeout`).
 
-The checks run in order: names and structure, then types, then the analyses (the cycle and recursion checks and the warnings). A file with syntax errors is checked no further, and the analyses run only once a chart has no other errors, so one mistake does not produce a cascade of diagnostics.
+The checks run in order: names and structure, then types, then the analyses (the cycle and recursion checks and the warnings). A file with syntax errors is checked no further: its declarations are left out, and the names other files import from it are not reported as unknown. The files around it are still checked. The analyses run for each entry file once its compilation (the file and everything it imports) has no other errors, so one mistake does not produce a cascade of diagnostics, and an error in one chart does not turn off the analyses of another.
 
 Diagnostics carry a code, a source span and, where possible, a fix. `roadbook check --json` prints them in a machine-readable form so an agent can act on them without parsing prose.
 
@@ -205,11 +223,12 @@ error[RB0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
     }
   ],
   "errors": 1,
-  "warnings": 0
+  "warnings": 0,
+  "fatal": null                                  // or the message of a usage or I/O error
 }
 ```
 
-Ranges are as in the IR: lines and columns are 1-based, columns count Unicode scalar values, and the end is exclusive. A fix is a set of edits that together resolve the diagnostic: replace each range with its `text` (an empty range inserts). The command exits with 0 when there are no errors (warnings allowed), 1 when there are errors and 2 on a usage or I/O error.
+Ranges are as in the IR: lines and columns are 1-based, columns count Unicode scalar values, and the end is exclusive. A fix is a set of edits that together resolve the diagnostic: replace each range with its `text` (an empty range inserts). The command exits with 0 when there are no errors (warnings allowed), 1 when there are errors and 2 on a usage or I/O error, such as a file that does not exist. In that last case the object has no diagnostics and `fatal` holds the error's message, which is also printed on standard error.
 
 ### Definite assignment
 
@@ -413,7 +432,7 @@ Rules the grammar does not express:
 - A type is optional at most once: `T??` is an error.
 - Nesting is at most 64 levels deep, counting states, parentheses, operators (each `+` in `a + b + c` is a level), field reads and type suffixes (`[]`, `?`), so every tool that walks the tree stays within its stack.
 - A final state holds only `entry`, `exit`, `output` and `fail`.
-- Declaration names are unique across a project, because the IR is keyed by name. A file can use only what it declares or imports. An event cannot have the name of a type, error or machine either, because the IR names the type of `event` in `on Name` by the event's name.
+- Declaration names are unique among the files compiled together: an entry file and everything it imports, directly or not, because the IR is keyed by name. Two charts that do not import one another may use the same names. A file can use only what it declares or imports. An event cannot have the name of a type, error or machine either, because the IR names the type of `event` in `on Name` by the event's name.
 
 Most of these rules, the split between `machineItem` and `stateItem`, and the requirement that a branch does something came from writing the spike's parser against the first draft of this grammar. The spike still implements that draft, which accepts everything above and is slightly more lenient.
 

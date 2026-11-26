@@ -14,6 +14,10 @@ pub(crate) struct SourceFile {
     pub path: String,
     pub text: String,
     pub ast: File,
+    /// Whether the file has syntax errors. Its tree is partial, so its declarations are left
+    /// out and its names are poisoned in the files that import it: the other files are still
+    /// checked, without diagnostics that a partial tree would cause.
+    pub syntax_errors: bool,
     /// For each import of the file, in order: the index of the imported file, or `None` if it
     /// could not be loaded.
     pub imports: Vec<Option<usize>>,
@@ -26,9 +30,6 @@ pub(crate) struct Project {
     /// Indices of the files the compilation was asked for, as opposed to the ones they import.
     pub roots: Vec<usize>,
     pub diagnostics: Vec<Diagnostic>,
-    /// Whether any file had a syntax error. The later passes are skipped if so, because a
-    /// partial tree would produce misleading errors.
-    pub syntax_errors: bool,
     by_path: HashMap<String, usize>,
 }
 
@@ -57,7 +58,6 @@ impl Project {
             files: Vec::new(),
             roots: Vec::new(),
             diagnostics: Vec::new(),
-            syntax_errors: false,
             by_path: HashMap::new(),
         };
         for root in roots {
@@ -80,7 +80,7 @@ impl Project {
         let Loaded::Source(text) = loaded;
         let index = self.files.len();
         let (ast, diags) = parse_file(FileId(index as u32), &text);
-        self.syntax_errors |= diags.iter().any(Diagnostic::is_error);
+        let syntax_errors = diags.iter().any(Diagnostic::is_error);
         self.diagnostics.extend(diags);
         let imports: Vec<(String, Span)> = ast
             .imports()
@@ -91,6 +91,7 @@ impl Project {
             path: path.clone(),
             text,
             ast,
+            syntax_errors,
             imports: Vec::new(),
         });
         let mut resolved = Vec::new();
