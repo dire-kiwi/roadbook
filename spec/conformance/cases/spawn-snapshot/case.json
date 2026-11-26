@@ -1,5 +1,5 @@
 {
-  "description": "A pool saved with two spawned children running: the snapshot lists them, with their ids, `int` keys and the arguments they were spawned with, and nothing of their own progress. Restoring starts each again, before anything else, as a new child run of the restored run that starts from the beginning. Once one has left and the other has been stopped (its stale emitted event taken), the restored run is idle and suspends with no spawned child. A snapshot whose spawned child is of no collection of the machine is refused as `invalid`.",
+  "description": "A pool saved with two spawned children running: the snapshot lists them, with their ids, `int` keys and the arguments they were spawned with, and nothing of their own progress. Restoring starts each again, before anything else, as a new child run of the restored run that starts from the beginning. Once one has left and the other has been stopped (its stale emitted event taken), the restored run is idle and suspends with no spawned child. A snapshot is refused as `invalid` when a spawned child is of no collection of the machine, two children of a collection share a key, a key is not of the key type, the arguments are not exactly the child machine's parameters, or an id is not below `nextInvoke` or is another child's.",
   "requires": [
     "messaging",
     "spawn",
@@ -54,6 +54,30 @@
     },
     {
       "restore": "stray",
+      "refused": "invalid"
+    },
+    {
+      "restore": "twins",
+      "refused": "invalid"
+    },
+    {
+      "restore": "strkey",
+      "refused": "invalid"
+    },
+    {
+      "restore": "extra",
+      "refused": "invalid"
+    },
+    {
+      "restore": "noname",
+      "refused": "invalid"
+    },
+    {
+      "restore": "late",
+      "refused": "invalid"
+    },
+    {
+      "restore": "clash",
       "refused": "invalid"
     }
   ],
