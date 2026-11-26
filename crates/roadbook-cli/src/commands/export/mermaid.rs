@@ -11,6 +11,9 @@
 //! `upload.Progress`, `send upload.Pause` and `emit Progress { … }` as effects, and
 //! `invoke machine Upload(file) as upload`. Mermaid allows no description on a state with states inside, so a compound or
 //! parallel state (and the machine, when it is drawn as a state) has them in a note beside it.
+//! Mermaid has no history states: one is a small state labelled `H` (or `H*` for a deep one)
+//! inside its parent, which transitions target as any state; in a parallel state it is in the
+//! first region's part of the box, since every state there is in one.
 //! What it loses: the line styles of the kinds of transition, the details panel, drill-down
 //! into invoked machines, and the viewer's layout.
 //!
@@ -214,7 +217,13 @@ impl Writer<'_> {
     /// The states inside `container`, its initial arrow, and every transition whose source
     /// and target meet first in it.
     fn body(&mut self, container: &State, depth: usize) {
-        for (i, child) in container.states.iter().enumerate() {
+        // History states first: in a parallel state, the lines before the first `--` are its
+        // first region's part, and a history state is not a region.
+        for h in container.states.iter().filter(|c| c.kind.is_history()) {
+            self.state(h, depth);
+        }
+        let children = container.states.iter().filter(|c| !c.kind.is_history());
+        for (i, child) in children.enumerate() {
             if container.kind == StateKind::Parallel && i > 0 {
                 self.line(depth, "--");
             }
@@ -261,6 +270,17 @@ impl Writer<'_> {
 
     fn state(&mut self, s: &State, depth: usize) {
         let id = self.id(&s.id);
+        if s.kind.is_history() {
+            // No notation in Mermaid: a state labelled `H` or `H*`.
+            let mark = if s.kind == StateKind::DeepHistory {
+                "H*"
+            } else {
+                "H"
+            };
+            let line = format!("state \"{mark}\" as {id}");
+            self.line(depth, &line);
+            return;
+        }
         if id != s.name {
             let line = format!("state \"{}\" as {id}", s.name);
             self.line(depth, &line);

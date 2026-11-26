@@ -84,7 +84,7 @@ export interface PaymentWebhookDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/webhook/webhook.road",
@@ -1576,7 +1576,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:87be266fca05902c7fdb2d318e474725400167ef78b5d179fa186f42796aefb8"
+      "hash": "sha256:18529eddddb4764970b483be2a6a44de41df28a3c85abe57f6832ac430983e36"
     }
   }
 }

@@ -1,0 +1,86 @@
+{
+  "description": "What history states recorded is saved, and a restored run enters what was recorded before it was saved. Cancelling a run exits its states but records nothing: the cancelled run's snapshot keeps the records it had, not `Comment`, where it was cancelled. A snapshot is refused as `invalid` when `history` names a state that is not a history state, holds a record its history state could not have made (a state that is not a leaf for a deep one, two children of a compound parent, or a state outside the parent, for a shallow one) or an empty one, or when a version 1 snapshot has `history` or a version 2 one lacks it. A history state is never active, so a snapshot whose `active` names one is refused too.",
+  "requires": [
+    "history",
+    "snapshots"
+  ],
+  "chart": "charts/history.road",
+  "machine": "Editor",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Next"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Help"
+      }
+    },
+    {
+      "snapshot": "helped"
+    },
+    {
+      "restore": "helped",
+      "run": "r2",
+      "status": "cancelled"
+    },
+    {
+      "event": {
+        "_tag": "BackDeep"
+      },
+      "run": "r2"
+    },
+    {
+      "event": {
+        "_tag": "Deeper"
+      },
+      "run": "r2"
+    },
+    {
+      "cancel": true,
+      "run": "r2"
+    },
+    {
+      "snapshot": "cancelled",
+      "run": "r2"
+    },
+    {
+      "restore": "unknown",
+      "refused": "invalid"
+    },
+    {
+      "restore": "notleaf",
+      "refused": "invalid"
+    },
+    {
+      "restore": "twochildren",
+      "refused": "invalid"
+    },
+    {
+      "restore": "outside",
+      "refused": "invalid"
+    },
+    {
+      "restore": "empty",
+      "refused": "invalid"
+    },
+    {
+      "restore": "v1history",
+      "refused": "invalid"
+    },
+    {
+      "restore": "v2nohistory",
+      "refused": "invalid"
+    },
+    {
+      "restore": "activehistory",
+      "refused": "invalid"
+    }
+  ],
+  "status": "running"
+}

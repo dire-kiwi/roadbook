@@ -12,7 +12,8 @@
     // imports of these two are mapped to this package's (vitest.config.ts does the same).
     "paths": {
       "effect": ["./node_modules/effect/dist/index.d.ts"],
-      "@roadbook/effect": ["./src/index.ts"]
+      "@roadbook/effect": ["./src/index.ts"],
+      "@roadbook/effect/durable": ["./src/entry-durable.ts"]
     }
   },
   "include": ["src", "test", "vitest.config.ts"]

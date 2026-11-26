@@ -1,4 +1,4 @@
-{"input":{"id":"d1"},"ir":"sha256:cd16ce20e0eb07f034ed46f07e295cd9a2cd2aa81acd96ca728dd3f26a87c82a","kind":"started","machine":"Fetcher","run":"r1","t":0}
+{"input":{"id":"d1"},"ir":"sha256:2ab68675ec3c931080ecb28af40b37206d28a06001cf1b16630f8ce405f5625a","kind":"started","machine":"Fetcher","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Fetcher","t":0}
 {"kind":"entered","run":"r1","state":"Fetcher.Loading","t":0}
 {"kind":"set","run":"r1","t":0,"value":0,"var":"loadingAttempt"}

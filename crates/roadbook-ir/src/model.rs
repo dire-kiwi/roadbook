@@ -344,6 +344,19 @@ pub enum StateKind {
     Parallel,
     /// `final state`.
     Final,
+    /// `history Name`: a shallow history pseudo-state of its parent.
+    History,
+    /// `deep history Name`: a deep history pseudo-state of its parent.
+    #[serde(rename = "deepHistory")]
+    DeepHistory,
+}
+
+impl StateKind {
+    /// Whether this is a history pseudo-state, `history` or `deepHistory`: never active, and
+    /// never one of its parent's children in the sense of `spec/execution.md`.
+    pub fn is_history(self) -> bool {
+        matches!(self, StateKind::History | StateKind::DeepHistory)
+    }
 }
 
 /// A state.

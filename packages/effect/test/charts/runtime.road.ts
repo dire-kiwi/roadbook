@@ -20,7 +20,7 @@ export interface OverflowDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "packages/effect/test/charts/runtime.road",
@@ -178,7 +178,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:1a09a5be18b634728da3ee5ce0ef5c2c3cb642291ee2f53c8114fa26e27dc883"
+      "hash": "sha256:4410f109e767b5224f8812917e5cdcfce9604683266fcaecd39670e574a93e79"
     },
     "Settle": {
       "doc": "Settles forever: every microstep takes the `always` again.",
@@ -324,7 +324,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:b8fa373e616329a5ce3ef06f50bbdea28866b8441eb207c0bd858d2c43c10543"
+      "hash": "sha256:acf86afbd412c6422063720dfc326c76c723951c01aa7d5d534869787174cc8b"
     },
     "Early": {
       "doc": "Reads `a` before it has a value, in `b`'s initial value.",
@@ -442,7 +442,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d586097f502970fa13ce03528372fd06682e15c1543e59e37f0dcaac63bb034d"
+      "hash": "sha256:c7a570059a601fb08a37b888ec4025fcd8be75de79b5ae99bb6c3b7879e77c1f"
     },
     "Leftover": {
       "doc": "Outer's work is cancelled after Inner's exit effect, so a defect there leaves it running.",
@@ -617,7 +617,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ae027a91e3a8f491f3c2df6c6db641e30a3aed6a4162839f7aa6fc578de4fe44"
+      "hash": "sha256:ae481c107303aac40dd0fa0c565c9bebddaca2eba327c2e60f77e9977e372c3a"
     },
     "Payload": {
       "doc": "Ends with whatever the host's `payload` returns, which must be JSON.",
@@ -684,7 +684,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:48da46244e6a800c4d4a7e6e7e77222f94dea5ad8e0f807ad259f9d276ee9ec3"
+      "hash": "sha256:3fdad329deb922bce7a7ef95184d42c0f9df80d6b70794b7536ff731c6ba944f"
     }
   }
 }

@@ -54,7 +54,7 @@ export interface PublishDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -818,7 +818,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:edd42616f8c58265e902b407e5326797fdf6cc8a8ea239424d00333739e2c33f"
+      "hash": "sha256:d1d0e2bc9f3843bd1d7999e4ed8e2ea44425dbe2e43b744d39ace5980bc112b1"
     },
     "Upload": {
       "doc": "Upload a file in chunks. Can be paused, and reports its progress to whoever invoked it.",
@@ -1358,7 +1358,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:44f67dc3b56bd1f9600167cde56b9f7ec7880b5125794bd8a0926ce8aaa1eb56"
+      "hash": "sha256:d9b13cbae45df8b6769171b3ea54cb546fde4e60249c0cd986de4ea8b9ef7307"
     }
   }
 }

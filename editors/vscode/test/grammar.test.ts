@@ -86,6 +86,17 @@ describe('scopes', () => {
     expect(await scopesAt('  event Cancel', 'Cancel')).toContain('entity.name.type.event.roadbook')
   })
 
+  it('marks history states, and history and deep as names elsewhere', async () => {
+    expect(await scopesAt('    history Last', 'history')).toContain('storage.type.history.roadbook')
+    expect(await scopesAt('    history Last', 'Last')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt('    deep history All', 'deep')).toContain('storage.modifier.deep.roadbook')
+    expect(await scopesAt('    deep history All', 'history')).toContain('storage.type.history.roadbook')
+    expect(await scopesAt('    deep history All', 'All')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt('  var history: int', 'history')).toContain('variable.other.definition.roadbook')
+    expect(await scopesAt('    always set deep = history + 1', 'history')).toContain('variable.other.roadbook')
+    expect(await scopesAt('    always set deep = history + 1', 'deep')).not.toContain('storage.modifier.deep.roadbook')
+  })
+
   it('marks states, events, calls and values', async () => {
     const line = '    after retryDelay(attempts) -> Charging set n = n + 1'
     expect(await scopesAt(line, 'retryDelay')).toContain('entity.name.function.call.roadbook')

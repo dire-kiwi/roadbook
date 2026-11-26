@@ -1,4 +1,4 @@
-{"input":{"start":1},"ir":"sha256:742be138418d8169a43c384901a9e4a5fa7551911c74196ecef43df2fbd3bfb0","kind":"started","machine":"Counter","run":"r1","t":0}
+{"input":{"start":1},"ir":"sha256:1fa81f452da00ee2767aeec05233a81ed2e52266bd1c14968a8ba72f0fa0cede","kind":"started","machine":"Counter","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Counter","t":0}
 {"kind":"entered","run":"r1","state":"Counter.Counting","t":0}
 {"event":{"kind":"event","value":{"_tag":"Add","by":1}},"kind":"event","run":"r1","t":0}

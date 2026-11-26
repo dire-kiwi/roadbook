@@ -779,8 +779,12 @@ impl<'a> Gen<'a> {
     }
 }
 
-/// Every state id under `s`, `s` included, in document order.
+/// Every state id under `s`, `s` included, in document order. History states are left out:
+/// they are never active, so host code never sees one.
 fn state_ids(s: &State, out: &mut Vec<String>) {
+    if s.kind.is_history() {
+        return;
+    }
     out.push(format!("\"{}\"", s.id));
     for c in &s.states {
         state_ids(c, out);

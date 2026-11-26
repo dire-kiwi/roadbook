@@ -1,6 +1,6 @@
 # What wasm/ was built from, by packages/cli/build.mjs. Do not edit.
-sources sha256:101500ed4d3c01d3a21882a38bc35fa6412e57869a47fc35f7ce62dbef6a7c79
-roadbook_wasm_bg.wasm sha256:5083f2e24d06f8bf88f4766f0dad7b07ab76f5a33725997f2a995bb4946c90e2
+sources sha256:5dee0cc080cec7b7ec7649874539d0d42fb91e39e4ebcbca9396c759da25d7ee
+roadbook_wasm_bg.wasm sha256:c20eb6492b0ba7219489b713dff82f61eadab709810f1bebb5cca5b1695b832c
 roadbook_wasm.js sha256:7ef4f1a335ee58a7bc91494c4406685a45ff369d60c9054bc464c23494ec154b
 crate block-buffer 0.10.4
 crate bumpalo 3.20.4

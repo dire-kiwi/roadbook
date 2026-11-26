@@ -81,6 +81,7 @@ impl Program {
             next_invoke: 1,
             next_timer: 1,
             next_message: 1,
+            history: Default::default(),
             result: None,
         };
         let started = Record::Started {
@@ -298,7 +299,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     self.default_entry_into(c, out);
                 }
             }
-            StateKind::Atomic | StateKind::Final => {}
+            StateKind::Atomic | StateKind::Final | StateKind::History | StateKind::DeepHistory => {}
         }
     }
 
@@ -714,6 +715,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     /// the target, the target's default entry, and every other region of a parallel state on
     /// the path by default entry.
     fn entry_set(&self, t: Tr, target: usize) -> Vec<usize> {
+        if self.state(target).kind.is_history() {
+            return self.history_entry_set(t, target);
+        }
         let domain = self.domain(t.0, target);
         let mut path = Vec::new();
         let mut cur = Some(target);
@@ -736,6 +740,49 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     }
                 }
             }
+        }
+        set
+    }
+
+    /// `entrySet` for a transition to history state `h`: the paths from just below the domain
+    /// to what `h` recorded (or to the states its parent's default entry starts with), their
+    /// default entries, and every region of a parallel state among them that none of them is
+    /// in, by default entry. Unsorted.
+    fn history_entry_set(&self, t: Tr, h: usize) -> Vec<usize> {
+        let domain = self.domain(t.0, h);
+        let p = self.idx.parents[h].expect("a history state has a parent");
+        let parent = self.state(p);
+        let targets: Vec<usize> = match self.snap.history.get(&self.state(h).id) {
+            Some(record) => record.iter().map(|id| self.index_of(id)).collect(),
+            None if parent.kind == StateKind::Compound => {
+                parent.initial.iter().map(|id| self.index_of(id)).collect()
+            }
+            None => self.idx.children[p].clone(),
+        };
+        let mut set = Vec::new();
+        for r in targets {
+            let mut cur = Some(r);
+            while let Some(c) = cur.filter(|&c| c != domain) {
+                if !set.contains(&c) {
+                    set.push(c);
+                }
+                cur = self.idx.parents[c];
+            }
+            self.default_entry_into(r, &mut set);
+        }
+        let mut i = 0;
+        while i < set.len() {
+            let q = set[i];
+            if self.state(q).kind == StateKind::Parallel {
+                for &c in &self.idx.children[q] {
+                    let covered = set.iter().any(|&x| x == c || self.idx.is_ancestor(c, x));
+                    if !covered {
+                        set.push(c);
+                        self.default_entry_into(c, &mut set);
+                    }
+                }
+            }
+            i += 1;
         }
         set
     }
@@ -805,6 +852,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         let mut exits: Vec<usize> = t.iter().flat_map(|&x| self.exit_set(x)).collect();
         exits.sort_unstable();
         exits.dedup();
+        self.record_history(&exits);
         for s in exits.into_iter().rev() {
             self.exit_state(s)?;
         }
@@ -821,6 +869,30 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         entries.sort_unstable();
         entries.dedup();
         self.enter_states(&entries, None)
+    }
+
+    /// `recordHistory`: for each state about to be exited, what each of its history states
+    /// records, from the active states as they are before anything is exited.
+    fn record_history(&mut self, exits: &[usize]) {
+        for &s in exits {
+            for h in &self.state(s).states {
+                let record: Vec<usize> = match h.kind {
+                    StateKind::History => self.idx.children[s]
+                        .iter()
+                        .copied()
+                        .filter(|&c| self.is_active(c))
+                        .collect(),
+                    StateKind::DeepHistory => self
+                        .active_leaves()
+                        .into_iter()
+                        .filter(|&l| self.idx.is_ancestor(s, l))
+                        .collect(),
+                    _ => continue,
+                };
+                let ids = record.iter().map(|&i| self.state(i).id.clone()).collect();
+                self.snap.history.insert(h.id.clone(), ids);
+            }
+        }
     }
 
     fn exit_state(&mut self, s: usize) -> R {
@@ -911,7 +983,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         let children = &self.idx.children[s];
         match self.state(s).kind {
             StateKind::Final => true,
-            StateKind::Atomic => false,
+            StateKind::Atomic | StateKind::History | StateKind::DeepHistory => false,
             StateKind::Compound => children
                 .iter()
                 .any(|&c| self.is_active(c) && self.state(c).kind == StateKind::Final),

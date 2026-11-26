@@ -158,6 +158,76 @@ yield* OrderLive.resume(saved, event, { migrate: (old) => ({ ...old, ir: OrderLi
 - **`actor.save`** gives the saved snapshot as of the last step, a copy of its own each time (and `restore` copies what it is given), so host code that changes a snapshot it holds changes no run; **`actor.suspend`** waits until the run is idle (or has ended), stops it without exit effects, writes `suspended` to the trace and gives the snapshot. A suspended actor takes no more events, its `result` is interrupted, `changes` ends with the snapshot it was suspended with, `save` and `suspend` give that snapshot again, and closing its scope does nothing more. A cancel that arrives while a step runs is taken after that step, before a suspend can stop the run: `actor.cancel` then `actor.suspend` during a step gives the `cancelled` snapshot, with the exit effects run.
 - **`options.migrate`** is `(saved: Saved) => Saved`, plain JSON both ways: the old snapshot has already passed the checks of its shape and version, which come before the hash's, and the result is checked again from the top. A migration that throws, whatever it throws, refuses the snapshot with `migration`; one that returns a snapshot of another machine is refused with `machine`.
 
+## Durable runs
+
+A run of an ordinary `run` or `spawn` lives in its process: if the process crashes, the run is gone, and a [saved snapshot](#saving-and-restoring) taken while a task ran restarts that task. A **durable run** survives a crash in the middle of a task without repeating the work that finished: the machine runs as an execution of Effect's `effect/workflow` (part of `effect`, so there is nothing more to install), on whichever `WorkflowEngine` the application provides. The chart, the IR and the core are the same; only the driver is different. It is in [`packages/effect/src/Durable.ts`](../../packages/effect/src/Durable.ts) and [`internal/durable.ts`](../../packages/effect/src/internal/durable.ts), built against `effect@4.1.5`, where `effect/workflow` is still marked unstable.
+
+```ts
+import { Durable } from "@roadbook/effect/durable"
+
+export const ImportFlow = Durable.workflow(ImportJobLive, {
+  idempotencyKey: ({ upload }) => upload.jobId   // the execution an input belongs to
+  // name: "ImportJob",                          // the workflow's name; default the machine's
+  // park: { after: "60 seconds" } | false,      // see "Parking" below
+  // replayTrace: false,                         // see "Traces" below
+  // runId: (executionId) => executionId,        // the root run's id in traces and snapshots
+})
+
+const live = ImportFlow.layer.pipe(Layer.provide(engine))   // registers it with the engine
+
+const id = yield* ImportFlow.start({ upload })               // the execution id; joins a running key
+yield* ImportFlow.send(id, { _tag: "Pause" })                 // returns once the event is journalled
+const summary = yield* ImportFlow.run({ upload })            // start or join, and wait for the result
+yield* ImportFlow.cancel(id)                                  // a cancel input; waits for the end
+const ended = yield* ImportFlow.poll(id)                      // Option<Exit<Output, Error>>
+const saved = yield* ImportFlow.snapshot(id)                  // the live run's Saved snapshot
+const id2 = yield* ImportFlow.restore(saved, { migrate })     // a durable run from a snapshot
+const handle = yield* ImportFlow.handle(id)                   // for a `ref` argument of another durable run
+```
+
+`run` succeeds with the chart's output and fails with its errors, as `Implemented.run` does; it dies with a `Defect` if the run ended with one and is interrupted if it was cancelled. Every operation needs the `WorkflowEngine`, and `layer` needs the services of the machine's implementations. The trace sink, timer and run observer a durable run uses are the ones in the layer's context, where the engine runs the workflow, not the caller's. [`examples/import-job`](../../examples/import-job) runs the import job on `ClusterWorkflowEngine` and crashes the process in the middle of a batch.
+
+**Engines.** `WorkflowEngine.layerMemory` runs workflows in memory: nothing survives the process, which is what the conformance runner uses. `ClusterWorkflowEngine` keeps every execution in a `MessageStorage`: `SqlMessageStorage` in production, `MessageStorage.layerMemory` in tests. After a restart it replays every execution that has not ended, by itself.
+
+### How a run maps onto `effect/workflow`
+
+The engine recovers by running a workflow's body again from the start, with what it recorded: an `Activity`'s result is stored under its name and given again instead of running it, and a `DurableDeferred` is a named value set once. A statechart's run is not deterministic enough for that alone, since the order of its inputs comes from races (which task ends first, when an event arrives), so the driver also keeps a **journal**: input *k* of run *R* is the record `R/in/k`, written when the run takes it, before the step.
+
+| Roadbook | On `effect/workflow` |
+| --- | --- |
+| A root run | One workflow execution, whose id comes from the idempotency key. The root run's id is the execution id unless `runId` says otherwise. |
+| The inputs a run takes | Its journal, `R/in/1`, `R/in/2`, …, read on replay with `WorkflowEngine.deferredResult` until the first one missing. |
+| A task, or a child machine stubbed by a function | An `Activity` named `R/invoke/<id>`, whose value is the outcome input (done, fail or defect) in JSON. A finished one is not run again; one running at the crash runs again: a task runs at least once. Leaving its state interrupts it, as for any run. |
+| An action | An `Activity` named `R/action/<n>`, its defect, if any, part of its value. |
+| A function | Called again on replay. Functions must be pure, as the language already asks. |
+| An `after` timer | Its due time is recorded (`R/timer/<id>`) when it starts. A live run sleeps through its `Timer`; after a crash the timer fires at its first due time, at once if that has passed. |
+| A child run | Part of its root's execution, with its own journal (`r1.4/in/k`, …). It is started, cancelled and waited for as now, through the invoke context. |
+| `send`, `emit` | As now. On replay they are carried out again, and a run drops any input it has already journalled (an invoke's outcome, a timer's expiry, a message or emitted event by its sender and message id), so each is taken once. |
+| An external event | `send(id, event)` queues it and returns once it is journalled, so an event that `send` acknowledged survives a crash. A handle's `send` from host code queues it and does not wait, as for any run. |
+| Cancelling | `cancel(id)` gives the run a cancel input, taken before what is queued and journalled like any other; a parent cancels a durable child the same way and waits for its cancel step. Interrupting a durable run's fiber means the process is stopping or the run is parking: no cancel step runs, and the run carries on from its journal. |
+| The result | The execution's value is the run's status and result in JSON (`{ status, result }`). |
+| A `ref` between durable runs | The handle of a durable run, from `handle(id)`, whose id, workflow and execution id the holder's payload keeps. Holders hear what the peer emits from the message id they first subscribed at, so a holder that recovers is given again what it missed. |
+
+**Replay.** Replaying a run starts it again (or restores it, with the clock its first attempt read) and gives the core each journalled input. The core is pure, so it rebuilds the same snapshot and the same invoke, timer and message ids. The commands of each journalled step are carried out again in *replay mode*: actions go through their activities (stored, so not run), trace records are not written, and starting tasks and arming timers is deferred, while a cancel of something deferred drops it; so a task cancelled before the crash is never started again. Child runs still running are started before the last journalled step, which a crash may have cut short and which is carried out as a live step, so that a cancel there runs their exit effects. At the live edge the run takes a cancel it was asked for first, starts the deferred tasks still running (one that finished before the crash gives its stored outcome at once), arms the timers still running at their due times, and carries on.
+
+**Parking.** A root run that is idle (nothing queued, no invoke running) and whose earliest timer is further away than `park.after` (default `DurableClock.InMemoryThreshold`, 60 seconds), or which has no timer, parks: its body suspends on `DurableDeferred.raceAll` of a `DurableClock` for that timer and a wake record, and holds no memory or fiber until one completes. The engine then replays it to where it parked. Events, cancels and messages for a parked run wait in the process and wake it. `park: false` keeps every run in memory until it ends.
+
+**Traces.** The trace sink is not durable. A replayed step writes nothing, so after a recovery the sink receives records from the first new step on, and the records of the step the crash cut short may be missing. With `replayTrace: true` a replay writes every record again from `started`: with a deterministic clock that trace is the one an uninterrupted run writes ([the crash tests](../../packages/effect/test/durable.test.ts) check that), at the cost of the sink seeing the run once per attempt.
+
+**What changes, compared with an ordinary run.**
+
+- A crash loses nothing that finished: tasks, actions, timers' deadlines, journalled inputs, events `send` acknowledged.
+- Interrupting a caller of `run` stops it waiting; the run carries on. `Workflow.interrupt` on the execution is not a cancel either: use `cancel`.
+- The chart cannot change under a running execution. The machine's hash is recorded when the run begins, and a replay with another one ends the run with a `host` defect saying so. A new version of a chart needs a new workflow `name`, with the old one registered until its executions end.
+- A durable run does not `suspend`: it parks. `snapshot` and `restore` work as for ordinary runs, so a run saved between requests can move onto a durable one.
+- Replaying costs time in proportion to the run's history: a storage read and a core step per input, on each recovery and on each wake from parking.
+
+**Limits.** A durable run is reached through a registry of the engine's durable runs in its process, so `send`, `cancel` and messages between runs assume one process (or one runner): in a cluster of several runners they are not routed to the runner that owns the execution yet. An input for a run that is not live in this process (parked, or not yet recovered) waits in memory until it is: if the process crashes first, an external sender sees its `send` fail, a message from a run still running is sent again by its replay, and a message from a run that has ended since is lost. A durable holder hears what its peer emits from when it first starts: if the peer is not live in this process then, the holder waits until the peer has replayed (waking it if it must) to learn where that is. A `ref` argument of a durable run must be the handle of a durable run, and a durable child run that holds a `ref` hears its peer's emitted events only while both are live.
+
+A run that has ended takes no more events or cancels, and `send` and `cancel` return at once, also in a later process (the engine says it has ended). `send` or `cancel` for an execution the engine has never heard of waits for it. The registry keeps a small entry for each durable run this process has seen, until the process ends; what a run emitted is kept for its holders only while it runs. `runId` must give each execution an id of its own that is a run id (`Core.RUN_ID_PATTERN`): one that is not ends the run with a `host` defect. Parking reads the time from the engine's clock (`DurableClock`), not from the run's `Timer`, so a run with a virtual `Timer` should not park (`park: false`). On `WorkflowEngine.layerMemory`, each journal record the body writes also asks the engine to wake the execution, so each park is followed by one replay that parks again at once. A machine invoked through a `run` of host code that never claims the invoke (not a chart's run) is waited for, not interrupted, when its state is left while its run has not claimed it yet.
+
+**Tests.** The conformance runner has a durable mode (`node test/conformance/main.ts --durable`, and the second suite of `conformance.test.ts`) that runs every case without `suspend` steps, 60 of the 64, through `Durable.workflow` on `WorkflowEngine.layerMemory` and compares the traces byte for byte. [`test/durable.test.ts`](../../packages/effect/test/durable.test.ts) crashes processes on `ClusterWorkflowEngine` over a shared `MessageStorage`, at points its gated tasks choose, and checks each guarantee above.
+
 ## How the driver maps onto Effect
 
 | Statechart concept | Effect v4 |
@@ -208,7 +278,8 @@ The rules are in [execution.md](../../spec/execution.md#delivering-messages).
 
 - **A whole sub-machine can be a stub.** `machines: { Checkout: () => Effect.fail(new CardDeclined({ reason: "test" })) }` replaces the payment chart with one function of the same signature.
 - **Time is virtual.** `after` and backoff delays sleep through the driver's `Timer` service on Effect's `Clock`, so they run under `TestClock` ([the shop's retry test](../../examples/shop/test/retry.test.ts)). The conformance runner, which has to fire timers one at a time and let the machines settle in between, gives the driver its own virtual `Timer` ([what a runner relies on](../../spec/conformance/README.md#how-a-runner-works)).
-- **The conformance runner** ([`packages/effect/test/conformance`](../../packages/effect/test/conformance)) drives each case through `make`, `implement` and `spawn` (`restore`, `actor.save` and `actor.suspend` for the snapshot steps, comparing what they give as canonical JSON with the case's snapshot files), replacing only the timer and the host code. A `start` step spawns another top-level run with the same timer, sink and observer, named by `RootRunId`, and decodes its input with the handles of the runs started before it. It runs every fiber on a manual `Scheduler` that queues tasks rather than using `setImmediate`; since nothing in a case waits on real time or I/O, the runs are quiescent exactly when that scheduler has no task left, which the runner checks by draining it. A scripted invoke learns its run and invoke id from the log annotations above. `pnpm --filter @roadbook/effect conformance` prints a line per case; with `ROADBOOK_CONFORMANCE_OUT=dir` each case's actual trace is written to `dir/<case>.jsonl`.
+- **The conformance runner** ([`packages/effect/test/conformance`](../../packages/effect/test/conformance)) drives each case through `make`, `implement` and `spawn` (`restore`, `actor.save` and `actor.suspend` for the snapshot steps, comparing what they give as canonical JSON with the case's snapshot files), replacing only the timer and the host code. A `start` step spawns another top-level run with the same timer, sink and observer, named by `RootRunId`, and decodes its input with the handles of the runs started before it. It runs every fiber on a manual `Scheduler` that queues tasks rather than using `setImmediate`; since nothing in a case waits on real time or I/O, the runs are quiescent exactly when that scheduler has no task left, which the runner checks by draining it. A scripted invoke learns its run and invoke id from the log annotations above. `pnpm --filter @roadbook/effect conformance` prints a line per case; with `ROADBOOK_CONFORMANCE_OUT=dir` each case's actual trace is written to `dir/<case>.jsonl` (`dir/durable/<case>.jsonl` in durable mode).
+- **Durable runs** go through the same conformance cases in the runner's durable mode, and survive crashes in [`test/durable.test.ts`](../../packages/effect/test/durable.test.ts) ([durable runs](#durable-runs)).
 - **The core is pure.** `@roadbook/core`'s `step` can be called directly to assert on transitions without running any effects.
 - **Paths can be generated.** Because the chart is data, `roadbook paths` can list every simple path through a machine, and a test can assert each one is exercised. The viewer's coverage mode shows the result.
 

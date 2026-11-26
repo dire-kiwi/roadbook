@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "packages/viewer/test/charts/stress.road",
@@ -269,7 +269,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:69bf4d371b28da13cf1707302ae56b05db27ec10087477605b27695508271f68"
+      "hash": "sha256:ccfa6c01d67b8dd56c6540d3ae885967bb768d13c2f7dbe0b6155cdf759d0b48"
     },
     "Stress": {
       "doc": "Every shape the viewer has to lay out, at once.",
@@ -1625,7 +1625,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:26674defcf77647d50fc332f5787077e1907284c355bf37da055e6579cc2d2f8"
+      "hash": "sha256:fdaf80b2e10dec11869b477097c9e1b4e3877f8dc865e01c2c37ab0a76802634"
     }
   }
 }

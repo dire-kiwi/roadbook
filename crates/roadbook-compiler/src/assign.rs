@@ -190,7 +190,10 @@ impl<'a> Chart<'a> {
         self.end.push(0);
         for c in &s.states {
             let ci = self.add(c, Some(i));
-            self.children[i].push(ci);
+            // A history state is in the document order, but is never one of the children.
+            if !c.kind.is_history() {
+                self.children[i].push(ci);
+            }
         }
         self.end[i] = self.states.len();
         i
@@ -372,11 +375,19 @@ impl<'c, 'a> Flow<'c, 'a> {
         let mut out: Vec<Vec<Option<usize>>> = vec![Vec::new(); count];
         for (s, st) in chart.states.iter().enumerate() {
             for t in &st.transitions {
-                let Some(&to) = t.target.as_deref().and_then(|x| ids.get(x)) else {
+                let Some(&target) = t.target.as_deref().and_then(|x| ids.get(x)) else {
                     out[s].push(None);
                     continue;
                 };
-                let domain = chart.domain(s, to);
+                let domain = chart.domain(s, target);
+                // A transition to a history state is a way into its parent's default entry:
+                // the states a history state restores were entered before, and what was
+                // assigned then still is.
+                let history = chart.kind(target).is_history();
+                let to = match chart.parent[target] {
+                    Some(p) if history => p,
+                    _ => target,
+                };
                 let mut exits = Bits::empty(n);
                 if s != 0 {
                     let mut x = Some(s);
@@ -400,6 +411,9 @@ impl<'c, 'a> Flow<'c, 'a> {
                 let mut chain = Vec::new();
                 if let Some((&first, rest)) = path.split_first() {
                     chart.enter(first, rest, &mut chain);
+                } else if history && let Some(i) = chart.initial[to] {
+                    // From inside the history state's compound parent: the parent stays.
+                    chart.enter(i, &[], &mut chain);
                 }
                 out[s].push(Some(edges.len()));
                 edges.push(Edge {
@@ -510,14 +524,16 @@ impl<'c, 'a> Flow<'c, 'a> {
         match self.chart.kind(s) {
             StateKind::Final => self.entered[s].clone(),
             StateKind::Compound | StateKind::Parallel => self.done[s].clone(),
-            StateKind::Atomic => self.at[s].clone(),
+            StateKind::Atomic | StateKind::History | StateKind::DeepHistory => self.at[s].clone(),
         }
     }
 
     /// Recomputes `at(s)` and `done(s)`; whether either changed.
     fn recompute(&mut self, s: usize) -> bool {
         let (at, done) = match self.chart.kind(s) {
-            StateKind::Atomic | StateKind::Final => (self.entered[s].clone(), self.done[s].clone()),
+            StateKind::Atomic | StateKind::Final | StateKind::History | StateKind::DeepHistory => {
+                (self.entered[s].clone(), self.done[s].clone())
+            }
             StateKind::Compound => (
                 self.entered[s].with(&self.children_at[s]),
                 self.entered[s].with(&self.finals[s]),

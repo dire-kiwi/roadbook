@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:3f651d5bd62679176ed229d4f1eb281e8f3aaa59e3713db2e10dddbee61acfce","kind":"started","machine":"Logbook","run":"r1","t":0}
+{"input":{},"ir":"sha256:ea114941b37d6ee259a772df819a88e87657553519fa6cb265ca9be61d45272e","kind":"started","machine":"Logbook","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Logbook","t":0}
 {"kind":"entered","run":"r1","state":"Logbook.Open","t":0}
 {"event":{"from":"r2.1","kind":"message","message":1,"value":{"_tag":"Note","text":"worker stopped"}},"kind":"event","run":"r1","t":0}
@@ -7,7 +7,7 @@
 {"event":{"from":"r2","kind":"message","message":1,"value":{"_tag":"Note","text":"boss stopped"}},"kind":"event","run":"r1","t":0}
 {"from":"Logbook.Open","index":0,"kind":"transition","run":"r1","t":0,"to":null}
 {"action":"log","args":{"text":"boss stopped"},"kind":"action","run":"r1","t":0}
-{"input":{"book":"r1"},"ir":"sha256:f63d630994d2e7f5e9778c56e22ed98760d05e4eb1feca829a2d598d60417bfe","kind":"started","machine":"Boss","run":"r2","t":0}
+{"input":{"book":"r1"},"ir":"sha256:288f3620b17e185966dcf8f0c8f292c87cb375730ecb5d6811253623c1093c0c","kind":"started","machine":"Boss","run":"r2","t":0}
 {"kind":"entered","run":"r2","state":"Boss","t":0}
 {"kind":"entered","run":"r2","state":"Boss.Watching","t":0}
 {"args":{"book":"r1"},"invoke":1,"kind":"invoke.started","run":"r2","src":"Worker","state":"Boss.Watching","t":0}
@@ -16,7 +16,7 @@
 {"kind":"sent","message":1,"run":"r2","t":0,"to":"r1","value":{"_tag":"Note","text":"boss stopped"}}
 {"kind":"exited","run":"r2","state":"Boss","t":0}
 {"kind":"cancelled","run":"r2","t":0}
-{"input":{"book":"r1"},"ir":"sha256:f756a1020c45d2a7a17afc3c90cf06a1821a76c6a740a94e7d76476427198932","kind":"started","machine":"Worker","parent":"r2","run":"r2.1","t":0}
+{"input":{"book":"r1"},"ir":"sha256:0f33f9d20123fd2be3abb7c131970f3a164cbd82cfbbf443379c4440e4bf27e7","kind":"started","machine":"Worker","parent":"r2","run":"r2.1","t":0}
 {"kind":"entered","parent":"r2","run":"r2.1","state":"Worker","t":0}
 {"kind":"entered","parent":"r2","run":"r2.1","state":"Worker.Working","t":0}
 {"kind":"exited","parent":"r2","run":"r2.1","state":"Worker.Working","t":0}

@@ -1,8 +1,8 @@
 ---
 source: crates/roadbook-compiler/tests/fail.rs
 ---
-warning[RB0908]: no `spawn` fills the collection `kids`
- --> RB0908-never-spawned.road:8:12
+warning[RB0909]: no `spawn` fills the collection `kids`
+ --> RB0909-never-spawned.road:8:12
   |
 8 |   children kids: Child by string
   |            ^^^^

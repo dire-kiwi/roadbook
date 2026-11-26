@@ -1,4 +1,4 @@
-{"input":{"code":"<redacted>","owner":{"password":"<redacted>","user":"ada"}},"ir":"sha256:c88582a8b43b3315ecb3e618864558a5280784719f5ea93f0f208257d85d3d78","kind":"started","machine":"Keeper","run":"r1","t":0}
+{"input":{"code":"<redacted>","owner":{"password":"<redacted>","user":"ada"}},"ir":"sha256:7e15052a519c66d1eb735842247c5a415606eae5484cf40b85be328e8a1dac77","kind":"started","machine":"Keeper","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Keeper","t":0}
 {"kind":"entered","run":"r1","state":"Keeper.Asking","t":0}
 {"kind":"entered","run":"r1","state":"Keeper.Asking.Ready","t":0}
@@ -19,7 +19,7 @@
 {"kind":"exited","run":"r1","state":"Keeper.Finished","t":0}
 {"kind":"exited","run":"r1","state":"Keeper","t":0}
 {"kind":"done","output":null,"run":"r1","state":"Keeper.Finished","t":0}
-{"input":{"code":"<redacted>","owner":{"password":"<redacted>","user":"ada"}},"ir":"sha256:6878e2eb751823b9d7a3dabc8537ac6a7386f2bbb69b1a6f75b42bc0103ac3fb","kind":"started","machine":"Teller","parent":"r1","run":"r1.1","t":0}
+{"input":{"code":"<redacted>","owner":{"password":"<redacted>","user":"ada"}},"ir":"sha256:e5ad0c44d49416e05ab5d32425728b01d6343ab6f6ac406e9830e9a3518c85aa","kind":"started","machine":"Teller","parent":"r1","run":"r1.1","t":0}
 {"kind":"entered","parent":"r1","run":"r1.1","state":"Teller","t":0}
 {"kind":"entered","parent":"r1","run":"r1.1","state":"Teller.Listening","t":0}
 {"event":{"from":"r1","kind":"message","message":2,"value":{"_tag":"Ask","question":"<redacted>"}},"kind":"event","parent":"r1","run":"r1.1","t":0}

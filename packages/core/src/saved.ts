@@ -3,12 +3,16 @@
  * starts a run from one (execution.md, "Restoring a snapshot"), in the order the spec gives
  * them, each refusal with its reason.
  */
-import { type Field, type Ir, type Machine, parseTypeRef, refMachine, type State } from "./ir.ts"
+import { childrenOf, type Field, type Ir, isHistory, type Machine, parseTypeRef, refMachine, type State } from "./ir.ts"
 import { copyJson, type Json } from "./json.ts"
 import type { Saved, Snapshot } from "./types.ts"
 
-/** The `snapshotVersion` this runtime saves and restores. */
-export const SNAPSHOT_VERSION = 2
+/**
+ * The `snapshotVersion` this runtime saves. It restores this one, version 2, written before
+ * keyed spawn, which has no `spawned`, and version 1, written before history states, which has
+ * no `history` either.
+ */
+export const SNAPSHOT_VERSION = 3
 
 /** Why a saved snapshot was refused. */
 export type RefusalReason = "invalid" | "machine" | "ir" | "migration" | "ended" | "ref"
@@ -28,7 +32,7 @@ export type Checked =
   | { readonly ok: true; readonly saved: Saved; readonly migrated: string | null }
   | ({ readonly ok: false } & Refusal)
 
-/** The saved form of `snapshot`: the version added, and each timer's due time from `due`. */
+/** The saved form of `snapshot`: the version (always 2) added, and each timer's due time from `due`. */
 export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Saved => ({
   snapshotVersion: SNAPSHOT_VERSION,
   machine: snapshot.machine,
@@ -44,6 +48,7 @@ export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Sav
   nextInvoke: snapshot.nextInvoke,
   nextTimer: snapshot.nextTimer,
   nextMessage: snapshot.nextMessage,
+  history: snapshot.history,
   result: snapshot.result
 })
 
@@ -90,7 +95,10 @@ export const checkSaved = (ir: Ir, machine: string, json: unknown, migrate?: Mig
 
 // ---- the shape: snapshot.schema.json --------------------------------------------------------
 
-/** Whether `u` matches `snapshot.schema.json` with `snapshotVersion` 2. Its values are not checked. */
+/**
+ * Whether `u` matches `snapshot.schema.json`: version 3 with `history` and `spawned`, version 2
+ * with `history` only, or version 1 with neither. Its values are not checked.
+ */
 export const isSaved = (u: unknown): u is Saved => shapeIssue(u) === undefined
 
 const UPPER = /^[A-Z][A-Za-z0-9]*$/
@@ -117,7 +125,6 @@ const MEMBERS = [
   "input",
   "vars",
   "invokes",
-  "spawned",
   "timers",
   "nextInvoke",
   "nextTimer",
@@ -144,10 +151,16 @@ const membersIssue = (value: { readonly [key: string]: unknown }, names: Readonl
 /** What makes `json` not match snapshot.schema.json, or `undefined`. */
 const shapeIssue = (json: unknown): string | undefined => {
   if (!isObject(json)) return "not a JSON object"
-  const members = membersIssue(json, MEMBERS, "it")
+  const version = json["snapshotVersion"]
+  if (version === 1 && Object.hasOwn(json, "history")) return "it is version 1 and has history, which version 2 added"
+  if (version !== SNAPSHOT_VERSION && Object.hasOwn(json, "spawned")) {
+    return `it is version ${JSON.stringify(version)} and has spawned, which version 3 added`
+  }
+  const expected = version === 1 ? MEMBERS : version === 2 ? [...MEMBERS, "history"] : [...MEMBERS, "history", "spawned"]
+  const members = membersIssue(json, expected, "it")
   if (members !== undefined) return members
-  if (json["snapshotVersion"] !== SNAPSHOT_VERSION) {
-    return `snapshotVersion is ${JSON.stringify(json["snapshotVersion"])}, and this runtime reads ${SNAPSHOT_VERSION}`
+  if (version !== 1 && version !== 2 && version !== SNAPSHOT_VERSION) {
+    return `snapshotVersion is ${JSON.stringify(version)}, and this runtime reads 1, 2 and ${SNAPSHOT_VERSION}`
   }
   if (!matches(UPPER, json["machine"])) return "machine is not a machine name"
   if (!isRunId(json["run"])) return "run is not a run id"
@@ -168,7 +181,7 @@ const shapeIssue = (json: unknown): string | undefined => {
     if (issue !== undefined) return issue
     if (!isId(inv["id"]) || !matches(STATE_ID, inv["state"]) || !matches(NAME, inv["src"])) return "an invoke is malformed"
   }
-  const spawned = json["spawned"]
+  const spawned = json["spawned"] ?? []
   if (!Array.isArray(spawned)) return "spawned is not a list"
   for (const ch of spawned) {
     if (!isObject(ch)) return "a spawned child is not an object"
@@ -193,6 +206,17 @@ const shapeIssue = (json: unknown): string | undefined => {
   }
   for (const name of ["nextInvoke", "nextTimer", "nextMessage"]) {
     if (!isId(json[name])) return `${name} is not a positive integer`
+  }
+  if (version !== 1) {
+    const history = json["history"]
+    if (!isObject(history)) return "history is not an object"
+    for (const [id, record] of Object.entries(history)) {
+      if (!STATE_ID.test(id)) return `history has ${JSON.stringify(id)}, which is not a state id`
+      if (!Array.isArray(record) || record.length === 0 || !record.every((s) => matches(STATE_ID, s))) {
+        return `history.${id} is not a non-empty list of state ids`
+      }
+      if (new Set(record).size !== record.length) return `history.${id} names a state twice`
+    }
   }
   const result = json["result"]
   if (result !== null) {
@@ -232,11 +256,20 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
     last = entry.order
     if (entry.parent !== undefined && !active.has(entry.parent.id)) return `${id} is active but its parent is not`
     const { state } = entry
+    if (isHistory(state)) return `active names ${id}, which is a history state`
     const children = state.states.filter((c) => active.has(c.id)).length
     if (state.kind === "compound" && children !== 1) return `${id} is an active compound state with ${children} active children`
-    if (state.kind === "parallel" && children !== state.states.length) {
+    if (state.kind === "parallel" && children !== childrenOf(state).length) {
       return `${id} is an active parallel state whose regions are not all active`
     }
+  }
+
+  // What the history states recorded.
+  for (const [id, record] of Object.entries(saved.history ?? {})) {
+    const entry = states.get(id)
+    if (entry === undefined || !isHistory(entry.state)) return `history has ${id}, which is not a history state`
+    const issue = recordIssue(entry.state, entry.parent!, record, (s) => states.get(s))
+    if (issue !== undefined) return `history.${id} is not what ${id} could have recorded: ${issue}`
   }
 
   // The work.
@@ -253,7 +286,7 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
     if (inv.id >= saved.nextInvoke) return `invoke id ${inv.id} is not below nextInvoke`
   }
   const keys = new Set<string>()
-  for (const ch of saved.spawned) {
+  for (const ch of saved.spawned ?? []) {
     const decl = Object.hasOwn(m.children, ch.children) ? m.children[ch.children] : undefined
     if (decl === undefined) return `spawned child ${ch.id} is of ${ch.children}, which is not a collection of the machine`
     const keyIssue = valueIssue(ir, decl.key, ch.key, `the key of spawned child ${ch.id}`)
@@ -311,6 +344,53 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
   }
   const optional = m.vars.find((v) => isOptionalType(ir, v.type) && !Object.hasOwn(saved.vars, v.name))
   if (optional !== undefined) return `vars has no ${optional.name}, which is optional and always has a value`
+  return undefined
+}
+
+/**
+ * What makes `record` not a record history state `h` with parent `parent` could have made, or
+ * `undefined`. A shallow one records one child of a compound parent or every child of a
+ * parallel one; a deep one the leaves of a configuration below its parent. In document order
+ * either way.
+ */
+const recordIssue = (
+  h: State,
+  parent: State,
+  record: ReadonlyArray<string>,
+  lookup: (id: string) => { readonly state: State; readonly parent: State | undefined; readonly order: number } | undefined
+): string | undefined => {
+  const children = childrenOf(parent)
+  if (h.kind === "history") {
+    if (parent.kind === "compound") {
+      return record.length === 1 && children.some((c) => c.id === record[0]) ? undefined : `not one child of ${parent.id}`
+    }
+    const every = record.length === children.length && children.every((c, i) => c.id === record[i])
+    return every ? undefined : `not every child of ${parent.id}, in order`
+  }
+  // The leaves and their ancestors up to the parent must be a configuration below it.
+  const below = new Set<string>([parent.id])
+  let last = -1
+  for (const id of record) {
+    const entry = lookup(id)
+    if (entry === undefined) return `${id} is not a state of the machine`
+    if (entry.state.kind !== "atomic" && entry.state.kind !== "final") return `${id} is not an atomic or final state`
+    if (entry.order <= last) return "it is not in document order"
+    last = entry.order
+    let s: { readonly state: State; readonly parent: State | undefined } | undefined = entry
+    while (s !== undefined && s.state !== parent) {
+      below.add(s.state.id)
+      s = s.parent === undefined ? undefined : lookup(s.parent.id)
+    }
+    if (s === undefined) return `${id} is not below ${parent.id}`
+  }
+  for (const id of below) {
+    const state = lookup(id)!.state
+    const count = childrenOf(state).filter((c) => below.has(c.id)).length
+    if (state.kind === "compound" && count !== 1) return `${id} would have ${count} active children`
+    if (state.kind === "parallel" && count !== childrenOf(state).length) {
+      return `${id} would not have all its regions active`
+    }
+  }
   return undefined
 }
 

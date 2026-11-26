@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/vault.road",
@@ -897,7 +897,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:f65ec332f47398cad9507eb55d4dc92ec61ce99029252072b6a834898cd4b5d0"
+      "hash": "sha256:11bcdc4f47569a073243b132fdfb56b6f4d8b536e360c13138c2132c647df2e1"
     }
   }
 }

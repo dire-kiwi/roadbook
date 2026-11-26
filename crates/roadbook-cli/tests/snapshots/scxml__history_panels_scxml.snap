@@ -1,0 +1,35 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- History states of a parallel state. -->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Panels" datamodel="roadbook" initial="Panels_Both">
+  <parallel id="Panels_Both">
+    <transition event="Away" target="Panels_Out"/>
+    <history id="Panels_Both_Deep" type="deep">
+      <transition target="Panels_Both_L Panels_Both_R"/>
+    </history>
+    <history id="Panels_Both_Shallow" type="shallow">
+      <transition target="Panels_Both_L Panels_Both_R"/>
+    </history>
+    <state id="Panels_Both_L" initial="Panels_Both_L_L1">
+      <state id="Panels_Both_L_L1">
+        <transition event="Left" target="Panels_Both_L_L2"/>
+      </state>
+      <state id="Panels_Both_L_L2"/>
+    </state>
+    <state id="Panels_Both_R" initial="Panels_Both_R_R1">
+      <state id="Panels_Both_R_R1">
+        <transition event="Right" target="Panels_Both_R_R2"/>
+      </state>
+      <state id="Panels_Both_R_R2" initial="Panels_Both_R_R2_R3">
+        <state id="Panels_Both_R_R2_R3"/>
+      </state>
+    </state>
+  </parallel>
+  <state id="Panels_Out">
+    <transition event="Back" target="Panels_Both_Deep"/>
+    <transition event="BackShallow" target="Panels_Both_Shallow"/>
+  </state>
+</scxml>

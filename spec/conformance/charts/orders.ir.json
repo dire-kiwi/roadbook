@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/orders.road",
@@ -827,7 +827,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:87659d076a42bccdcdf132a6bc2fb24a7149746248990eeedf0cea5f6cbdbeee"
+      "hash": "sha256:ce476c9f805a78c0125d0aa5e47142cbacf245ae7a2b5d5ae3aa1de2c1afc5eb"
     },
     "Order": {
       "doc": "Reserve the items with the warehouse, then take the payment.",
@@ -1352,7 +1352,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4508915d9a9fb0b414a15c3140e7be3b3162561338fc316a714ba977df0d7d00"
+      "hash": "sha256:4acb625ac346689b1399e54cca1ebad79f5509d474ffaab2dc727e628f6a243e"
     }
   }
 }

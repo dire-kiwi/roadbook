@@ -2,7 +2,7 @@
 
 import type { Effect, Ir } from './ir.ts'
 import { own } from './ir.ts'
-import { effectText, invokeText, triggerText, walkStates } from './model.ts'
+import { effectText, invokeText, isHistory, kindText, triggerText, walkStates } from './model.ts'
 
 export type SearchKind = 'state' | 'event' | 'task' | 'machine' | 'error' | 'action'
 
@@ -33,7 +33,7 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
       }
     }
     walkStates(m.root, (s, _parent, depth) => {
-      if (depth > 0) out.push({ kind: 'state', name: s.name, label: `${machine}.${short(s.id)}`, machine, target: { type: 'state', id: s.id } })
+      if (depth > 0) out.push({ kind: 'state', name: s.name, label: `${machine}.${short(s.id)}${isHistory(s) ? ` (${kindText(s)})` : ''}`, machine, target: { type: 'state', id: s.id } })
       if (s.invoke) {
         out.push({
           kind: s.invoke.kind,

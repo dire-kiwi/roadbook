@@ -363,7 +363,7 @@ impl Redactor<'_> {
         for (name, value) in saved.vars.iter_mut() {
             self.var(m, name, value);
         }
-        for ch in saved.spawned.iter_mut() {
+        for ch in saved.spawned.iter_mut().flatten() {
             let params = self.collection(m, &ch.children).map(|c| &c.params);
             self.object(params.map_or(&[][..], |p| p), &mut ch.args);
         }

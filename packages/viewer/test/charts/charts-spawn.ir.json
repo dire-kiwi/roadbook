@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "packages/viewer/test/charts/spawn.road",
@@ -428,7 +428,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:b9ecde574f7384052404dc760b30033451b742b5858d0d1050fc35ca3ae48508"
+      "hash": "sha256:1074e49b1f2bba0f657e1ffe300cab2d56e93edb8222c2bb6b6396ff303af144"
     },
     "Job": {
       "doc": "A job with no result.",
@@ -540,7 +540,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:949854e5d10baa1379963126d3d6b71b01300d41a518df7cf0231c5aa15f90bf"
+      "hash": "sha256:54bbde9511b5b0d343d7b77c5fbd0a50f89ea747bc9d1eec054e953f808c71c1"
     },
     "Hub": {
       "doc": "Many sessions, one per connection.",
@@ -1317,7 +1317,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:988d5aca1f0ce3f5d666c2a64c3641e8f35c822fe59cc8cdee42ed605aebd88d"
+      "hash": "sha256:9c7d1ad3e521329e0d1adbea0ec9b54b3225e9d43c9270fb4e48a3c251b9f79f"
     }
   }
 }

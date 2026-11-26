@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/workers.road",
@@ -191,7 +191,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:3f651d5bd62679176ed229d4f1eb281e8f3aaa59e3713db2e10dddbee61acfce"
+      "hash": "sha256:ea114941b37d6ee259a772df819a88e87657553519fa6cb265ca9be61d45272e"
     },
     "Worker": {
       "doc": "Works until it is cancelled, then says so to the logbook and to its parent.",
@@ -360,7 +360,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:f756a1020c45d2a7a17afc3c90cf06a1821a76c6a740a94e7d76476427198932"
+      "hash": "sha256:0f33f9d20123fd2be3abb7c131970f3a164cbd82cfbbf443379c4440e4bf27e7"
     },
     "Boss": {
       "doc": "Watches a Worker, which it can restart or leave.",
@@ -626,7 +626,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:f63d630994d2e7f5e9778c56e22ed98760d05e4eb1feca829a2d598d60417bfe"
+      "hash": "sha256:288f3620b17e185966dcf8f0c8f292c87cb375730ecb5d6811253623c1093c0c"
     }
   }
 }

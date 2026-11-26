@@ -434,3 +434,22 @@ fn types_are_imported_as_types() {
         "{mixed}"
     );
 }
+
+/// History states are never active, so the union of state ids leaves them out.
+#[test]
+fn history_states_are_not_states_of_the_union() {
+    let ir = ir(
+        &mut MemoryLoader::new().with(
+            "h.road",
+            "machine H() {\n  event Go\n  event Back\n  initial P\n  state P {\n    initial A\n    \
+             history Last\n    deep history Deep\n    state A { on Go -> Q }\n  }\n  \
+             state Q { on Back -> P.Last  on Go -> P.Deep }\n}\n",
+        ),
+        "h.road",
+    );
+    let code = gen_ok(&ir);
+    assert!(
+        code.contains("readonly state: \"H\" | \"H.P\" | \"H.P.A\" | \"H.Q\"\n"),
+        "{code}"
+    );
+}

@@ -70,7 +70,7 @@ export interface UploadDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/upload/upload.road",
@@ -779,7 +779,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:44f67dc3b56bd1f9600167cde56b9f7ec7880b5125794bd8a0926ce8aaa1eb56"
+      "hash": "sha256:d9b13cbae45df8b6769171b3ea54cb546fde4e60249c0cd986de4ea8b9ef7307"
     }
   }
 }

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/saved.road",
@@ -370,7 +370,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:742be138418d8169a43c384901a9e4a5fa7551911c74196ecef43df2fbd3bfb0"
+      "hash": "sha256:1fa81f452da00ee2767aeec05233a81ed2e52266bd1c14968a8ba72f0fa0cede"
     },
     "Shop": {
       "doc": "Pays through a child machine.",
@@ -537,7 +537,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:b0aa0265fb7300204cd4d899d20d4e5871eee608a1b17c32acb938d9032df62b"
+      "hash": "sha256:d88779f5271ef7275d837f47134eeb23f06425b2d5de61cc65b73d6ee6a335cc"
     },
     "Pay": {
       "doc": "Quotes a price, then charges it.",
@@ -795,7 +795,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d0bd9cf14d323add093a2bb144d6b680f77539343505e8f1ca3cb1b9ad81a5c2"
+      "hash": "sha256:d57f6abb799593153fc90494c80b262900698880e21da1047a14f5988a31e8ea"
     },
     "Reminder": {
       "doc": "Rings a second after it starts waiting.",
@@ -943,7 +943,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d099218f1a00fb97f60e55c4be28c50f726b92855b5c0d3699ee1ba128621d25"
+      "hash": "sha256:b26b68226ae24916fb82b7a9bd55153deb0f87ba39cf990c75abacc7fca343d6"
     },
     "Order": {
       "doc": "An order kept as a snapshot between requests: it waits three days for\npayment, ships, and waits for delivery.",
@@ -1329,7 +1329,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:f36438279bd13f89beba13d798aea779199fdd367f0a0e75f4a9810d3a5a715b"
+      "hash": "sha256:6ae1c132e34692919ad8977d8619a1c8414fb382b9cd13dc7ff5f32d85d9ec6c"
     }
   }
 }

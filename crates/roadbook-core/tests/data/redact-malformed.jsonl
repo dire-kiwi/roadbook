@@ -1,4 +1,4 @@
-{"input":{"code":"<redacted>","owner":{"extra":"<redacted>","password":"<redacted>","user":"ada"},"pin":"<redacted>"},"ir":"sha256:6878e2eb751823b9d7a3dabc8537ac6a7386f2bbb69b1a6f75b42bc0103ac3fb","kind":"started","machine":"Teller"}
+{"input":{"code":"<redacted>","owner":{"extra":"<redacted>","password":"<redacted>","user":"ada"},"pin":"<redacted>"},"ir":"sha256:e5ad0c44d49416e05ab5d32425728b01d6343ab6f6ac406e9830e9a3518c85aa","kind":"started","machine":"Teller"}
 {"kind":"entered","state":"Teller"}
 {"kind":"entered","state":"Teller.Listening"}
 {"event":{"kind":"event","value":{"_tag":"Ask","extra":"<redacted>","question":"<redacted>"}},"kind":"event"}

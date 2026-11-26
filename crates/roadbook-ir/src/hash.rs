@@ -368,12 +368,25 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
 
 /// Removes every `doc`, `span`, `text` and `sensitive` member, recursively, except the keys
 /// of a machine's `children` map, which are names the chart chose (a collection may be named
-/// `text`).
+/// `text`). Also removes what IR 0.5 added where it says nothing: a machine's empty
+/// `children` and a `send` effect's `null` `key`, so a machine that spawns nothing keeps the
+/// hash it had before keyed spawn.
 fn strip(v: &mut Value) {
     match v {
         Value::Object(m) => {
             for key in ["doc", "span", "text", "sensitive"] {
                 m.remove(key);
+            }
+            if m.contains_key("root")
+                && m.get("children")
+                    .is_some_and(|c| c.as_object().is_some_and(Map::is_empty))
+            {
+                m.remove("children");
+            }
+            if m.get("kind").and_then(Value::as_str) == Some("send")
+                && m.get("key").is_some_and(Value::is_null)
+            {
+                m.remove("key");
             }
             for (key, value) in m.iter_mut() {
                 match value {

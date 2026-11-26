@@ -46,7 +46,7 @@ export interface BatchDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/upload/batch.road",
@@ -802,7 +802,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:5ae3e0a026f8675869a0f12ffa5f35db04c18a1fac7f8ab5058fd010c9b2a3e9"
+      "hash": "sha256:dfcf008a43c31041fab920be6cc0c941a72e4871742f9a4979e823439c4d19fb"
     },
     "Upload": {
       "doc": "Upload a file in chunks. Can be paused, and reports its progress to whoever invoked it.",
@@ -1342,7 +1342,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:44f67dc3b56bd1f9600167cde56b9f7ec7880b5125794bd8a0926ce8aaa1eb56"
+      "hash": "sha256:d9b13cbae45df8b6769171b3ea54cb546fde4e60249c0cd986de4ea8b9ef7307"
     }
   }
 }

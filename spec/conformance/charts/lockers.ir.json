@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/lockers.road",
@@ -348,7 +348,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:3c4b14915093f17ffc9b8640fb3df8c20c3b9bb7b4b1ed6461776c051c376f2a"
+      "hash": "sha256:940f29c829c198272e2dc1a8d1f7ccf9656532df4ead4dca60bcd8b31436b3e0"
     },
     "Lockers": {
       "doc": "Lockers by number.",
@@ -779,7 +779,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:9b6a6064390ec0cba1e2c4511704ff027c234f127004e925901be0bf70a117b3"
+      "hash": "sha256:2cf11cdcb2a4f9980b400097bfc3a6246a6d1fe2eefd3a1c36927a82611f05e8"
     }
   }
 }

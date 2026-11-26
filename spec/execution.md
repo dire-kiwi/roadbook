@@ -2,12 +2,13 @@
 
 This page is the algorithm both runtimes implement: what the pure core does with a snapshot and an input, what it asks the driver to do, and how the driver carries that out. It is precise enough that two independent implementations produce the same [trace](trace.md) byte for byte, and the [conformance cases](conformance/) hold them to it. The design rationale is in [semantics](../docs/design/semantics.md); this page only says what happens.
 
-It covers atomic, compound, parallel and final states, events, guards, `invoke` of tasks and machines, `after`, `always` and `done`, [messages between runs](#messages-between-runs) (`send`, `emit`, `on name.Event` and `ref`, milestone 5), [saving and restoring](#saving-and-restoring) a run (milestone 6), and [spawned children](#spawned-children) (keyed `spawn`). Parallel states change nothing for a machine that has none: every rule below reduces to the one it replaced, and the traces of such machines are unchanged.
+It covers atomic, compound, parallel and final states, events, guards, `invoke` of tasks and machines, `after`, `always` and `done`, [messages between runs](#messages-between-runs) (`send`, `emit`, `on name.Event` and `ref`, milestone 5), [saving and restoring](#saving-and-restoring) a run (milestone 6), [history states](#history-states), and [spawned children](#spawned-children) (keyed `spawn`). Parallel states, history states and spawned children change nothing for a machine that has none: every rule below reduces to the one it replaced, and the traces of such machines are unchanged.
 
 ## Terms
 
 - A **run** is one instance of a machine, from `start` until it finishes. A run's **status** is `running`, `done`, `failed`, `cancelled` or `defect`; only `running` is not final.
 - The **active states** are the states the run is in. They form a tree from the root (the machine itself, a compound state whose id is the machine's name): an active compound state has exactly one active child, and an active parallel state has all its children active. Without parallel states the tree is a chain from the root down to one atomic or final state. The root is active for the whole run.
+- A **history state** is a state of kind `history` (shallow) or `deepHistory` (deep): a pseudo-state in the `states` of a compound or parallel state other than the root, its **parent**. It is never active and has no children, effects, work or transitions; it is only ever a transition's target ([history states](#history-states)). On this page the **children** of a state are the states in its `states` that are not history states, so a history state is never a region, an initial state, an active state or an active leaf.
 - A **region** is a child of a parallel state. A region may be a state of any kind: compound, parallel, atomic or final.
 - An **active leaf** is an active state with no active child: an atomic or final state. Without parallel states there is exactly one.
 - **Document order** is the order of a pre-order walk of the IR's state tree: a state comes before its children, and children are in `states` order. **Innermost first** means reverse document order; for a chain it is leaf to root.
@@ -54,6 +55,7 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
   "nextInvoke": 2,
   "nextTimer": 2,
   "nextMessage": 1,
+  "history": {},
   "result": null
 }
 ```
@@ -71,6 +73,7 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
 | `timers` | `[{"id", "state", "index", "delay"}]`: the `after` timers that are running, in the order they were started. `index` is the position in the state's `transitions` of the first transition of the timer's `after` block, and `delay` the evaluated delay in milliseconds. |
 | `nextInvoke`, `nextTimer` | The id the next invoke or timer will get. Both start at 1. Ids are never reused within a run, which is what lets the core recognise a stale outcome. Invokes and spawned children take their ids from the one sequence `nextInvoke`, so an id names one or the other, and the child run of either is `<run>.<id>`. |
 | `nextMessage` | The id the next `send` or `emit` effect will get, from 1. A message is named in traces by its sender's run id and this id. |
+| `history` | What each history state has recorded ([history states](#history-states)), keyed by the history state's id: a list of state ids, in document order. A history state whose parent no microstep has exited yet has no member. Starts as `{}`. |
 | `result` | `null` while running and when cancelled. `{"output": value}` when done (`value` is `null` for a machine that returns nothing), `{"error": value}` when failed, `{"defect": defect}` when the run ended with a [defect](#defects). |
 
 A **saved snapshot**, the form host code stores, is this snapshot with a format version and each timer's due time added ([saving and restoring](#saving-and-restoring)).
@@ -125,7 +128,7 @@ start(ir, name, run, input, fns):
   m    = ir.machines[name]
   snap = { machine: name, run, ir: m.hash, status: "running", active: [], input, vars: {},
            invokes: [], spawned: [], timers: [], nextInvoke: 1, nextTimer: 1, nextMessage: 1,
-           result: null }
+           history: {}, result: null }
   emit trace { kind: "started", machine: name, ir: m.hash, input }
   for v in m.vars, in order:
     if v.init != null:          snap.vars[v.name] = eval(v.init)
@@ -143,7 +146,7 @@ A variable's initial value may read the parameters and the variables declared be
 ```
 defaultEntry(s):
   if s.kind == "compound": c = s.initial; return [c] + defaultEntry(c)
-  if s.kind == "parallel": return the concatenation of [c] + defaultEntry(c) for each c in s.states, in order
+  if s.kind == "parallel": return the concatenation of [c] + defaultEntry(c) for each child c of s, in order
   return []
 ```
 
@@ -285,6 +288,7 @@ microstep(T):                         # each t in T belongs to a state, t.source
   for t in T, in order:
     emit trace { kind: "transition", from: t.source.id, index: t's index in t.source.transitions, to: t.target }
   exits = the union of exitSet(t) for t in T          # computed before anything is exited
+  recordHistory(exits)
   for s in exits, innermost first: exitState(s)
   for t in T, in order: runEffects(t.effects)
   entries = the union of entrySet(t) for t in T with a target
@@ -303,9 +307,11 @@ entrySet(t):
   path = the states from just below domain(t) down to the target, outermost first
   set = path + defaultEntry(target)
   for p in path, other than the target, if p.kind == "parallel":
-    for c in p.states, if c is not in path: set = set + [c] + defaultEntry(c)
+    for each child c of p, if c is not in path: set = set + [c] + defaultEntry(c)
   return set
 ```
+
+That is `entrySet` for a target that is not a history state. A target that is one is [below](#history-states).
 
 With one transition this is: the `transition` record; the exits, innermost first; the effects; the entries, outermost first. A transition with no target contributes only its `transition` record and its effects. The transitions of `T` never conflict, so their exit sets are disjoint, and so are their entry sets. Exiting innermost first across regions exits the later region's states before the earlier region's ([exiting](#exiting-and-entering-a-state)), while the effects run in the order of `T`, the earlier region's first.
 
@@ -321,6 +327,9 @@ With one transition this is: the `transition` record; the exits, innermost first
 | `P.R.X -> P.S.Y`, from region `R` to region `S` | the nearest compound proper ancestor of `P` | `P` and all its active descendants | `P`, `R` and every other region but `S` by default entry, and `S`, then the path down to `Y`, and `Y`'s default entry |
 | `P.R -> P.R.Y`, a region into its own child | the nearest compound proper ancestor of `P` | `P` and all its active descendants | `P`, the path to `Y` and its default entry, and every other region by default entry |
 | `X -> P.S.Y`, from outside `P` | the least common compound ancestor | as for any transition | `P`, every region but `S` by default entry, the path down to `Y` and its default entry |
+| `X -> C.H`, `H` a history state of `C`, from outside `C` | the least common compound ancestor | as for any transition | `C`, and what `H` recorded, or `C`'s default entry |
+| `C.A -> C.H`, from inside `C` | `C` (if compound) | `A` and its active descendants, not `C` | what `H` recorded when `C` was last exited, or `C`'s default entry, not `C` itself |
+| `C -> C.H`, written in `C` | the least common compound ancestor of `C` | `C` and its active descendants, recording them | `C`, and what `H` just recorded: the states `C` was in |
 
 The entries are in document order, so the regions of a parallel state are entered one after the other, each with everything below it, in the order the regions are written.
 
@@ -434,6 +443,37 @@ So a state's work stops before its own exit effects run, and the `exited` record
 
 In a microstep, then, the order is: the `transition` records, one per transition; for each state exited, innermost first, its invoke cancelled, its timers cancelled, its exit effects, `exited`; the transitions' effects, transition by transition; for each state entered, in document order, `entered` and its entry effects. No work is started during a microstep.
 
+### History states
+
+A history state `h` with parent `p` records where `p` was each time a microstep exits `p`, and a transition that targets `h` enters those states again.
+
+```
+recordHistory(exits):                 # before any state of exits is exited
+  for s in exits, for each history state h in s.states:
+    if h.kind == "history":     snap.history[h.id] = the active children of s, in document order
+    if h.kind == "deepHistory": snap.history[h.id] = the active leaves that are proper descendants
+                                                     of s, in document order
+
+entrySet(t), when t.target is a history state h with parent p:
+  if snap.history has h.id: targets = snap.history[h.id]
+  elif p.kind == "compound": targets = [p.initial]
+  else:                      targets = the children of p         # every region
+  set = []
+  for r in targets:
+    set = set ∪ (the states from just below domain(t) down to r) ∪ defaultEntry(r)
+  for q in set, if q.kind == "parallel":          # once: a region added with its default
+    for c in the children of q, if neither c nor any descendant of c is in set:     # entry
+      set = set ∪ [c] ∪ defaultEntry(c)           # leaves no parallel state incomplete
+  return set
+```
+
+- **What is recorded.** A shallow history state records its parent's active children: one for a compound parent, every region for a parallel one. A deep one records the active leaves below its parent, atomic and final states, in every region. Each record replaces the one before. It is recorded from the active states as they are before the microstep exits anything, so the record is where `p` was at the end of the previous microstep. Only a microstep records: `finish` and `cancelRun` exit states without recording, and `failWithDefect` exits none. A runtime error in a step discards what the step recorded with the rest of the step.
+- **Entering.** Entering `h` enters what it recorded, or, with no record, the states directly below `p` that `p`'s default entry starts with. Each of those states gets its default entry: a shallow record's child its `initial` chain or every region, a deep record's leaves nothing more. Every state between the domain and them is entered too, and a region of a parallel state on the way that none of them is in gets its default entry, as for any target. A deep record holds a leaf in every region below `p`, so no region below `p` is entered by default. `h` itself is never entered: there is no `entered` record for it, and it is never in `active`. The `transition` record's `to` is `h`'s id.
+- **The domain** is `domain(t)` with `h` as the target, as for any state: the nearest compound proper ancestor of the source that is a proper ancestor of `h`. It does not depend on what `h` recorded. From outside `p` that is above `p`, so `p` is entered. From inside a compound `p` it is `p`, so `p` is neither exited nor recorded by this transition, and what is entered is what `p` recorded when it was last exited. (SCXML computes the domain from the states the history restores, which differs only for a transition from inside `p`.) From inside a parallel `p` the domain is above `p`, which is exited, recorded and entered again as recorded.
+- **Restored states are entered**, with their `entry` effects, their `entered` records and, once the step has settled, new invokes and timers, as on any entry. An entered final state completes its parent as usual (`complete`). Nothing else is restored: variables keep their values, and the work that ran in those states before, an invoked child run among it, is not resumed.
+- **Order.** A microstep records before it computes its entries, so a transition that exits `p` and targets `h` (from outside `p`, or from inside a parallel `p`) enters what `p` was a moment before: the same states, entered again.
+- With one transition and a recorded or default `targets` of one state, this is `entrySet` above with that state as the target, except that the domain is `h`'s.
+
 ## Settling
 
 After the input's microstep (and after the initial entry in `start`), the core takes eventless transitions until none is enabled:
@@ -513,22 +553,11 @@ finish(f):
                               : { kind: "failed", state: f.id, error: value }
 ```
 
-The output or error is evaluated right after `f`'s entry effects, before any exit effect runs. Then every active state is exited, innermost first, with its exit effects, as on any exit: this is when the root's `exit` effects run, and when timers on the root are cancelled. Then the spawned children still running are stopped, after every exit effect ([spawned children](#spawned-children)). A message an exit effect sends a child is queued before the stop, but the stop is a cancel request, which a run takes before anything queued, so whether the child takes the message first is up to the scheduler, as for any message to a run cancelled in the same step ([conformance](conformance/README.md#how-a-runner-works)); a chart cannot rely on it. Settling stops and no work is started, so children spawned in this macrostep never start.
-
-```
-stopChildren():
-  for ch in snap.spawned, in order:
-    emit trace { kind: "spawn.stopped", spawn: ch.id, children: ch.children, key: ch.key }
-    emit spawn.stop { spawn: ch.id }
-  snap.spawned = []
-  clear the pending spawns
-```
-
-The run's result is the output (an Effect success, a Rust `Ok`) or the error (the Effect error channel, a Rust `Err` of the machine's error enum).
+The output or error is evaluated right after `f`'s entry effects, before any exit effect runs. Then every active state is exited, innermost first, with its exit effects, as on any exit (but no history is recorded: the run is over): this is when the root's `exit` effects run, and when timers on the root are cancelled. Then the spawned children still running are stopped, after every exit effect ([spawned children](#spawned-children)). A message an exit effect sends a child is queued before the stop, but the stop is a cancel request, which a run takes before anything queued, so whether the child takes the message first is up to the scheduler, as for any message to a run cancelled in the same step ([conformance](conformance/README.md#how-a-runner-works)); a chart cannot rely on it. Settling stops and no work is started. The run's result is the output (an Effect success, a Rust `Ok`) or the error (the Effect error channel, a Rust `Err` of the machine's error enum).
 
 ## Cancelling from outside
 
-The input `{"kind": "cancel"}` exits every active state, innermost first (in reverse document order, so the later regions of a parallel state first), exactly as `exitState` does: each state's invoke and timers are cancelled and its exit effects run. Then the spawned children still running are stopped, as when the run finishes, the status becomes `cancelled` and a `cancelled` record is written. There is no `event` record for a cancel.
+The input `{"kind": "cancel"}` exits every active state, innermost first (in reverse document order, so the later regions of a parallel state first), exactly as `exitState` does: each state's invoke and timers are cancelled and its exit effects run. No history is recorded, and `history` keeps what it had. Then the spawned children still running are stopped, as when the run finishes, the status becomes `cancelled` and a `cancelled` record is written. There is no `event` record for a cancel.
 
 ```
 cancelRun():
@@ -773,11 +802,11 @@ Only top-level runs are saved: host code holds no handle to a child run.
 
 ### The saved snapshot
 
-A saved snapshot is the core's [snapshot](#snapshot), as the run's last step left it, with two additions: `snapshotVersion`, which is `2`, and a `due` member on each timer, from the driver ([time](#time)). Its schema is [`snapshot.schema.json`](snapshot.schema.json). It holds the **real values**, those of `sensitive` parameters and variables and fields too: a restored run goes on with them, so nothing in a saved snapshot is [redacted](#redaction). Only the copy of it in a `restored` record is.
+A saved snapshot is the core's [snapshot](#snapshot), as the run's last step left it, with two additions: `snapshotVersion`, which is `3`, and a `due` member on each timer, from the driver ([time](#time)). Its schema is [`snapshot.schema.json`](snapshot.schema.json). It holds the **real values**, those of `sensitive` parameters and variables and fields too: a restored run goes on with them, so nothing in a saved snapshot is [redacted](#redaction). Only the copy of it in a `restored` record is.
 
 ```jsonc
 {
-  "snapshotVersion": 2,
+  "snapshotVersion": 3,
   "machine": "Order",
   "run": "r1",                                  // the id the run had when it was saved
   "ir": "sha256:6ae1…",
@@ -791,12 +820,13 @@ A saved snapshot is the core's [snapshot](#snapshot), as the run's last step lef
   "nextInvoke": 1,
   "nextTimer": 2,
   "nextMessage": 1,
+  "history": {},
   "result": null
 }
 ```
 
+- **Versions 1 and 2.** Version 2 is the same without `spawned`, as written before keyed spawn, and version 1 is also without `history`, as written before history states: a runtime restores one as if it had `"spawned": []` (and `"history": {}`), and the `restored` record holds it as it was given. Save and suspend always write version 3. A machine with no history state and no `children` keeps its hash from before both, so its older snapshots still restore.
 - **`due`** is an absolute time on the driver's clock, in integer milliseconds: since the Unix epoch in production, virtual time in conformance. A deadline is kept rather than the time remaining because the run is in its state the whole time it is saved: an order that waits three days for payment expires three days after it began waiting, however long it spent in a store. A host can also find when to wake a saved run from its earliest `due`.
-- **Version 2** added `spawned` ([spawned children](#spawned-children)); a version 1 snapshot, which has no `spawned`, is refused as `invalid`. (It was saved with an IR before 0.3, so its hash would not match either.)
 - **What is not in it.** Inputs queued but not yet taken (a request handler never has any, since it saves an idle run); the state of child runs, invoked or spawned, which start again from the beginning ([restoring](#restoring-a-snapshot)); messages kept for a child that has not claimed its invoke; and subscriptions.
 - **The same in both runtimes.** Values are in their JSON form ([values](#values)), `active` is in document order, and `invokes`, `spawned` and `timers` are in the order they were started, so the two runtimes save the same run as the same document, and either restores what the other saved. Conformance compares saved snapshots as [canonical JSON](ir.md#canonical-json).
 - **Numbers.** A JSON number's form does not matter. Wherever a saved snapshot has an integer (`snapshotVersion`, the ids, a timer's `index`, `delay` and `due`, an `int` or `duration` value), one written as a float with no fraction (`1.0`, `10000.0`, `-0.0`) is that integer, as JSON Schema's `integer` and JavaScript read it; a runtime always writes its integers in integer form (`2`, and `-0` as `0`).
@@ -808,13 +838,13 @@ Restoring checks the saved snapshot against the IR the runtime was given, refuse
 
 | Reason | Refused when |
 | --- | --- |
-| `invalid` | It does not match `snapshot.schema.json`, or its `snapshotVersion` is not `2`. |
+| `invalid` | It does not match `snapshot.schema.json`, or its `snapshotVersion` is not `1`, `2` or `3` (a version 1 snapshot has no `history` and no `spawned`, a version 2 one has `history`, a version 3 one both). |
 | `machine` | The IR has no machine named `machine`, or it is not the machine restore was asked to restore (TypeScript `OrderLive.restore` restores only `Order`). |
 | `ir` | Its `ir` is not the machine's hash in the IR and no migration was given, or the migration's result has another hash too. |
 | `migration` | The migration failed: it threw (anything at all), panicked or returned an error. (Its result is checked from the top, as a snapshot of the machine being restored, the one the old snapshot names when restore was not asked for one: a result that is not a snapshot is `invalid`, one of another machine `machine`, and one that still has another hash `ir`.) |
 | `ended` | Its `status` is not `running`. A run that ended with a defect is `ended` whatever its defect's `kind`: the schema requires only that it has one, so a kind this version does not name is not `invalid`. |
 | `ref` | The machine has a parameter of type `ref M`, `ref M?` or `ref M[]`, or an alias of one ([not yet specified](#not-yet-specified)). |
-| `invalid` | It does not fit the machine: its `status` is `running` but its `result` is not `null` (a run has a result only once it has ended); `active` is not a configuration in document order (the root first, each other state's parent active, one active child for each active compound state, every child for each active parallel state); an `invokes` entry's state is not active, has no invoke of `src`, or has two entries; a `timers` entry's state is not active, or its `index` is not the first transition of an `after` block of that state, or two entries have the same state and index; a `spawned` entry's `children` is not a collection of the machine, its `key` does not decode as the collection's key type, its `args` do not have exactly the parameters of the collection's machine or do not decode as their types, or two entries of one collection have the same key; an id is repeated (among `invokes` and `spawned` together, or among `timers`) or not below `nextInvoke` or `nextTimer`; `input` does not have exactly the machine's parameters, or `vars` has a name that is not one of its variables, or lacks an optional variable; or a value does not decode as its declared type, as a machine's arguments must. A record, an error or an event decodes only with exactly the members its type declares (and an error's or event's `_tag`): one with a member its type does not declare is `invalid`. |
+| `invalid` | It does not fit the machine: its `status` is `running` but its `result` is not `null` (a run has a result only once it has ended); `active` is not a configuration in document order (the root first, each other state's parent active, one active child for each active compound state, every child for each active parallel state, and no history state); an `invokes` entry's state is not active, has no invoke of `src`, or has two entries; a `timers` entry's state is not active, or its `index` is not the first transition of an `after` block of that state, or two entries have the same state and index; a `spawned` entry's `children` is not a collection of the machine, its `key` does not decode as the collection's key type, its `args` do not have exactly the parameters of the collection's machine or do not decode as their types, or two entries of one collection have the same key; an id is repeated (among `invokes` and `spawned` together, or among `timers`) or not below `nextInvoke` or `nextTimer`; `input` does not have exactly the machine's parameters, or `vars` has a name that is not one of its variables, or lacks an optional variable; a `history` key is not the id of one of its history states, or its value is not one that history state could have recorded (for a `history` state, one child of a compound parent or every child of a parallel parent; for a `deepHistory` state, the leaves of a configuration below its parent: atomic or final states which, with their ancestors up to and including the parent, have one child for each compound state and every child for each parallel state among them; in document order either way); or a value does not decode as its declared type, as a machine's arguments must. A record, an error or an event decodes only with exactly the members its type declares (and an error's or event's `_tag`): one with a member its type does not declare is `invalid`. |
 
 **Migration.** When the hashes differ, the host may give a **migration**: a function from the old saved snapshot to a new one, both plain JSON (TypeScript `(saved: Json) => Json`, Rust `Fn(serde_json::Value) -> Result<serde_json::Value, String>`). It is called once, and only when the hashes differ. Its result is checked from the top as if it had been given instead, except that a second migration is never applied. It is how a deployment that changed a chart (renamed a variable, added a state) keeps its saved runs: the migration rewrites `ir`, the names, and whatever else must change. It needs no IR of the old chart; it sees only the data.
 
@@ -823,7 +853,8 @@ Restoring checks the saved snapshot against the IR the runtime was given, refuse
 ```
 restore(ir, saved, run, now, migrated, fns):
   m    = ir.machines[saved.machine]           # every check above has passed
-  snap = saved without snapshotVersion, with run = run and no due on the timers
+  snap = saved without snapshotVersion, with run = run, no due on the timers, history = {}
+         if it has none (version 1), and spawned = [] if it has none (versions 1 and 2)
   emit trace { kind: "restored", machine: saved.machine, ir: m.hash, migrated, snapshot: saved }
   for ch in snap.spawned, in order:
     src = the machine of collection ch.children

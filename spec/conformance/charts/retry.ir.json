@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/retry.road",
@@ -912,7 +912,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:cd16ce20e0eb07f034ed46f07e295cd9a2cd2aa81acd96ca728dd3f26a87c82a"
+      "hash": "sha256:2ab68675ec3c931080ecb28af40b37206d28a06001cf1b16630f8ce405f5625a"
     }
   }
 }

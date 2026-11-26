@@ -6,7 +6,7 @@ import type { Ir, State } from './ir.ts'
 import { own } from './ir.ts'
 import type { Layout, Point, Box } from './layout.ts'
 import { machineView, stateBox } from './layout.ts'
-import { METRICS, eventKey, estimateWidth, refMachine, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
+import { METRICS, eventKey, estimateWidth, historyMark, historyText, isHistory, refMachine, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
 import type { EdgeKind, EventRef, Measure, Row } from './model.ts'
 import { DARK, DIAGRAM_CSS, FONTS, LIGHT } from './style.ts'
 
@@ -150,8 +150,60 @@ function pillRest(r: Row): string {
   return `${esc(rest.slice(0, -tail.length))} <tspan class="rb-kw">as</tspan> <tspan class="rb-alias">${esc(r.alias!)}</tspan>`
 }
 
+/**
+ * A history state: a circle marked `H` (shallow) or `H*` (deep) inside its parent. Its outline
+ * is a `rb-box` rect rounded into a circle, so the modes' rings and marks fit it as any box.
+ */
+function renderHistory(state: State, parent: State | null, g: Box, annotate?: Annotations): string {
+  const mark = annotate?.state?.(state.id)
+  const cls = ['rb-state', `rb-kind-${state.kind}`, 'rb-leaf', 'rb-history', mark?.cls ?? ''].filter(Boolean).join(' ')
+  const d = Math.min(g.width, g.height)
+  const r = d / 2
+  const what = parent ? historyText(state, parent) : ''
+  let s = `<g class="${cls}" data-state="${esc(state.id)}" transform="translate(${n(g.x + (g.width - d) / 2)},${n(g.y + (g.height - d) / 2)})">`
+  s += `<title>${esc(state.id)} (${state.kind === 'deepHistory' ? 'deep history' : 'history'})${state.doc ? ' - ' + esc(state.doc) : ''}${what ? '\n' + esc(what) : ''}${mark?.title ? '\n' + esc(mark.title) : ''}</title>`
+  s += `<rect class="rb-box" width="${n(d)}" height="${n(d)}" rx="${n(r)}"/>`
+  s += `<text class="rb-history-mark" x="${n(r)}" y="${n(r + 4.2)}" text-anchor="middle">${esc(historyMark(state))}</text>`
+  if (mark?.badge) s += badge(mark.badge, d, 0)
+  return s + '</g>'
+}
+
+/**
+ * Moves the end of a route that stops on the square around a history state's circle onto the
+ * circle. ELK spreads the arrows into a node along its side, so an arrow may come in beside the
+ * circle: its last segment, and the end of the one before, are first moved towards the centre
+ * (keeping the route orthogonal) so that it meets the circle well inside its edge.
+ */
+function clipToCircle(points: Point[], box: Box): Point[] {
+  if (points.length < 2) return points
+  const pts = points.map((p) => ({ ...p }))
+  const end = pts[pts.length - 1]!
+  const from = pts[pts.length - 2]!
+  const r = Math.min(box.width, box.height) / 2
+  const c = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  const max = r * 0.6
+  if (Math.abs(end.x - from.x) < 0.01 && Math.abs(end.x - c.x) > max) end.x = from.x = c.x + Math.sign(end.x - c.x) * max
+  else if (Math.abs(end.y - from.y) < 0.01 && Math.abs(end.y - c.y) > max) end.y = from.y = c.y + Math.sign(end.y - c.y) * max
+  // The first point of the line from `from` through `end` at distance r from the centre: the
+  // end moves on along it into the square, or back, onto the circle.
+  const dx = end.x - from.x
+  const dy = end.y - from.y
+  const fx = from.x - c.x
+  const fy = from.y - c.y
+  const a = dx * dx + dy * dy
+  const b = 2 * (fx * dx + fy * dy)
+  const k = fx * fx + fy * fy - r * r
+  const disc = b * b - 4 * a * k
+  if (a === 0 || k <= 0 || disc < 0) return pts
+  const t = (-b - Math.sqrt(disc)) / (2 * a)
+  if (t < 0) return pts
+  pts[pts.length - 1] = { x: from.x + t * dx, y: from.y + t * dy }
+  return pts
+}
+
 function renderState(state: State, parent: State | null, collapsed: boolean, g: Box, measure: Measure, interactive: boolean, annotate?: Annotations): string {
   const M = METRICS
+  if (isHistory(state)) return renderHistory(state, parent, g, annotate)
   const box = stateBox(state, measure, collapsed)
   const isContainer = state.states.length > 0 && !collapsed
   const inset = state.kind === 'final' ? M.finalInset : 0
@@ -278,10 +330,10 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
     else leaves += svg
   }
 
-  const edge = (id: string, kind: EdgeKind, attrs: string, port: boolean, inner: boolean, mk?: Mark | null) => {
+  const edge = (id: string, kind: EdgeKind, attrs: string, port: boolean, inner: boolean, mk?: Mark | null, toHistory?: Box) => {
     const e = layout.edges[id]
     if (!e || e.points.length < 2) return ''
-    const d = roundedPath(e.points)
+    const d = roundedPath(toHistory ? clipToCircle(e.points, toHistory) : e.points)
     // A transition written on a compound state leaves from a dot on the container's border;
     // one from a state hidden inside a collapsed one from a hollow square.
     const p0 = e.points[0]!
@@ -314,7 +366,10 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
       const inner = view.visible(state.id) !== state.id
       const isContainer = state.states.length > 0 && !(here?.collapsed ?? false)
       const mark = opts.annotate?.transition?.(state.id, index)
-      edgePaths += edge(id, kind, ` data-state="${esc(state.id)}" data-transition="${index}"`, isContainer, inner, mark)
+      // An arrow to a history state drawn as itself ends on its circle.
+      const to = drawn.get(t.target)
+      const circle = to && isHistory(to.state) && view.visible(t.target) === t.target ? layout.nodes[t.target] : undefined
+      edgePaths += edge(id, kind, ` data-state="${esc(state.id)}" data-transition="${index}"`, isContainer, inner, mark, circle)
       const e = layout.edges[id]
       if (e && e.label) labels += renderLabel(state, index, kind, e.label, mark)
     })
@@ -376,6 +431,11 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
       'state',
     ) +
     item(shape('<g class="rb-state rb-kind-final"><rect class="rb-box" x="4" y="1" width="38" height="16" rx="5"/><rect class="rb-box-inner" x="7" y="4" width="32" height="10" rx="2.5"/></g>'), { text: 'final' }, 'state (double border)') +
+    item(
+      shape('<g class="rb-state rb-history"><rect class="rb-box" x="14" y="0.5" width="17" height="17" rx="8.5"/><text class="rb-history-mark" x="22.5" y="13" text-anchor="middle">H</text></g>'),
+      { text: 'H' },
+      'history state: back to where its parent was when last left (H* deep: every state inside it)',
+    ) +
     item(
       shape('<g class="rb-label"><rect class="rb-label-bg" x="2" y="2" width="42" height="14" rx="4"/><text class="rb-label-effect rb-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="rb-msg"><tspan class="rb-msg-kw">send</tspan></tspan></text></g>'),
       { text: 'send x.E', cls: 'rb-t-msg' },

@@ -1,0 +1,25 @@
+{
+  "description": "History is recorded by every microstep, also while settling. `B` is entered and left again in the step that takes `Go`, by an `always`; leaving `P` records `B`, and the `always` of `Q` enters `P` through its history state, so `P` returns to `B` within the same step. `B` is where `P` was at the end of the microstep before it was left, though no step ended in it.",
+  "requires": [
+    "history"
+  ],
+  "chart": "charts/history.road",
+  "machine": "Bounce",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    }
+  ],
+  "status": "running"
+}

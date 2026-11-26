@@ -55,7 +55,7 @@ Every member is required. Values are in their JSON form ([values](../execution.m
 | Member | Meaning |
 | --- | --- |
 | `description` | What the case checks. |
-| `requires` | The features the case needs beyond the first version's, any of: `messaging` for a case whose chart uses `send`, `emit`, `emits`, `on name.Event`, `invoke … as` or `ref`, or that starts several top-level runs (milestone 5); `parallel` for a case whose chart has a parallel state, and `snapshots` for a case whose script has `snapshot`, `restore` or `suspend` steps (milestone 6); `spawn` for a case whose chart has a `children` collection (keyed `spawn`), which also needs `messaging`. `[]` for none. A runner skips, and does not fail, a case that requires a feature its runtime does not implement yet. |
+| `requires` | The features the case needs beyond the first version's, any of: `messaging` for a case whose chart uses `send`, `emit`, `emits`, `on name.Event`, `invoke … as` or `ref`, or that starts several top-level runs (milestone 5); `parallel` for a case whose chart has a parallel state, and `snapshots` for a case whose script has `snapshot`, `restore` or `suspend` steps (milestone 6); `history` for a case whose chart has a history state; `spawn` for a case whose chart has a `children` collection (keyed `spawn`), which also needs `messaging`. `[]` for none. A runner skips, and does not fail, a case that requires a feature its runtime does not implement yet. |
 | `chart` | The entry chart, relative to this directory. |
 | `machine` | The machine run as the root run, `r1`, which is started first. |
 | `input` | Its arguments, keyed by parameter name. Since no other run exists yet, it has no `ref` argument. |

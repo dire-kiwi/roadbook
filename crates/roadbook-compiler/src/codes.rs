@@ -109,8 +109,10 @@ pub const RETRY_NOTHING: Code = Code(217);
 /// A retried error handled by a `fail *` that also handles an error that is not retried.
 pub const RETRY_SHARED_OUTCOME: Code = Code(218);
 
+/// `history H` or `deep history H` in a state with no child states, or in a final state.
+pub const HISTORY_WITHOUT_CHILDREN: Code = Code(219);
 /// A `spawn` of a machine other than its collection's.
-pub const SPAWN_MACHINE_MISMATCH: Code = Code(219);
+pub const SPAWN_MACHINE_MISMATCH: Code = Code(220);
 
 // ───────────── types ─────────────
 
@@ -192,8 +194,11 @@ pub const RECEIVES_NOTHING: Code = Code(906);
 
 /// An `emits E` that no `on name.E` in the checked charts receives.
 pub const NEVER_RECEIVED: Code = Code(907);
+
+/// A history state that no transition targets.
+pub const UNUSED_HISTORY: Code = Code(908);
 /// A `children` collection that no `spawn` fills (warning).
-pub const NEVER_SPAWNED: Code = Code(908);
+pub const NEVER_SPAWNED: Code = Code(909);
 
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
@@ -235,6 +240,7 @@ pub const ALL: &[Code] = &[
     RETRY_WITH_ALIAS,
     RETRY_NOTHING,
     RETRY_SHARED_OUTCOME,
+    HISTORY_WITHOUT_CHILDREN,
     SPAWN_MACHINE_MISMATCH,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
@@ -265,6 +271,7 @@ pub const ALL: &[Code] = &[
     NEVER_EMITTED,
     RECEIVES_NOTHING,
     NEVER_RECEIVED,
+    UNUSED_HISTORY,
     NEVER_SPAWNED,
 ];
 

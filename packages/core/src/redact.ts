@@ -303,11 +303,14 @@ class Redactor {
     let result = saved.result
     if (result !== null && "output" in result) result = { output: this.result(m.returns, result.output) }
     else if (result !== null && "error" in result) result = { error: this.error(result.error) as typeof result.error }
+    const redacted = { ...saved, input: this.object(m.params, saved.input), vars, result }
+    // A version 1 or 2 snapshot has no `spawned`, and the record holds it as it was given.
+    if (saved.spawned === undefined) return redacted
     const spawned = saved.spawned.map((ch) => ({
       ...ch,
       args: this.object(this.collection(m, ch.children)?.params ?? [], ch.args)
     }))
-    return { ...saved, input: this.object(m.params, saved.input), vars, spawned, result }
+    return { ...redacted, spawned }
   }
 }
 

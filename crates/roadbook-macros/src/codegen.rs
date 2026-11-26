@@ -1156,7 +1156,8 @@ impl<'a> Gen<'a> {
     ) -> Result<(), String> {
         let mut variants = Vec::new();
         let mut nested = Vec::new();
-        for c in &s.states {
+        // A history state is never active, so it is never the state a run is in.
+        for c in s.states.iter().filter(|c| !c.kind.is_history()) {
             let vid = ident(&c.name);
             let vdoc = doc(&c.doc);
             if c.states.is_empty() || c.kind == StateKind::Parallel {

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/defects.road",
@@ -434,7 +434,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:fa1b78c160f2ed936432c14bd064cf25c61f811f961c75155cb7938adbcd8800"
+      "hash": "sha256:44f363d33a3ac2514d188266a793c75b9f1712373391a5ffcc3b141303a68497"
     },
     "Sub": {
       "doc": "Stubbed in the cases that use it.",
@@ -502,7 +502,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:c7de7a80d6e7cc68aaf9fc0bc15613d5a94404180a16977260a0fc41331ae079"
+      "hash": "sha256:de6e1b21cee8a08f5ccfd91f68e67034e418f427897662f446019bbd1b39110a"
     }
   }
 }

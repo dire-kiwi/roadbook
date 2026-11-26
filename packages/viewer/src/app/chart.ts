@@ -448,7 +448,8 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
       r.setAttribute('y', String(-gap))
       r.setAttribute('width', String(w + 2 * gap))
       r.setAttribute('height', String(ht + 2 * gap))
-      r.setAttribute('rx', String(8 + gap))
+      // As round as the box: a history state's circle gets a round ring.
+      r.setAttribute('rx', String(Math.max(8, Number(box.getAttribute('rx')) || 0) + gap))
       g.insertBefore(r, box)
     }
     const root = own(ir.machines, current)?.root.id

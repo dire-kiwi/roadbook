@@ -1,0 +1,109 @@
+// Charts for the durable driver's crash and resume tests (test/durable.test.ts): work that a
+// crash must not repeat, a timer and an event to wait for, a child run, and a peer.
+
+/// Write a line to the log.
+action log(text: string)
+/// One step of work, which a crash must not repeat once it has finished.
+task step(n: int) -> int
+/// How long `Waiting` waits for a nudge.
+fn patience() -> duration
+/// How long a Parent waits for its Pipeline.
+fn deadline() -> duration
+
+/// Three steps, with a wait between the second and the third for a nudge or a timer.
+machine Pipeline(id: string) -> int {
+  var total: int = 0
+
+  event Nudge { by: int }
+
+  exit do log("pipeline exited")
+
+  initial One
+
+  state One {
+    entry do log("one")
+    invoke step(1) {
+      done -> Two  set total = total + result
+    }
+  }
+
+  state Two {
+    invoke step(2) {
+      done -> Waiting  set total = total + result
+    }
+  }
+
+  /// Whichever comes first: a nudge, or the timer.
+  state Waiting {
+    on Nudge         -> Three  set total = total + event.by
+    after patience() -> Three
+  }
+
+  state Three {
+    invoke step(3) {
+      done -> Done  set total = total + result
+    }
+  }
+
+  final state Done { output total }
+}
+
+/// Runs a Pipeline as a child and passes nudges on to it. Past its deadline it cancels the
+/// Pipeline and does a fourth step instead.
+machine Parent(id: string) -> int {
+  var total: int = 0
+
+  event Push { by: int }
+
+  initial Running
+
+  state Running {
+    invoke Pipeline(id) as pipeline {
+      done -> Done  set total = result
+    }
+    on Push                       send pipeline.Nudge { by: event.by }
+    after deadline() -> Fallback
+  }
+
+  state Fallback {
+    invoke step(4) {
+      done -> GaveUp
+    }
+  }
+
+  final state Done   { output total }
+  final state GaveUp { output -1 }
+}
+
+/// Adds what it is sent, and emits each new total to the runs holding a `ref` to it.
+machine Counter() {
+  var n: int = 0
+
+  event Add   { by: int }
+  event Close
+  emits Total { n: int }
+
+  initial Counting
+
+  state Counting {
+    on Add              set n = n + event.by  emit Total { n: n }
+    on Close -> Closed
+  }
+
+  final state Closed {}
+}
+
+/// Works out an amount, sends it to a Counter, and ends once the Counter's total reaches `goal`.
+machine Adder(counter: ref Counter, goal: int) -> int {
+  initial Working
+
+  state Working {
+    invoke step(1) {
+      done -> Waiting  send counter.Add { by: result }
+    }
+  }
+
+  state Waiting { on counter.Total if event.n >= goal -> Reached }
+
+  final state Reached { output goal }
+}

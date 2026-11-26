@@ -108,7 +108,7 @@ The [language page](language.md#many-children) has the rules and checks, [`spec/
 - **`key` is an implicit name**, like `event`, in every transition a child's input takes. It cannot name a parameter, variable or collection, but can still name a field.
 - **When the parent ends, its children are stopped after its own exit effects**, each with a `spawn.stopped` record, in the order they were started, so the exit effects still see every child (they can `stop` some themselves), and a child they spawn never starts. They cannot usefully say goodbye: a stop is a cancel request, which goes before what the child has queued, so a message sent in the same step is likely discarded with the child's queue. A parent that wants its children to finish cleanly tells them earlier and waits for their outcomes.
 - **No expressions over collections.** Counting children or listing keys would need maps or lists of keys in the expression language ([generic types and maps](language.md#not-in-the-first-version)); a chart keeps a count in a variable or has its children emit.
-- **Saving.** A saved snapshot lists the running children with their keys and the arguments they were spawned with (snapshot version 2), and restoring starts each again from the beginning, as it does an invoked child. Suspending waits until no child is running.
+- **Saving.** A saved snapshot lists the running children with their keys and the arguments they were spawned with (snapshot version 3), and restoring starts each again from the beginning, as it does an invoked child. Suspending waits until no child is running.
 
 ### What depends on the open questions
 

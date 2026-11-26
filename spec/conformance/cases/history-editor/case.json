@@ -1,0 +1,80 @@
+{
+  "description": "A shallow and a deep history state of one compound state, `Work`. With nothing recorded, a transition from inside `Work` to its shallow history state enters `Work`'s initial state, `Draft`, again, leaving `Work` itself alone. Leaving `Work` records its active child (`Review`) and its active leaf (`Comment`), before anything is exited; a transition to the deep history state enters every state down to `Comment`, whose invoke and timer start again with new ids, and one to the shallow history state enters `Review` by its default entry. A transition written on `Work` to its own deep history state leaves `Work`, recording where it was, and enters it again as it was. From inside `Work`, a transition to its history state enters what was recorded when `Work` was last left (`Review`), not where it is now (`Draft`), and records nothing, since `Work` is not left. The saved snapshot holds both records.",
+  "requires": [
+    "history",
+    "snapshots"
+  ],
+  "chart": "charts/history.road",
+  "machine": "Editor",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Jump"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Next"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Deeper"
+      }
+    },
+    {
+      "advance": 400
+    },
+    {
+      "event": {
+        "_tag": "Restart"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Help"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Back"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Edit"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Jump"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Deeper"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Help"
+      }
+    },
+    {
+      "event": {
+        "_tag": "BackDeep"
+      }
+    },
+    {
+      "advance": 1000
+    },
+    {
+      "snapshot": "end"
+    }
+  ],
+  "status": "running"
+}

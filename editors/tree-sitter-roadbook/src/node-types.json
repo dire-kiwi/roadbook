@@ -1672,6 +1672,32 @@
     }
   },
   {
+    "type": "history_state",
+    "named": true,
+    "fields": {
+      "kind": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "deep",
+            "named": false
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "import",
     "named": true,
     "fields": {
@@ -2912,6 +2938,10 @@
           "named": true
         },
         {
+          "type": "history_state",
+          "named": true
+        },
+        {
           "type": "initial",
           "named": true
         },
@@ -3445,6 +3475,10 @@
     "extra": true
   },
   {
+    "type": "deep",
+    "named": false
+  },
+  {
     "type": "do",
     "named": false
   },
@@ -3531,6 +3565,10 @@
   },
   {
     "type": "from",
+    "named": false
+  },
+  {
+    "type": "history",
     "named": false
   },
   {

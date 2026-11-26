@@ -35,6 +35,14 @@
 //!   most once. A position whose every step was taken already on the path ends it: `loop`,
 //!   where going on would repeat a transition. So a machine with no final or stuck state
 //!   (`A ⇄ B`) still has paths, and every transition the search can reach is on one.
+//! - A step to a history state enters what it recorded on the path so far, or, with no record,
+//!   its parent's initial descendants (a parallel parent: the parallel state's position). As
+//!   the runtime records on each exit (`recordHistory` in `spec/execution.md`), each step
+//!   records, before it enters anything, for each state it leaves on the way from the position
+//!   to the transition's domain (the history state's parent counted as the parent of a target
+//!   that is one): a shallow history state, the position of the child that was active, entered
+//!   from its start; a deep one, the position itself. History inside a parallel position needs
+//!   no record: whatever it restores, the position is the parallel state.
 //! - Child machines are not entered: an invoke's `done` and `fail` are ordinary steps.
 //! - The search is depth-first in that order, so the output is deterministic. It stops after
 //!   `--max` paths (1000 by default) or [`BUDGET`] steps searched, prints what it found and
@@ -248,10 +256,10 @@ pub struct Step<'a> {
     pub trigger: String,
     /// The guard's text, `else` for the unguarded last branch of a guarded block.
     pub guard: Option<String>,
-    /// The target.
+    /// The target: a state, or a history state.
     pub to: &'a str,
     /// The position the step leads to: the target's initial leaf, or the parallel state
-    /// holding it.
+    /// holding it; for a history state, what it recorded on the path, or its parent's.
     pub at: &'a str,
 }
 
@@ -291,7 +299,12 @@ pub fn paths(machine: &Machine, max: usize, budget: usize) -> Found<'_> {
     };
     g.index(&machine.root, None);
     let start = g.position(&machine.root.id);
-    g.walk(start, &mut Vec::new(), &mut HashSet::new());
+    g.walk(
+        start,
+        &mut Vec::new(),
+        &mut HashSet::new(),
+        &mut HashMap::new(),
+    );
     Found {
         start,
         paths: g.found,
@@ -335,6 +348,68 @@ impl<'a> Graph<'a> {
             up = self.parent.get(a).copied();
         }
         outer
+    }
+
+    /// The transition's domain (`spec/execution.md`): the root for a transition of the root,
+    /// else the nearest compound proper ancestor of its source that is a proper ancestor of its
+    /// target. A history target counts as a child of its parent, as any state.
+    fn domain(&self, source: &'a str, target: &str) -> &'a str {
+        if source == self.root {
+            return self.root;
+        }
+        let mut up = self.parent.get(source).copied();
+        while let Some(d) = up {
+            let below = target.len() > d.len()
+                && target.starts_with(d)
+                && target.as_bytes()[d.len()] == b'.';
+            if self.states[d].kind != StateKind::Parallel && below {
+                return d;
+            }
+            up = self.parent.get(d).copied();
+        }
+        self.root
+    }
+
+    /// What a step taking `source`'s transition to `target` from `at` records, as (history
+    /// state, position it would restore): for each state on the way up from `at` that the step
+    /// leaves (each below its domain), its history states.
+    fn records(&self, at: &'a str, source: &'a str, target: &str) -> Vec<(&'a str, &'a str)> {
+        let domain = self.domain(source, target);
+        let mut out = Vec::new();
+        // The states left, innermost first, each with the one below it on the way (none for
+        // the position itself).
+        let mut below: Option<&'a str> = None;
+        let mut id = at;
+        while id != domain {
+            for h in self.states[id]
+                .states
+                .iter()
+                .filter(|h| h.kind.is_history())
+            {
+                let restores = match (h.kind, below) {
+                    (StateKind::History, Some(child)) => self.position(child),
+                    _ => at,
+                };
+                out.push((h.id.as_str(), restores));
+            }
+            below = Some(id);
+            match self.parent.get(id) {
+                Some(p) => id = p,
+                None => break,
+            }
+        }
+        out
+    }
+
+    /// Where a step to `target` puts the path, given what the history states recorded.
+    fn entered(&self, target: &'a str, history: &HashMap<&'a str, &'a str>) -> &'a str {
+        if !self.states[target].kind.is_history() {
+            return self.position(target);
+        }
+        match history.get(target) {
+            Some(at) => at,
+            None => self.position(self.parent[target]),
+        }
     }
 
     /// The transitions a step from `at` can take, as (owner, index), in order.
@@ -424,12 +499,14 @@ impl<'a> Graph<'a> {
         true
     }
 
-    /// Searches on from `at`. Returns false once the search must stop.
+    /// Searches on from `at`, with what the history states recorded on the path so far.
+    /// Returns false once the search must stop.
     fn walk(
         &mut self,
         at: &'a str,
         steps: &mut Vec<Step<'a>>,
         used: &mut HashSet<(&'a str, usize)>,
+        history: &mut HashMap<&'a str, &'a str>,
     ) -> bool {
         if self.budget == 0 {
             self.stopped = Some(Stop::Budget);
@@ -455,7 +532,13 @@ impl<'a> Graph<'a> {
             let owner = self.states[from];
             let t = &owner.transitions[index];
             let to = t.target.as_deref().unwrap();
-            let next = self.position(to);
+            // Record before entering: a step that leaves a state and targets its history
+            // state enters where it was a moment before.
+            let mut undo = Vec::new();
+            for (h, restores) in self.records(at, from, to) {
+                undo.push((h, history.insert(h, restores)));
+            }
+            let next = self.entered(to, history);
             steps.push(Step {
                 from,
                 index,
@@ -464,9 +547,15 @@ impl<'a> Graph<'a> {
                 to,
                 at: next,
             });
-            let go_on = self.walk(next, steps, used);
+            let go_on = self.walk(next, steps, used, history);
             steps.pop();
             used.remove(&(from, index));
+            for (h, before) in undo.into_iter().rev() {
+                match before {
+                    Some(b) => history.insert(h, b),
+                    None => history.remove(h),
+                };
+            }
             if !go_on {
                 return false;
             }
@@ -533,7 +622,13 @@ pub fn text(name: &str, machine: &Machine, found: &Found) -> String {
                     .as_ref()
                     .map(|g| format!(" [{g}]"))
                     .unwrap_or_default();
-                format!("--{}{guard}--> {}", s.trigger, relative(name, s.at))
+                // Through a history state: where it led, and which.
+                let via = match states[s.to].kind {
+                    StateKind::History => format!(" (history {})", relative(name, s.to)),
+                    StateKind::DeepHistory => format!(" (deep history {})", relative(name, s.to)),
+                    _ => String::new(),
+                };
+                format!("--{}{guard}--> {}{via}", s.trigger, relative(name, s.at))
             })
             .collect();
         let end = match p.end {
@@ -654,6 +749,56 @@ mod tests {
         assert_eq!(
             lines(&m, 10),
             "M: 1 path\n1. A --always--> B --Stop--> Out (final)\n"
+        );
+    }
+
+    #[test]
+    fn a_history_state_enters_what_it_recorded_on_the_path() {
+        // Leaving W from B records B (entered from its start, B1); from A, A.
+        let m = machine(
+            "machine M() {\n  event Go\n  event Out\n  event Back\n  initial W\n  state W {\n    initial A\n    history H\n    state A { on Go -> B }\n    state B {\n      initial B1\n      state B1 {}\n    }\n    on Out -> Away\n  }\n  state Away { on Back -> W.H }\n}\n",
+        );
+        assert_eq!(
+            lines(&m, 10),
+            "M: 2 paths\n1. W.A --Go--> W.B.B1 --Out--> Away --Back--> W.B.B1 (history W.H) (loops)\n2. W.A --Out--> Away --Back--> W.A (history W.H) --Go--> W.B.B1 (loops)\n"
+        );
+        let found = paths(&m, 10, BUDGET);
+        let back = &found.paths[0].steps[2];
+        assert_eq!((back.to, back.at), ("M.W.H", "M.W.B.B1"));
+    }
+
+    #[test]
+    fn a_deep_history_state_restores_the_leaf_and_with_no_record_its_parents_start() {
+        let m = machine(
+            "machine M() {\n  event Go\n  event Out\n  event Again\n  initial Start\n  state Start {\n    on Again -> W.D\n  }\n  state W {\n    initial A\n    deep history D\n    history S\n    state A { on Go -> B }\n    state B {\n      initial B1\n      state B1 { on Go -> B2 }\n      state B2 { on Out -> Start }\n    }\n  }\n}\n",
+        );
+        assert_eq!(
+            lines(&m, 10),
+            "M: 1 path\n1. Start --Again--> W.A (deep history W.D) --Go--> W.B.B1 --Go--> W.B.B2 --Out--> Start (loops)\n"
+        );
+        // With B2 recorded: the deep history state restores B2, the shallow one B from its start.
+        let g = |s: &str| {
+            machine(&format!(
+                "machine M() {{\n  event Go\n  event Out\n  event Again\n  initial W\n  state Start {{\n    on Again -> W.{s}\n  }}\n  state W {{\n    initial A\n    deep history D\n    history S\n    state A {{ on Go -> B }}\n    state B {{\n      initial B1\n      state B1 {{ on Go -> B2 }}\n      state B2 {{ on Out -> Start }}\n    }}\n  }}\n}}\n"
+            ))
+        };
+        let deep = g("D");
+        let deep = paths(&deep, 10, BUDGET);
+        assert_eq!(deep.paths[0].steps.last().unwrap().at, "M.W.B.B2");
+        let shallow = g("S");
+        let shallow = paths(&shallow, 10, BUDGET);
+        assert_eq!(shallow.paths[0].steps.last().unwrap().at, "M.W.B.B1");
+    }
+
+    #[test]
+    fn a_step_inside_the_parent_to_its_history_state_records_nothing() {
+        // `Jump` stays inside W: W is not left, nothing is recorded, and H enters W's start.
+        let m = machine(
+            "machine M() {\n  event Go\n  event Jump\n  initial W\n  state W {\n    initial A\n    history H\n    state A { on Go -> B }\n    state B { on Jump -> H }\n  }\n}\n",
+        );
+        assert_eq!(
+            lines(&m, 10),
+            "M: 1 path\n1. W.A --Go--> W.B --Jump--> W.A (history W.H) (loops)\n"
         );
     }
 

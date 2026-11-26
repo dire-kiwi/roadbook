@@ -26,6 +26,7 @@ export const METRICS = {
   labelWrapAt: 30, // put the guard of an edge label on its own line beyond this
   machinePillPad: 6,
   toggle: 14, // the collapse / expand button of a container
+  historyD: 28, // diameter of the circle of a history state
 } as const
 
 /** Width of `text` at `fontSize` px. The browser passes a real measurer; Node estimates. */
@@ -287,9 +288,48 @@ export interface Row {
   spawn?: string
 }
 
-/** Number of states nested inside `state`, at any depth. */
+/** Whether a state is a history pseudo-state, shallow (`history`) or deep (`deepHistory`). */
+export function isHistory(state: State): boolean {
+  return state.kind === 'history' || state.kind === 'deepHistory'
+}
+
+/** A state's children: its `states` less its history states (the regions of a parallel state). */
+export function childStates(state: State): State[] {
+  return state.states.filter((c) => !isHistory(c))
+}
+
+/** `H` for a shallow history state, `H*` for a deep one: what its circle says. */
+export function historyMark(state: State): string {
+  return state.kind === 'deepHistory' ? 'H*' : 'H'
+}
+
+/** `history`, `deep history`, `compound`, …: a state's kind in words. */
+export function kindText(state: State): string {
+  return state.kind === 'deepHistory' ? 'deep history' : state.kind
+}
+
+/**
+ * What entering a history state does, in words: `Returns to where Editing was when it was last
+ * left: …`. `parent` is its parent state.
+ */
+export function historyText(state: State, parent: State): string {
+  const children = childStates(parent)
+  const start =
+    parent.kind === 'parallel'
+      ? 'every region from its start'
+      : `its initial state${parent.initial ? `, ${parent.initial.slice(parent.id.length + 1)}` : ''}`
+  const what =
+    state.kind === 'deepHistory'
+      ? `Returns to where ${parent.name} was when it was last left, all the way down: every state that was active inside it then, in every region.`
+      : parent.kind === 'parallel'
+        ? `Returns to where ${parent.name} was when it was last left: its regions (${children.map((c) => c.name).join(', ')}), each from its start.`
+        : `Returns to where ${parent.name} was when it was last left: the state inside it that was active then, entered from its start.`
+  return `${what} Before ${parent.name} has been left, it enters ${start}.`
+}
+
+/** Number of states nested inside `state`, at any depth, not counting history states. */
 export function descendantCount(state: State): number {
-  return state.states.reduce((n, c) => n + 1 + descendantCount(c), 0)
+  return childStates(state).reduce((n, c) => n + 1 + descendantCount(c), 0)
 }
 
 /** The rows shown inside a state box. `collapsed`: the state's children are hidden. */
@@ -357,6 +397,15 @@ export function allStates(machine: Machine): State[] {
   const out: State[] = []
   walkStates(machine.root, (s) => out.push(s))
   return out
+}
+
+/** The state whose `states` hold the state `id`; null for the root or an unknown id. */
+export function parentState(machine: Machine, id: string): State | null {
+  let found: State | null = null
+  walkStates(machine.root, (s, parent) => {
+    if (s.id === id) found = parent
+  })
+  return found
 }
 
 export function findState(machine: Machine, id: string): State | null {

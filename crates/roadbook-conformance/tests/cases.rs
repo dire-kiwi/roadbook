@@ -97,8 +97,18 @@ fn snapshots_are_canonical_and_valid() {
                     c.name
                 );
             }
+            // A file only restored to be refused as `invalid` may break the schema on purpose.
+            let refused_only = !written
+                && c.case.script.iter().all(|s| match s {
+                    Step::Restore(r) if &r.name == name => r.refused.as_deref() == Some("invalid"),
+                    _ => true,
+                });
             let errors = schema_errors(&v, &value);
-            assert!(errors.is_empty(), "{}: {name}: {errors:#?}", c.name);
+            assert!(
+                errors.is_empty() || refused_only,
+                "{}: {name}: {errors:#?}",
+                c.name
+            );
         }
         for r in c.records.iter().filter(|r| r["kind"] == "restored") {
             let errors = schema_errors(&v, &r["snapshot"]);
@@ -223,6 +233,16 @@ fn top_level_runs_are_started_in_order() {
                 spawn,
                 requires("spawn"),
                 "{}: `requires` must list `spawn` exactly when its chart has a `children` collection",
+                c.name
+            );
+            fn has_history(s: &roadbook_ir::State) -> bool {
+                s.kind.is_history() || s.states.iter().any(has_history)
+            }
+            let history = ir.machines.values().any(|m| has_history(&m.root));
+            assert_eq!(
+                history,
+                requires("history"),
+                "{}: `requires` must list `history` exactly when its chart has a history state",
                 c.name
             );
         }

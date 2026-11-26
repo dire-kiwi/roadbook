@@ -5,7 +5,7 @@
 import type { ElkExtendedEdge, ElkNode, LayoutOptions as ElkOptions } from 'elkjs/lib/elk-api.js'
 import type { Machine, State, Ir } from './ir.ts'
 import { own } from './ir.ts'
-import { METRICS, ancestorIds, descendantCount, estimateWidth, rootIsVisible, stateRows, transitionId, transitionLines, walkStates } from './model.ts'
+import { METRICS, ancestorIds, descendantCount, estimateWidth, isHistory, rootIsVisible, stateRows, transitionId, transitionLines, walkStates } from './model.ts'
 import type { Measure, Row, LabelLine } from './model.ts'
 
 /** What `layoutMachine` needs of elkjs. */
@@ -178,6 +178,8 @@ export interface StateBox {
 /** Size of a state's own content: the title and the rows under it. */
 export function stateBox(state: State, measure: Measure, collapsed = false): StateBox {
   const M = METRICS
+  // A history state is a small circle marked `H` or `H*`, with no rows.
+  if (isHistory(state)) return { rows: [], titleH: M.historyD, width: M.historyD, height: M.historyD }
   const rows = stateRows(state, collapsed)
   const isContainer = state.states.length > 0 && !collapsed
   const inset = state.kind === 'final' ? M.finalInset : 0

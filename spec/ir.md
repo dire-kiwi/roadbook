@@ -1,4 +1,4 @@
-# The Roadbook IR, version 0.4
+# The Roadbook IR, version 0.5
 
 The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with messaging and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
@@ -22,7 +22,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 ```jsonc
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources":   [{ "path": "examples/shop/place_order.road", "package": null },
                 { "path": "examples/shop/types.road", "package": null }],
   "types":     { /* Name: type declaration */ },
@@ -177,14 +177,18 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
 | --- | --- |
 | `id` | Absolute dotted path from the machine: `PlaceOrder.Processing.Paying`. Unique within the machine. Traces, targets and `initial` use it. |
 | `name` | The last segment of `id`. |
-| `kind` | `atomic` (no children), `compound` (children, one active at a time), `parallel` (children are regions, all active at once) or `final`. |
-| `doc`, `span` | The span runs from the state's first keyword (`state`, `final` or `parallel`) to its closing brace. |
-| `initial` | Id of the child entered first. Set exactly when `kind` is `compound`, otherwise `null`. |
-| `states` | Children, in source order. Empty for `atomic` and `final`. |
+| `kind` | `atomic` (no children), `compound` (children, one active at a time), `parallel` (children are regions, all active at once), `final`, or `history` and `deepHistory` for a [history state](#history-states). |
+| `doc`, `span` | The span runs from the state's first keyword (`state`, `final` or `parallel`) to its closing brace; for a history state, from `history` or `deep` to the end of its name. |
+| `initial` | Id of the child entered first. Set exactly when `kind` is `compound`, otherwise `null`. Never a history state. |
+| `states` | Children, in source order, history states among them. Empty for `atomic`, `final`, `history` and `deepHistory`. |
 | `entry`, `exit` | [Effects](#effects) run on entering and leaving the state: all `set` assignments, then all `do` actions, each in the order written. |
 | `invoke` | The task or machine run while the state is active, or `null`. At most one per state. |
 | `transitions` | The state's transitions, including its invoke's outcomes, in document order. |
 | `output`, `fail` | In a final state at the top level of a machine: the machine's result or failure expression. At most one of them is set. `null` everywhere else. |
+
+### History states
+
+`history Name` and `deep history Name` are states of kind `history` and `deepHistory` in the `states` of the state they are written in, their parent, at the position they are written. Their parent is a `compound` or `parallel` state that is not the root, and has at least one child that is not a history state. They are pseudo-states: `initial` is `null`, `states`, `entry`, `exit` and `transitions` are `[]`, and `invoke`, `output` and `fail` are `null`. Only a transition's `target` names one. Whether a state is `atomic`, `compound` or `parallel`, which child is its `initial`, and which children are a parallel state's regions are all decided by its other children: wherever the IR or [`execution.md`](execution.md) speaks of a state's children or regions, it means those that are not history states. What entering one does is in [`execution.md`](execution.md#history-states).
 
 ## Invoke
 
@@ -240,7 +244,7 @@ A child is addressed only from its invoking state and that state's descendants, 
 | `trigger` | What enables it. See below. |
 | `group` | The index, from 0, of the trigger block the transition was written in, among the blocks of its state. A single-line trigger is a block with one branch. The branches of one block are consecutive and share `group`; guards within a group are tried in order. |
 | `guard` | Boolean expression, or `null` for an unguarded branch (including `else`). |
-| `target` | Id of the target state, or `null` for an internal transition (the state is not left). |
+| `target` | Id of the target state, a history state among them, or `null` for an internal transition (the state is not left). |
 | `effects` | [Effects](#effects) run when the transition is taken: all `set` assignments, then all `do` actions, each in the order written. |
 | `span` | For a single-branch trigger, from the trigger keyword to the end of the branch. For a branch in a block, from its `if` or `else` to the end of the branch. |
 
@@ -342,28 +346,32 @@ A machine's `hash` is `"sha256:"` followed by the 64 lowercase hexadecimal digit
 - **F**, **A** and **K** are the functions called (`call`), the actions run (`do`) and the tasks invoked by the machines in M.
 - **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send` or an `emitted` trigger), or by an event type `Machine.Name`. Only its interface, its `events` and `emits`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts or emits changes, and not when how the peer works inside does. (A child addressed with `as` is invoked, and a collection's machine is spawned, so they are in M whole.)
 - **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by the base of any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`), by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, or `Machine.Name`), and the machine of a `ref`, are not part of T.
-- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `children` map, which are kept whatever they are. The other name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed: `children text: C by string` keeps its collection.
+- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `children` map, which are kept whatever they are. The other name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed: `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that spawns nothing has the hash it had before keyed spawn.
 
 So comments, formatting, source positions, file names, packages, declaration order, `sensitive` marks and unused declarations do not change a machine's hash (a run compiled without a peer's marks therefore talks to it all the same, and shows what the peer marks: build the runs that talk to each other from the same charts), and any change to what the machine does, to a type it uses, to a machine it invokes, or to the interface of a machine it talks to does. A declaration copied from another package's compiled IR therefore keeps the hash it had there. In Rust, `roadbook_ir::machine_hash(&ir, name)` computes it, `roadbook_ir::semantic_view` returns the view, and `roadbook_ir::fill_hashes(&mut ir)` sets every machine's `hash`; the compiler calls the last after type checking. Snapshots and traces record the hash, so restoring a snapshot into a changed machine is refused and the viewer can tell when a trace came from another version of a chart.
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.4`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.5`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
 
-## Changes from 0.3
+## Changes from 0.4
 
-Version 0.4 adds keyed `spawn` ([spawned children](execution.md#spawned-children)). Every machine has the new member `children` and every `send` effect `key`, so every hash changed.
+Version 0.5 adds keyed `spawn` ([spawned children](execution.md#spawned-children)). Every machine has the new member `children` and every `send` effect `key`. The [machine hash](#the-machine-hash) leaves out an empty `children` and a `null` `key`, so a machine that spawns nothing has the hash it had in 0.4, and its saved snapshots still restore.
 
 - Machines have [`children`](#machines), the keyed collections of spawned children.
 - The address kind `children`, and `key` on `send` effects (`send name[key].E`, `send name.*.E`).
 - The effect kinds `spawn` and `stop`, and the trigger kinds `spawn.done` and `spawn.fail`.
 - The implicit name `key` in `ref` paths.
 - A collection's machine is in the hash's M.
+
+## Changes from 0.3
+
+Version 0.4 adds [history states](#history-states): the state kinds `history` and `deepHistory`. Nothing else changed, so a machine with no history state has the hash it had in 0.3, and its saved snapshots still restore.
 
 ## Changes from 0.2
 

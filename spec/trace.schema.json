@@ -46,7 +46,7 @@
         "snapshot": {
           "description": "The saved snapshot the run was restored from, after any migration (spec/snapshot.schema.json), redacted like every value of a record (spec/trace.md#redaction): not a snapshot to restore.",
           "type": "object",
-          "required": ["snapshotVersion", "machine", "run", "ir", "status", "active", "input", "vars", "invokes", "spawned", "timers", "nextInvoke", "nextTimer", "nextMessage", "result"]
+          "required": ["snapshotVersion", "machine", "run", "ir", "status", "active", "input", "vars", "invokes", "timers", "nextInvoke", "nextTimer", "nextMessage", "result"]
         }
       },
       "required": ["machine", "ir", "migrated", "snapshot"]
