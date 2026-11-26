@@ -114,6 +114,8 @@ describe('simulate', () => {
     for (const name of ['place-order-checkout-stubbed', 'checkout-retry', 'gate-guards']) expect(played).toContain(name)
     // Parallel states: regions entered and exited in order, events taken in several regions.
     for (const name of ['parallel-entry-exit', 'parallel-two-regions', 'parallel-work']) expect(played).toContain(name)
+    // History states: a deep one restoring a final state, one in a region, one while settling.
+    for (const name of ['history-final', 'history-region', 'history-settle']) expect(played).toContain(name)
     expect(played.length).toBeGreaterThanOrEqual(8)
   })
 

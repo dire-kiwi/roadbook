@@ -116,6 +116,9 @@ pub struct MachineDiff {
     /// The transitions that are not unchanged, by source state id and index in the merged
     /// state's `transitions`, in document order.
     pub transitions: Vec<((String, usize), Element)>,
+    /// The ids among `states` of history states (in either version): counted with the states,
+    /// and again on their own.
+    pub history: HashSet<String>,
 }
 
 impl MachineDiff {
@@ -131,6 +134,17 @@ impl MachineDiff {
         let mut c = Counts::default();
         for (_, e) in &self.states {
             c.count(e.status);
+        }
+        c
+    }
+
+    /// The history states among [`state_counts`](Self::state_counts).
+    pub fn history_counts(&self) -> Counts {
+        let mut c = Counts::default();
+        for (id, e) in &self.states {
+            if self.history.contains(id) {
+                c.count(e.status);
+            }
         }
         c
     }
@@ -204,6 +218,7 @@ impl ChartDiff {
                     "counts": {
                         "states": d.state_counts().to_json(),
                         "transitions": d.transition_counts().to_json(),
+                        "history": d.history_counts().to_json(),
                     },
                 }),
             );
@@ -310,6 +325,7 @@ pub fn diff(before: Option<&Ir>, after: Option<&Ir>, before_label: &str) -> Char
             moved: None,
             states: Vec::new(),
             transitions: Vec::new(),
+            history: HashSet::new(),
         };
         let merged = match b_ir.machines.get(name) {
             None => {
@@ -355,6 +371,7 @@ pub fn diff(before: Option<&Ir>, after: Option<&Ir>, before_label: &str) -> Char
             moved: None,
             states: Vec::new(),
             transitions: Vec::new(),
+            history: HashSet::new(),
         };
         mark_all(&b.root, Status::Removed, &mut d);
         d.states.retain(|(id, _)| id != name);
@@ -545,6 +562,9 @@ fn change(
 
 /// Every state and transition of `s` and inside it, with status `status`.
 fn mark_all(s: &State, status: Status, d: &mut MachineDiff) {
+    if s.kind.is_history() {
+        d.history.insert(s.id.clone());
+    }
     d.states.push((
         s.id.clone(),
         Element {
@@ -600,6 +620,10 @@ impl Merge<'_> {
                 .changes
                 .extend(changes.into_iter().filter(|c| c.what != "doc"));
         } else if !changes.is_empty() {
+            // `history` to `deep history` is a change of kind, as any.
+            if a.kind.is_history() || b.kind.is_history() {
+                self.d.history.insert(a.id.clone());
+            }
             self.d.states.push((a.id.clone(), changed(changes)));
         }
         let mut out = a.clone();
@@ -1324,6 +1348,49 @@ machine M(n: int) -> int ! Declined {
         assert_eq!(d.machines[0].1.status, Status::Removed);
         assert!(d.decls.iter().all(|(_, e)| e.status == Status::Removed));
         assert_eq!(d.ir.machines.len(), 1);
+    }
+
+    #[test]
+    fn history_states_added_removed_and_changed_in_kind() {
+        let before = BASE.replace(
+            "    initial C1\n",
+            "    initial C1\n    history Last\n    history Gone\n",
+        );
+        let after = BASE.replace(
+            "    initial C1\n",
+            "    initial C1\n    deep history Last\n    history New\n",
+        );
+        let d = diff(Some(&ir(&before)), Some(&ir(&after)), "main");
+        let last = status_of(&d, "M.C.Last").unwrap();
+        assert_eq!(last.status, Status::Changed);
+        assert_eq!(
+            last.changes,
+            [change(
+                "kind",
+                "history".to_string(),
+                "deep history".to_string()
+            )]
+        );
+        assert_eq!(status_of(&d, "M.C.New").unwrap().status, Status::Added);
+        assert_eq!(status_of(&d, "M.C.Gone").unwrap().status, Status::Removed);
+        let m = &d.machines[0].1;
+        let all = Counts {
+            added: 1,
+            removed: 1,
+            changed: 1,
+        };
+        // Counted with the states, and on their own.
+        assert_eq!(m.state_counts(), all);
+        assert_eq!(m.history_counts(), all);
+        assert_eq!(
+            d.to_json()["machines"]["M"]["counts"]["history"],
+            all.to_json()
+        );
+        // The removed one is put back where it was, in the merged chart.
+        let c = &d.ir.machines["M"].root.states[2];
+        let names: Vec<&str> = c.states.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, ["Last", "Gone", "New", "C1", "C2"]);
+        assert_eq!(c.states[1].kind, StateKind::History);
     }
 
     #[test]

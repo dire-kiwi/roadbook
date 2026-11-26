@@ -38,7 +38,8 @@ export interface MachineDiff {
   states: Record<string, DiffElement>
   /** The transitions that are not unchanged, by `stateId#index` (index in the merged state). */
   transitions: Record<string, DiffElement>
-  counts: { states: Counts; transitions: Counts }
+  /** `history`: the history states among `states`, counted again on their own. */
+  counts: { states: Counts; transitions: Counts; history?: Counts }
 }
 
 /** The `diff` member of a diff page's data. */
@@ -85,6 +86,12 @@ export function countsText(c: Counts): string {
 export function countsWords(c: Counts): string {
   const parts = [c.added ? `${c.added} added` : '', c.removed ? `${c.removed} removed` : '', c.changed ? `${c.changed} changed` : ''].filter(Boolean)
   return parts.length ? parts.join(', ') : 'none'
+}
+
+/** ` (history +1 ~1)` after the counts of states that include history states; `""` if none. */
+export function historyCountsText(d: MachineDiff): string {
+  const h = d.counts.history
+  return h && h.added + h.removed + h.changed ? ` (history ${countsText(h)})` : ''
 }
 
 /** The diff of one machine; unchanged if the diff does not name it. */

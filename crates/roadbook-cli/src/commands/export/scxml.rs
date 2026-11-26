@@ -404,7 +404,12 @@ impl Writer<'_> {
                 .map(|c| xml_id(&c.id))
                 .collect(),
         };
-        self.open(depth + 1, "transition", &[("target", targets.join(" "))], true);
+        self.open(
+            depth + 1,
+            "transition",
+            &[("target", targets.join(" "))],
+            true,
+        );
         self.close(depth, "history");
     }
 

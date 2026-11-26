@@ -988,6 +988,7 @@ fn viewer_test_charts_are_fresh() {
         ("packages/viewer/test/charts/stress.road", "charts-stress"),
         ("packages/viewer/test/charts/edges.road", "charts-edges"),
         ("packages/viewer/test/charts/escape.road", "charts-escape"),
+        ("packages/viewer/test/charts/history.road", "charts-history"),
     ] {
         let out = roadbook(&repo(), &["export", "ir", chart]);
         assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
@@ -1825,6 +1826,59 @@ fn diff_summary(dir: &Path, name: &str) -> (PathBuf, serde_json::Value, String) 
 const TICKET: &str = "type Ticket { id: string }\n";
 const DESK: &str = "import { Ticket } from \"./ticket.road\"\n\nmachine Desk(t: Ticket) {\n  event Next\n  initial Open\n  state Open { on Next -> Closed }\n  final state Closed {}\n}\n";
 const LAMP: &str = "machine Lamp() {\n  event Flip\n  initial Off\n  state Off { on Flip -> On }\n  final state On {}\n}\n";
+
+const EDITOR: &str = "machine Editor() {\n  event Help\n  event Back\n  initial Work\n  state Work {\n    initial Draft\n    history Last\n    history Old\n    state Draft {}\n    on Help -> Help\n  }\n  state Help { on Back -> Work.Last }\n}\n";
+
+#[test]
+fn viz_diff_summarises_history_states() {
+    // `Last` becomes deep, `Old` goes and `New` comes: history states counted with the states,
+    // and on their own.
+    let dir = diff_repo("diff-history", &[("editor.road", EDITOR)]);
+    let after = EDITOR
+        .replace("    history Last\n", "    deep history Last\n")
+        .replace("    history Old\n", "    history New\n");
+    std::fs::write(dir.join("editor.road"), after).unwrap();
+    let (out, json, md) = diff_summary(&dir, "diff-history");
+    let counts = serde_json::json!({ "added": 1, "removed": 1, "changed": 1 });
+    assert_eq!(json["states"], counts);
+    assert_eq!(json["historyStates"], counts);
+    assert_eq!(json["changes"][0]["historyStates"], counts);
+    assert!(
+        md.contains(
+            "States: 1 added, 1 removed, 1 changed (history states: 1 added, 1 removed, 1 changed)."
+        ),
+        "{md}"
+    );
+    assert!(
+        md.contains(
+            "| ~ changed | `Editor` | `editor.road` | +1 −1 ~1 (history +1 −1 ~1) | none |"
+        ),
+        "{md}"
+    );
+    let data = page_data(&std::fs::read_to_string(out.join("editor.html")).unwrap());
+    let editor = &data["diff"]["machines"]["Editor"];
+    assert_eq!(editor["counts"]["history"], counts);
+    assert_eq!(
+        editor["states"]["Editor.Work.Last"]["changes"][0],
+        serde_json::json!({ "what": "kind", "before": "history", "after": "deep history" })
+    );
+    assert_eq!(editor["states"]["Editor.Work.Old"]["status"], "removed");
+    assert_eq!(editor["states"]["Editor.Work.New"]["status"], "added");
+
+    // A chart with no history state says nothing of them in Markdown.
+    let dir = diff_repo("diff-no-history", &[("lamp.road", LAMP)]);
+    std::fs::write(
+        dir.join("lamp.road"),
+        LAMP.replace("on Flip -> On", "on Flip -> On\n  }\n  state Dim {"),
+    )
+    .unwrap();
+    let (_, json, md) = diff_summary(&dir, "diff-no-history");
+    assert_eq!(
+        json["historyStates"],
+        serde_json::json!({ "added": 0, "removed": 0, "changed": 0 })
+    );
+    assert!(!md.contains("history"), "{md}");
+}
 
 #[test]
 fn viz_diff_matches_machines_across_files() {
