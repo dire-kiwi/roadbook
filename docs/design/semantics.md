@@ -22,8 +22,9 @@ An abridged IR for `Checkout` (`/* … */` marks what is left out; the spike emi
 
 ```jsonc
 {
-  "irVersion": "0.1",
-  "sources": [{ "path": "examples/shop/checkout.road" }, { "path": "examples/shop/types.road" }],
+  "irVersion": "0.2",
+  "sources": [{ "path": "examples/shop/checkout.road", "package": null },
+              { "path": "examples/shop/types.road", "package": null }],
   "types": {
     "CardDeclined": { "kind": "error", "fields": [{ "name": "reason", "type": "string", "doc": "" }],
                       "doc": "", "span": { "file": 1, "line": 15, "col": 1, "endLine": 15, "endCol": 44 } }
@@ -41,7 +42,7 @@ An abridged IR for `Checkout` (`/* … */` marks what is left out; the spike emi
       "vars": [{ "name": "attempts", "type": "int",
                  "init": { "kind": "lit", "value": 0, "type": "int", "text": "0" },
                  "doc": "", "span": { "file": 0, "line": 5, "col": 3, "endLine": 5, "endCol": 24 } }],
-      "events": {},
+      "events": {}, "emits": {},
       "root": {
         "id": "Checkout", "name": "Checkout", "kind": "compound", "doc": "Charge the customer's card, …",
         "span": { /* the machine's */ }, "initial": "Checkout.Charging",
@@ -51,7 +52,7 @@ An abridged IR for `Checkout` (`/* … */` marks what is left out; the spike emi
             "doc": "One attempt against the payment gateway.",
             "span": { "file": 0, "line": 12, "col": 3, "endLine": 21, "endCol": 4 },
             "initial": null, "states": [], "entry": [], "exit": [],
-            "invoke": { "kind": "task", "src": "chargeCard", "args": [/* order, user */],
+            "invoke": { "kind": "task", "src": "chargeCard", "as": null, "args": [/* order, user */],
                         "span": { "file": 0, "line": 13, "col": 5, "endLine": 20, "endCol": 6 } },
             "transitions": [
               { "trigger": { "kind": "invoke.done" }, "group": 0, "guard": null,

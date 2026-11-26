@@ -55,7 +55,7 @@ Progress is recorded on each milestone below as it finishes.
 | M2. Viewer | Done, 26 November 2026 |
 | M3. TypeScript runtime | In progress |
 | M4. Rust runtime | In progress |
-| M5. Messaging | Not started |
+| M5. Messaging | In progress |
 | M6. Depth | Not started |
 | M7. Review tooling | Not started |
 | M8. Editors | Not started |
@@ -73,6 +73,8 @@ Progress is recorded on each milestone below as it finishes.
 **M4. Rust runtime.** `roadbook-core`, the macro, the driver. The same example serves requests from axum and passes the same conformance cases.
 
 **M5. Messaging.** `send` and `emit` with an invoked child, `ref` parameters for peers, and imports across crates and packages, as specified in [actors and messaging](actors.md). The viewer draws message edges and the project index draws which machines can talk to which. How the Rust macro finds a chart in a dependency crate has been prototyped in [`spike/cross-crate`](../../spike/cross-crate).
+
+*In progress.* The language, the compiler and IR 0.2: `emits`, `ref`, `invoke … as`, `on name.Event`, `send` and `emit`, with their checks, and imports from other packages (`[packages]` in `roadbook.toml`, `node_modules`, and an import satisfied by another package's compiled IR). [`examples/upload`](../../examples/upload) and [`examples/orders`](../../examples/orders) check clean; the runtimes and the TypeScript generator refuse them until they implement messaging.
 
 **M6. Depth.** Definite assignment analysis. Parallel states. Saving and restoring snapshots (`resume`), with the IR hash check. Simulate and replay modes in the viewer, which need the TypeScript core and the trace.
 
