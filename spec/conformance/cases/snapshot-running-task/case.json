@@ -1,0 +1,39 @@
+{
+  "description": "A run saved while its child machine runs (the child has finished its first task and runs its second). The snapshot holds the parent's running invoke but nothing of the child. Restoring starts the invoke again with the same id and its arguments evaluated anew, so the child is a new child run of the restored run that starts from the beginning and runs its first task again. The original run and its child carry on untouched.",
+  "requires": [
+    "snapshots"
+  ],
+  "chart": "charts/saved.road",
+  "machine": "Shop",
+  "input": {
+    "amount": 5
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "quote",
+      "done": 10
+    },
+    {
+      "snapshot": "paying"
+    },
+    {
+      "restore": "paying",
+      "run": "r2",
+      "status": "done"
+    },
+    {
+      "task": "quote",
+      "run": "r2.1",
+      "done": 12
+    },
+    {
+      "task": "charge",
+      "run": "r2.1",
+      "done": "c2"
+    }
+  ],
+  "status": "running"
+}

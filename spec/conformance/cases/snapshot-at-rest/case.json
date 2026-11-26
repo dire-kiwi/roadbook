@@ -1,0 +1,67 @@
+{
+  "description": "A run waiting in a state with no work is saved and restored as a new top-level run, which starts with `restored` and no other record, and goes on from the saved variables while the original goes on separately. The restored run is suspended once idle (`suspended`, status still running) and that snapshot restored in turn and finished. Suspending a run that has ended gives its final snapshot and writes nothing, and restoring that snapshot is refused (`ended`).",
+  "requires": [
+    "snapshots"
+  ],
+  "chart": "charts/saved.road",
+  "machine": "Counter",
+  "input": {
+    "start": 1
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Add",
+        "by": 2
+      }
+    },
+    {
+      "snapshot": "s1"
+    },
+    {
+      "restore": "s1",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Add",
+        "by": 4
+      },
+      "run": "r2"
+    },
+    {
+      "suspend": "s2",
+      "run": "r2"
+    },
+    {
+      "restore": "s2",
+      "run": "r3",
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Finish"
+      },
+      "run": "r3"
+    },
+    {
+      "suspend": "s3",
+      "run": "r3"
+    },
+    {
+      "restore": "s3",
+      "refused": "ended"
+    },
+    {
+      "event": {
+        "_tag": "Add",
+        "by": 10
+      }
+    }
+  ],
+  "status": "running"
+}

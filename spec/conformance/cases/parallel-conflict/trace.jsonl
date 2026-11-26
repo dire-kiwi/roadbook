@@ -1,0 +1,29 @@
+{"input":{},"ir":"sha256:d86ed947d60e42d1c3200ade7bff0e52874726dfecb725c83bc25351128cd59a","kind":"started","machine":"Clash","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Clash","t":0}
+{"kind":"entered","run":"r1","state":"Clash.P","t":0}
+{"kind":"entered","run":"r1","state":"Clash.P.A","t":0}
+{"kind":"entered","run":"r1","state":"Clash.P.A.A1","t":0}
+{"kind":"entered","run":"r1","state":"Clash.P.B","t":0}
+{"kind":"entered","run":"r1","state":"Clash.P.B.B1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Go"}},"kind":"event","run":"r1","t":0}
+{"from":"Clash.P.A.A1","index":0,"kind":"transition","run":"r1","t":0,"to":"Clash.Out"}
+{"kind":"exited","run":"r1","state":"Clash.P.B.B1","t":0}
+{"kind":"exited","run":"r1","state":"Clash.P.B","t":0}
+{"kind":"exited","run":"r1","state":"Clash.P.A.A1","t":0}
+{"kind":"exited","run":"r1","state":"Clash.P.A","t":0}
+{"kind":"exited","run":"r1","state":"Clash.P","t":0}
+{"action":"log","args":{"what":"A go"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Clash.Out","t":0}
+{"event":{"kind":"event","value":{"_tag":"Back"}},"kind":"event","run":"r1","t":0}
+{"from":"Clash.Out","index":0,"kind":"transition","run":"r1","t":0,"to":"Clash.P"}
+{"kind":"exited","run":"r1","state":"Clash.Out","t":0}
+{"kind":"entered","run":"r1","state":"Clash.P","t":0}
+{"kind":"entered","run":"r1","state":"Clash.P.A","t":0}
+{"kind":"entered","run":"r1","state":"Clash.P.A.A1","t":0}
+{"kind":"entered","run":"r1","state":"Clash.P.B","t":0}
+{"kind":"entered","run":"r1","state":"Clash.P.B.B1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Swap"}},"kind":"event","run":"r1","t":0}
+{"from":"Clash.P.B.B1","index":1,"kind":"transition","run":"r1","t":0,"to":"Clash.P.B.B2"}
+{"kind":"exited","run":"r1","state":"Clash.P.B.B1","t":0}
+{"action":"log","args":{"what":"B swap"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Clash.P.B.B2","t":0}

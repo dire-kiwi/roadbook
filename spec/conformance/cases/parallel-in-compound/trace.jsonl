@@ -1,0 +1,22 @@
+{"input":{},"ir":"sha256:abec30042208c4e75ed23634f37b2080e904e92ca7fd0d399a6622dec3cbac07","kind":"started","machine":"Shell","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Shell","t":0}
+{"kind":"entered","run":"r1","state":"Shell.Outer","t":0}
+{"kind":"entered","run":"r1","state":"Shell.Outer.Split","t":0}
+{"kind":"entered","run":"r1","state":"Shell.Outer.Split.X","t":0}
+{"kind":"entered","run":"r1","state":"Shell.Outer.Split.Y","t":0}
+{"kind":"entered","run":"r1","state":"Shell.Outer.Split.Y.Y1","t":0}
+{"delay":1000,"index":0,"kind":"timer.started","run":"r1","state":"Shell.Outer.Split.Y.Y1","t":0,"timer":1}
+{"event":{"kind":"event","value":{"_tag":"Leave"}},"kind":"event","run":"r1","t":0}
+{"from":"Shell.Outer","index":0,"kind":"transition","run":"r1","t":0,"to":"Shell.Gone"}
+{"index":0,"kind":"timer.cancelled","run":"r1","state":"Shell.Outer.Split.Y.Y1","t":0,"timer":1}
+{"action":"log","args":{"what":"exit Y1"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Shell.Outer.Split.Y.Y1","t":0}
+{"kind":"exited","run":"r1","state":"Shell.Outer.Split.Y","t":0}
+{"action":"log","args":{"what":"exit X"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Shell.Outer.Split.X","t":0}
+{"action":"log","args":{"what":"exit Split"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Shell.Outer.Split","t":0}
+{"action":"log","args":{"what":"exit Outer"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Shell.Outer","t":0}
+{"action":"log","args":{"what":"leave"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Shell.Gone","t":0}

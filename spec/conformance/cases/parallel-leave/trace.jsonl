@@ -1,0 +1,40 @@
+{"input":{},"ir":"sha256:27802c025ad47352aedf43ea2b487da9aaf6df0afa463c95826015ba643c728e","kind":"started","machine":"Escape","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Escape","t":0}
+{"kind":"entered","run":"r1","state":"Escape.P","t":0}
+{"kind":"entered","run":"r1","state":"Escape.P.A","t":0}
+{"kind":"entered","run":"r1","state":"Escape.P.A.A1","t":0}
+{"kind":"entered","run":"r1","state":"Escape.P.B","t":0}
+{"kind":"entered","run":"r1","state":"Escape.P.B.B1","t":0}
+{"delay":1000,"index":0,"kind":"timer.started","run":"r1","state":"Escape.P.B.B1","t":0,"timer":1}
+{"event":{"kind":"event","value":{"_tag":"Cross"}},"kind":"event","run":"r1","t":600}
+{"from":"Escape.P.A.A1","index":0,"kind":"transition","run":"r1","t":600,"to":"Escape.P.B.B1"}
+{"index":0,"kind":"timer.cancelled","run":"r1","state":"Escape.P.B.B1","t":600,"timer":1}
+{"action":"log","args":{"what":"exit B1"},"kind":"action","run":"r1","t":600}
+{"kind":"exited","run":"r1","state":"Escape.P.B.B1","t":600}
+{"kind":"exited","run":"r1","state":"Escape.P.B","t":600}
+{"kind":"exited","run":"r1","state":"Escape.P.A.A1","t":600}
+{"kind":"exited","run":"r1","state":"Escape.P.A","t":600}
+{"action":"log","args":{"what":"exit P"},"kind":"action","run":"r1","t":600}
+{"kind":"exited","run":"r1","state":"Escape.P","t":600}
+{"action":"log","args":{"what":"cross"},"kind":"action","run":"r1","t":600}
+{"kind":"entered","run":"r1","state":"Escape.P","t":600}
+{"kind":"entered","run":"r1","state":"Escape.P.A","t":600}
+{"kind":"entered","run":"r1","state":"Escape.P.A.A1","t":600}
+{"kind":"entered","run":"r1","state":"Escape.P.B","t":600}
+{"kind":"entered","run":"r1","state":"Escape.P.B.B1","t":600}
+{"delay":1000,"index":0,"kind":"timer.started","run":"r1","state":"Escape.P.B.B1","t":600,"timer":2}
+{"event":{"kind":"event","value":{"_tag":"Out"}},"kind":"event","run":"r1","t":1100}
+{"from":"Escape.P.A.A1","index":1,"kind":"transition","run":"r1","t":1100,"to":"Escape.Done"}
+{"index":0,"kind":"timer.cancelled","run":"r1","state":"Escape.P.B.B1","t":1100,"timer":2}
+{"action":"log","args":{"what":"exit B1"},"kind":"action","run":"r1","t":1100}
+{"kind":"exited","run":"r1","state":"Escape.P.B.B1","t":1100}
+{"kind":"exited","run":"r1","state":"Escape.P.B","t":1100}
+{"kind":"exited","run":"r1","state":"Escape.P.A.A1","t":1100}
+{"kind":"exited","run":"r1","state":"Escape.P.A","t":1100}
+{"action":"log","args":{"what":"exit P"},"kind":"action","run":"r1","t":1100}
+{"kind":"exited","run":"r1","state":"Escape.P","t":1100}
+{"action":"log","args":{"what":"out"},"kind":"action","run":"r1","t":1100}
+{"kind":"entered","run":"r1","state":"Escape.Done","t":1100}
+{"kind":"exited","run":"r1","state":"Escape.Done","t":1100}
+{"kind":"exited","run":"r1","state":"Escape","t":1100}
+{"kind":"done","output":null,"run":"r1","state":"Escape.Done","t":1100}

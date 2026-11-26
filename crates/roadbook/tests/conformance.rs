@@ -541,6 +541,11 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                 handle.push(inputs.into_iter().map(|(_, i)| i).collect());
                 runner.settle().map_err(at)?;
             }
+            // Cases with these steps require `snapshots`, which this runtime does not
+            // implement yet, so they are skipped before they get here.
+            Step::Snapshot(_) | Step::Restore(_) | Step::Suspend(_) => {
+                return Err(at("saving and restoring are not implemented yet".into()));
+            }
         }
     }
 

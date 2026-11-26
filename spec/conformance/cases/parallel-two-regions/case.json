@@ -1,0 +1,30 @@
+{
+  "description": "One event taken in two regions in one microstep: both `transition` records, then the exits innermost first (the second region's first), then each transition's effects in region order (the second sees the first's `set`), then the entries in document order. The `always` transitions the step enabled in both regions are taken together while settling. An event only one region has an `on` for is taken there alone, internally; an atomic region takes its own.",
+  "requires": [
+    "parallel"
+  ],
+  "chart": "charts/parallel.road",
+  "machine": "Fork",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Tick"
+      }
+    }
+  ],
+  "status": "running"
+}

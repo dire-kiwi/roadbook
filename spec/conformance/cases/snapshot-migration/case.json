@@ -1,0 +1,40 @@
+{
+  "description": "A snapshot saved by an earlier version of the chart (another hash, and a variable `count` since renamed `n`) is refused without a migration (`ir`), and nothing is written. With a migration that renames the variable and sets the current hash, it is restored: `restored` gives the hash it had in `migrated` and the migrated snapshot, and the run goes on from it.",
+  "requires": [
+    "snapshots"
+  ],
+  "chart": "charts/saved.road",
+  "machine": "Counter",
+  "input": {
+    "start": 0
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "restore": "old",
+      "refused": "ir"
+    },
+    {
+      "restore": "old",
+      "migrate": "new",
+      "run": "r2",
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Add",
+        "by": 4
+      },
+      "run": "r2"
+    },
+    {
+      "event": {
+        "_tag": "Finish"
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "running"
+}

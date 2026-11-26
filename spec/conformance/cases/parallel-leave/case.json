@@ -1,0 +1,31 @@
+{
+  "description": "Transitions from inside a region. One targeting a state of the other region has the root as its domain, since a parallel state is never one: the parallel state is exited and entered again with all its regions, the target's by its path and the other by default entry, and the other region's timer restarts with a new id. One leaving the parallel state from inside a region exits the other region's states too, cancelling their timer, before its effects run.",
+  "requires": [
+    "parallel"
+  ],
+  "chart": "charts/parallel.road",
+  "machine": "Escape",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "advance": 600
+    },
+    {
+      "event": {
+        "_tag": "Cross"
+      }
+    },
+    {
+      "advance": 500
+    },
+    {
+      "event": {
+        "_tag": "Out"
+      }
+    }
+  ],
+  "status": "done"
+}

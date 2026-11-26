@@ -1,0 +1,1310 @@
+{
+  "irVersion": "0.2",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/saved.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 25
+      }
+    },
+    "count": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "n",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 35
+      }
+    },
+    "refund": {
+      "params": [
+        {
+          "name": "order",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "amount",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 42
+      }
+    }
+  },
+  "tasks": {
+    "quote": {
+      "params": [
+        {
+          "name": "amount",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 49
+      }
+    },
+    "charge": {
+      "params": [
+        {
+          "name": "price",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 52
+      }
+    },
+    "ship": {
+      "params": [
+        {
+          "name": "order",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 52
+      }
+    }
+  },
+  "machines": {
+    "Counter": {
+      "doc": "A counter that waits for events in a state with no work.",
+      "span": {
+        "file": 0,
+        "line": 13,
+        "col": 1,
+        "endLine": 27,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "start",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "n",
+          "type": "int",
+          "init": {
+            "kind": "ref",
+            "path": [
+              "start"
+            ],
+            "type": "int",
+            "text": "start"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Add": {
+          "fields": [
+            {
+              "name": "by",
+              "type": "int",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 27
+          }
+        },
+        "Finish": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {},
+      "root": {
+        "id": "Counter",
+        "name": "Counter",
+        "kind": "compound",
+        "doc": "A counter that waits for events in a state with no work.",
+        "span": {
+          "file": 0,
+          "line": 13,
+          "col": 1,
+          "endLine": 27,
+          "endCol": 2
+        },
+        "initial": "Counter.Counting",
+        "states": [
+          {
+            "id": "Counter.Counting",
+            "name": "Counting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 21,
+              "col": 3,
+              "endLine": 24,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Add"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "by"
+                          ],
+                          "type": "int",
+                          "text": "event.by"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "n + event.by"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "count",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "added",
+                        "type": "string",
+                        "text": "\"added\""
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "n"
+                        ],
+                        "type": "int",
+                        "text": "n"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 66
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Finish"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Counter.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 5,
+                  "endLine": 23,
+                  "endCol": 22
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Counter.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 26,
+              "col": 3,
+              "endLine": 26,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "n"
+              ],
+              "type": "int",
+              "text": "n"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:1fa81f452da00ee2767aeec05233a81ed2e52266bd1c14968a8ba72f0fa0cede"
+    },
+    "Shop": {
+      "doc": "Pays through a child machine.",
+      "span": {
+        "file": 0,
+        "line": 30,
+        "col": 1,
+        "endLine": 42,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "amount",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [],
+      "vars": [
+        {
+          "name": "receipt",
+          "type": "string",
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 31,
+            "col": 3,
+            "endLine": 31,
+            "endCol": 27
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "root": {
+        "id": "Shop",
+        "name": "Shop",
+        "kind": "compound",
+        "doc": "Pays through a child machine.",
+        "span": {
+          "file": 0,
+          "line": 30,
+          "col": 1,
+          "endLine": 42,
+          "endCol": 2
+        },
+        "initial": "Shop.Paying",
+        "states": [
+          {
+            "id": "Shop.Paying",
+            "name": "Paying",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 35,
+              "col": 3,
+              "endLine": 39,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "machine",
+              "src": "Pay",
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "amount"
+                  ],
+                  "type": "int",
+                  "text": "amount"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 36,
+                "col": 5,
+                "endLine": 38,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Shop.Paid",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "receipt",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "string",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 7,
+                  "endLine": 37,
+                  "endCol": 41
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Shop.Paid",
+            "name": "Paid",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 41,
+              "col": 3,
+              "endLine": 41,
+              "endCol": 38
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "receipt"
+              ],
+              "type": "string",
+              "text": "receipt"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:d88779f5271ef7275d837f47134eeb23f06425b2d5de61cc65b73d6ee6a335cc"
+    },
+    "Pay": {
+      "doc": "Quotes a price, then charges it.",
+      "span": {
+        "file": 0,
+        "line": 45,
+        "col": 1,
+        "endLine": 64,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "amount",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [],
+      "vars": [
+        {
+          "name": "price",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 46,
+            "col": 3,
+            "endLine": 46,
+            "endCol": 23
+          }
+        },
+        {
+          "name": "receipt",
+          "type": "string",
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 47,
+            "col": 3,
+            "endLine": 47,
+            "endCol": 27
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "root": {
+        "id": "Pay",
+        "name": "Pay",
+        "kind": "compound",
+        "doc": "Quotes a price, then charges it.",
+        "span": {
+          "file": 0,
+          "line": 45,
+          "col": 1,
+          "endLine": 64,
+          "endCol": 2
+        },
+        "initial": "Pay.Quoting",
+        "states": [
+          {
+            "id": "Pay.Quoting",
+            "name": "Quoting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 51,
+              "col": 3,
+              "endLine": 55,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "quote",
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "amount"
+                  ],
+                  "type": "int",
+                  "text": "amount"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 52,
+                "col": 5,
+                "endLine": 54,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Pay.Charging",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "price",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 53,
+                  "col": 7,
+                  "endLine": 53,
+                  "endCol": 43
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Pay.Charging",
+            "name": "Charging",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 57,
+              "col": 3,
+              "endLine": 61,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "charge",
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "price"
+                  ],
+                  "type": "int",
+                  "text": "price"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 58,
+                "col": 5,
+                "endLine": 60,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Pay.Charged",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "receipt",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "string",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 59,
+                  "col": 7,
+                  "endLine": 59,
+                  "endCol": 44
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Pay.Charged",
+            "name": "Charged",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 63,
+              "col": 3,
+              "endLine": 63,
+              "endCol": 41
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "receipt"
+              ],
+              "type": "string",
+              "text": "receipt"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:d57f6abb799593153fc90494c80b262900698880e21da1047a14f5988a31e8ea"
+    },
+    "Reminder": {
+      "doc": "Rings a second after it starts waiting.",
+      "span": {
+        "file": 0,
+        "line": 67,
+        "col": 1,
+        "endLine": 79,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Snooze": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 68,
+            "col": 3,
+            "endLine": 68,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {},
+      "root": {
+        "id": "Reminder",
+        "name": "Reminder",
+        "kind": "compound",
+        "doc": "Rings a second after it starts waiting.",
+        "span": {
+          "file": 0,
+          "line": 67,
+          "col": 1,
+          "endLine": 79,
+          "endCol": 2
+        },
+        "initial": "Reminder.Waiting",
+        "states": [
+          {
+            "id": "Reminder.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 72,
+              "col": 3,
+              "endLine": 72,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Reminder.Ringing",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 72,
+                  "col": 19,
+                  "endLine": 72,
+                  "endCol": 38
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Reminder.Ringing",
+            "name": "Ringing",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 74,
+              "col": 3,
+              "endLine": 78,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "ring",
+                    "type": "string",
+                    "text": "\"ring\""
+                  }
+                ]
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Snooze"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Reminder.Waiting",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 77,
+                  "col": 5,
+                  "endLine": 77,
+                  "endCol": 25
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:b26b68226ae24916fb82b7a9bd55153deb0f87ba39cf990c75abacc7fca343d6"
+    },
+    "Order": {
+      "doc": "An order kept as a snapshot between requests: it waits three days for\npayment, ships, and waits for delivery.",
+      "span": {
+        "file": 0,
+        "line": 83,
+        "col": 1,
+        "endLine": 109,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "paid",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 84,
+            "col": 3,
+            "endLine": 84,
+            "endCol": 24
+          }
+        },
+        {
+          "name": "tracking",
+          "type": "string",
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 85,
+            "col": 3,
+            "endLine": 85,
+            "endCol": 28
+          }
+        }
+      ],
+      "events": {
+        "PaymentReceived": {
+          "fields": [
+            {
+              "name": "amount",
+              "type": "int",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 87,
+            "col": 3,
+            "endLine": 87,
+            "endCol": 40
+          }
+        },
+        "Delivered": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 88,
+            "col": 3,
+            "endLine": 88,
+            "endCol": 18
+          }
+        }
+      },
+      "emits": {},
+      "root": {
+        "id": "Order",
+        "name": "Order",
+        "kind": "compound",
+        "doc": "An order kept as a snapshot between requests: it waits three days for\npayment, ships, and waits for delivery.",
+        "span": {
+          "file": 0,
+          "line": 83,
+          "col": 1,
+          "endLine": 109,
+          "endCol": 2
+        },
+        "initial": "Order.AwaitingPayment",
+        "states": [
+          {
+            "id": "Order.AwaitingPayment",
+            "name": "AwaitingPayment",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 92,
+              "col": 3,
+              "endLine": 96,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 259200000,
+                    "type": "duration",
+                    "text": "72h"
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Order.Expired",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 93,
+                  "col": 5,
+                  "endLine": 93,
+                  "endCol": 25
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "PaymentReceived"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Order.Shipping",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "paid",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "amount"
+                      ],
+                      "type": "int",
+                      "text": "event.amount"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 95,
+                  "col": 5,
+                  "endLine": 95,
+                  "endCol": 60
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.Shipping",
+            "name": "Shipping",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 98,
+              "col": 3,
+              "endLine": 102,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "ship",
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "id"
+                  ],
+                  "type": "string",
+                  "text": "id"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 99,
+                "col": 5,
+                "endLine": 101,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Order.AwaitingDelivery",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "tracking",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "string",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 100,
+                  "col": 7,
+                  "endLine": 100,
+                  "endCol": 54
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.AwaitingDelivery",
+            "name": "AwaitingDelivery",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 104,
+              "col": 3,
+              "endLine": 104,
+              "endCol": 54
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Delivered"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Order.Complete",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 104,
+                  "col": 28,
+                  "endLine": 104,
+                  "endCol": 52
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.Expired",
+            "name": "Expired",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 106,
+              "col": 3,
+              "endLine": 106,
+              "endCol": 67
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "PaymentReceived"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "refund",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "id"
+                        ],
+                        "type": "string",
+                        "text": "id"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "amount"
+                        ],
+                        "type": "int",
+                        "text": "event.amount"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 106,
+                  "col": 19,
+                  "endLine": 106,
+                  "endCol": 65
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.Complete",
+            "name": "Complete",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 108,
+              "col": 3,
+              "endLine": 108,
+              "endCol": 26
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:6ae1c132e34692919ad8977d8619a1c8414fb382b9cd13dc7ff5f32d85d9ec6c"
+    }
+  }
+}

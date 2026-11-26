@@ -1,0 +1,54 @@
+{
+  "description": "A running timer is saved with its deadline (`due`), not the time left. Restored 300 ms before it, the timer starts again with the same id for 300 ms and expires at the saved deadline, together with the original run's. Restored after it, the timer is not started: its expiry is queued at once and taken in the step that restores. A suspended run's snapshot keeps its timer with the deadline it had.",
+  "requires": [
+    "snapshots"
+  ],
+  "chart": "charts/saved.road",
+  "machine": "Reminder",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "advance": 400
+    },
+    {
+      "snapshot": "waiting"
+    },
+    {
+      "advance": 300
+    },
+    {
+      "restore": "waiting",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "snapshot": "restarted",
+      "run": "r2"
+    },
+    {
+      "advance": 300
+    },
+    {
+      "advance": 1000
+    },
+    {
+      "restore": "waiting",
+      "run": "r3",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Snooze"
+      },
+      "run": "r3"
+    },
+    {
+      "suspend": "snoozed",
+      "run": "r3"
+    }
+  ],
+  "status": "running"
+}

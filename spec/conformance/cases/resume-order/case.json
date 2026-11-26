@@ -1,0 +1,80 @@
+{
+  "description": "An order handled one request at a time, as `resume` does (restore, one event, suspend). Creating it suspends the new run at once, saving its 72-hour payment timer with its deadline. The payment request restores it an hour later (the timer restarts for what remains), takes the payment, and is suspended only once the shipping task it started has finished. The delivery request a day later finishes it, and suspending gives the ended run's snapshot. Restoring the first snapshot after the deadline takes the expiry before the late payment, which is refunded.",
+  "requires": [
+    "snapshots"
+  ],
+  "chart": "charts/saved.road",
+  "machine": "Order",
+  "input": {
+    "id": "o1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "suspend": "created"
+    },
+    {
+      "advance": 3600000
+    },
+    {
+      "restore": "created",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "PaymentReceived",
+        "amount": 42
+      },
+      "run": "r2"
+    },
+    {
+      "suspend": "paid",
+      "run": "r2"
+    },
+    {
+      "task": "ship",
+      "done": "t-1"
+    },
+    {
+      "advance": 86400000
+    },
+    {
+      "restore": "paid",
+      "run": "r3",
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Delivered"
+      },
+      "run": "r3"
+    },
+    {
+      "suspend": "delivered",
+      "run": "r3"
+    },
+    {
+      "advance": 259200000
+    },
+    {
+      "restore": "created",
+      "run": "r4",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "PaymentReceived",
+        "amount": 42
+      },
+      "run": "r4"
+    },
+    {
+      "suspend": "expired",
+      "run": "r4"
+    }
+  ],
+  "status": "running"
+}

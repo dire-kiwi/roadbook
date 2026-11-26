@@ -1,0 +1,23 @@
+{
+  "description": "A parallel state inside a compound state, which is its parent's initial child: starting enters both regions. The compound state's `on`, found by both regions' walks, is taken once, and exits the second region (cancelling its timer), then the first, then the parallel state, then the compound state, each with its exit effects, before its own effects run. The cancelled timer never fires.",
+  "requires": [
+    "parallel"
+  ],
+  "chart": "charts/parallel.road",
+  "machine": "Shell",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Leave"
+      }
+    },
+    {
+      "advance": 1000
+    }
+  ],
+  "status": "running"
+}

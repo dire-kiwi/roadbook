@@ -8,9 +8,11 @@
 use std::collections::BTreeSet;
 
 use roadbook_conformance::{
-    FEATURES, LoadedCase, ROOT_RUN, Status, Step, case_validator, conformance_dir,
+    FEATURES, LoadedCase, ROOT_RUN, SNAPSHOT_SUFFIX, Status, Step, case_validator,
+    conformance_dir,
     lint::{lint, lint_runs},
-    load_all, restamp_hashes, schema_errors, to_lines, trace_validator,
+    load_all, restamp_hashes, restamp_snapshot, schema_errors, snapshot_text, snapshot_validator,
+    to_lines, trace_validator,
 };
 use serde_json::{Value, json};
 
@@ -25,6 +27,7 @@ fn schemas_are_valid_draft_2020_12() {
     for text in [
         roadbook_conformance::CASE_SCHEMA,
         roadbook_conformance::TRACE_SCHEMA,
+        roadbook_conformance::SNAPSHOT_SCHEMA,
     ] {
         let schema: Value = serde_json::from_str(text).unwrap();
         jsonschema::meta::validate(&schema).expect("a valid draft 2020-12 schema");
@@ -65,11 +68,36 @@ fn traces_are_canonical() {
 }
 
 fn statuses(c: &LoadedCase) -> Vec<(String, Status)> {
-    c.case
-        .top_level_runs()
-        .into_iter()
-        .map(|(run, _, _, status)| (run, status))
-        .collect()
+    c.case.top_level_statuses()
+}
+
+/// Every snapshot file is one canonical saved snapshot and a line feed, and
+/// matches the snapshot schema; so does the snapshot of every `restored`
+/// record. The script names exactly the files there are.
+#[test]
+fn snapshots_are_canonical_and_valid() {
+    let v = snapshot_validator();
+    for c in cases() {
+        for (name, text) in &c.snapshots {
+            let value: Value = serde_json::from_str(text)
+                .unwrap_or_else(|e| panic!("{}: {name}{SNAPSHOT_SUFFIX}: {e}", c.name));
+            assert_eq!(
+                &snapshot_text(&value),
+                text,
+                "{}: {name}{SNAPSHOT_SUFFIX} is not canonical JSON and a line feed",
+                c.name
+            );
+            let errors = schema_errors(&v, &value);
+            assert!(errors.is_empty(), "{}: {name}: {errors:#?}", c.name);
+        }
+        for r in c.records.iter().filter(|r| r["kind"] == "restored") {
+            let errors = schema_errors(&v, &r["snapshot"]);
+            assert!(errors.is_empty(), "{}: restored snapshot: {errors:#?}", c.name);
+        }
+        let named: BTreeSet<String> = c.case.snapshot_names().into_iter().map(|(n, _)| n).collect();
+        let files: BTreeSet<String> = c.snapshots.keys().cloned().collect();
+        assert_eq!(named, files, "{}: the snapshot files are not those the script names", c.name);
+    }
 }
 
 #[test]
@@ -104,6 +132,19 @@ fn top_level_runs_are_started_in_order() {
                     assert_eq!(st.run, want, "{}: start steps name r2, r3, …", c.name);
                     started.push(st.run.clone());
                 }
+                Step::Restore(r) => {
+                    if let Some(run) = &r.run {
+                        let want = format!("r{}", started.len() + 1);
+                        assert_eq!(*run, want, "{}: restore steps name r2, r3, …", c.name);
+                        started.push(run.clone());
+                    }
+                }
+                Step::Snapshot(st) | Step::Suspend(st) => assert!(
+                    started.iter().any(|r| r == st.run()),
+                    "{}: snapshot of {}, which has not been started",
+                    c.name,
+                    st.run()
+                ),
                 Step::Event(e) => assert!(
                     started.iter().any(|r| r == e.run()),
                     "{}: event for {}, which has not been started",
@@ -119,19 +160,43 @@ fn top_level_runs_are_started_in_order() {
                 _ => {}
             }
         }
-        let messaging = c.case.requires.iter().any(|f| f == "messaging");
-        if started.len() > 1 {
+        let requires = |f: &str| c.case.requires.iter().any(|r| r == f);
+        let messaging = requires("messaging");
+        let snapshots = !c.case.snapshot_names().is_empty();
+        assert_eq!(
+            snapshots,
+            requires("snapshots"),
+            "{}: `requires` must list `snapshots` exactly when the script saves or restores",
+            c.name
+        );
+        let starts = c
+            .case
+            .script
+            .iter()
+            .any(|s| matches!(s, Step::Start(_)));
+        if starts {
             assert!(
                 messaging,
-                "{}: several top-level runs need `messaging`",
+                "{}: several top-level runs started from the machine need `messaging`",
                 c.name
             );
         }
         if let Some(ir) = &c.ir {
             let uses = ir.machines.values().any(|m| m.messaging().is_some());
             assert_eq!(
-                uses, messaging,
-                "{}: `requires` must list `messaging` exactly when a machine of its chart uses it",
+                uses || starts,
+                messaging,
+                "{}: `requires` must list `messaging` exactly when a machine of its chart uses it, or the script starts runs",
+                c.name
+            );
+            fn has_parallel(s: &roadbook_ir::State) -> bool {
+                s.kind == roadbook_ir::StateKind::Parallel || s.states.iter().any(has_parallel)
+            }
+            let parallel = ir.machines.values().any(|m| has_parallel(&m.root));
+            assert_eq!(
+                parallel,
+                requires("parallel"),
+                "{}: `requires` must list `parallel` exactly when its chart has a parallel state",
                 c.name
             );
         }
@@ -194,6 +259,15 @@ fn ir_when_present() {
         if std::env::var_os("ROADBOOK_BLESS").is_some() {
             let text = to_lines(&restamp_hashes(&c.records, ir));
             std::fs::write(c.dir.join("trace.jsonl"), text).unwrap();
+            for (name, current) in c.case.snapshot_names() {
+                let Some(text) = c.snapshots.get(&name) else { continue };
+                if !current {
+                    continue;
+                }
+                let value: Value = serde_json::from_str(text).unwrap();
+                let file = c.dir.join(format!("{name}{SNAPSHOT_SUFFIX}"));
+                std::fs::write(file, snapshot_text(&restamp_snapshot(&value, ir))).unwrap();
+            }
         }
     }
     if !missing.is_empty() {
@@ -236,6 +310,8 @@ fn every_status_and_record_kind_is_covered() {
         "sent",
         "emitted",
         "undelivered",
+        "restored",
+        "suspended",
     ] {
         assert!(kinds.contains(k), "no expected trace has a `{k}` record");
     }

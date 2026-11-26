@@ -1,0 +1,30 @@
+{
+  "description": "Conflicts between regions. `Go` is taken by the first region's `A1` (which leaves the parallel state) and by the second's `B1` (which stays in its region): both would exit `B1`, so the earlier region's wins and the other is not taken. `Swap` is found by `A1`'s walk on the parallel state itself and by `B1`'s on `B1`: they conflict, and `B1`, inside the parallel state, wins, as innermost first does in a chain; the first region takes nothing.",
+  "requires": [
+    "parallel"
+  ],
+  "chart": "charts/parallel.road",
+  "machine": "Clash",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Back"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Swap"
+      }
+    }
+  ],
+  "status": "running"
+}

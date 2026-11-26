@@ -1,0 +1,28 @@
+{
+  "description": "Entering a parallel state enters every region in document order, each region with everything below it before the next: a compound region, a region two levels deep and an atomic region. Its `on` (reached by the walk of every active leaf, taken once) exits every region innermost first, the last region first, and the parallel state last. Re-entering it enters every region by default; cancelling from outside exits in the same order as leaving.",
+  "requires": [
+    "parallel"
+  ],
+  "chart": "charts/parallel.road",
+  "machine": "Regions",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Leave"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Back"
+      }
+    },
+    {
+      "cancel": true
+    }
+  ],
+  "status": "cancelled"
+}
