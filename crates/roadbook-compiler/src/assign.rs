@@ -531,10 +531,9 @@ impl<'c, 'a> Flow<'c, 'a> {
     /// Recomputes `at(s)` and `done(s)`; whether either changed.
     fn recompute(&mut self, s: usize) -> bool {
         let (at, done) = match self.chart.kind(s) {
-            StateKind::Atomic
-            | StateKind::Final
-            | StateKind::History
-            | StateKind::DeepHistory => (self.entered[s].clone(), self.done[s].clone()),
+            StateKind::Atomic | StateKind::Final | StateKind::History | StateKind::DeepHistory => {
+                (self.entered[s].clone(), self.done[s].clone())
+            }
             StateKind::Compound => (
                 self.entered[s].with(&self.children_at[s]),
                 self.entered[s].with(&self.finals[s]),

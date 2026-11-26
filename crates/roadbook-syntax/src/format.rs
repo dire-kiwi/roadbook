@@ -581,7 +581,13 @@ impl Formatter<'_> {
             Item::Transition(t) => self.transition(t, indent),
             Item::History(h) => {
                 let kw = if h.deep { "deep history" } else { "history" };
-                self.row(whole, indent, vec![format!("{kw} {}", h.name.name)], "", None);
+                self.row(
+                    whole,
+                    indent,
+                    vec![format!("{kw} {}", h.name.name)],
+                    "",
+                    None,
+                );
             }
             _ => {
                 let text = inline_item(item).expect("every other item is one line");

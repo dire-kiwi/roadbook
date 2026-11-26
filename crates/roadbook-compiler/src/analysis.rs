@@ -119,7 +119,11 @@ impl<'a> Tree<'a> {
             if let Some(&parent) = self.parent.get(p)
                 && self.states[parent].kind == StateKind::Parallel
             {
-                for c in self.states[parent].states.iter().filter(|c| !c.kind.is_history()) {
+                for c in self.states[parent]
+                    .states
+                    .iter()
+                    .filter(|c| !c.kind.is_history())
+                {
                     if c.id != p {
                         self.enter_down(&c.id, &mut out);
                     }
@@ -430,7 +434,11 @@ fn warnings(
         if s.kind.is_history() {
             // Never entered itself: only whether anything goes to it matters.
             if !targeted.contains(id) {
-                let word = if s.kind == StateKind::DeepHistory { "deep history" } else { "history" };
+                let word = if s.kind == StateKind::DeepHistory {
+                    "deep history"
+                } else {
+                    "history"
+                };
                 diags.push(
                     Diagnostic::warning(
                         codes::UNUSED_HISTORY,

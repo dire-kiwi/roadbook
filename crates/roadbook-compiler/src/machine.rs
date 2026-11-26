@@ -505,7 +505,12 @@ impl<'p> Cx<'_, 'p> {
     }
 
     /// Adds history state `h` of `parent` to the tree.
-    fn history_node(&mut self, parent: usize, h: &'p ast::History, seen: &mut HashMap<&'p str, Span>) {
+    fn history_node(
+        &mut self,
+        parent: usize,
+        h: &'p ast::History,
+        seen: &mut HashMap<&'p str, Span>,
+    ) {
         let parent_id = self.nodes[parent].id.clone();
         if let Some(first) = seen.get(h.name.name.as_str()) {
             self.ck.diags.push(
@@ -553,7 +558,9 @@ impl<'p> Cx<'_, 'p> {
 
     /// Lowers history state `idx`, checking that its parent can have one.
     fn lower_history(&mut self, idx: usize, h: &ast::History) -> ir::State {
-        let parent = self.nodes[idx].parent.expect("a history state has a parent");
+        let parent = self.nodes[idx]
+            .parent
+            .expect("a history state has a parent");
         let parent_kind = self.nodes[parent].state.map(|s| s.kind);
         let id = self.nodes[idx].id.clone();
         let word = if h.deep { "deep history" } else { "history" };
