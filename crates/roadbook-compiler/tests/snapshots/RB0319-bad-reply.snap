@@ -1,0 +1,42 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0319]: call `get` returns `int`, so `reply … done` needs a value
+  --> RB0319-bad-reply.road:10:12
+   |
+ 5 |   call get() -> int ! Busy
+   |        --- declared here
+...
+10 |     on get reply call done
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: write `reply call done <int>`
+
+error[RB0319]: call `put` returns nothing, so its `reply … done` has no value
+  --> RB0319-bad-reply.road:11:28
+   |
+ 6 |   call put()
+   |        --- declared here
+...
+11 |     on put reply call done 1
+   |                            ^
+   |
+   = help: write `reply call done`, or declare what it returns: `call put(…) -> <type>`
+
+error[RB0319]: call `quiet` declares no errors, so it cannot be answered with `fail`
+  --> RB0319-bad-reply.road:12:30
+   |
+ 7 |   call quiet() -> int
+   |        ----- declared here
+...
+12 |     on quiet reply call fail Busy
+   |                              ^^^^
+
+error[RB0319]: `reply … fail` needs one of the errors call `get` declares, found `Other`
+  --> RB0319-bad-reply.road:16:28
+   |
+ 5 |   call get() -> int ! Busy
+   |        --- declared here
+...
+16 |     on get reply call fail Other
+   |                            ^^^^^ `get` declares `! Busy`

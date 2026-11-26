@@ -35,7 +35,8 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
       if (depth > 0) out.push({ kind: 'state', name: s.name, label: `${machine}.${short(s.id)}`, machine, target: { type: 'state', id: s.id } })
       if (s.invoke) {
         out.push({
-          kind: s.invoke.kind,
+          // A call is listed like a task for now.
+          kind: s.invoke.kind === 'call' ? 'task' : s.invoke.kind,
           name: s.invoke.src,
           label: `invoke ${invokeText(s.invoke)} in ${machine}.${short(s.id)}`,
           machine,

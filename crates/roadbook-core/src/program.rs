@@ -33,12 +33,14 @@ pub(crate) struct MachineIndex {
 pub enum ProgramError {
     /// The IR could not be read (its version, or its shape).
     Read(String),
+    /// The IR uses something this runtime does not run yet: calls between runs.
+    Unsupported(String),
 }
 
 impl fmt::Display for ProgramError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ProgramError::Read(e) => f.write_str(e),
+            ProgramError::Read(e) | ProgramError::Unsupported(e) => f.write_str(e),
         }
     }
 }
@@ -50,6 +52,11 @@ impl Program {
     pub fn new(ir: Ir) -> Result<Program, ProgramError> {
         let mut machines = HashMap::new();
         for (name, m) in &ir.machines {
+            if let Some(what) = calls(m) {
+                return Err(ProgramError::Unsupported(format!(
+                    "machine `{name}` uses {what}: calls between runs are not supported yet"
+                )));
+            }
             let mut idx = MachineIndex {
                 paths: Vec::new(),
                 parents: Vec::new(),
@@ -156,4 +163,22 @@ impl Program {
         });
         parallel.or(active.last()).map(String::as_str)
     }
+}
+
+/// The first use of calls between runs in a machine, described: a `call` it answers, or an
+/// `invoke x.name(…)`.
+fn calls(m: &Machine) -> Option<String> {
+    fn invoke(s: &State) -> Option<String> {
+        if let Some(inv) = &s.invoke
+            && inv.kind == roadbook_ir::InvokeKind::Call
+        {
+            let to = inv.to.as_ref().map_or("", |a| a.name.as_str());
+            return Some(format!("`invoke {to}.{}(…)` in state `{}`", inv.src, s.id));
+        }
+        s.states.iter().find_map(invoke)
+    }
+    if let Some(c) = m.calls.keys().next() {
+        return Some(format!("`call {c}`"));
+    }
+    invoke(&m.root)
 }

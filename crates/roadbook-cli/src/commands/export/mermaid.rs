@@ -23,7 +23,9 @@ use std::fmt::Write as _;
 use std::path::PathBuf;
 
 use roadbook_compiler::Ir;
-use roadbook_ir::{Effect, InvokeKind, Machine, State, StateKind, Transition, Trigger};
+use roadbook_ir::{
+    Effect, InvokeKind, Machine, ReplyOutcome, State, StateKind, Transition, Trigger,
+};
 
 use crate::workspace::Workspace;
 use crate::{Exit, report};
@@ -318,6 +320,20 @@ fn effect(e: &Effect) -> String {
         }
         Effect::Send { to, value, .. } => format!("send {}.{}", to.name, value.text),
         Effect::Emit { value, .. } => format!("emit {}", value.text),
+        Effect::Reply {
+            call,
+            outcome,
+            value,
+        } => {
+            let outcome = match outcome {
+                ReplyOutcome::Done => "done",
+                ReplyOutcome::Fail => "fail",
+            };
+            let value = value
+                .as_ref()
+                .map_or(String::new(), |v| format!(" {}", v.text));
+            format!("reply {} {outcome}{value}", call.text)
+        }
     }
 }
 
@@ -325,6 +341,7 @@ fn trigger(t: &Trigger) -> String {
     match t {
         Trigger::Event { event } => event.clone(),
         Trigger::Emitted { from, event } => format!("{}.{event}", from.name),
+        Trigger::Call { call } => call.clone(),
         Trigger::Any => "on *".into(),
         Trigger::After { delay } => format!("after {}", delay.text),
         Trigger::Always => "always".into(),
@@ -369,7 +386,7 @@ fn description(s: &State) -> Vec<String> {
             .map_or(String::new(), |a| format!(" as {a}"));
         out.push(format!(
             "invoke {kind}{}({}){alias}",
-            inv.src,
+            inv.callee(),
             args.join(", ")
         ));
     }

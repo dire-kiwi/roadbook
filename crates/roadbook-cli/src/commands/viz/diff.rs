@@ -755,6 +755,7 @@ pub fn trigger_text(t: &Trigger) -> String {
     match t {
         Trigger::Event { event } => event.clone(),
         Trigger::Emitted { from, event } => format!("{}.{event}", from.name),
+        Trigger::Call { call } => call.clone(),
         Trigger::Any => "on *".into(),
         Trigger::After { delay } => format!("after {}", delay.text),
         Trigger::Always => "always".into(),
@@ -776,6 +777,20 @@ pub fn effect_text(e: &Effect) -> String {
         ),
         Effect::Send { to, value, .. } => format!("send {}.{}", to.name, value.text),
         Effect::Emit { value, .. } => format!("emit {}", value.text),
+        Effect::Reply {
+            call,
+            outcome,
+            value,
+        } => {
+            let outcome = match outcome {
+                roadbook_ir::ReplyOutcome::Done => "done",
+                roadbook_ir::ReplyOutcome::Fail => "fail",
+            };
+            let value = value
+                .as_ref()
+                .map_or(String::new(), |v| format!(" {}", v.text));
+            format!("reply {} {outcome}{value}", call.text)
+        }
     }
 }
 
@@ -792,7 +807,7 @@ fn invoke_text(inv: &Invoke) -> String {
         } else {
             ""
         },
-        inv.src,
+        inv.callee(),
         args.join(", "),
         inv.alias
             .as_ref()

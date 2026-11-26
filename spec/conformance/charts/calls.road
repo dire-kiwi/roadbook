@@ -49,15 +49,13 @@ machine Inventory(warehouse: string) {
       done            -> Ready  set held = held + 1  reply pending done Reservation { orderId: orderId, count: result }
       fail OutOfStock -> Ready  reply pending fail error
     }
-    on reserve reply call fail OutOfStock { reason: "busy" }
-    on Twice   reply pending fail OutOfStock { reason: "first" }  reply pending fail OutOfStock { reason: "second" }
+    on reserve            reply call fail OutOfStock { reason: "busy" }
+    on Twice              reply pending fail OutOfStock { reason: "first" }  reply pending fail OutOfStock { reason: "second" }
     on Close   -> Closed
   }
 
   /// No `on reserve`: a reserve call is dropped, and answered Unanswered.
-  state Paused {
-    on Resume -> Ready
-  }
+  state Paused { on Resume -> Ready }
 
   final state Closed {}
 }

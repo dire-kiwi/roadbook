@@ -134,7 +134,7 @@ fn export_ir_writes_the_fixture() {
     let out = roadbook(&dir, &["export", "ir", "m.road", "-o", "m.ir.json"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let written = std::fs::read_to_string(dir.join("m.ir.json")).unwrap();
-    assert!(written.contains("\"irVersion\": \"0.2\""));
+    assert!(written.contains("\"irVersion\": \"0.4\""));
 }
 
 #[test]
@@ -509,7 +509,7 @@ fn viz_trace_is_embedded_and_opens_in_replay() {
         &other,
         std::fs::read_to_string(repo().join(trace))
             .unwrap()
-            .replace("\"ir\":\"sha256:e944", "\"ir\":\"sha256:0000"),
+            .replace("\"ir\":\"sha256:520c", "\"ir\":\"sha256:0000"),
     )
     .unwrap();
     let res = roadbook(

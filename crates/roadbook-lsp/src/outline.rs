@@ -130,6 +130,14 @@ impl Outline<'_> {
                         self.fields(&e.fields),
                     ));
                 }
+                Item::Call(c) => out.push(self.symbol(
+                    &c.name.name,
+                    Kind::METHOD,
+                    Some("call".into()),
+                    c.span,
+                    c.name.span,
+                    self.fields(&c.params),
+                )),
                 Item::State(s) => out.push(self.state(s)),
                 _ => {}
             }

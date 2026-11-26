@@ -90,7 +90,7 @@ export interface PlaceOrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "examples/shop/place_order.road",
@@ -647,6 +647,7 @@ const ir: unknown = {
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "PlaceOrder",
         "name": "PlaceOrder",
@@ -680,6 +681,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "authenticate",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -783,6 +785,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "validateOrder",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -886,6 +889,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "priceOrder",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -966,6 +970,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "machine",
                   "src": "Checkout",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -1468,7 +1473,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:e9442abf4d05e2cb7cb47b28121e0405c98d6c34249d674ae595af3b32ce701b"
+      "hash": "sha256:520c3954bcefb582adc970923d878001877cd1eafc6a7797851d674c2b96f2b0"
     },
     "Checkout": {
       "doc": "Charge the customer's card, retrying while the payment gateway is down.",
@@ -1544,6 +1549,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Checkout",
         "name": "Checkout",
@@ -1577,6 +1583,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "chargeCard",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1894,7 +1901,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4549a2211c30e8dcc753fc13a57e8f7cfae5f89b018c94545bcbafdc7e6b3aa6"
+      "hash": "sha256:ae8f0faea257c1aaea9e2aacea4af27f730ddc9f1c292d1adfa3d2439f9e7341"
     }
   }
 }

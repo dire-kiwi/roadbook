@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0214]: `peer.ask` is a call, so `as p` gives it a name nothing can use
+  --> RB0214-alias-on-call.road:10:26
+   |
+10 |     invoke peer.ask() as p {
+   |                          ^
+   |
+   = help: a call is answered once, with its outcome; talk to the machine through its `ref` instead; remove `as …`

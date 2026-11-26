@@ -145,6 +145,12 @@ fn state_exprs_mut(s: &mut State, f: &mut impl FnMut(&mut Expr)) {
                 Effect::Send { value, .. } | Effect::Emit { value, .. } => {
                     exprs_mut(value, &mut |x| f(x))
                 }
+                Effect::Reply { call, value, .. } => {
+                    exprs_mut(call, &mut |x| f(x));
+                    if let Some(v) = value {
+                        exprs_mut(v, &mut |x| f(x));
+                    }
+                }
             }
         }
     };
@@ -279,6 +285,7 @@ fn hash_handles_recursion_and_reports_missing_declarations() {
     backoff.invoke = Some(roadbook_ir::Invoke {
         kind: roadbook_ir::InvokeKind::Machine,
         src: "Checkout".into(),
+        to: None,
         alias: None,
         args: vec![],
         span: backoff.span,

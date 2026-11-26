@@ -20,7 +20,7 @@ export interface OverflowDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "packages/effect/test/charts/runtime.road",
@@ -111,6 +111,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Overflow",
         "name": "Overflow",
@@ -175,7 +176,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4410f109e767b5224f8812917e5cdcfce9604683266fcaecd39670e574a93e79"
+      "hash": "sha256:ac357e07ee4caa64c3884f23611c7cc02bbf7ee137ea07fb4485d8278500de44"
     },
     "Settle": {
       "doc": "Settles forever: every microstep takes the `always` again.",
@@ -211,6 +212,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Settle",
         "name": "Settle",
@@ -319,7 +321,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:acf86afbd412c6422063720dfc326c76c723951c01aa7d5d534869787174cc8b"
+      "hash": "sha256:643e5f6eaf215c04c29c07d76b9ee97570900afbe22bd9fe8703eeb00f8c42f0"
     },
     "Early": {
       "doc": "Reads `a` before it has a value, in `b`'s initial value.",
@@ -384,6 +386,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Early",
         "name": "Early",
@@ -434,7 +437,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:c7a570059a601fb08a37b888ec4025fcd8be75de79b5ae99bb6c3b7879e77c1f"
+      "hash": "sha256:bd6740c689085edbca24bbb3bce1ea55eb9e8bce769b5e99805d1969b7461b91"
     },
     "Leftover": {
       "doc": "Outer's work is cancelled after Inner's exit effect, so a defect there leaves it running.",
@@ -463,6 +466,7 @@ const ir: unknown = {
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Leftover",
         "name": "Leftover",
@@ -531,6 +535,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "work",
+              "to": null,
               "as": null,
               "args": [],
               "span": {
@@ -608,7 +613,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ae481c107303aac40dd0fa0c565c9bebddaca2eba327c2e60f77e9977e372c3a"
+      "hash": "sha256:32dd45bbc26b7a1f2019bff4c59627e04c0b79bb443f07a8af83896004936aaa"
     },
     "Payload": {
       "doc": "Ends with whatever the host's `payload` returns, which must be JSON.",
@@ -625,6 +630,7 @@ const ir: unknown = {
       "vars": [],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Payload",
         "name": "Payload",
@@ -674,7 +680,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:3fdad329deb922bce7a7ef95184d42c0f9df80d6b70794b7536ff731c6ba944f"
+      "hash": "sha256:03436e23a6d784a4dcbb898c3569a3fb48c6de8211d34d11c6580d64ac016320"
     }
   }
 }

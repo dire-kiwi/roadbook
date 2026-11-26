@@ -1,0 +1,29 @@
+machine Peer() {
+  call ask()
+  initial A
+  state A { on ask reply call done }
+}
+
+machine M(count: int, maybe: ref Peer?, many: ref Peer[]) {
+  initial A
+  state A {
+    invoke count.ask() {
+      done -> B
+    }
+  }
+  state B {
+    invoke maybe.ask() {
+      done -> C
+    }
+  }
+  state C {
+    invoke many.ask() {
+      done -> D
+    }
+  }
+  final state D {}
+}
+
+// expect: RB0315 at 10:12
+// expect: RB0315 at 15:12
+// expect: RB0315 at 20:12

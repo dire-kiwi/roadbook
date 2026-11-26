@@ -1,0 +1,14 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0110]: `call` is only in scope in an `on name` transition that takes a call
+ --> RB0110-call-out-of-scope.road:8:19
+  |
+8 |     on Go set p = call
+  |                   ^^^^
+
+error[RB0110]: `call` is only in scope in an `on name` transition that takes a call
+  --> RB0110-call-out-of-scope.road:10:15
+   |
+10 |   entry reply call done
+   |               ^^^^

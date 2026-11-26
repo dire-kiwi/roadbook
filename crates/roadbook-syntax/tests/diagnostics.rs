@@ -210,7 +210,7 @@ fn rendered_syntax_error() {
         source: &src,
     });
     let expected = "\
-error[RB0017]: a transition must do something: expected `-> Target`, `set`, `do`, `send` or `emit`, found `}`
+error[RB0017]: a transition must do something: expected `-> Target`, `set`, `do`, `send`, `emit` or `reply`, found `}`
  --> m.road:4:3
   |
 3 |     on Go if ready
@@ -218,7 +218,7 @@ error[RB0017]: a transition must do something: expected `-> Target`, `set`, `do`
 4 |   }
   |   ^
   |
-  = help: give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`) or messages (`send child.Event`, `emit Event`)
+  = help: give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`) or a reply (`reply call done`)
 ";
     assert_eq!(out, expected);
 }

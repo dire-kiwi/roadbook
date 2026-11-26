@@ -343,6 +343,16 @@ impl Writer<'_> {
                     format!("{}.scxml", inv.src),
                     self.ir.machines.get(&inv.src).map(|m| &m.params),
                 ),
+                // Shown like a task named `inventory.reserve` for now.
+                InvokeKind::Call => (
+                    TASK_TYPE,
+                    inv.callee(),
+                    inv.to
+                        .as_ref()
+                        .and_then(|to| self.ir.machines.get(&to.machine))
+                        .and_then(|m| m.calls.get(&inv.src))
+                        .map(|c| &c.params),
+                ),
             };
             let mut attrs = vec![
                 ("id", invoke_id(&s.id)),
@@ -377,6 +387,8 @@ impl Writer<'_> {
         let event = match &t.trigger {
             Trigger::Event { event } => Some(event.clone()),
             Trigger::Emitted { from, event } => Some(format!("{}.{event}", from.name)),
+            // Shown like an event named after the call for now.
+            Trigger::Call { call } => Some(call.clone()),
             Trigger::Any => {
                 let handled: Vec<&str> = s
                     .transitions
@@ -419,11 +431,24 @@ impl Writer<'_> {
                     let declared = s.invoke.as_ref().and_then(|inv| match inv.kind {
                         InvokeKind::Task => self.ir.tasks.get(&inv.src).map(|t| &t.errors),
                         InvokeKind::Machine => self.ir.machines.get(&inv.src).map(|m| &m.errors),
+                        InvokeKind::Call => inv
+                            .to
+                            .as_ref()
+                            .and_then(|to| self.ir.machines.get(&to.machine))
+                            .and_then(|m| m.calls.get(&inv.src))
+                            .map(|c| &c.errors),
                     });
+                    // A call also fails with the built-in `Unanswered`, which `*` covers.
+                    let unanswered = s
+                        .invoke
+                        .as_ref()
+                        .filter(|inv| inv.kind == InvokeKind::Call)
+                        .map(|_| roadbook_ir::UNANSWERED);
                     declared
                         .into_iter()
                         .flatten()
                         .map(String::as_str)
+                        .chain(unanswered)
                         .filter(|e| !listed.contains(e))
                         .collect()
                 } else {
@@ -502,6 +527,14 @@ impl Writer<'_> {
                 Effect::Emit { event, value } => {
                     let attrs = vec![("event", event.clone()), ("type", EMIT_TYPE.into())];
                     self.send(depth, attrs, value);
+                }
+                // Not exported yet: shown as a comment.
+                Effect::Reply { call, outcome, .. } => {
+                    let outcome = match outcome {
+                        roadbook_ir::ReplyOutcome::Done => "done",
+                        roadbook_ir::ReplyOutcome::Fail => "fail",
+                    };
+                    self.comment(depth, &format!("reply {} {outcome}", call.text));
                 }
             }
         }

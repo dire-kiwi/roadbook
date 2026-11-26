@@ -1,4 +1,4 @@
-{"input":{"warehouse":"w1"},"ir":"sha256:ce476c9f805a78c0125d0aa5e47142cbacf245ae7a2b5d5ae3aa1de2c1afc5eb","kind":"started","machine":"Inventory","run":"r1","t":0}
+{"input":{"warehouse":"w1"},"ir":"sha256:019dfc294192de134a30a44df3d0016d3c79140bc35649d3ff890b75386f6023","kind":"started","machine":"Inventory","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Inventory","t":0}
 {"kind":"entered","run":"r1","state":"Inventory.Ready","t":0}
 {"event":{"from":"r2","kind":"message","message":1,"value":{"_tag":"Reserve","items":[{"qty":2,"sku":"s1"}],"orderId":"o1"}},"kind":"event","run":"r1","t":0}
@@ -19,7 +19,7 @@
 {"event":{"from":"r2","kind":"message","message":2,"value":{"_tag":"Release","orderId":"o1"}},"kind":"event","run":"r1","t":0}
 {"from":"Inventory","index":0,"kind":"transition","run":"r1","t":0,"to":null}
 {"action":"releaseStock","args":{"orderId":"o1","warehouse":"w1"},"kind":"action","run":"r1","t":0}
-{"input":{"draft":{"card":"4242","items":[{"qty":2,"sku":"s1"}]},"id":"o1","inventory":"r1"},"ir":"sha256:4acb625ac346689b1399e54cca1ebad79f5509d474ffaab2dc727e628f6a243e","kind":"started","machine":"Order","run":"r2","t":0}
+{"input":{"draft":{"card":"4242","items":[{"qty":2,"sku":"s1"}]},"id":"o1","inventory":"r1"},"ir":"sha256:65aab51d235122b03dc6c2755e86256e54eca9914b1832f2c8052d403f70b018","kind":"started","machine":"Order","run":"r2","t":0}
 {"kind":"entered","run":"r2","state":"Order","t":0}
 {"kind":"entered","run":"r2","state":"Order.Reserving","t":0}
 {"kind":"sent","message":1,"run":"r2","t":0,"to":"r1","value":{"_tag":"Reserve","items":[{"qty":2,"sku":"s1"}],"orderId":"o1"}}
@@ -39,7 +39,7 @@
 {"kind":"exited","run":"r2","state":"Order.Declined","t":0}
 {"kind":"exited","run":"r2","state":"Order","t":0}
 {"error":{"_tag":"PaymentDeclined"},"kind":"failed","run":"r2","state":"Order.Declined","t":0}
-{"input":{"draft":{"card":"5555","items":[{"qty":1,"sku":"s2"}]},"id":"o2","inventory":"r1"},"ir":"sha256:4acb625ac346689b1399e54cca1ebad79f5509d474ffaab2dc727e628f6a243e","kind":"started","machine":"Order","run":"r3","t":0}
+{"input":{"draft":{"card":"5555","items":[{"qty":1,"sku":"s2"}]},"id":"o2","inventory":"r1"},"ir":"sha256:65aab51d235122b03dc6c2755e86256e54eca9914b1832f2c8052d403f70b018","kind":"started","machine":"Order","run":"r3","t":0}
 {"kind":"entered","run":"r3","state":"Order","t":0}
 {"kind":"entered","run":"r3","state":"Order.Reserving","t":0}
 {"kind":"sent","message":1,"run":"r3","t":0,"to":"r1","value":{"_tag":"Reserve","items":[{"qty":1,"sku":"s2"}],"orderId":"o2"}}

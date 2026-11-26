@@ -361,6 +361,8 @@ impl Program {
                 Builtin::Json => true,
             },
             TypeRef::Ref(_) => v.is_string(),
+            // `Program::new` refuses an IR with calls, so no saved variable holds one.
+            TypeRef::Call(_) => false,
             TypeRef::Optional(t) => v.is_null() || self.value_fits(machine, t, v),
             TypeRef::List(t) => v
                 .as_array()

@@ -22,7 +22,7 @@ An abridged IR for `Checkout` (`/* … */` marks what is left out):
 
 ```jsonc
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [{ "path": "examples/shop/checkout.road", "package": null },
               { "path": "examples/shop/types.road", "package": null }],
   "types": {

@@ -1,0 +1,18 @@
+machine Peer() {
+  call ask()
+  initial A
+  state A { on ask reply call done }
+}
+
+machine M(peer: ref Peer) {
+  initial A
+  state A {
+    invoke peer.ask() as p {
+      done   -> B
+      fail * -> B
+    }
+  }
+  final state B {}
+}
+
+// expect: RB0214 at 10:26

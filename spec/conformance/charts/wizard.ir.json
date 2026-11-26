@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/wizard.road",
@@ -75,6 +75,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Wizard",
         "name": "Wizard",
@@ -408,7 +409,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:6f7c9b2b4e9077aa8f1bc00959442c11a69b71a85041b93c475642771df2813d"
+      "hash": "sha256:81098d3c887ef66f8daafb698b6bfd71518f4e48ea4982a4f0754d542dda843d"
     }
   }
 }

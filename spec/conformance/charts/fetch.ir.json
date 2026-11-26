@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/fetch.road",
@@ -167,6 +167,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Fetch",
         "name": "Fetch",
@@ -200,6 +201,7 @@
             "invoke": {
               "kind": "task",
               "src": "fetch",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -460,7 +462,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:35b2a51e8d585b19d0f89d57149c94ca8f3f9ec42b37079b4260846d80b6cc76"
+      "hash": "sha256:f17de1010330fcac506c3478f1c8dfa78527557d4d794bc528c32dac7f7a6519"
     }
   }
 }

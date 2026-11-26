@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0309]: `event` is the arguments of call `ask`, which are read only through their fields
+ --> RB0309-call-arguments.road:7:19
+  |
+7 |     on ask do log(event)  reply call done
+  |                   ^^^^^
+  |
+  = help: read one argument: `event.n`

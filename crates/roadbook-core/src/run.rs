@@ -881,6 +881,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     });
                     self.cmds.push(Command::Emit { message, value });
                 }
+                // `Program::new` refuses an IR with calls, and only a call is replied to.
+                Effect::Reply { .. } => unreachable!("calls are refused by Program::new"),
             }
         }
         Ok(())
@@ -983,6 +985,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         let params = match inv.kind {
             roadbook_ir::InvokeKind::Task => &ir.tasks[inv.src.as_str()].params,
             roadbook_ir::InvokeKind::Machine => &ir.machines[inv.src.as_str()].params,
+            // `Program::new` refuses an IR with calls.
+            roadbook_ir::InvokeKind::Call => unreachable!("calls are refused by Program::new"),
         };
         let mut args = Map::new();
         for (p, a) in params.iter().zip(&inv.args) {
@@ -1002,6 +1006,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             src_kind: match inv.kind {
                 roadbook_ir::InvokeKind::Task => SrcKind::Task,
                 roadbook_ir::InvokeKind::Machine => SrcKind::Machine,
+                roadbook_ir::InvokeKind::Call => unreachable!("calls are refused by Program::new"),
             },
             alias: inv.alias.clone(),
             args,

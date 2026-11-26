@@ -484,6 +484,7 @@ fn trigger_text(t: &Trigger) -> String {
     match t {
         Trigger::Event { event } => event.clone(),
         Trigger::Emitted { from, event } => format!("{}.{event}", from.name),
+        Trigger::Call { call } => call.clone(),
         Trigger::Any => "on *".into(),
         Trigger::After { delay } => format!("after {}", delay.text),
         Trigger::Always => "always".into(),

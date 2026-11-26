@@ -86,6 +86,8 @@ export function effectText(e: Effect): string {
       return `send ${e.to.name}.${e.value.text}`
     case 'emit':
       return `emit ${e.value.text}`
+    case 'reply':
+      return `reply ${e.call.text} ${e.outcome}${e.value ? ` ${e.value.text}` : ''}`
   }
 }
 
@@ -125,7 +127,7 @@ export function triggerEvent(t: Trigger): EventRef | null {
 
 /** `Upload(draft.file)`, `Upload(draft.file) as upload` */
 export function invokeText(inv: Invoke): string {
-  return `${inv.src}(${inv.args.map((a) => a.text).join(', ')})${inv.as ? ` as ${inv.as}` : ''}`
+  return `${inv.to ? `${inv.to.name}.` : ''}${inv.src}(${inv.args.map((a) => a.text).join(', ')})${inv.as ? ` as ${inv.as}` : ''}`
 }
 
 /**
@@ -138,6 +140,8 @@ export function triggerKind(trigger: Trigger): EdgeKind {
   switch (trigger.kind) {
     case 'event':
     case 'any':
+    // Drawn like an event for now.
+    case 'call':
       return 'event'
     case 'emitted':
       return 'message'
@@ -160,6 +164,8 @@ export function triggerText(trigger: Trigger): string {
       return trigger.event
     case 'emitted':
       return `${trigger.from.name}.${trigger.event}`
+    case 'call':
+      return trigger.call
     case 'any':
       return 'on *'
     case 'after':
@@ -176,7 +182,7 @@ export function triggerText(trigger: Trigger): string {
 
 /** The trigger as written in source: `on Cancel`, `on upload.Progress`, `on *`, `after 30s`, `done`, `fail E`. */
 export function triggerSource(trigger: Trigger): string {
-  return trigger.kind === 'event' || trigger.kind === 'emitted' ? `on ${triggerText(trigger)}` : triggerText(trigger)
+  return trigger.kind === 'event' || trigger.kind === 'emitted' || trigger.kind === 'call' ? `on ${triggerText(trigger)}` : triggerText(trigger)
 }
 
 /** `[guard]` for a guarded branch, `[else]` for the unguarded last branch of a block, `""` otherwise. */

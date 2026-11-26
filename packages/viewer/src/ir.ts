@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.2) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.4) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -67,8 +67,10 @@ export interface EventDecl {
 export type StateKind = 'atomic' | 'compound' | 'parallel' | 'final'
 
 export interface Invoke {
-  kind: 'task' | 'machine'
+  kind: 'task' | 'machine' | 'call'
   src: string
+  /** For a call, the callee: a `ref` address. Null for a task or a machine. */
+  to: Address | null
   /** `invoke Machine(…) as name`: the name the state sends to and receives from, or null. */
   as: string | null
   args: Expr[]
@@ -95,12 +97,14 @@ export type Trigger =
   | { kind: 'done' }
   | { kind: 'invoke.done' }
   | { kind: 'invoke.fail'; error: string }
+  | { kind: 'call'; call: string }
 
 export type Effect =
   | { kind: 'set'; var: string; value: Expr }
   | { kind: 'do'; action: string; args: Expr[] }
   | { kind: 'send'; to: Address; event: string; value: Expr }
   | { kind: 'emit'; event: string; value: Expr }
+  | { kind: 'reply'; call: Expr; outcome: 'done' | 'fail'; value: Expr | null }
 
 export interface Transition {
   trigger: Trigger
@@ -127,6 +131,15 @@ export interface State {
   fail: Expr | null
 }
 
+/** `call name(params) [-> T] [! E]`: the members of a task. */
+export interface CallDecl {
+  params: Field[]
+  returns: string | null
+  errors: string[]
+  doc: string
+  span: Span
+}
+
 export interface Machine {
   doc: string
   span: Span
@@ -137,6 +150,8 @@ export interface Machine {
   events: Record<string, EventDecl>
   /** Events the machine emits (`emits Name { fields }`), to its invoker and every holder of a ref to it. */
   emits: Record<string, EventDecl>
+  /** Calls the machine answers (`call name(params) -> T ! E`). */
+  calls: Record<string, CallDecl>
   root: State
   hash: string
 }
@@ -162,4 +177,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.2'
+export const IR_VERSION = '0.4'

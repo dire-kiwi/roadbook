@@ -50,7 +50,7 @@ export interface OrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "examples/orders/orders.road",
@@ -335,6 +335,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -592,6 +593,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "charge",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -789,7 +791,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4acb625ac346689b1399e54cca1ebad79f5509d474ffaab2dc727e628f6a243e"
+      "hash": "sha256:65aab51d235122b03dc6c2755e86256e54eca9914b1832f2c8052d403f70b018"
     },
     "Inventory": {
       "doc": "The stock of one warehouse, shared by every order. An order asks it to reserve items, and\nit answers by emitting `Reserved` or `Rejected` with the order's id, which every holder of\na reference to it receives.",
@@ -952,6 +954,7 @@ const ir: unknown = {
           }
         }
       },
+      "calls": {},
       "root": {
         "id": "Inventory",
         "name": "Inventory",
@@ -1068,6 +1071,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "reserveStock",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1370,7 +1374,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ce476c9f805a78c0125d0aa5e47142cbacf245ae7a2b5d5ae3aa1de2c1afc5eb"
+      "hash": "sha256:019dfc294192de134a30a44df3d0016d3c79140bc35649d3ff890b75386f6023"
     }
   }
 }

@@ -283,8 +283,16 @@ export class Simulation {
     }))
     const invokes = f.snapshot.invokes.map((inv): InvokeChoice => {
       const state = findState(m, inv.state)
-      const srcKind = state?.invoke?.kind ?? 'task'
-      const decl = srcKind === 'machine' ? own(this.ir.machines, inv.src) : own(this.ir.tasks, inv.src)
+      // A call is simulated like a task, answered from its declaration.
+      const kind = state?.invoke?.kind ?? 'task'
+      const srcKind = kind === 'machine' ? 'machine' : 'task'
+      const to = state?.invoke?.to
+      const decl =
+        kind === 'call' && to
+          ? own(own(this.ir.machines, to.machine)?.calls ?? {}, inv.src)
+          : srcKind === 'machine'
+            ? own(this.ir.machines, inv.src)
+            : own(this.ir.tasks, inv.src)
       const as = state?.invoke?.as ?? null
       const child = srcKind === 'machine' ? own(this.ir.machines, inv.src) : undefined
       return {

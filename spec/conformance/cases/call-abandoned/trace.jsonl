@@ -1,4 +1,4 @@
-{"input":{"warehouse":"w1"},"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"started","machine":"Inventory","run":"r1","t":0}
+{"input":{"warehouse":"w1"},"ir":"sha256:a015abdc1b2b860c38e605fe18de2da2d30bd1dfdecc70fba504fcb5790bd8c6","kind":"started","machine":"Inventory","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Inventory","t":0}
 {"kind":"entered","run":"r1","state":"Inventory.Ready","t":0}
 {"event":{"args":{"items":[{"qty":2,"sku":"s1"}],"orderId":"o1"},"call":"reserve","from":"r2","invoke":1,"kind":"call"},"kind":"event","run":"r1","t":0}
@@ -15,7 +15,7 @@
 {"kind":"set","run":"r1","t":5000,"value":1,"var":"held"}
 {"call":"reserve","invoke":1,"kind":"replied","outcome":"done","run":"r1","t":5000,"to":"r2","value":{"count":1,"orderId":"o1"}}
 {"kind":"entered","run":"r1","state":"Inventory.Ready","t":5000}
-{"input":{"id":"o1","inventory":"r1","items":[{"qty":2,"sku":"s1"}]},"ir":"sha256:0000000000000000000000000000000000000000000000000000000000000000","kind":"started","machine":"Order","run":"r2","t":0}
+{"input":{"id":"o1","inventory":"r1","items":[{"qty":2,"sku":"s1"}]},"ir":"sha256:079a66f479f9c41a26730dc35020da21255628123c4d472db7801f83d779cf8a","kind":"started","machine":"Order","run":"r2","t":0}
 {"kind":"entered","run":"r2","state":"Order","t":0}
 {"kind":"entered","run":"r2","state":"Order.Reserving","t":0}
 {"args":{"items":[{"qty":2,"sku":"s1"}],"orderId":"o1"},"invoke":1,"kind":"invoke.started","run":"r2","src":"inventory.reserve","state":"Order.Reserving","t":0}

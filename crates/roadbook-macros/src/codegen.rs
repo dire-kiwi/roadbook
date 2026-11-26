@@ -183,7 +183,7 @@ fn in_place(t: &TypeRef, optional: bool, out: &mut Vec<(String, bool)>) {
     match t {
         TypeRef::Named(n) => out.push((n.clone(), optional)),
         TypeRef::Optional(e) => in_place(e, true, out),
-        TypeRef::Builtin(_) | TypeRef::List(_) | TypeRef::Ref(_) => {}
+        TypeRef::Builtin(_) | TypeRef::List(_) | TypeRef::Ref(_) | TypeRef::Call(_) => {}
     }
 }
 
@@ -354,6 +354,9 @@ impl<'a> Gen<'a> {
                     quote!(#module::Ref)
                 }
             }
+            // Only a machine variable is a pending call, and no generated item has a
+            // variable's type; the runtime does not run calls yet.
+            TypeRef::Call(_) => quote!(::roadbook::__private::serde_json::Value),
         }
     }
 
@@ -372,7 +375,7 @@ impl<'a> Gen<'a> {
                 Some(TypeDef::Alias { ty }) if depth < 64 => self.is_wire_at(ty, depth + 1),
                 _ => false,
             },
-            TypeRef::Ref(_) => false,
+            TypeRef::Ref(_) | TypeRef::Call(_) => false,
         }
     }
 
@@ -400,7 +403,7 @@ impl<'a> Gen<'a> {
                 Some(TypeDef::Alias { ty }) if depth < 64 => self.by_value(ty, depth + 1),
                 _ => false,
             },
-            TypeRef::Ref(_) => false,
+            TypeRef::Ref(_) | TypeRef::Call(_) => false,
         }
     }
 
@@ -1575,6 +1578,10 @@ impl Uses {
                 args.iter().for_each(|a| self.expr(a));
             }
             Effect::Send { value, .. } | Effect::Emit { value, .. } => self.expr(value),
+            Effect::Reply { call, value, .. } => {
+                self.expr(call);
+                value.iter().for_each(|v| self.expr(v));
+            }
         }
     }
 
