@@ -109,7 +109,11 @@ Progress is recorded on each milestone below as it finishes.
 
 *Done, 27 November 2026.* The compiler (with `RB0219` and `RB0908`), both runtimes (identical traces and saved snapshots for every case), the viewer's five modes, `export mermaid` and `scxml`, `roadbook paths`, `viz --diff`, the tree-sitter grammar, the VS Code grammar and the language server. Two choices differ from SCXML or extend it, and are written down: which states a transition to a history state leaves never depends on what was recorded, and a history state with no record enters its parent's default entry (SCXML requires a default transition). A machine with no history state keeps its hash, so its saved snapshots (version 1) still restore. An independent review found that the `always` cycle check missed loops back through a history state, and that the Rust runtime restored a snapshot naming a history state as active; both are fixed, the second as a conformance case.
 
-**Later.** Keyed `spawn`, a durable driver, generated Rust state machines for hot paths.
+**Durable driver (SM-14).** Running a chart on `effect/workflow`, so that a run survives a crash in the middle of a task without repeating completed work.
+
+*Done, in TypeScript.* `Durable.workflow` (`@roadbook/effect/durable`) runs a machine as a workflow execution: tasks and actions are activities, each run journals the inputs it takes and replays them through the core after a crash, timers keep their deadlines, child runs share their root's execution, `ref`s between durable runs are sent again on replay and de-duplicated, and an idle run parks on a `DurableClock` ([durable runs](typescript.md#durable-runs)). It writes the same traces for 60 of the 64 conformance cases (the four with `suspend` steps do not apply), and crash tests on `ClusterWorkflowEngine` show each guarantee. `examples/import-job` crashes in the middle of a batch. The language did not change.
+
+**Later.** Keyed `spawn`, a durable driver in Rust, durable runs across several cluster runners, generated Rust state machines for hot paths.
 
 M3 and M4 are independent once M1 is done and can run in parallel. M2 depends only on M1.
 

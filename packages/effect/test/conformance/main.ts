@@ -1,16 +1,22 @@
-/** `pnpm --filter @roadbook/effect conformance [case…]`: run the cases and print a line per case. */
-import { caseNames, isSupported, runCase } from "./runner.ts"
+/**
+ * `pnpm --filter @roadbook/effect conformance [--durable] [case…]`: run the cases and print a
+ * line per case; with `--durable`, through the durable driver.
+ */
+import { caseNames, isDurable, isSupported, runCase } from "./runner.ts"
 
-const names = process.argv.length > 2 ? process.argv.slice(2) : caseNames()
+const args = process.argv.slice(2)
+const durable = args.includes("--durable")
+const given = args.filter((arg) => arg !== "--durable")
+const names = given.length > 0 ? given : caseNames()
 let passed = 0
 let skipped = 0
 for (const name of names) {
-  if (!isSupported(name)) {
+  if (!isSupported(name) || (durable && !isDurable(name))) {
     skipped += 1
     console.log(`skip  ${name}`)
     continue
   }
-  const result = runCase(name)
+  const result = await runCase(name, durable)
   const ok = result.errors.length === 0 && result.actual === result.expected
   if (ok) passed += 1
   console.log(`${ok ? "pass" : "FAIL"}  ${name}`)
