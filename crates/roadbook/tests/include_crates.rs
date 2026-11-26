@@ -1,5 +1,6 @@
 //! Charts imported across crates (the fixtures in `tests/crates/`): a chain (`chain2` imports
-//! `chain1`, which imports `chain0`), a diamond (`apex` imports `left` and `right`, which both
+//! `chain1`, which imports `chain0`), a chain whose error enums collide in the middle crate
+//! (`errchain0` to `errchain2`), a diamond (`apex` imports `left` and `right`, which both
 //! import `inventory`), a renamed dependency whose package name has a hyphen, two importable
 //! charts at one crate root, and one chart included twice in a crate. (`inv` is the
 //! `inventory` example crate.)
@@ -36,6 +37,36 @@ async fn a_chain_of_three_crates() {
     two.result().await.unwrap();
     assert_eq!(one.result().await, Ok("hi".to_owned()));
     zero.result().await.unwrap();
+}
+
+/// Declines every charge.
+struct Card;
+
+impl errchain1::charge::Handlers for Card {
+    async fn charge(&self) -> Result<(), errchain0::ChargeError> {
+        Err(errchain0::Declined.into())
+    }
+}
+
+impl errchain2::pay::Handlers for Card {
+    async fn charge(&self) -> Result<(), errchain1::ChargeMachineError> {
+        errchain1::charge::run(self).await
+    }
+}
+
+#[tokio::test]
+async fn a_chain_of_crates_names_the_error_enums_their_owners_chose() {
+    // `errchain1` re-exports the task's `ChargeError` from `errchain0`, so its machine's is
+    // `ChargeMachineError`; `errchain2` re-exports both under those names, although
+    // `errchain1`'s chart alone would give `ChargeTaskError` and `ChargeMachineError`.
+    let _: errchain2::ChargeError = errchain0::ChargeError::Declined(errchain0::Declined);
+    let _: errchain2::ChargeMachineError =
+        errchain1::ChargeMachineError::Declined(errchain2::Declined);
+    assert_eq!(
+        errchain1::charge::run(&Card).await,
+        Err(errchain1::ChargeMachineError::Declined(errchain0::Declined))
+    );
+    assert!(!errchain2::pay::run(&Card).await);
 }
 
 #[tokio::test]
