@@ -1,0 +1,372 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/cancel.road"
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Parent": {
+      "doc": "Runs Child until Stop, then ends.",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 24,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 13
+          }
+        }
+      },
+      "root": {
+        "id": "Parent",
+        "name": "Parent",
+        "kind": "compound",
+        "doc": "Runs Child until Stop, then ends.",
+        "span": {
+          "file": 0,
+          "line": 7,
+          "col": 1,
+          "endLine": 24,
+          "endCol": 2
+        },
+        "initial": "Parent.Running",
+        "states": [
+          {
+            "id": "Parent.Running",
+            "name": "Running",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 14,
+              "col": 3,
+              "endLine": 21,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "exit Running",
+                    "type": "string",
+                    "text": "\"exit Running\""
+                  }
+                ]
+              }
+            ],
+            "invoke": {
+              "kind": "machine",
+              "src": "Child",
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 17,
+                "col": 5,
+                "endLine": 19,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Parent.Over",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 7,
+                  "endLine": 18,
+                  "endCol": 19
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Parent.Over",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "stop",
+                        "type": "string",
+                        "text": "\"stop\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 20,
+                  "col": 5,
+                  "endLine": 20,
+                  "endCol": 36
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Parent.Over",
+            "name": "Over",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 23,
+              "col": 3,
+              "endLine": 23,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [
+          {
+            "kind": "do",
+            "action": "log",
+            "args": [
+              {
+                "kind": "lit",
+                "value": "exit Parent",
+                "type": "string",
+                "text": "\"exit Parent\""
+              }
+            ]
+          }
+        ],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:14d47e7f35e957f503e82011e532eccad77b9e67dc298ace7c5b4c2edc5ffa99"
+    },
+    "Child": {
+      "doc": "Waits five seconds two levels down, logging every exit.",
+      "span": {
+        "file": 0,
+        "line": 27,
+        "col": 1,
+        "endLine": 45,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {},
+      "root": {
+        "id": "Child",
+        "name": "Child",
+        "kind": "compound",
+        "doc": "Waits five seconds two levels down, logging every exit.",
+        "span": {
+          "file": 0,
+          "line": 27,
+          "col": 1,
+          "endLine": 45,
+          "endCol": 2
+        },
+        "initial": "Child.Outer",
+        "states": [
+          {
+            "id": "Child.Outer",
+            "name": "Outer",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 32,
+              "col": 3,
+              "endLine": 42,
+              "endCol": 4
+            },
+            "initial": "Child.Outer.Inner",
+            "states": [
+              {
+                "id": "Child.Outer.Inner",
+                "name": "Inner",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 41,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "exit Inner",
+                        "type": "string",
+                        "text": "\"exit Inner\""
+                      }
+                    ]
+                  }
+                ],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "after",
+                      "delay": {
+                        "kind": "lit",
+                        "value": 5000,
+                        "type": "duration",
+                        "text": "5s"
+                      }
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Child.Finished",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 40,
+                      "col": 7,
+                      "endLine": 40,
+                      "endCol": 27
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "exit Outer",
+                    "type": "string",
+                    "text": "\"exit Outer\""
+                  }
+                ]
+              }
+            ],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Child.Finished",
+            "name": "Finished",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 44,
+              "col": 3,
+              "endLine": 44,
+              "endCol": 26
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [
+          {
+            "kind": "do",
+            "action": "log",
+            "args": [
+              {
+                "kind": "lit",
+                "value": "exit Child",
+                "type": "string",
+                "text": "\"exit Child\""
+              }
+            ]
+          }
+        ],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:8765be69736459620685ae1e120d6f30a9adce2fe5b21489df9c0d53e61f6b60"
+    }
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "description": "Waiting's guards are tried first, in order; when none holds, Open's block is tried. The function table has no entry for any call that short-circuiting and/or must skip, so a runtime that makes one fails the case.",
+  "description": "Waiting's guards are tried first, in order; when none holds, Open's block is tried. The right-hand calls of Waiting's and and or take arguments that no other call takes, and the function table leaves out the two that short-circuiting skips (big(6) for Check 5, trusted(\"eve\", 0) for Check 0), so a runtime that evaluates them fails the case.",
   "chart": "charts/gate.road",
   "machine": "Gate",
   "input": {
@@ -22,7 +22,13 @@
       },
       {
         "args": [
-          0
+          501
+        ],
+        "returns": true
+      },
+      {
+        "args": [
+          1
         ],
         "returns": false
       }
@@ -30,12 +36,21 @@
     "trusted": [
       {
         "args": [
-          "eve"
+          "eve",
+          5
+        ],
+        "returns": false
+      },
+      {
+        "args": [
+          "eve",
+          500
         ],
         "returns": false
       }
     ]
   },
+  "actions": {},
   "script": [
     {
       "event": {

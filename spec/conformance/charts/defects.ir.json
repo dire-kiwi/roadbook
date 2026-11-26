@@ -1,0 +1,498 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/defects.road"
+    }
+  ],
+  "types": {
+    "Nope": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 11
+      }
+    },
+    "Other": {
+      "kind": "error",
+      "fields": [],
+      "doc": "Declared by nothing: the error a stub of Sub fails with in `defect-undeclared`.",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 12
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "note": {
+      "params": [
+        {
+          "name": "memo",
+          "type": "string?",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 27
+      }
+    }
+  },
+  "tasks": {
+    "load": {
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 34
+      }
+    }
+  },
+  "machines": {
+    "Main": {
+      "doc": "Loads a number or asks Sub for one.",
+      "span": {
+        "file": 0,
+        "line": 13,
+        "col": 1,
+        "endLine": 48,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "limit",
+          "type": "int",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 17
+          }
+        },
+        {
+          "name": "memo",
+          "type": "string?",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "UseLoad": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 16
+          }
+        },
+        "UseSub": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 18,
+            "col": 3,
+            "endLine": 18,
+            "endCol": 15
+          }
+        }
+      },
+      "root": {
+        "id": "Main",
+        "name": "Main",
+        "kind": "compound",
+        "doc": "Loads a number or asks Sub for one.",
+        "span": {
+          "file": 0,
+          "line": 13,
+          "col": 1,
+          "endLine": 48,
+          "endCol": 2
+        },
+        "initial": "Main.Idle",
+        "states": [
+          {
+            "id": "Main.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 22,
+              "col": 3,
+              "endLine": 27,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "note",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "memo"
+                    ],
+                    "type": "string?",
+                    "text": "memo"
+                  }
+                ]
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "UseLoad"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Main.Loading",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 5,
+                  "endLine": 25,
+                  "endCol": 26
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "UseSub"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Main.Calling",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 26,
+                  "endCol": 26
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Main.Loading",
+            "name": "Loading",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 29,
+              "col": 3,
+              "endLine": 38,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "load",
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 30,
+                "col": 5,
+                "endLine": 36,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": ">",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "limit"
+                      ],
+                      "type": "int",
+                      "text": "limit"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "result > limit"
+                },
+                "target": "Main.Finished",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 9,
+                  "endLine": 33,
+                  "endCol": 38
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Main.Idle",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 34,
+                  "col": 9,
+                  "endLine": 34,
+                  "endCol": 34
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Main.Idle",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 37,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Main.Calling",
+            "name": "Calling",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 40,
+              "col": 3,
+              "endLine": 45,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "machine",
+              "src": "Sub",
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 41,
+                "col": 5,
+                "endLine": 44,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Main.Finished",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 42,
+                  "col": 7,
+                  "endLine": 42,
+                  "endCol": 28
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "Nope"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Main.Idle",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 43,
+                  "col": 7,
+                  "endLine": 43,
+                  "endCol": 24
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Main.Finished",
+            "name": "Finished",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 47,
+              "col": 3,
+              "endLine": 47,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": 0,
+              "type": "int",
+              "text": "0"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:f567607e7aed889d7c6da767383b49f0156938d91498a14bc71595ce405f6f4d"
+    },
+    "Sub": {
+      "doc": "Stubbed in the cases that use it.",
+      "span": {
+        "file": 0,
+        "line": 51,
+        "col": 1,
+        "endLine": 55,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": "int",
+      "errors": [
+        "Nope"
+      ],
+      "vars": [],
+      "events": {},
+      "root": {
+        "id": "Sub",
+        "name": "Sub",
+        "kind": "compound",
+        "doc": "Stubbed in the cases that use it.",
+        "span": {
+          "file": 0,
+          "line": 51,
+          "col": 1,
+          "endLine": 55,
+          "endCol": 2
+        },
+        "initial": "Sub.Answer",
+        "states": [
+          {
+            "id": "Sub.Answer",
+            "name": "Answer",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 54,
+              "col": 3,
+              "endLine": 54,
+              "endCol": 34
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": 1,
+              "type": "int",
+              "text": "1"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:a080476ff42a97e1c1b39746648143cdeaf35331d2ff576d9728dc5cacc780c9"
+    }
+  }
+}

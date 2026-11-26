@@ -22,7 +22,7 @@ start(ir, machine, input, fns)  -> (snapshot, commands)
 step(ir, snapshot, input, fns)  -> (snapshot, commands)
 ```
 
-`ir` is the whole IR document and `machine` the name of the machine to run. `input` (for `start`) is the machine's arguments as an object keyed by parameter name. `fns(name, args)` calls the host's pure function `name` with positional argument values and returns its value; the binding layer turns the positional list into whatever the host implementation takes (an object of named parameters in TypeScript, arguments in Rust). `snapshot` is never modified in place: `step` returns a new one.
+`ir` is the whole IR document and `machine` the name of the machine to run. `input` (for `start`) is the machine's arguments as an object keyed by parameter name. `fns(name, args)` calls the host's pure function `name` with positional argument values and returns its value, or a `host` [defect](#defects) if the host code threw, panicked or returned a value that is not of the declared type. The binding layer turns the positional list into whatever the host implementation takes (an object of named parameters in TypeScript, arguments in Rust), decodes the result, and catches what the host code throws (TypeScript `try`/`catch`, Rust `std::panic::catch_unwind`), so nothing ever unwinds through the core. `snapshot` is never modified in place: `step` returns a new one.
 
 `commands` is a list the driver carries out in order. It is the core's only way to affect the world. Trace records are commands too, so the trace interleaves with the work exactly as the core emitted it.
 
@@ -50,15 +50,15 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
 | --- | --- |
 | `machine`, `ir` | The machine's name and its `hash`. |
 | `status` | The run's status. |
-| `active` | The active states' ids in document order. `[]` once the run is `done`, `failed` or `cancelled`. Left as it was when the run ends with a `defect`, to show where it stopped. |
+| `active` | The active states' ids in document order. `[]` once the run is `done`, `failed` or `cancelled`. When the run ends with a `defect`, left as it was in the snapshot the defect was applied to, to show roughly where it stopped (`[]` if that snapshot had already finished). |
 | `input` | The arguments, keyed by parameter name. Parameters are read from here. |
-| `vars` | Every variable that has a value, keyed by name. A variable with no value yet has no member, which is different from an optional variable holding `null`. |
+| `vars` | Every variable that has a value, keyed by name. A variable with no value yet has no member, which is different from an optional variable holding `null`. An optional variable always has a member, since it starts as `null` when it has no initial value. |
 | `invokes` | `[{"id", "state", "src"}]`: the invokes that are running, in the order they were started. `state` is the id of the state that owns it, `src` the task's or machine's name. |
 | `timers` | `[{"id", "state", "index", "delay"}]`: the `after` timers that are running, in the order they were started. `index` is the position in the state's `transitions` of the first transition of the timer's `after` block, and `delay` the evaluated delay in milliseconds. |
 | `nextInvoke`, `nextTimer` | The id the next invoke or timer will get. Both start at 1. Ids are never reused within a run, which is what lets the core recognise a stale outcome. |
 | `result` | `null` while running and when cancelled. `{"output": value}` when done (`value` is `null` for a machine that returns nothing), `{"error": value}` when failed, `{"defect": defect}` when the run ended with a [defect](#defects). |
 
-Within a macrostep the core also keeps two transient values that are not part of the snapshot: the set of states **entered during this macrostep**, and the **completion queue** of compound states that reached a final child.
+Within a macrostep the core also keeps two transient values that are not part of the snapshot: the set of states **entered during this macrostep**, and the **completion queue** of compound states that reached a final child and have not been exited since.
 
 ### Inputs
 
@@ -70,7 +70,7 @@ Within a macrostep the core also keeps two transient values that are not part of
 | `{"kind": "invoke.defect", "invoke": 1, "defect": d}` | Invoke 1 ended with a [defect](#defects): a host defect in a task, or a child run that ended with a defect. |
 | `{"kind": "after", "timer": 1}` | Timer 1 expired. |
 | `{"kind": "cancel"}` | Cancel the run from outside. |
-| `{"kind": "defect", "defect": d}` | The driver met a host defect while carrying out this run's commands (in an action). |
+| `{"kind": "defect", "defect": d}` | The driver met a defect while carrying out this run's commands: a host defect in an action, or a defect in the cancel step of a child run it was cancelling ([child runs](#child-runs)). Unlike every other input, it is taken even when the run has already ended, unless it ended with a defect. |
 
 The driver only ever passes events the machine declares, with values of the declared types. The core may assume its inputs are well formed.
 
@@ -80,10 +80,10 @@ The driver only ever passes events the machine declares, with values of the decl
 | --- | --- |
 | `{"kind": "trace", "record": r}` | writes trace record `r`, after adding `t`, `run` and, for a child run, `parent` ([trace](trace.md)). |
 | `{"kind": "action", "action": "audit", "args": {…}}` | runs the action and waits for it to finish. `args` is keyed by parameter name. |
-| `{"kind": "invoke.start", "invoke": 1, "state": "…", "src": "chargeCard", "srcKind": "task", "args": {…}}` | starts the task (`srcKind` `task`) or machine (`srcKind` `machine`) and, when it ends, gives the core its outcome as an `invoke.*` input with the same id. |
-| `{"kind": "invoke.cancel", "invoke": 1}` | cancels invoke 1. Its outcome must not be delivered after this, unless it was already queued. |
-| `{"kind": "timer.start", "timer": 1, "delay": 200}` | starts a timer that gives the core `{"kind": "after", "timer": 1}` after `delay` milliseconds. |
-| `{"kind": "timer.cancel", "timer": 1}` | cancels timer 1, unless its expiry is already queued. |
+| `{"kind": "invoke.start", "invoke": 1, "state": "…", "src": "chargeCard", "srcKind": "task", "args": {…}}` | starts the task (`srcKind` `task`) or machine (`srcKind` `machine`) and, when it ends, queues its outcome as an `invoke.*` input with the same id. It does not wait for it. |
+| `{"kind": "invoke.cancel", "invoke": 1}` | cancels invoke 1 and waits until it has stopped: at once for a task, after its cancel step for a [child run](#child-runs). Its outcome is not queued after this; one already queued stays queued. |
+| `{"kind": "timer.start", "timer": 1, "delay": 200}` | starts a timer that queues `{"kind": "after", "timer": 1}` after `delay` milliseconds. |
+| `{"kind": "timer.cancel", "timer": 1}` | cancels timer 1. Its expiry is not queued after this; one already queued stays queued. |
 
 A trace record is always emitted immediately before the command it describes. Records are listed in [trace.md](trace.md).
 
@@ -96,14 +96,15 @@ start(ir, name, input, fns):
            invokes: [], timers: [], nextInvoke: 1, nextTimer: 1, result: null }
   emit trace { kind: "started", machine: name, ir: m.hash, input }
   for v in m.vars, in order:
-    if v.init != null: snap.vars[v.name] = eval(v.init)
+    if v.init != null:          snap.vars[v.name] = eval(v.init)
+    elif v.type ends with "?":  snap.vars[v.name] = null
   enterStates([m.root] + defaultEntry(m.root))
   settle()
   if snap.status == "running": startWork()
   return (snap, commands)
 ```
 
-A variable's initial value may read the parameters and the variables declared before it; reading a later one is a runtime error (`unassigned`). Initial values are not traced.
+A variable's initial value may read the parameters and the variables declared before it; reading a later one is a runtime error (`unassigned`). A variable with no initial value starts unassigned, unless its type is optional (`string?`, whose IR type string ends in `?`): an optional variable with no initial value starts as `null`, as the [language](../docs/design/language.md#definite-assignment) says, and reading it is never `unassigned`. Initial values are not traced.
 
 `defaultEntry(s)` is `[]` for a state that is not compound, and `[c] + defaultEntry(c)` where `c` is `s.initial` for a compound one. So starting enters the root, then its initial child, and so on down to an atomic or final state, outermost first: the root's `entry` effects run before any other state's. Starting takes no transition, so it writes no `transition` record.
 
@@ -111,10 +112,12 @@ A variable's initial value may read the parameters and the variables declared be
 
 ```
 step(ir, snap, input, fns):
+  if input.kind == "defect":
+    if snap.status != "defect": failWithDefect(input.defect)
+    return (snap, commands)
   if snap.status != "running": return (snap, [])
   switch input.kind:
     "cancel":  cancelRun(); return
-    "defect":  failWithDefect(input.defect); return
     "invoke.done", "invoke.fail", "invoke.defect":
       inv = the entry of snap.invokes with id input.invoke
       if none: emit trace { kind: "stale", event: input }; return
@@ -145,6 +148,7 @@ step(ir, snap, input, fns):
 - An outcome or expiry whose id is not in the snapshot is **stale**: its state was left (and the invoke or timer cancelled) after the driver had already queued it. It is traced as `stale` and changes nothing.
 - An input that enables no transition is **dropped**: traced as `dropped`, and nothing else happens. Settling is skipped, since nothing changed. A consumed invoke or timer stays consumed.
 - A `dropped` or `stale` record replaces the `event` record; an input is traced by exactly one of the three.
+- **A defect in the step that ended the run.** The core finishes the run (or cancels it) inside the step, so the snapshot a step returns can already be `done`, `failed` or `cancelled` while the driver is still carrying out that step's commands, every action of the step among them: say the effects of the transition into a top-level final state, the exit effects `finish` runs (the root's among them), or the exit effects of `cancelRun`. If any of those actions has a host defect, the driver stops at it as for any action ([defects](#defects)), so the `done`, `failed` or `cancelled` record after it is never written, and gives the core the `defect` input. That is why a `defect` input is taken in any status but `defect`: the run's status becomes `defect`, its result the defect, and the `defect` record is its last. `failWithDefect` finds no invokes or timers left to cancel, and `active` stays `[]`. A second `defect` input, for a run that already ended with one, changes nothing and writes nothing.
 
 ## Selecting a transition
 
@@ -205,6 +209,7 @@ exitState(s):
     emit timer.cancel { timer: tm.id }
   runEffects(s.exit)
   remove s from active
+  remove every entry s from the completion queue
   emit trace { kind: "exited", state: s.id }
 
 enterStates(list):
@@ -244,7 +249,7 @@ settle():
     if t == null:
       while t == null and the completion queue is not empty:
         p = take the first state from the completion queue
-        if p is active: t = the first enabled done transition of p
+        t = the first enabled done transition of p
     if t == null: return
     count = count + 1
     if count > 1000: runtime error { kind: "limit" }
@@ -252,7 +257,7 @@ settle():
 ```
 
 - `always` transitions take priority over `done` transitions. A `done` is considered only when no `always` is enabled, and completions are considered in the order the final children were entered.
-- A compound state is complete when one of its final children is entered. Its completion is queued once per entry. When it is taken from the queue, its `done` transitions are tried once: if the state is no longer active, or none of their guards holds, the completion is discarded without a trace record and is not retried later.
+- A compound state is complete when one of its final children is entered. Its completion is queued once per entry, and removed from the queue when the state is exited (`exitState`), so a state in the queue is always active and still in the final child that completed it. A completion is therefore never taken for a state that was exited after it completed, even if it was entered again in the same macrostep: an `always` that leaves and re-enters it discards the completion. When a completion is taken from the queue, the state's `done` transitions are tried once: if none of their guards holds, it is discarded without a trace record and is not retried later.
 - A run that takes more than 1000 microsteps while settling one input has a runtime error `limit`, so a guarded `always` loop cannot hang the host. (The compiler rejects unguarded ones.)
 
 ## Starting work
@@ -277,6 +282,7 @@ startWork():
 ```
 
 - Within one state the invoke starts before the timers.
+- A delay is a `duration`, so it is never negative: a host function declared to return `duration` that gives a negative one has returned a value that is not of its type, a `host` defect ([values](#values)). A delay of 0 is a timer like any other: its expiry is queued by the driver's timer, never by the core, and it comes after every input already queued.
 - Work starts after every entry effect of the macrostep, including those of states entered while settling. So an `after` delay or an invoke argument sees the variables as the step left them: `Checkout`'s `Backoff` sets `attempts` on entry and its `after retryDelay(attempts)` reads the new value.
 - A state that is entered and left again within one macrostep (`Confirming` in `PlaceOrder`, which an `always` leaves at once) never starts its work. This is SCXML's rule for `invoke`, applied to timers as well.
 - A state that was already active before the input and is not exited keeps its work running.
@@ -313,7 +319,7 @@ cancelRun():
   emit trace { kind: "cancelled" }
 ```
 
-This is the default in [open question 4](../docs/design/roadmap.md#open-questions). A parent leaving an invoking state cancels its child run this way, so the child's exit effects run too.
+This is the default in [open question 4](../docs/design/roadmap.md#open-questions). A parent leaving an invoking state cancels its child run this way, so the child's exit effects run too, and the parent waits for them ([child runs](#child-runs)). The cancel step is the run's last; a host defect in one of its exit actions turns it into a defect ([taking an input](#taking-an-input)).
 
 ## Defects
 
@@ -321,15 +327,17 @@ A defect ends the run at once. It is never routed to a `fail` branch, and no exi
 
 | Defect | Cause |
 | --- | --- |
-| `{"kind": "host", "message": "…"}` | Host code failed: a function, action or task threw or panicked, or returned a value that is not of its declared type. `message` is the exception's message or the panic's payload; in conformance cases it is given by the script. |
+| `{"kind": "host", "message": "…"}` | Host code failed: a function, action or task threw or panicked, or returned a value that is not of its declared type (a negative `duration`, say). `message` is set as described under [catching host defects](#catching-host-defects); in conformance cases it is given by the script. |
 | `{"kind": "unassigned", "var": "receipt"}` | A variable was read before it had a value. Definite assignment analysis (milestone 6) will make this a compile error. |
 | `{"kind": "overflow", "expr": "attempts + 1"}` | Integer arithmetic left the `int` range, or float arithmetic produced a value that is not finite. `expr` is the `text` of the operator's IR node. |
 | `{"kind": "undeclared", "error": "Oops"}` | A task or child machine failed with an error it does not declare. |
 | `{"kind": "limit"}` | Settling took more than 1000 microsteps. |
 
-**Inside the core.** Runtime errors (`unassigned`, `overflow`, `undeclared`, `limit`) and a `host` defect in a function called while evaluating an expression happen inside `start` or `step`. The call is then **atomic**: every command it had produced is discarded, and it returns `failWithDefect(d)` applied to the snapshot it was given, so even an invoke the failed step had consumed is cancelled again (a driver ignores that). There is no `event` record for the input. For `start`, it is applied to the initial snapshot (`active` `[]`, `vars` `{}`, no invokes or timers), and the `started` record is kept, so the trace of the run still says what it was. A Rust driver that lets a panic in a function unwind out of `step` and then calls `step` again with the same snapshot and a `defect` input gets the same result.
+**Inside the core.** Runtime errors (`unassigned`, `overflow`, `undeclared`, `limit`) and a `host` defect returned by `fns` while evaluating an expression happen inside `start` or `step`. The call is then **atomic**: every command it had produced is discarded, and it returns `failWithDefect(d)` applied to the snapshot it was given, so even an invoke the failed step had consumed is cancelled again (a driver ignores that). There is no `event` record for the input.
 
-**A host defect in an action** is found by the driver while carrying out a step's commands. It stops carrying them out and gives the core `{"kind": "defect", "defect": {"kind": "host", "message": …}}`. **A host defect in a task** arrives as `invoke.defect`, and is ignored as stale if that invoke was already cancelled. **A child run that ends with a defect** is reported to its parent the same way, with the child's defect object unchanged, so the parent's run ends with a defect too and the defect travels up to whoever ran the root.
+**A defect in `start`** works the same way, applied to the initial snapshot (`active` `[]`, `vars` `{}`, no invokes or timers): `start` still returns a snapshot, with status `defect`, and two commands, the `started` record and the `defect` record. The `started` record is kept so the trace still says what the run was. The driver then ends the run like any other that ends with a defect: a root run raises the defect to whoever called `run`, a child run reports it to its parent as `invoke.defect`. A host defect in an action of `start`'s commands (a root `entry` effect, say) is an ordinary action defect, below.
+
+**A host defect in an action** is found by the driver while carrying out a step's commands (or `start`'s). It stops carrying them out, writes none of the remaining records, and gives the core `{"kind": "defect", "defect": {"kind": "host", "message": …}}`, also when the step had already ended the run ([taking an input](#taking-an-input)). **A host defect in a task** arrives as `invoke.defect`, and is ignored as stale if that invoke was already cancelled. **A child run that ends with a defect** is reported to its parent the same way, with the child's defect object unchanged, so the parent's run ends with a defect too and the defect travels up to whoever ran the root. **A defect in a child's cancel step**, while its parent carries out `invoke.cancel`, is met by the parent's driver like a defect in an action: it gives the parent `{"kind": "defect", "defect": d}` with the child's defect `d` unchanged ([child runs](#child-runs)).
 
 ```
 failWithDefect(d):
@@ -340,7 +348,15 @@ failWithDefect(d):
   emit trace { kind: "defect", defect: d }
 ```
 
-Cancelling a child run here is an ordinary [cancellation](#cancelling-from-outside) of the child, which runs the child's exit effects. A driver ignores an `invoke.cancel` or `timer.cancel` for an id that has already ended, or whose start it never carried out (because a step was cut short by an action's defect). After writing the record the driver lets the defect propagate as the host language does: `Effect.die`, or resuming the panic.
+Cancelling a child run here is an ordinary [cancellation](#cancelling-from-outside) of the child, which runs the child's exit effects, and the driver waits for it as for any `invoke.cancel`. A defect in that cancel step is written to the child's trace and changes nothing in the parent, which has already ended. A driver ignores an `invoke.cancel` or `timer.cancel` for an id that has already ended, or whose start it never carried out (because a step was cut short by an action's defect). After writing the record the driver raises the defect to whoever ran the run, as the host language does: `Effect.die` with a `Defect` value holding the defect object in TypeScript, and `std::panic::resume_unwind` with a `roadbook::Defect` payload in Rust.
+
+### Catching host defects
+
+The driver catches everything host code throws or panics, so that a defect becomes an input and the trace gets its `defect` record:
+
+- **Where.** Around every call of a function (in the binding layer, so `fns` returns the defect to the core), every action, and every invoke's implementation, for the whole time the driver polls or awaits it. In Rust that is `std::panic::catch_unwind` around a function call and `FutureExt::catch_unwind` (or the equivalent `catch_unwind` around each `poll`) around an action's or an invoke's future, with `AssertUnwindSafe`, since the run is ended anyway. In TypeScript it is `try`/`catch` around a function and the defect channel (`Effect.die`, a thrown exception inside an Effect) of an action's or an invoke's Effect.
+- **The message.** A Rust panic payload that is a `&'static str` or a `String` is the message. Any other payload gives the message `Box<dyn Any>`, which is what Rust's own panic hook prints for one. In TypeScript, a defect that is an `Error` gives its `message`, and any other value `String(value)`. A value that is not of its declared type (a decoding failure) gives a message chosen by the binding layer, which no conformance case compares.
+- **A defect that is already a Roadbook defect** is passed on unchanged rather than wrapped: a Rust payload that downcasts to `roadbook::Defect`, or a TypeScript `Defect` value. That is what a child run raises when it ends with a defect, so `{"kind": "unassigned", "var": "receipt"}` in a child reaches its parent as `invoke.defect` with that same object, and so on up to the root.
 
 ## Expressions
 
@@ -361,7 +377,7 @@ Operators, by `op`:
 - `and`, `or`: evaluate the left side; if it decides the result (`false` for `and`, `true` for `or`), that is the result and the right side is **not evaluated**. Otherwise the result is the right side. `not` negates.
 - `==`, `!=`: on `string`, `int`, `float`, `bool`, `duration` and enums. Strings are equal when their Unicode scalar values are. Floats compare as IEEE 754 doubles, so `0.0 == -0.0`.
 - `<`, `<=`, `>`, `>=`: on `int`, `float` and `duration` numerically, and on `string` by Unicode scalar values, lexicographically (which is Rust's `str` order; in TypeScript compare code points, not UTF-16 code units).
-- `+`, `-`, `*`, and `neg` (unary minus): when the node's `type` is `int` or `duration`, exact integer arithmetic. A result outside the runtime's `int` range is `overflow` (see [values](#values) for the range), and so is a negative `duration`. When `type` is `float`, IEEE 754 double arithmetic; a result that is infinite or NaN is `overflow`.
+- `+`, `-`, `*`, and `neg` (unary minus), on `int` and `float` only (the language has no arithmetic on durations): when the node's `type` is `int`, exact integer arithmetic, and a result outside the runtime's `int` range is `overflow` (see [values](#values) for the range). When `type` is `float`, IEEE 754 double arithmetic; a result that is infinite or NaN is `overflow`.
 
 Both operands of a binary operator are evaluated, left first, except for the short circuit above. Function calls are the only part of evaluation the host can observe, so these rules fix which calls are made: a conformance case lists every call its run makes and a call that is not listed fails the case.
 
@@ -375,7 +391,7 @@ Every Roadbook value has one JSON form. It is used for the machine's input, task
 | `int` | An integer number. |
 | `float` | A number, in canonical form when written: `2.0` is written `2`, `-0.0` is written `0`. Always finite. |
 | `bool` | `true` or `false`. |
-| `duration` | A non-negative integer number of milliseconds. A host duration finer than a millisecond is truncated to whole milliseconds when it enters the core. |
+| `duration` | A non-negative integer number of milliseconds. A host duration finer than a millisecond is truncated to whole milliseconds when it enters the core. A negative one (which TypeScript can produce and Rust's `Duration` cannot) is not a `duration`: the binding layer rejects it as a `host` defect. |
 | `json` | The value itself. |
 | A record (`type R { … }`) | An object with every field, by name. An optional field with no value is `null`, never omitted. |
 | An error (`error E { … }`) | An object with `"_tag": "E"` and every field: `{"_tag": "CardDeclined", "reason": "expired"}`, or `{"_tag": "GatewayUnavailable"}` for an error with no fields. |
@@ -392,28 +408,79 @@ Arguments, inputs and the `args` of actions and invokes are objects keyed by par
 
 ## The driver
 
-The driver owns the run's queue and clock and carries out commands with the host's concurrency.
+The driver gives each run a queue and a clock, carries out the core's commands with the host's concurrency, and ends the run.
 
 ```
 run(machine, input):
   (snap, commands) = core.start(ir, machine, input, fns)
-  carry out commands
+  snap = carryOut(snap, commands)
   while snap.status == "running":
-    input = take the next input             # a cancel request goes ahead of everything queued
+    input = take()                  # a cancel request if there is one, else the front of the queue
     (snap, commands) = core.step(ir, snap, input, fns)
-    carry out commands
-  return snap.result
+    snap = carryOut(snap, commands)
+  end the run with snap.result      # see "Ending a run"
+
+carryOut(snap, commands):
+  for c in commands, in order:
+    carry out c                     # an action or an invoke.cancel is waited for
+    if that met a defect d:         # a host defect in an action, or a defect in a child's cancel step
+      (snap, rest) = core.step(ir, snap, { kind: "defect", defect: d }, fns)
+      carry out rest                # cancels and the defect record; a defect met here is ignored
+      return snap
+  return snap
 ```
 
-- **Commands are carried out in order, one at a time.** An action is awaited before the next command. Starting an invoke or a timer only registers it; its outcome comes back later through the queue.
-- **One input at a time.** Every input — external events, outcomes, expiries — goes through one queue per run and is given to the core only after the previous step's commands are all carried out. An outcome or expiry already queued when its invoke or timer is cancelled stays in the queue and reaches the core, which ignores it as stale.
-- **Cancellation takes effect between steps.** A cancel request does not interrupt the commands of a step in progress. When they are done the driver gives the core `{"kind": "cancel"}`, carries out the resulting commands, and discards anything still queued. This is how a parent cancels a child (`invoke.cancel` of a machine invoke), and how a host cancels a run (closing the Effect scope that owns it; in Rust, the actor's stop method, since dropping a future cannot run asynchronous exit actions).
-- **Outcomes of a task.** Success gives `invoke.done` with the value; one of the declared errors gives `invoke.fail` with it; anything else gives `invoke.defect` with a `host` defect.
-- **A machine invoke** whose implementation is the chart itself starts a **child run** of that machine with the invoke's `args` as its input, driven the same way, with run id `<parent run id>.<invoke id>`. The child's `done` result reaches the parent as `invoke.done` with the output, `failed` as `invoke.fail` with the error, and `defect` as `invoke.defect` with the defect. A child run is cancelled only by its parent, and a cancelled child sends its parent no outcome. A machine invoke bound to host code (a stub in a test) is treated exactly like a task and has no run of its own: from the parent's side the two are indistinguishable.
+- **Commands are carried out in order, one at a time.** An action is awaited before the next command, and so is an `invoke.cancel` ([child runs](#child-runs)). Starting an invoke or a timer only registers it; its outcome comes back later through the queue.
+- **A defect stops the commands.** The commands after the one that met a defect are not carried out and their records are not written; the core's answer to the `defect` input is carried out instead. That answer is the same whether or not the step had already ended the run.
+- **Outcomes of a task.** Success gives `invoke.done` with the value. A failure with a tagged error gives `invoke.fail` with it (the core checks that it is one the task declares, and makes any other an `undeclared` defect). A defect gives `invoke.defect` ([catching host defects](#catching-host-defects)).
 - **Run ids.** The driver names each root run; a conformance runner names it `r1`. A child run's id is its parent's id, a dot, and the id of the invoke that started it: `r1.4` is the run started by invoke 4 of run `r1`.
-- **Time.** `t` in a trace record is the driver's clock when it writes the record, in integer milliseconds: since the Unix epoch in production, and virtual milliseconds from 0 in conformance runs.
 
-How a conformance runner drives virtual time, scripted outcomes and quiescence is specified in [conformance/README.md](conformance/README.md#how-a-runner-works).
+### One queue per run
+
+Every source of input pushes onto one first-in, first-out queue per run, at the moment the input arrives:
+
+| Source | Pushes |
+| --- | --- |
+| A caller's `send` | the external event |
+| A task, or a machine invoke that is not a child run | its outcome, when its future or fiber ends |
+| A child run | the outcome of the invoke that started it, when the child ends |
+| A timer | its expiry, when its sleep completes |
+
+The run takes inputs from the front, one at a time, and takes the next only once the previous step's commands have all been carried out. A cancel request is the one exception: it is not queued, and is taken before anything that is.
+
+- **Nothing reaches the core except through the queue.** An Effect driver can make the queue an Effect `Queue` that senders, invoke fibers and timer fibers offer to. A Rust driver's loop `select`s over the event channel, the set of invoke futures and the timers only to find out what has arrived: it pushes every input it finds onto the run's queue (a `VecDeque`, say) and gives the core the front of that queue, never an input straight from the source that produced it. So an outcome that completes while the run is busy, or in the same poll as an event, waits behind what arrived before it, and may be stale by the time it is taken. Inputs that one poll finds ready together are pushed in an order the driver chooses; nothing outside conformance depends on that order, and a conformance runner never lets it arise.
+- **Several inputs at once.** A driver lets a caller append a list of inputs to a run's queue in one operation, so that the run takes no step between them: `Queue.offerAll` on the run's queue in Effect, and in Rust a method that pushes them all onto the queue while the run is between steps. A conformance runner delivers a `together` step this way ([conformance](conformance/README.md#how-a-runner-works)).
+- **An invoke is forgotten once its outcome is taken.** When the core takes an invoke's outcome (whether it writes `event`, `dropped` or `stale`), the driver drops that invoke's future or interrupts its fiber if it is still there. Normally it has already ended; it has not when its outcome was appended by a caller, as a conformance runner does for a scripted invoke in a `together`, and dropping it then ensures it never queues a second outcome.
+- **Cancelled work queues nothing.** Once the driver has carried out `invoke.cancel` or `timer.cancel`, the invoke or timer has been dropped or interrupted and pushes nothing more. An outcome or expiry it pushed before stays queued and reaches the core, which writes it as `stale`.
+- **Cancellation takes effect between steps.** A cancel request does not interrupt the commands of a step in progress. When they are done the driver gives the core `{"kind": "cancel"}`, carries out the resulting commands, and discards anything still queued.
+
+### Child runs
+
+A machine invoke's implementation is host code: in TypeScript the value given for it in `machines`, in Rust a `Handlers` method whose body usually calls the child machine's `run`. When that code runs the chart, the driver has to know, so that the child writes to the parent's trace on the parent's clock and is cancelled gracefully. Both drivers do it with an **invoke context**.
+
+- **The context.** When the driver carries out `invoke.start` with `srcKind` `machine`, it runs the implementation with an ambient invoke context holding the trace sink, the clock and timer, the parent's run id, the invoke id and a fresh cancel token. In TypeScript the context is a `Context.Reference` provided to the invoke's fiber. In Rust it is a task-local, or a thread-local that the driver sets around each `poll` of the invoke's future and restores afterwards, which works on any executor. All other host code the driver runs (functions, actions, tasks) runs with no invoke context; so does a child run's own work, except that each of its machine invokes gets a context of its own.
+- **Claiming it.** A machine's `run` looks for an invoke context. If it finds one whose token is unclaimed, it claims the token and becomes the **child run**: its run id is `<parent run id>.<invoke id>`, its records carry `parent`, and it uses the context's sink, clock and timer. Otherwise it is a root run. Host code that does not call `run` (a stub) never claims the token, which is how the parent's driver tells a stub from a child run. The parent's core cannot tell them apart and does not need to.
+- **Its outcome.** A child run ends like any run: on `done` its `run` returns the output, on `failed` the error, and on `defect` it raises the defect ([catching host defects](#catching-host-defects)). The parent's driver turns that into `invoke.done`, `invoke.fail` or `invoke.defect` as for a task, with the output, error or defect object unchanged, and pushes it onto the parent's queue.
+- **Cancelling it.** On `invoke.cancel` the parent's driver signals the token. If the token was never claimed (a task or a stub), it drops the future or interrupts the fiber at once and is done. If it was claimed, the child takes the signal as a cancel request, between its steps like any other, runs its cancel step (exit effects and the `cancelled` record) and reports through the token that it has finished. The parent keeps driving the child until then (in Rust, it keeps polling the child's future), and only then drops it. Carrying out `invoke.cancel` waits for this, like an action, so nothing after it in the parent's step (the exit effects of the state being left, the rest of the transition) happens before the child's exit effects have run. A child that has already ended, however it ended, reports plain "finished" at once (never a defect), and its outcome is not queued after the signal; one already queued is stale.
+- **A defect in the cancel step** is reported through the token too: the child writes its `defect` record and ends, and the parent's driver meets that defect while carrying out `invoke.cancel` and gives its own core `{"kind": "defect", "defect": d}`, with the child's `d` unchanged, as it would for a defect in an action. A cancelled task or stub has no cancel step, and whatever it does while being dropped or interrupted is ignored.
+- **In Effect** the signal is interruption. The parent interrupts the invoke's fiber and waits for it to end (`FiberMap.remove`, or `Fiber.interrupt`, which returns the fiber's exit). A child's `run` runs each step uninterruptibly and its cancel step in an `Effect.onInterrupt` around the step loop, so interrupting it during a step waits for that step to finish, and the interruption completes only after the cancel step. A defect in the cancel step shows in the fiber's exit as a die with a `Defect`, which the parent uses only if the token was claimed.
+- **In Rust** the token is a small shared value (a cancel flag with a waker, and a slot for "finished" or "finished with defect `d`"). The child's run loop checks it before each take, and the parent, after signalling it, polls the child's future until the slot is filled. The child's future may never complete after that; the parent drops it.
+
+### Ending a run
+
+A run ends when its status is no longer `running`. On `done` the result is the output (an Effect success, a Rust `Ok`), on `failed` the error (the Effect error channel, a Rust `Err` of the machine's error enum), and on `defect` the defect is raised ([defects](#defects)). A cancelled run has no result: a child run reports through its token, a root run as follows.
+
+When a run ends, for whatever reason, the driver discards anything still in its queue and drops every invoke and timer of the run it still holds. Normally there are none, since the core cancelled them; there can be when an action's defect stopped a step before the `invoke.cancel` or `timer.cancel` of work the step had already removed from the snapshot, which `failWithDefect` therefore cannot see. A child run dropped this way gets a cancel signal first, as on `invoke.cancel`.
+
+- **TypeScript.** Interrupting the fiber that runs a root `run`, or closing the scope of a `spawn`ed actor, is a graceful cancel. As for a child, each step runs uninterruptibly and the cancel step runs in `onInterrupt`, so the exit effects run and the trace ends with `cancelled` before the interruption completes; the run's Effect then ends interrupted.
+- **Rust.** Dropping the future of a root `run` is a **hard stop**: nothing more runs, no exit effect and no final record (the trace simply stops, as a run's in progress does), and the invokes, child runs and timers it holds are dropped with it. Graceful cancellation from outside goes through the actor: `spawn` the run, then `actor.cancel().await` gives it a cancel request and returns once its cancel step has finished, after which `actor.result()` reports that it was cancelled. A child run is never dropped while it runs: its parent cancels it through the token.
+
+### Time
+
+- **Records.** `t` in a trace record is the driver's clock when it writes the record, in integer milliseconds: since the Unix epoch in production, and virtual milliseconds from 0 in conformance runs.
+- **Timers.** A timer's expiry is due `delay` milliseconds after the driver carries out `timer.start`. The driver reads the time and waits only through the clock and timer it was given (in TypeScript a `Timer` service whose default sleeps on Effect's `Clock`, in Rust the `Timer` trait), telling the timer the run id, the timer id and the delay when it starts one and the ids when it cancels one. It never completes a timer itself, not even one with delay 0. A test can therefore give it a virtual clock and fire timers itself, as a conformance runner does.
+
+How a conformance runner drives virtual time, scripted outcomes and quiescence, and what it may rely on the driver for, is specified in [conformance/README.md](conformance/README.md#how-a-runner-works).
 
 ## Not yet specified
 

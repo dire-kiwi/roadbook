@@ -101,29 +101,40 @@ actor.changes                                         // Stream<Snapshot>
 const response = yield* actor.result                  // Effect<Output, Errors>
 ```
 
-Closing the scope stops the machine and cancels everything it started.
+Closing the scope, or interrupting the fiber of a `run`, cancels the machine gracefully: the step in progress finishes, then every active state's exit effects run, innermost first, and the trace ends with `cancelled`. Everything the machine started is cancelled with it.
 
 ## How the driver maps onto Effect
 
 | Statechart concept | Effect v4 |
 | --- | --- |
 | A machine instance | A fiber running the event loop inside a `Scope` |
-| The event queue | `Queue` |
+| The event queue | One `Queue` per run, which events, invoke fibers and timer fibers all offer to. The run takes one input at a time. |
 | The current snapshot | `SubscriptionRef`, whose `changes` is the stream above |
-| A state's `invoke` | A fiber in a `FiberMap` keyed by state id. Removing the key interrupts it. |
-| `after` timers | Fibers that `Effect.sleep`, in the same map. `TestClock` drives them in tests. |
+| A state's `invoke` | A fiber in a `FiberMap` keyed by invoke id. Removing the key interrupts it and waits for it to end. |
+| `after` timers | Fibers that sleep through the driver's `Timer` service, in a map keyed by timer id. The default `Timer` sleeps on Effect's `Clock`. |
+| A child machine run from its chart | The invoke's fiber, given an invoke context (a `Context.Reference`) that the child's `run` claims |
+| Cancelling a run | Interruption. Each step runs uninterruptibly and the cancel step (exit effects, the `cancelled` record) in `Effect.onInterrupt`. |
 | A task's declared errors | The `E` channel. The driver matches `_tag` to the `fail` branch. |
-| A defect in host code | A defect (`Effect.die`), which fails the run and is never routed to a branch |
+| A defect in host code | A defect (`Effect.die`, or a thrown exception), which fails the run and is never routed to a branch. A run that ends with one dies with a `Defect` value holding the defect object. |
 | Services used by implementations | The `R` channel, provided once with a `Layer` |
 | Trace output | A `Context.Reference` holding a sink, with a no-op default |
 | Tracing | `Effect.withSpan` per machine and per state, transitions as span events |
 
 Effect's structured concurrency is the reason this fits so well. "Leaving a state cancels its work" is a scope closing.
 
+### Child runs and cancellation
+
+The rules are in [execution.md](../../spec/execution.md#child-runs); in Effect they come out like this.
+
+- **The invoke context.** The driver runs a machine invoke's implementation in a fiber that has an invoke context: a `Context.Reference` holding the trace sink, the clock and timer, the parent's run id, the invoke id and a cancel token. `CheckoutLive.run(…)` finds it, claims the token and runs as child run `r1.4`, writing to the parent's sink. A stub such as `() => Effect.fail(…)` never claims it and is treated as a task. Functions, actions and tasks run with no context.
+- **Cancelling a child.** Leaving the state removes the invoke from the `FiberMap`, which interrupts the fiber and waits for it. The child's `run` finishes its current step, runs its cancel step in `onInterrupt`, and only then lets the interruption complete, so leaving the state waits for the child's exit effects, like an action.
+- **Defects.** A thrown `Error` becomes a host defect with its `message`, any other value one with `String(value)`. A run that ends with a defect dies with a `Defect`, which the parent's driver passes on unchanged, so a child's defect reaches the root as it was. A defect in a child's cancel step shows in the interrupted fiber's exit, and ends the parent with that defect.
+- **Cancelling from outside.** Interrupting the fiber of a root `run`, or closing the scope of a `spawn`ed actor, cancels it the same way: exit effects run and the trace ends with `cancelled` before the interruption completes.
+
 ## Testing
 
 - **A whole sub-machine can be a stub.** `machines: { Checkout: () => Effect.fail(new CardDeclined({ reason: "test" })) }` replaces the payment chart with one function of the same signature.
-- **Time is virtual.** `after` and backoff delays run under `TestClock`.
+- **Time is virtual.** `after` and backoff delays sleep through the driver's `Timer` service on Effect's `Clock`, so they run under `TestClock`. The conformance runner, which has to fire timers one at a time and let the machines settle in between, gives the driver its own virtual `Timer` ([what a runner relies on](../../spec/conformance/README.md#how-a-runner-works)).
 - **The core is pure.** `@roadbook/core`'s `step` can be called directly to assert on transitions without running any effects.
 - **Paths can be generated.** Because the chart is data, `roadbook paths` can list every simple path through a machine, and a test can assert each one is exercised. The viewer's coverage mode shows the result.
 

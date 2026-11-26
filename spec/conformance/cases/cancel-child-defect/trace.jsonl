@@ -1,0 +1,18 @@
+{"input":{},"ir":"sha256:14d47e7f35e957f503e82011e532eccad77b9e67dc298ace7c5b4c2edc5ffa99","kind":"started","machine":"Parent","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Parent","t":0}
+{"kind":"entered","run":"r1","state":"Parent.Running","t":0}
+{"args":{},"invoke":1,"kind":"invoke.started","run":"r1","src":"Child","state":"Parent.Running","t":0}
+{"event":{"kind":"event","value":{"_tag":"Stop"}},"kind":"event","run":"r1","t":0}
+{"from":"Parent.Running","index":1,"kind":"transition","run":"r1","t":0,"to":"Parent.Over"}
+{"invoke":1,"kind":"invoke.cancelled","run":"r1","src":"Child","state":"Parent.Running","t":0}
+{"defect":{"kind":"host","message":"flush failed"},"kind":"defect","run":"r1","t":0}
+{"input":{},"ir":"sha256:8765be69736459620685ae1e120d6f30a9adce2fe5b21489df9c0d53e61f6b60","kind":"started","machine":"Child","parent":"r1","run":"r1.1","t":0}
+{"kind":"entered","parent":"r1","run":"r1.1","state":"Child","t":0}
+{"kind":"entered","parent":"r1","run":"r1.1","state":"Child.Outer","t":0}
+{"kind":"entered","parent":"r1","run":"r1.1","state":"Child.Outer.Inner","t":0}
+{"delay":5000,"index":0,"kind":"timer.started","parent":"r1","run":"r1.1","state":"Child.Outer.Inner","t":0,"timer":1}
+{"index":0,"kind":"timer.cancelled","parent":"r1","run":"r1.1","state":"Child.Outer.Inner","t":0,"timer":1}
+{"action":"log","args":{"what":"exit Inner"},"kind":"action","parent":"r1","run":"r1.1","t":0}
+{"kind":"exited","parent":"r1","run":"r1.1","state":"Child.Outer.Inner","t":0}
+{"action":"log","args":{"what":"exit Outer"},"kind":"action","parent":"r1","run":"r1.1","t":0}
+{"defect":{"kind":"host","message":"flush failed"},"kind":"defect","parent":"r1","run":"r1.1","t":0}

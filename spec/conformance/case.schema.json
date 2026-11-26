@@ -4,7 +4,7 @@
   "description": "A case.json: a machine, its input, the host's scripted behaviour and the expected final status. The expected trace is trace.jsonl next to it. See spec/conformance/README.md.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["description", "chart", "machine", "input", "stub", "fns", "script", "status"],
+  "required": ["description", "chart", "machine", "input", "stub", "fns", "actions", "script", "status"],
   "properties": {
     "description": { "description": "What the case checks, in a sentence or two.", "type": "string", "minLength": 1 },
     "chart": {
@@ -33,6 +33,23 @@
           "properties": {
             "args": { "description": "Positional argument values.", "type": "array" },
             "returns": { "description": "The function's value." }
+          }
+        }
+      }
+    },
+    "actions": {
+      "description": "Action calls that have a host defect, keyed by action name, then by arguments. Every other action call does nothing and returns at once.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/lowerName" },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["args", "defect"],
+          "properties": {
+            "args": { "description": "The arguments, keyed by parameter name.", "type": "object" },
+            "defect": { "description": "The message of the host defect every matching call has.", "type": "string" }
           }
         }
       }
@@ -96,7 +113,7 @@
       "properties": { "cancel": { "const": true } }
     },
     "together": {
-      "description": "Queue several inputs before any run takes the first of them, as when they arrive at the same moment.",
+      "description": "Queue several inputs for one run before it takes the first of them, as when they arrive at the same moment. An advance item queues the expiries of the timers due in its window.",
       "type": "object",
       "additionalProperties": false,
       "required": ["together"],
@@ -104,7 +121,10 @@
         "together": {
           "type": "array",
           "minItems": 2,
-          "items": { "oneOf": [{ "$ref": "#/$defs/event" }, { "$ref": "#/$defs/task" }] }
+          "items": { "oneOf": [{ "$ref": "#/$defs/event" }, { "$ref": "#/$defs/task" }, { "$ref": "#/$defs/advance" }] },
+          "contains": { "$ref": "#/$defs/advance" },
+          "minContains": 0,
+          "maxContains": 1
         }
       }
     },

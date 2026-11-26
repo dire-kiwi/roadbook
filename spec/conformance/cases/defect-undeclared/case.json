@@ -1,0 +1,25 @@
+{
+  "description": "The stubbed machine Sub fails with Other, which it does not declare: an undeclared defect inside the core, with no event record.",
+  "chart": "charts/defects.road",
+  "machine": "Main",
+  "input": {},
+  "stub": [
+    "Sub"
+  ],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "UseSub"
+      }
+    },
+    {
+      "task": "Sub",
+      "fail": {
+        "_tag": "Other"
+      }
+    }
+  ],
+  "status": "defect"
+}

@@ -1,0 +1,24 @@
+{
+  "description": "The root's exit action has a host defect in the step that reaches Late and so ends the run. The snapshot is already done when the defect is met, and the run ends with the defect instead: no done record, and the defect record right after the action's.",
+  "chart": "charts/root.road",
+  "machine": "Top",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {
+    "log": [
+      {
+        "args": {
+          "what": "exit Top"
+        },
+        "defect": "audit log unavailable"
+      }
+    ]
+  },
+  "script": [
+    {
+      "advance": 10000
+    }
+  ],
+  "status": "defect"
+}

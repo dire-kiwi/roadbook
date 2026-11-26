@@ -1,0 +1,45 @@
+// Conformance chart: cancelling a child machine that has exit effects at
+// several levels while its timer runs.
+
+action log(what: string)
+
+/// Runs Child until Stop, then ends.
+machine Parent() {
+  event Stop
+
+  exit do log("exit Parent")
+
+  initial Running
+
+  state Running {
+    exit do log("exit Running")
+
+    invoke Child() {
+      done -> Over
+    }
+    on Stop -> Over  do log("stop")
+  }
+
+  final state Over {}
+}
+
+/// Waits five seconds two levels down, logging every exit.
+machine Child() {
+  exit do log("exit Child")
+
+  initial Outer
+
+  state Outer {
+    exit do log("exit Outer")
+
+    initial Inner
+
+    state Inner {
+      exit do log("exit Inner")
+
+      after 5s -> Finished
+    }
+  }
+
+  final state Finished {}
+}

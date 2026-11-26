@@ -1,0 +1,27 @@
+// Conformance chart: ten child runs one after another, so that run r1.10
+// comes after r1.9 in run order.
+
+/// Runs Leaf ten times.
+machine Many() {
+  var count: int = 1
+
+  initial Spawning
+
+  state Spawning {
+    invoke Leaf() {
+      done {
+        if count < 10 -> Spawning  set count = count + 1
+        else          -> Finished
+      }
+    }
+  }
+
+  final state Finished {}
+}
+
+/// Ends as soon as it starts.
+machine Leaf() {
+  initial Over
+
+  final state Over {}
+}

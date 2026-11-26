@@ -46,6 +46,7 @@
       }
     ]
   },
+  "actions": {},
   "script": [
     {
       "advance": 10

@@ -1,0 +1,264 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/many.road"
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Many": {
+      "doc": "Runs Leaf ten times.",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 20,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "count",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 1,
+            "type": "int",
+            "text": "1"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 6,
+            "col": 3,
+            "endLine": 6,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {},
+      "root": {
+        "id": "Many",
+        "name": "Many",
+        "kind": "compound",
+        "doc": "Runs Leaf ten times.",
+        "span": {
+          "file": 0,
+          "line": 5,
+          "col": 1,
+          "endLine": 20,
+          "endCol": 2
+        },
+        "initial": "Many.Spawning",
+        "states": [
+          {
+            "id": "Many.Spawning",
+            "name": "Spawning",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 10,
+              "col": 3,
+              "endLine": 17,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "machine",
+              "src": "Leaf",
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 11,
+                "col": 5,
+                "endLine": 16,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "<",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "count"
+                      ],
+                      "type": "int",
+                      "text": "count"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 10,
+                      "type": "int",
+                      "text": "10"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "count < 10"
+                },
+                "target": "Many.Spawning",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "count",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "count"
+                          ],
+                          "type": "int",
+                          "text": "count"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "count + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 13,
+                  "col": 9,
+                  "endLine": 13,
+                  "endCol": 57
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Many.Finished",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 14,
+                  "col": 9,
+                  "endLine": 14,
+                  "endCol": 34
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Many.Finished",
+            "name": "Finished",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 19,
+              "col": 3,
+              "endLine": 19,
+              "endCol": 26
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:3d8d3f62b1f47abcb7e8c769102eea222d8488000adffcfc896f169b591b0a06"
+    },
+    "Leaf": {
+      "doc": "Ends as soon as it starts.",
+      "span": {
+        "file": 0,
+        "line": 23,
+        "col": 1,
+        "endLine": 27,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {},
+      "root": {
+        "id": "Leaf",
+        "name": "Leaf",
+        "kind": "compound",
+        "doc": "Ends as soon as it starts.",
+        "span": {
+          "file": 0,
+          "line": 23,
+          "col": 1,
+          "endLine": 27,
+          "endCol": 2
+        },
+        "initial": "Leaf.Over",
+        "states": [
+          {
+            "id": "Leaf.Over",
+            "name": "Over",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 26,
+              "col": 3,
+              "endLine": 26,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:ca1c5ba430666515362aabf39086be7b65c9a3858d4632372e2fe153426e6b6a"
+    }
+  }
+}

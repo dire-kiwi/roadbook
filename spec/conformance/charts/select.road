@@ -1,0 +1,67 @@
+// Conformance chart: which transition is selected when several could be:
+// `on N` against `on *`, a guarded `fail E` with no fallback, `always`
+// before `done`, and a state left by `always` before its work starts.
+
+error Busy
+error Gone
+
+action log(what: string)
+task load()              -> int ! Busy | Gone
+task idle()
+
+/// Exercises the selection rules one event at a time.
+machine Select() {
+  var ready: bool = false
+  var laps:  int = 0
+
+  event Go   { n: int }
+  event Next
+  event Skip
+
+  on Go do log("root go")
+
+  initial Picking
+
+  state Picking {
+    on Go {
+      if event.n > 0             do log("positive go")
+    }
+    on *                         do log("any")
+    on Skip          -> Loading
+  }
+
+  state Loading {
+    invoke load() {
+      done       -> Form
+      fail Busy {
+        if ready -> Form
+      }
+      fail Gone  -> Form
+    }
+    on Next -> Form
+  }
+
+  state Form {
+    always {
+      if laps == 1 -> Form     set laps = laps + 1  do log("again")
+    }
+    done           -> Passing  do log("form done")
+
+    initial Name
+
+    state Name { on Next -> Complete }
+
+    final state Complete { entry set laps = laps + 1 }
+  }
+
+  state Passing {
+    invoke idle() {
+      done -> Ended
+    }
+    after 1s -> Ended
+
+    always -> Ended  do log("passing")
+  }
+
+  final state Ended {}
+}

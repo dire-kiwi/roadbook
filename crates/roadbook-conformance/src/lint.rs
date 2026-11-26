@@ -315,6 +315,22 @@ pub fn lint(records: &[Value], status: Status, ir: Option<&Ir>) -> Vec<String> {
             .and_then(|(_, n)| n.parse().ok())
             .unwrap_or(0);
         let seen = runs.get(parent).and_then(|p| p.invoke_ends.get(&n));
+        let parent_end = runs
+            .get(parent)
+            .and_then(|p| p.end.as_ref())
+            .map(|e| str_of(e, "kind"));
+        // A defect in the cancel step of a child its parent was cancelling
+        // becomes the parent's own defect (unless the parent had already
+        // ended with one).
+        let defect_in_cancel = run
+            .end
+            .as_ref()
+            .is_some_and(|e| str_of(e, "kind") == "defect")
+            && seen.is_some_and(|(k, _)| k == "cancelled")
+            && parent_end == Some("defect");
+        if defect_in_cancel {
+            continue;
+        }
         let expected = run.end.as_ref().map(|e| match str_of(e, "kind") {
             "done" => ("invoke.done".to_owned(), e["output"].clone()),
             "failed" => ("invoke.fail".to_owned(), e["error"].clone()),

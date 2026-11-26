@@ -1,0 +1,37 @@
+{
+  "description": "The machine body's after 10s starts with the run and survives transitions below the root; its on Ping is internal. Next and B's timer expiry are queued together, so the expiry is stale. When the root's timer fires, its transition exits everything below the root, and finishing exits the root last, running its exit effect before the done record.",
+  "chart": "charts/root.road",
+  "machine": "Top",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Ping"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Next"
+      }
+    },
+    {
+      "together": [
+        {
+          "event": {
+            "_tag": "Next"
+          }
+        },
+        {
+          "advance": 1000
+        }
+      ]
+    },
+    {
+      "advance": 9000
+    }
+  ],
+  "status": "done"
+}

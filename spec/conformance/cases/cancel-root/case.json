@@ -1,0 +1,18 @@
+{
+  "description": "The root run is cancelled from outside while its Child run waits in its timer: the parent cancels the child, which runs its exit effects at every level, then runs its own, Running's before the root's.",
+  "chart": "charts/cancel.road",
+  "machine": "Parent",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "advance": 1000
+    },
+    {
+      "cancel": true
+    }
+  ],
+  "status": "cancelled"
+}

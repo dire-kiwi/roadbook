@@ -1,0 +1,27 @@
+{"input":{},"ir":"sha256:bd7c1fd49f8dc8b67a8d5efa59f1eade9a12fd8b4a767b72f65fc40b4a4156be","kind":"started","machine":"Top","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Top","t":0}
+{"action":"log","args":{"what":"enter Top"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Top.A","t":0}
+{"delay":10000,"index":1,"kind":"timer.started","run":"r1","state":"Top","t":0,"timer":1}
+{"event":{"kind":"event","value":{"_tag":"Ping"}},"kind":"event","run":"r1","t":0}
+{"from":"Top","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"kind":"set","run":"r1","t":0,"value":1,"var":"pings"}
+{"event":{"kind":"event","value":{"_tag":"Next"}},"kind":"event","run":"r1","t":0}
+{"from":"Top.A","index":0,"kind":"transition","run":"r1","t":0,"to":"Top.B"}
+{"kind":"exited","run":"r1","state":"Top.A","t":0}
+{"kind":"entered","run":"r1","state":"Top.B","t":0}
+{"delay":1000,"index":0,"kind":"timer.started","run":"r1","state":"Top.B","t":0,"timer":2}
+{"event":{"kind":"event","value":{"_tag":"Next"}},"kind":"event","run":"r1","t":1000}
+{"from":"Top.B","index":1,"kind":"transition","run":"r1","t":1000,"to":"Top.C"}
+{"index":0,"kind":"timer.cancelled","run":"r1","state":"Top.B","t":1000,"timer":2}
+{"kind":"exited","run":"r1","state":"Top.B","t":1000}
+{"kind":"entered","run":"r1","state":"Top.C","t":1000}
+{"event":{"kind":"after","timer":2},"kind":"stale","run":"r1","t":1000}
+{"event":{"kind":"after","timer":1},"kind":"event","run":"r1","t":10000}
+{"from":"Top","index":1,"kind":"transition","run":"r1","t":10000,"to":"Top.Late"}
+{"kind":"exited","run":"r1","state":"Top.C","t":10000}
+{"kind":"entered","run":"r1","state":"Top.Late","t":10000}
+{"kind":"exited","run":"r1","state":"Top.Late","t":10000}
+{"action":"log","args":{"what":"exit Top"},"kind":"action","run":"r1","t":10000}
+{"kind":"exited","run":"r1","state":"Top","t":10000}
+{"kind":"done","output":1,"run":"r1","state":"Top.Late","t":10000}

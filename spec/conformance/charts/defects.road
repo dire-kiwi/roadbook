@@ -1,0 +1,55 @@
+// Conformance chart: defects raised inside the core, and an optional
+// variable with no initial value.
+
+error Nope
+
+/// Declared by nothing: the error a stub of Sub fails with in `defect-undeclared`.
+error Other
+
+action note(memo: string?)
+task load()                -> int
+
+/// Loads a number or asks Sub for one.
+machine Main() -> int {
+  var limit: int
+  var memo:  string?
+
+  event UseLoad
+  event UseSub
+
+  initial Idle
+
+  state Idle {
+    entry do note(memo)
+
+    on UseLoad -> Loading
+    on UseSub  -> Calling
+  }
+
+  state Loading {
+    invoke load() {
+      done {
+        // limit is never assigned, so this guard reads it unassigned.
+        if result > limit -> Finished
+        else              -> Idle
+      }
+    }
+    after 1s -> Idle
+  }
+
+  state Calling {
+    invoke Sub() {
+      done      -> Finished
+      fail Nope -> Idle
+    }
+  }
+
+  final state Finished { output 0 }
+}
+
+/// Stubbed in the cases that use it.
+machine Sub() -> int ! Nope {
+  initial Answer
+
+  final state Answer { output 1 }
+}
