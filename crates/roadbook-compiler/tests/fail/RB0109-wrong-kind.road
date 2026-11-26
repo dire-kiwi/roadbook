@@ -1,0 +1,23 @@
+type Order { id: string }
+action audit(what: string)
+fn total(order: Order) -> int
+
+machine M(order: Order) {
+  var n: M
+  initial A
+  state A {
+    invoke audit("x") {
+      done -> Done
+    }
+  }
+  state B {
+    entry do total(order)
+    always if audit("y") -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0109 at 6:10
+// expect: RB0109 at 9:12
+// expect: RB0109 at 14:14
+// expect: RB0109 at 15:15

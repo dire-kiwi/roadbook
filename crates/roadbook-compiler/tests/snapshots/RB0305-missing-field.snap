@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0305]: `Order` value is missing fields `total`, `note`
+ --> RB0305-missing-field.road:5:22
+  |
+5 |   var order: Order = Order { id: "x" }
+  |                      ^^^^^^^^^^^^^^^^^
+  |
+  = help: give every field: `Order { total: <int>, note: <string?> }`
+
+error[RB0305]: `Declined` value is missing field `reason`
+ --> RB0305-missing-field.road:7:27
+  |
+7 |   final state Done { fail Declined }
+  |                           ^^^^^^^^
+  |
+  = help: give every field: `Declined { reason: <string> }`

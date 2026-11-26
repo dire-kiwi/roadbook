@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0901]: state `M.Lost` can never be entered
+ --> RB0901-unreachable.road:7:9
+  |
+7 |   state Lost {
+  |         ^^^^
+  |
+  = help: no transition that can be taken leads to it, and it is not an `initial`
+
+warning[RB0901]: state `M.B` can never be entered
+  --> RB0901-unreachable.road:13:9
+   |
+13 |   state B {
+   |         ^
+   |
+   = help: no transition that can be taken leads to it, and it is not an `initial`

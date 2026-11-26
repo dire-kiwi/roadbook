@@ -1,0 +1,4 @@
+import { Unit } from "../units.road"
+
+type Shape { width: float, height: float, unit: Unit }
+fn area(s: Shape) -> float

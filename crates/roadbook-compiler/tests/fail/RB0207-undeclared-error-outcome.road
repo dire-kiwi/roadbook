@@ -1,0 +1,21 @@
+error CardDeclined
+error GatewayUnavailable
+error Timeout
+task chargeCard() ! CardDeclined | GatewayUnavailable
+
+machine M() {
+  initial A
+  state A {
+    invoke chargeCard() {
+      done                   -> Done
+      fail CardDeclined      -> Done
+      fail GatewayUnavailabe -> Done
+      fail Timeout           -> Done
+      fail *                 -> Done
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0207 at 12:12
+// expect: RB0207 at 13:12

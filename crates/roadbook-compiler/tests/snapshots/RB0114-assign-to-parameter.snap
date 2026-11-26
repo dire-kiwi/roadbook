@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0114]: `limit` is a parameter of `M`; parameters are read-only
+ --> RB0114-assign-to-parameter.road:4:15
+  |
+4 |     entry set limit = 3
+  |               ^^^^^
+  |
+  = help: declare a variable to hold the changing value: `var limit : <type>`

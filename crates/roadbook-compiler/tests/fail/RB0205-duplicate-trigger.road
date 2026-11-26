@@ -1,0 +1,19 @@
+machine M() {
+  event Go
+  var n: int = 0
+  initial A
+  state A {
+    on Go -> B
+    on Go -> Done
+    after 1s -> B
+    after 1000ms -> B
+    after 1s set n = 1
+  }
+  state B {
+    always -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0205 at 7:5
+// expect: RB0205 at 10:5

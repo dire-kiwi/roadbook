@@ -1,0 +1,18 @@
+task cleanUp()
+
+machine M() {
+  event Go
+  initial A
+  state A {
+    on Go -> Done
+  }
+  final state Done {
+    on Go -> A
+    invoke cleanUp() {
+      done -> A
+    }
+  }
+}
+
+// expect: RB0211 at 10:5
+// expect: RB0211 at 11:5

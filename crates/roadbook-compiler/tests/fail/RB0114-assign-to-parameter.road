@@ -1,0 +1,10 @@
+machine M(limit: int) {
+  initial A
+  state A {
+    entry set limit = 3
+    always -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0114 at 4:15

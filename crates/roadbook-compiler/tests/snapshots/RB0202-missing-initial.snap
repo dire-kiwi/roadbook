@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0202]: state `M.Busy` has child states but no `initial`
+ --> RB0202-missing-initial.road:4:9
+  |
+4 |   state Busy {
+  |         ^^^^
+  |
+  = help: add `initial Working` to say which child is entered first

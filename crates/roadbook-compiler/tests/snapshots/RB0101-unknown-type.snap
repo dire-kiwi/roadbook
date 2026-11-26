@@ -1,0 +1,16 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0101]: unknown type `Ordr`
+ --> RB0101-unknown-type.road:3:18
+  |
+3 | machine M(order: Ordr) {
+  |                  ^^^^
+  |
+  = help: did you mean `Order`?
+
+error[RB0101]: unknown type `Note`
+ --> RB0101-unknown-type.road:4:13
+  |
+4 |   var note: Note
+  |             ^^^^

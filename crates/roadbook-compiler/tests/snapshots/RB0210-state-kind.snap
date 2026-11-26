@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0210]: parallel state `M.A` has no child states
+ --> RB0210-state-kind.road:4:18
+  |
+4 |   parallel state A {
+  |                  ^
+  |
+  = help: the children of a parallel state are its regions; add at least one, or drop `parallel`
+
+error[RB0210]: final state `M.Done` has child states
+ --> RB0210-state-kind.road:7:15
+  |
+7 |   final state Done {
+  |               ^^^^
+  |
+  = help: a final state ends its parent; it cannot contain states

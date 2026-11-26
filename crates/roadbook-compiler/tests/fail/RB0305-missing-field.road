@@ -1,0 +1,11 @@
+type Order { id: string, total: int, note: string? }
+error Declined { reason: string }
+
+machine M() ! Declined {
+  var order: Order = Order { id: "x" }
+  initial Done
+  final state Done { fail Declined }
+}
+
+// expect: RB0305 at 5:22
+// expect: RB0305 at 7:27

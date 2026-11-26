@@ -1,0 +1,5 @@
+machine Empty() {
+  var n: int = 0
+}
+
+// expect: RB0202 at 1:9

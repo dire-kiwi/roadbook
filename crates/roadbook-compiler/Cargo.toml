@@ -1,0 +1,24 @@
+[package]
+name = "roadbook-compiler"
+description = "The Roadbook compiler: imports, name resolution, type checking, analyses and IR lowering"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+# Kept small on purpose: the Rust macro runs this crate at build time, and a WebAssembly build
+# will follow.
+[dependencies]
+roadbook-syntax = { path = "../roadbook-syntax" }
+roadbook-ir = { path = "../roadbook-ir" }
+indexmap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+jsonschema.workspace = true
+
+[lints]
+workspace = true

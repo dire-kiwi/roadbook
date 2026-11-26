@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0211]: final state `M.Done` has a transition, which could never run
+  --> RB0211-final-activity.road:10:5
+   |
+10 |     on Go -> A
+   |     ^^^^^
+   |
+   = help: a final state ends its parent as soon as it is entered; only `entry`, `exit`, `output` and `fail` belong in it
+
+error[RB0211]: final state `M.Done` has an `invoke`, which could never run
+  --> RB0211-final-activity.road:11:5
+   |
+11 |     invoke cleanUp() {
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: a final state ends its parent as soon as it is entered; only `entry`, `exit`, `output` and `fail` belong in it

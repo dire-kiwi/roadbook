@@ -1,0 +1,33 @@
+error Declined { reason: string }
+fn delay(attempt: int) -> duration
+action note(what: string)
+
+machine M(name: string) {
+  var ratio: float = 1
+  var count: int = 0
+  var maybe: int?
+  var declined: Declined = Declined { reason: 5 }
+  initial A
+  state A {
+    entry set count = name, count = maybe
+    entry do note(count)
+    after delay(name) -> B
+    after 5 -> B
+  }
+  state B {
+    always {
+      if count -> Done
+      else     -> Done
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0301 at 6:22
+// expect: RB0301 at 9:47
+// expect: RB0301 at 12:23
+// expect: RB0301 at 12:37
+// expect: RB0301 at 13:19
+// expect: RB0301 at 14:17
+// expect: RB0301 at 15:11
+// expect: RB0301 at 19:10

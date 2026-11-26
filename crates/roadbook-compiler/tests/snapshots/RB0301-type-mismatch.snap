@@ -1,0 +1,54 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0301]: mismatched types: expected `float`, found `int`
+ --> RB0301-type-mismatch.road:6:22
+  |
+6 |   var ratio: float = 1
+  |                      ^ the initial value of `ratio` must be `float`
+  |
+  = help: `int` and `float` do not mix; write a float literal
+
+error[RB0301]: mismatched types: expected `string`, found `int`
+ --> RB0301-type-mismatch.road:9:47
+  |
+9 |   var declined: Declined = Declined { reason: 5 }
+  |                                               ^ field `reason` of `Declined` must be `string`
+
+error[RB0301]: mismatched types: expected `int`, found `string`
+  --> RB0301-type-mismatch.road:12:23
+   |
+12 |     entry set count = name, count = maybe
+   |                       ^^^^ the value assigned to `count` must be `int`
+
+error[RB0301]: mismatched types: expected `int`, found `int?`
+  --> RB0301-type-mismatch.road:12:37
+   |
+12 |     entry set count = name, count = maybe
+   |                                     ^^^^^ the value assigned to `count` must be `int`
+   |
+   = help: `int?` may be absent, so it cannot be used where `int` is expected
+
+error[RB0301]: mismatched types: expected `string`, found `int`
+  --> RB0301-type-mismatch.road:13:19
+   |
+13 |     entry do note(count)
+   |                   ^^^^^ argument `what` of `note` must be `string`
+
+error[RB0301]: mismatched types: expected `int`, found `string`
+  --> RB0301-type-mismatch.road:14:17
+   |
+14 |     after delay(name) -> B
+   |                 ^^^^ argument `attempt` of `delay` must be `int`
+
+error[RB0301]: mismatched types: expected `duration`, found `int`
+  --> RB0301-type-mismatch.road:15:11
+   |
+15 |     after 5 -> B
+   |           ^ an `after` delay must be `duration`
+
+error[RB0301]: mismatched types: expected `bool`, found `int`
+  --> RB0301-type-mismatch.road:19:10
+   |
+19 |       if count -> Done
+   |          ^^^^^ a guard must be `bool`

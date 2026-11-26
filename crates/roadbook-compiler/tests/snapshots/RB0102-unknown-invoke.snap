@@ -1,0 +1,16 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0102]: unknown task `chrgeCard`
+ --> RB0102-unknown-invoke.road:7:12
+  |
+7 |     invoke chrgeCard() {
+  |            ^^^^^^^^^
+  |
+  = help: did you mean `chargeCard`?
+
+error[RB0102]: unknown machine `Chekout`
+  --> RB0102-unknown-invoke.road:12:12
+   |
+12 |     invoke Chekout() {
+   |            ^^^^^^^

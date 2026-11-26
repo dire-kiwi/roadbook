@@ -1,0 +1,23 @@
+// options: warn-invoke-timeout
+task fetch()
+
+machine M() {
+  initial Waiting
+  state Waiting {
+    invoke fetch() {
+      done -> Timed
+    }
+  }
+  state Timed {
+    initial Fetching
+    after 5s -> Done
+    state Fetching {
+      invoke fetch() {
+        done -> Done
+      }
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0904 at 7:5

@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0208]: `output` is only allowed in a final state at the top level of a machine
+ --> RB0208-misplaced-result.road:5:25
+  |
+5 |     final state Inner { output 1 }
+  |                         ^^^^^^^^
+  |
+  = help: a nested final state ends its parent state, not the machine
+
+error[RB0208]: `output` is only allowed in a final state at the top level of a machine
+ --> RB0208-misplaced-result.road:8:13
+  |
+8 |   state B { output 2 }
+  |             ^^^^^^^^
+  |
+  = help: a nested final state ends its parent state, not the machine
+
+error[RB0208]: a final state has one `output` or one `fail`
+  --> RB0208-misplaced-result.road:11:5
+   |
+10 |     output 3
+   |     -------- already given here
+11 |     output 4
+   |     ^^^^^^^^

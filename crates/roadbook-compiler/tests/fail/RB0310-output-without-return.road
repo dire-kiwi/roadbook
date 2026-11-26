@@ -1,0 +1,6 @@
+machine M() {
+  initial Done
+  final state Done { output 1 }
+}
+
+// expect: RB0310 at 3:29

@@ -1,0 +1,8 @@
+import { Order } from "./types.road"
+
+type Order { id: string }
+
+machine M(order: Order) {
+  initial Done
+  final state Done {}
+}

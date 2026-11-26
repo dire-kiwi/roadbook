@@ -126,26 +126,48 @@ Expressions are deliberately small. There are no loops, lambdas or string operat
 
 `not` binds more loosely than comparison, so `not a > b` means `not (a > b)`, and the formatter writes the parentheses. Integer overflow is a runtime error in both runtimes, not a wrap. Anything more involved belongs in a `fn`. The operators exist so that the two most common pieces of flow logic, counters and thresholds, are readable in the chart (`if attempts < 3`) instead of hidden behind a name (`if canRetry`).
 
+### Types
+
+Every expression has a type, and the compiler checks it wherever a value goes: arguments of functions, actions, tasks and machines (as many as the declaration has parameters, in order), `set` (only to the machine's `var`s, never its parameters), guards (`bool`), `after` delays (`duration`), `var` initial values, the fields of record and error values (every field, and no others), `output` (the machine's return type) and `fail` (one of the machine's declared errors).
+
+- There are no implicit conversions. `int` and `float` are distinct and do not mix: `ratio * 2` is an error when `ratio` is a `float`; write `ratio * 2.0`.
+- `+`, `-`, `*` and unary `-` take two `int`s or two `float`s and give the same type. `<`, `<=`, `>` and `>=` compare two `int`s, two `float`s or two `duration`s. `==` and `!=` compare two values of the same scalar type (`string`, `int`, `float`, `bool`, `duration`) or the same enum; records, lists, optionals and `json` cannot be compared (see open question 5 on the [roadmap](roadmap.md#open-questions)). `and`, `or` and `not` take `bool`s.
+- A `T` can be used where a `T?` is expected, but not the reverse, and a field cannot be read from a `T?`: an optional value goes to a `fn` that handles the absent case. A `T[]` can be used where a `U[]` is expected if a `T` can be used as a `U`.
+- Any value can be used where `json` is expected.
+- An alias is the type it names: `type UserId = string` makes `UserId` and `string` interchangeable. An alias cannot refer to itself, even through `[]` or `?`. A type is optional at most once: `string??` is an error.
+- An `int` or `duration` literal must be within ±(2^53 − 1) (milliseconds, for a duration), the integers the IR's JSON carries exactly.
+
+The implicit names have these types:
+
+- `event`, in `on E`, has type `E`, and `event.field` the type of the event's field. In `on *` it matches events of different types and cannot be used.
+- `result`, in an invoke's `done`, has the return type of the task or machine. If it returns nothing, `result` cannot be used.
+- `error`, in an invoke's `fail E`, has type `E`. In `fail *` it has a type only if exactly one declared error is left for `*` to cover.
+
+Outside those transitions the three names are not in scope.
+
 ## What the compiler checks
 
 Errors (the build fails):
 
-- Unknown or duplicate names: states, events, variables, functions, actions, tasks, types.
-- Type errors in arguments, assignments, guards, `output` and `fail`.
+- Unknown or duplicate names: states, events, variables, functions, actions, tasks, types. A name used as something it is not, such as an action in `invoke`, is an error too.
+- Type errors in arguments, assignments, guards, `output` and `fail` (see [types](#types)).
 - A compound state without `initial`, or an `initial` that is not a child.
-- An `invoke` that does not handle every declared error of the task or machine.
+- An `invoke` that does not handle every declared error of the task or machine, or that names an error the task or machine does not declare.
 - The same trigger written twice in one state. Several branches go in one block, where their order is explicit and only the last may be unguarded, so a branch can never be shadowed by an earlier one.
-- A read of a variable that might not be assigned yet. <a id="definite-assignment"></a>
-- A machine that returns `T` with a top-level final state that has no `output` or `fail`.
-- An unguarded cycle of `always` transitions.
-- A machine that invokes itself, directly or through other machines, without an `after` or event in between (unbounded recursion).
+- A read of a variable that might not be assigned yet. <a id="definite-assignment"></a> This is [milestone 6](roadmap.md#milestones); until then reading an unassigned variable is a runtime error.
+- A machine that returns `T` with a top-level final state that has no `output` or `fail`, and `output` or `fail` anywhere but a final state at the top level.
+- A transition or `invoke` in a final state. A final state ends its parent as soon as it is entered, so they could never run; it holds only `entry`, `exit`, `output` and `fail`.
+- An unguarded cycle of `always` transitions: states each with an `always` whose first branch has no `if` (an `else` counts as guarded, since it runs only when the guards before it fail), each leading to the next, where entering a state also enters its `initial` chain (and every region of a parallel state), and a transition to a state's own ancestor leaves and re-enters it. An unguarded `always` with no target is the shortest such cycle.
+- A machine that invokes itself, directly or through other machines, without an `after` or event in between (unbounded recursion). Precisely: machine `M` *starts* machine `N` if a state of `M` that invokes `N` can be entered from `M`'s initial states by taking only `always`, `done` and invoke outcome transitions, whatever their guards. Only `on` and `after` transitions count as waiting; an invoke's outcome does not, since a task can finish at once. A cycle of *starts* is an error.
 
 Warnings:
 
-- States that cannot be reached from the initial state.
-- Non-final states with no way out (no transition, no invoke).
-- Events, functions, actions or tasks that are declared but never used.
-- A state with an `invoke` and no timeout anywhere above it (off by default).
+- States that cannot be reached from the initial state, following every transition whatever its guard. Only the outermost unreachable state is reported.
+- Non-final states with no way out: an atomic state that is reachable, where neither it nor any state containing it has a transition with a target (a `done` does not count: it needs a final child).
+- Events, functions, actions or tasks that are declared but never used: an event no `on` of its machine names, or a function, action or task that nothing in the compilation calls, runs or invokes. Only declarations in the files being checked are reported, so checking a file of shared declarations on its own reports everything only other files use; check the whole project instead.
+- A state with an `invoke` and no timeout anywhere above it: neither the state nor any state containing it has an `after` (off by default; `roadbook check --warn invoke-timeout`).
+
+The checks run in order: names and structure, then types, then the analyses (the cycle and recursion checks and the warnings). A file with syntax errors is checked no further, and the analyses run only once a chart has no other errors, so one mistake does not produce a cascade of diagnostics.
 
 Diagnostics carry a code, a source span and, where possible, a fix. `roadbook check --json` prints them in a machine-readable form so an agent can act on them without parsing prose.
 
@@ -158,6 +180,35 @@ error[RB0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
    |
    = help: add `fail GatewayUnavailable -> <State>` or `fail * -> <State>`
 ```
+
+### Diagnostics as JSON
+
+`roadbook check --json` prints one JSON object on standard output, whatever the outcome. Its shape is stable: members come in this order and are always present, `null` or `[]` when empty.
+
+```jsonc
+{
+  "diagnostics": [
+    {
+      "code": "RB0204",
+      "severity": "error",                       // or "warning"
+      "message": "`invoke chargeCard` does not handle `GatewayUnavailable`",
+      "file": "examples/shop/checkout.road",     // relative to the project root
+      "line": 13, "col": 5, "endLine": 13, "endCol": 22,
+      "label": "declared as `-> Receipt ! CardDeclined | GatewayUnavailable`",  // next to the primary span, or null
+      "labels": [ { "file": "…", "line": 1, "col": 1, "endLine": 1, "endCol": 9, "message": "…" } ],
+      "help": "add `fail GatewayUnavailable -> <State>` or `fail * -> <State>`",  // or null
+      "fixes": [
+        { "message": "replace with `Done`",
+          "edits": [ { "file": "…", "line": 5, "col": 14, "endLine": 5, "endCol": 17, "text": "Done" } ] }
+      ]
+    }
+  ],
+  "errors": 1,
+  "warnings": 0
+}
+```
+
+Ranges are as in the IR: lines and columns are 1-based, columns count Unicode scalar values, and the end is exclusive. A fix is a set of edits that together resolve the diagnostic: replace each range with its `text` (an empty range inserts). The command exits with 0 when there are no errors (warnings allowed), 1 when there are errors and 2 on a usage or I/O error.
 
 ### Definite assignment
 
@@ -217,6 +268,56 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0022` | Chained comparisons. | `if a < b < c` |
 | `RB0023` | A `///` comment that documents nothing. | `/// note` above a transition |
 | `RB0024` | A lower-case type name that is not a built-in type. | `x: integer` |
+
+The compiler's codes:
+
+| Code | Meaning | Example |
+| --- | --- | --- |
+| `RB0101` | An unknown type or error name. | `order: Ordr` |
+| `RB0102` | An unknown task or machine in `invoke`. | `invoke chrgeCard(order)` |
+| `RB0103` | An unknown function. | `if isVald(order)` |
+| `RB0104` | An unknown action in `do`. | `do audt("x")` |
+| `RB0105` | An unknown variable. | `set attemps = 1` |
+| `RB0106` | An event the machine does not declare. | `on Cancl -> Done` |
+| `RB0107` | Two declarations with the same name in one project. | `type Order` in two files |
+| `RB0108` | Two fields, parameters, variants, variables, events or sibling states with the same name. | `state A {}` twice in one parent |
+| `RB0109` | A name used as something it is not. | `invoke audit(x)` where `audit` is an action |
+| `RB0110` | `event`, `result` or `error` where it is not in scope. | `entry set n = result` |
+| `RB0111` | An import of a file that cannot be read. | `import { A } from "./missing.road"` |
+| `RB0112` | An import of a name the file does not declare. | `import { Ordr } from "./types.road"` |
+| `RB0113` | An enum variant that does not exist. | `Role.Admn` |
+| `RB0114` | A `set` of a machine parameter. | `set token = ""` |
+| `RB0201` | A transition target that does not resolve. | `-> Dne` |
+| `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }` |
+| `RB0203` | An `initial` that is not a child, is written twice, or is in a state without children. | `initial Strat` |
+| `RB0204` | An `invoke` that leaves a declared error unhandled. | see above |
+| `RB0205` | The same trigger twice in one state or one `invoke`. | `on Go -> A` and `on Go -> B` |
+| `RB0206` | A second `invoke` in a state. | two `invoke`s in `state A` |
+| `RB0207` | An outcome for an error the task or machine does not declare. | `fail Timeout -> A` |
+| `RB0208` | `output` or `fail` outside a top-level final state, or two of them. | `state A { output 1 }` |
+| `RB0209` | A top-level final state with no `output` or `fail` in a machine that returns a value. | `final state Done {}` in `machine M() -> int` |
+| `RB0210` | A final state with children, or a parallel state with none. | `final state A { state B {} }` |
+| `RB0211` | A transition or `invoke` in a final state. | `final state Done { on Go -> A }` |
+| `RB0301` | A value of the wrong type. | `var ratio: float = 1` |
+| `RB0302` | The wrong number of arguments. | `retryDelay(1, 2)` |
+| `RB0303` | An operator on operands it is not defined on. | `attempts + 1.5`, `order == other` |
+| `RB0304` | A field the record, error or event does not have. | `order.idd` |
+| `RB0305` | A record or error value without one of its fields. | `CardDeclined {}` |
+| `RB0306` | A field read from a value that has none, or that is optional. | `attempts.size`, `draft.coupon.code` |
+| `RB0307` | `result` after a task or machine that returns nothing. | `done set n = result` |
+| `RB0308` | `error` in a `fail *` that covers several errors, or none. | `fail * set why = error.reason` |
+| `RB0309` | `event` in `on *`. | `on * do log(event)` |
+| `RB0310` | `output` in a machine that returns nothing. | `machine M() { … output 1 }` |
+| `RB0311` | A `fail` value that is not a declared error of the machine. | `fail "late"` |
+| `RB0312` | An `int` or `duration` literal beyond ±(2^53 − 1). | `9007199254740992` |
+| `RB0313` | A type alias that refers to itself. | `type A = A[]` |
+| `RB0314` | A type made optional twice. | `note: string??` |
+| `RB0401` | An unguarded cycle of `always` transitions. | `A { always -> B }`, `B { always -> A }` |
+| `RB0402` | A machine that invokes itself without waiting. | `state A { invoke M() { … } }` as `M`'s initial state |
+| `RB0901` | A state that can never be entered (warning). | a state nothing targets |
+| `RB0902` | A non-final state with no way out (warning). | `state Stuck {}` |
+| `RB0903` | An event, function, action or task nothing uses (warning). | `event Unused` |
+| `RB0904` | An `invoke` with no `after` around it (warning, off by default). | `state A { invoke fetch() { … } }` |
 
 ## Grammar
 
@@ -305,7 +406,9 @@ Rules the grammar does not express:
 - A `///` comment documents the declaration, machine, state, event or variable that follows it. A `///` anywhere else is an error: use `//`.
 - A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust.
 - In a final state, `fail expr` is the machine's failure. Inside `invoke { }`, `fail Upper` is an outcome. The two never appear in the same position.
-- Two `after` transitions in one state are the same trigger only if their delays are the same expression.
+- Two `after` transitions in one state are the same trigger only if their delays are the same expression, written the same way once formatted: `after 1s` and `after 1000ms` are different triggers.
+- A type is optional at most once: `T??` is an error.
+- A final state holds only `entry`, `exit`, `output` and `fail`.
 - Declaration names are unique across a project, because the IR is keyed by name. A file can use only what it declares or imports.
 
 Most of these rules, the split between `machineItem` and `stateItem`, and the requirement that a branch does something came from writing the spike's parser against the first draft of this grammar. The spike still implements that draft, which accepts everything above and is slightly more lenient.

@@ -1,0 +1,13 @@
+machine M() {
+  initial Strat
+  initial Done
+  state Start {
+    initial Inner
+    always -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0203 at 2:11
+// expect: RB0203 at 3:11
+// expect: RB0203 at 5:13

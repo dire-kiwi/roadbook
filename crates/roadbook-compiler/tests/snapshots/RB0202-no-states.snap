@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0202]: machine `Empty` has no states
+ --> RB0202-no-states.road:1:9
+  |
+1 | machine Empty() {
+  |         ^^^^^
+  |
+  = help: add an `initial` state, such as `initial Done` and `final state Done {}`

@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0106]: unknown event `Cancl`
+ --> RB0106-unknown-event.road:5:8
+  |
+5 |     on Cancl -> Done
+  |        ^^^^^ `M` declares `Cancel`
+  |
+  = help: did you mean `Cancel`?
+
+error[RB0106]: unknown event `Go`
+ --> RB0106-unknown-event.road:6:8
+  |
+6 |     on Go -> Done
+  |        ^^ `M` declares `Cancel`
+  |
+  = help: declare it in the machine body: `event Go`

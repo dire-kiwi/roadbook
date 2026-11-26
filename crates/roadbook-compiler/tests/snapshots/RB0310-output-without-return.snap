@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0310]: `M` returns nothing, so it has no `output`
+ --> RB0310-output-without-return.road:3:29
+  |
+3 |   final state Done { output 1 }
+  |                             ^
+  |
+  = help: declare what it returns: `machine M(…) -> <type>`

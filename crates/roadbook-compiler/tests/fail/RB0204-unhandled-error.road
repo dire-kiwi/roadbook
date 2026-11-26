@@ -1,0 +1,17 @@
+type Receipt { id: string }
+error CardDeclined { reason: string }
+error GatewayUnavailable
+task chargeCard(amount: int) -> Receipt ! CardDeclined | GatewayUnavailable
+
+machine Checkout(amount: int) {
+  initial Charging
+  state Charging {
+    invoke chargeCard(amount) {
+      done -> Charged
+    }
+  }
+  final state Charged {}
+}
+
+// expect: RB0204 at 9:5
+// expect: RB0204 at 9:5

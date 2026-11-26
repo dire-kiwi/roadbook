@@ -1,0 +1,43 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0109]: `M` is a machine, not a type
+ --> RB0109-wrong-kind.road:6:10
+  |
+5 | machine M(order: Order) {
+  |         - declared here
+6 |   var n: M
+  |          ^
+
+error[RB0109]: `audit` is an action, not a task
+ --> RB0109-wrong-kind.road:9:12
+  |
+2 | action audit(what: string)
+  |        ----- declared here
+...
+9 |     invoke audit("x") {
+  |            ^^^^^
+  |
+  = help: actions are run with `do`: `do audit(x)`
+
+error[RB0109]: `total` is a function, not an action
+  --> RB0109-wrong-kind.road:14:14
+   |
+ 3 | fn total(order: Order) -> int
+   |    ----- declared here
+...
+14 |     entry do total(order)
+   |              ^^^^^
+   |
+   = help: functions are called in expressions: `f(x)`
+
+error[RB0109]: `audit` is an action, not a function
+  --> RB0109-wrong-kind.road:15:15
+   |
+ 2 | action audit(what: string)
+   |        ----- declared here
+...
+15 |     always if audit("y") -> Done
+   |               ^^^^^
+   |
+   = help: actions are run with `do`: `do audit(x)`

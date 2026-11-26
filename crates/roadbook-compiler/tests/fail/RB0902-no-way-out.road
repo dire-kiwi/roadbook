@@ -1,0 +1,24 @@
+machine M() {
+  event Go
+  var n: int = 0
+  initial A
+  state A {
+    on Go -> Stuck
+  }
+  state Stuck {
+    on Go set n = n + 1
+  }
+}
+
+machine Covered() {
+  event Cancel
+  initial Outer
+  state Outer {
+    initial Waiting
+    on Cancel -> Done
+    state Waiting {}
+  }
+  final state Done {}
+}
+
+// expect: RB0902 at 8:9

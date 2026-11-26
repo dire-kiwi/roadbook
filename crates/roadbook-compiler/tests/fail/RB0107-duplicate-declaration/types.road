@@ -1,0 +1,3 @@
+type Order { id: string, total: int }
+
+// expect: RB0107 at 1:6

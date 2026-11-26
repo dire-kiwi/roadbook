@@ -1,0 +1,22 @@
+error Declined
+error Timeout
+
+machine M() ! Declined {
+  event Go
+  initial A
+  state A {
+    on Go -> Late
+    always -> Done
+  }
+  final state Done { fail Timeout }
+  final state Late { fail "late" }
+}
+
+machine N() {
+  initial Done
+  final state Done { fail Declined }
+}
+
+// expect: RB0311 at 11:27
+// expect: RB0311 at 12:27
+// expect: RB0311 at 17:27

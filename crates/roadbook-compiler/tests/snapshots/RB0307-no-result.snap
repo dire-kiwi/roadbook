@@ -1,0 +1,8 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0307]: `ping` returns nothing, so its `done` has no `result`
+ --> RB0307-no-result.road:8:29
+  |
+8 |       done -> Done  set n = result
+  |                             ^^^^^^

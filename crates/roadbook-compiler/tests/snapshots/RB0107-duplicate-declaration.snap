@@ -1,0 +1,14 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0107]: `Order` is already declared in `main.road`
+ --> types.road:1:6
+  |
+1 | type Order { id: string, total: int }
+  |      ^^^^^
+ ::: main.road:3:6
+  |
+3 | type Order { id: string }
+  |      ----- first declared here
+  |
+  = help: declaration names are unique across a project, because the IR is keyed by name

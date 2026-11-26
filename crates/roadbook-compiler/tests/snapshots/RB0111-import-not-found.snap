@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0111]: cannot import `./missing.road`: no such file
+ --> RB0111-import-not-found.road:1:23
+  |
+1 | import { Order } from "./missing.road"
+  |                       ^^^^^^^^^^^^^^^^ resolved to `missing.road`
+  |
+  = help: import paths are relative to the importing file

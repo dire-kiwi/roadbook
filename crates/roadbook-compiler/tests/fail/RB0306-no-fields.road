@@ -1,0 +1,14 @@
+type Order { id: string }
+
+machine M(order: Order?, items: Order[]) {
+  var n: int = 0
+  var a: string = order.id
+  var b: string = items.id
+  var c: int = n.size
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0306 at 5:25
+// expect: RB0306 at 6:25
+// expect: RB0306 at 7:18

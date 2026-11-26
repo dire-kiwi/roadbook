@@ -1,0 +1,17 @@
+task one()
+task two()
+
+machine M() {
+  initial A
+  state A {
+    invoke one() {
+      done -> Done
+    }
+    invoke two() {
+      done -> Done
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0206 at 10:5

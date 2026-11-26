@@ -1,0 +1,12 @@
+machine M() {
+  event Go
+  initial Busy
+  state Busy {
+    on Go -> Done
+    state Working {}
+    state Resting {}
+  }
+  final state Done {}
+}
+
+// expect: RB0202 at 4:9

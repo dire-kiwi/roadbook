@@ -1,0 +1,11 @@
+type A = B
+type B = A[]
+type C = C
+
+machine M(a: A, c: C) {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0313 at 1:6
+// expect: RB0313 at 3:6

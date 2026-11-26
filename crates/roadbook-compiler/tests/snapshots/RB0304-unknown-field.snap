@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0304]: `Order` has no field `idd`
+ --> RB0304-unknown-field.road:4:26
+  |
+4 |   var id: string = order.idd
+  |                          ^^^
+  |
+  = help: did you mean `id`?
+
+error[RB0304]: `Order` has no field `note`
+ --> RB0304-unknown-field.road:5:48
+  |
+5 |   var copy: Order = Order { id: "x", total: 1, note: "y" }
+  |                                                ^^^^
+  |
+  = help: its fields are id, total
+
+error[RB0304]: `event Go` has no field `skuu`
+ --> RB0304-unknown-field.road:9:20
+  |
+9 |     on Go if event.skuu == "a" -> Done
+  |                    ^^^^
+  |
+  = help: did you mean `sku`?

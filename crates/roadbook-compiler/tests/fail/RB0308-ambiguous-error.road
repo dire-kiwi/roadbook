@@ -1,0 +1,26 @@
+error A1 { why: string }
+error B1 { why: string }
+task work() ! A1 | B1
+
+machine M() {
+  var why: string = ""
+  initial A
+  state A {
+    invoke work() {
+      done   -> Done
+      fail * -> Done  set why = error.why
+    }
+  }
+  state B {
+    invoke work() {
+      done    -> Done
+      fail A1 -> Done
+      fail B1 -> Done
+      fail *  -> Done  set why = error.why
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0308 at 11:33
+// expect: RB0308 at 19:34

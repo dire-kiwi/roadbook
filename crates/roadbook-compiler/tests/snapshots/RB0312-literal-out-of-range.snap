@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0312]: `9007199254740992` is outside the range the IR carries exactly, ±(2^53 − 1)
+ --> RB0312-literal-out-of-range.road:2:18
+  |
+2 |   var big: int = 9007199254740992
+  |                  ^^^^^^^^^^^^^^^^
+  |
+  = help: the IR is JSON, and JavaScript reads integers exactly only up to 2^53 − 1
+
+error[RB0312]: `2562047788015216h` is outside the range the IR carries exactly, ±(2^53 − 1)
+ --> RB0312-literal-out-of-range.road:4:24
+  |
+4 |   var long: duration = 2562047788015216h
+  |                        ^^^^^^^^^^^^^^^^^
+  |
+  = help: the IR is JSON, and JavaScript reads integers exactly only up to 2^53 − 1

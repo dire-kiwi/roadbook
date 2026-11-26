@@ -1,0 +1,10 @@
+machine M() {
+  var big: int = 9007199254740992
+  var ok: int = 9007199254740991
+  var long: duration = 2562047788015216h
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0312 at 2:18
+// expect: RB0312 at 4:24

@@ -1,0 +1,12 @@
+machine M() {
+  event Cancel
+  initial A
+  state A {
+    on Cancl -> Done
+    on Go -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0106 at 5:8
+// expect: RB0106 at 6:8

@@ -1,0 +1,11 @@
+enum Role { Customer, Admin }
+
+machine M(role: Role) {
+  initial A
+  state A {
+    always if role == Role.Admn -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0113 at 6:28

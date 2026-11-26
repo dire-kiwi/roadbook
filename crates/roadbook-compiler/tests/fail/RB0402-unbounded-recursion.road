@@ -1,0 +1,56 @@
+task work()
+
+machine Loop() {
+  initial A
+  state A {
+    invoke Loop() {
+      done -> Done
+    }
+  }
+  final state Done {}
+}
+
+machine Ping() {
+  initial A
+  state A {
+    invoke work() {
+      done -> B
+    }
+  }
+  state B {
+    invoke Pong() {
+      done -> Done
+    }
+  }
+  final state Done {}
+}
+
+machine Pong() {
+  initial A
+  state A {
+    always -> B
+  }
+  state B {
+    invoke Ping() {
+      done -> Done
+    }
+  }
+  final state Done {}
+}
+
+machine Waits() {
+  event Go
+  initial A
+  state A {
+    on Go -> B
+  }
+  state B {
+    invoke Waits() {
+      done -> Done
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0402 at 6:5
+// expect: RB0402 at 21:5
