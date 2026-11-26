@@ -1,0 +1,12 @@
+{"input":{},"ir":"sha256:bd7c1fd49f8dc8b67a8d5efa59f1eade9a12fd8b4a767b72f65fc40b4a4156be","kind":"started","machine":"Top","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Top","t":0}
+{"action":"log","args":{"what":"enter Top"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Top.A","t":0}
+{"delay":10000,"index":1,"kind":"timer.started","run":"r1","state":"Top","t":0,"timer":1}
+{"event":{"kind":"after","timer":1},"kind":"event","run":"r1","t":10000}
+{"from":"Top","index":1,"kind":"transition","run":"r1","t":10000,"to":"Top.Late"}
+{"kind":"exited","run":"r1","state":"Top.A","t":10000}
+{"kind":"entered","run":"r1","state":"Top.Late","t":10000}
+{"kind":"exited","run":"r1","state":"Top.Late","t":10000}
+{"action":"log","args":{"what":"exit Top"},"kind":"action","run":"r1","t":10000}
+{"defect":{"kind":"host","message":"audit log unavailable"},"kind":"defect","run":"r1","t":10000}

@@ -1,0 +1,796 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/select.road"
+    }
+  ],
+  "types": {
+    "Busy": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 11
+      }
+    },
+    "Gone": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 11
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {
+    "load": {
+      "params": [],
+      "returns": "int",
+      "errors": [
+        "Busy",
+        "Gone"
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 46
+      }
+    },
+    "idle": {
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 12
+      }
+    }
+  },
+  "machines": {
+    "Select": {
+      "doc": "Exercises the selection rules one event at a time.",
+      "span": {
+        "file": 0,
+        "line": 13,
+        "col": 1,
+        "endLine": 67,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "ready",
+          "type": "bool",
+          "init": {
+            "kind": "lit",
+            "value": false,
+            "type": "bool",
+            "text": "false"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 26
+          }
+        },
+        {
+          "name": "laps",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Go": {
+          "fields": [
+            {
+              "name": "n",
+              "type": "int",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 24
+          }
+        },
+        "Next": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 18,
+            "col": 3,
+            "endLine": 18,
+            "endCol": 13
+          }
+        },
+        "Skip": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 19,
+            "col": 3,
+            "endLine": 19,
+            "endCol": 13
+          }
+        }
+      },
+      "root": {
+        "id": "Select",
+        "name": "Select",
+        "kind": "compound",
+        "doc": "Exercises the selection rules one event at a time.",
+        "span": {
+          "file": 0,
+          "line": 13,
+          "col": 1,
+          "endLine": 67,
+          "endCol": 2
+        },
+        "initial": "Select.Picking",
+        "states": [
+          {
+            "id": "Select.Picking",
+            "name": "Picking",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 25,
+              "col": 3,
+              "endLine": 31,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": ">",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "n"
+                      ],
+                      "type": "int",
+                      "text": "event.n"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 0,
+                      "type": "int",
+                      "text": "0"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.n > 0"
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "positive go",
+                        "type": "string",
+                        "text": "\"positive go\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 7,
+                  "endLine": 27,
+                  "endCol": 55
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "any"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "any",
+                        "type": "string",
+                        "text": "\"any\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 29,
+                  "col": 5,
+                  "endLine": 29,
+                  "endCol": 47
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Skip"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Select.Loading",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 30,
+                  "endCol": 32
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Select.Loading",
+            "name": "Loading",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 33,
+              "col": 3,
+              "endLine": 42,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "load",
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 34,
+                "col": 5,
+                "endLine": 40,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Select.Form",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 35,
+                  "col": 7,
+                  "endLine": 35,
+                  "endCol": 25
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "Busy"
+                },
+                "group": 1,
+                "guard": {
+                  "kind": "ref",
+                  "path": [
+                    "ready"
+                  ],
+                  "type": "bool",
+                  "text": "ready"
+                },
+                "target": "Select.Form",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 9,
+                  "endLine": 37,
+                  "endCol": 25
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "Gone"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Select.Form",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 39,
+                  "col": 7,
+                  "endLine": 39,
+                  "endCol": 25
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Next"
+                },
+                "group": 3,
+                "guard": null,
+                "target": "Select.Form",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 41,
+                  "col": 5,
+                  "endLine": 41,
+                  "endCol": 20
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Select.Form",
+            "name": "Form",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 44,
+              "col": 3,
+              "endLine": 55,
+              "endCol": 4
+            },
+            "initial": "Select.Form.Name",
+            "states": [
+              {
+                "id": "Select.Form.Name",
+                "name": "Name",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 52,
+                  "col": 5,
+                  "endLine": 52,
+                  "endCol": 39
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Next"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Select.Form.Complete",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 52,
+                      "col": 18,
+                      "endLine": 52,
+                      "endCol": 37
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Select.Form.Complete",
+                "name": "Complete",
+                "kind": "final",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 54,
+                  "col": 5,
+                  "endLine": 54,
+                  "endCol": 55
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "set",
+                    "var": "laps",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "laps"
+                          ],
+                          "type": "int",
+                          "text": "laps"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "laps + 1"
+                    }
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "laps"
+                      ],
+                      "type": "int",
+                      "text": "laps"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 1,
+                      "type": "int",
+                      "text": "1"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "laps == 1"
+                },
+                "target": "Select.Form",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "laps",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "laps"
+                          ],
+                          "type": "int",
+                          "text": "laps"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "laps + 1"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "again",
+                        "type": "string",
+                        "text": "\"again\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 46,
+                  "col": 7,
+                  "endLine": 46,
+                  "endCol": 68
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "done"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Select.Passing",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "form done",
+                        "type": "string",
+                        "text": "\"form done\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 48,
+                  "col": 5,
+                  "endLine": 48,
+                  "endCol": 51
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Select.Passing",
+            "name": "Passing",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 57,
+              "col": 3,
+              "endLine": 64,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "idle",
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 58,
+                "col": 5,
+                "endLine": 60,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Select.Ended",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 59,
+                  "col": 7,
+                  "endLine": 59,
+                  "endCol": 20
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Select.Ended",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 61,
+                  "col": 5,
+                  "endLine": 61,
+                  "endCol": 22
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Select.Ended",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "passing",
+                        "type": "string",
+                        "text": "\"passing\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 63,
+                  "col": 5,
+                  "endLine": 63,
+                  "endCol": 39
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Select.Ended",
+            "name": "Ended",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 66,
+              "col": 3,
+              "endLine": 66,
+              "endCol": 23
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Go"
+            },
+            "group": 0,
+            "guard": null,
+            "target": null,
+            "effects": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "root go",
+                    "type": "string",
+                    "text": "\"root go\""
+                  }
+                ]
+              }
+            ],
+            "span": {
+              "file": 0,
+              "line": 21,
+              "col": 3,
+              "endLine": 21,
+              "endCol": 26
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:5d2c3b9a0d0204514c172f89cec9b7944064ff43d415b0b2fdfbe8e5be5a2f0a"
+    }
+  }
+}

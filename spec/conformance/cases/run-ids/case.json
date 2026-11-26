@@ -1,0 +1,11 @@
+{
+  "description": "Ten child runs, each of which ends as soon as it starts. Run order compares the segments after the first as numbers, so r1.10 comes after r1.9, not after r1.1.",
+  "chart": "charts/many.road",
+  "machine": "Many",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [],
+  "status": "done"
+}

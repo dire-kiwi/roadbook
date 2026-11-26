@@ -110,7 +110,7 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `checkout-declined` | `fail CardDeclined` is routed by tag, and a final state's `fail` fails the run. |
 | `checkout-retry` | The retry loop: an `after` whose delay comes from a function and reads a variable set by the state's entry, under virtual time; invokes restarted with new ids. |
 | `checkout-gave-up` | A guarded block tried in order, falling through to `else` once the guard fails; a bare error as the failure. |
-| `place-order-checkout` | `PlaceOrder` running `Checkout` from its chart as child run `r1.4`; an `always` that leaves a state at once, so its work never starts; actions with arguments. |
+| `place-order-checkout` | `PlaceOrder` running `Checkout` from its chart as child run `r1.4`; an `always` that leaves `Confirming` in the step that entered it, after its entry action; actions with arguments. (`Confirming` has no work; `select-rules` shows that a state left this way does not start its work.) |
 | `place-order-checkout-stubbed` | The same with `Checkout` stubbed: `r1`'s records are identical, and there is no child run. |
 | `place-order-cancel` | `Cancel` on the compound `Processing` cancels its timer and the child invoke of `Paying`; the child run is cancelled from outside and exits its states. |
 | `place-order-timeout` | `Processing`'s `after 30s` fires while the child waits in `Backoff`; the child's own timer is cancelled with it. |
@@ -118,5 +118,14 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `fetch-fallbacks` | `on *` for an event the state has no `on` for, `fail *` for an unlisted error, and a dropped event. |
 | `wizard-done` | A nested final state completes its compound parent, whose `done` transition and then an `always` run in the same step. |
 | `nest-effects` | The order of entry, exit and transition effects across three levels; `set` before `do`; an external self-transition restarting work; a transition into the source's own child; an internal transition; exit effects on cancellation from outside. |
-| `gate-guards` | Guards tried innermost state first and in document order, falling back to the parent when no branch holds; `and` and `or` short-circuit, which the function table makes observable. |
+| `gate-guards` | Guards tried innermost state first and in document order, falling back to the parent when no branch holds; `and` and `or` short-circuit: the calls they skip take arguments no other call takes and are missing from the function table, so making them fails the case. |
 | `race-stale` | An outcome queued before its state was left is traced as `stale` and ignored. |
+| `select-rules` | A guarded `on N` that fails stops `on *` in the same state from being tried, and the parent's `on N` is taken; `on *` for an event the state has no `on` for; a guarded `fail E` with no fallback drops the outcome, and the branch for another error is not tried; an `always` enabled with a `done` is taken first, and a completion is discarded when that `always` leaves and re-enters the state; a state with an invoke and a timer left by `always` in the step that entered it starts neither. |
+| `root-level` | `entry`, `exit`, `on` and `after` in the machine body: the root's timer starts with the run and survives transitions below it, its `on` is internal, its `after` exits everything below the root, and its `exit` effects run last, before `done`; an expiry queued in a `together` with the event that leaves its state is `stale`. |
+| `cancel-child` | A parent leaving the invoking state cancels a child run waiting in its timer: the child's timer is cancelled and its exit effects run at every level, innermost first. |
+| `cancel-root` | The same child cancelled because the root run is cancelled from outside; the root's own exit effects run after it. |
+| `cancel-child-defect` | A host defect in a child's exit action while its parent cancels it ends the child with the defect, and the parent with the same defect, in the middle of the step that had already finished it. |
+| `defect-final-step` | A host defect in the root's exit action, in the step that reaches a top-level final state, ends the run with a `defect` record in place of `done`. |
+| `defect-unassigned-guard` | An optional variable with no initial value starts as `null`; a guard of an invoke's `done` that reads an unassigned variable is an `unassigned` defect inside the core, with no `event` record, and the running timer is cancelled without one. |
+| `defect-undeclared` | A stubbed machine failing with an error it does not declare is an `undeclared` defect inside the core. |
+| `run-ids` | Ten child runs: in run order `r1.10` comes after `r1.9`, since segments after the first compare as numbers. |

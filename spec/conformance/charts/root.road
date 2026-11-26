@@ -1,0 +1,31 @@
+// Conformance chart: entry, exit, `on` and `after` written in the machine
+// body.
+
+action log(what: string)
+
+/// Counts pings until the machine's own ten second timer ends it.
+machine Top() -> int {
+  var pings: int = 0
+
+  event Next
+  event Ping
+
+  entry do log("enter Top")
+  exit do log("exit Top")
+
+  on Ping            set pings = pings + 1
+  after 10s -> Late
+
+  initial A
+
+  state A { on Next -> B }
+
+  state B {
+    after 1s -> C
+    on Next  -> C
+  }
+
+  state C {}
+
+  final state Late { output pings }
+}

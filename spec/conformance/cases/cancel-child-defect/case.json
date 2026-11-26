@@ -1,0 +1,26 @@
+{
+  "description": "The child's exit action at Outer has a host defect while the parent cancels it. The child's cancel step ends with that defect, and the parent, which was carrying out the cancel, ends with the same defect at once: none of its later records are written.",
+  "chart": "charts/cancel.road",
+  "machine": "Parent",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {
+    "log": [
+      {
+        "args": {
+          "what": "exit Outer"
+        },
+        "defect": "flush failed"
+      }
+    ]
+  },
+  "script": [
+    {
+      "event": {
+        "_tag": "Stop"
+      }
+    }
+  ],
+  "status": "defect"
+}

@@ -1,0 +1,354 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/root.road"
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Top": {
+      "doc": "Counts pings until the machine's own ten second timer ends it.",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 31,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "pings",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Next": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 13
+          }
+        },
+        "Ping": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 13
+          }
+        }
+      },
+      "root": {
+        "id": "Top",
+        "name": "Top",
+        "kind": "compound",
+        "doc": "Counts pings until the machine's own ten second timer ends it.",
+        "span": {
+          "file": 0,
+          "line": 7,
+          "col": 1,
+          "endLine": 31,
+          "endCol": 2
+        },
+        "initial": "Top.A",
+        "states": [
+          {
+            "id": "Top.A",
+            "name": "A",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 21,
+              "col": 3,
+              "endLine": 21,
+              "endCol": 27
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Next"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Top.B",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 13,
+                  "endLine": 21,
+                  "endCol": 25
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Top.B",
+            "name": "B",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 23,
+              "col": 3,
+              "endLine": 26,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Top.C",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 24,
+                  "col": 5,
+                  "endLine": 24,
+                  "endCol": 18
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Next"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Top.C",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 5,
+                  "endLine": 25,
+                  "endCol": 18
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Top.C",
+            "name": "C",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 28,
+              "col": 3,
+              "endLine": 28,
+              "endCol": 13
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Top.Late",
+            "name": "Late",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 30,
+              "col": 3,
+              "endLine": 30,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "pings"
+              ],
+              "type": "int",
+              "text": "pings"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [
+          {
+            "kind": "do",
+            "action": "log",
+            "args": [
+              {
+                "kind": "lit",
+                "value": "enter Top",
+                "type": "string",
+                "text": "\"enter Top\""
+              }
+            ]
+          }
+        ],
+        "exit": [
+          {
+            "kind": "do",
+            "action": "log",
+            "args": [
+              {
+                "kind": "lit",
+                "value": "exit Top",
+                "type": "string",
+                "text": "\"exit Top\""
+              }
+            ]
+          }
+        ],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Ping"
+            },
+            "group": 0,
+            "guard": null,
+            "target": null,
+            "effects": [
+              {
+                "kind": "set",
+                "var": "pings",
+                "value": {
+                  "kind": "op",
+                  "op": "+",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "pings"
+                      ],
+                      "type": "int",
+                      "text": "pings"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 1,
+                      "type": "int",
+                      "text": "1"
+                    }
+                  ],
+                  "type": "int",
+                  "text": "pings + 1"
+                }
+              }
+            ],
+            "span": {
+              "file": 0,
+              "line": 16,
+              "col": 3,
+              "endLine": 16,
+              "endCol": 43
+            }
+          },
+          {
+            "trigger": {
+              "kind": "after",
+              "delay": {
+                "kind": "lit",
+                "value": 10000,
+                "type": "duration",
+                "text": "10s"
+              }
+            },
+            "group": 1,
+            "guard": null,
+            "target": "Top.Late",
+            "effects": [],
+            "span": {
+              "file": 0,
+              "line": 17,
+              "col": 3,
+              "endLine": 17,
+              "endCol": 20
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:bd7c1fd49f8dc8b67a8d5efa59f1eade9a12fd8b4a767b72f65fc40b4a4156be"
+    }
+  }
+}

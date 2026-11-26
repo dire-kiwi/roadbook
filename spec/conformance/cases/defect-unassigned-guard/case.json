@@ -1,0 +1,21 @@
+{
+  "description": "An optional variable with no initial value starts as null, so Idle's entry action reads it. Then load's result is tried against a guard that reads limit, which was never assigned: an unassigned defect inside the core, so there is no event record, and the timer still running is cancelled without one.",
+  "chart": "charts/defects.road",
+  "machine": "Main",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "UseLoad"
+      }
+    },
+    {
+      "task": "load",
+      "done": 5
+    }
+  ],
+  "status": "defect"
+}
