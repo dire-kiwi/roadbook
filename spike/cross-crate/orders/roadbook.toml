@@ -1,0 +1,3 @@
+# Mechanism 3: package name -> directory, relative to this file.
+[packages]
+inventory = "../inventory"

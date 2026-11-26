@@ -1,0 +1,16 @@
+# Downstream: `orders` used as a dependency, so its macro expands inside Cargo's
+# git checkout or registry source directory, not in a workspace.
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[features]
+metadata = ["orders/metadata"]
+env = ["orders/env"]
+toml = ["orders/toml"]
+callback = ["orders/callback"]
+
+[dependencies]
+orders = { version = "0.1", path = "../orders" }
