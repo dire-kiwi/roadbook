@@ -1875,12 +1875,12 @@ fn viz_diff_matches_machines_across_files() {
 
 #[test]
 fn viz_diff_reads_files_outside_the_project_from_each_revision() {
-    // A repository whose project is a subdirectory, importing a file of the repository outside
-    // it and a package of `[packages]` elsewhere in the repository, and a file outside the
-    // repository.
-    let desk = "import { Ticket, Lamp } from \"../shared/lib.road\"\n\
+    // A repository whose project is a subdirectory. Imports cannot climb above the project
+    // root, so it reaches files outside it through `[packages]`: two packages elsewhere in the
+    // repository and one outside the repository.
+    let desk = "import { Ticket, Lamp } from \"shared/lib.road\"\n\
                 import { Stock } from \"stock/stock.road\"\n\
-                import { Note } from \"../../ext/note.road\"\n\n\
+                import { Note } from \"ext/note.road\"\n\n\
                 machine Desk(t: Ticket, n: Note) {\n  event Next\n  initial Open\n  \
                 state Open { on Next -> Closed }\n  final state Closed {}\n}\n";
     let stock = "machine Stock() {\n  event Count\n  initial Idle\n  \
@@ -1890,7 +1890,7 @@ fn viz_diff_reads_files_outside_the_project_from_each_revision() {
         &[
             (
                 "repo/proj/roadbook.toml",
-                "[packages]\nstock = \"../libs/stock\"\n",
+                "[packages]\nstock = \"../libs/stock\"\nshared = \"../shared\"\next = \"../../ext\"\n",
             ),
             ("repo/proj/desk.road", desk),
             ("repo/shared/lib.road", &format!("{TICKET}\n{LAMP}")),
@@ -1966,7 +1966,7 @@ fn viz_diff_reads_files_outside_the_project_from_each_revision() {
     // from disk.
     std::fs::write(
         dir.join("desk.road"),
-        desk.replace("../shared/lib.road", "../shared/new.road"),
+        desk.replace("shared/lib.road", "shared/new.road"),
     )
     .unwrap();
     std::fs::copy(top.join("shared/lib.road"), top.join("shared/new.road")).unwrap();
