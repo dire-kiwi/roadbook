@@ -4,9 +4,9 @@
 //! The generator is in [`codegen`]; this file finds and compiles the chart, and gets the
 //! charts of other crates from those crates' hidden macros.
 
-use std::path::{Component, Path, PathBuf};
-
 use std::collections::HashMap;
+use std::path::{Component, Path, PathBuf};
+use std::sync::{LazyLock, Mutex};
 
 use proc_macro::TokenStream;
 use proc_macro2::{Delimiter, Ident, Span, TokenStream as Tokens, TokenTree};
@@ -32,7 +32,9 @@ mod names;
 /// chart's files, or the project's `roadbook.toml`, changes; creating a `roadbook.toml` that
 /// would move the project root is not seen until something else changes.
 ///
-/// Call it at module level, at most once per module: it defines items next to the call.
+/// Call it at module level: it defines items next to the call. Two charts can be included in
+/// one module if they declare no name in common (charts that import the same file both
+/// declare what it declares, so give each its own module).
 ///
 /// - For every `type`, a `struct` with `serde` derives (fields in `snake_case`, renamed to the
 ///   chart's names in JSON); for every `enum`, a fieldless `enum`; for every `error`, a
@@ -66,13 +68,21 @@ mod names;
 /// `import { Inventory } from "inventory/inventory.road"`, is answered by the crate of that
 /// name (`-` read as `_`): it must be a dependency whose own `roadbook::include!` includes
 /// that file (`roadbook::include!("inventory.road")` in package `inventory`), at its crate
-/// root. Every `include!` exports a hidden macro that hands its chart's IR and `$crate` to
-/// an importing crate's `include!`, so the importer reads no file of the dependency, always
+/// root. An `include!` exports a hidden macro that hands its chart's IR and `$crate` to an
+/// importing crate's `include!`, so the importer reads no file of the dependency, always
 /// gets the version that is compiled, and is rebuilt when it changes. The importer generates
 /// nothing for the declarations from the other package: it re-exports the owning crate's
 /// (`pub use ::inventory::Item;`, `pub use ::inventory::inventory;`), so there is one Rust
-/// type for each. A dependency renamed in `Cargo.toml` is named with
-/// `crates(package = name)`.
+/// type for each. Imports chain (a crate can import a chart that imports another crate's)
+/// and can form diamonds.
+///
+/// - A dependency renamed in `Cargo.toml` is named with `crates(package = name)`, the
+///   package's name as the import writes it, bare (`crates(my-stock = stock)`) or quoted
+///   (`crates("my-stock" = stock)`, which any package name can be).
+/// - A crate may include the same chart more than once (in two modules, each with types of
+///   its own). Only the first `include!` of it exports the hidden macro, and importers find
+///   the chart's items at the crate root, so one of them must be there. If none is, an
+///   importer's build fails with an error saying so.
 ///
 /// Parallel states are not supported until milestone 6.
 #[proc_macro]
@@ -103,6 +113,9 @@ struct Dep {
 /// The macro's arguments.
 struct Args {
     path: String,
+    /// The span of the path literal: written in the crate that calls `include!`, even when
+    /// the call reaches this macro again through another crate's hidden macro.
+    span: Span,
     /// `crates(package = alias, …)`: the name a package's crate has in this crate.
     crates: Vec<(String, Ident)>,
     deps: Vec<Dep>,
@@ -110,7 +123,8 @@ struct Args {
 
 const USAGE: &str = "roadbook::include! takes one string literal, the path of a `.road` file relative \
     to the package directory, and optionally `crates(package = name, …)` naming the crates of \
-    renamed dependencies: `roadbook::include!(\"orders.road\", crates(inventory = inv))`";
+    renamed dependencies, with the package's name as written in its import, bare or quoted: \
+    `roadbook::include!(\"orders.road\", crates(inventory = inv, \"my-stock\" = stock))`";
 
 /// The arguments, split at the commas outside groups.
 fn split(input: Tokens) -> Vec<Vec<TokenTree>> {
@@ -152,15 +166,49 @@ fn string(t: &TokenTree) -> Option<String> {
     }
 }
 
+/// The span of a token, looking inside an invisible group of one token.
+fn span_of(t: &TokenTree) -> Span {
+    match t {
+        TokenTree::Group(g) if g.delimiter() == Delimiter::None => {
+            let inner: Vec<TokenTree> = g.stream().into_iter().collect();
+            match &inner[..] {
+                [t] => span_of(t),
+                _ => t.span(),
+            }
+        }
+        t => t.span(),
+    }
+}
+
+/// A package name in `crates(…)`: a string literal (`"@scope/x"`), or identifiers joined by
+/// `-` (`inventory`, `my-stock`).
+fn package_name(tokens: &[TokenTree]) -> Option<String> {
+    if let [t] = tokens {
+        if let Some(s) = string(t) {
+            return Some(s);
+        }
+    }
+    let mut name = String::new();
+    for (i, t) in tokens.iter().enumerate() {
+        match t {
+            TokenTree::Ident(id) if i % 2 == 0 => name.push_str(&id.to_string()),
+            TokenTree::Punct(p) if i % 2 == 1 && p.as_char() == '-' => name.push('-'),
+            _ => return None,
+        }
+    }
+    (tokens.len() % 2 == 1).then_some(name)
+}
+
 fn parse_args(input: Tokens) -> Result<Args, String> {
     let parts = split(input);
     let mut parts = parts.into_iter();
-    let path = match parts.next().as_deref() {
-        Some([t]) => string(t).ok_or(USAGE)?,
+    let (path, span) = match parts.next().as_deref() {
+        Some([t]) => (string(t).ok_or(USAGE)?, span_of(t)),
         _ => return Err(USAGE.into()),
     };
     let mut args = Args {
         path,
+        span,
         crates: Vec::new(),
         deps: Vec::new(),
     };
@@ -172,12 +220,11 @@ fn parse_args(input: Tokens) -> Result<Args, String> {
             {
                 for item in split(g.stream()) {
                     match &item[..] {
-                        [
-                            TokenTree::Ident(package),
-                            TokenTree::Punct(eq),
-                            TokenTree::Ident(name),
-                        ] if eq.as_char() == '=' => {
-                            args.crates.push((package.to_string(), name.clone()));
+                        [package @ .., TokenTree::Punct(eq), TokenTree::Ident(name)]
+                            if eq.as_char() == '=' =>
+                        {
+                            let package = package_name(package).ok_or(USAGE)?;
+                            args.crates.push((package, name.clone()));
                         }
                         _ => return Err(USAGE.into()),
                     }
@@ -271,19 +318,44 @@ impl Loader for MacroLoader<'_> {
     }
 }
 
-/// The name of the hidden macro through which a crate hands over the chart at `path`,
-/// relative to its package directory: `__roadbook_chart_` and the path with every character
-/// that is not an ASCII letter or digit written as `_` and its hex code.
-fn chart_macro(path: &str) -> Ident {
-    let mut name = String::from("__roadbook_chart_");
+/// `path` as part of an identifier, one-to-one: every character that is not an ASCII letter
+/// or digit is written as `_`, its hex code and `_` (`a/b.road` is `a_2f_b_2e_road`).
+fn encode_path(path: &str) -> String {
+    let mut out = String::new();
     for c in path.chars() {
         if c.is_ascii_alphanumeric() {
-            name.push(c);
+            out.push(c);
         } else {
-            name.push_str(&format!("_{:x}", c as u32));
+            out.push_str(&format!("_{:x}_", c as u32));
         }
     }
-    Ident::new(&name, Span::call_site())
+    out
+}
+
+/// The name of the hidden macro through which a crate hands over the chart at `path`,
+/// relative to its package directory: `__roadbook_chart_` and the path, encoded.
+fn chart_macro(path: &str) -> Ident {
+    Ident::new(
+        &format!("__roadbook_chart_{}", encode_path(path)),
+        Span::call_site(),
+    )
+}
+
+/// Whether the `include!` whose path literal has `span` is the one that exports the hidden
+/// macro of the chart at `package_path` in the crate being compiled: the first one expanded.
+/// A crate may include a chart more than once (in two modules), but can export only one
+/// macro of a name.
+fn exports(package_path: &str, span: Span) -> bool {
+    static EXPORTERS: LazyLock<Mutex<HashMap<String, String>>> = LazyLock::new(Default::default);
+    let var = |k| std::env::var(k).unwrap_or_default();
+    let key = format!(
+        "{}\0{}\0{package_path}",
+        var("CARGO_MANIFEST_DIR"),
+        var("CARGO_CRATE_NAME")
+    );
+    let site = format!("{span:?}");
+    let mut exporters = EXPORTERS.lock().unwrap_or_else(|e| e.into_inner());
+    *exporters.entry(key).or_insert_with(|| site.clone()) == site
 }
 
 fn expand(input: Tokens) -> Tokens {
@@ -322,17 +394,24 @@ fn expand(input: Tokens) -> Tokens {
     // crate's hidden macro for it, which calls `__include_continue` back with the IR added.
     if let Some(missing) = loader.missing {
         let package = missing.package.clone().unwrap_or_default();
-        let krate = match args.crates.iter().find(|(p, _)| *p == package) {
+        let crate_name = |p: &str| p.replace('-', "_");
+        let krate = match args
+            .crates
+            .iter()
+            .find(|(p, _)| *p == package || crate_name(p) == crate_name(&package))
+        {
             Some((_, name)) => name.clone(),
             None => {
-                let name = package.replace('-', "_");
+                let name = crate_name(&package);
                 if syn::parse_str::<Ident>(&name).is_err() {
                     return error(&format!(
                         "roadbook::include!: package `{package}` is not a crate name; name its \
-                         crate with `crates({package} = name)`"
+                         crate with `crates(\"{package}\" = name)`"
                     ));
                 }
-                Ident::new(&name, Span::call_site())
+                // Resolved where the `include!` was written, not inside the hidden macro of
+                // the crate that handed over the last chart.
+                Ident::new(&name, args.span)
             }
         };
         let chart = chart_macro(&missing.path);
@@ -378,9 +457,14 @@ fn expand(input: Tokens) -> Tokens {
             return quote! { #tracked #message };
         }
     };
-    match codegen::generate(&ir, &foreign) {
+    let package_path = relative(&manifest_dir, &entry);
+    match codegen::generate(&ir, &foreign, &encode_path(&package_path)) {
         Ok(items) => {
-            let export = export_macro(&ir, &relative(&manifest_dir, &entry));
+            let export = if exports(&package_path, args.span) {
+                export_macro(&ir, &package_path, args.span)
+            } else {
+                Tokens::new()
+            };
             quote! { #tracked #items #export }
         }
         Err(message) => {
@@ -450,15 +534,40 @@ fn foreign(ir: &roadbook_ir::Ir, deps: &[Dep]) -> Result<codegen::Foreign, Strin
 /// The hidden `#[macro_export] macro_rules!` through which this chart is handed to the
 /// `include!` of a crate whose chart imports it: called with the importer's continuation and
 /// what it asked for, it calls the continuation back with this chart's IR and `$crate`.
-fn export_macro(ir: &roadbook_ir::Ir, package_path: &str) -> Tokens {
+///
+/// `$crate` gets `span`, the span of the path literal of this crate's `include!`, so that it
+/// always names this crate. With the macro's call site it would name the crate whose hidden
+/// macro called this expansion back, when this chart imports one.
+///
+/// Importers name this chart's items at the crate root (`$crate::Item`), so the macro first
+/// checks that one: its `__ROADBOOK_IR_…` is found by a glob import of the crate root,
+/// which shadows the empty one beside it only if it is there.
+fn export_macro(ir: &roadbook_ir::Ir, package_path: &str, span: Span) -> Tokens {
     let name = chart_macro(package_path);
     let json = ir.to_json();
+    let dollar_crate = quote::quote_spanned!(span=> $crate);
+    let marker = codegen::ir_const(&encode_path(package_path));
+    let package = std::env::var("CARGO_PKG_NAME").unwrap_or_default();
+    let message = format!(
+        "roadbook::include!(\"{package_path}\") is not at the crate root of package \
+         `{package}`, so other crates cannot import its chart: move it out of any `mod`, into \
+         the crate root (src/lib.rs)"
+    );
     quote! {
         #[doc(hidden)]
         #[macro_export]
         macro_rules! #name {
             ($cb:path { $($args:tt)* } { $($dep:tt)* }) => {
-                $cb! { $($args)* , __dep { $($dep)* krate = $crate, ir = #json } }
+                const _: () = {
+                    #[allow(dead_code, non_upper_case_globals)]
+                    const #marker: &str = "";
+                    {
+                        #[allow(unused_imports)]
+                        use #dollar_crate::*;
+                        ::core::assert!(!#marker.is_empty(), #message);
+                    }
+                };
+                $cb! { $($args)* , __dep { $($dep)* krate = #dollar_crate, ir = #json } }
             };
         }
     }
@@ -507,4 +616,38 @@ fn relative(base: &Path, path: &Path) -> String {
             .map(|c| c.as_os_str().to_string_lossy().into_owned()),
     );
     segments.join("/")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_path_encoding_is_one_to_one() {
+        assert_eq!(encode_path("a/b.road"), "a_2f_b_2e_road");
+        assert_ne!(encode_path("a/b.road"), encode_path("a\u{2fb}.road"));
+        assert_ne!(encode_path("a_b"), encode_path("a\u{b}"));
+        assert_eq!(encode_path("_"), "_5f_");
+    }
+
+    fn tokens(s: &str) -> Vec<TokenTree> {
+        s.parse::<Tokens>().unwrap().into_iter().collect()
+    }
+
+    #[test]
+    fn a_package_in_crates_is_bare_or_quoted() {
+        assert_eq!(
+            package_name(&tokens("inventory")).as_deref(),
+            Some("inventory")
+        );
+        assert_eq!(package_name(&tokens("my-inv")).as_deref(), Some("my-inv"));
+        assert_eq!(package_name(&tokens("a-b-c")).as_deref(), Some("a-b-c"));
+        assert_eq!(
+            package_name(&tokens("\"@scope/x\"")).as_deref(),
+            Some("@scope/x")
+        );
+        assert_eq!(package_name(&tokens("my-")), None);
+        assert_eq!(package_name(&tokens("a b")), None);
+        assert_eq!(package_name(&tokens("")), None);
+    }
 }

@@ -1,0 +1,14 @@
+// A fixture of roadbook's tests: the middle chart of a chain of crates.
+import { Zero } from "chain0/zero.road"
+import { Greeting } from "chain0/extra.road"
+
+/// Pings its Zero when told to.
+machine One(z: ref Zero, hello: Greeting) -> string {
+  event Go
+
+  initial Idle
+
+  state Idle { on Go -> Done  send z.Ping }
+
+  final state Done { output hello.text }
+}

@@ -236,8 +236,8 @@ fn a_cross_crate_send_is_checked_against_the_owning_crates_event() {
 /// the package's.
 #[test]
 fn the_imported_machine_is_the_dependencys() {
-    let ours = roadbook::Program::from_json(orders::__ROADBOOK_IR).unwrap();
-    let theirs = roadbook::Program::from_json(inventory::__ROADBOOK_IR).unwrap();
+    let ours = roadbook::Program::from_json(orders::__ROADBOOK_IR_orders_2e_road).unwrap();
+    let theirs = roadbook::Program::from_json(inventory::__ROADBOOK_IR_inventory_2e_road).unwrap();
     let hash = |p: &roadbook::Program| p.ir().machines["Inventory"].hash.clone();
     assert_eq!(hash(&ours), hash(&theirs));
     let events = |p: &roadbook::Program| {

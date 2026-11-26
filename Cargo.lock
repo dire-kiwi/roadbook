@@ -76,6 +76,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "apex"
+version = "0.1.0"
+dependencies = [
+ "hyphen-stock",
+ "inventory",
+ "left",
+ "right",
+ "roadbook",
+]
+
+[[package]]
 name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -200,6 +211,29 @@ name = "cfg-if"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
+
+[[package]]
+name = "chain0"
+version = "0.1.0"
+dependencies = [
+ "roadbook",
+]
+
+[[package]]
+name = "chain1"
+version = "0.1.0"
+dependencies = [
+ "chain0",
+ "roadbook",
+]
+
+[[package]]
+name = "chain2"
+version = "0.1.0"
+dependencies = [
+ "chain1",
+ "roadbook",
+]
 
 [[package]]
 name = "clap"
@@ -512,6 +546,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyphen-stock"
+version = "0.1.0"
+dependencies = [
+ "roadbook",
+]
+
+[[package]]
 name = "icu_collections"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -701,6 +742,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 
 [[package]]
+name = "left"
+version = "0.1.0"
+dependencies = [
+ "inventory",
+ "roadbook",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.191"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -754,6 +803,13 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys",
+]
+
+[[package]]
+name = "nested-owner"
+version = "0.1.0"
+dependencies = [
+ "roadbook",
 ]
 
 [[package]]
@@ -1003,10 +1059,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d902046e6a28a1e4c3cab97258a0ce11e994903f01c2d97a9447a0b3df85f4f6"
 
 [[package]]
-name = "roadbook"
+name = "right"
 version = "0.1.0"
 dependencies = [
  "inventory",
+ "roadbook",
+]
+
+[[package]]
+name = "roadbook"
+version = "0.1.0"
+dependencies = [
+ "apex",
+ "chain0",
+ "chain1",
+ "chain2",
+ "inventory",
+ "left",
+ "nested-owner",
+ "right",
  "roadbook-compiler",
  "roadbook-conformance",
  "roadbook-core",

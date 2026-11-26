@@ -1,0 +1,4 @@
+// A fixture of roadbook's tests: a second importable chart at the same crate root.
+
+/// What a One says.
+type Greeting { text: string }

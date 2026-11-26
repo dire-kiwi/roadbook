@@ -1,0 +1,8 @@
+import { Nested } from "nested-owner/nested.road"
+
+machine UsesNested(n: ref Nested) {
+  event Go
+  initial Idle
+  state Idle { on Go -> Done  send n.Go }
+  final state Done {}
+}

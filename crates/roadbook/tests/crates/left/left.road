@@ -1,0 +1,13 @@
+// A fixture of roadbook's tests: one side of a diamond of crates.
+import { Inventory } from "inventory/inventory.road"
+
+/// Restocks its inventory with one left item.
+machine Left(stock: ref Inventory) {
+  event Go
+
+  initial Idle
+
+  state Idle { on Go -> Done  send stock.Restock { sku: "left", qty: 1 } }
+
+  final state Done {}
+}

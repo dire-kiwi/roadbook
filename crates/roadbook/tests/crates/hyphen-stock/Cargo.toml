@@ -1,0 +1,14 @@
+[package]
+name = "hyphen-stock"
+description = "A fixture of roadbook's tests: a crate whose package name has a hyphen, which apex depends on renamed"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+roadbook = { path = "../../.." }
+
+[lints]
+workspace = true

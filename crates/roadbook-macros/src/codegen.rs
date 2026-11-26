@@ -38,9 +38,22 @@ pub fn error_enum_names(ir: &Ir) -> Result<HashMap<(bool, String), String>, Stri
         .collect())
 }
 
+/// The name of the hidden constant that holds the IR of the chart whose package path,
+/// encoded, is `suffix`.
+pub fn ir_const(suffix: &str) -> Ident {
+    format_ident!("__ROADBOOK_IR_{}", suffix)
+}
+
+/// The name of the hidden static that holds the program of the chart whose package path,
+/// encoded, is `suffix`.
+fn program_static(suffix: &str) -> Ident {
+    format_ident!("__ROADBOOK_PROGRAM_{}", suffix)
+}
+
 /// The items for a chart, or why it cannot be expanded. Declarations in `foreign` are
-/// re-exported from the crate that generated them.
-pub fn generate(ir: &Ir, foreign: &Foreign) -> Result<TokenStream, String> {
+/// re-exported from the crate that generated them. `suffix` is the chart's package path,
+/// encoded, which the hidden items are named with, so that two charts can sit side by side.
+pub fn generate(ir: &Ir, foreign: &Foreign, suffix: &str) -> Result<TokenStream, String> {
     for (name, m) in &ir.machines {
         if let Some(id) = find_parallel(&m.root) {
             return Err(format!(
@@ -49,7 +62,8 @@ pub fn generate(ir: &Ir, foreign: &Foreign) -> Result<TokenStream, String> {
             ));
         }
     }
-    let g = Gen::new(ir, foreign)?;
+    let mut g = Gen::new(ir, foreign)?;
+    g.program = program_static(suffix);
     let mut items = Vec::new();
     for (name, decl) in &ir.types {
         match foreign.krate.get(name) {
@@ -78,17 +92,19 @@ pub fn generate(ir: &Ir, foreign: &Foreign) -> Result<TokenStream, String> {
         }
     }
     let json = ir.to_json();
+    let ir_const = ir_const(suffix);
+    let program = &g.program;
     Ok(quote! {
         /// The chart's IR, as the compiler wrote it.
         #[doc(hidden)]
-        #[allow(dead_code)]
-        pub const __ROADBOOK_IR: &str = #json;
+        #[allow(dead_code, non_upper_case_globals)]
+        pub const #ir_const: &str = #json;
 
         /// The chart's IR, read once.
         #[doc(hidden)]
-        #[allow(dead_code)]
-        pub static __ROADBOOK_PROGRAM: ::roadbook::__private::LazyLock<::roadbook::__private::Program> =
-            ::roadbook::__private::LazyLock::new(|| ::roadbook::__private::program(__ROADBOOK_IR));
+        #[allow(dead_code, non_upper_case_globals)]
+        pub static #program: ::roadbook::__private::LazyLock<::roadbook::__private::Program> =
+            ::roadbook::__private::LazyLock::new(|| ::roadbook::__private::program(#ir_const));
 
         #(#items)*
     })
@@ -167,6 +183,8 @@ struct Gen<'a> {
     error_enums: HashMap<(bool, &'a str), Ident>,
     /// The crate each declaration from another package is re-exported from.
     foreign: &'a HashMap<String, TokenStream>,
+    /// The hidden static the machines' runners read the program from.
+    program: Ident,
 }
 
 impl<'a> Gen<'a> {
@@ -217,6 +235,7 @@ impl<'a> Gen<'a> {
             ir,
             error_enums,
             foreign: &foreign.krate,
+            program: program_static(""),
         })
     }
 
@@ -1277,7 +1296,8 @@ impl<'a> Gen<'a> {
              cancel it."
         );
         let spawn_with_doc = "Like `spawn`, set up by `config`.";
-        let program = quote!(&super::__ROADBOOK_PROGRAM);
+        let program = &self.program;
+        let program = quote!(&super::#program);
         quote! {
             /// The arguments in their JSON form, or the host defect encoding one met (a
             /// non-finite `float`).
