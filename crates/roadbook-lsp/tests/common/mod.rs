@@ -212,6 +212,25 @@ impl Client {
         }
     }
 
+    /// The URIs of every diagnostics published so far and not yet looked at, in order;
+    /// they are dropped.
+    pub fn published(&mut self) -> Vec<String> {
+        // An answer comes after everything the messages before the request caused.
+        self.request(
+            "textDocument/documentSymbol",
+            json!({ "textDocument": { "uri": "file:///nowhere.road" } }),
+        )
+        .ok();
+        let out = self
+            .queue
+            .iter()
+            .filter(|n| n.method == "textDocument/publishDiagnostics")
+            .map(|n| n.params["uri"].as_str().unwrap().to_string())
+            .collect();
+        self.queue.clear();
+        out
+    }
+
     /// Drops the notifications received so far.
     pub fn forget(&mut self) {
         self.queue.clear();

@@ -667,6 +667,12 @@ fn a_file_of_a_package_is_checked_as_the_package_s() {
     // only errors are, in another package's files, as with `roadbook check`.
     assert_eq!(c.diagnostics(&lib), Vec::<Value>::new());
     assert_eq!(c.diagnostics(&main), Vec::<Value>::new());
+    // Nothing is said about other files, such as a `sub/base.road` of the project.
+    let others = c.published();
+    assert!(
+        others.iter().all(|u| [&lib, &main].contains(&u)),
+        "{others:?}"
+    );
     // An error in it is reported, by compiling the project's file that imports it.
     let broken = LIB.replace("output b", "output c");
     c.change(&lib, 2, &broken);
