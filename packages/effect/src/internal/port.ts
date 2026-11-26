@@ -12,11 +12,21 @@ export interface Port {
   readonly id: string
   /** The run's machine. */
   readonly machine: string
-  readonly queue: Queue.Queue<Core.Input>
+  /** The machine's hash in the IR the run runs: which version of the machine it is. */
+  readonly hash: string
+  readonly queue: Queue.Queue<Core.Input | Wake>
   /** From just before `start` until the core returns a snapshot that is not `running`. */
   open: boolean
   /** The runs that hold a `ref` to this one and are open: they receive what it emits. */
   readonly subscribers: Set<Port>
+}
+
+/**
+ * Not an input: what `suspend` puts on a run's queue when the run is waiting for one, so that
+ * it checks again whether it is idle. The run never gives it to the core.
+ */
+export interface Wake {
+  readonly kind: "wake"
 }
 
 /** Push `input` onto the run's queue if the run is open. Returns whether it was pushed. */

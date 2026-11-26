@@ -24,12 +24,8 @@ describe("make", () => {
   it("refuses another IR version", () => {
     assert.throws(() => Roadbook.make({ irVersion: "9.9" }, "X"), /IR version/)
   })
-  it("refuses a machine with a parallel state at implement", () => {
-    const ir = readIr("nest.ir.json") as Core.Ir
-    const nest = ir.machines["Nest"]!
-    const parallel = { ...ir, machines: { Nest: { ...nest, root: { ...nest.root, kind: "parallel" } } } }
-    const machine = Roadbook.make<any>(parallel, "Nest")
-    assert.throws(() => impl(machine, {}), /parallel state/)
+  it("refuses a machine the IR does not have", () => {
+    assert.throws(() => Roadbook.make(readIr("nest.ir.json"), "Nope"), /no machine "Nope"/)
   })
 })
 

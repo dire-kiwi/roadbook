@@ -5,6 +5,7 @@
  */
 import type * as Core from "@roadbook/core"
 import type { Effect, Scope, Stream } from "effect"
+import type { RestoreError, Saved } from "./Saved.ts"
 
 /** What the compiler knows about a callable declared in a `.road` file. */
 export interface Callable {
@@ -122,7 +123,10 @@ export interface Actor<D extends MachineDef> {
   /** The run's handle, to pass as a `ref` argument to other machines. */
   readonly handle: Handle<D>
   readonly snapshot: Effect.Effect<Snapshot<D>>
-  /** The current snapshot, then one after every step. Ends after the run's final snapshot. */
+  /**
+   * The current snapshot, then one after every step. Ends after the run's final snapshot, or,
+   * when the run is suspended, after the snapshot it was suspended with.
+   */
   readonly changes: Stream.Stream<Snapshot<D>>
   /**
    * Completes when the run ends: with the output on `done`, the error on `failed`; it dies with
@@ -135,12 +139,48 @@ export interface Actor<D extends MachineDef> {
    * does the same.
    */
   readonly cancel: Effect.Effect<void>
+  /** The run's saved snapshot, as its last step left it. The run carries on. */
+  readonly save: Effect.Effect<Saved>
+  /**
+   * Wait until the run is idle (between steps, nothing queued, no invoke running), then stop it
+   * without exit effects, write `suspended` and give its saved snapshot, whose status is still
+   * `running`. A run that has ended gives its final snapshot instead, and one that ended with a
+   * defect dies with the `Defect`. Once suspended, the actor takes no more events, its `result`
+   * is interrupted, and closing its scope does nothing more.
+   */
+  readonly suspend: Effect.Effect<Saved>
+}
+
+/** How to restore a saved snapshot. */
+export interface RestoreOptions {
+  /**
+   * Called once, only when the snapshot's hash is not the machine's: rewrites the old saved
+   * snapshot (plain JSON) into one of the current machine, which is checked again from the
+   * top. If it throws, the snapshot is refused with reason `migration`.
+   */
+  readonly migrate?: (saved: Core.Json) => Core.Json
 }
 
 export interface Implemented<D extends MachineDef, R> extends Runnable<D["input"], D["output"], D["error"], R> {
   readonly def: Machine<D>
   /** Start a long-lived instance. Closing the scope cancels it. */
   readonly spawn: (input: D["input"]) => Effect.Effect<Actor<D>, never, R | Scope.Scope>
+  /**
+   * Start a new long-lived instance from a saved snapshot, with a new run id: its invokes start
+   * again, its timers keep their deadlines. Fails with a `RestoreError` before starting
+   * anything when the snapshot is refused. Closing the scope cancels it.
+   */
+  readonly restore: (saved: Saved, options?: RestoreOptions) => Effect.Effect<Actor<D>, RestoreError, R | Scope.Scope>
+  /**
+   * The request handler's step: `restore`, `send` the event if there is one, and `suspend`, in
+   * a scope of its own. Gives the saved snapshot `suspend` gives, whatever the run's status; dies
+   * with a `Defect` if the run ended with one. Interrupting it cancels the run.
+   */
+  readonly resume: (
+    saved: Saved,
+    event?: D["event"],
+    options?: RestoreOptions
+  ) => Effect.Effect<Saved, RestoreError, R>
 }
 
 /** The typed handle the code generator exports for each machine. */

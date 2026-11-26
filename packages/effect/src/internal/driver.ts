@@ -4,15 +4,17 @@
  * offer to, behind a `Port` that other runs and handles push messages and emitted events onto.
  * Invokes are detached fibers in a map keyed by invoke id, timers fibers in a `FiberMap` keyed
  * by timer id. Each step runs uninterruptibly; interrupting the run is a graceful cancel, whose
- * step runs in `Effect.onInterrupt`.
+ * step runs in `Effect.onInterrupt`. A run starts from its input (`start`) or from a saved
+ * snapshot (`restore`), and can be saved at any time and suspended once idle.
  */
 import * as Core from "@roadbook/core"
 import { Cause, Context, Deferred, Effect, Exit, Fiber, FiberMap, Predicate, Queue, Stream, SubscriptionRef } from "effect"
 import { Defect, hostDefect } from "../Defect.ts"
-import type { Actor, Handle, MachineDef, Snapshot } from "../Machine.ts"
+import type { Actor, Handle, MachineDef, RestoreOptions, Snapshot } from "../Machine.ts"
 import { RootRunId, RunObserver, TraceSink, Timer } from "../References.ts"
+import { RestoreError } from "../Saved.ts"
 import type { Codec } from "./codec.ts"
-import { type Port, portOf, push, registerHandle } from "./port.ts"
+import { type Port, portOf, push, registerHandle, type Wake } from "./port.ts"
 
 export type { Port } from "./port.ts"
 
@@ -160,29 +162,45 @@ const claimEnv: Effect.Effect<Env> = Effect.flatMap(CurrentInvoke, (ctx) => {
   })
 })
 
+/** How a run begins: from its input, or from a saved snapshot that passed every check. */
+type Begin =
+  | { readonly kind: "start"; readonly input: unknown }
+  | { readonly kind: "restore"; readonly saved: Core.Saved; readonly migrated: string | null }
+
 interface Instance {
   readonly handle: Handle<any>
   readonly ref: SubscriptionRef.SubscriptionRef<Core.Snapshot>
   readonly started: Deferred.Deferred<void>
-  /** Runs the machine to its end and gives its outcome. */
+  /** Runs the machine to its end, or until it is suspended, and gives its outcome. */
   readonly loop: Effect.Effect<unknown, unknown>
+  /** The saved snapshot as the last step left it. */
+  readonly save: Effect.Effect<Core.Saved>
+  /** Wait until the run is idle, then stop it; or until it ends. Gives its saved snapshot. */
+  readonly suspend: Effect.Effect<Core.Saved>
+  /** Whether `snapshot` is the run's last: it has ended, or this is the one set when suspended. */
+  readonly isLast: (snapshot: Core.Snapshot) => boolean
 }
 
-const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect<Instance> =>
+const WAKE: Wake = { kind: "wake" }
+
+const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<Instance> =>
   Effect.gen(function*() {
     const { ir, machine, name } = program
-    // The handles in the arguments: the runs this one holds a `ref` to.
+    // The handles in the arguments: the runs this one holds a `ref` to. A restored run has none.
     const refs = new Map<string, object>()
     const codec = program.codec.withRefs(refs)
     const fns = program.fns(codec)
-    let coreInput: { [param: string]: Core.Json }
-    try {
-      coreInput = codec.encodeArgs(machine.params, input, `the input of ${name}`)
-    } catch (error) {
-      return yield* Effect.die(new Defect(hostDefect(error)))
+    let coreInput: { readonly [param: string]: Core.Json }
+    if (begin.kind === "restore") coreInput = begin.saved.input
+    else {
+      try {
+        coreInput = codec.encodeArgs(machine.params, begin.input, `the input of ${name}`)
+      } catch (error) {
+        return yield* Effect.die(new Defect(hostDefect(error)))
+      }
     }
-    const queue = yield* Queue.unbounded<Core.Input>()
-    const port: Port = { id: env.runId, machine: name, queue, open: true, subscribers: new Set() }
+    const queue = yield* Queue.unbounded<Core.Input | Wake>()
+    const port: Port = { id: env.runId, machine: name, hash: machine.hash, queue, open: true, subscribers: new Set() }
     if (env.token !== undefined) {
       // A child run's queue starts with what its parent sent before it claimed the invoke;
       // from now on the parent's sends go straight to it.
@@ -231,6 +249,24 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
     const ref = yield* SubscriptionRef.make(snapshot)
     /** Completed once the start step's commands have been carried out. */
     const started = yield* Deferred.make<void>()
+
+    // Saving. `dues` holds when each running timer is due on the driver's clock: the clock when
+    // it carried out `timer.start` plus the delay, or, for a restored timer, its saved due.
+    const dues = new Map<number, number>()
+    const restoredDues = new Map<number, number>(
+      begin.kind === "restore" ? begin.saved.timers.map((t) => [t.id, t.due]) : []
+    )
+    let saved: Core.Saved = Core.toSaved(snapshot, () => 0)
+    // Suspending. The run checks after every step whether a suspend it was asked for can stop
+    // it; while it waits for an input, `suspend` wakes it to check (`WAKE`).
+    let suspendRequested = false
+    let suspended = false
+    let waiting = false
+    let wakes = 0
+    /** The copy of the snapshot set when the run was suspended. */
+    let last: Core.Snapshot | undefined
+    /** Completed with the run's last saved snapshot once it has stopped: ended or suspended. */
+    const stopped = yield* Deferred.make<Core.Saved>()
     env.observer.started({
       id: env.runId,
       parent: env.parent,
@@ -353,9 +389,23 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
             const expiry = env.timer.sleep({ run: env.runId, timer: command.timer, delay: command.delay }).pipe(
               Effect.andThen(Queue.offer(queue, { kind: "after", timer: command.timer }))
             )
-            return Effect.as(FiberMap.run(timers, command.timer, expiry), undefined)
+            return Effect.flatMap(env.timer.now, (now) => {
+              const restored = restoredDues.get(command.timer)
+              restoredDues.delete(command.timer)
+              dues.set(command.timer, restored ?? now + command.delay)
+              return Effect.as(FiberMap.run(timers, command.timer, expiry), undefined)
+            })
           }
+          case "timer.fire":
+            // A restored timer already due: its expiry is queued at once, and it keeps its due.
+            return Effect.sync(() => {
+              dues.set(command.timer, restoredDues.get(command.timer) ?? 0)
+              restoredDues.delete(command.timer)
+              Queue.offerUnsafe(queue, { kind: "after", timer: command.timer })
+              return undefined
+            })
           case "timer.cancel":
+            dues.delete(command.timer)
             return Effect.as(FiberMap.remove(timers, command.timer), undefined)
           case "send":
             return send(command)
@@ -410,22 +460,56 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
             for (const rest of answer.commands) yield* carry(rest)
             break
           }
+          saved = Core.toSaved(snapshot, (timer) => dues.get(timer) ?? 0)
           yield* SubscriptionRef.set(ref, snapshot)
         })
+
+      /** Idle: between steps, nothing queued, and no invoke running (execution.md, "Suspending"). */
+      const idle = () => Queue.sizeUnsafe(queue) - wakes === 0 && snapshot.invokes.length === 0
+
+      /**
+       * Stop an idle run that was asked to suspend: close it, cancel its timers through its
+       * timer with no record (they are in the snapshot), write `suspended`. No exit effect runs.
+       */
+      const stop = Effect.gen(function*() {
+        suspended = true
+        close()
+        yield* FiberMap.clear(timers)
+        yield* write({ kind: "suspended" })
+        // Once more, as a copy `changes` can tell from the others, so that it ends.
+        last = { ...snapshot }
+        yield* SubscriptionRef.set(ref, last)
+      })
+
+      const begun = begin.kind === "start"
+        ? Effect.succeed(Core.start(ir, name, env.runId, coreInput, fns))
+        : Effect.map(env.timer.now, (now) => Core.restore(ir, begin.saved, env.runId, now, begin.migrated, fns))
 
       const steps = Effect.uninterruptibleMask((restore) =>
         Effect.gen(function*() {
           // Subscribed to the peers' emitted events before `start`, until the run closes.
           for (const peer of peers) peer.subscribers.add(port)
-          yield* carryOut(Core.start(ir, name, env.runId, coreInput, fns))
+          yield* carryOut(yield* begun)
           yield* Deferred.succeed(started, undefined)
           while (snapshot.status === "running") {
+            const stopping = yield* Effect.sync(() => {
+              if (suspendRequested && idle()) return true
+              waiting = true
+              return false
+            })
+            if (stopping) return yield* stop
             const next = yield* restore(Queue.take(queue))
+            waiting = false
+            if (next.kind === "wake") {
+              wakes -= 1
+              continue
+            }
             const stepped = Core.step(ir, snapshot, next, fns)
             // An invoke or timer is forgotten once its outcome or expiry is taken.
             if (next.kind === "invoke.done" || next.kind === "invoke.fail" || next.kind === "invoke.defect") {
               yield* stopInvoke(next.invoke)
             } else if (next.kind === "after") {
+              dues.delete(next.timer)
               yield* FiberMap.remove(timers, next.timer)
             }
             yield* carryOut(stepped)
@@ -436,7 +520,7 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
       // Cancelling from outside: the step in progress has finished (steps are uninterruptible),
       // so the cancel step runs between steps, and the interruption completes after it.
       const cancel = Effect.suspend(() => {
-        if (snapshot.status !== "running") return Effect.void
+        if (snapshot.status !== "running" || suspended) return Effect.void
         return Effect.gen(function*() {
           yield* carryOut(Core.step(ir, snapshot, { kind: "cancel" }, fns))
           const result = snapshot.result
@@ -454,7 +538,7 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
         close()
         Queue.shutdownUnsafe(queue)
         return Effect.asVoid(stopInvokes([...tokens.keys()]))
-      })
+      }).pipe(Effect.ensuring(Effect.suspend(() => Deferred.succeed(stopped, saved))))
 
       yield* steps.pipe(Effect.onInterrupt(() => cancel), Effect.ensuring(end))
       return yield* program.outcome(snapshot)
@@ -467,7 +551,28 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
       })
     )
 
-    return { handle, ref, started, loop }
+    const suspend = Effect.suspend(() => {
+      suspendRequested = true
+      if (waiting) {
+        // The run waits for an input, so it is between steps: wake it to check.
+        wakes += 1
+        Queue.offerUnsafe(queue, WAKE)
+      }
+      return Effect.flatMap(Deferred.await(stopped), (last) => {
+        const result = last.result
+        return result !== null && "defect" in result ? Effect.die(new Defect(result.defect)) : Effect.succeed(last)
+      })
+    })
+
+    return {
+      handle,
+      ref,
+      started,
+      loop,
+      save: Effect.sync(() => saved),
+      suspend,
+      isLast: (s: Core.Snapshot) => s.status !== "running" || s === last
+    }
   })
 
 /** The defect for a failed host Effect: a die's defect, else a failure's error. */
@@ -506,7 +611,10 @@ const outcomeInput = (
 // ---- the public entry points ---------------------------------------------------------------------
 
 export const run = (program: Program, input: unknown): Effect.Effect<unknown, unknown> =>
-  Effect.flatMap(claimEnv, (env) => Effect.flatMap(makeInstance(program, input, env), (instance) => instance.loop))
+  Effect.flatMap(
+    claimEnv,
+    (env) => Effect.flatMap(makeInstance(program, { kind: "start", input }, env), (instance) => instance.loop)
+  )
 
 const toSnapshot = <D extends MachineDef>(core: Core.Snapshot): Snapshot<D> => ({
   status: core.status,
@@ -515,10 +623,11 @@ const toSnapshot = <D extends MachineDef>(core: Core.Snapshot): Snapshot<D> => (
   core
 })
 
-export const spawn = <D extends MachineDef>(program: Program, input: unknown) =>
+/** Fork a top-level run into the scope and give its actor once it has started. */
+const actorOf = <D extends MachineDef>(program: Program, begin: Begin) =>
   Effect.gen(function*() {
     const env = yield* rootEnv
-    const instance = yield* makeInstance(program, input, env)
+    const instance = yield* makeInstance(program, begin, env)
     const fiber = yield* Effect.forkScoped(instance.loop)
     // The actor is returned once the run has started: its start step carried out.
     yield* Effect.raceFirst(Deferred.await(instance.started), Effect.asVoid(Fiber.await(fiber)))
@@ -527,13 +636,55 @@ export const spawn = <D extends MachineDef>(program: Program, input: unknown) =>
       send: handle.send,
       handle,
       snapshot: Effect.map(SubscriptionRef.get(instance.ref), toSnapshot<D>),
-      // Every step sets the snapshot, the last one included, so the stream ends with it.
+      // Every step sets the snapshot, the last one included, and so does suspending, so the
+      // stream ends with it.
       changes: SubscriptionRef.changes(instance.ref).pipe(
-        Stream.takeUntil((snapshot) => snapshot.status !== "running"),
+        Stream.takeUntil(instance.isLast),
         Stream.map(toSnapshot<D>)
       ),
       result: Fiber.join(fiber) as Effect.Effect<D["output"], D["error"]>,
-      cancel: Fiber.interrupt(fiber)
+      cancel: Fiber.interrupt(fiber),
+      save: instance.save,
+      suspend: instance.suspend
     }
     return actor
   })
+
+export const spawn = <D extends MachineDef>(program: Program, input: unknown) =>
+  actorOf<D>(program, { kind: "start", input })
+
+/**
+ * Check `saved` against the machine, migrating it if the hashes differ and `options.migrate`
+ * is given, then restore it as a new top-level run. Refused before any run starts.
+ */
+export const restore = <D extends MachineDef>(program: Program, saved: unknown, options?: RestoreOptions) =>
+  Effect.suspend(() => {
+    const migrate = options?.migrate
+    const checked = Core.checkSaved(
+      program.ir,
+      program.name,
+      saved,
+      migrate === undefined ? undefined : (old) => {
+        try {
+          return { value: migrate(old) }
+        } catch (error) {
+          return { error: error instanceof Error ? error.message : String(error) }
+        }
+      }
+    )
+    if (!checked.ok) return Effect.fail(new RestoreError({ reason: checked.reason, message: checked.message }))
+    return actorOf<D>(program, { kind: "restore", saved: checked.saved, migrated: checked.migrated })
+  })
+
+/** Restore, give the run `event` if there is one, and suspend it: the request handler's step. */
+export const resume = <D extends MachineDef>(
+  program: Program,
+  saved: unknown,
+  event?: unknown,
+  options?: RestoreOptions
+) =>
+  Effect.scoped(Effect.gen(function*() {
+    const actor = yield* restore<D>(program, saved, options)
+    if (event !== undefined) yield* actor.send(event as D["event"])
+    return yield* actor.suspend
+  }))

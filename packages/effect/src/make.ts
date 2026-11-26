@@ -1,7 +1,7 @@
 import * as Core from "@roadbook/core"
 import type { Effect, Scope } from "effect"
 import { Codec, type ErrorClass } from "./internal/codec.ts"
-import { type AnyHandlers, Program, run, spawn } from "./internal/driver.ts"
+import { type AnyHandlers, Program, restore, resume, run, spawn } from "./internal/driver.ts"
 import type { Actor, Implemented, Machine, MachineDef } from "./Machine.ts"
 
 /**
@@ -22,12 +22,13 @@ export const make = <D extends MachineDef>(
     name,
     ir: checked,
     implement: (handlers) => {
-      // Refuses a machine this runtime cannot run yet (one with a parallel state).
       const program = new Program(codec, name, handlers as AnyHandlers)
       return {
         def: machine,
         run: (input: D["input"]) => run(program, input),
-        spawn: (input: D["input"]) => spawn<D>(program, input) as Effect.Effect<Actor<D>, never, Scope.Scope>
+        spawn: (input: D["input"]) => spawn<D>(program, input) as Effect.Effect<Actor<D>, never, Scope.Scope>,
+        restore: (saved, options) => restore<D>(program, saved, options),
+        resume: (saved, event, options) => resume<D>(program, saved, event, options)
       } as Implemented<D, any>
     }
   }
