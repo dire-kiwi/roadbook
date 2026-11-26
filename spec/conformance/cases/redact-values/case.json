@@ -1,5 +1,5 @@
 {
-  "description": "Values of sensitive fields, parameters and variables are \"<redacted>\" in every record that shows them, and only there: in `started` (a parameter, a field of an alias declared in another file, inside a list of an alias), in `action` and `invoke.started` arguments, in `event` and `dropped` inputs (an event's field, a task's result), in `set` (a sensitive variable whole, a field of a record), in a list a function returned, in a stale result (redacted as every task and machine would redact its result), and in `done`'s output, inside lists and an optional. Function calls see the real values: the function table is keyed by them.",
+  "description": "Values of sensitive fields, parameters and variables are \"<redacted>\" in every record that shows them, and only there: in `started` (a parameter, a field of an alias declared in another file, inside a list of an alias), in `action` and `invoke.started` arguments, in `event` and `dropped` inputs (an event's field, a task's result), in `set` (a sensitive variable whole, a field of a record), in a list a function returned, in a stale result (redacted whole, since its type is no longer known), and in `done`'s output, inside lists and an optional. Function calls see the real values: the function table is keyed by them.",
   "requires": [],
   "chart": "charts/vault.road",
   "machine": "Vault",

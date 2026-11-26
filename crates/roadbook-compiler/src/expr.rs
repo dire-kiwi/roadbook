@@ -78,12 +78,17 @@ impl Cx<'_, '_> {
         (ie, got)
     }
 
-    /// The IR node for `e` and its type. Leaves in [`Cx::sens`] whether `e` reads a sensitive
-    /// value: a sensitive parameter or variable, or a sensitive field of any value, or a field
-    /// of a sensitive value.
+    /// The IR node for `e` and its type. Leaves in [`Cx::sens`] whether `e`'s value is
+    /// sensitive: a sensitive parameter or variable, a sensitive field of any value, a field of
+    /// a sensitive value, or an operator's result with a sensitive operand (`pin + 0`,
+    /// `not flag`, `pin == 1`). A function's result is not: a `fn` is how a chart derives what
+    /// may be shown.
     pub(crate) fn expr(&mut self, e: &Expr, scope: &Scope) -> (ir::Expr, Ty) {
         let out = self.expr_node(e, scope);
-        if !matches!(e.kind, ExprKind::Var(_) | ExprKind::Field(..)) {
+        if !matches!(
+            e.kind,
+            ExprKind::Var(_) | ExprKind::Field(..) | ExprKind::Unary(..) | ExprKind::Binary(..)
+        ) {
             self.sens = false;
         }
         out
@@ -255,6 +260,7 @@ impl Cx<'_, '_> {
                 (node(K::Record { fields: out }, &ty, e), ty)
             }
             ExprKind::Unary(UnaryOp::Not, x) => {
+                // `self.sens` stays the operand's: nothing below evaluates another expression.
                 let (xe, xt) = self.expr(x, scope);
                 if !self.ck.env.same(&xt, &BOOL) {
                     self.bad_operands(e, format!("`not` needs a `bool`, found `{xt}`"));
@@ -272,6 +278,7 @@ impl Cx<'_, '_> {
                 )
             }
             ExprKind::Unary(UnaryOp::Neg, x) => {
+                // `self.sens` stays the operand's: nothing below evaluates another expression.
                 let (xe, xt) = self.expr(x, scope);
                 let ty = match self.ck.env.expand(&xt) {
                     t @ (Ty::Unknown | Ty::Builtin(Builtin::Int | Builtin::Float)) => t,
@@ -297,7 +304,10 @@ impl Cx<'_, '_> {
             }
             ExprKind::Binary(o, a, b) => {
                 let (ae, at) = self.expr(a, scope);
+                let sens = self.sens;
                 let (be, bt) = self.expr(b, scope);
+                // Either operand's: nothing below evaluates another expression.
+                self.sens |= sens;
                 let (xa, xb) = (self.ck.env.expand(&at), self.ck.env.expand(&bt));
                 let unknown = xa.is_unknown() || xb.is_unknown();
                 let sym = o.as_str();

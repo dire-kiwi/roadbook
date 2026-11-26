@@ -124,7 +124,8 @@ pub const NOT_A_REF: Code = Code(315);
 /// returns.
 pub const REF_NOT_ALLOWED: Code = Code(316);
 
-/// A value read from a sensitive field, parameter or variable going where a trace shows it:
+/// A value read from a sensitive field, parameter or variable (or computed from one by an
+/// operator) going where a trace shows it:
 /// to a variable, parameter or field that is not sensitive, or to an `output`, a `fail` or an
 /// `after` delay.
 pub const SENSITIVE_VALUE: Code = Code(317);

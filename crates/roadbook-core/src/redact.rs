@@ -89,75 +89,130 @@ impl Redactor<'_> {
         self.marks.any
     }
 
-    /// Redacts `v`, a value of type `t`.
+    /// Whether a value of type `t` can hold a sensitive value.
+    fn carries(&self, t: &TypeRef) -> bool {
+        match t {
+            TypeRef::Named(n) => self.marks.carries.get(n).copied().unwrap_or(false),
+            TypeRef::List(e) | TypeRef::Optional(e) => self.carries(e),
+            TypeRef::Builtin(_) | TypeRef::Ref(_) => false,
+        }
+    }
+
+    /// Redacts `v`, a value of type `t`. A value of a type that can hold a sensitive value is
+    /// redacted whole when it does not have the type's shape (a list that is not an array, a
+    /// record that is not an object), so a value host code got wrong shows nothing.
     pub fn value(&self, t: &TypeRef, v: &mut Value) {
+        if !self.carries(t) {
+            return;
+        }
         match t {
             TypeRef::Builtin(_) | TypeRef::Ref(_) => {}
-            TypeRef::List(e) => {
-                if let Value::Array(items) = v {
-                    items.iter_mut().for_each(|i| self.value(e, i));
-                }
-            }
+            TypeRef::List(e) => match v {
+                Value::Array(items) => items.iter_mut().for_each(|i| self.value(e, i)),
+                _ => redact(v),
+            },
             TypeRef::Optional(e) => {
                 if !v.is_null() {
                     self.value(e, v);
                 }
             }
-            TypeRef::Named(n) => {
-                if !self.marks.carries.get(n).copied().unwrap_or(false) {
-                    return;
+            TypeRef::Named(n) => match self.ir.types.get(n).map(|t| &t.def) {
+                Some(TypeDef::Record { fields } | TypeDef::Error { fields }) => {
+                    self.fields(fields, v)
                 }
-                match self.ir.types.get(n).map(|t| &t.def) {
-                    Some(TypeDef::Record { fields } | TypeDef::Error { fields }) => {
-                        self.fields(fields, v)
-                    }
-                    Some(TypeDef::Alias { ty }) => self.value(ty, v),
-                    _ => {}
-                }
-            }
+                Some(TypeDef::Alias { ty }) => self.value(ty, v),
+                _ => {}
+            },
         }
     }
 
-    /// Redacts `v`, an object with these fields (a record, an error or an event).
-    pub fn fields(&self, fields: &[Field], v: &mut Value) {
-        if let Value::Object(obj) = v {
-            self.object(fields, obj);
+    /// Redacts `v`, a record, error or event with these fields that can hold a sensitive
+    /// value: redacted whole if it is not an object.
+    fn fields(&self, fields: &[Field], v: &mut Value) {
+        match v {
+            Value::Object(obj) => self.object(fields, obj),
+            _ => redact(v),
         }
     }
 
-    /// Redacts `obj`, keyed by these fields or parameters.
+    /// Redacts `obj`, keyed by these fields or parameters: a sensitive one's member whole, any
+    /// other declared one's by its type, and a member none declares (other than `_tag`) whole.
     pub fn object(&self, fields: &[Field], obj: &mut Object) {
-        for f in fields {
-            if let Some(member) = obj.get_mut(&f.name) {
-                if f.sensitive {
-                    *member = Value::String(REDACTED.to_owned());
-                } else {
-                    self.value(&f.ty, member);
-                }
+        for (name, member) in obj.iter_mut() {
+            match fields.iter().find(|f| f.name == *name) {
+                Some(f) if f.sensitive => redact(member),
+                Some(f) => self.value(&f.ty, member),
+                None if name == "_tag" => {}
+                None => redact(member),
             }
+        }
+    }
+
+    /// Redacts `v`, a tagged value (an event or an error) that `decls` may declare: by each
+    /// declaration that can hold a sensitive value. One that none declares has every member
+    /// but `_tag` redacted, and one that is not a tagged object is redacted whole.
+    fn tagged<'d>(&self, decls: impl Iterator<Item = &'d [Field]>, v: &mut Value) {
+        let Value::Object(obj) = v else {
+            return redact(v);
+        };
+        if !obj.get("_tag").is_some_and(Value::is_string) {
+            return redact(v);
+        }
+        let mut declared = false;
+        for fields in decls {
+            declared = true;
+            if fields.iter().any(|f| f.sensitive || self.carries(&f.ty)) {
+                self.object(fields, obj);
+            }
+        }
+        if !declared {
+            self.object(&[], obj);
         }
     }
 
     /// Redacts `v`, by its tag one of `m`'s `emits` if `emits`, else of its `events`.
     fn event(&self, m: &Machine, emits: bool, v: &mut Value) {
-        let Some(t) = tag(v) else {
-            return;
-        };
+        let t = tag(v).unwrap_or_default();
         let decl = if emits {
             m.emits.get(&t)
         } else {
             m.events.get(&t)
         };
-        if let Some(e) = decl {
-            self.fields(&e.fields, v);
-        }
+        self.tagged(decl.map(|e| e.fields.as_slice()).into_iter(), v);
+    }
+
+    /// Redacts `v`, an emitted event, as each machine of the IR that emits an event of its tag
+    /// with exactly its members would: the receiving run does not always know which machine
+    /// sent it (a peer, or a child whose invoke has ended), and the sender's own declaration is
+    /// always one of those, since a core builds the event with every field it declares.
+    fn emitted(&self, v: &mut Value) {
+        let t = tag(v).unwrap_or_default();
+        let members: Vec<&String> = match v {
+            Value::Object(obj) => obj.keys().filter(|k| *k != "_tag").collect(),
+            _ => Vec::new(),
+        };
+        let fits = |fields: &[Field]| {
+            fields.len() == members.len() && fields.iter().all(|f| members.contains(&&f.name))
+        };
+        let decls: Vec<&[Field]> = self
+            .ir
+            .machines
+            .values()
+            .filter_map(|m| m.emits.get(&t))
+            .map(|e| e.fields.as_slice())
+            .filter(|fields| fits(fields))
+            .collect();
+        self.tagged(decls.into_iter(), v);
     }
 
     /// Redacts `v`, a tagged error, by its tag.
     fn error(&self, v: &mut Value) {
-        if let Some(t) = tag(v) {
-            self.value(&TypeRef::Named(t), v);
-        }
+        let t = tag(v).unwrap_or_default();
+        let decl = match self.ir.types.get(&t).map(|d| &d.def) {
+            Some(TypeDef::Error { fields } | TypeDef::Record { fields }) => Some(fields.as_slice()),
+            _ => None,
+        };
+        self.tagged(decl.into_iter(), v);
     }
 
     /// Redacts the input `input` of a run of `m`, whose running invokes are `invokes`.
@@ -170,27 +225,19 @@ impl Redactor<'_> {
             // The receiving run does not always know the sender's machine (a peer, or a child
             // whose invoke has ended), so the event is redacted as each machine that emits an
             // event of its name would redact it.
-            Input::Emitted { value, .. } => {
-                for other in self.ir.machines.values() {
-                    self.event(other, true, value);
-                }
-            }
+            Input::Emitted { value, .. } => self.emitted(value),
             Input::InvokeDone { invoke, value } => {
                 match invokes.iter().find(|i| i.id == *invoke) {
-                    Some(inv) => {
-                        if let Some(t) = self.returns(&inv.src) {
-                            self.value(t, value);
-                        }
-                    }
-                    // A stale outcome: the invoke has ended, and with it what it ran. Redacted
-                    // as every task and machine of the IR would redact its result.
-                    None => {
-                        let tasks = self.ir.tasks.values().filter_map(|t| t.returns.as_ref());
-                        let machines = self.ir.machines.values().filter_map(|m| m.returns.as_ref());
-                        for t in tasks.chain(machines) {
-                            self.value(t, value);
-                        }
-                    }
+                    // A task or machine that returns nothing gives `null`: anything else is
+                    // redacted whole.
+                    Some(inv) => match self.returns(&inv.src) {
+                        Some(t) => self.value(t, value),
+                        None if value.is_null() => {}
+                        None => redact(value),
+                    },
+                    // A stale outcome: the invoke has ended, and with it what it ran, so the
+                    // type of the value is not known. Redacted whole: the run ignores it.
+                    None => redact(value),
                 }
             }
             Input::InvokeFail { error, .. } => self.error(error),
@@ -217,35 +264,20 @@ impl Redactor<'_> {
         match record {
             Record::Started { input, .. } => self.object(&m.params, input),
             Record::Restored { snapshot, .. } => self.saved(m, snapshot),
-            Record::Set { var, value } => {
-                if let Some(v) = m.vars.iter().find(|v| v.name == *var) {
-                    if v.sensitive {
-                        *value = Value::String(REDACTED.to_owned());
-                    } else {
-                        self.value(&v.ty, value);
-                    }
-                }
-            }
+            Record::Set { var, value } => self.var(m, var, value),
             Record::Action { action, args } => {
-                if let Some(a) = self.ir.actions.get(action.as_str()) {
-                    self.object(&a.params, args);
-                }
+                let params = self.ir.actions.get(action.as_str()).map(|a| &a.params);
+                self.object(params.map_or(&[][..], |p| p), args);
             }
             Record::InvokeStarted { src, args, .. } => {
                 let params = match self.ir.tasks.get(src.as_str()) {
                     Some(t) => Some(&t.params),
                     None => self.ir.machines.get(src.as_str()).map(|m| &m.params),
                 };
-                if let Some(params) = params {
-                    self.object(params, args);
-                }
+                self.object(params.map_or(&[][..], |p| p), args);
             }
             Record::Emitted { value, .. } => self.event(m, true, value),
-            Record::Done { output, .. } => {
-                if let Some(t) = &m.returns {
-                    self.value(t, output);
-                }
-            }
+            Record::Done { output, .. } => self.output(m, output),
             Record::Failed { error, .. } => self.error(error),
             // `sent` and the core's `undelivered` are redacted where the send's address is
             // known (`Redactor::sent`).
@@ -263,38 +295,52 @@ impl Redactor<'_> {
         }
     }
 
+    /// Redacts `value`, the value of variable `name` of `m`: whole if it is sensitive, or if `m`
+    /// has no such variable.
+    fn var(&self, m: &Machine, name: &str, value: &mut Value) {
+        match m.vars.iter().find(|v| v.name == name) {
+            Some(v) if !v.sensitive => self.value(&v.ty, value),
+            _ => redact(value),
+        }
+    }
+
+    /// Redacts `output`, the output of a run of `m`: `null` for a machine that returns nothing,
+    /// so anything else is redacted whole.
+    fn output(&self, m: &Machine, output: &mut Value) {
+        match &m.returns {
+            Some(t) => self.value(t, output),
+            None if output.is_null() => {}
+            None => redact(output),
+        }
+    }
+
     /// Redacts `value`, an event sent to a run of machine `to`.
     pub fn sent(&self, to: &str, value: &mut Value) {
         if !self.active() {
             return;
         }
-        if let Some(m) = self.ir.machines.get(to) {
-            self.event(m, false, value);
+        match self.ir.machines.get(to) {
+            Some(m) => self.event(m, false, value),
+            None => self.tagged(std::iter::empty(), value),
         }
     }
 
     /// Redacts the copy of a saved snapshot of a run of `m` that a `restored` record holds.
     fn saved(&self, m: &Machine, saved: &mut Saved) {
         self.object(&m.params, &mut saved.input);
-        for v in &m.vars {
-            if let Some(value) = saved.vars.get_mut(&v.name) {
-                if v.sensitive {
-                    *value = Value::String(REDACTED.to_owned());
-                } else {
-                    self.value(&v.ty, value);
-                }
-            }
+        for (name, value) in saved.vars.iter_mut() {
+            self.var(m, name, value);
         }
         match &mut saved.result {
-            Some(crate::RunResult::Output(output)) => {
-                if let Some(t) = &m.returns {
-                    self.value(t, output);
-                }
-            }
+            Some(crate::RunResult::Output(output)) => self.output(m, output),
             Some(crate::RunResult::Error(error)) => self.error(error),
             Some(crate::RunResult::Defect(_)) | None => {}
         }
     }
+}
+
+fn redact(v: &mut Value) {
+    *v = Value::String(REDACTED.to_owned());
 }
 
 fn tag(v: &Value) -> Option<String> {

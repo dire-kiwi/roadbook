@@ -23,6 +23,9 @@ machine M(sensitive key: string, creds: Creds, peer: ref Peer) -> string ! Refus
   emits Seen { sensitive password: string, user: string }
   sensitive var kept: string = key
   var leaked: string = key
+  sensitive var count: int = 0
+  var shown: int = -count + 1
+  var few: bool = strong(key) and count < 3
   var copy: Creds = creds
   var note: Note
   var why: Refused
@@ -56,12 +59,14 @@ machine M(sensitive key: string, creds: Creds, peer: ref Peer) -> string ! Refus
 }
 
 // expect: RB0317 at 25:24
-// expect: RB0317 at 34:20
-// expect: RB0317 at 34:79
-// expect: RB0317 at 35:14
-// expect: RB0317 at 36:55
-// expect: RB0317 at 37:51
-// expect: RB0317 at 39:11
-// expect: RB0317 at 50:23
-// expect: RB0317 at 54:26
-// expect: RB0317 at 55:24
+// expect: RB0317 at 27:20
+// expect: RB0317 at 28:19
+// expect: RB0317 at 37:20
+// expect: RB0317 at 37:79
+// expect: RB0317 at 38:14
+// expect: RB0317 at 39:55
+// expect: RB0317 at 40:51
+// expect: RB0317 at 42:11
+// expect: RB0317 at 53:23
+// expect: RB0317 at 57:26
+// expect: RB0317 at 58:24

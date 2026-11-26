@@ -11,9 +11,9 @@
 //! - a value whose type has sensitive fields going where `json` is expected, which has no
 //!   fields to redact by (`RB0318`).
 //!
-//! Function arguments and guards are exempt: function calls are not traced. A computed value
-//! (an operator's or a function's result) is not sensitive: the compiler follows a sensitive
-//! value as far as it is copied, not through computation.
+//! Function arguments and guards are exempt: function calls are not traced. An operator's result
+//! with a sensitive operand is sensitive; a function's result is not, since a `fn` is how a
+//! chart derives what may be shown.
 
 use std::collections::HashSet;
 

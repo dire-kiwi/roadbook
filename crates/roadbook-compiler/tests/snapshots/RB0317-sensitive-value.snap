@@ -9,74 +9,90 @@ error[RB0317]: `key` is sensitive, and the initial value of `leaked` is not
    |
    = help: traces redact only what is marked: mark `leaked` `sensitive` too, or derive what may be shown with a `fn`
 
-error[RB0317]: `event.password` is sensitive, and the value assigned to `leaked` is not
-  --> RB0317-sensitive-value.road:34:20
+error[RB0317]: `-count + 1` is sensitive, and the initial value of `shown` is not
+  --> RB0317-sensitive-value.road:27:20
    |
-34 |       set leaked = event.password, kept = event.password, note = Note { text: creds.password }
+27 |   var shown: int = -count + 1
+   |                    ^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark `shown` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0317]: `strong(key) and count < 3` is sensitive, and the initial value of `few` is not
+  --> RB0317-sensitive-value.road:28:19
+   |
+28 |   var few: bool = strong(key) and count < 3
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark `few` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0317]: `event.password` is sensitive, and the value assigned to `leaked` is not
+  --> RB0317-sensitive-value.road:37:20
+   |
+37 |       set leaked = event.password, kept = event.password, note = Note { text: creds.password }
    |                    ^^^^^^^^^^^^^^ a trace would show this value
    |
    = help: traces redact only what is marked: mark `leaked` `sensitive` too, or derive what may be shown with a `fn`
 
 error[RB0317]: `creds.password` is sensitive, and field `text` of `Note` is not
-  --> RB0317-sensitive-value.road:34:79
+  --> RB0317-sensitive-value.road:37:79
    |
-34 |       set leaked = event.password, kept = event.password, note = Note { text: creds.password }
+37 |       set leaked = event.password, kept = event.password, note = Note { text: creds.password }
    |                                                                               ^^^^^^^^^^^^^^ a trace would show this value
    |
    = help: traces redact only what is marked: mark field `text` of `Note` `sensitive` too, or derive what may be shown with a `fn`
 
 error[RB0317]: `event.password` is sensitive, and argument `what` of `log` is not
-  --> RB0317-sensitive-value.road:35:14
+  --> RB0317-sensitive-value.road:38:14
    |
-35 |       do log(event.password), keep(event.password), log(creds.user)
+38 |       do log(event.password), keep(event.password), log(creds.user)
    |              ^^^^^^^^^^^^^^ a trace would show this value
    |
    = help: traces redact only what is marked: mark parameter `what` of `log` `sensitive` too, or derive what may be shown with a `fn`
 
 error[RB0317]: `event.password` is sensitive, and field `plain` of `Hello` is not
-  --> RB0317-sensitive-value.road:36:55
+  --> RB0317-sensitive-value.road:39:55
    |
-36 |       send peer.Hello { token: event.password, plain: event.password }
+39 |       send peer.Hello { token: event.password, plain: event.password }
    |                                                       ^^^^^^^^^^^^^^ a trace would show this value
    |
    = help: traces redact only what is marked: mark field `plain` of `Hello` `sensitive` too, or derive what may be shown with a `fn`
 
 error[RB0317]: `event.password` is sensitive, and field `user` of `Seen` is not
-  --> RB0317-sensitive-value.road:37:51
+  --> RB0317-sensitive-value.road:40:51
    |
-37 |       emit Seen { password: event.password, user: event.password }
+40 |       emit Seen { password: event.password, user: event.password }
    |                                                   ^^^^^^^^^^^^^^ a trace would show this value
    |
    = help: traces redact only what is marked: mark field `user` of `Seen` `sensitive` too, or derive what may be shown with a `fn`
 
 error[RB0317]: `copy.ttl` is sensitive, and an `after` delay is not
-  --> RB0317-sensitive-value.road:39:11
+  --> RB0317-sensitive-value.road:42:11
    |
-39 |     after copy.ttl -> B
+42 |     after copy.ttl -> B
    |           ^^^^^^^^ a trace would show this value
    |
    = help: traces show an `after` delay as it is: carry the value in a field marked `sensitive`, or derive what may be shown with a `fn`
 
 error[RB0317]: `key` is sensitive, and argument `shown` of `Child` is not
-  --> RB0317-sensitive-value.road:50:23
+  --> RB0317-sensitive-value.road:53:23
    |
-50 |     invoke Child(key, key) { done -> E }
+53 |     invoke Child(key, key) { done -> E }
    |                       ^^^ a trace would show this value
    |
    = help: traces redact only what is marked: mark parameter `shown` of `Child` `sensitive` too, or derive what may be shown with a `fn`
 
 error[RB0317]: `kept` is sensitive, and the output of `M` is not
-  --> RB0317-sensitive-value.road:54:26
+  --> RB0317-sensitive-value.road:57:26
    |
-54 |   final state E { output kept }
+57 |   final state E { output kept }
    |                          ^^^^ a trace would show this value
    |
    = help: traces show the output of `M` as it is: carry the value in a field marked `sensitive`, or derive what may be shown with a `fn`
 
 error[RB0317]: `hidden` is sensitive, and the failure of `M` is not
-  --> RB0317-sensitive-value.road:55:24
+  --> RB0317-sensitive-value.road:58:24
    |
-55 |   final state F { fail hidden }
+58 |   final state F { fail hidden }
    |                        ^^^^^^ a trace would show this value
    |
    = help: traces show a machine's failure as it is, redacting only the error's sensitive fields; fail with an error built with the value in a `sensitive` field
