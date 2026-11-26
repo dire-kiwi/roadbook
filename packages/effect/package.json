@@ -8,8 +8,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.examples.json --noEmit",
+    "test": "vitest run",
+    "conformance": "node test/conformance/main.ts"
   },
   "dependencies": {
     "@roadbook/core": "workspace:*"

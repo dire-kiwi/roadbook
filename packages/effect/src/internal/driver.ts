@@ -6,7 +6,7 @@
  * `Effect.onInterrupt`.
  */
 import * as Core from "@roadbook/core"
-import { Cause, Context, Effect, Exit, Fiber, FiberMap, Predicate, Queue, Stream, SubscriptionRef } from "effect"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, FiberMap, Predicate, Queue, Stream, SubscriptionRef } from "effect"
 import { Defect, hostDefect } from "../Defect.ts"
 import type { Actor, MachineDef, Snapshot } from "../Machine.ts"
 import { RootRunId, RunObserver, TraceSink, Timer } from "../References.ts"
@@ -136,6 +136,7 @@ const claimEnv: Effect.Effect<Env> = Effect.flatMap(CurrentInvoke, (ctx) => {
 interface Instance {
   readonly queue: Queue.Queue<Core.Input>
   readonly ref: SubscriptionRef.SubscriptionRef<Core.Snapshot>
+  readonly started: Deferred.Deferred<void>
   /** Runs the machine to its end and gives its outcome. */
   readonly loop: Effect.Effect<unknown, unknown>
 }
@@ -164,6 +165,8 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
       result: null
     }
     const ref = yield* SubscriptionRef.make(snapshot)
+    /** Completed once the start step's commands have been carried out. */
+    const started = yield* Deferred.make<void>()
     env.observer.started({
       id: env.runId,
       parent: env.parent,
@@ -283,6 +286,7 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
       const steps = Effect.uninterruptibleMask((restore) =>
         Effect.gen(function*() {
           yield* carryOut(Core.start(ir, name, coreInput, program.fns))
+          yield* Deferred.succeed(started, undefined)
           while (snapshot.status === "running") {
             const next = yield* restore(Queue.take(queue))
             const stepped = Core.step(ir, snapshot, next, program.fns)
@@ -330,7 +334,7 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
       })
     )
 
-    return { queue, ref, loop }
+    return { queue, ref, started, loop }
   })
 
 /** The defect for a failed host Effect: a die's defect, else a failure's error. */
@@ -383,6 +387,8 @@ export const spawn = <D extends MachineDef>(program: Program, input: unknown) =>
     const env = yield* rootEnv
     const instance = yield* makeInstance(program, input, env)
     const fiber = yield* Effect.forkScoped(instance.loop)
+    // The actor is returned once the run has started: its start step carried out.
+    yield* Effect.raceFirst(Deferred.await(instance.started), Effect.asVoid(Fiber.await(fiber)))
     const actor: Actor<D> = {
       send: (event) =>
         Effect.suspend(() => {

@@ -1,7 +1,0 @@
-{
-  "name": "roadbook-api-sketch",
-  "private": true,
-  "type": "module",
-  "scripts": { "check": "tsc -p ." },
-  "devDependencies": { "effect": "4.1.5", "typescript": "^7.0.0" }
-}
