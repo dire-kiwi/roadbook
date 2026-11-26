@@ -3,7 +3,10 @@
 //!
 //! Each side is compiled on its own: the `.road` files it has under the project root (less
 //! `exclude`, and only those under the paths given, if any), each read from that revision with
-//! its imports, and its entry charts found as `roadbook viz` finds them. A page is drawn for
+//! its imports, and its entry charts found as `roadbook viz` finds them. Every file in the
+//! repository is read from the revision, inside the project or not; only files under
+//! `node_modules` and outside the repository are read from disk (see [`SideFs`]), and the
+//! summary lists those outside the repository. A page is drawn for
 //! each entry path of either side. A chart that does not compile at a side gets a page showing
 //! that side's diagnostics instead of a drawing. Next to the pages and the index go
 //! `summary.md` (for a pull request comment) and `summary.json`. The configuration
@@ -24,11 +27,11 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use roadbook_compiler::Ir;
+use roadbook_compiler::{FsLoader, Ir};
 use serde_json::{Value, json};
 
 use super::diff::{self, ChartDiff, Counts, Status};
-use super::git::{Repo, RevLoader, Side};
+use super::git::{Repo, Side, SideFs};
 use super::{VIEWER_FILE, VIEWER_JS, compile_entries, page};
 use crate::workspace::Workspace;
 use crate::{Exit, report};
@@ -68,8 +71,10 @@ fn write(
     let repo = Repo::open(&ws.root)?;
     let (from, to) = repo.range(range)?;
     let filter: Vec<String> = paths.iter().map(|p| ws.project_path(p)).collect();
-    let before = side_charts(ws, &repo, &from, paths, &filter)?;
-    let after = side_charts(ws, &repo, &to, paths, &filter)?;
+    let mut outside = BTreeSet::new();
+    let before = side_charts(ws, &repo, &from, paths, &filter, &mut outside)?;
+    let after = side_charts(ws, &repo, &to, paths, &filter, &mut outside)?;
+    let outside: Vec<String> = outside.iter().map(|p| repo.display(p)).collect();
 
     let entries: BTreeSet<&str> = before
         .iter()
@@ -218,6 +223,7 @@ fn write(
         names: &names,
         machines: &machines,
         decls: &decls,
+        outside: &outside,
     };
     index["diff"] = summary.index_json();
     writes.push((
@@ -248,6 +254,22 @@ fn write(
                 c.entry
             );
         }
+    }
+    if !outside.is_empty() {
+        eprintln!(
+            "warning: {} outside the repository, so both sides read {} from disk: {}",
+            if outside.len() == 1 {
+                "a file is"
+            } else {
+                "files are"
+            },
+            if outside.len() == 1 { "it" } else { "them" },
+            outside
+                .iter()
+                .map(|f| format!("`{f}`"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
     }
     print!("{markdown}");
     eprintln!(
@@ -446,44 +468,37 @@ shift_span!(
     roadbook_ir::TaskDecl
 );
 
-/// The entry charts of one side, compiled.
+/// The entry charts of one side, compiled. The files it read from disk outside the repository
+/// are added to `outside`.
 fn side_charts(
     ws: &Workspace,
     repo: &Repo,
     side: &Side,
     paths: &[PathBuf],
     filter: &[String],
+    outside: &mut BTreeSet<PathBuf>,
 ) -> Result<Charts, String> {
     let options = ws.options();
-    let entries = match side {
-        Side::WorkTree => {
-            let files = ws.inputs(paths)?;
-            compile_entries(&mut ws.loader(), &files, &options)?
-        }
-        Side::Rev { label, commit } => {
-            let tracked: HashSet<String> = repo.files(commit)?.into_iter().collect();
-            let mut files: Vec<String> = tracked
-                .iter()
-                .filter(|p| p.ends_with(".road") && !ws.skips(p))
-                .filter(|p| {
-                    filter.is_empty()
-                        || filter.iter().any(|f| {
-                            f.is_empty() || f == "." || *p == f || p.starts_with(&format!("{f}/"))
-                        })
-                })
-                .cloned()
-                .collect();
-            files.sort();
-            let mut loader = RevLoader {
-                fs: ws.loader(),
-                repo,
-                label: label.clone(),
-                commit: commit.clone(),
-                tracked,
-            };
-            compile_entries(&mut loader, &files, &options)?
-        }
+    let fs = SideFs::new(repo, side)?;
+    let files = match fs.project_files() {
+        None => ws.inputs(paths)?,
+        Some(files) => files
+            .into_iter()
+            .filter(|p| p.ends_with(".road") && !ws.skips(p))
+            .filter(|p| {
+                filter.is_empty()
+                    || filter.iter().any(|f| {
+                        f.is_empty() || f == "." || p == f || p.starts_with(&format!("{f}/"))
+                    })
+            })
+            .collect(),
     };
+    // The project's loader, with its packages, reading through the side's file system.
+    let project = ws.loader();
+    let mut loader = FsLoader::with_fs(&project.root, fs).with_node_modules(project.node_modules);
+    loader.packages = project.packages;
+    let entries = compile_entries(&mut loader, &files, &options)?;
+    outside.extend(loader.fs().outside());
     Ok(entries
         .into_iter()
         .filter_map(|(entry, c)| {
@@ -571,6 +586,9 @@ struct Summary<'a> {
     names: &'a [String],
     machines: &'a [MachineRow],
     decls: &'a [DeclRow],
+    /// The files read from disk for both sides, being outside the repository, relative to the
+    /// project root.
+    outside: &'a [String],
 }
 
 impl Summary<'_> {
@@ -668,6 +686,7 @@ impl Summary<'_> {
                 "side": side,
                 "page": page,
             }))).collect::<Vec<_>>(),
+            "outside": self.outside,
         })
     }
 
@@ -675,6 +694,18 @@ impl Summary<'_> {
     /// command line (paths, names, revisions) goes through [`code`], so a file name cannot
     /// end the table, mention anyone or add a link.
     fn markdown(&self) -> String {
+        let mut out = self.changes_markdown();
+        if !self.outside.is_empty() {
+            let files: Vec<String> = self.outside.iter().map(|f| code(f)).collect();
+            out.push_str(&format!(
+                "\nRead from disk for both sides, being outside the repository: {}.\n",
+                files.join(", ")
+            ));
+        }
+        out
+    }
+
+    fn changes_markdown(&self) -> String {
         let (m, s, t) = self.totals();
         let mut out = format!(
             "### Chart changes: {} → {}\n\n",
