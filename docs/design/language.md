@@ -280,7 +280,7 @@ The compiler's codes:
 | `RB0104` | An unknown action in `do`. | `do audt("x")` |
 | `RB0105` | An unknown variable. | `set attemps = 1` |
 | `RB0106` | An event the machine does not declare. | `on Cancl -> Done` |
-| `RB0107` | Two declarations with the same name in one project. | `type Order` in two files |
+| `RB0107` | Two declarations with the same name in one compilation, or an event named like a type, error or machine. | `type Order` in two files, `event Order` |
 | `RB0108` | Two fields, parameters, variants, variables, events or sibling states with the same name. | `state A {}` twice in one parent |
 | `RB0109` | A name used as something it is not. | `invoke audit(x)` where `audit` is an action |
 | `RB0110` | `event`, `result` or `error` where it is not in scope. | `entry set n = result` |
@@ -411,7 +411,7 @@ Rules the grammar does not express:
 - A type is optional at most once: `T??` is an error.
 - Nesting is at most 64 levels deep, counting states, parentheses, operators (each `+` in `a + b + c` is a level), field reads and type suffixes (`[]`, `?`), so every tool that walks the tree stays within its stack.
 - A final state holds only `entry`, `exit`, `output` and `fail`.
-- Declaration names are unique across a project, because the IR is keyed by name. A file can use only what it declares or imports.
+- Declaration names are unique across a project, because the IR is keyed by name. A file can use only what it declares or imports. An event cannot have the name of a type, error or machine either, because the IR names the type of `event` in `on Name` by the event's name.
 
 Most of these rules, the split between `machineItem` and `stateItem`, and the requirement that a branch does something came from writing the spike's parser against the first draft of this grammar. The spike still implements that draft, which accepts everything above and is slightly more lenient.
 

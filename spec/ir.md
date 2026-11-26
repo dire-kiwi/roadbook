@@ -46,7 +46,7 @@ Wherever the IR names a type it uses a string in canonical source form: a built-
 
 Pattern: `^(string|int|float|bool|duration|json|[A-Z][A-Za-z0-9]*)(\[\]|\?)*$`.
 
-A declared name refers to a key of `types`, with one exception: inside an `on Name` transition the bare value `event` has type `Name`, which refers to the machine's `events`.
+A declared name refers to a key of `types`, with one exception: inside an `on Name` transition the bare value `event` has type `Name`, which refers to the machine's `events`. The two never collide: a machine's event never has the name of a type, error or machine of the document, so a name is a key of `types` or of the machine's `events`, never both.
 
 ## Declarations
 

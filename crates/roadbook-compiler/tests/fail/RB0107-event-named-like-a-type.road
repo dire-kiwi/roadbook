@@ -1,0 +1,24 @@
+type Go { a: int }
+error Stop
+machine Child() {
+  initial Done
+  final state Done {}
+}
+
+machine M() {
+  event Go
+  event Stop
+  event Child
+  event Fine
+  initial A
+  state A {
+    on Go    -> A
+    on Stop  -> A
+    on Child -> A
+    on Fine  -> A
+  }
+}
+
+// expect: RB0107 at 9:9
+// expect: RB0107 at 10:9
+// expect: RB0107 at 11:9

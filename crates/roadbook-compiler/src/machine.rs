@@ -14,7 +14,7 @@ use roadbook_syntax::{Diagnostic, Span, expr_text};
 
 use crate::check::{Checker, Sig, SigKind, doc, ir_span};
 use crate::codes;
-use crate::names::{Found, suggest};
+use crate::names::{Found, is_type, kind_phrase, suggest};
 use crate::types::{BOOL, DURATION, Ty, ir_type};
 
 /// Source positions of a state's parts, kept for the analyses that run on the IR.
@@ -177,6 +177,25 @@ pub(crate) fn lower<'p>(
             }
             cx.ck.diags.push(diag);
             continue;
+        }
+        if let Some(&id) = cx.ck.names.global.get(e.name.name.as_str()) {
+            let other = cx.ck.names.decl(id);
+            if is_type(&other.kind) || matches!(other.kind, DeclKind::Machine(_)) {
+                let path = &cx.ck.names.project.files[cx.ck.names.decls[id.0].file].path;
+                cx.ck.diags.push(
+                    Diagnostic::error(
+                        codes::DUPLICATE_DECLARATION,
+                        e.name.span,
+                        format!(
+                            "event `{}` has the name of {} declared in `{path}`",
+                            e.name.name,
+                            kind_phrase(&other.kind)
+                        ),
+                    )
+                    .with_secondary(other.name.span, "declared here")
+                    .with_help("the IR names an event's type by the event's name, so it must not be the name of a type, error or machine; rename one of them"),
+                );
+            }
         }
         cx.ck.unique(e.fields.iter().map(|f| &f.name), "field");
         let fields: Vec<(String, Ty)> = e

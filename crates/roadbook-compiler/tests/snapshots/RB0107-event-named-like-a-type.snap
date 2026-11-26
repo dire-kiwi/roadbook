@@ -1,0 +1,35 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0107]: event `Go` has the name of a record type declared in `RB0107-event-named-like-a-type.road`
+ --> RB0107-event-named-like-a-type.road:9:9
+  |
+1 | type Go { a: int }
+  |      -- declared here
+...
+9 |   event Go
+  |         ^^
+  |
+  = help: the IR names an event's type by the event's name, so it must not be the name of a type, error or machine; rename one of them
+
+error[RB0107]: event `Stop` has the name of an error declared in `RB0107-event-named-like-a-type.road`
+  --> RB0107-event-named-like-a-type.road:10:9
+   |
+ 2 | error Stop
+   |       ---- declared here
+...
+10 |   event Stop
+   |         ^^^^
+   |
+   = help: the IR names an event's type by the event's name, so it must not be the name of a type, error or machine; rename one of them
+
+error[RB0107]: event `Child` has the name of a machine declared in `RB0107-event-named-like-a-type.road`
+  --> RB0107-event-named-like-a-type.road:11:9
+   |
+ 3 | machine Child() {
+   |         ----- declared here
+...
+11 |   event Child
+   |         ^^^^^
+   |
+   = help: the IR names an event's type by the event's name, so it must not be the name of a type, error or machine; rename one of them

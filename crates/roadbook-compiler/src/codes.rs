@@ -19,7 +19,8 @@ pub const UNKNOWN_ACTION: Code = Code(104);
 pub const UNKNOWN_VARIABLE: Code = Code(105);
 /// An `on` naming an event the machine does not declare.
 pub const UNKNOWN_EVENT: Code = Code(106);
-/// Two top-level declarations with the same name in one project.
+/// Two top-level declarations with the same name in one compilation, or an event with the
+/// name of a type, error or machine.
 pub const DUPLICATE_DECLARATION: Code = Code(107);
 /// Two fields, parameters, variants, variables, events or sibling states with the same name.
 pub const DUPLICATE_NAME: Code = Code(108);
