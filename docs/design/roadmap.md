@@ -55,8 +55,8 @@ Progress is recorded on each milestone below as it finishes.
 | M2. Viewer | Done, 26 November 2026 |
 | M3. TypeScript runtime | Done, 26 November 2026 |
 | M4. Rust runtime | Done, 26 November 2026 |
-| M5. Messaging | In progress |
-| M6. Depth | Not started |
+| M5. Messaging | Done, 26 November 2026 |
+| M6. Depth | In progress |
 | M7. Review tooling | Not started |
 | M8. Editors | Not started |
 
@@ -78,7 +78,7 @@ Progress is recorded on each milestone below as it finishes.
 
 **M5. Messaging.** `send` and `emit` with an invoked child, `ref` parameters for peers, and imports across crates and packages, as specified in [actors and messaging](actors.md). The viewer draws message edges and the project index draws which machines can talk to which. The Rust macro gets a chart from a dependency crate through a hidden macro that crate exports, as a spike (`spike/cross-crate`, since deleted) recommended.
 
-*In progress.* The language, the compiler and IR 0.2: `emits`, `ref`, `invoke … as`, `on name.Event`, `send` and `emit`, with their checks, and imports from other packages (`[packages]` in `roadbook.toml`, `node_modules`, and an import satisfied by another package's compiled IR). [`examples/upload`](../../examples/upload) and [`examples/orders`](../../examples/orders) check clean; the runtimes and the TypeScript generator refuse them until they implement messaging. What the runtimes must do is specified in [`spec/execution.md`](../../spec/execution.md#messages-between-runs) and [`spec/trace.md`](../../spec/trace.md#messages), with conformance cases that start several top-level runs; the runners skip those cases until their runtime implements messaging.
+*Done.* The language, the compiler and IR 0.2: `emits`, `ref`, `invoke … as`, `on name.Event`, `send` and `emit`, with their checks, and imports from other packages (`[packages]` in `roadbook.toml`, `node_modules` with Node-style `exports`, and an import satisfied by another package's compiled IR). The semantics are in `spec/execution.md` with ten conformance cases that start several top-level runs; an independent throwaway implementation reproduced every trace. Both runtimes implement messaging and write identical traces for all 34 cases; both run `examples/upload` and `examples/orders`. In Rust, `examples/inventory` and `examples/orders` are two crates, and chains and diamonds of crates are tested. The TypeScript generator imports other packages' generated modules. The viewer draws messaging in each machine and, in the project index, which machines invoke, send to, hold references to and receive from which. Two independent reviews found lifecycle bugs in the Rust driver, a `$crate` hygiene bug that broke crate chains, and gaps in package resolution; all are fixed with tests.
 
 **M6. Depth.** Definite assignment analysis. Parallel states. Saving and restoring snapshots (`resume`), with the IR hash check. Simulate and replay modes in the viewer, which need the TypeScript core and the trace.
 
@@ -98,7 +98,7 @@ M3 and M4 are independent once M1 is done and can run in parallel. M2 depends on
 | The two runtimes diverge. | The conformance suite is the specification, and both run it in CI from M4 on. |
 | Agents write the syntax badly. | Small grammar, canonical formatter, machine-readable diagnostics with fixes, and a bundled instructions file for agents. Measure it in M1 by having an agent write charts from prose. |
 | Large charts are unreadable as diagrams. | Collapse compound states by default beyond a size, and push structure into child machines, which the language makes cheap. The spike should be tried on a 40-state chart during M2. |
-| Definite assignment is too strict or too slow. | It is M6, after real charts exist to tune it against. Until then, unassigned reads are a runtime error. |
+| Definite assignment is too strict or too slow. | Built in M6 and tuned against the example charts: it is conservative in a few documented places, and takes about 100 ms on a 1,000-state chart in a debug build. The runtime check stays as a backstop. |
 | No editor support at first. | `roadbook viz --watch` gives live feedback from M2. Highlighting needs only the tree-sitter grammar, which can be pulled forward. |
 
 ## Open questions
