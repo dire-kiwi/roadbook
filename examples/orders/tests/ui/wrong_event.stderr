@@ -1,33 +1,11 @@
-error[E0308]: mismatched types
- --> tests/ui/wrong_event.rs:6:15
+error[E0599]: no variant named `Reserve` found for enum `Event`
+ --> tests/ui/wrong_event.rs:6:33
   |
-6 |           .send(inventory::Emitted::Reserved {
-  |  __________----_^
-  | |          |
-  | |          arguments to this method are incorrect
-7 | |             order_id: "o1".into(),
-8 | |         })
-  | |_________^ expected `Event`, found `Emitted`
-  |
-help: the return type of this call is `Emitted` due to the type of the argument passed
- --> tests/ui/wrong_event.rs:5:5
-  |
-5 | /      stock
-6 | |          .send(inventory::Emitted::Reserved {
-  | | _______________-
-7 | ||             order_id: "o1".into(),
-8 | ||         })
-  | ||_________-^
-  |  |_________|
-  |            this argument influences the return type of `send`
-note: method defined here
- --> $WORKSPACE/crates/roadbook/src/handle.rs
-  |
-  |     pub async fn send(&self, event: E) {
-  |                  ^^^^
+6 |         .send(inventory::Event::Reserve {
+  |                                 ^^^^^^^ variant not found in `Event`
 
 error[E0599]: no variant named `Refund` found for enum `Event`
-  --> tests/ui/wrong_event.rs:11:34
+  --> tests/ui/wrong_event.rs:12:34
    |
-11 |     stock.send(inventory::Event::Refund { order_id: "o1".into() }).await;
+12 |     stock.send(inventory::Event::Refund { order_id: "o1".into() }).await;
    |                                  ^^^^^^ variant not found in `Event`

@@ -316,21 +316,25 @@ fn messaging_fixture_round_trips_and_matches_the_schema() {
     fill_hashes(&mut with_hashes).unwrap();
     assert_eq!(with_hashes, ir, "stored hashes are stale");
 
-    let reserving = "/machines/Order/root/states/0";
+    // Order's call to the warehouse, the Release it sends when the payment is declined, and
+    // Inventory's taking of the call and its reply.
+    let call = "/machines/Order/root/states/0/invoke";
+    let release = "/machines/Order/root/states/1/transitions/1/effects/0";
     let cases: Vec<(String, Value)> = vec![
+        (format!("{call}/to/kind"), "child".into()),
+        (format!("{call}/to"), Value::Null),
+        (format!("{call}/src"), "Reserve".into()),
+        (format!("{release}/to/state"), "Order.Paying".into()),
+        (format!("{release}/to/kind"), "child".into()),
+        (format!("{release}/value/type"), "Release[]".into()),
+        (format!("{release}/value/kind"), "ref".into()),
         (
-            format!("{reserving}/entry/0/to/state"),
-            "Order.Reserving".into(),
+            "/machines/Inventory/root/states/0/transitions/0/trigger/call".into(),
+            "Reserve".into(),
         ),
-        (format!("{reserving}/entry/0/to/kind"), "child".into()),
         (
-            format!("{reserving}/entry/0/value/type"),
-            "Reserve[]".into(),
-        ),
-        (format!("{reserving}/entry/0/value/kind"), "ref".into()),
-        (
-            format!("{reserving}/transitions/0/trigger/from/name"),
-            "Inventory".into(),
+            "/machines/Inventory/root/states/1/transitions/1/effects/0/value".into(),
+            Value::Null,
         ),
         (
             "/machines/Order/params/2/type".into(),
@@ -366,7 +370,8 @@ fn a_peer_contributes_only_its_interface_to_the_hash() {
             .collect::<Vec<_>>(),
         ["Order"]
     );
-    assert!(view["interfaces"]["Inventory"]["emits"]["Reserved"].is_object());
+    assert!(view["interfaces"]["Inventory"]["calls"]["reserve"].is_object());
+    assert!(view["interfaces"]["Inventory"]["events"]["Release"].is_object());
     assert!(view["types"]["Item"].is_object());
 
     // How the warehouse works inside does not change the order's hash.
@@ -378,9 +383,12 @@ fn a_peer_contributes_only_its_interface_to_the_hash() {
     );
     assert_eq!(machine_hash(&changed, "Order").unwrap(), order);
 
-    // What it accepts and emits does, and so do the types of their fields.
+    // What it accepts and answers does, and so do the types of their fields.
     let mut changed = ir.clone();
-    changed.machines["Inventory"].emits["Rejected"].fields.pop();
+    changed.machines["Inventory"].events["Release"].fields.pop();
+    assert_ne!(machine_hash(&changed, "Order").unwrap(), order);
+    let mut changed = ir.clone();
+    changed.machines["Inventory"].calls["reserve"].params.pop();
     assert_ne!(machine_hash(&changed, "Order").unwrap(), order);
     let mut changed = ir.clone();
     let roadbook_ir::TypeDef::Record { fields } = &mut changed.types["Item"].def else {

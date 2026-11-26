@@ -13,38 +13,38 @@ action releaseStock(warehouse: string, orderId: string)
 /// Record a delivery.
 action addStock(warehouse: string, sku: string, qty: int)
 
-/// The stock of one warehouse, shared by every order. An order asks it to reserve items, and
-/// it answers by emitting `Reserved` or `Rejected` with the order's id, which every holder of
-/// a reference to it receives.
+/// The stock of one warehouse, shared by every order. An order calls `reserve`, and the answer
+/// goes to that order alone.
 machine Inventory(warehouse: string) {
+  /// Hold the items for an order, or fail if the warehouse cannot supply them all.
+  call reserve(orderId: string, items: Item[]) ! OutOfStock
+
+  var pending: call reserve
   var orderId: string
   var items:   Item[]
 
-  event Reserve  { orderId: string, items: Item[] }
-  event Release  { orderId: string }
-  event Restock  { sku: string, qty: int }
+  event Release { orderId: string }
+  event Restock { sku: string, qty: int }
   event Close
-  emits Reserved { orderId: string }
-  emits Rejected { orderId: string, reason: string }
 
   initial Ready
 
   on Release do releaseStock(warehouse, event.orderId)
   on Restock do addStock(warehouse, event.sku, event.qty)
 
-  /// Waiting for the next request.
+  /// Waiting for the next call.
   state Ready {
-    on Reserve -> Reserving  set orderId = event.orderId, items = event.items
+    on reserve -> Reserving  set pending = call, orderId = event.orderId, items = event.items
     on Close   -> Closed
   }
 
-  /// One request at a time: another that arrives meanwhile is turned away at once.
+  /// One reservation at a time: a call that arrives meanwhile is turned away at once.
   state Reserving {
     invoke reserveStock(warehouse, orderId, items) {
-      done            -> Ready  emit Reserved { orderId: orderId }
-      fail OutOfStock -> Ready  emit Rejected { orderId: orderId, reason: error.reason }
+      done            -> Ready  reply pending done
+      fail OutOfStock -> Ready  reply pending fail error
     }
-    on Reserve emit Rejected { orderId: event.orderId, reason: "busy" }
+    on reserve reply call fail OutOfStock { reason: "busy" }
   }
 
   final state Closed {}
