@@ -6,9 +6,9 @@
 //!
 //! ```text
 //! error[RB0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
-//!   --> examples/shop/checkout.road:14:5
+//!   --> examples/shop/checkout.road:13:5
 //!    |
-//! 14 |     invoke chargeCard(order, user) {
+//! 13 |     invoke chargeCard(order, user) {
 //!    |     ^^^^^^^^^^^^^^^^^ declared as `-> Receipt ! CardDeclined | GatewayUnavailable`
 //!    |
 //!    = help: add `fail GatewayUnavailable -> <State>` or `fail * -> <State>`
@@ -299,7 +299,7 @@ mod tests {
 
     #[test]
     fn renders_the_documented_style() {
-        let src = "line\n".repeat(13) + "    invoke chargeCard(order, user) {\n";
+        let src = "line\n".repeat(12) + "    invoke chargeCard(order, user) {\n";
         let d = Diagnostic::error(
             Code(204),
             span_of(&src, "invoke chargeCard"),
@@ -313,9 +313,9 @@ mod tests {
         };
         let expected = "\
 error[RB0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
-  --> examples/shop/checkout.road:14:5
+  --> examples/shop/checkout.road:13:5
    |
-14 |     invoke chargeCard(order, user) {
+13 |     invoke chargeCard(order, user) {
    |     ^^^^^^^^^^^^^^^^^ declared as `-> Receipt ! CardDeclined | GatewayUnavailable`
    |
    = help: add `fail GatewayUnavailable -> <State>` or `fail * -> <State>`

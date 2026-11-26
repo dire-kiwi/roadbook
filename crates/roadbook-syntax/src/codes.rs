@@ -45,3 +45,27 @@ pub const CHAINED_COMPARISON: Code = Code(22);
 pub const DOC_COMMENT_DOCUMENTS_NOTHING: Code = Code(23);
 /// A lower-case name in a type position that is not a built-in type.
 pub const UNKNOWN_BUILTIN_TYPE: Code = Code(24);
+
+#[cfg(test)]
+mod tests {
+    /// Every code defined here is in the table in `language.md`, and the table has no others.
+    #[test]
+    fn codes_are_documented() {
+        let defined: Vec<String> = include_str!("codes.rs")
+            .lines()
+            .filter(|l| l.starts_with("pub const"))
+            .filter_map(|l| {
+                l.split_once("= Code(")
+                    .map(|(_, n)| n.trim_end_matches(");").parse::<u16>().unwrap())
+            })
+            .map(|n| format!("RB{n:04}"))
+            .collect();
+        let doc = include_str!("../../../docs/design/language.md");
+        let table: Vec<String> = doc
+            .lines()
+            .filter_map(|l| l.strip_prefix("| `RB"))
+            .map(|l| format!("RB{}", &l[..4]))
+            .collect();
+        assert_eq!(defined, table);
+    }
+}
