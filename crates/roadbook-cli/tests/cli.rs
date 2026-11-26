@@ -639,7 +639,12 @@ fn viewer_asset_is_fresh() {
     let mut files = Vec::new();
     fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         for e in std::fs::read_dir(dir).unwrap() {
-            let p = e.unwrap().path();
+            let e = e.unwrap();
+            let p = e.path();
+            // Like regen.sh's `find`: links (`node_modules` holds some) are not followed.
+            if e.file_type().unwrap().is_symlink() || p.ends_with("node_modules") {
+                continue;
+            }
             if p.is_dir() {
                 walk(&p, out);
             } else {
@@ -752,7 +757,12 @@ fn viewer_test_charts_are_fresh() {
 fn viewer_mermaid_fixtures_are_fresh() {
     fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         for e in std::fs::read_dir(dir).unwrap() {
-            let p = e.unwrap().path();
+            let e = e.unwrap();
+            let p = e.path();
+            // Like regen.sh's `find`: links (`node_modules` holds some) are not followed.
+            if e.file_type().unwrap().is_symlink() || p.ends_with("node_modules") {
+                continue;
+            }
             if p.is_dir() {
                 walk(&p, out);
             } else if p.extension().is_some_and(|x| x == "road") {
