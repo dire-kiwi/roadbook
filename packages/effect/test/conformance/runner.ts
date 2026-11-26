@@ -632,8 +632,10 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
   }
 
   const actual = arrange(records)
-  const out = process.env["ROADBOOK_CONFORMANCE_OUT"]
-  if (out) {
+  // Durable mode's traces go to `durable/`, so that they never stand in for the others.
+  const base = process.env["ROADBOOK_CONFORMANCE_OUT"]
+  if (base) {
+    const out = durable ? path.join(base, "durable") : base
     fs.mkdirSync(out, { recursive: true })
     fs.writeFileSync(path.join(out, `${name}.jsonl`), actual)
   }

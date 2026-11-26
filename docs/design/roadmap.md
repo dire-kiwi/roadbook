@@ -97,7 +97,11 @@ Progress is recorded on each milestone below as it finishes.
 
 *Done.* The tree-sitter grammar (`editors/tree-sitter-roadbook`) parses every chart in the repository, with highlight, locals, fold and indent queries for Neovim, Helix and Zed; `scripts/check-all.sh` checks it. The language server (`roadbook lsp`, `crates/roadbook-lsp`, on a symbol index added to the compiler without changing its output) gives diagnostics with the compiler's fixes as quick fixes, go to definition, references, hover, rename that refuses to capture or clash, formatting and an outline, across files and packages and for unsaved and untitled documents. The VS Code extension (`editors/vscode`) adds the language, highlighting, the server and a live preview that compiles through the server, so it sees every unsaved buffer; its integration test passed in a real VS Code (headless). An independent review found edge cases with packages under `node_modules`, the preview's compilation, rename scoping and workspace trust; all are fixed.
 
-**Later.** History states, keyed `spawn`, retry sugar, a durable driver, generated Rust state machines for hot paths.
+**Durable driver (SM-14).** Running a chart on `effect/workflow`, so that a run survives a crash in the middle of a task without repeating completed work.
+
+*Done, in TypeScript.* `Durable.workflow` (`@roadbook/effect/durable`) runs a machine as a workflow execution: tasks and actions are activities, each run journals the inputs it takes and replays them through the core after a crash, timers keep their deadlines, child runs share their root's execution, `ref`s between durable runs are sent again on replay and de-duplicated, and an idle run parks on a `DurableClock` ([durable runs](typescript.md#durable-runs)). It writes the same traces for 46 of the 50 conformance cases (the four with `suspend` steps do not apply), and crash tests on `ClusterWorkflowEngine` show each guarantee. `examples/import-job` crashes in the middle of a batch. The language did not change.
+
+**Later.** History states, keyed `spawn`, retry sugar, a durable driver in Rust, durable runs across several cluster runners, generated Rust state machines for hot paths.
 
 M3 and M4 are independent once M1 is done and can run in parallel. M2 depends only on M1.
 

@@ -59,7 +59,9 @@ const requires = (c) => JSON.parse(fs.readFileSync(path.join(dir, c, "case.json"
 let failed = false
 const ran = {}
 for (const runtime of ["ts", "rust"]) {
-  ran[runtime] = new Set(fs.readdirSync(path.join(out, runtime)).map((f) => f.replace(/\.jsonl$/, "")))
+  ran[runtime] = new Set(
+    fs.readdirSync(path.join(out, runtime)).filter((f) => f.endsWith(".jsonl")).map((f) => f.replace(/\.jsonl$/, ""))
+  )
   const supported = new Set([...ran[runtime]].flatMap(requires))
   for (const c of cases) {
     if (!ran[runtime].has(c) && requires(c).every((f) => supported.has(f))) {
@@ -78,6 +80,22 @@ for (const c of both) {
   }
 }
 console.log(`identical traces for the ${both.length} cases both ran`)
+// The TypeScript durable driver (`durable/`) must write the same traces as both, for the cases
+// it runs: all but those with `suspend` steps.
+const durableDir = path.join(out, "ts", "durable")
+const durable = fs.readdirSync(durableDir).filter((f) => f.endsWith(".jsonl")).map((f) => f.replace(/\.jsonl$/, ""))
+for (const c of durable) {
+  if (!ran.rust.has(c)) continue
+  if (fs.readFileSync(path.join(durableDir, `${c}.jsonl`), "utf8") !== fs.readFileSync(path.join(out, "rust", `${c}.jsonl`), "utf8")) {
+    console.error(`the durable driver writes a different trace for ${c}`)
+    failed = true
+  }
+}
+if (durable.length < 46) {
+  console.error(`the durable driver ran only ${durable.length} cases`)
+  failed = true
+}
+console.log(`identical traces from the durable driver for its ${durable.length} cases`)
 process.exit(failed ? 1 : 0)
 JS
 rm -rf "$out"
