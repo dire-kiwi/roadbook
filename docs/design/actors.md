@@ -278,8 +278,7 @@ Three questions were left to the implementation, and decided with it:
 
 A run with pending calls is not idle, so suspending it waits for its replies, and a saved snapshot that holds pending calls is not restored, since its callers are gone. Host code cannot make a call through a handle yet. The rules are in [execution](../../spec/execution.md#calls-between-runs).
 
-What it changed: the language
- (the `call` item, the addressed invoke, the callee's trigger and reply effect, the pending-call value, and their checks, formatter, tree-sitter grammar and language server), the IR and its version, so every hash changes; new inputs and commands in both cores and both drivers; new trace records; a callee's snapshot, which holds its pending calls; new conformance cases; and in the viewer, a call edge in the project index and a call that simulate mode treats like a task. Holding a reply address is close to what keyed `spawn` needs to hold its children, so whichever is built second should reuse the first's design.
+What it changed: the language (the `call` item, the addressed invoke, the callee's trigger and reply effect, the pending-call value, and their checks, formatter, tree-sitter grammar and language server), the IR and its version, so every hash changes; new inputs and commands in both cores and both drivers; new trace records; a callee's snapshot, which holds its pending calls; new conformance cases; and in the viewer, a call edge in the project index and a call that simulate mode treats like a task. Holding a reply address is close to what keyed `spawn` needs to hold its children, so whichever is built second should reuse the first's design.
 
 ### Full queues
 

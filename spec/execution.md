@@ -513,14 +513,12 @@ A **call** asks a peer for an answer that only the caller receives ([asking a pe
 - **Replying.** `reply x done v` or `reply x fail e` removes the call from `snap.calls`, writes a `replied` record and gives the driver a `reply` command ([effects](#exiting-and-entering-a-state)). Each call is answered once: a `reply` through a value whose call is no longer pending is the runtime error `answered`. A pending-call value never leaves the run: it is no argument, field, event or result.
 - **The answer is the caller's outcome.** The callee's driver pushes `invoke.done` or `invoke.fail` for the caller's invoke onto the caller's queue, unless the caller has closed or cancelled that invoke ([carrying out calls](#carrying-out-calls)). When a callee ends with calls pending or queued, its driver answers them `Unanswered`.
 - **Ending.** `finish`, `cancelRun` and `failWithDefect` leave `snap.calls` as it is, so the snapshot of a run that ended with calls pending still lists them: they are the calls its driver answers `Unanswered` as it ends. Saving such a run gives them, and restoring it is refused as `ended` first.
-- **Saving.** A run with pending calls is not idle,
- so suspend waits until it has answered them, and a saved snapshot that has them is not restored (`calls`): their callers are gone. A caller holds a `ref`, so it is never restored either ([restoring](#restoring-a-snapshot)).
+- **Saving.** A run with pending calls is not idle, so suspend waits until it has answered them, and a saved snapshot that has them is not restored (`calls`): their callers are gone. A caller holds a `ref`, so it is never restored either ([restoring](#restoring-a-snapshot)).
 - **Messages are unchanged.** A call is not a message: `on *` never takes one, and a machine's `events` and `calls` are separate. A request and a reply made of a `send` and an `emit` still work as before.
 
 ## Defects
 
-A defect ends the run at once.
- It is never routed to a `fail` branch, and no exit effect runs, since the machine can no longer be trusted to run its own code. A defect is an object:
+A defect ends the run at once. It is never routed to a `fail` branch, and no exit effect runs, since the machine can no longer be trusted to run its own code. A defect is an object:
 
 | Defect | Cause |
 | --- | --- |
@@ -782,7 +780,6 @@ Restoring checks the saved snapshot against the IR the runtime was given, refuse
 restore(ir, saved, run, now, migrated, fns):
   m    = ir.machines[saved.machine]           # every check above has passed
   snap = saved without snapshotVersion, with run = run, no due on the timers, and calls = []
-
   emit trace { kind: "restored", machine: saved.machine, ir: m.hash, migrated, snapshot: saved }
   for s in snap.active, in document order:
     if snap.invokes has an entry inv with state s.id:
@@ -828,5 +825,4 @@ The formats leave room for these; their rules will be added here.
 - **Keyed `spawn`** ([actors and messaging](../docs/design/actors.md#many-children)), and host code receiving a run's emitted events through a handle.
 - **`strict`**, which will turn a dropped event of the machine's own into a failure, is decided but not in the grammar yet ([strict machines](../docs/design/language.md#strict-machines)).
 - **Host code making a call** through a handle, and a call to a child run invoked with `as` rather than to a peer.
-
 - **Emitted events only to runs that handle them**, decided but not built ([who receives emitted events](../docs/design/actors.md#who-receives-emitted-events)): a run whose machine has no `on` for an emitted event will not be sent it, and writes no `dropped` record for it.

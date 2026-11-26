@@ -74,7 +74,6 @@
       }
     },
     "timers": {
-
       "description": "The after timers running when the run was saved, in the order they were started.",
       "type": "array",
       "items": {

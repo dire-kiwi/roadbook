@@ -368,7 +368,6 @@
           "required": ["kind", "call"],
           "additionalProperties": false
         }
-
       ]
     }
   }

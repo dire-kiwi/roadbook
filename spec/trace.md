@@ -79,7 +79,6 @@ A **call** is an `invoke.started` record in the caller's group whose `src` names
 
 ## Order
 
-
 **Within a run**, records are in the order the core emitted them, which is fixed by the run's inputs. **Across runs**, a live trace interleaves records as they are written, and that interleaving depends on how the host schedules the runs: on the Effect scheduler, or on how a Rust driver polls a child's future. It is not part of the format. A `sent` or `emitted` record is always written before the records of the runs that receive it.
 
 To compare traces, and in every conformance case, records are **grouped by run**. The groups are ordered by run id, and each keeps its records in their order. Run ids are compared segment by segment, splitting at the dots: the first segment as a string, the others as numbers, and an id before any id it is a prefix of. That is a pre-order walk of the run tree with each run's children in the order their invokes were started, the top-level runs by id: `r1`, `r1.4`, `r1.4.2`, `r1.7`, `r2`, `r2.1`.

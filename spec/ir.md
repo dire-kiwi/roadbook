@@ -369,7 +369,6 @@ What a runtime does with them (the `call` input, the `reply` command, `Unanswere
 
 ## Changes from 0.1
 
-
 Version 0.2 adds messaging between machines ([actors and messaging](../docs/design/actors.md), milestone 5) and imports from other packages. A 0.1 document is not a 0.2 document: every machine has the new member `emits`, every invoke `as`, every source `package`, so every hash changed.
 
 - Sources have a [`package`](#sources); declarations from another package are those in its files.
