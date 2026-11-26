@@ -1,0 +1,36 @@
+{
+  "description": "Refusals the checks must agree on. A migration whose result is a valid snapshot of another machine (a `Reminder` for a `Counter`) is refused as `machine`: the result is checked as a snapshot of the machine being restored. A snapshot whose status is `running` but which has a `result` does not fit (`invalid`). A snapshot that ended with a defect of a kind the runtime does not know matches the schema, which only requires a `kind`, and is refused as `ended`. Nothing is written for any of them.",
+  "requires": [
+    "snapshots"
+  ],
+  "chart": "charts/saved.road",
+  "machine": "Counter",
+  "input": {
+    "start": 1
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "restore": "old",
+      "migrate": "reminder",
+      "refused": "machine"
+    },
+    {
+      "restore": "finished",
+      "refused": "invalid"
+    },
+    {
+      "restore": "cosmic",
+      "refused": "ended"
+    },
+    {
+      "event": {
+        "_tag": "Add",
+        "by": 1
+      }
+    }
+  ],
+  "status": "running"
+}
