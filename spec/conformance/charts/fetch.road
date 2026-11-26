@@ -5,7 +5,7 @@ error Forbidden
 error Throttled { retryAfter: int }
 
 action log(what: string)
-task fetch(id: string) -> string ! NotFound | Forbidden | Throttled
+task fetch(id: string)   -> string ! NotFound | Forbidden | Throttled
 
 /// Fetch a document. Errors other than NotFound wait for a retry.
 machine Fetch(id: string) -> string ! NotFound {
@@ -27,9 +27,7 @@ machine Fetch(id: string) -> string ! NotFound {
     on *    do log("other event")
   }
 
-  state Waiting {
-    on Retry -> Loading
-  }
+  state Waiting { on Retry -> Loading }
 
   final state Loaded  { output body }
   final state Missing { fail NotFound }

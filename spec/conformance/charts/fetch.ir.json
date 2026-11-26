@@ -1,0 +1,463 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/fetch.road"
+    }
+  ],
+  "types": {
+    "NotFound": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 3,
+        "col": 1,
+        "endLine": 3,
+        "endCol": 15
+      }
+    },
+    "Forbidden": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 16
+      }
+    },
+    "Throttled": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "retryAfter",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 36
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {
+    "fetch": {
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [
+        "NotFound",
+        "Forbidden",
+        "Throttled"
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 70
+      }
+    }
+  },
+  "machines": {
+    "Fetch": {
+      "doc": "Fetch a document. Errors other than NotFound wait for a retry.",
+      "span": {
+        "file": 0,
+        "line": 11,
+        "col": 1,
+        "endLine": 34,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [
+        "NotFound"
+      ],
+      "vars": [
+        {
+          "name": "body",
+          "type": "string",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 19
+          }
+        }
+      ],
+      "events": {
+        "Ping": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 13
+          }
+        },
+        "Poke": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 13
+          }
+        },
+        "Retry": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 14
+          }
+        }
+      },
+      "root": {
+        "id": "Fetch",
+        "name": "Fetch",
+        "kind": "compound",
+        "doc": "Fetch a document. Errors other than NotFound wait for a retry.",
+        "span": {
+          "file": 0,
+          "line": 11,
+          "col": 1,
+          "endLine": 34,
+          "endCol": 2
+        },
+        "initial": "Fetch.Loading",
+        "states": [
+          {
+            "id": "Fetch.Loading",
+            "name": "Loading",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 20,
+              "col": 3,
+              "endLine": 28,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "fetch",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "id"
+                  ],
+                  "type": "string",
+                  "text": "id"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 21,
+                "col": 5,
+                "endLine": 25,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Fetch.Loaded",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "body",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "string",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 7,
+                  "endLine": 22,
+                  "endCol": 50
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "NotFound"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Fetch.Missing",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 7,
+                  "endLine": 23,
+                  "endCol": 31
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "*"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Fetch.Waiting",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "retryable",
+                        "type": "string",
+                        "text": "\"retryable\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 24,
+                  "col": 7,
+                  "endLine": 24,
+                  "endCol": 52
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Ping"
+                },
+                "group": 3,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "ping",
+                        "type": "string",
+                        "text": "\"ping\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 26,
+                  "endCol": 27
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "any"
+                },
+                "group": 4,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "other event",
+                        "type": "string",
+                        "text": "\"other event\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 5,
+                  "endLine": 27,
+                  "endCol": 34
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Fetch.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 30,
+              "col": 3,
+              "endLine": 30,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Retry"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Fetch.Loading",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 19,
+                  "endLine": 30,
+                  "endCol": 38
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Fetch.Loaded",
+            "name": "Loaded",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 32,
+              "col": 3,
+              "endLine": 32,
+              "endCol": 38
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "body"
+              ],
+              "type": "string",
+              "text": "body"
+            },
+            "fail": null
+          },
+          {
+            "id": "Fetch.Missing",
+            "name": "Missing",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 33,
+              "col": 3,
+              "endLine": 33,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "record",
+              "fields": [],
+              "type": "NotFound",
+              "text": "NotFound"
+            }
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:de6d618c62d411ef3378aba147289658b76da96a685bc5e56d2ee71807027c1a"
+    }
+  }
+}

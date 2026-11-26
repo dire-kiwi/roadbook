@@ -1,8 +1,8 @@
 // Conformance chart: guards are tried innermost state first and in document
 // order, and `and` and `or` short-circuit.
 
-fn big(amount: int) -> bool
-fn trusted(who: string) -> bool
+fn big(amount: int)      -> bool
+fn trusted(who: string)  -> bool
 action log(what: string)
 
 /// Classify amounts until stopped.
@@ -16,19 +16,19 @@ machine Gate(who: string) {
 
   state Open {
     on Check {
-      if big(event.amount)  set count = count + 1  do log("big")
-      else                  do log("small")
+      if big(event.amount)            set count = count + 1  do log("big")
+      else                            do log("small")
     }
-    on Stop -> Closed
+    on Stop                -> Closed
 
     initial Waiting
 
     state Waiting {
       // No `else`: when no branch holds, Open's `on Check` is tried.
       on Check {
-        if event.amount < 0                   do log("negative")
-        if count > 0 and big(event.amount)    set count = count + 1  do log("big again")
-        if event.amount == 0 or trusted(who)  do log("zero or trusted")
+        if event.amount < 0                  do log("negative")
+        if count > 0 and big(event.amount)   set count = count + 1  do log("big again")
+        if event.amount == 0 or trusted(who) do log("zero or trusted")
       }
     }
   }

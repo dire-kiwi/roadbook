@@ -2,7 +2,7 @@
 // nested states, external and internal transitions, and cancellation.
 
 action log(what: string, n: int)
-task work(n: int) -> int
+task work(n: int)                -> int
 
 /// Logs every entry, exit and transition effect, with the counter's value.
 machine Nest() {
@@ -14,14 +14,14 @@ machine Nest() {
   event Leave
 
   entry do log("enter Nest", n)
-  exit  do log("exit Nest", n)
+  exit do log("exit Nest", n)
 
   initial Outer
 
   state Outer {
     // `do` is written before `set` on purpose: assignments still run first.
     entry do log("enter Outer", n)  set n = n + 1
-    exit  do log("exit Outer", n)
+    exit do log("exit Outer", n)
 
     on Again -> Outer  do log("again", n)
     on Bump            do log("bump", n)  set n = n + 10
@@ -31,7 +31,7 @@ machine Nest() {
 
     state Middle {
       entry do log("enter Middle", n)
-      exit  do log("exit Middle", n)
+      exit do log("exit Middle", n)
 
       after 1s -> Away
       on Reset -> Middle.Inner  do log("reset", n)
@@ -40,7 +40,7 @@ machine Nest() {
 
       state Inner {
         entry do log("enter Inner", n)
-        exit  do log("exit Inner", n)
+        exit do log("exit Inner", n)
 
         invoke work(n) {
           done -> Away  set n = result
@@ -51,6 +51,6 @@ machine Nest() {
 
   state Away {
     entry do log("enter Away", n)
-    exit  do log("exit Away", n)
+    exit do log("exit Away", n)
   }
 }

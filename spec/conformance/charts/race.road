@@ -1,6 +1,6 @@
 // Conformance chart: an outcome that arrives after its state was left.
 
-task slow() -> int
+task slow()  -> int
 task quick() -> int
 
 /// Take whichever answer the machine is still waiting for.

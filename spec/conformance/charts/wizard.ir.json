@@ -1,0 +1,412 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/wizard.road"
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Wizard": {
+      "doc": "Two steps of a form, a review that passes straight through, and a result.",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 28,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "steps",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Next": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 13
+          }
+        }
+      },
+      "root": {
+        "id": "Wizard",
+        "name": "Wizard",
+        "kind": "compound",
+        "doc": "Two steps of a form, a review that passes straight through, and a result.",
+        "span": {
+          "file": 0,
+          "line": 7,
+          "col": 1,
+          "endLine": 28,
+          "endCol": 2
+        },
+        "initial": "Wizard.Form",
+        "states": [
+          {
+            "id": "Wizard.Form",
+            "name": "Form",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 14,
+              "col": 3,
+              "endLine": 23,
+              "endCol": 4
+            },
+            "initial": "Wizard.Form.Name",
+            "states": [
+              {
+                "id": "Wizard.Form.Name",
+                "name": "Name",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 19,
+                  "col": 5,
+                  "endLine": 19,
+                  "endCol": 60
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Next"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Wizard.Form.Email",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "steps",
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "steps"
+                              ],
+                              "type": "int",
+                              "text": "steps"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "steps + 1"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 19,
+                      "col": 19,
+                      "endLine": 19,
+                      "endCol": 58
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Wizard.Form.Email",
+                "name": "Email",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 20,
+                  "col": 5,
+                  "endLine": 20,
+                  "endCol": 63
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Next"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Wizard.Form.Complete",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "steps",
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "steps"
+                              ],
+                              "type": "int",
+                              "text": "steps"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "steps + 1"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 20,
+                      "col": 19,
+                      "endLine": 20,
+                      "endCol": 61
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Wizard.Form.Complete",
+                "name": "Complete",
+                "kind": "final",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 54
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "complete",
+                        "type": "string",
+                        "text": "\"complete\""
+                      }
+                    ]
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Wizard.Review",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "form done",
+                        "type": "string",
+                        "text": "\"form done\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 17,
+                  "col": 5,
+                  "endLine": 17,
+                  "endCol": 40
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Wizard.Review",
+            "name": "Review",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 25,
+              "col": 3,
+              "endLine": 25,
+              "endCol": 62
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Wizard.Finished",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "steps",
+                    "value": {
+                      "kind": "op",
+                      "op": "*",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "steps"
+                          ],
+                          "type": "int",
+                          "text": "steps"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 10,
+                          "type": "int",
+                          "text": "10"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "steps * 10"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 18,
+                  "endLine": 25,
+                  "endCol": 60
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Wizard.Finished",
+            "name": "Finished",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 27,
+              "col": 3,
+              "endLine": 27,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "steps"
+              ],
+              "type": "int",
+              "text": "steps"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:fc922abde981f15e1edef2d0f2bc68fe9c9565670da7313807f70673cbf4028d"
+    }
+  }
+}

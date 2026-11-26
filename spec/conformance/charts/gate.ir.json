@@ -1,0 +1,576 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/gate.road"
+    }
+  ],
+  "types": {},
+  "functions": {
+    "big": {
+      "params": [
+        {
+          "name": "amount",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "bool",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 33
+      }
+    },
+    "trusted": {
+      "params": [
+        {
+          "name": "who",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "bool",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 33
+      }
+    }
+  },
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Gate": {
+      "doc": "Classify amounts until stopped.",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 37,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "who",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "count",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Check": {
+          "fields": [
+            {
+              "name": "amount",
+              "type": "int",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 30
+          }
+        },
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 13
+          }
+        }
+      },
+      "root": {
+        "id": "Gate",
+        "name": "Gate",
+        "kind": "compound",
+        "doc": "Classify amounts until stopped.",
+        "span": {
+          "file": 0,
+          "line": 9,
+          "col": 1,
+          "endLine": 37,
+          "endCol": 2
+        },
+        "initial": "Gate.Open",
+        "states": [
+          {
+            "id": "Gate.Open",
+            "name": "Open",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 17,
+              "col": 3,
+              "endLine": 34,
+              "endCol": 4
+            },
+            "initial": "Gate.Open.Waiting",
+            "states": [
+              {
+                "id": "Gate.Open.Waiting",
+                "name": "Waiting",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 33,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Check"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "op",
+                      "op": "<",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "amount"
+                          ],
+                          "type": "int",
+                          "text": "event.amount"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 0,
+                          "type": "int",
+                          "text": "0"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "event.amount < 0"
+                    },
+                    "target": null,
+                    "effects": [
+                      {
+                        "kind": "do",
+                        "action": "log",
+                        "args": [
+                          {
+                            "kind": "lit",
+                            "value": "negative",
+                            "type": "string",
+                            "text": "\"negative\""
+                          }
+                        ]
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 29,
+                      "col": 9,
+                      "endLine": 29,
+                      "endCol": 64
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Check"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "op",
+                      "op": "and",
+                      "args": [
+                        {
+                          "kind": "op",
+                          "op": ">",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "count"
+                              ],
+                              "type": "int",
+                              "text": "count"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 0,
+                              "type": "int",
+                              "text": "0"
+                            }
+                          ],
+                          "type": "bool",
+                          "text": "count > 0"
+                        },
+                        {
+                          "kind": "call",
+                          "fn": "big",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "event",
+                                "amount"
+                              ],
+                              "type": "int",
+                              "text": "event.amount"
+                            }
+                          ],
+                          "type": "bool",
+                          "text": "big(event.amount)"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "count > 0 and big(event.amount)"
+                    },
+                    "target": null,
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "count",
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "count"
+                              ],
+                              "type": "int",
+                              "text": "count"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "count + 1"
+                        }
+                      },
+                      {
+                        "kind": "do",
+                        "action": "log",
+                        "args": [
+                          {
+                            "kind": "lit",
+                            "value": "big again",
+                            "type": "string",
+                            "text": "\"big again\""
+                          }
+                        ]
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 30,
+                      "col": 9,
+                      "endLine": 30,
+                      "endCol": 88
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Check"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "op",
+                      "op": "or",
+                      "args": [
+                        {
+                          "kind": "op",
+                          "op": "==",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "event",
+                                "amount"
+                              ],
+                              "type": "int",
+                              "text": "event.amount"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 0,
+                              "type": "int",
+                              "text": "0"
+                            }
+                          ],
+                          "type": "bool",
+                          "text": "event.amount == 0"
+                        },
+                        {
+                          "kind": "call",
+                          "fn": "trusted",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "who"
+                              ],
+                              "type": "string",
+                              "text": "who"
+                            }
+                          ],
+                          "type": "bool",
+                          "text": "trusted(who)"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "event.amount == 0 or trusted(who)"
+                    },
+                    "target": null,
+                    "effects": [
+                      {
+                        "kind": "do",
+                        "action": "log",
+                        "args": [
+                          {
+                            "kind": "lit",
+                            "value": "zero or trusted",
+                            "type": "string",
+                            "text": "\"zero or trusted\""
+                          }
+                        ]
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 31,
+                      "col": 9,
+                      "endLine": 31,
+                      "endCol": 71
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Check"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "call",
+                  "fn": "big",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "amount"
+                      ],
+                      "type": "int",
+                      "text": "event.amount"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "big(event.amount)"
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "count",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "count"
+                          ],
+                          "type": "int",
+                          "text": "count"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "count + 1"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "big",
+                        "type": "string",
+                        "text": "\"big\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 19,
+                  "col": 7,
+                  "endLine": 19,
+                  "endCol": 75
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Check"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "small",
+                        "type": "string",
+                        "text": "\"small\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 20,
+                  "col": 7,
+                  "endLine": 20,
+                  "endCol": 54
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Gate.Closed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 37
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Gate.Closed",
+            "name": "Closed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 36,
+              "col": 3,
+              "endLine": 36,
+              "endCol": 24
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:7872f1bc6d0efa6db53932ea56e1a7ee1a01a92b9ac1d6584fdb6294f5edaafa"
+    }
+  }
+}

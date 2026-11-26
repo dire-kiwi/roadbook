@@ -16,17 +16,13 @@ machine Wizard() -> int {
 
     done -> Review  do log("form done")
 
-    state Name  { on Next -> Email     set steps = steps + 1 }
+    state Name  { on Next -> Email  set steps = steps + 1 }
     state Email { on Next -> Complete  set steps = steps + 1 }
 
-    final state Complete {
-      entry do log("complete")
-    }
+    final state Complete { entry do log("complete") }
   }
 
-  state Review {
-    always -> Finished  set steps = steps * 10
-  }
+  state Review { always -> Finished  set steps = steps * 10 }
 
   final state Finished { output steps }
 }

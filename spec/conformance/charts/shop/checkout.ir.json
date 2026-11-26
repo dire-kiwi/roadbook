@@ -1,0 +1,887 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/shop/checkout.road"
+    },
+    {
+      "path": "spec/conformance/charts/shop/types.road"
+    }
+  ],
+  "types": {
+    "LineItem": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "sku",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 3,
+        "col": 1,
+        "endLine": 3,
+        "endCol": 42
+      }
+    },
+    "OrderDraft": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "items",
+          "type": "LineItem[]",
+          "doc": ""
+        },
+        {
+          "name": "coupon",
+          "type": "string?",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 55
+      }
+    },
+    "Order": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "items",
+          "type": "LineItem[]",
+          "doc": ""
+        },
+        {
+          "name": "totalCents",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 67
+      }
+    },
+    "Receipt": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "chargeId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "amountCents",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 55
+      }
+    },
+    "User": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "role",
+          "type": "Role",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 43
+      }
+    },
+    "Role": {
+      "kind": "enum",
+      "variants": [
+        "Customer",
+        "Admin"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 36
+      }
+    },
+    "ApiResponse": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "status",
+          "type": "int",
+          "doc": ""
+        },
+        {
+          "name": "body",
+          "type": "json",
+          "doc": ""
+        }
+      ],
+      "doc": "What the HTTP layer sends back. `body` is any JSON value.",
+      "span": {
+        "file": 1,
+        "line": 11,
+        "col": 1,
+        "endLine": 11,
+        "endCol": 45
+      }
+    },
+    "Unauthenticated": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 13,
+        "col": 1,
+        "endLine": 13,
+        "endCol": 22
+      }
+    },
+    "ValidationFailed": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "issues",
+          "type": "string[]",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 14,
+        "col": 1,
+        "endLine": 14,
+        "endCol": 46
+      }
+    },
+    "CardDeclined": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "reason",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 15,
+        "col": 1,
+        "endLine": 15,
+        "endCol": 44
+      }
+    },
+    "GatewayUnavailable": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 16,
+        "col": 1,
+        "endLine": 16,
+        "endCol": 25
+      }
+    }
+  },
+  "functions": {
+    "retryDelay": {
+      "params": [
+        {
+          "name": "attempt",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "duration",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 29,
+        "col": 1,
+        "endLine": 29,
+        "endCol": 60
+      }
+    },
+    "confirmation": {
+      "params": [
+        {
+          "name": "order",
+          "type": "Order",
+          "doc": ""
+        },
+        {
+          "name": "receipt",
+          "type": "Receipt",
+          "doc": ""
+        }
+      ],
+      "returns": "ApiResponse",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 30,
+        "col": 1,
+        "endLine": 30,
+        "endCol": 63
+      }
+    },
+    "invalid": {
+      "params": [
+        {
+          "name": "issues",
+          "type": "string[]",
+          "doc": ""
+        }
+      ],
+      "returns": "ApiResponse",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 31,
+        "col": 1,
+        "endLine": 31,
+        "endCol": 63
+      }
+    },
+    "problem": {
+      "params": [
+        {
+          "name": "status",
+          "type": "int",
+          "doc": ""
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "ApiResponse",
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 32,
+        "col": 1,
+        "endLine": 32,
+        "endCol": 63
+      }
+    }
+  },
+  "actions": {
+    "sendConfirmationEmail": {
+      "params": [
+        {
+          "name": "user",
+          "type": "User",
+          "doc": ""
+        },
+        {
+          "name": "order",
+          "type": "Order",
+          "doc": ""
+        },
+        {
+          "name": "receipt",
+          "type": "Receipt",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 25,
+        "col": 1,
+        "endLine": 25,
+        "endCol": 73
+      }
+    },
+    "audit": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "order",
+          "type": "Order",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 26,
+        "col": 1,
+        "endLine": 26,
+        "endCol": 41
+      }
+    }
+  },
+  "tasks": {
+    "authenticate": {
+      "params": [
+        {
+          "name": "token",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": "User",
+      "errors": [
+        "Unauthenticated"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 19,
+        "col": 1,
+        "endLine": 19,
+        "endCol": 71
+      }
+    },
+    "validateOrder": {
+      "params": [
+        {
+          "name": "draft",
+          "type": "OrderDraft",
+          "doc": ""
+        }
+      ],
+      "returns": "Order",
+      "errors": [
+        "ValidationFailed"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 20,
+        "col": 1,
+        "endLine": 20,
+        "endCol": 72
+      }
+    },
+    "priceOrder": {
+      "params": [
+        {
+          "name": "order",
+          "type": "Order",
+          "doc": ""
+        },
+        {
+          "name": "user",
+          "type": "User",
+          "doc": ""
+        }
+      ],
+      "returns": "Order",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 21,
+        "col": 1,
+        "endLine": 21,
+        "endCol": 51
+      }
+    },
+    "chargeCard": {
+      "params": [
+        {
+          "name": "order",
+          "type": "Order",
+          "doc": ""
+        },
+        {
+          "name": "user",
+          "type": "User",
+          "doc": ""
+        }
+      ],
+      "returns": "Receipt",
+      "errors": [
+        "CardDeclined",
+        "GatewayUnavailable"
+      ],
+      "doc": "",
+      "span": {
+        "file": 1,
+        "line": 22,
+        "col": 1,
+        "endLine": 22,
+        "endCol": 89
+      }
+    }
+  },
+  "machines": {
+    "Checkout": {
+      "doc": "Charge the customer's card, retrying while the payment gateway is down.",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 32,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "order",
+          "type": "Order",
+          "doc": ""
+        },
+        {
+          "name": "user",
+          "type": "User",
+          "doc": ""
+        }
+      ],
+      "returns": "Receipt",
+      "errors": [
+        "CardDeclined",
+        "GatewayUnavailable"
+      ],
+      "vars": [
+        {
+          "name": "attempts",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 5,
+            "col": 3,
+            "endLine": 5,
+            "endCol": 24
+          }
+        },
+        {
+          "name": "receipt",
+          "type": "Receipt",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 6,
+            "col": 3,
+            "endLine": 6,
+            "endCol": 24
+          }
+        },
+        {
+          "name": "declined",
+          "type": "CardDeclined",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 7,
+            "col": 3,
+            "endLine": 7,
+            "endCol": 29
+          }
+        }
+      ],
+      "events": {},
+      "root": {
+        "id": "Checkout",
+        "name": "Checkout",
+        "kind": "compound",
+        "doc": "Charge the customer's card, retrying while the payment gateway is down.",
+        "span": {
+          "file": 0,
+          "line": 4,
+          "col": 1,
+          "endLine": 32,
+          "endCol": 2
+        },
+        "initial": "Checkout.Charging",
+        "states": [
+          {
+            "id": "Checkout.Charging",
+            "name": "Charging",
+            "kind": "atomic",
+            "doc": "One attempt against the payment gateway.",
+            "span": {
+              "file": 0,
+              "line": 12,
+              "col": 3,
+              "endLine": 21,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "chargeCard",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "order"
+                  ],
+                  "type": "Order",
+                  "text": "order"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "user"
+                  ],
+                  "type": "User",
+                  "text": "user"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 13,
+                "col": 5,
+                "endLine": 20,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Checkout.Charged",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "receipt",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "Receipt",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 14,
+                  "col": 7,
+                  "endLine": 14,
+                  "endCol": 64
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "CardDeclined"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Checkout.Declined",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "declined",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "error"
+                      ],
+                      "type": "CardDeclined",
+                      "text": "error"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 15,
+                  "col": 7,
+                  "endLine": 15,
+                  "endCol": 64
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "GatewayUnavailable"
+                },
+                "group": 2,
+                "guard": {
+                  "kind": "op",
+                  "op": "<",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "attempts"
+                      ],
+                      "type": "int",
+                      "text": "attempts"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 3,
+                      "type": "int",
+                      "text": "3"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "attempts < 3"
+                },
+                "target": "Checkout.Backoff",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 17,
+                  "col": 9,
+                  "endLine": 17,
+                  "endCol": 41
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "GatewayUnavailable"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Checkout.GaveUp",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 9,
+                  "endLine": 18,
+                  "endCol": 40
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Checkout.Backoff",
+            "name": "Backoff",
+            "kind": "atomic",
+            "doc": "Wait before the next attempt. The delay grows with each attempt.",
+            "span": {
+              "file": 0,
+              "line": 24,
+              "col": 3,
+              "endLine": 27,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "set",
+                "var": "attempts",
+                "value": {
+                  "kind": "op",
+                  "op": "+",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "attempts"
+                      ],
+                      "type": "int",
+                      "text": "attempts"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 1,
+                      "type": "int",
+                      "text": "1"
+                    }
+                  ],
+                  "type": "int",
+                  "text": "attempts + 1"
+                }
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "call",
+                    "fn": "retryDelay",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "attempts"
+                        ],
+                        "type": "int",
+                        "text": "attempts"
+                      }
+                    ],
+                    "type": "duration",
+                    "text": "retryDelay(attempts)"
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Checkout.Charging",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 26,
+                  "endCol": 43
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Checkout.Charged",
+            "name": "Charged",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 29,
+              "col": 3,
+              "endLine": 29,
+              "endCol": 42
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "receipt"
+              ],
+              "type": "Receipt",
+              "text": "receipt"
+            },
+            "fail": null
+          },
+          {
+            "id": "Checkout.Declined",
+            "name": "Declined",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 30,
+              "col": 3,
+              "endLine": 30,
+              "endCol": 41
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "ref",
+              "path": [
+                "declined"
+              ],
+              "type": "CardDeclined",
+              "text": "declined"
+            }
+          },
+          {
+            "id": "Checkout.GaveUp",
+            "name": "GaveUp",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 31,
+              "col": 3,
+              "endLine": 31,
+              "endCol": 51
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "record",
+              "fields": [],
+              "type": "GatewayUnavailable",
+              "text": "GatewayUnavailable"
+            }
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:fa1a99b9fbb423ce5c2877e31db717c7b10b84cfa2bf52721cbd2162fc18f55e"
+    }
+  }
+}

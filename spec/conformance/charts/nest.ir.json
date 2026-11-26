@@ -1,0 +1,759 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/nest.road"
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "n",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 33
+      }
+    }
+  },
+  "tasks": {
+    "work": {
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 40
+      }
+    }
+  },
+  "machines": {
+    "Nest": {
+      "doc": "Logs every entry, exit and transition effect, with the counter's value.",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 56,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "n",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 17
+          }
+        }
+      ],
+      "events": {
+        "Again": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 14
+          }
+        },
+        "Reset": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 14
+          }
+        },
+        "Bump": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 13
+          }
+        },
+        "Leave": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 14
+          }
+        }
+      },
+      "root": {
+        "id": "Nest",
+        "name": "Nest",
+        "kind": "compound",
+        "doc": "Logs every entry, exit and transition effect, with the counter's value.",
+        "span": {
+          "file": 0,
+          "line": 8,
+          "col": 1,
+          "endLine": 56,
+          "endCol": 2
+        },
+        "initial": "Nest.Outer",
+        "states": [
+          {
+            "id": "Nest.Outer",
+            "name": "Outer",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 21,
+              "col": 3,
+              "endLine": 50,
+              "endCol": 4
+            },
+            "initial": "Nest.Outer.Middle",
+            "states": [
+              {
+                "id": "Nest.Outer.Middle",
+                "name": "Middle",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 32,
+                  "col": 5,
+                  "endLine": 49,
+                  "endCol": 6
+                },
+                "initial": "Nest.Outer.Middle.Inner",
+                "states": [
+                  {
+                    "id": "Nest.Outer.Middle.Inner",
+                    "name": "Inner",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 41,
+                      "col": 7,
+                      "endLine": 48,
+                      "endCol": 8
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [
+                      {
+                        "kind": "do",
+                        "action": "log",
+                        "args": [
+                          {
+                            "kind": "lit",
+                            "value": "enter Inner",
+                            "type": "string",
+                            "text": "\"enter Inner\""
+                          },
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "n"
+                            ],
+                            "type": "int",
+                            "text": "n"
+                          }
+                        ]
+                      }
+                    ],
+                    "exit": [
+                      {
+                        "kind": "do",
+                        "action": "log",
+                        "args": [
+                          {
+                            "kind": "lit",
+                            "value": "exit Inner",
+                            "type": "string",
+                            "text": "\"exit Inner\""
+                          },
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "n"
+                            ],
+                            "type": "int",
+                            "text": "n"
+                          }
+                        ]
+                      }
+                    ],
+                    "invoke": {
+                      "kind": "task",
+                      "src": "work",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        }
+                      ],
+                      "span": {
+                        "file": 0,
+                        "line": 45,
+                        "col": 9,
+                        "endLine": 47,
+                        "endCol": 10
+                      }
+                    },
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "invoke.done"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Nest.Away",
+                        "effects": [
+                          {
+                            "kind": "set",
+                            "var": "n",
+                            "value": {
+                              "kind": "ref",
+                              "path": [
+                                "result"
+                              ],
+                              "type": "int",
+                              "text": "result"
+                            }
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 46,
+                          "col": 11,
+                          "endLine": 46,
+                          "endCol": 39
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "enter Middle",
+                        "type": "string",
+                        "text": "\"enter Middle\""
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "n"
+                        ],
+                        "type": "int",
+                        "text": "n"
+                      }
+                    ]
+                  }
+                ],
+                "exit": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "exit Middle",
+                        "type": "string",
+                        "text": "\"exit Middle\""
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "n"
+                        ],
+                        "type": "int",
+                        "text": "n"
+                      }
+                    ]
+                  }
+                ],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "after",
+                      "delay": {
+                        "kind": "lit",
+                        "value": 1000,
+                        "type": "duration",
+                        "text": "1s"
+                      }
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Nest.Away",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 36,
+                      "col": 7,
+                      "endLine": 36,
+                      "endCol": 23
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Reset"
+                    },
+                    "group": 1,
+                    "guard": null,
+                    "target": "Nest.Outer.Middle.Inner",
+                    "effects": [
+                      {
+                        "kind": "do",
+                        "action": "log",
+                        "args": [
+                          {
+                            "kind": "lit",
+                            "value": "reset",
+                            "type": "string",
+                            "text": "\"reset\""
+                          },
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "n"
+                            ],
+                            "type": "int",
+                            "text": "n"
+                          }
+                        ]
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 37,
+                      "col": 7,
+                      "endLine": 37,
+                      "endCol": 51
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "enter Outer",
+                    "type": "string",
+                    "text": "\"enter Outer\""
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "n"
+                    ],
+                    "type": "int",
+                    "text": "n"
+                  }
+                ]
+              },
+              {
+                "kind": "set",
+                "var": "n",
+                "value": {
+                  "kind": "op",
+                  "op": "+",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "n"
+                      ],
+                      "type": "int",
+                      "text": "n"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 1,
+                      "type": "int",
+                      "text": "1"
+                    }
+                  ],
+                  "type": "int",
+                  "text": "n + 1"
+                }
+              }
+            ],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "exit Outer",
+                    "type": "string",
+                    "text": "\"exit Outer\""
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "n"
+                    ],
+                    "type": "int",
+                    "text": "n"
+                  }
+                ]
+              }
+            ],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Again"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Nest.Outer",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "again",
+                        "type": "string",
+                        "text": "\"again\""
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "n"
+                        ],
+                        "type": "int",
+                        "text": "n"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 26,
+                  "endCol": 42
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Bump"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "bump",
+                        "type": "string",
+                        "text": "\"bump\""
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "n"
+                        ],
+                        "type": "int",
+                        "text": "n"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 10,
+                          "type": "int",
+                          "text": "10"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "n + 10"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 5,
+                  "endLine": 27,
+                  "endCol": 57
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Leave"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Nest.Away",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 100,
+                          "type": "int",
+                          "text": "100"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "n + 100"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "leave",
+                        "type": "string",
+                        "text": "\"leave\""
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "n"
+                        ],
+                        "type": "int",
+                        "text": "n"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 59
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Nest.Away",
+            "name": "Away",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 52,
+              "col": 3,
+              "endLine": 55,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "enter Away",
+                    "type": "string",
+                    "text": "\"enter Away\""
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "n"
+                    ],
+                    "type": "int",
+                    "text": "n"
+                  }
+                ]
+              }
+            ],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "exit Away",
+                    "type": "string",
+                    "text": "\"exit Away\""
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "n"
+                    ],
+                    "type": "int",
+                    "text": "n"
+                  }
+                ]
+              }
+            ],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [
+          {
+            "kind": "do",
+            "action": "log",
+            "args": [
+              {
+                "kind": "lit",
+                "value": "enter Nest",
+                "type": "string",
+                "text": "\"enter Nest\""
+              },
+              {
+                "kind": "ref",
+                "path": [
+                  "n"
+                ],
+                "type": "int",
+                "text": "n"
+              }
+            ]
+          }
+        ],
+        "exit": [
+          {
+            "kind": "do",
+            "action": "log",
+            "args": [
+              {
+                "kind": "lit",
+                "value": "exit Nest",
+                "type": "string",
+                "text": "\"exit Nest\""
+              },
+              {
+                "kind": "ref",
+                "path": [
+                  "n"
+                ],
+                "type": "int",
+                "text": "n"
+              }
+            ]
+          }
+        ],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:1ce4378bb0a1589d9cc8506a2f4e2004ed198e5950f53a29c6303a5905bb6586"
+    }
+  }
+}

@@ -1,0 +1,279 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/race.road"
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {
+    "slow": {
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 3,
+        "col": 1,
+        "endLine": 3,
+        "endCol": 20
+      }
+    },
+    "quick": {
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 20
+      }
+    }
+  },
+  "machines": {
+    "Race": {
+      "doc": "Take whichever answer the machine is still waiting for.",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 28,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "v",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 17
+          }
+        }
+      ],
+      "events": {
+        "Skip": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 13
+          }
+        }
+      },
+      "root": {
+        "id": "Race",
+        "name": "Race",
+        "kind": "compound",
+        "doc": "Take whichever answer the machine is still waiting for.",
+        "span": {
+          "file": 0,
+          "line": 7,
+          "col": 1,
+          "endLine": 28,
+          "endCol": 2
+        },
+        "initial": "Race.Slow",
+        "states": [
+          {
+            "id": "Race.Slow",
+            "name": "Slow",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 14,
+              "col": 3,
+              "endLine": 19,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "slow",
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 15,
+                "col": 5,
+                "endLine": 17,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Race.Finished",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "v",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 16,
+                  "col": 7,
+                  "endLine": 16,
+                  "endCol": 39
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Skip"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Race.Quick",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 5,
+                  "endLine": 18,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Race.Quick",
+            "name": "Quick",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 21,
+              "col": 3,
+              "endLine": 25,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "quick",
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 22,
+                "col": 5,
+                "endLine": 24,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Race.Finished",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "v",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 7,
+                  "endLine": 23,
+                  "endCol": 39
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Race.Finished",
+            "name": "Finished",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 27,
+              "col": 3,
+              "endLine": 27,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "v"
+              ],
+              "type": "int",
+              "text": "v"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:54687b3a953178dd2f2ba6f9967e07581758e3a3f946bc3a8725ef806845c07c"
+    }
+  }
+}
