@@ -1,12 +1,14 @@
 //! `roadbook paths <Machine> [file] [--json] [--max N]`
 //!
-//! The paths through a machine from its initial state to each final state and to each state
-//! with no way out: one test to write per path, and the list a coverage tool compares traces
-//! with.
+//! The paths through a machine from its initial state to each final state, to each state
+//! with no way out, and to where each loop closes: one test to write per path, and the list a
+//! coverage tool compares traces with.
 //!
 //! Without `file`, every `.road` file of the project is compiled and the machine is the one
 //! declaration of that name among them (a usage error, exit 2, if there is none or there are
-//! several, listing where). With `file`, the machine is taken from that file's compilation:
+//! several, listing where). Declarations are told apart by the file they are in, as the
+//! loader locates it, so a file of a package in the project, compiled as a project file and
+//! imported through the package by another, declares its machine once. With `file`, the machine is taken from that file's compilation:
 //! declared there or imported. Compile errors are reported as `check` reports them (exit 1).
 //!
 //! The graph:
@@ -18,7 +20,9 @@
 //!   puts the position at the outermost parallel state containing it.
 //! - A step takes one transition with a target (an internal transition is not a step). From
 //!   a position the transitions available are its own and then each ancestor's, innermost
-//!   first, each state's in written order. Each branch of a guarded block is a step of its
+//!   first, each state's in written order; from a parallel state, the transitions in its
+//!   regions whose target is outside it (not `done`) come first, in written order, since they
+//!   leave it as `roadbook check` (RB0902) counts them. Each branch of a guarded block is a step of its
 //!   own, showing its guard (`[else]` for the unguarded last branch of a block with guards).
 //!   A `done` is available only from a parallel state (its own) and from a final state (its
 //!   parent's). An `always` with no guard (or a block ending in one) is taken at once, so
@@ -28,8 +32,9 @@
 //!   parent has none, what the position allows otherwise.
 //! - A position with no step at all ends the path: `stuck`.
 //! - No path takes the same transition (owner state, index) twice, so each loop is taken at
-//!   most once. A path whose every remaining step was taken already only loops, and is not
-//!   listed.
+//!   most once. A position whose every step was taken already on the path ends it: `loop`,
+//!   where going on would repeat a transition. So a machine with no final or stuck state
+//!   (`A ⇄ B`) still has paths, and every transition the search can reach is on one.
 //! - Child machines are not entered: an invoke's `done` and `fail` are ordinary steps.
 //! - The search is depth-first in that order, so the output is deterministic. It stops after
 //!   `--max` paths (1000 by default) or [`BUDGET`] steps searched, prints what it found and
@@ -38,7 +43,8 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-use roadbook_compiler::{Compilation, Ir};
+use roadbook_compiler::loader::FileRef;
+use roadbook_compiler::{Compilation, Ir, Loader};
 use roadbook_ir::{Machine, State, StateKind, Transition, Trigger};
 
 use crate::workspace::Workspace;
@@ -144,12 +150,14 @@ fn search(name: &str) -> (Option<Ir>, Exit) {
         Err(e) => return (None, report::fatal(e)),
     };
     let options = ws.options();
-    // Each distinct declaration, `file:line` (with its package, if any), and the compilation
-    // to take it from: preferably the one whose entry declares it.
-    let mut found: Vec<(String, Compilation)> = Vec::new();
+    let mut loader = ws.loader();
+    // Each distinct declaration: where its file is (the loader's location, so a file of a
+    // package in the project, also compiled as a project file, is one file), `file:line` to
+    // show, and the compilation to take it from: preferably the one whose entry declares it.
+    let mut found: Vec<(Option<PathBuf>, String, Compilation)> = Vec::new();
     let mut errors = false;
     for f in &files {
-        let c = match roadbook_compiler::compile(&mut ws.loader(), f, &options) {
+        let c = match roadbook_compiler::compile(&mut loader, f, &options) {
             Ok(c) => c,
             Err(e) => return (None, report::fatal(e)),
         };
@@ -167,10 +175,21 @@ fn search(name: &str) -> (Option<Ir>, Exit) {
             Some(p) => format!("{p}/{}:{}", src.path, m.span.line),
             None => format!("{}:{}", src.path, m.span.line),
         };
-        match found.iter_mut().find(|(p, _)| *p == place) {
-            Some(slot) if file == 0 => slot.1 = c,
+        let location = loader.location(&FileRef {
+            package: src.package.clone(),
+            path: src.path.clone(),
+        });
+        let same = |(l, p, _): &&mut (Option<PathBuf>, String, Compilation)| match (l, &location) {
+            (Some(l), Some(here)) => l == here,
+            _ => *p == place,
+        };
+        match found.iter_mut().find(same) {
+            Some(slot) if file == 0 => {
+                slot.1 = place;
+                slot.2 = c;
+            }
             Some(_) => {}
-            None => found.push((place, c)),
+            None => found.push((location, place, c)),
         }
     }
     if errors {
@@ -189,12 +208,12 @@ fn search(name: &str) -> (Option<Ir>, Exit) {
             )),
         ),
         1 => {
-            let (_, c) = found.pop().unwrap();
+            let (_, _, c) = found.pop().unwrap();
             let exit = report::diagnostics(&c, false);
             (c.ir, exit)
         }
         n => {
-            let mut places: Vec<&str> = found.iter().map(|(p, _)| p.as_str()).collect();
+            let mut places: Vec<&str> = found.iter().map(|(_, p, _)| p.as_str()).collect();
             places.sort();
             (
                 None,
@@ -214,6 +233,8 @@ pub enum End {
     Final,
     /// At a state with no step out.
     Stuck,
+    /// Where every step out was taken already on the path: going on would repeat one.
+    Loop,
 }
 
 /// One transition taken.
@@ -336,6 +357,14 @@ impl<'a> Graph<'a> {
             }
         }
         let mut all: Vec<(&'a str, usize, &'a Transition)> = Vec::new();
+        if leaf.kind == StateKind::Parallel {
+            // The transitions in its regions that leave it are ways out of it too, as for
+            // `roadbook check` (RB0902): innermost first, so before its own.
+            let inside = format!("{at}.");
+            for c in &leaf.states {
+                self.region_exits(c, &inside, &mut all);
+            }
+        }
         let mut up = Some(at);
         while let Some(id) = up {
             for (i, t) in self.states[id].transitions.iter().enumerate() {
@@ -358,6 +387,35 @@ impl<'a> Graph<'a> {
             .collect()
     }
 
+    /// The transitions of `s` and the states inside it, in document order, whose target is
+    /// not inside the parallel state whose id is `inside` less its last `.`: the ways out of
+    /// it from its regions. A `done` is not one: a region's ending is the parallel state's.
+    fn region_exits(&self, s: &'a State, inside: &str, out: &mut Vec<(&'a str, usize, &'a Transition)>) {
+        for (i, t) in s.transitions.iter().enumerate() {
+            let leaves = t.target.as_deref().is_some_and(|to| !to.starts_with(inside));
+            if leaves && !matches!(t.trigger, Trigger::Done) {
+                out.push((&s.id, i, t));
+            }
+        }
+        for c in &s.states {
+            self.region_exits(c, inside, out);
+        }
+    }
+
+    /// Lists the path so far, ending at `at`. Returns false once the search must stop.
+    fn record(&mut self, end: End, at: &'a str, steps: &[Step<'a>]) -> bool {
+        if self.found.len() == self.max {
+            self.stopped = Some(Stop::Max);
+            return false;
+        }
+        self.found.push(Path {
+            end,
+            state: at,
+            steps: steps.to_vec(),
+        });
+        true
+    }
+
     /// Searches on from `at`. Returns false once the search must stop.
     fn walk(
         &mut self,
@@ -372,27 +430,20 @@ impl<'a> Graph<'a> {
         self.budget -= 1;
         let options = self.available(at);
         if options.is_empty() {
-            if self.found.len() == self.max {
-                self.stopped = Some(Stop::Max);
-                return false;
-            }
             let leaf = self.states[at];
             let end = if leaf.kind == StateKind::Final && self.parent.get(at) == Some(&self.root) {
                 End::Final
             } else {
                 End::Stuck
             };
-            self.found.push(Path {
-                end,
-                state: at,
-                steps: steps.clone(),
-            });
-            return true;
+            return self.record(end, at, steps);
         }
+        let mut went_on = false;
         for (from, index) in options {
             if !used.insert((from, index)) {
                 continue;
             }
+            went_on = true;
             let owner = self.states[from];
             let t = &owner.transitions[index];
             let to = t.target.as_deref().unwrap();
@@ -411,6 +462,10 @@ impl<'a> Graph<'a> {
             if !go_on {
                 return false;
             }
+        }
+        if !went_on {
+            // Every way on was taken already: the path ends here, where it would loop.
+            return self.record(End::Loop, at, steps);
         }
         true
     }
@@ -473,6 +528,7 @@ pub fn text(name: &str, machine: &Machine, found: &Found) -> String {
             .collect();
         let end = match p.end {
             End::Stuck => " (stuck)".to_string(),
+            End::Loop => " (loops)".to_string(),
             End::Final => {
                 let s = states[p.state];
                 match (&s.output, &s.fail) {
@@ -482,7 +538,11 @@ pub fn text(name: &str, machine: &Machine, found: &Found) -> String {
                 }
             }
         };
-        let line = format!("{head}{start} {}{end}", steps.join(" "));
+        let line = if steps.is_empty() {
+            format!("{head}{start}{end}")
+        } else {
+            format!("{head}{start} {}{end}", steps.join(" "))
+        };
         if line.chars().count() <= WIDTH || steps.is_empty() {
             out.push_str(&line);
         } else {
@@ -530,6 +590,7 @@ pub fn json(name: &str, found: &Found) -> String {
             let end = match p.end {
                 End::Final => "final",
                 End::Stuck => "stuck",
+                End::Loop => "loop",
             };
             format!(
                 "    {{\"end\": \"{end}\", \"state\": {}, \"steps\": [{}]}}",
