@@ -16,6 +16,7 @@ export const LIGHT = `
   --rb-err: #c22a2b;
   --rb-accent: #1f62c9;
   --rb-accent-bg: #e4edfb;
+  --rb-msg: #7a35d6;
   --rb-match: #fff1a8;
   --rb-label-bg: #ffffff;
   --rb-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
@@ -35,6 +36,7 @@ export const DARK = `
   --rb-err: #ff8482;
   --rb-accent: #75adf7;
   --rb-accent-bg: #1c2b45;
+  --rb-msg: #c39bff;
   --rb-match: #5a4a00;
   --rb-label-bg: #15181c;
   --rb-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -95,6 +97,22 @@ export const DIAGRAM_CSS = `
 .rb-label-trigger { font-size: 12px; font-weight: 600; }
 .rb-label-effect { font-size: 11px; fill: var(--rb-muted) !important; }
 .rb-guard { font-weight: 400; }
+/* messaging: events of other machines, send and emit */
+.rb-k-message .rb-edge-line { stroke: var(--rb-msg); }
+.rb-k-message.rb-arrow path { fill: var(--rb-msg); }
+.rb-k-message .rb-port { stroke: var(--rb-msg); }
+.rb-svg .rb-msg { fill: var(--rb-msg) !important; }
+.rb-msg-kw { font-weight: 700; }
+.rb-alias { font-weight: 650; font-style: italic; }
+
+/* the project index's edges: invoke solid, ref dashed, messages in the message colour with open arrows, emitted ones dotted */
+.rb-i-ref .rb-edge-line { stroke-dasharray: 7 4; }
+.rb-i-send .rb-edge-line, .rb-i-emit .rb-edge-line { stroke: var(--rb-msg); stroke-width: 1.4; }
+.rb-i-emit .rb-edge-line { stroke-dasharray: 0.1 4.5; stroke-linecap: round; stroke-width: 2.2; }
+.rb-arrow.rb-i-send path, .rb-arrow.rb-i-emit path { fill: none; stroke: var(--rb-msg); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.rb-ilabel-text { font-size: 11px; }
+.rb-ilabel .rb-ikw { font-weight: 700; }
+.rb-ilabel.rb-i-send .rb-ikw, .rb-ilabel.rb-i-emit .rb-ikw { fill: var(--rb-msg); }
 .rb-label.rb-k-done .rb-label-trigger { fill: var(--rb-ok); }
 .rb-label.rb-k-fail .rb-label-trigger { fill: var(--rb-err); }
 .rb-label .rb-guard { fill: var(--rb-fg); }
@@ -112,12 +130,14 @@ code, .rb-mono { font-family: var(--rb-mono); font-size: 0.92em; }
 .rb-doc { margin: 4px 0 0; color: var(--rb-muted); max-width: 80ch; }
 .rb-t-done { color: var(--rb-ok); }
 .rb-t-fail { color: var(--rb-err); }
+.rb-t-msg { color: var(--rb-msg); }
 
 .rb-legend-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 12.5px; }
 .rb-legend-list li { display: flex; align-items: center; gap: 9px; color: var(--rb-muted); }
 .rb-legend-list code { color: var(--rb-fg); font-weight: 600; }
 .rb-legend-list code.rb-t-done { color: var(--rb-ok); }
 .rb-legend-list code.rb-t-fail { color: var(--rb-err); }
+.rb-legend-list code.rb-t-msg { color: var(--rb-msg); }
 .rb-legend-swatch { flex: none; font-family: var(--rb-mono); }
 .rb-legend-swatch .rb-legend-guard { font-size: 9.5px; }
 
@@ -157,6 +177,9 @@ body.rb-app { height: 100vh; display: grid; grid-template-rows: auto auto minmax
 .rb-canvas > .rb-svg { display: block; width: 100%; height: 100%; }
 .rb-canvas .rb-state, .rb-canvas .rb-edge, .rb-canvas .rb-label, .rb-canvas .rb-machine-link, .rb-canvas .rb-row[data-transition], .rb-canvas .rb-toggle { cursor: pointer; }
 .rb-canvas .rb-state:hover > .rb-box { stroke: var(--rb-fg); }
+.rb-canvas [data-event] { cursor: pointer; }
+.rb-canvas [data-event]:hover { text-decoration: underline; }
+.rb-canvas .rb-msg.rb-selected { text-decoration: underline; font-weight: 700; }
 .rb-canvas .rb-toggle:hover rect { stroke: var(--rb-accent); stroke-width: 2; }
 .rb-canvas .rb-machine-link:hover .rb-pill { stroke-width: 2; }
 .rb-canvas .rb-edge:hover .rb-edge-line, .rb-canvas .rb-edge.rb-hover .rb-edge-line { stroke-width: 2.6; }
@@ -199,6 +222,12 @@ body.rb-app { height: 100vh; display: grid; grid-template-rows: auto auto minmax
 .rb-link.rb-mono { font-family: var(--rb-mono); font-size: 12.5px; }
 .rb-tlink { display: block; width: 100%; font-family: var(--rb-mono); font-size: 12.5px; color: var(--rb-fg); background: none; border: 1px solid var(--rb-border); border-radius: 6px; padding: 5px 8px; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
 .rb-tlink:hover { border-color: var(--rb-accent); }
+.rb-tlink .rb-msg-kw, .rb-list .rb-msg-kw { color: var(--rb-msg); font-weight: 700; }
+.rb-signature .rb-ref { font-size: inherit; }
+.rb-talks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 12.5px; }
+.rb-talks li { font-family: var(--rb-mono); overflow-wrap: anywhere; }
+.rb-talks .rb-rel { font-family: var(--rb-sans); color: var(--rb-muted); }
+.rb-talks .rb-rel.rb-t-msg { color: var(--rb-msg); font-weight: 600; }
 .rb-tlink .rb-arrow-text { color: var(--rb-muted); }
 .rb-tlink .rb-sub { display: block; color: var(--rb-muted); font-size: 12px; }
 .rb-empty { color: var(--rb-muted); font-size: 13px; margin: 0; }
@@ -217,6 +246,7 @@ body.rb-index { min-height: 100vh; }
 .rb-graph .rb-mnode { cursor: pointer; }
 .rb-graph .rb-mnode:hover .rb-box { stroke: var(--rb-accent); stroke-width: 2.4; }
 .rb-graph .rb-mnode .rb-entry-mark { font-size: 10.5px; fill: var(--rb-muted); }
+.rb-index-legend { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 8px 2px 0; }
 .rb-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--rb-surface); border: 1px solid var(--rb-border); border-radius: 8px; }
 .rb-table th, .rb-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--rb-border); vertical-align: top; }
 .rb-table th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--rb-muted); font-weight: 600; }

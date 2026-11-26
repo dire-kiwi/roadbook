@@ -10,7 +10,16 @@ The viewer is [`packages/viewer`](../../packages/viewer) (`@roadbook/viewer`), b
 
 One HTML page per entry chart, plus `index.html` for the project, in `roadbook-viz/` unless `-o` says otherwise. An entry chart is a file given (or found under a directory given, or in the project) that no other of those files imports; its page draws every machine of its compilation. Each page holds its IR. The viewer script, with the layout engine and the styles, is about 1.5 MB, almost all of it `elkjs`, so the pages of one directory share one copy, `roadbook-viewer.js`, loaded by a plain `<script src>` that also works from `file://`. With `--self-contained` every page inlines the script instead and is one file that works alone. Either way there are no network requests and no server, so the pages open from disk, attach to a pull request as a build artifact, and can be published as a static site from CI.
 
-The index lists every machine in the project and draws which machine invokes which. This is the "big state machine that delegates to more specific ones" view: start at the top-level machine and click down.
+The index lists every machine in the project and draws which machine invokes which and which talk to which. This is the "big state machine that delegates to more specific ones" view: start at the top-level machine and click down. Because a machine can only reach another through an invoke or a `ref` it is given ([actors and messaging](actors.md)), the charts alone say who can talk to whom, and the index draws all of it, laid out by ELK with the labels as edge labels:
+
+| Edge | Drawn as |
+| --- | --- |
+| A invokes B | A solid arrow from A to B, unlabelled |
+| A holds a `ref B` (a parameter or variable, or an alias of one) | A dashed arrow from A to B labelled `ref inventory`, the names holding it |
+| A sends B events | An arrow in the message colour with an open head, from A to B, labelled `sends Reserve, Release` |
+| B emits events A handles (`on b.Event` in A) | A dotted arrow in the message colour with an open head, from B to A, labelled `emits Reserved, Rejected` |
+
+A legend under the graph says the same, and the table of machines has a "Talks to" column with each relation in words (`ref Inventory (inventory)`, `sends Reserve, Release to Inventory`, `handles Reserved, Rejected from Inventory`). An emitted event no chart handles draws no edge, since only host code could be listening. A machine of another package is named by its package and its path in it, `inventory/inventory.road:19`, as imports write it.
 
 ## Reading a diagram
 
@@ -22,16 +31,20 @@ The index lists every machine in the project and draws which machine invokes whi
 | Final state | A double border, with its `output` or `fail` |
 | `invoke` of a task | A row inside the state: `invoke chargeCard(order, user)` |
 | `invoke` of a machine | The same row with a badge. Clicking it opens that machine. |
+| `invoke … as upload` | The badge ends with `as upload`, the name in italics |
+| `ref Machine` parameter or variable | In the signature above the diagram and in the details panel, a link that opens that machine |
+| `send upload.Pause { … }`, `emit Progress { … }` | In an edge label or a state's row, an effect line like the others, in the message colour with the keyword in bold. Clicking it opens the event in the machine that declares it: the receiver's for a `send`, the machine's own for an `emit`. |
 | `entry`, `exit`, internal transitions | Rows inside the state |
 | Collapsed compound state | A box with `+`, a bar under it and the row `12 states inside (collapsed)` |
 | Transition on an event | A solid arrow labelled with the event (`on *` for any event) |
+| Transition on an event another machine emitted (`on upload.Progress`) | A solid arrow in the message colour, labelled through the sender: `upload.Progress`. Clicking the name opens the event in the sender's machine. As a row inside a state, `on upload.Progress` with the name in the message colour. |
 | Transition from a state hidden in a collapsed one | The same arrow, leaving the collapsed box from a small square |
 | `done` outcome | A solid arrow labelled `done` |
 | `fail` outcome | An arrow in the error colour labelled `fail CardDeclined` |
 | `after` | A dashed arrow labelled with the delay |
 | `always` | A dotted arrow |
 | Guard | `[attempts < 3]` after the trigger |
-| Effects | `set` and `do` lines under the label, in a quieter style |
+| Effects | `set`, `do`, `send` and `emit` lines under the label, in a quieter style, one per line (also in a state's rows) |
 
 Every distinction is made in text or line style as well as colour, so the diagram reads in greyscale and for colour-blind readers.
 
@@ -61,7 +74,9 @@ The viewer's tests lay out every example, every conformance chart and a stress c
 - Collapse and expand compound states with the `+`/`-` box in their title, a double click or the details panel; the layout is redone. Large charts open with deep levels collapsed; "Expand all" undoes it.
 - Click a state or a transition for its details: doc comment, the invoked task's full signature, guard, effects, and the source location as `file:line`.
 - Click a machine invoke to open the child machine, with a trail back.
-- Search (`/`) by state, event, task, machine, error or action name. Matches are highlighted; choosing one opens its machine, expands what hides it and selects it.
+- The machine's details list the events it accepts and the events it emits, which machines it talks to (invokes, holds a `ref` to, sends which events to, handles which emitted events from) and which machines of the chart talk to it.
+- Click a `send`, an `emit` or the name in an `on upload.Progress` label to open the event in the machine that declares it: its declaration and fields, where that machine handles or emits it, and every place in the chart that sends it or handles it, each a link. The transitions it triggers are highlighted. A `ref` type in a signature opens its machine.
+- Search (`/`) by state, event (declared, sent, emitted or handled), task, machine, error or action name. Matches are highlighted; choosing one opens its machine, expands what hides it and selects it.
 - Light and dark themes, following the system, with a toggle that is remembered.
 
 ## Modes
@@ -80,6 +95,6 @@ Explore is the first milestone. The others arrive as the runtime pieces they dep
 
 ## Other outputs
 
-- **Mermaid.** `roadbook export mermaid <file>` writes Markdown with a `stateDiagram-v2` block per machine; `--machine Name` writes one bare diagram. GitHub renders it inline, so a chart can sit in a README or a pull request description. States, nesting, parallel regions, initial and final states and labelled transitions survive, with invokes, `entry`, `exit`, internal transitions and results as state descriptions (a note beside a compound or parallel state, which Mermaid allows no description). A state named like a Mermaid keyword gets an id ending in `_`, and the machine drawn as a state the id `<Machine>_machine`; the names shown are unchanged. A machine's doc comment is a `text` block, so nothing in it is read as Markdown. It loses the line styles, the detail panel and the drill-down, and its layout is coarser.
+- **Mermaid.** `roadbook export mermaid <file>` writes Markdown with a `stateDiagram-v2` block per machine; `--machine Name` writes one bare diagram. GitHub renders it inline, so a chart can sit in a README or a pull request description. States, nesting, parallel regions, initial and final states and labelled transitions survive, with invokes, `entry`, `exit`, internal transitions and results as state descriptions (a note beside a compound or parallel state, which Mermaid allows no description). Messaging is written as in the chart: `upload.Progress` as a trigger, `send upload.Pause` and `emit Progress { … }` as effects, `invoke machine Upload(file) as upload`; the source line of a machine from another package names the package (`inventory/inventory.road:19`). A state named like a Mermaid keyword gets an id ending in `_`, and the machine drawn as a state the id `<Machine>_machine`; the names shown are unchanged. A machine's doc comment is a `text` block, so nothing in it is read as Markdown. It loses the line styles, the detail panel and the drill-down, and its layout is coarser.
 - **Static SVG.** For documentation, from `packages/viewer/scripts/svg.ts`. The CLI has no command for it yet, since it needs a JavaScript runtime to run ELK.
 - **Live.** `roadbook viz --watch [--port N]` rebuilds when a chart changes and serves the output on `127.0.0.1` (port 7357 by default), and the pages reload themselves. It answers only requests whose `Host` is `localhost`, `127.0.0.1` or `[::1]` with its port, so another site cannot read the charts by pointing a DNS name at the machine. Later, a running application can stream its trace to the viewer for a live view of what it is doing.

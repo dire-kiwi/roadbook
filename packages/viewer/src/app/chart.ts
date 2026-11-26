@@ -10,7 +10,7 @@ import type { Ir } from '../ir.ts'
 import { own } from '../ir.ts'
 import type { ElkLike, Layout } from '../layout.ts'
 import { defaultCollapsed, layoutMachine } from '../layout.ts'
-import { ancestorIds, openingMachine, transitionId } from '../model.ts'
+import { ancestorIds, openingMachine, parseEventKey, transitionId, walkStates } from '../model.ts'
 import type { Measure } from '../model.ts'
 import { panelHtml } from '../panel.ts'
 import type { Selection } from '../panel.ts'
@@ -73,7 +73,8 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   const searchIndex = buildSearchIndex(ir)
 
   let current = ''
-  let trail: string[] = []
+  /** The machines opened, each with how it was reached from the one before (`invokes ›`, `›`). */
+  let trail: { name: string; via: string }[] = []
   let selection: Selection = null
   let svg: SVGSVGElement | null = null
   let layout: Layout | null = null
@@ -163,10 +164,10 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     const t = $(root, '#rb-trail')
     t.hidden = trail.length < 2
     t.innerHTML = trail
-      .map((m, i) =>
-        i === trail.length - 1
-          ? `<span aria-current="page">${esc(m)}</span>`
-          : `<button class="rb-link rb-mono" type="button" data-trail="${i}">${esc(m)}</button><span class="rb-sep-text">invokes ›</span>`,
+      .map(
+        (m, i) =>
+          (i > 0 ? `<span class="rb-sep-text">${esc(m.via)}</span> ` : '') +
+          (i === trail.length - 1 ? `<span aria-current="page">${esc(m.name)}</span>` : `<button class="rb-link rb-mono" type="button" data-trail="${i}">${esc(m.name)}</button>`),
       )
       .join(' ')
   }
@@ -179,13 +180,27 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     expandBtn.title = set.size ? `${set.size} state${set.size === 1 ? ' is' : 's are'} collapsed` : 'Collapse the states this chart opens with collapsed'
   }
 
-  function openMachine(name: string, how: 'invoke' | 'tab') {
+  /**
+   * Opens a machine. `invoke`: drilled into from an invoke, `link`: reached from a ref or a
+   * message, both added to the trail; `tab`: a fresh trail.
+   */
+  function openMachine(name: string, how: 'invoke' | 'link' | 'tab', select: Selection = null) {
     if (!own(ir.machines, name)) return
-    if (how === 'invoke') {
-      const at = trail.indexOf(name)
-      trail = at >= 0 ? trail.slice(0, at + 1) : [...trail, name]
-    } else trail = [name]
-    void show(name)
+    if (how === 'tab') trail = [{ name, via: '' }]
+    else {
+      const at = trail.findIndex((t) => t.name === name)
+      trail = at >= 0 ? trail.slice(0, at + 1) : [...trail, { name, via: how === 'invoke' ? 'invokes ›' : '›' }]
+    }
+    return show(name, { select })
+  }
+
+  /** Opens an event (`Upload.Progress`): selects it, in its own machine. */
+  function openEvent(key: string) {
+    const ref = parseEventKey(key)
+    if (!ref || !own(ir.machines, ref.machine)) return
+    const sel: Selection = { type: 'event', name: ref.event }
+    if (ref.machine === current) select(sel)
+    else void openMachine(ref.machine, 'link', sel)
   }
 
   // ───────────── collapse and expand ─────────────
@@ -205,7 +220,7 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     const collapse = !collapsedOf(current).has(id)
     setCollapsed([id], collapse)
     // Collapsing hides what was selected inside.
-    if (collapse && selection) {
+    if (collapse && selection && selection.type !== 'event') {
       const sid = selection.type === 'state' ? selection.id : selection.state
       if (sid.startsWith(id + '.')) selection = { type: 'state', id }
     }
@@ -243,17 +258,28 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     for (const m of matches) {
       if (m.machine !== current || !m.target) continue
       if (m.target.type === 'state') stateEl(visibleId(m.target.id))?.classList.add('rb-match')
-      else transitionEls(m.target.state, m.target.index).forEach((el) => el.classList.add('rb-match'))
+      else if (m.target.type === 'transition') transitionEls(m.target.state, m.target.index).forEach((el) => el.classList.add('rb-match'))
     }
     if (!selection) return
     if (selection.type === 'state') stateEl(visibleId(selection.id))?.classList.add('rb-selected')
-    else transitionEls(selection.state, selection.index).forEach((el) => el.classList.add('rb-selected'))
+    else if (selection.type === 'transition') transitionEls(selection.state, selection.index).forEach((el) => el.classList.add('rb-selected'))
+    else {
+      // An event: where it is emitted or sent here, and the transitions it triggers.
+      const name = selection.name
+      svg.querySelectorAll(`[data-event="${q(`${current}.${name}`)}"]`).forEach((el) => el.classList.add('rb-selected'))
+      const m = own(ir.machines, current)!
+      walkStates(m.root, (st) =>
+        st.transitions.forEach((t, i) => {
+          if (t.trigger.kind === 'event' && t.trigger.event === name) transitionEls(st.id, i).forEach((el) => el.classList.add('rb-selected'))
+        }),
+      )
+    }
   }
 
   function reveal(sel: Selection) {
     if (!sel || !layout) return
     if (sel.type === 'state') viewport.reveal(layout.nodes[visibleId(sel.id)])
-    else {
+    else if (sel.type === 'transition') {
       const e = layout.edges[transitionId(sel.state, sel.index)]
       viewport.reveal(e?.label ?? layout.nodes[visibleId(sel.state)])
     }
@@ -266,13 +292,10 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     if (opts.reveal) reveal(sel)
   }
 
-  /** Selects a state or transition, expanding the collapsed states that hide it. */
-  async function goTo(machine: string, sel: Selection) {
-    if (machine !== current) {
-      trail = [machine]
-      await show(machine)
-    }
-    if (sel) {
+  /** Selects a state, transition or event, expanding the collapsed states that hide it. */
+  async function goTo(machine: string, sel: Selection, how: 'link' | 'tab' = 'tab') {
+    if (machine !== current) await openMachine(machine, how)
+    if (sel && sel.type !== 'event') {
       const id = sel.type === 'state' ? sel.id : sel.state
       if (setCollapsed(ancestorIds(id), false)) await draw({ keepView: true })
     }
@@ -290,8 +313,10 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     const target = ev.target as Element
     const tog = target.closest<SVGElement>('[data-toggle]')
     if (tog) return void toggle(tog.dataset.toggle!)
+    const msg = target.closest<SVGElement>('[data-event]')
+    if (msg) return openEvent(msg.dataset.event!)
     const link = target.closest<SVGElement>('.rb-machine-link')
-    if (link) return openMachine(link.dataset.machine!, 'invoke')
+    if (link) return void openMachine(link.dataset.machine!, 'invoke')
     const tr = target.closest<SVGElement>('[data-transition]')
     if (tr) {
       const owner = tr.closest<SVGElement>('[data-state]')
@@ -315,19 +340,30 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
 
   $(root, '#rb-tabs').addEventListener('click', (ev) => {
     const b = (ev.target as Element).closest<HTMLElement>('[data-machine]')
-    if (b && b.dataset.machine !== current) openMachine(b.dataset.machine!, 'tab')
+    if (b && b.dataset.machine !== current) void openMachine(b.dataset.machine!, 'tab')
   })
   $(root, '#rb-trail').addEventListener('click', (ev) => {
     const b = (ev.target as Element).closest<HTMLElement>('[data-trail]')
     if (!b) return
     trail = trail.slice(0, Number(b.dataset.trail) + 1)
-    void show(trail[trail.length - 1]!)
+    void show(trail[trail.length - 1]!.name)
+  })
+  // The signature's `ref Machine` types open that machine.
+  $(root, '#rb-machine-head').addEventListener('click', (ev) => {
+    const b = (ev.target as Element).closest<HTMLElement>('[data-open-machine]')
+    if (b) void openMachine(b.dataset.openMachine!, 'link')
   })
   panel.addEventListener('click', (ev) => {
     const b = (ev.target as Element).closest<HTMLElement>('button')
     if (!b) return
-    if (b.dataset.openMachine) openMachine(b.dataset.openMachine, 'invoke')
-    else if (b.dataset.toggle) void toggle(b.dataset.toggle)
+    if (b.dataset.openMachine) {
+      // Drilling into an invoke, or following a ref, a message or a caller.
+      void openMachine(b.dataset.openMachine, b.dataset.via === 'invoke' ? 'invoke' : 'link')
+    } else if (b.dataset.openEvent) openEvent(b.dataset.openEvent)
+    else if (b.dataset.goto) {
+      const [machine, sel] = JSON.parse(b.dataset.goto) as [string, Selection]
+      void goTo(machine, sel, 'link')
+    } else if (b.dataset.toggle) void toggle(b.dataset.toggle)
     else if (b.dataset.selectState) void goTo(current, { type: 'state', id: b.dataset.selectState })
     else if (b.dataset.selectTransition) {
       const [state, index] = JSON.parse(b.dataset.selectTransition) as [string, number]
@@ -378,7 +414,7 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     if (!m) return
     results.hidden = true
     if (m.target) void goTo(m.machine, m.target)
-    else openMachine(m.machine, 'tab')
+    else void openMachine(m.machine, 'tab')
   }
   searchInput.addEventListener('input', () => {
     active = 0
@@ -425,10 +461,10 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     panel.innerHTML = '<p class="rb-empty">This chart declares no machine.</p>'
     return
   }
-  trail = [first]
+  trail = [{ name: first, via: '' }]
   void show(first)
   window.addEventListener('hashchange', () => {
     const name = fromHash()
-    if (own(ir.machines, name) && name !== current) openMachine(name, 'tab')
+    if (own(ir.machines, name) && name !== current) void openMachine(name, 'tab')
   })
 }

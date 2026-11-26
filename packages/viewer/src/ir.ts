@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.1) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.2) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -69,12 +69,26 @@ export type StateKind = 'atomic' | 'compound' | 'parallel' | 'final'
 export interface Invoke {
   kind: 'task' | 'machine'
   src: string
+  /** `invoke Machine(…) as name`: the name the state sends to and receives from, or null. */
+  as: string | null
   args: Expr[]
   span: Span
 }
 
+/** Another running machine: the receiver of a `send`, the sender of an `emitted` trigger. */
+export interface Address {
+  /** `child`: an `invoke … as name`; `ref`: a parameter or variable of type `ref Machine`. */
+  kind: 'child' | 'ref'
+  name: string
+  /** The machine at the other end, a key of `machines`. */
+  machine: string
+  /** For a child, the id of the invoking state; null for a ref. */
+  state: string | null
+}
+
 export type Trigger =
   | { kind: 'event'; event: string }
+  | { kind: 'emitted'; from: Address; event: string }
   | { kind: 'any' }
   | { kind: 'after'; delay: Expr }
   | { kind: 'always' }
@@ -85,6 +99,8 @@ export type Trigger =
 export type Effect =
   | { kind: 'set'; var: string; value: Expr }
   | { kind: 'do'; action: string; args: Expr[] }
+  | { kind: 'send'; to: Address; event: string; value: Expr }
+  | { kind: 'emit'; event: string; value: Expr }
 
 export interface Transition {
   trigger: Trigger
@@ -119,13 +135,16 @@ export interface Machine {
   errors: string[]
   vars: Var[]
   events: Record<string, EventDecl>
+  /** Events the machine emits (`emits Name { fields }`), to its invoker and every holder of a ref to it. */
+  emits: Record<string, EventDecl>
   root: State
   hash: string
 }
 
 export interface Ir {
   irVersion: string
-  sources: { path: string }[]
+  /** `package`: null for a file of the project, else the package's name as imports write it. */
+  sources: { path: string; package: string | null }[]
   types: Record<string, TypeDecl>
   functions: Record<string, FunctionDecl>
   actions: Record<string, ActionDecl>
@@ -143,4 +162,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.1'
+export const IR_VERSION = '0.2'

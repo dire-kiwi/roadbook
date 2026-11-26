@@ -7,7 +7,9 @@
 //! What Mermaid can show: states, nesting, parallel regions (`--`), initial (`[*] -->`) and
 //! final (`--> [*]`) states, transitions labelled with trigger, guard and effects, and a
 //! state's invoke, `entry`, `exit`, internal transitions and `output`/`fail` as its
-//! description. Mermaid allows no description on a state with states inside, so a compound or
+//! description. Messaging is written as in the chart: `on upload.Progress` as the trigger
+//! `upload.Progress`, `send upload.Pause` and `emit Progress { … }` as effects, and
+//! `invoke machine Upload(file) as upload`. Mermaid allows no description on a state with states inside, so a compound or
 //! parallel state (and the machine, when it is drawn as a state) has them in a note beside it.
 //! What it loses: the line styles of the kinds of transition, the details panel, drill-down
 //! into invoked machines, and the viewer's layout.
@@ -86,10 +88,15 @@ pub fn markdown(ir: &Ir) -> String {
         if i > 0 {
             out.push('\n');
         }
+        // A file of another package as imports name it: `inventory/inventory.road`.
         let source = ir
             .sources
             .get(m.span.file as usize)
-            .map_or("?", |s| s.path.as_str());
+            .map_or("?".into(), |s| {
+                s.package
+                    .as_ref()
+                    .map_or(s.path.clone(), |p| format!("{p}/{}", s.path))
+            });
         let _ = writeln!(
             out,
             "## {name}\n\n{}\n",

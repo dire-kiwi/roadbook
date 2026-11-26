@@ -491,7 +491,42 @@ fn viz_names_pages_after_their_entries_and_reports_errors() {
         assert!(out.join(page).is_file(), "{page}");
     }
     let index = page_data(&std::fs::read_to_string(out.join("index.html")).unwrap());
-    assert_eq!(index["index"]["machines"].as_array().unwrap().len(), 11);
+    let machines = index["index"]["machines"].as_array().unwrap();
+    assert_eq!(machines.len(), 11);
+    // Who talks to whom (`projectIndex` in packages/viewer/src/project.ts builds the same).
+    let at = |name: &str| machines.iter().position(|m| m["name"] == name).unwrap();
+    let (order, inventory) = (&machines[at("Order")], at("Inventory"));
+    assert_eq!(
+        order["refs"],
+        serde_json::json!([{ "to": inventory, "names": ["inventory"] }])
+    );
+    assert_eq!(
+        order["sends"],
+        serde_json::json!([{ "to": inventory, "events": ["Reserve", "Release"] }])
+    );
+    assert_eq!(
+        order["receives"],
+        serde_json::json!([{ "from": inventory, "events": ["Reserved", "Rejected"] }])
+    );
+    let (publish, upload) = (&machines[at("Publish")], at("Upload"));
+    assert_eq!(publish["invokes"], serde_json::json!([upload]));
+    assert_eq!(publish["refs"], serde_json::json!([]));
+    assert_eq!(
+        publish["sends"],
+        serde_json::json!([{ "to": upload, "events": ["Pause", "Resume"] }])
+    );
+    assert_eq!(
+        publish["receives"],
+        serde_json::json!([{ "from": upload, "events": ["Progress"] }])
+    );
+    // A machine of another package is named by its package and its path in it.
+    assert_eq!(machines[inventory]["source"], "inventory/inventory.road:19");
+    for m in machines {
+        if m["name"] != "Order" && m["name"] != "Publish" {
+            assert_eq!(m["sends"], serde_json::json!([]), "{m}");
+            assert_eq!(m["receives"], serde_json::json!([]), "{m}");
+        }
+    }
 
     let dir = project(
         "viz-bad",
@@ -811,6 +846,8 @@ fn viewer_test_charts_are_fresh() {
         ),
         ("examples/webhook/webhook.road", "webhook-webhook"),
         ("examples/import-job/import.road", "import-job-import"),
+        ("examples/upload/publish.road", "upload-publish"),
+        ("examples/orders/orders.road", "orders-orders"),
         ("packages/viewer/test/charts/stress.road", "charts-stress"),
         ("packages/viewer/test/charts/edges.road", "charts-edges"),
         ("packages/viewer/test/charts/escape.road", "charts-escape"),
