@@ -1,6 +1,6 @@
 //! `start` and `step`, exactly as `spec/execution.md` gives them.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 use roadbook_ir::{
     Address, AddressKind, Effect, Machine, State, StateKind, Transition, Trigger, TypeRef,
@@ -277,8 +277,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         let state = self.state(s);
         match state.kind {
             StateKind::Compound => {
-                if let Some(init) = &state.initial {
-                    let c = self.index_of(init);
+                if state.initial.is_some() {
+                    let c = self.idx.initial[s].expect("an initial state is a child");
                     out.push(c);
                     self.default_entry_into(c, out);
                 }
@@ -536,16 +536,17 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         &mut self,
         mut first: impl FnMut(&mut Self, usize) -> R<Option<Tr>>,
     ) -> R<Vec<Tr>> {
-        let mut offered: HashMap<usize, Option<Tr>> = HashMap::new();
+        // A run has few active states: a list is quicker than a map.
+        let mut offered: Vec<(usize, Option<Tr>)> = Vec::new();
         let mut enabled: Vec<Tr> = Vec::new();
         for leaf in self.active_leaves() {
             let mut cur = Some(leaf);
             while let Some(s) = cur {
-                let t = match offered.get(&s) {
-                    Some(t) => *t,
+                let t = match offered.iter().find(|(o, _)| *o == s) {
+                    Some((_, t)) => *t,
                     None => {
                         let t = first(self, s)?;
-                        offered.insert(s, t);
+                        offered.push((s, t));
                         t
                     }
                 };
@@ -587,10 +588,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     }
 
     fn target(&self, (source, index): Tr) -> Option<usize> {
-        self.state(source).transitions[index]
-            .target
-            .as_ref()
-            .map(|id| self.index_of(id))
+        self.idx.targets[source][index]
     }
 
     /// The domain of a transition from `source` to `target`: the root for one of the root's,

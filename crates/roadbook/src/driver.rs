@@ -87,7 +87,7 @@ pub(crate) struct Driver<'a> {
     dues: BTreeMap<u64, u64>,
     /// The due times of the snapshot this run was restored from, for `timer.fire`.
     restored_dues: BTreeMap<u64, u64>,
-    snap: Snapshot,
+    snap: Arc<Snapshot>,
     final_state: Option<String>,
     cancel_requested: bool,
     cancel_taken: bool,
@@ -403,7 +403,7 @@ impl<'a> Driver<'a> {
             timers: BTreeMap::new(),
             dues: BTreeMap::new(),
             restored_dues: BTreeMap::new(),
-            snap: blank(),
+            snap: Arc::new(blank()),
             final_state: None,
             cancel_requested: false,
             cancel_taken: false,
@@ -503,7 +503,7 @@ impl<'a> Driver<'a> {
     /// Takes the core's snapshot. A run closes as soon as its core gives a snapshot that is
     /// not `running`, before that step's commands are carried out.
     fn set_snapshot(&mut self, snap: Snapshot) {
-        self.snap = snap;
+        self.snap = Arc::new(snap);
         if self.snap.status != Status::Running {
             self.close();
         }
@@ -531,10 +531,11 @@ impl<'a> Driver<'a> {
         let timers = &self.snap.timers;
         self.dues.retain(|id, _| timers.iter().any(|t| t.id == *id));
         let now = self.config.timer.now();
-        let saved = Saved::new(&self.snap, |t| {
-            self.dues.get(&t.id).copied().unwrap_or(due(now, t.delay))
-        });
-        self.shared.set_saved(saved);
+        let dues = timers
+            .iter()
+            .map(|t| self.dues.get(&t.id).copied().unwrap_or(due(now, t.delay)))
+            .collect();
+        self.shared.publish(self.snap.clone(), dues);
     }
 
     /// The next input: a cancel request if there is one, else the front of the queue; or, for
@@ -892,6 +893,9 @@ impl<'a> Driver<'a> {
     fn write(&mut self, record: Record) {
         if let Record::Done { state, .. } | Record::Failed { state, .. } = &record {
             self.final_state = Some(state.clone());
+        }
+        if !self.config.sink.enabled() {
+            return;
         }
         let record = TraceRecord {
             t: self.config.timer.now(),
