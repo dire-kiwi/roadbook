@@ -237,3 +237,204 @@ fn an_optional_alias_var_starts_as_null() {
     let (s, _) = p.start("M", "r1", Map::new(), &mut no_fns).unwrap();
     assert_eq!(s.vars.get("s"), Some(&Value::Null));
 }
+
+fn event(tag: &str) -> Input {
+    Input::Event {
+        value: json!({"_tag": tag}),
+    }
+}
+
+/// The states entered, in order.
+fn entered(commands: &[Command]) -> Vec<&str> {
+    records(commands)
+        .into_iter()
+        .filter_map(|r| match r {
+            Record::Entered { state } => Some(state.as_str()),
+            _ => None,
+        })
+        .collect()
+}
+
+const HISTORY: &str = r#"
+machine M() {
+  event Go
+  event Out
+  event Back
+  event Deep
+  event Jump
+  event Stop
+
+  initial Q
+
+  state P {
+    initial A
+    history H
+    deep history D
+
+    state A {
+      on Go   -> B
+      on Jump -> H
+    }
+    state B {
+      initial B1
+      state B1 {
+        on Go   -> B2
+        on Jump -> P.H
+      }
+      state B2 {}
+    }
+
+    on Out  -> Q
+    on Stop -> Z
+  }
+
+  state Q {
+    on Back -> P.H
+    on Deep -> P.D
+  }
+
+  final state Z {}
+}
+"#;
+
+#[test]
+fn history_is_recorded_when_a_microstep_exits_the_parent_only() {
+    let p = program(HISTORY);
+    let mut s = p.start("M", "r1", Map::new(), &mut no_fns).unwrap().0;
+    assert!(s.history.is_empty());
+    for e in ["Back", "Go", "Go"] {
+        s = p.step(&s, event(e), &mut no_fns).0;
+    }
+    // Moving inside `P` exits states below it, not `P`: nothing is recorded.
+    assert_eq!(s.active, ["M", "M.P", "M.P.B", "M.P.B.B2"]);
+    assert!(s.history.is_empty());
+
+    // Cancelling exits `P` without recording.
+    let (cancelled, _) = p.step(&s, Input::Cancel, &mut no_fns);
+    assert_eq!(cancelled.status, Status::Cancelled);
+    assert!(cancelled.history.is_empty());
+
+    // Leaving `P` records where it was, the shallow and the deep way.
+    let out = p.step(&s, event("Out"), &mut no_fns).0;
+    let recorded = json!({"M.P.D": ["M.P.B.B2"], "M.P.H": ["M.P.B"]});
+    assert_eq!(serde_json::to_value(&out.history).unwrap(), recorded);
+
+    // Returning enters `B` by its default entry, `B1`. The microstep that leaves `P` for
+    // `Z` records again, each record replacing the one before; finishing then exits every
+    // state but records nothing more.
+    let back = p.step(&out, event("Back"), &mut no_fns).0;
+    assert_eq!(back.active, ["M", "M.P", "M.P.B", "M.P.B.B1"]);
+    let (done, _) = p.step(&back, event("Stop"), &mut no_fns);
+    assert_eq!(done.status, Status::Done);
+    assert_eq!(
+        serde_json::to_value(&done.history).unwrap(),
+        json!({"M.P.D": ["M.P.B.B1"], "M.P.H": ["M.P.B"]})
+    );
+}
+
+#[test]
+fn a_history_state_with_no_record_enters_its_parents_default_entry() {
+    let p = program(HISTORY);
+    let s = p.start("M", "r1", Map::new(), &mut no_fns).unwrap().0;
+    // From outside the parent: the parent, then its initial chain.
+    for e in ["Back", "Deep"] {
+        let (s, commands) = p.step(&s, event(e), &mut no_fns);
+        assert_eq!(entered(&commands), ["M.P", "M.P.A"]);
+        assert_eq!(s.active, ["M", "M.P", "M.P.A"]);
+    }
+    // From inside it: the domain is the parent, which is neither exited nor entered.
+    let s = p.step(&s, event("Back"), &mut no_fns).0;
+    let (s, commands) = p.step(&s, event("Jump"), &mut no_fns);
+    let kinds: Vec<Value> = records(&commands).iter().map(|r| r.to_value()).collect();
+    assert_eq!(
+        kinds,
+        [
+            json!({"kind": "event", "event": {"kind": "event", "value": {"_tag": "Jump"}}}),
+            json!({"kind": "transition", "from": "M.P.A", "index": 1, "to": "M.P.H"}),
+            json!({"kind": "exited", "state": "M.P.A"}),
+            json!({"kind": "entered", "state": "M.P.A"}),
+        ]
+    );
+    assert_eq!(s.active, ["M", "M.P", "M.P.A"]);
+    assert!(s.history.is_empty());
+
+    // With a record, from inside: what the parent recorded when it was last exited (`B`,
+    // by its default entry), not where it is now.
+    let mut s = s;
+    for e in ["Go", "Out", "Back"] {
+        s = p.step(&s, event(e), &mut no_fns).0;
+    }
+    assert_eq!(s.active, ["M", "M.P", "M.P.B", "M.P.B.B1"]);
+    let (s, commands) = p.step(&s, event("Jump"), &mut no_fns);
+    assert_eq!(entered(&commands), ["M.P.B", "M.P.B.B1"]);
+    assert_eq!(s.active, ["M", "M.P", "M.P.B", "M.P.B.B1"]);
+
+    // A deep record, from outside: the leaf itself, with nothing entered by default.
+    let mut s = p.step(&s, event("Go"), &mut no_fns).0;
+    s = p.step(&s, event("Out"), &mut no_fns).0;
+    let (s, commands) = p.step(&s, event("Deep"), &mut no_fns);
+    assert_eq!(entered(&commands), ["M.P", "M.P.B", "M.P.B.B2"]);
+    assert_eq!(s.active, ["M", "M.P", "M.P.B", "M.P.B.B2"]);
+}
+
+#[test]
+fn a_deep_history_state_restores_every_region_and_regions_off_the_record_are_filled() {
+    let p = program(
+        r#"
+machine M() {
+  event Go
+  event Out
+  event Back
+  event Deep
+
+  initial P
+
+  parallel state P {
+    deep history D
+
+    state X {
+      initial A
+      deep history H
+      state A { on Go -> A2 }
+      state A2 {}
+    }
+    state Y {
+      initial B
+      state B { on Go -> B2 }
+      state B2 {}
+    }
+
+    on Out -> Q
+  }
+
+  state Q {
+    on Back -> P.X.H
+    on Deep -> P.D
+  }
+}
+"#,
+    );
+    let mut s = p.start("M", "r1", Map::new(), &mut no_fns).unwrap().0;
+    s = p.step(&s, event("Go"), &mut no_fns).0;
+    s = p.step(&s, event("Out"), &mut no_fns).0;
+    assert_eq!(
+        serde_json::to_value(&s.history).unwrap(),
+        json!({"M.P.D": ["M.P.X.A2", "M.P.Y.B2"], "M.P.X.H": ["M.P.X.A2"]})
+    );
+    // The parallel state's deep history: a leaf in every region, none entered by default.
+    let (back, commands) = p.step(&s, event("Deep"), &mut no_fns);
+    assert_eq!(
+        entered(&commands),
+        ["M.P", "M.P.X", "M.P.X.A2", "M.P.Y", "M.P.Y.B2"]
+    );
+    assert_eq!(
+        back.active,
+        ["M", "M.P", "M.P.X", "M.P.X.A2", "M.P.Y", "M.P.Y.B2"]
+    );
+    // A region's history: the other region gets its default entry.
+    let (_, commands) = p.step(&s, event("Back"), &mut no_fns);
+    assert_eq!(
+        entered(&commands),
+        ["M.P", "M.P.X", "M.P.X.A2", "M.P.Y", "M.P.Y.B"]
+    );
+}
