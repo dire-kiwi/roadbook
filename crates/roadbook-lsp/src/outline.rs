@@ -1,5 +1,5 @@
 //! The outline of a file: its declarations, and in a machine its parameters, variables,
-//! events and states, nested as they are written. Built from the syntax tree alone, so it
+//! events, `children` collections and states, nested as they are written. Built from the syntax tree alone, so it
 //! is there even when the file does not compile.
 
 use lsp_types::{DocumentSymbol, SymbolKind as Kind};
@@ -130,6 +130,14 @@ impl Outline<'_> {
                         self.fields(&e.fields),
                     ));
                 }
+                Item::Children(c) => out.push(self.symbol(
+                    &c.name.name,
+                    Kind::ARRAY,
+                    Some(format!("{} by {}", c.machine.name, type_text(&c.key))),
+                    c.span,
+                    c.name.span,
+                    vec![],
+                )),
                 Item::State(s) => out.push(self.state(s)),
                 _ => {}
             }

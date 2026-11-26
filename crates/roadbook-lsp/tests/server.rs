@@ -731,6 +731,158 @@ fn as_names_of_states_side_by_side_may_be_the_same() {
     c.shutdown();
 }
 
+const HUB: &str = r#"error Lost { reason: string }
+action log(what: string)
+
+machine Session(name: string) -> int ! Lost {
+  event Notify { text: string }
+  emits Typing { key: string }
+  initial Open
+  state Open {
+    on Notify -> Left  emit Typing { key: event.text }
+  }
+  final state Left { output 1 }
+}
+
+machine Hub(greeting: string) {
+  event Join { id: string }
+  event Kick { id: string }
+  event Shout
+  event Close
+  /// The open sessions.
+  children sessions: Session by string
+  var open: int = 0
+  initial Serving
+  state Serving {
+    on Join            spawn sessions[event.id] = Session(greeting)  send sessions[event.id].Notify { text: "hi" }
+    on Kick            stop sessions[event.id]
+    on Shout           send sessions.*.Notify { text: greeting }
+    on sessions.Typing do log(key)
+    on sessions.done   set open = open - 1
+    on sessions.fail * do log(error.reason)
+    on Close           -> Closed
+  }
+  final state Closed {}
+}
+"#;
+
+#[test]
+fn children_collections() {
+    let p = Project::new("children", &[("c.road", HUB)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, HUB);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // Every use of the collection goes to its declaration.
+    let uses = [
+        "spawn ^sessions[",
+        "send ^sessions[",
+        "stop ^sessions[",
+        "send ^sessions.*",
+        "on ^sessions.Typing",
+        "on ^sessions.done",
+        "on ^sessions.fail",
+    ];
+    for from in uses {
+        let loc = c
+            .request("textDocument/definition", at(&uri, HUB, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(HUB, "children ^sessions"),
+            "{from}"
+        );
+    }
+    let mut params = at(&uri, HUB, "children ^sessions");
+    params["context"] = json!({ "includeDeclaration": false });
+    let refs = c.request("textDocument/references", params).unwrap();
+    assert_eq!(refs.as_array().unwrap().len(), uses.len(), "{refs}");
+
+    // Hover: the declaration, what it belongs to and its doc comment.
+    let hover = c
+        .request("textDocument/hover", at(&uri, HUB, "stop ^sessions"))
+        .unwrap();
+    let value = hover["contents"]["value"].as_str().unwrap();
+    assert!(
+        value.starts_with("```roadbook\nchildren sessions: Session by string\n```"),
+        "{value}"
+    );
+    assert!(value.contains("children collection of `Hub`"), "{value}");
+    assert!(value.contains("The open sessions."), "{value}");
+
+    // The outline lists it among the machine's members.
+    let symbols = c
+        .request(
+            "textDocument/documentSymbol",
+            json!({ "textDocument": { "uri": uri } }),
+        )
+        .unwrap();
+    let hub = symbols
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["name"] == "Hub")
+        .unwrap();
+    let names: Vec<&str> = hub["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "greeting", "Join", "Kick", "Shout", "Close", "sessions", "open", "Serving", "Closed"
+        ]
+    );
+    let sessions = &hub["children"][5];
+    assert_eq!(sessions["detail"], "Session by string");
+    assert_eq!(slice(HUB, &sessions["selectionRange"]), "sessions");
+
+    // Rename: a collection shares the machine's namespace with its parameters, variables
+    // and `as` names, and cannot be called `key`.
+    let why = rename_error(&mut c, &uri, HUB, "children ^sessions", "key");
+    assert!(why.contains("reserved"), "{why}");
+    let why = rename_error(&mut c, &uri, HUB, "children ^sessions", "Sessions");
+    assert!(why.contains("lower-case"), "{why}");
+    let why = rename_error(&mut c, &uri, HUB, "children ^sessions", "open");
+    assert!(
+        why.contains("already the name of a variable `Hub.open`"),
+        "{why}"
+    );
+    let why = rename_error(&mut c, &uri, HUB, "children ^sessions", "greeting");
+    assert!(
+        why.contains("already the name of a parameter `Hub.greeting`"),
+        "{why}"
+    );
+    let why = rename_error(&mut c, &uri, HUB, "var ^open", "sessions");
+    assert!(
+        why.contains("already the name of a children collection `Hub.sessions`"),
+        "{why}"
+    );
+    let why = rename_error(&mut c, &uri, HUB, "var ^open", "key");
+    assert!(why.contains("reserved"), "{why}");
+    let out = rename(&mut c, &uri, HUB, "children ^sessions", "conns");
+    assert_eq!(out.matches("conns").count(), 8, "{out}");
+    for e in [
+        "children conns: Session",
+        "spawn conns[event.id]",
+        "send conns[event.id].Notify",
+        "stop conns[event.id]",
+        "send conns.*.Notify",
+        "on conns.Typing",
+        "on conns.done",
+        "on conns.fail *",
+    ] {
+        assert!(out.contains(e), "no `{e}` in\n{out}");
+    }
+    // `key` can still name a field.
+    let out = rename(&mut c, &uri, HUB, "^key: string", "id");
+    assert!(out.contains("emit Typing { id: event.text }"), "{out}");
+    c.shutdown();
+}
+
 #[test]
 fn an_untitled_document_is_a_file_of_its_own() {
     let uri = "untitled:Untitled-1";
