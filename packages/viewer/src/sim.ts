@@ -30,7 +30,7 @@ export type Outcome =
   | { kind: 'ok' }
   /** The core called a function nobody has answered for these arguments: answer, then `retry()`. */
   | { kind: 'ask'; ask: Ask }
-  /** Nothing happened: the machine cannot run here (a parallel state), or the action made no sense. */
+  /** Nothing happened: the machine cannot run here, or the action made no sense. */
   | { kind: 'error'; message: string }
 
 /** One point in the history: the snapshot after a choice, and what the choice wrote. */
@@ -392,11 +392,14 @@ export class Simulation {
       case 'emit':
         // The invoke waits for the reader; messages have no other run to go to.
         return null
+      case 'timer.fire':
+        // Only `restore` emits it, and simulate mode never restores a run.
+        return null
     }
   }
 }
 
-/** Why the machine cannot be simulated, or null: the core refuses parallel states for now. */
+/** Why the machine cannot be simulated, or null: the core refuses a machine the IR does not have. */
 export function refusal(ir: Ir, machine: string): string | null {
   try {
     getMachine(ir as unknown as CoreIr, machine)
