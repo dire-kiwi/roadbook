@@ -3,7 +3,7 @@
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { expect, it } from "vitest"
-import { canonicalJson, type Fns, type Input, loadIr, start, step } from "../src/index.ts"
+import { canonicalJson, type Command, type Fns, type Input, loadIr, start, step } from "../src/index.ts"
 
 const repo = path.resolve(import.meta.dirname, "../../..")
 const data = path.join(repo, "crates/roadbook-core/tests/data")
@@ -13,8 +13,8 @@ it("redaction fails closed on malformed values, as the Rust core does", () => {
   const fixture = JSON.parse(fs.readFileSync(path.join(data, "redact-malformed.json"), "utf8"))
   const ir = loadIr(JSON.parse(fs.readFileSync(path.join(repo, fixture.ir), "utf8")))
   const lines: Array<string> = []
-  const keep = (commands: ReadonlyArray<{ kind: string }>) => {
-    for (const c of commands) if (c.kind === "trace") lines.push(canonicalJson((c as { record: unknown }).record))
+  const keep = (commands: ReadonlyArray<Command>) => {
+    for (const c of commands) if (c.kind === "trace") lines.push(canonicalJson(c.record))
   }
   let stepped = start(ir, fixture.machine, "r1", fixture.input, noFns)
   keep(stepped.commands)
