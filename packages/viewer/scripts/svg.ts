@@ -11,6 +11,7 @@ import type { ElkLike } from '../src/layout.ts'
 import { defaultCollapsed, layoutMachine } from '../src/layout.ts'
 import { renderSvg } from '../src/render.ts'
 import type { Ir } from '../src/ir.ts'
+import { own } from '../src/ir.ts'
 
 const [file, machine, theme] = process.argv.slice(2)
 if (!file || !machine) {
@@ -18,7 +19,7 @@ if (!file || !machine) {
   process.exit(2)
 }
 const ir = JSON.parse(fs.readFileSync(file, 'utf8')) as Ir
-const m = ir.machines[machine]
+const m = own(ir.machines, machine)
 if (!m) {
   console.error(`no machine ${machine} (found: ${Object.keys(ir.machines).join(', ')})`)
   process.exit(2)

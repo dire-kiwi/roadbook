@@ -3,14 +3,14 @@
 import type { ElkLike } from '../layout.ts'
 import type { Measure } from '../model.ts'
 import type { ProjectIndex } from '../project.ts'
-import { layoutIndex, renderIndexSvg, renderIndexTable } from '../project.ts'
+import { layoutIndex, localHref, renderIndexSvg, renderIndexTable } from '../project.ts'
 import { esc } from '../render.ts'
 import { $, setupTheme } from './dom.ts'
 
 export async function mountIndex(index: ProjectIndex, elk: ElkLike, measure: Measure) {
   document.body.className = 'rb-index'
   document.title = `${index.title} · Roadbook`
-  const pages = index.pages.map((p) => `<a class="rb-tab" href="${esc(p.href)}">${esc(p.entry)}</a>`).join('')
+  const pages = index.pages.map((p) => `<a class="rb-tab" href="${esc(localHref(p.href))}">${esc(p.entry)}</a>`).join('')
   document.body.innerHTML = `
 <header class="rb-top">
   <span class="rb-brand">Roadbook<small>${esc(index.title)}</small></span>

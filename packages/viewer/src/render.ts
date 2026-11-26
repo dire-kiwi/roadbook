@@ -3,6 +3,7 @@
 // style.css; nothing here sets a colour.
 
 import type { Ir, State } from './ir.ts'
+import { own } from './ir.ts'
 import type { Layout, Point, Box } from './layout.ts'
 import { machineView, stateBox } from './layout.ts'
 import { METRICS, estimateWidth, signatureText, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
@@ -173,7 +174,7 @@ export interface RenderOptions {
 export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: RenderOptions & { collapsed?: ReadonlySet<string> } = {}): string {
   const measure = opts.measure ?? estimateWidth
   const prefix = opts.idPrefix ?? 'rb'
-  const machine = ir.machines[machineName]
+  const machine = own(ir.machines, machineName)
   if (!machine) throw new Error(`no machine ${machineName}`)
   const view = machineView(machine, opts.collapsed)
   const drawn = new Map(view.states.map((d) => [d.state.id, d]))
@@ -306,7 +307,7 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
 
 /** The signature and doc comment of a machine. HTML. */
 export function renderMachineHeader(ir: Ir, machineName: string): string {
-  const m = ir.machines[machineName]
+  const m = own(ir.machines, machineName)
   if (!m) return ''
   const doc = m.doc ? `<p class="rb-doc">${esc(m.doc).replace(/\n/g, '<br>')}</p>` : ''
   return `<code class="rb-signature">${esc(signatureText('machine', machineName, m))}</code>${doc}`

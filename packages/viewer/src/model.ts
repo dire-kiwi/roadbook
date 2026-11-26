@@ -3,6 +3,7 @@
 // two always agree on what goes where.
 
 import type { Effect, Field, Invoke, Ir, Machine, Span, State, Transition, Trigger, TypeDecl } from './ir.ts'
+import { own } from './ir.ts'
 
 export const METRICS = {
   charW: 0.62, // estimated advance of a monospace glyph, in em (the browser measures instead)
@@ -32,7 +33,11 @@ export type Measure = (text: string, fontSize: number, bold: boolean) => number
 
 export const estimateWidth: Measure = (text, fontSize) => [...text].length * fontSize * METRICS.charW
 
-/** Breaks a long piece of code at ", " or " " so it fits in `max` characters. Continuation lines are indented. */
+/**
+ * Breaks a long piece of code at ", " or " " so it fits in `max` characters. Continuation lines
+ * are indented. Never inside a string literal, whose spaces are shown as written: a line with
+ * a long literal is longer than `max`.
+ */
 export function wrapCode(text: string, max: number = METRICS.wrapAt): string[] {
   if (text.length <= max) return [text]
   const out: string[] = []
@@ -40,15 +45,32 @@ export function wrapCode(text: string, max: number = METRICS.wrapAt): string[] {
   let first = true
   while (rest.length > (first ? max : max - 2)) {
     const limit = first ? max : max - 2
-    let cut = rest.lastIndexOf(', ', limit - 1)
-    if (cut > 8) cut += 1
-    else cut = rest.lastIndexOf(' ', limit)
-    if (cut <= 8) break
+    const spaces = breakable(rest)
+    // The last ", " that fits (cut after the comma), else the last " " that fits.
+    let cut = -1
+    for (const i of spaces) if (i <= limit && i > 9 && rest[i - 1] === ',') cut = i
+    if (cut < 0) for (const i of spaces) if (i <= limit && i > 8) cut = i
+    // Only spaces inside a literal fit: break after it, the line longer than `max`.
+    if (cut < 0 && rest.lastIndexOf(' ', limit) > 8) cut = spaces.find((i) => i > limit) ?? -1
+    if (cut < 0) break
     out.push((first ? '' : '  ') + rest.slice(0, cut).trimEnd())
     rest = rest.slice(cut).trimStart()
     first = false
   }
   out.push((first ? '' : '  ') + rest)
+  return out
+}
+
+/** Indices of the spaces in `code` outside string literals. */
+function breakable(code: string): number[] {
+  const out: number[] = []
+  let quoted = false
+  for (let i = 0; i < code.length; i++) {
+    const c = code[i]
+    if (quoted && c === '\\') i++
+    else if (c === '"') quoted = !quoted
+    else if (c === ' ' && !quoted) out.push(i)
+  }
   return out
 }
 
@@ -282,4 +304,14 @@ export function transitionId(stateId: string, index: number): string {
 /** Whether the transition `t` of `state` is drawn as an arrow (it has a target). */
 export function isExternal(t: Transition): boolean {
   return t.target !== null
+}
+
+/**
+ * The machine a chart page opens with: `wanted` (from the URL's `#`) if the chart has it,
+ * else the entry file's first machine, not one it imports.
+ */
+export function openingMachine(ir: Ir, wanted: string): string | undefined {
+  if (own(ir.machines, wanted)) return wanted
+  const names = Object.keys(ir.machines)
+  return names.find((m) => own(ir.machines, m)!.span.file === 0) ?? names[0]
 }

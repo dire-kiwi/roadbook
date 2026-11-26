@@ -7,13 +7,15 @@
 // `data-transition` elements) and add sections to the panel.
 
 import type { Ir } from '../ir.ts'
+import { own } from '../ir.ts'
 import type { ElkLike, Layout } from '../layout.ts'
 import { defaultCollapsed, layoutMachine } from '../layout.ts'
-import { ancestorIds, transitionId } from '../model.ts'
+import { ancestorIds, openingMachine, transitionId } from '../model.ts'
 import type { Measure } from '../model.ts'
 import { panelHtml } from '../panel.ts'
 import type { Selection } from '../panel.ts'
 import type { PageData } from '../project.ts'
+import { localHref } from '../project.ts'
 import { esc, renderLegend, renderMachineHeader, renderSvg } from '../render.ts'
 import { buildSearchIndex, search } from '../search.ts'
 import type { SearchEntry } from '../search.ts'
@@ -83,7 +85,7 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   const collapsedOf = (name: string) => {
     let set = collapsedBy.get(name)
     if (!set) {
-      const d = defaultCollapsed(ir.machines[name]!)
+      const d = defaultCollapsed(own(ir.machines, name)!)
       defaults.set(name, d)
       set = new Set(d)
       collapsedBy.set(name, set)
@@ -133,7 +135,7 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   }
 
   async function show(name: string, opts: { select?: Selection; keepView?: boolean } = {}) {
-    if (!ir.machines[name]) return
+    if (!own(ir.machines, name)) return
     const changed = name !== current
     current = name
     selection = opts.select ?? null
@@ -178,7 +180,7 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   }
 
   function openMachine(name: string, how: 'invoke' | 'tab') {
-    if (!ir.machines[name]) return
+    if (!own(ir.machines, name)) return
     if (how === 'invoke') {
       const at = trail.indexOf(name)
       trail = at >= 0 ? trail.slice(0, at + 1) : [...trail, name]
@@ -406,7 +408,7 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   // ───────────── start ─────────────
   const brand = $<HTMLAnchorElement>(root, '#rb-brand')
   if (data.index) {
-    brand.href = data.index
+    brand.href = localHref(data.index)
     brand.title = 'All machines of the project'
   }
   $(root, '#rb-source').textContent = data.entry || (ir.sources[0]?.path ?? '')
@@ -418,10 +420,7 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
       return ''
     }
   }
-  const wanted = fromHash()
-  // The entry chart's own first machine, not one it imports.
-  const entryMachine = machineNames.find((m) => ir.machines[m]!.span.file === 0) ?? machineNames[0]
-  const first = ir.machines[wanted] ? wanted : entryMachine
+  const first = openingMachine(ir, fromHash())
   if (!first) {
     panel.innerHTML = '<p class="rb-empty">This chart declares no machine.</p>'
     return
@@ -430,6 +429,6 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   void show(first)
   window.addEventListener('hashchange', () => {
     const name = fromHash()
-    if (ir.machines[name] && name !== current) openMachine(name, 'tab')
+    if (own(ir.machines, name) && name !== current) openMachine(name, 'tab')
   })
 }

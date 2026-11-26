@@ -133,5 +133,14 @@ export interface Ir {
   machines: Record<string, Machine>
 }
 
+/**
+ * `map[key]` if `map` has its own member `key`. IR maps are plain JSON objects, and a key
+ * that comes from a URL, a click or another declaration must not reach `Object.prototype`
+ * (`#constructor`, `toString`).
+ */
+export function own<T>(map: Record<string, T>, key: string): T | undefined {
+  return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined
+}
+
 /** The IR version this viewer was written for. */
 export const IR_VERSION = '0.1'

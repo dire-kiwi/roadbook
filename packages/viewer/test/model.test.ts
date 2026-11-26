@@ -86,6 +86,17 @@ describe('text helpers', () => {
     expect(wrapCode('f(aaaaaaaaaa, bbbbbbbbbb, cccccccccc)', 20)).toEqual(['f(aaaaaaaaaa,', '  bbbbbbbbbb,', '  cccccccccc)'])
   })
 
+  it('never wrap inside a string literal, so its spaces show as written', () => {
+    const text = 'do note("one  two,  three   four five", x, "a \\" b  c")'
+    const lines = wrapCode(text, 20)
+    expect(lines).toEqual(['do note("one  two,  three   four five",', '  x, "a \\" b  c")'])
+    // Joined back, nothing inside the literals changed.
+    expect(lines.map((l, i) => (i ? l.slice(2) : l)).join(' ')).toBe(text)
+    // stateRows keeps them too.
+    const rows = stateRows({ ...shop.machines.Checkout!.root.states[0]!, invoke: null, entry: [{ kind: 'do', action: 'note', args: [{ text: '"' + 'x  '.repeat(30) + '"' }] }], exit: [], transitions: [], states: [] } as unknown as State)
+    expect(rows.map((r) => r.text).join('')).toContain('x  '.repeat(30))
+  })
+
   it('write signatures in source form', () => {
     expect(signatureText('machine', 'Checkout', shop.machines.Checkout!)).toBe(
       'machine Checkout(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUnavailable',
