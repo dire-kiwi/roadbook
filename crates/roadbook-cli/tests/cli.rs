@@ -1700,6 +1700,128 @@ fn viz_diff_matches_machines_across_files() {
 }
 
 #[test]
+fn viz_diff_reads_files_outside_the_project_from_each_revision() {
+    // A repository whose project is a subdirectory, importing a file of the repository outside
+    // it and a package of `[packages]` elsewhere in the repository, and a file outside the
+    // repository.
+    let desk = "import { Ticket, Lamp } from \"../shared/lib.road\"\n\
+                import { Stock } from \"stock/stock.road\"\n\
+                import { Note } from \"../../ext/note.road\"\n\n\
+                machine Desk(t: Ticket, n: Note) {\n  event Next\n  initial Open\n  \
+                state Open { on Next -> Closed }\n  final state Closed {}\n}\n";
+    let stock = "machine Stock() {\n  event Count\n  initial Idle\n  \
+                 state Idle { on Count -> Done }\n  final state Done {}\n}\n";
+    let base = project(
+        "diff-outside",
+        &[
+            (
+                "repo/proj/roadbook.toml",
+                "[packages]\nstock = \"../libs/stock\"\n",
+            ),
+            ("repo/proj/desk.road", desk),
+            ("repo/shared/lib.road", &format!("{TICKET}\n{LAMP}")),
+            ("repo/libs/stock/stock.road", stock),
+            ("ext/note.road", "type Note { text: string }\n"),
+        ],
+    );
+    let (top, dir) = (base.join("repo"), base.join("repo/proj"));
+    git(&top, &["init", "-q", "-b", "main"]);
+    git(&top, &["add", "."]);
+    git(&top, &["commit", "-q", "-m", "one"]);
+    // A commit that changes only the shared file and the package.
+    let lamp = LAMP.replace(
+        "state Off { on Flip -> On }",
+        "state Off { on Flip -> On }\n  state Dim { on Flip -> Off }",
+    );
+    std::fs::write(top.join("shared/lib.road"), format!("{TICKET}\n{lamp}")).unwrap();
+    std::fs::write(
+        top.join("libs/stock/stock.road"),
+        stock.replace("on Count -> Done", "on Count -> Done\n    after 1s -> Done"),
+    )
+    .unwrap();
+    git(&top, &["commit", "-q", "-am", "two"]);
+
+    let out = out_dir("diff-outside");
+    let res = roadbook(
+        &dir,
+        &["viz", "--diff", "HEAD~1..HEAD", "-o", out.to_str().unwrap()],
+    );
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    let json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(out.join("summary.json")).unwrap()).unwrap();
+    let changes: Vec<(&str, &str)> = json["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| {
+            (
+                c["machine"].as_str().unwrap(),
+                c["status"].as_str().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        changes,
+        [("Lamp", "changed"), ("Stock", "changed")],
+        "{json:#}"
+    );
+    assert_eq!(json["states"]["added"], 1);
+    assert_eq!(json["transitions"]["added"], 2);
+    // The file outside the repository is read from disk for both sides, and the summary says
+    // so.
+    assert_eq!(json["outside"], serde_json::json!(["../../ext/note.road"]));
+    let md = std::fs::read_to_string(out.join("summary.md")).unwrap();
+    assert!(
+        md.ends_with(
+            "\nRead from disk for both sides, being outside the repository: \
+             `../../ext/note.road`.\n"
+        ),
+        "{md}"
+    );
+    assert!(text(&res.stderr).contains("`../../ext/note.road`"));
+
+    // A revision against the working tree reads the shared file from disk.
+    std::fs::write(top.join("shared/lib.road"), format!("{TICKET}\n{LAMP}")).unwrap();
+    let (_, json, _) = diff_summary(&dir, "diff-outside-worktree");
+    assert_eq!(json["changes"][0]["machine"], "Lamp");
+    assert_eq!(json["changes"][0]["status"], "changed");
+    assert_eq!(json["states"]["removed"], 1);
+    assert_eq!(json["outside"], serde_json::json!(["../../ext/note.road"]));
+
+    // A file of the repository that a revision does not have is missing there, not read
+    // from disk.
+    std::fs::write(
+        dir.join("desk.road"),
+        desk.replace("../shared/lib.road", "../shared/new.road"),
+    )
+    .unwrap();
+    std::fs::copy(top.join("shared/lib.road"), top.join("shared/new.road")).unwrap();
+    let (_, json, _) = diff_summary(&dir, "diff-outside-untracked");
+    assert_eq!(json["errors"], serde_json::json!([]), "{json:#}");
+    let out = out_dir("diff-outside-missing");
+    git(&top, &["add", "-A"]);
+    git(&top, &["commit", "-q", "-m", "three"]);
+    git(&top, &["rm", "-q", "shared/new.road"]);
+    git(&top, &["commit", "-q", "-m", "four"]);
+    std::fs::copy(top.join("shared/lib.road"), top.join("shared/new.road")).unwrap();
+    let res = roadbook(
+        &dir,
+        &["viz", "--diff", "HEAD~1..HEAD", "-o", out.to_str().unwrap()],
+    );
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    let data = page_data(&std::fs::read_to_string(out.join("desk.html")).unwrap());
+    assert_eq!(data["diff"]["errors"][0]["side"], "after");
+    assert!(
+        data["diff"]["errors"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("no such file at HEAD"),
+        "{data:#}"
+    );
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+#[test]
 fn viz_diff_reports_declarations_and_the_machines_that_use_them() {
     let dir = diff_repo(
         "diff-decls",
