@@ -22,6 +22,8 @@ The success type is the chart's output. The error type is the union of the chart
 - For each machine, a definition type listing its input, output, errors, events, state ids (the root's included), and the signature of every function, action, task and child machine it uses.
 - For each machine, a typed handle with the IR embedded: `export const PlaceOrder = Roadbook.make<PlaceOrderDef>(ir, "PlaceOrder", errors)`. `errors` holds every error class the IR declares, imported from the modules that declare them, so that the runtime can hand host code and callers instances of them rather than plain objects.
 
+An error's class extends JavaScript's `Error`, so a few field names are taken. A field named `name`, `message` or `stack` must be a `string` or an enum, as on `Error`; any other type would give the field the wrong type (a `bool` makes the class `never`, which `tsc` rejects). A field named `toString`, `toJSON` or `pipe` would replace a method every error instance has. `roadbook gen` rejects both, naming the file, line and field; rename the field. Records and events have no such restriction.
+
 Declarations of an imported file are not repeated: the module imports them from that file's generated module (`import { Order, User } from "./types.road.js"`). An `extern type` is `unknown` (and `Schema.Unknown`); binding one to a host type in `roadbook.toml` is not implemented yet. The generator is the library crate [`roadbook-gen-ts`](../../crates/roadbook-gen-ts), so other tools can reuse it.
 
 The generated file is committed. Reviewers see type changes in the diff, consumers need no build step, and `roadbook gen --check` in CI fails if it is stale. A Vite plugin that generates on the fly is a later convenience.

@@ -858,6 +858,25 @@ fn gen_writes_a_module_next_to_each_chart() {
     );
 }
 
+#[test]
+fn gen_rejects_an_error_field_its_class_cannot_have() {
+    let src = "// An error whose class would be `never`.\nerror Weird {\n  why: string,\n  name: bool,\n}\n";
+    let dir = project("gen-error-field", &[("w.road", src), ("ok.road", OK)]);
+    let out = roadbook(&dir, &["gen"]);
+    assert_eq!(out.status.code(), Some(1));
+    let err = text(&out.stderr);
+    assert!(
+        err.starts_with(
+            "error: w.road:4: the error type `Weird` cannot have the field `name: bool` in \
+             TypeScript: every error is a JavaScript `Error`, whose `name`, `message` and \
+             `stack` are strings;"
+        ),
+        "{err}"
+    );
+    assert!(!dir.join("w.road.ts").exists());
+    assert!(dir.join("ok.road.ts").exists());
+}
+
 /// The generated TypeScript committed next to the examples is what `roadbook gen` writes now.
 #[test]
 fn the_examples_generated_code_is_fresh() {

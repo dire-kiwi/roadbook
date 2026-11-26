@@ -44,8 +44,20 @@ pub fn run(args: Args) -> Exit {
         };
         let code = match roadbook_gen_ts::generate(ir, &roadbook_gen_ts::Options::default()) {
             Ok(code) => code,
-            Err(e) => {
-                eprintln!("error: `{file}`: {e}");
+            Err(mut e) => {
+                if let roadbook_gen_ts::GenError::ErrorField {
+                    file, line, field, ..
+                } = &mut e
+                {
+                    // The IR knows only the declaration's line: find the field's.
+                    let text = std::fs::read_to_string(ws.disk_path(file)).unwrap_or_default();
+                    if let Some(found) = field_line(&text, *line, field) {
+                        *line = found;
+                    }
+                    eprintln!("error: {e}");
+                } else {
+                    eprintln!("error: `{file}`: {e}");
+                }
                 exit = Exit::Errors;
                 continue;
             }
@@ -63,4 +75,25 @@ pub fn run(args: Args) -> Exit {
         }
     }
     exit
+}
+
+/// The first line from `from` on (1-based) where `field` is declared: the name as a whole
+/// word followed by `:`.
+fn field_line(text: &str, from: u32, field: &str) -> Option<u32> {
+    let word = |c: char| c.is_alphanumeric() || c == '_';
+    for (i, line) in text
+        .lines()
+        .enumerate()
+        .skip(from.saturating_sub(1) as usize)
+    {
+        let code = line.split("//").next().unwrap_or_default();
+        for (at, _) in code.match_indices(field) {
+            let before = code[..at].chars().next_back();
+            let after = code[at + field.len()..].trim_start();
+            if !before.is_some_and(word) && after.starts_with(':') {
+                return Some(i as u32 + 1);
+            }
+        }
+    }
+    None
 }
