@@ -11,7 +11,8 @@ use serde_json::Value;
 use crate::driver::{Driver, RunEnd};
 use crate::dynamic::Host;
 use crate::env::Config;
-use crate::shared::Shared;
+use crate::handle::Ref;
+use crate::shared::{RunHandle, Shared};
 
 /// How a spawned run ended without an output.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,6 +52,7 @@ pub struct Codec<Event, State, Output, Error> {
 /// [`Actor::cancel`] stops it gracefully instead.
 pub struct Actor<Event, State, Output, Error> {
     shared: Arc<Shared>,
+    id: String,
     #[cfg(feature = "tokio")]
     task: Option<tokio::task::JoinHandle<RunEnd>>,
     codec: Codec<Event, State, Output, Error>,
@@ -61,6 +63,20 @@ pub struct Actor<Event, State, Output, Error> {
 impl<Event, State, Output, Error> fmt::Debug for Actor<Event, State, Output, Error> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Actor").finish_non_exhaustive()
+    }
+}
+
+impl<Event, State, Output, Error> Actor<Event, State, Output, Error> {
+    /// A handle to the run, which host code can send through and pass to other runs as the
+    /// chart's `ref Machine` argument. It can be cloned and outlives the actor; once the run
+    /// has ended, what is sent through it is ignored (or, from a machine, `undelivered`).
+    pub fn handle(&self) -> Ref<Event> {
+        Ref::new(RunHandle::new(self.shared.clone(), &self.id))
+    }
+
+    /// The run's id.
+    pub fn id(&self) -> &str {
+        &self.id
     }
 }
 
@@ -170,6 +186,7 @@ fn initial_leaf(program: &Program, machine: &str) -> Option<String> {
 
 /// Starts `machine` as a root run on a new Tokio task and gives its actor. An input that
 /// could not be encoded gives an actor whose run ended with that defect before it started.
+/// `refs` are the handles of the runs the input's `ref`s name.
 #[doc(hidden)]
 #[cfg_attr(not(feature = "tokio"), allow(unused_variables))]
 pub fn spawn<Event, State, Output, Error>(
@@ -177,10 +194,12 @@ pub fn spawn<Event, State, Output, Error>(
     program: &'static Program,
     machine: &'static str,
     input: Result<Object, Defect>,
+    refs: Vec<RunHandle>,
     host: Box<dyn Host + 'static>,
     codec: Codec<Event, State, Output, Error>,
 ) -> Actor<Event, State, Output, Error> {
     let shared = Shared::claimed();
+    let id = config.root_id();
     let leaf = initial_leaf(program, machine).expect("the program has the machine");
     // Starting is not a change of state.
     shared.set_state(&leaf);
@@ -189,20 +208,25 @@ pub fn spawn<Event, State, Output, Error>(
     #[cfg(feature = "tokio")]
     {
         let run_shared = shared.clone();
+        let run_id = id.clone();
         let task = match input {
             Ok(input) => tokio::spawn(async move {
                 let host = host;
-                Driver::root(program, machine, input, &*host, &config, run_shared)
-                    .drive()
-                    .await
+                Driver::root(
+                    program, machine, input, refs, &*host, &config, run_id, run_shared,
+                )
+                .drive()
+                .await
             }),
             Err(defect) => {
+                run_shared.close();
                 run_shared.finish(crate::shared::Finished::Ok);
                 tokio::spawn(async move { RunEnd::Defect(defect) })
             }
         };
         Actor {
             shared,
+            id,
             task: Some(task),
             codec,
             initial,

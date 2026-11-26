@@ -15,6 +15,7 @@ pub use serde_json;
 pub use crate::actor::{Codec, spawn};
 pub use crate::dynamic::{Host, Invocation, Outcome, run, run_with};
 pub use crate::env::{BoxFuture, Config};
+pub use crate::shared::RunHandle;
 
 /// Reads the IR a macro embedded. It was produced by the compiler in the same build, so a
 /// failure is a bug.
@@ -208,4 +209,10 @@ pub mod wire {
         let v = Value::deserialize(d)?;
         T::from_wire(v).map_err(serde::de::Error::custom)
     }
+}
+
+/// Encodes a machine's arguments with `f`, giving the input and the handles of the runs its
+/// `ref`s name.
+pub fn collect<R>(f: impl FnOnce() -> R) -> (R, Vec<RunHandle>) {
+    crate::handle::collect(f)
 }

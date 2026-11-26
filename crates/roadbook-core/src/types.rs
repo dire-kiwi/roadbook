@@ -131,6 +131,8 @@ pub struct TimerEntry {
 pub struct Snapshot {
     /// The machine's name.
     pub machine: String,
+    /// The run's id, as given to `start`.
+    pub run: String,
     /// The machine's hash from the IR.
     pub ir: String,
     /// The run's status.
@@ -149,6 +151,8 @@ pub struct Snapshot {
     pub next_invoke: u64,
     /// The id the next timer will get.
     pub next_timer: u64,
+    /// The id the next `send` or `emit` effect will get.
+    pub next_message: u64,
     /// `null` while running and when cancelled.
     pub result: Option<RunResult>,
 }
@@ -161,6 +165,29 @@ pub enum Input {
     #[serde(rename = "event")]
     Event {
         /// The event.
+        value: Value,
+    },
+    /// A message: run `from` sent one of this machine's events with `send`.
+    #[serde(rename = "message")]
+    Message {
+        /// The sender's run id.
+        from: String,
+        /// The message's id in the sender.
+        message: u64,
+        /// The event, a tagged record.
+        value: Value,
+    },
+    /// An emitted event: run `from` emitted one of its machine's `emits`.
+    #[serde(rename = "emitted")]
+    Emitted {
+        /// The sender's run id.
+        from: String,
+        /// The id of this run's invoke that started the sender, when this run invoked it;
+        /// `null` when this run holds a `ref` to it.
+        invoke: Option<u64>,
+        /// The message's id in the sender.
+        message: u64,
+        /// The event, a tagged record.
         value: Value,
     },
     /// An invoke succeeded.
@@ -264,6 +291,10 @@ pub enum Command {
         /// Task or machine.
         #[serde(rename = "srcKind")]
         src_kind: SrcKind,
+        /// The invoke's `as` name, or `null`: a child run invoked with one delivers what it
+        /// emits to this run.
+        #[serde(rename = "as")]
+        alias: Option<String>,
         /// Its arguments, keyed by parameter name.
         args: Object,
     },
@@ -286,6 +317,28 @@ pub enum Command {
     TimerCancel {
         /// The timer's id.
         timer: u64,
+    },
+    /// Queue a message for run `to` without waiting for it: for the child run of this run's
+    /// invoke `invoke`, or, when `invoke` is `None`, for the peer `to`.
+    #[serde(rename = "send")]
+    Send {
+        /// The receiver's run id.
+        to: String,
+        /// The invoke whose child run receives it, or `None` for a peer.
+        invoke: Option<u64>,
+        /// The message's id in this run.
+        message: u64,
+        /// The event, a tagged record.
+        value: Value,
+    },
+    /// Queue the emitted event for this run's invoker (if it invoked this run with `as`) and
+    /// for every run that holds a `ref` to this run, without waiting for them.
+    #[serde(rename = "emit")]
+    Emit {
+        /// The message's id in this run.
+        message: u64,
+        /// The event, a tagged record.
+        value: Value,
     },
 }
 
@@ -358,6 +411,36 @@ pub enum Record {
         action: String,
         /// Its arguments, keyed by parameter name.
         args: Object,
+    },
+    /// A `send` effect ran; the driver queues the message next.
+    #[serde(rename = "sent")]
+    Sent {
+        /// The message's id in this run.
+        message: u64,
+        /// The receiver's run id.
+        to: String,
+        /// The event.
+        value: Value,
+    },
+    /// An `emit` effect ran; the driver queues the event for its receivers next.
+    #[serde(rename = "emitted")]
+    Emitted {
+        /// The message's id in this run.
+        message: u64,
+        /// The event.
+        value: Value,
+    },
+    /// A `send` that reached no run: written by the core with `to` `null` when the child it
+    /// is addressed to is not running, and by the driver after `sent` when the receiver has
+    /// ended.
+    #[serde(rename = "undelivered")]
+    Undelivered {
+        /// The message's id in the sending run.
+        message: u64,
+        /// The receiver's run id, or `null` for a child that is not running.
+        to: Option<String>,
+        /// The event.
+        value: Value,
     },
     /// A task or child machine was started.
     #[serde(rename = "invoke.started")]

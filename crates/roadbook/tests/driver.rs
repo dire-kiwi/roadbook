@@ -112,7 +112,7 @@ impl Host for TestHost<'_> {
     fn invoke<'a>(&'a self, call: Invocation) -> BoxFuture<'a, Outcome> {
         match call.kind {
             SrcKind::Machine => Box::pin(async move {
-                match dynamic::run(self.program, &call.src, call.args, self).await {
+                match dynamic::run(self.program, &call.src, call.args, &call.refs, self).await {
                     Ok(v) => Outcome::Done(v),
                     Err(e) => Outcome::Fail(e),
                 }
@@ -153,7 +153,7 @@ async fn run_to_end(mode: Mode) -> (RunEnd, Vec<Value>) {
     let host = host(&program, mode);
     let sink = Arc::new(MemorySink::new());
     let config = Config::new().sink(sink.clone()).run_id("r1");
-    let (fut, _) = dynamic::start(&config, &program, "Main", input(3), &host);
+    let (fut, _) = dynamic::start(&config, &program, "Main", input(3), &[], &host);
     let end = fut.await;
     let records = sink.records().iter().map(|r| r.to_json()).collect();
     (end, records)
@@ -228,7 +228,7 @@ fn a_root_run_that_ends_with_a_defect_resumes_unwinding_with_it() {
         .build()
         .unwrap();
     let caught = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        rt.block_on(dynamic::run(&program, "Main", input(3), &host))
+        rt.block_on(dynamic::run(&program, "Main", input(3), &[], &host))
     }));
     let payload = caught.unwrap_err();
     assert_eq!(
@@ -243,7 +243,7 @@ async fn cancelling_from_outside_waits_for_the_childs_exit_effects() {
     let host = host(&program, Mode::TaskNeverEnds);
     let sink = Arc::new(MemorySink::new());
     let config = Config::new().sink(sink.clone()).run_id("r1");
-    let (fut, handle) = dynamic::start(&config, &program, "Main", input(3), &host);
+    let (fut, handle) = dynamic::start(&config, &program, "Main", input(3), &[], &host);
     let canceller = async {
         tokio::task::yield_now().await;
         tokio::task::yield_now().await;
@@ -266,7 +266,7 @@ async fn dropping_a_root_run_is_a_hard_stop() {
     let host = host(&program, Mode::TaskNeverEnds);
     let sink = Arc::new(MemorySink::new());
     let config = Config::new().sink(sink.clone()).run_id("r1");
-    let (fut, _) = dynamic::start(&config, &program, "Main", input(3), &host);
+    let (fut, _) = dynamic::start(&config, &program, "Main", input(3), &[], &host);
     let timed_out = tokio::time::timeout(std::time::Duration::from_millis(20), fut).await;
     assert!(timed_out.is_err());
     // No exit effects ran and no run has a final record.
@@ -287,7 +287,7 @@ async fn json_lines_writes_one_canonical_record_per_line() {
     let host = host(&program, Mode::PanicInAction);
     let sink = Arc::new(JsonLines::new(Vec::new()));
     let config = Config::new().sink(sink.clone()).run_id("r9");
-    let (fut, _) = dynamic::start(&config, &program, "Main", input(3), &host);
+    let (fut, _) = dynamic::start(&config, &program, "Main", input(3), &[], &host);
     fut.await;
     drop(config);
     let text = String::from_utf8(Arc::into_inner(sink).unwrap().into_inner()).unwrap();
@@ -308,7 +308,7 @@ async fn a_panic_while_dropping_a_cancelled_task_is_ignored() {
     let host = host(&program, Mode::TaskPanicsWhenDropped);
     let sink = Arc::new(MemorySink::new());
     let config = Config::new().sink(sink.clone()).run_id("r1");
-    let (fut, handle) = dynamic::start(&config, &program, "Main", input(3), &host);
+    let (fut, handle) = dynamic::start(&config, &program, "Main", input(3), &[], &host);
     let stopper = async {
         tokio::task::yield_now().await;
         tokio::task::yield_now().await;
@@ -322,10 +322,10 @@ async fn a_panic_while_dropping_a_cancelled_task_is_ignored() {
     assert_eq!(last_of(&records, "r1")["kind"], "done");
 
     // So is one while dropping it in a hard stop, and in the cancel from outside.
-    let (fut, _) = dynamic::start(&config, &program, "Main", input(3), &host);
+    let (fut, _) = dynamic::start(&config, &program, "Main", input(3), &[], &host);
     let timed_out = tokio::time::timeout(std::time::Duration::from_millis(20), fut).await;
     assert!(timed_out.is_err());
-    let (fut, handle) = dynamic::start(&config, &program, "Main", input(3), &host);
+    let (fut, handle) = dynamic::start(&config, &program, "Main", input(3), &[], &host);
     let canceller = async {
         tokio::task::yield_now().await;
         tokio::task::yield_now().await;
@@ -365,7 +365,7 @@ async fn a_panic_while_dropping_a_task_whose_outcome_came_from_outside_is_ignore
                 *seen.lock().unwrap() = Some(h);
             }
         });
-    let (fut, _) = dynamic::start(&config, &program, "Main", input(3), &host);
+    let (fut, _) = dynamic::start(&config, &program, "Main", input(3), &[], &host);
     let feeder = async {
         let h = loop {
             tokio::task::yield_now().await;

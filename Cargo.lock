@@ -1074,6 +1074,7 @@ name = "roadbook-macros"
 version = "0.1.0"
 dependencies = [
  "heck",
+ "indexmap",
  "proc-macro2",
  "quote",
  "roadbook-compiler",

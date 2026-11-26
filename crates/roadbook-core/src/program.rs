@@ -40,14 +40,6 @@ pub enum ProgramError {
         /// The parallel state's id.
         state: String,
     },
-    /// A machine sends or receives messages, which the runtime does not support yet
-    /// (milestone 5).
-    Messaging {
-        /// The machine.
-        machine: String,
-        /// The first messaging construct found, as [`roadbook_ir::Machine::messaging`] names it.
-        what: String,
-    },
 }
 
 impl fmt::Display for ProgramError {
@@ -59,11 +51,6 @@ impl fmt::Display for ProgramError {
                 "machine `{machine}` has the parallel state `{state}`: parallel states are not \
                  supported by this runtime yet (milestone 6)"
             ),
-            ProgramError::Messaging { machine, what } => write!(
-                f,
-                "machine `{machine}` uses {what}: messaging between machines is not supported by \
-                 this runtime yet (milestone 5)"
-            ),
         }
     }
 }
@@ -71,16 +58,10 @@ impl fmt::Display for ProgramError {
 impl std::error::Error for ProgramError {}
 
 impl Program {
-    /// Indexes `ir`. Refuses a machine with a parallel state or one that uses messaging.
+    /// Indexes `ir`. Refuses a machine with a parallel state.
     pub fn new(ir: Ir) -> Result<Program, ProgramError> {
         let mut machines = HashMap::new();
         for (name, m) in &ir.machines {
-            if let Some(what) = m.messaging() {
-                return Err(ProgramError::Messaging {
-                    machine: name.clone(),
-                    what,
-                });
-            }
             let mut idx = MachineIndex {
                 paths: Vec::new(),
                 parents: Vec::new(),

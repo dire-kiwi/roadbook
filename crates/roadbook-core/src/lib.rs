@@ -15,6 +15,11 @@
 //! Values are `serde_json::Value`s in the JSON form of `spec/execution.md#values`. `int` is
 //! `i64`, and arithmetic outside it is an `overflow` defect.
 //!
+//! Messages between runs are commands and inputs like the rest: a `send` or `emit` effect
+//! gives the driver a [`Command::Send`] or [`Command::Emit`], and what other runs send and
+//! emit comes back as [`Input::Message`] and [`Input::Emitted`]. A `ref` is the id of the run
+//! it refers to; delivering is the driver's business.
+//!
 //! Parallel states and restoring snapshots are milestone 6: [`Program::new`] refuses an IR
 //! with a parallel state.
 //!
@@ -31,7 +36,7 @@
 //! .unwrap();
 //! let program = Program::new(ir).unwrap();
 //! let mut no_fns = |_: &str, _: Vec<Value>| unreachable!();
-//! let (snap, _) = program.start("Tick", Map::new(), &mut no_fns).unwrap();
+//! let (snap, _) = program.start("Tick", "r1", Map::new(), &mut no_fns).unwrap();
 //! assert_eq!(snap.active, ["Tick", "Tick.A"]);
 //! let go = Input::Event { value: json!({"_tag": "Go"}) };
 //! let (snap, commands) = program.step(&snap, go, &mut no_fns);

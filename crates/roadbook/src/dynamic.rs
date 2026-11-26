@@ -4,6 +4,11 @@
 //! generates for each machine is adapted to it, decoding arguments into the chart's Rust
 //! types and encoding results. A host can also implement it directly, as the conformance
 //! runner does from a case's script.
+//!
+//! A `ref` is a run id in these values. The handles the ids stand for travel beside them:
+//! [`run`], [`run_with`] and [`start`] take the handles of the runs the input names, and an
+//! [`Invocation`] carries those its arguments name, so a host that runs an invoked machine
+//! passes them on.
 
 use roadbook_core::{Defect, Object, Program, SrcKind};
 use serde_json::Value;
@@ -11,6 +16,11 @@ use serde_json::Value;
 use crate::driver::{Driver, RunEnd};
 use crate::env::{BoxFuture, Config};
 use crate::shared::{RunHandle, Shared, claim_context};
+
+/// The handles among `refs`, owned.
+fn owned(refs: &[RunHandle]) -> Vec<RunHandle> {
+    refs.to_vec()
+}
 
 /// Host code, called by name with values in their JSON form.
 ///
@@ -37,8 +47,11 @@ pub struct Invocation {
     pub kind: SrcKind,
     /// The task's or machine's name.
     pub src: String,
-    /// Its arguments, keyed by parameter name.
+    /// Its arguments, keyed by parameter name. A `ref` in them is a run id.
     pub args: Object,
+    /// The handles of the runs whose ids are `ref`s in `args`: what a [`run`] of an invoked
+    /// machine is given with them.
+    pub refs: Vec<RunHandle>,
     /// The id of the run that starts it.
     pub run: String,
     /// The invoke's id in that run.
@@ -56,7 +69,8 @@ pub enum Outcome {
     Defect(Defect),
 }
 
-/// Runs machine `machine` of `program` with `input` and `host`, to its end.
+/// Runs machine `machine` of `program` with `input` and `host`, to its end. A `ref` in
+/// `input` is a run id, and `refs` holds the handle of each run so named.
 ///
 /// Polled inside an invoke context whose token is unclaimed (that is, from a machine
 /// invoke's future), it claims the token and becomes that invoke's child run: it writes to
@@ -70,21 +84,31 @@ pub async fn run(
     program: &Program,
     machine: &str,
     input: Object,
+    refs: &[RunHandle],
     host: &dyn Host,
 ) -> Result<Value, Value> {
     let (driver, child) = match claim_context() {
-        Some(ctx) => (Driver::child(program, machine, input, host, &ctx), true),
-        None => (
-            Driver::root(
-                program,
-                machine,
-                input,
-                host,
-                &Config::default(),
-                Shared::claimed(),
-            ),
-            false,
+        Some(ctx) => (
+            Driver::child(program, machine, input, owned(refs), host, &ctx),
+            true,
         ),
+        None => {
+            let config = Config::default();
+            let id = config.root_id();
+            (
+                Driver::root(
+                    program,
+                    machine,
+                    input,
+                    owned(refs),
+                    host,
+                    &config,
+                    id,
+                    Shared::claimed(),
+                ),
+                false,
+            )
+        }
     };
     let (end, cancelled) = driver.drive_reporting().await;
     finish(end, child && cancelled).await
@@ -96,9 +120,19 @@ pub async fn run_with(
     program: &Program,
     machine: &str,
     input: Object,
+    refs: &[RunHandle],
     host: &dyn Host,
 ) -> Result<Value, Value> {
-    let driver = Driver::root(program, machine, input, host, config, Shared::claimed());
+    let driver = Driver::root(
+        program,
+        machine,
+        input,
+        owned(refs),
+        host,
+        config,
+        config.root_id(),
+        Shared::claimed(),
+    );
     finish(driver.drive().await, false).await
 }
 
@@ -115,18 +149,29 @@ async fn finish(end: RunEnd, cancelled_child: bool) -> Result<Value, Value> {
 }
 
 /// Starts a root run and gives a handle to it: the future runs it to its end and gives how
-/// it ended, without unwinding. Nothing happens until the future is polled.
+/// it ended, without unwinding. Nothing happens until the future is polled, but the run is
+/// open from the start: messages sent to it before are queued. The handle can be given to
+/// other runs as a `ref` argument.
 pub fn start<'a>(
     config: &Config,
     program: &'a Program,
     machine: &'a str,
     input: Object,
+    refs: &[RunHandle],
     host: &'a dyn Host,
 ) -> (BoxFuture<'a, RunEnd>, RunHandle) {
     let shared = Shared::claimed();
-    let handle = RunHandle {
-        shared: shared.clone(),
-    };
-    let driver = Driver::root(program, machine, input, host, config, shared);
+    let id = config.root_id();
+    let handle = RunHandle::new(shared.clone(), &id);
+    let driver = Driver::root(
+        program,
+        machine,
+        input,
+        owned(refs),
+        host,
+        config,
+        id,
+        shared,
+    );
     (Box::pin(driver.drive()), handle)
 }

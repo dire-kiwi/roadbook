@@ -52,18 +52,44 @@ pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, 
                 _ => "",
             };
             let decl = s.program.ir().types.get(name).map(|t| &t.def);
+            // An event (the value of a `send` or `emit`): `Machine.Name`, or one of this
+            // machine's own `emits` or `events` by its bare name.
+            let event = match decl {
+                Some(_) => None,
+                None => match name.split_once('.') {
+                    Some((m, ev)) => s
+                        .program
+                        .ir()
+                        .machines
+                        .get(m)
+                        .and_then(|m| m.events.get(ev).or_else(|| m.emits.get(ev)))
+                        .map(|d| (ev, d)),
+                    None => s
+                        .machine
+                        .emits
+                        .get(name)
+                        .or_else(|| s.machine.events.get(name))
+                        .map(|d| (name, d)),
+                },
+            };
             if let Some(TypeDef::Error { .. }) = decl {
                 obj.insert("_tag".into(), Value::from(name));
+            }
+            if let Some((tag, _)) = event {
+                obj.insert("_tag".into(), Value::from(tag));
             }
             for f in fields {
                 let v = eval(&f.value, s, fns)?;
                 obj.insert(f.name.clone(), v);
             }
             // An optional field with no value is `null`, never omitted.
-            if let Some(TypeDef::Record { fields: decl } | TypeDef::Error { fields: decl }) = decl {
-                for f in decl {
-                    obj.entry(f.name.clone()).or_insert(Value::Null);
-                }
+            let declared = match (decl, event) {
+                (Some(TypeDef::Record { fields } | TypeDef::Error { fields }), _) => Some(fields),
+                (None, Some((_, d))) => Some(&d.fields),
+                _ => None,
+            };
+            for f in declared.into_iter().flatten() {
+                obj.entry(f.name.clone()).or_insert(Value::Null);
             }
             Value::Object(obj)
         }
@@ -72,7 +98,7 @@ pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, 
     })
 }
 
-fn lookup(name: &str, s: &Scope<'_>) -> Result<Value, Defect> {
+pub(crate) fn lookup(name: &str, s: &Scope<'_>) -> Result<Value, Defect> {
     if let Some((n, v)) = s.implicit {
         if n == name {
             return Ok(v.clone());

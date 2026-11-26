@@ -1,5 +1,6 @@
-//! What a run shares with the outside: its inbox, its cancel flag, how it finished, and the
-//! state it is in. For a child run this is also the cancel token of the invoke context.
+//! What a run shares with the outside: its inbox, its cancel flag, whether it is open, the
+//! runs subscribed to what it emits, how it finished, and the state it is in. For a child run
+//! this is also the cancel token of the invoke context.
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -31,6 +32,11 @@ struct Inner {
     state_version: u64,
     state: Option<String>,
     state_wakers: Vec<Waker>,
+    /// The run's core has returned a snapshot that is not `running`: nothing more is
+    /// delivered to it.
+    closed: bool,
+    /// The open runs that hold a `ref` to this run, which receive what it emits.
+    subscribers: Vec<Arc<Shared>>,
 }
 
 #[derive(Default)]
@@ -59,12 +65,12 @@ impl Shared {
         self.lock().claimed
     }
 
-    /// Appends `inputs` to the inbox. After the run has finished nobody drains it, so they
+    /// Appends `inputs` to the inbox. After the run has closed nobody takes them, so they
     /// are dropped.
     pub fn push(&self, inputs: impl IntoIterator<Item = Input>) {
         let waker = {
             let mut g = self.lock();
-            if g.finished.is_some() {
+            if g.closed || g.finished.is_some() {
                 return;
             }
             g.inbox.extend(inputs);
@@ -73,6 +79,48 @@ impl Shared {
         if let Some(w) = waker {
             w.wake();
         }
+    }
+
+    /// Delivers a message or an emitted event from another run: appends it to the inbox and
+    /// gives `true` if the run is open, else gives `false` and drops it. The check and the
+    /// push are one operation with respect to [`Shared::close`]. An unclaimed token is open:
+    /// what is pushed onto it is kept for the run that claims it.
+    pub fn deliver(&self, input: Input) -> bool {
+        let waker = {
+            let mut g = self.lock();
+            if g.closed || g.finished.is_some() {
+                return false;
+            }
+            g.inbox.push_back(input);
+            g.waker.take()
+        };
+        if let Some(w) = waker {
+            w.wake();
+        }
+        true
+    }
+
+    /// Closes the run for good: nothing more is delivered to it, and what its inbox holds is
+    /// discarded.
+    pub fn close(&self) {
+        let mut g = self.lock();
+        g.closed = true;
+        g.inbox.clear();
+    }
+
+    /// Subscribes `run` to what this run emits.
+    pub fn subscribe(&self, run: Arc<Shared>) {
+        self.lock().subscribers.push(run);
+    }
+
+    /// Ends the subscription of `run`.
+    pub fn unsubscribe(&self, run: &Arc<Shared>) {
+        self.lock().subscribers.retain(|s| !Arc::ptr_eq(s, run));
+    }
+
+    /// The runs subscribed to what this run emits.
+    pub fn subscribers(&self) -> Vec<Arc<Shared>> {
+        self.lock().subscribers.clone()
     }
 
     pub fn request_cancel(&self) {
@@ -162,19 +210,44 @@ fn remember(wakers: &mut Vec<Waker>, waker: &Waker) {
     }
 }
 
-/// A handle to a run's queue, for a host or a test that feeds inputs to it directly.
+/// A handle to a run: its id and its queue. Host code and tests feed inputs to a run
+/// through it, and it is what a `ref` to the run is in the erased interface
+/// ([`crate::dynamic`]): a run's id in a value, and this handle beside it. The typed handle,
+/// a machine's `Ref`, wraps one ([`crate::Ref`]).
 #[derive(Clone)]
 pub struct RunHandle {
     pub(crate) shared: Arc<Shared>,
+    pub(crate) id: Arc<str>,
 }
 
 impl std::fmt::Debug for RunHandle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RunHandle").finish_non_exhaustive()
+        f.debug_tuple("RunHandle").field(&&*self.id).finish()
     }
 }
 
+/// Two handles are equal when they are handles to the same run.
+impl PartialEq for RunHandle {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.shared, &other.shared)
+    }
+}
+
+impl Eq for RunHandle {}
+
 impl RunHandle {
+    pub(crate) fn new(shared: Arc<Shared>, id: &str) -> RunHandle {
+        RunHandle {
+            shared,
+            id: Arc::from(id),
+        }
+    }
+
+    /// The run's id: what a `ref` to it is in snapshots and traces.
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
     /// Queues an external event, a tagged record.
     pub fn send(&self, event: Value) {
         self.shared.push([Input::Event { value: event }]);
@@ -195,6 +268,13 @@ impl RunHandle {
     pub fn is_finished(&self) -> bool {
         self.shared.finished().is_some()
     }
+
+    /// Whether the run is closed: its core has given a snapshot that is not `running`, so
+    /// messages sent to it now are undelivered. A run closes before it has finished
+    /// carrying out its last step.
+    pub fn is_closed(&self) -> bool {
+        self.shared.lock().closed
+    }
 }
 
 /// The ambient context the driver sets while it polls a machine invoke's future.
@@ -202,7 +282,13 @@ pub(crate) struct InvokeContext {
     pub config: Config,
     pub parent: String,
     pub invoke: u64,
+    /// The child run's [`Shared`], once a run claims it. Until then its inbox holds the
+    /// messages the parent sends to the invoke.
     pub token: Arc<Shared>,
+    /// The parent's own, which the child pushes what it emits onto when `alias` is set.
+    pub parent_queue: Arc<Shared>,
+    /// The invoke's `as` name.
+    pub alias: Option<String>,
 }
 
 thread_local! {

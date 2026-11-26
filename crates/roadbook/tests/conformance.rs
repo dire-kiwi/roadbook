@@ -2,9 +2,11 @@
 //! virtual `Timer` and scripted host code, and compares each trace byte for byte with the
 //! expected `trace.jsonl` (`spec/conformance/README.md`, "How a runner works").
 //!
-//! The runner is its own executor: it polls the root run's future until a poll leaves no
-//! wake-up behind. Every child run is polled inside the root's future, scripted invokes and
-//! timers wake it only when the runner ends or fires them, so that is exactly "quiescent".
+//! The runner is its own executor: it polls the future of every top-level run (the root run
+//! and those of `start` steps) until a round of polls leaves no wake-up behind. Every child
+//! run is polled inside its top-level run's future, and scripted invokes and timers wake one
+//! only when the runner ends or fires them, while a message or emitted event that one run
+//! delivers to another wakes the receiver, so that is exactly "quiescent".
 //!
 //! With `ROADBOOK_CONFORMANCE_OUT=<dir>`, each case's actual trace is also written to
 //! `<dir>/<case>.jsonl`.
@@ -28,8 +30,8 @@ use roadbook_core::{Object, SrcKind};
 use serde_json::Value;
 
 /// The features of `spec/conformance/case.schema.json`'s `requires` this runtime
-/// implements. Messaging (milestone 5) is not one yet.
-const SUPPORTED: &[&str] = &[];
+/// implements.
+const SUPPORTED: &[&str] = &["messaging"];
 
 // ---- the executor ------------------------------------------------------------------------
 
@@ -306,7 +308,7 @@ impl Host for CaseHost<'_> {
         }
         // Every other machine runs from the chart, as the invoke's child run.
         Box::pin(async move {
-            match dynamic::run(self.program, &call.src, call.args, self).await {
+            match dynamic::run(self.program, &call.src, call.args, &call.refs, self).await {
                 Ok(v) => Outcome::Done(v),
                 Err(e) => Outcome::Fail(e),
             }
@@ -316,32 +318,58 @@ impl Host for CaseHost<'_> {
 
 // ---- running a case ----------------------------------------------------------------------
 
-struct Runner<'a> {
-    root: Option<BoxFuture<'a, RunEnd>>,
+/// One top-level run: its future until it ends, then how it ended.
+struct Top<'a> {
+    id: String,
+    fut: Option<BoxFuture<'a, RunEnd>>,
     end: Option<RunEnd>,
+    handle: RunHandle,
+    /// The status the case expects it to have after the last step.
+    expected: Status,
+}
+
+struct Runner<'a> {
+    runs: Vec<Top<'a>>,
     flag: Arc<Flag>,
 }
 
 impl Runner<'_> {
-    /// Polls the root run until a poll leaves no wake-up behind.
+    /// Polls every top-level run that has not ended, in run order, until a round of polls
+    /// leaves no wake-up behind.
     fn settle(&mut self) -> Result<(), String> {
         let waker = Waker::from(self.flag.clone());
         let mut cx = Context::from_waker(&waker);
         for _ in 0..100_000 {
-            let Some(fut) = self.root.as_mut() else {
-                return Ok(());
-            };
             self.flag.0.store(false, Ordering::SeqCst);
-            if let Poll::Ready(end) = fut.as_mut().poll(&mut cx) {
-                self.end = Some(end);
-                self.root = None;
-                return Ok(());
+            let mut polled = false;
+            for run in &mut self.runs {
+                let Some(fut) = run.fut.as_mut() else {
+                    continue;
+                };
+                polled = true;
+                if let Poll::Ready(end) = fut.as_mut().poll(&mut cx) {
+                    run.end = Some(end);
+                    run.fut = None;
+                }
             }
-            if !self.flag.0.load(Ordering::SeqCst) {
+            if !polled || !self.flag.0.load(Ordering::SeqCst) {
                 return Ok(());
             }
         }
         Err("the runs never became quiescent".into())
+    }
+
+    /// The top-level run `id`, which must not have ended.
+    fn running(&self, id: &str) -> Result<&RunHandle, String> {
+        let run = self
+            .runs
+            .iter()
+            .find(|r| r.id == id)
+            .ok_or_else(|| format!("no top-level run {id}"))?;
+        if run.end.is_some() || run.handle.is_finished() {
+            return Err(format!("the top-level run {id} has already ended"));
+        }
+        Ok(&run.handle)
     }
 }
 
@@ -352,6 +380,13 @@ fn status_of(end: &Option<RunEnd>) -> Status {
         Some(RunEnd::Failed(_)) => Status::Failed,
         Some(RunEnd::Cancelled) => Status::Cancelled,
         Some(RunEnd::Defect(_)) => Status::Defect,
+    }
+}
+
+fn object(v: &Value) -> Result<Object, String> {
+    match v {
+        Value::Object(m) => Ok(m.clone()),
+        _ => Err("an `input` is not an object".into()),
     }
 }
 
@@ -379,27 +414,35 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
     let config = Config::new()
         .sink(sink.clone())
         .timer(Arc::new(TimerHandle(timer.clone())))
-        .run_id(roadbook_conformance::ROOT_RUN)
         .on_run(move |id, h| {
             seen.lock().unwrap().insert(id.to_owned(), h);
         });
-    let input = match &c.case.input {
-        Value::Object(m) => m.clone(),
-        _ => return Err("`input` is not an object".into()),
-    };
-    let (fut, root) = dynamic::start(&config, &program, &c.case.machine, input, &host);
+    let root_config = config.clone().run_id(roadbook_conformance::ROOT_RUN);
+    let (fut, root) = dynamic::start(
+        &root_config,
+        &program,
+        &c.case.machine,
+        object(&c.case.input)?,
+        &[],
+        &host,
+    );
     let mut runner = Runner {
-        root: Some(fut),
-        end: None,
+        runs: vec![Top {
+            id: roadbook_conformance::ROOT_RUN.to_owned(),
+            fut: Some(fut),
+            end: None,
+            handle: root,
+            expected: c.case.status,
+        }],
         flag: Arc::new(Flag::default()),
     };
     runner.settle()?;
 
     for (i, step) in c.case.script.iter().enumerate() {
-        if runner.end.is_some() {
-            return Err(format!("step {}: the root run has already ended", i + 1));
-        }
         let at = |e: String| format!("step {}: {e}", i + 1);
+        if !matches!(step, Step::Start(_)) && runner.runs.iter().all(|r| r.end.is_some()) {
+            return Err(at("every top-level run has already ended".into()));
+        }
         match step {
             Step::Advance(d) => {
                 let end = timer.now.load(Ordering::SeqCst) + d;
@@ -413,10 +456,7 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                 timer.now.store(end, Ordering::SeqCst);
             }
             Step::Event(e) => {
-                if e.run.is_some() {
-                    return Err(at("events for other top-level runs need messaging".into()));
-                }
-                root.send(e.event.clone());
+                runner.running(e.run()).map_err(at)?.send(e.event.clone());
                 runner.settle().map_err(at)?;
             }
             Step::Task(t) => {
@@ -427,12 +467,36 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                 }
                 runner.settle().map_err(at)?;
             }
-            Step::Cancel(None) => {
-                root.cancel();
+            Step::Cancel(run) => {
+                let run = run.as_deref().unwrap_or(roadbook_conformance::ROOT_RUN);
+                runner.running(run).map_err(at)?.cancel();
                 runner.settle().map_err(at)?;
             }
-            Step::Cancel(Some(_)) | Step::Start(_) => {
-                return Err(at("several top-level runs need messaging".into()));
+            Step::Start(s) => {
+                let expected = format!("r{}", runner.runs.len() + 1);
+                if s.run != expected {
+                    return Err(at(format!("the run is {expected}, not {}", s.run)));
+                }
+                if !program.ir().machines.contains_key(&s.machine) {
+                    return Err(at(format!("the IR has no machine {}", s.machine)));
+                }
+                let refs: Vec<RunHandle> = runner.runs.iter().map(|r| r.handle.clone()).collect();
+                let (fut, handle) = dynamic::start(
+                    &config.clone().run_id(s.run.clone()),
+                    &program,
+                    &s.machine,
+                    object(&s.input).map_err(at)?,
+                    &refs,
+                    &host,
+                );
+                runner.runs.push(Top {
+                    id: s.run.clone(),
+                    fut: Some(fut),
+                    end: None,
+                    handle,
+                    expected: s.status,
+                });
+                runner.settle().map_err(at)?;
             }
             Step::Together(items) => {
                 let mut inputs: Vec<(String, Input)> = Vec::new();
@@ -484,14 +548,16 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
     if !problems.is_empty() {
         return Err(problems.join("; "));
     }
-    let status = status_of(&runner.end);
     let records: Vec<Value> = sink.records().iter().map(|r| r.to_json()).collect();
     let text = to_lines(&arrange(records));
-    if status != c.case.status {
-        return Err(format!(
-            "the root run is {status:?}, expected {:?}\n{text}",
-            c.case.status
-        ));
+    for run in &runner.runs {
+        let status = status_of(&run.end);
+        if status != run.expected {
+            return Err(format!(
+                "run {} is {status:?}, expected {:?}\n{text}",
+                run.id, run.expected
+            ));
+        }
     }
     Ok(text)
 }

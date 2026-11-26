@@ -197,10 +197,13 @@ impl<'a> Gen<'a> {
                 let e = self.ty(e, sup);
                 quote!(::core::option::Option<#e>)
             }
-            TypeRef::Ref(_) => {
-                quote!(::core::compile_error!(
-                    "`ref` types are not supported by roadbook::include! yet"
-                ))
+            TypeRef::Ref(m) => {
+                let module = ident(&snake(m));
+                if sup {
+                    quote!(super::#module::Ref)
+                } else {
+                    quote!(#module::Ref)
+                }
             }
         }
     }
@@ -936,7 +939,7 @@ impl<'a> Gen<'a> {
 
     /// `State` with its nested enums, and `__from_state_id`.
     fn states(&self, machine: &str, m: &Machine) -> Result<(TokenStream, TokenStream), String> {
-        let mut taken: HashSet<String> = ["State", "Event", "Handlers", "Bind"]
+        let mut taken: HashSet<String> = ["State", "Event", "Emitted", "Ref", "Handlers", "Bind"]
             .into_iter()
             .map(str::to_owned)
             .chain(self.ir.types.keys().cloned())
@@ -1027,33 +1030,66 @@ impl<'a> Gen<'a> {
         Ok(())
     }
 
-    fn events(&self, machine: &str, m: &Machine) -> Result<TokenStream, String> {
+    /// A tagged enum of `events`, `Event` or `Emitted`.
+    fn event_enum(
+        &self,
+        id: &Ident,
+        text: &str,
+        events: &indexmap::IndexMap<String, roadbook_ir::EventDecl>,
+    ) -> Result<TokenStream, String> {
         let mut variants = Vec::new();
-        for (name, e) in &m.events {
-            let id = ident(name);
-            let rename = rename(name, &id);
+        for (name, e) in events {
+            let vid = ident(name);
+            let rename = rename(name, &vid);
             let doc = doc(&e.doc);
             if e.fields.is_empty() {
-                variants.push(quote!(#doc #rename #id));
+                variants.push(quote!(#doc #rename #vid));
             } else {
                 let fields = self.fields(name, &e.fields, false)?;
-                variants.push(quote!(#doc #rename #id { #fields }));
+                variants.push(quote!(#doc #rename #vid { #fields }));
             }
         }
-        let text = if m.events.is_empty() {
-            format!("Machine `{machine}` accepts no events.")
-        } else {
-            format!(
-                "The events machine `{machine}` accepts. In JSON an event is an object with \
-                 `\"_tag\": \"Name\"` and its fields."
-            )
-        };
         let derives = serde_derives();
         Ok(quote! {
             #[doc = #text]
             #[derive(::core::fmt::Debug, ::core::clone::Clone, ::core::cmp::PartialEq, #derives)]
             #[serde(crate = "::roadbook::__private::serde", tag = "_tag")]
-            pub enum Event { #(#variants),* }
+            pub enum #id { #(#variants),* }
+        })
+    }
+
+    /// `Event`, `Emitted` and `Ref`.
+    fn events(&self, machine: &str, m: &Machine) -> Result<TokenStream, String> {
+        let text = if m.events.is_empty() {
+            format!("Machine `{machine}` accepts no events.")
+        } else {
+            format!(
+                "The events machine `{machine}` accepts, from host code (`Actor::send`, \
+                 `Ref::send`) and from other machines (`send`). In JSON an event is an object \
+                 with `\"_tag\": \"Name\"` and its fields."
+            )
+        };
+        let event = self.event_enum(&format_ident!("Event"), &text, &m.events)?;
+        let text = if m.emits.is_empty() {
+            format!("Machine `{machine}` emits no events.")
+        } else {
+            format!(
+                "The events machine `{machine}` emits (`emits`), which its invoker (if it \
+                 named it with `as`) and every machine holding a `ref` to it receive. In JSON \
+                 an event is an object with `\"_tag\": \"Name\"` and its fields."
+            )
+        };
+        let emitted = self.event_enum(&format_ident!("Emitted"), &text, &m.emits)?;
+        let text = format!(
+            "A handle to a running `{machine}`: the chart's `ref {machine}`. Get one from a \
+             spawned run's `Actor::handle`, pass it as a machine argument, or send it an \
+             `Event`."
+        );
+        Ok(quote! {
+            #event
+            #emitted
+            #[doc = #text]
+            pub type Ref = ::roadbook::Ref<Event>;
         })
     }
 
@@ -1208,7 +1244,8 @@ impl<'a> Gen<'a> {
             #[allow(clippy::unit_arg)]
             pub async fn run<H: Handlers + ?::core::marker::Sized>(handlers: &H, #(#decl),*) #ret {
                 let __host = Bind(handlers);
-                let __end = ::roadbook::__private::run(#program, #name, ::roadbook::__private::input(__input(#(#names),*)), &__host).await;
+                let (__in, __refs) = ::roadbook::__private::collect(|| __input(#(#names),*));
+                let __end = ::roadbook::__private::run(#program, #name, ::roadbook::__private::input(__in), &__refs, &__host).await;
                 #finish
             }
 
@@ -1220,7 +1257,8 @@ impl<'a> Gen<'a> {
                 #(#decl),*
             ) #ret {
                 let __host = Bind(handlers);
-                let __end = ::roadbook::__private::run_with(config, #program, #name, ::roadbook::__private::input(__input(#(#names),*)), &__host).await;
+                let (__in, __refs) = ::roadbook::__private::collect(|| __input(#(#names),*));
+                let __end = ::roadbook::__private::run_with(config, #program, #name, ::roadbook::__private::input(__in), &__refs, &__host).await;
                 #finish
             }
 
@@ -1238,11 +1276,13 @@ impl<'a> Gen<'a> {
                 handlers: ::std::sync::Arc<H>,
                 #(#decl),*
             ) -> ::roadbook::Actor<Event, State, #output, #error> {
+                let (__in, __refs) = ::roadbook::__private::collect(|| __input(#(#names),*));
                 ::roadbook::__private::spawn(
                     config,
                     #program,
                     #name,
-                    __input(#(#names),*),
+                    __in,
+                    __refs,
                     ::std::boxed::Box::new(Bind(handlers)),
                     ::roadbook::__private::Codec {
                         event: __event,

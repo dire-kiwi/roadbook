@@ -10,11 +10,13 @@ use std::task::{Context, Poll};
 use roadbook_core::{
     Command, Defect, Input, Object, Program, Record, RunResult, Snapshot, SrcKind, Status,
 };
+use roadbook_ir::{Field, TypeDef, TypeRef};
 use serde_json::{Map, Value};
 
 use crate::defect::defect_from_panic;
 use crate::dynamic::{Host, Invocation, Outcome};
 use crate::env::{BoxFuture, Config, TraceRecord};
+use crate::handle::{Peers, with_scope};
 use crate::shared::{Finished, InvokeContext, RunHandle, Shared, with_context};
 
 /// How a run ended, as [`crate::dynamic::start`] reports it.
@@ -39,13 +41,20 @@ struct Slot<'a> {
 pub(crate) struct Driver<'a> {
     program: &'a Program,
     host: &'a dyn Host,
-    start: Option<(&'a str, Object)>,
+    start: Option<(&'a str, Object, Vec<RunHandle>)>,
     config: Config,
     id: String,
     parent: Option<String>,
     shared: Arc<Shared>,
+    /// For a child run, the invoke context it claimed.
+    ctx: Option<Arc<InvokeContext>>,
+    /// The runs this run holds a `ref` to, by id, from its arguments.
+    peers: Arc<Peers>,
     queue: VecDeque<Input>,
     invokes: BTreeMap<u64, Slot<'a>>,
+    /// The context of every machine invoke whose outcome the core has not taken and that
+    /// has not been cancelled: where a message to its child run goes.
+    contexts: BTreeMap<u64, Arc<InvokeContext>>,
     timers: BTreeMap<u64, BoxFuture<'static, ()>>,
     snap: Snapshot,
     final_state: Option<String>,
@@ -53,12 +62,59 @@ pub(crate) struct Driver<'a> {
     cancel_taken: bool,
 }
 
-/// Calls a host function with no invoke context, catching a panic as a host defect.
-fn call_function(host: &dyn Host, name: &str, args: Vec<Value>) -> Result<Value, Defect> {
+/// Calls a host function with no invoke context and the run's handles in scope, catching a
+/// panic as a host defect.
+fn call_function(
+    host: &dyn Host,
+    peers: &Arc<Peers>,
+    name: &str,
+    args: Vec<Value>,
+) -> Result<Value, Defect> {
     with_context(None, || {
-        catch_unwind(AssertUnwindSafe(|| host.function(name, args)))
-            .unwrap_or_else(|p| Err(defect_from_panic(p)))
+        with_scope(Some(peers), || {
+            catch_unwind(AssertUnwindSafe(|| host.function(name, args)))
+                .unwrap_or_else(|p| Err(defect_from_panic(p)))
+        })
     })
+}
+
+/// `ty` with aliases expanded at the top, transitively.
+fn resolve<'t>(program: &'t Program, mut ty: &'t TypeRef) -> &'t TypeRef {
+    for _ in 0..64 {
+        match ty {
+            TypeRef::Named(n) => match program.ir().types.get(n).map(|d| &d.def) {
+                Some(TypeDef::Alias { ty: t }) => ty = t,
+                _ => break,
+            },
+            _ => break,
+        }
+    }
+    ty
+}
+
+/// The run ids in `value`, a value of type `ty`: the `ref`s in it.
+fn ref_ids(program: &Program, ty: &TypeRef, value: &Value, out: &mut Vec<String>) {
+    match (resolve(program, ty), value) {
+        (TypeRef::Ref(_), Value::String(id)) => out.push(id.clone()),
+        (TypeRef::Optional(t), v) if !v.is_null() => ref_ids(program, t, v, out),
+        (TypeRef::List(t), Value::Array(items)) => {
+            for v in items {
+                ref_ids(program, t, v, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The run ids in the arguments `args` of something with parameters `params`.
+fn arg_ref_ids(program: &Program, params: &[Field], args: &Object) -> Vec<String> {
+    let mut out = Vec::new();
+    for p in params {
+        if let Some(v) = args.get(&p.name) {
+            ref_ids(program, &p.ty, v, &mut out);
+        }
+    }
+    out
 }
 
 /// Drops `x`, catching a panic in its `Drop`. Host futures are dropped this way, so that a
@@ -70,6 +126,7 @@ fn drop_caught<T>(x: T) -> Result<(), Defect> {
 fn blank() -> Snapshot {
     Snapshot {
         machine: String::new(),
+        run: String::new(),
         ir: String::new(),
         status: Status::Running,
         active: Vec::new(),
@@ -79,29 +136,33 @@ fn blank() -> Snapshot {
         timers: Vec::new(),
         next_invoke: 1,
         next_timer: 1,
+        next_message: 1,
         result: None,
     }
 }
 
 impl<'a> Driver<'a> {
+    /// A root run with id `id`, whose `ref` arguments name runs among `refs`.
+    #[allow(clippy::too_many_arguments)]
     pub fn root(
         program: &'a Program,
         machine: &'a str,
         input: Object,
+        refs: Vec<RunHandle>,
         host: &'a dyn Host,
         config: &Config,
+        id: String,
         shared: Arc<Shared>,
     ) -> Self {
-        let id = config.root_id();
         Self::new(
             program,
-            machine,
-            input,
+            (machine, input, refs),
             host,
             config.clone(),
             id,
             None,
             shared,
+            None,
         )
     }
 
@@ -109,43 +170,47 @@ impl<'a> Driver<'a> {
         program: &'a Program,
         machine: &'a str,
         input: Object,
+        refs: Vec<RunHandle>,
         host: &'a dyn Host,
-        ctx: &InvokeContext,
+        ctx: &Arc<InvokeContext>,
     ) -> Self {
         let id = format!("{}.{}", ctx.parent, ctx.invoke);
         Self::new(
             program,
-            machine,
-            input,
+            (machine, input, refs),
             host,
             ctx.config.clone(),
             id,
             Some(ctx.parent.clone()),
             ctx.token.clone(),
+            Some(ctx.clone()),
         )
     }
 
     #[allow(clippy::too_many_arguments)]
     fn new(
         program: &'a Program,
-        machine: &'a str,
-        input: Object,
+        start: (&'a str, Object, Vec<RunHandle>),
         host: &'a dyn Host,
         config: Config,
         id: String,
         parent: Option<String>,
         shared: Arc<Shared>,
+        ctx: Option<Arc<InvokeContext>>,
     ) -> Self {
         Driver {
             program,
             host,
-            start: Some((machine, input)),
+            start: Some(start),
             config,
             id,
             parent,
             shared,
+            ctx,
+            peers: Arc::default(),
             queue: VecDeque::new(),
             invokes: BTreeMap::new(),
+            contexts: BTreeMap::new(),
             timers: BTreeMap::new(),
             snap: blank(),
             final_state: None,
@@ -162,32 +227,38 @@ impl<'a> Driver<'a> {
     /// defect it ended with happened in its cancel step.
     pub async fn drive_reporting(mut self) -> (RunEnd, bool) {
         if let Some(observer) = &self.config.observer {
-            observer(
-                &self.id,
-                RunHandle {
-                    shared: self.shared.clone(),
-                },
-            );
+            observer(&self.id, RunHandle::new(self.shared.clone(), &self.id));
         }
-        let (machine, input) = self.start.take().expect("a driver runs once");
+        let (machine, input, refs) = self.start.take().expect("a driver runs once");
+        self.peers = Arc::new(self.find_peers(machine, &input, refs));
+        // Open from just before `start`, and subscribed to what every peer emits.
+        for peer in self.peers.values() {
+            peer.shared.subscribe(self.shared.clone());
+        }
         let host = self.host;
+        let peers = self.peers.clone();
         let (snap, commands) = self
             .program
-            .start(machine, input, &mut |n, a| call_function(host, n, a))
+            .start(machine, &self.id, input, &mut |n, a| {
+                call_function(host, &peers, n, a)
+            })
             .unwrap_or_else(|e| panic!("{e}"));
-        self.snap = snap;
+        self.set_snapshot(snap);
         self.carry_out(commands).await;
         self.publish();
         while self.snap.status == Status::Running {
             let input = self.take().await;
             let (invoke, timer) = (input.invoke_id(), input.timer_id());
-            let (snap, commands) = self
-                .program
-                .step(&self.snap, input, &mut |n, a| call_function(host, n, a));
-            self.snap = snap;
+            let (snap, commands) = self.program.step(&self.snap, input, &mut |n, a| {
+                call_function(host, &peers, n, a)
+            });
+            self.set_snapshot(snap);
             // The core has taken this outcome or expiry: forget its source. An invoke still
             // held here had its outcome queued from outside, so what its future does now is
             // ignored, as for a cancelled one: a panic while dropping it included.
+            if let Some(i) = invoke {
+                self.contexts.remove(&i);
+            }
             if let Some(slot) = invoke.and_then(|i| self.invokes.remove(&i)) {
                 let _ = drop_caught(slot);
             }
@@ -198,6 +269,47 @@ impl<'a> Driver<'a> {
             self.publish();
         }
         self.end().await
+    }
+
+    /// The handles of the runs that `input` names in `ref` arguments, by id, found among
+    /// `refs`. A run id with no handle there is a host defect before the run starts, as an
+    /// argument that does not encode is.
+    fn find_peers(&self, machine: &str, input: &Object, refs: Vec<RunHandle>) -> Peers {
+        let Some(m) = self.program.ir().machines.get(machine) else {
+            return Peers::new();
+        };
+        let mut peers = Peers::new();
+        for id in arg_ref_ids(self.program, &m.params, input) {
+            if peers.contains_key(&id) {
+                continue;
+            }
+            match refs.iter().find(|h| h.id() == id) {
+                Some(h) => {
+                    peers.insert(id, h.clone());
+                }
+                None => std::panic::resume_unwind(Box::new(Defect::host(format!(
+                    "machine `{machine}` was given `{id}` as a `ref`, but no handle to a run                      with that id"
+                )))),
+            }
+        }
+        peers
+    }
+
+    /// Takes the core's snapshot. A run closes as soon as its core gives a snapshot that is
+    /// not `running`, before that step's commands are carried out.
+    fn set_snapshot(&mut self, snap: Snapshot) {
+        self.snap = snap;
+        if self.snap.status != Status::Running {
+            self.close();
+        }
+    }
+
+    /// Closes the run for good and ends its subscriptions. Idempotent.
+    fn close(&self) {
+        self.shared.close();
+        for peer in self.peers.values() {
+            peer.shared.unsubscribe(&self.shared);
+        }
     }
 
     fn publish(&self) {
@@ -240,6 +352,11 @@ impl<'a> Driver<'a> {
                 Err(p) => ended.push((id, Outcome::Defect(defect_from_panic(p)))),
             }
         }
+        // What a child run emitted in the poll that ended it is in the inbox: it goes before
+        // the child's outcome.
+        if !ended.is_empty() && self.shared.drain(&mut self.queue, cx.waker()) {
+            self.cancel_requested = true;
+        }
         for (invoke, mut outcome) in ended {
             // A future that panics while it is dropped after giving its outcome is host code
             // failing before its invoke ended: the outcome is that host defect.
@@ -270,12 +387,13 @@ impl<'a> Driver<'a> {
         for c in commands {
             if let Err(defect) = self.carry(c).await {
                 let host = self.host;
+                let peers = self.peers.clone();
                 let (snap, rest) =
                     self.program
                         .step(&self.snap, Input::Defect { defect }, &mut |n, a| {
-                            call_function(host, n, a)
+                            call_function(host, &peers, n, a)
                         });
-                self.snap = snap;
+                self.set_snapshot(snap);
                 for c in rest {
                     // A defect met here is ignored.
                     let _ = self.carry(c).await;
@@ -295,8 +413,11 @@ impl<'a> Driver<'a> {
             }
             Command::Action { action, args } => {
                 let host = self.host;
+                let peers = self.peers.clone();
                 let created = with_context(None, || {
-                    catch_unwind(AssertUnwindSafe(|| host.action(&action, args)))
+                    with_scope(Some(&peers), || {
+                        catch_unwind(AssertUnwindSafe(|| host.action(&action, args)))
+                    })
                 });
                 let mut fut = created.map_err(defect_from_panic)?;
                 let done = poll_fn(|cx| {
@@ -321,6 +442,7 @@ impl<'a> Driver<'a> {
                 invoke,
                 src,
                 src_kind,
+                alias,
                 args,
                 ..
             } => {
@@ -330,18 +452,36 @@ impl<'a> Driver<'a> {
                         parent: self.id.clone(),
                         invoke,
                         token: Arc::new(Shared::default()),
+                        parent_queue: self.shared.clone(),
+                        alias,
                     })
                 });
+                if let Some(ctx) = &ctx {
+                    self.contexts.insert(invoke, ctx.clone());
+                }
+                let ir = self.program.ir();
+                let params = match src_kind {
+                    SrcKind::Task => ir.tasks.get(&src).map(|t| &t.params[..]),
+                    SrcKind::Machine => ir.machines.get(&src).map(|m| &m.params[..]),
+                };
+                let refs = arg_ref_ids(self.program, params.unwrap_or_default(), &args)
+                    .iter()
+                    .filter_map(|id| self.peers.get(id).cloned())
+                    .collect();
                 let call = Invocation {
                     kind: src_kind,
                     src,
                     args,
+                    refs,
                     run: self.id.clone(),
                     invoke,
                 };
                 let host = self.host;
+                let peers = self.peers.clone();
                 let created = with_context(ctx.as_ref(), || {
-                    catch_unwind(AssertUnwindSafe(|| host.invoke(call)))
+                    with_scope(Some(&peers), || {
+                        catch_unwind(AssertUnwindSafe(|| host.invoke(call)))
+                    })
                 });
                 let fut = created.unwrap_or_else(|p| {
                     let d = defect_from_panic(p);
@@ -350,10 +490,60 @@ impl<'a> Driver<'a> {
                 self.invokes.insert(invoke, Slot { fut, ctx });
                 Ok(())
             }
-            Command::InvokeCancel { invoke } => match self.invokes.remove(&invoke) {
-                Some(slot) => self.cancel_slot(slot).await,
-                None => Ok(()),
-            },
+            Command::InvokeCancel { invoke } => {
+                self.contexts.remove(&invoke);
+                match self.invokes.remove(&invoke) {
+                    Some(slot) => self.cancel_slot(slot).await,
+                    None => Ok(()),
+                }
+            }
+            Command::Send {
+                to,
+                invoke,
+                message,
+                value,
+            } => {
+                let input = Input::Message {
+                    from: self.id.clone(),
+                    message,
+                    value: value.clone(),
+                };
+                let delivered = match invoke {
+                    // A context the parent no longer has belongs to an invoke whose outcome
+                    // was taken: the core does not send to one.
+                    Some(i) => self.contexts.get(&i).is_none_or(|c| c.token.deliver(input)),
+                    None => self.peers.get(&to).is_some_and(|p| p.shared.deliver(input)),
+                };
+                if !delivered {
+                    self.write(Record::Undelivered {
+                        message,
+                        to: Some(to),
+                        value,
+                    });
+                }
+                Ok(())
+            }
+            Command::Emit { message, value } => {
+                if let Some(ctx) = self.ctx.as_ref().filter(|c| c.alias.is_some()) {
+                    ctx.parent_queue.deliver(Input::Emitted {
+                        from: self.id.clone(),
+                        invoke: Some(ctx.invoke),
+                        message,
+                        value: value.clone(),
+                    });
+                }
+                for run in self.shared.subscribers() {
+                    if !Arc::ptr_eq(&run, &self.shared) {
+                        run.deliver(Input::Emitted {
+                            from: self.id.clone(),
+                            invoke: None,
+                            message,
+                            value: value.clone(),
+                        });
+                    }
+                }
+                Ok(())
+            }
             Command::TimerStart { timer, delay } => {
                 let fut = self.config.timer.start(&self.id, timer, delay);
                 self.timers.insert(timer, fut);
@@ -425,7 +615,9 @@ impl<'a> Driver<'a> {
     /// Ends the run: discards the queue, stops whatever it still holds (a child run is
     /// cancelled through its token first), and reports through the token.
     async fn end(mut self) -> (RunEnd, bool) {
+        self.close();
         self.queue.clear();
+        self.contexts.clear();
         for (_, slot) in std::mem::take(&mut self.invokes) {
             let _ = self.cancel_slot(slot).await;
         }
@@ -450,6 +642,7 @@ impl<'a> Driver<'a> {
 /// that panics then is ignored, as for a cancelled invoke.
 impl Drop for Driver<'_> {
     fn drop(&mut self) {
+        self.close();
         for (_, slot) in std::mem::take(&mut self.invokes) {
             let _ = drop_caught(slot);
         }

@@ -2,7 +2,9 @@
 
 use std::collections::VecDeque;
 
-use roadbook_ir::{Effect, Machine, State, StateKind, Transition, Trigger, TypeRef};
+use roadbook_ir::{
+    Address, AddressKind, Effect, Machine, State, StateKind, Transition, Trigger, TypeRef,
+};
 use serde_json::{Map, Value};
 
 use crate::eval::{Fns, Scope, eval};
@@ -46,10 +48,12 @@ struct Ctx<'p, 'f, 'g> {
 type R<T = ()> = Result<T, Defect>;
 
 impl Program {
-    /// Starts machine `machine` with `input` (its arguments keyed by parameter name).
+    /// Starts machine `machine` as run `run` with `input` (its arguments keyed by parameter
+    /// name). The run id names the run's child runs in `sent` records.
     pub fn start(
         &self,
         machine: &str,
+        run: &str,
         input: Object,
         fns: &mut Fns<'_>,
     ) -> Result<StepResult, UnknownMachine> {
@@ -58,6 +62,7 @@ impl Program {
             .ok_or_else(|| UnknownMachine(machine.to_owned()))?;
         let snap = Snapshot {
             machine: machine.to_owned(),
+            run: run.to_owned(),
             ir: m.hash.clone(),
             status: Status::Running,
             active: Vec::new(),
@@ -67,6 +72,7 @@ impl Program {
             timers: Vec::new(),
             next_invoke: 1,
             next_timer: 1,
+            next_message: 1,
             result: None,
         };
         let started = Record::Started {
@@ -172,6 +178,18 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             implicit,
         };
         eval(e, &scope, self.fns)
+    }
+
+    /// The value of parameter or variable `name`, read as an expression `ref` reads it.
+    fn read(&self, name: &str, implicit: Implicit<'_>) -> R<Value> {
+        let scope = Scope {
+            program: self.program,
+            machine: self.m,
+            input: &self.snap.input,
+            vars: &self.snap.vars,
+            implicit,
+        };
+        crate::eval::lookup(name, &scope)
     }
 
     fn holds(&mut self, t: &Transition, implicit: Implicit<'_>) -> R<bool> {
@@ -286,9 +304,24 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     Some(group),
                 )?;
             }
-            Input::Event { value } => {
+            Input::Event { value } | Input::Message { value, .. } => {
                 bound = Some(("event", value.clone()));
                 chosen = self.select_event(value)?;
+            }
+            Input::Emitted {
+                from,
+                invoke,
+                value,
+                ..
+            } => {
+                if let Some(i) = invoke {
+                    if !self.snap.invokes.iter().any(|e| e.id == *i) {
+                        self.trace(Record::Stale { event: input });
+                        return Ok(());
+                    }
+                }
+                bound = Some(("event", value.clone()));
+                chosen = self.select_emitted(from, *invoke, value)?;
             }
             Input::Defect { .. } => unreachable!("handled by step"),
         }
@@ -351,6 +384,53 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 } else {
                     matches!(t.trigger, Trigger::Any)
                 };
+                if candidate && self.holds(t, Some(bound))? {
+                    return Ok(Some((s, i)));
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    /// Whether `address` names the sender `from` of an emitted event, which this run's
+    /// invoke `invoke` started (`None`: a peer this run holds a `ref` to).
+    fn names_sender(&self, address: &Address, from: &str, invoke: Option<u64>) -> bool {
+        match address.kind {
+            AddressKind::Child => invoke.is_some_and(|i| {
+                self.snap
+                    .invokes
+                    .iter()
+                    .any(|e| e.id == i && Some(&e.state) == address.state.as_ref())
+            }),
+            AddressKind::Ref => {
+                invoke.is_none()
+                    && self
+                        .snap
+                        .input
+                        .get(&address.name)
+                        .or_else(|| self.snap.vars.get(&address.name))
+                        .and_then(Value::as_str)
+                        == Some(from)
+            }
+        }
+    }
+
+    fn select_emitted(
+        &mut self,
+        from: &str,
+        invoke: Option<u64>,
+        value: &Value,
+    ) -> R<Option<(usize, usize)>> {
+        let tag = value.get("_tag").and_then(Value::as_str).unwrap_or("");
+        let bound = ("event", value);
+        for &s in self.active.clone().iter().rev() {
+            let state = self.state(s);
+            for (i, t) in state.transitions.iter().enumerate() {
+                let candidate = matches!(
+                    &t.trigger,
+                    Trigger::Emitted { from: address, event }
+                        if event == tag && self.names_sender(address, from, invoke)
+                );
                 if candidate && self.holds(t, Some(bound))? {
                     return Ok(Some((s, i)));
                 }
@@ -478,24 +558,81 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             }
         }
         for e in effects {
-            if let Effect::Do { action, args } = e {
-                let decl = &self.program.ir().actions[action.as_str()];
-                let mut obj = Map::new();
-                for (p, a) in decl.params.iter().zip(args) {
-                    let v = self.eval(a, implicit)?;
-                    obj.insert(p.name.clone(), v);
+            match e {
+                Effect::Set { .. } => {}
+                Effect::Do { action, args } => {
+                    let decl = &self.program.ir().actions[action.as_str()];
+                    let mut obj = Map::new();
+                    for (p, a) in decl.params.iter().zip(args) {
+                        let v = self.eval(a, implicit)?;
+                        obj.insert(p.name.clone(), v);
+                    }
+                    self.trace(Record::Action {
+                        action: action.clone(),
+                        args: obj.clone(),
+                    });
+                    self.cmds.push(Command::Action {
+                        action: action.clone(),
+                        args: obj,
+                    });
                 }
-                self.trace(Record::Action {
-                    action: action.clone(),
-                    args: obj.clone(),
-                });
-                self.cmds.push(Command::Action {
-                    action: action.clone(),
-                    args: obj,
-                });
+                Effect::Send { to, value, .. } => {
+                    let message = self.next_message();
+                    let (to, invoke, value) = match to.kind {
+                        AddressKind::Child => {
+                            let inv = self
+                                .snap
+                                .invokes
+                                .iter()
+                                .find(|i| Some(&i.state) == to.state.as_ref())
+                                .map(|i| i.id);
+                            let value = self.eval(value, implicit)?;
+                            let Some(inv) = inv else {
+                                self.trace(Record::Undelivered {
+                                    message,
+                                    to: None,
+                                    value,
+                                });
+                                continue;
+                            };
+                            (format!("{}.{inv}", self.snap.run), Some(inv), value)
+                        }
+                        AddressKind::Ref => {
+                            let to = self.read(&to.name, implicit)?;
+                            let to = to.as_str().unwrap_or_default().to_owned();
+                            (to, None, self.eval(value, implicit)?)
+                        }
+                    };
+                    self.trace(Record::Sent {
+                        message,
+                        to: to.clone(),
+                        value: value.clone(),
+                    });
+                    self.cmds.push(Command::Send {
+                        to,
+                        invoke,
+                        message,
+                        value,
+                    });
+                }
+                Effect::Emit { value, .. } => {
+                    let message = self.next_message();
+                    let value = self.eval(value, implicit)?;
+                    self.trace(Record::Emitted {
+                        message,
+                        value: value.clone(),
+                    });
+                    self.cmds.push(Command::Emit { message, value });
+                }
             }
         }
         Ok(())
+    }
+
+    fn next_message(&mut self) -> u64 {
+        let id = self.snap.next_message;
+        self.snap.next_message += 1;
+        id
     }
 
     // ---- settling and work ---------------------------------------------------------------
@@ -566,6 +703,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                         roadbook_ir::InvokeKind::Task => SrcKind::Task,
                         roadbook_ir::InvokeKind::Machine => SrcKind::Machine,
                     },
+                    alias: inv.alias.clone(),
                     args,
                 });
             }
