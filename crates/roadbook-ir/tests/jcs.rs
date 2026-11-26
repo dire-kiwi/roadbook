@@ -1,7 +1,7 @@
 //! RFC 8785 canonical JSON against the RFC's examples and against
 //! ECMAScript number formatting.
 
-use roadbook_ir::jcs::{format_number, to_canonical_string};
+use roadbook_ir::jcs::{format_number, to_canonical, to_canonical_string};
 use serde_json::{Value, json};
 
 /// JSON text written with `%` for a backslash, to keep escapes readable here.
@@ -153,4 +153,185 @@ fn matches_ecmascript_number_formatting() {
         n += 1;
     }
     assert!(n > 1000);
+}
+
+/// `to_canonical` writes straight from `Serialize`; it must give what the `Value` path
+/// gives.
+fn same_as_value_path<T: serde::Serialize>(x: &T) {
+    let via_value = to_canonical_string(&serde_json::to_value(x).unwrap());
+    assert_eq!(to_canonical(x).unwrap(), via_value);
+}
+
+/// Every JSON document in the spec, each line of a `.jsonl` one: traces, cases, snapshots,
+/// schemas, IR.
+#[test]
+fn direct_writer_matches_on_the_spec_documents() {
+    fn walk(dir: &std::path::Path, n: &mut usize) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                walk(&path, n);
+                continue;
+            }
+            let text = std::fs::read_to_string(&path).unwrap_or_default();
+            let docs: Vec<&str> = match path.extension().and_then(|e| e.to_str()) {
+                Some("json") => vec![text.as_str()],
+                Some("jsonl") => text.lines().filter(|l| !l.trim().is_empty()).collect(),
+                _ => continue,
+            };
+            for d in docs {
+                let v: Value = serde_json::from_str(d).unwrap();
+                same_as_value_path(&v);
+                *n += 1;
+            }
+        }
+    }
+    let mut n = 0;
+    walk(
+        &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec"),
+        &mut n,
+    );
+    assert!(n > 1000, "only {n} documents");
+}
+
+#[test]
+fn direct_writer_matches_on_every_serde_shape() {
+    use std::collections::BTreeMap;
+
+    use serde::Serialize;
+
+    #[derive(Serialize)]
+    struct Unit;
+
+    #[derive(Serialize)]
+    struct Newtype(Vec<u8>);
+
+    #[derive(Serialize)]
+    struct Tuple(i32, &'static str);
+
+    #[derive(Serialize)]
+    enum External {
+        Unit,
+        Newtype(u64),
+        Tuple(i8, bool),
+        Struct { z: u8, a: Option<f64> },
+    }
+
+    #[derive(Serialize)]
+    #[serde(tag = "kind")]
+    enum Internal {
+        #[serde(rename = "b.second")]
+        Second {
+            zeta: String,
+            alpha: Value,
+        },
+        Empty,
+    }
+
+    /// Field order that is not canonical order, names past U+E000 and with escapes.
+    #[derive(Serialize)]
+    struct Fields {
+        z: u32,
+        #[serde(rename = "\u{fb33}")]
+        dalet: u8,
+        #[serde(rename = "\u{1f600}")]
+        emoji: u8,
+        #[serde(rename = "a\"b")]
+        quoted: u8,
+        a: i128,
+        b: u128,
+        c: f32,
+        nan: f64,
+        inf: f64,
+        neg_zero: f64,
+        ch: char,
+        bytes: Newtype,
+        unit: Unit,
+        tuple: Tuple,
+        externals: Vec<External>,
+        internals: Vec<Internal>,
+        ints: BTreeMap<i64, &'static str>,
+        escaped_keys: BTreeMap<String, u8>,
+        none: Option<u8>,
+    }
+
+    #[derive(Serialize)]
+    struct Flattened<'a> {
+        t: u64,
+        run: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        parent: Option<&'a str>,
+        #[serde(flatten)]
+        record: &'a Internal,
+    }
+
+    let fields = Fields {
+        z: 1,
+        dalet: 2,
+        emoji: 3,
+        quoted: 4,
+        a: -(1 << 60),
+        b: 1 << 63,
+        c: 0.1,
+        nan: f64::NAN,
+        inf: f64::INFINITY,
+        neg_zero: -0.0,
+        ch: '\n',
+        bytes: Newtype(vec![0, 255]),
+        unit: Unit,
+        tuple: Tuple(-7, "x\u{1}"),
+        externals: vec![
+            External::Unit,
+            External::Newtype(u64::MAX),
+            External::Tuple(-1, true),
+            External::Struct { z: 0, a: None },
+            External::Struct {
+                z: 9,
+                a: Some(1e21),
+            },
+        ],
+        internals: vec![
+            Internal::Second {
+                zeta: "z".into(),
+                alpha: json!({ "y": [1, { "b": 2, "a": 1 }], "x": null }),
+            },
+            Internal::Empty,
+        ],
+        ints: BTreeMap::from([(10, "ten"), (-2, "minus two"), (9, "nine")]),
+        escaped_keys: BTreeMap::from([
+            ("b\\".to_owned(), 1),
+            ("a\n".to_owned(), 2),
+            ("a".to_owned(), 3),
+            ("\u{1f600}x".to_owned(), 4),
+            ("\u{fb33}".to_owned(), 5),
+        ]),
+        none: None,
+    };
+    same_as_value_path(&fields);
+    let record = Internal::Second {
+        zeta: "q".into(),
+        alpha: json!(1.5),
+    };
+    for parent in [None, Some("r1")] {
+        same_as_value_path(&Flattened {
+            t: 12,
+            run: "r1.2",
+            parent,
+            record: &record,
+        });
+    }
+    same_as_value_path(&Flattened {
+        t: 0,
+        run: "r",
+        parent: None,
+        record: &Internal::Empty,
+    });
+}
+
+#[test]
+fn direct_writer_refuses_what_to_value_refuses() {
+    use std::collections::BTreeMap;
+    let bad = BTreeMap::from([(vec![1u8], 1)]);
+    assert!(serde_json::to_value(&bad).is_err());
+    assert!(to_canonical(&bad).is_err());
 }
