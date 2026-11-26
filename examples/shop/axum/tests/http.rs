@@ -11,12 +11,23 @@ use shop_axum::{OrderDraft, Shop, place_order};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::oneshot;
 
-/// Sends one request with a raw HTTP/1.1 client and gives the status and JSON body.
+/// Sends one JSON request with a raw HTTP/1.1 client and gives the status and JSON body.
 async fn post(addr: std::net::SocketAddr, auth: Option<&str>, body: &str) -> (u16, Value) {
+    post_as(addr, Some("application/json"), auth, body).await
+}
+
+/// [`post`] with this `Content-Type`, or none.
+async fn post_as(
+    addr: std::net::SocketAddr,
+    content_type: Option<&str>,
+    auth: Option<&str>,
+    body: &str,
+) -> (u16, Value) {
     let mut s = tokio::net::TcpStream::connect(addr).await.unwrap();
     let auth = auth.map_or(String::new(), |a| format!("Authorization: {a}\r\n"));
+    let ty = content_type.map_or(String::new(), |t| format!("Content-Type: {t}\r\n"));
     let req = format!(
-        "POST /orders HTTP/1.1\r\nHost: shop\r\nContent-Type: application/json\r\n{auth}\
+        "POST /orders HTTP/1.1\r\nHost: shop\r\n{ty}{auth}\
          Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
         body.len()
     );
@@ -28,8 +39,8 @@ async fn post(addr: std::net::SocketAddr, auth: Option<&str>, body: &str) -> (u1
     (status, serde_json::from_str(body).unwrap())
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn every_request_in_the_readme_gets_its_response() {
+/// Serves the shop on an ephemeral port.
+async fn serve() -> std::net::SocketAddr {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     tokio::spawn(async move {
@@ -37,8 +48,14 @@ async fn every_request_in_the_readme_gets_its_response() {
             .await
             .unwrap()
     });
+    addr
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn every_request_in_the_readme_gets_its_response() {
+    let addr = serve().await;
     let apples = r#"{"items": [{"sku": "apple", "qty": 2}]}"#;
-    let rows: [(Option<&str>, &str, u16, Value); 9] = [
+    let rows: [(Option<&str>, &str, u16, Value); 12] = [
         (
             Some("Bearer good"),
             apples,
@@ -90,11 +107,53 @@ async fn every_request_in_the_readme_gets_its_response() {
             400,
             json!({"code": "bad_request"}),
         ),
+        // A JSON number's form does not matter: 2.0 is the int 2.
+        (
+            Some("Bearer good"),
+            r#"{"items": [{"sku": "apple", "qty": 2.0}]}"#,
+            201,
+            json!({"orderId": "ord_1", "chargeId": "ch_ord_1", "totalCents": 2500}),
+        ),
+        (
+            Some("Bearer good"),
+            r#"{"items": [{"sku": "apple", "qty": 2.5}]}"#,
+            400,
+            json!({"code": "bad_request"}),
+        ),
+        // `qty * 1250` overflows: a defect in priceOrder.
+        (
+            Some("Bearer good"),
+            r#"{"items": [{"sku": "apple", "qty": 9007199254740991}]}"#,
+            500,
+            json!({"code": "internal"}),
+        ),
     ];
     for (auth, body, status, expected) in rows {
         let got = post(addr, auth, body).await;
         assert_eq!(got, (status, expected), "{auth:?} {body}");
     }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_body_that_is_not_sent_as_json_is_a_bad_request() {
+    let addr = serve().await;
+    let apples = r#"{"items": [{"sku": "apple", "qty": 2}]}"#;
+    let bad = (400, json!({"code": "bad_request"}));
+    for ty in [None, Some("text/plain"), Some("application/jsonx")] {
+        assert_eq!(
+            post_as(addr, ty, Some("Bearer good"), apples).await,
+            bad,
+            "{ty:?}"
+        );
+    }
+    let (status, _) = post_as(
+        addr,
+        Some("Application/JSON; charset=utf-8"),
+        Some("Bearer good"),
+        apples,
+    )
+    .await;
+    assert_eq!(status, 201);
 }
 
 /// A timer that fires only when the test says: each start is handed to the test.

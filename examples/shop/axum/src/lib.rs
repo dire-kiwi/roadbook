@@ -6,7 +6,9 @@
 //! `examples/shop/README.md` describes, so that its answers can be compared with the
 //! TypeScript application's.
 
+use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
+use std::task::Poll;
 use std::time::Duration;
 
 use axum::Router;
@@ -128,7 +130,12 @@ impl place_order::Handlers for Shop {
     }
 
     async fn price_order(&self, order: &Order, user: &User) -> Order {
-        let total: i64 = order.items.iter().map(|i| i.qty * 1250).sum();
+        // Checked in debug and release builds alike: an overflow is a defect, answered 500.
+        let total = order
+            .items
+            .iter()
+            .try_fold(0_i64, |sum, i| i.qty.checked_mul(1250)?.checked_add(sum))
+            .expect("the order's total overflows an int");
         let total_cents = match user.role {
             Role::Admin => total - total / 10,
             Role::Customer => total,
@@ -151,19 +158,59 @@ pub fn app(shop: Arc<Shop>) -> Router {
         .with_state(shop)
 }
 
-/// One `PlaceOrder` run per request. A body that is not an `OrderDraft` is answered
-/// `400 {"code": "bad_request"}` without running the machine.
+/// One `PlaceOrder` run per request. A request whose `Content-Type` is not
+/// `application/json`, or whose body is not an `OrderDraft`, is answered
+/// `400 {"code": "bad_request"}` without running the machine. A run that ends with a defect
+/// is answered `500 {"code": "internal"}`.
 async fn post_orders(State(shop): State<Arc<Shop>>, headers: HeaderMap, body: Bytes) -> Response {
-    let Ok(draft) = serde_json::from_slice::<OrderDraft>(&body) else {
-        let body = axum::Json(json!({ "code": "bad_request" }));
-        return (StatusCode::BAD_REQUEST, body).into_response();
+    let draft = is_json(&headers)
+        .then(|| serde_json::from_slice::<OrderDraft>(&body).ok())
+        .flatten();
+    let Some(draft) = draft else {
+        return answer(StatusCode::BAD_REQUEST, "bad_request");
     };
     let token = headers
         .get(header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
         .unwrap_or("")
         .to_owned();
-    respond(place_order::run(&*shop, token, draft).await)
+    match catch_unwind(place_order::run(&*shop, token, draft)).await {
+        Ok(r) => respond(r),
+        Err(payload) => {
+            if let Some(d) = payload.downcast_ref::<roadbook::Defect>() {
+                shop.log(format!("defect: {d}"));
+            }
+            answer(StatusCode::INTERNAL_SERVER_ERROR, "internal")
+        }
+    }
+}
+
+/// Whether the request says its body is JSON: `application/json`, with any parameters, as
+/// Express's `express.json()` requires.
+fn is_json(headers: &HeaderMap) -> bool {
+    headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.split(';').next())
+        .is_some_and(|t| t.trim().eq_ignore_ascii_case("application/json"))
+}
+
+/// `status {"code": code}`.
+fn answer(status: StatusCode, code: &str) -> Response {
+    (status, axum::Json(json!({ "code": code }))).into_response()
+}
+
+/// Polls `fut` to its end, catching a panic: how a run that ends with a defect unwinds.
+async fn catch_unwind<T>(fut: impl Future<Output = T>) -> std::thread::Result<T> {
+    let mut fut = std::pin::pin!(fut);
+    std::future::poll_fn(|cx| {
+        match std::panic::catch_unwind(AssertUnwindSafe(|| fut.as_mut().poll(cx))) {
+            Ok(Poll::Ready(v)) => Poll::Ready(Ok(v)),
+            Ok(Poll::Pending) => Poll::Pending,
+            Err(p) => Poll::Ready(Err(p)),
+        }
+    })
+    .await
 }
 
 /// The HTTP response for the chart's `ApiResponse`.
