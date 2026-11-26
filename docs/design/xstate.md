@@ -159,7 +159,7 @@ Ordered from most to least likely to matter for program flow, which is what Road
 7. **A guard on the configuration.** XState's `stateIn` and `matches()` let a guard in one region ask what another region is doing. Roadbook has no form for it, and a chart keeps a variable in step instead.
 8. **Several targets in one transition**, to set more than one region of a parallel state at once.
 9. **Data local to a state.** XState v6's state `input` is passed on the transition into a state and is gone when it is left. In Roadbook every variable belongs to the machine; definite assignment makes this safe, but the variable outlives the state that needed it.
-10. **Child machines in snapshots.** XState persists a child machine's snapshot with its parent's. Roadbook restarts a child from the beginning on restore, which is listed as not yet specified.
+10. **Child machines in snapshots.** XState persists a child machine's snapshot with its parent's. Roadbook restarts a child from the beginning when it restores a snapshot saved while the child ran, and `suspend` waits until no child is running, so a parent with long-lived children cannot be suspended between events. Saving a child run is listed as not yet specified.
 11. **Smaller things:** partial wildcards (`mouse.*`), tags and `meta`, a default target for a history state, route states (for UI navigation, not much use here), reducer actors, and equality on records and lists.
 
 ## What Roadbook does differently
@@ -201,6 +201,6 @@ These are the gaps that fit Roadbook's purpose, roughly in order of value for th
 | A transition that keeps its source (SCXML `type="internal"`), for a parent targeting its own child | Avoids restarting a parent's invoke and timers, the one common case where Roadbook's default surprises an XState user | Small: a keyword, the domain rule, a conformance case |
 | A task that emits progress, or a `stream` task kind | Covers XState's callback and observable actors, and progress from long tasks, in the chart rather than in host code | Medium |
 | Host code receiving a run's emitted events | XState's `actor.on`; listed as not yet specified | Small |
-| Restoring child machines from a snapshot | Long-lived parents that are suspended between events lose their children's state today | Large |
+| Saving and restoring child machines with their parent | A parent with long-lived children cannot be suspended between events today, and a saved one restarts its children | Large |
 
 Several invokes per state, several targets, `raise`, delayed sends, `stateIn`, tags and route states are left off on purpose: each has a written-out form in Roadbook that the diagram shows, and adding them would make charts harder to read for little gain in program flow.
