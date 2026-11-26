@@ -33,10 +33,11 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  final state A { fail E {} }\n}\n",
         "machine M() {\n  final state A { fail E }\n}\n",
     ),
-    // Consecutive effects of one kind share a clause.
+    // Every `set` comes before every `do`, which is the order they run in, and effects of
+    // one kind share a clause.
     (
         "machine M() {\n  entry set a = 1 set b = 2 do f() do g() set c = 3\n}\n",
-        "machine M() {\n  entry set a = 1, b = 2  do f(), g()  set c = 3\n}\n",
+        "machine M() {\n  entry set a = 1, b = 2, c = 3  do f(), g()\n}\n",
     ),
     // A record value as an `after` delay keeps its parentheses.
     (
@@ -113,10 +114,30 @@ const COMMENTS: &[(&str, &str)] = &[
     ("", ""),
 ];
 
+/// The tree, with every list of effects in the order they run: `set`s, then `do`s.
 fn structure(src: &str) -> serde_json::Value {
     let (file, diags) = parse_file(FileId(0), src);
     assert!(diags.is_empty(), "{src}\n{diags:#?}");
-    serde_json::to_value(&file).unwrap()
+    let mut v = serde_json::to_value(&file).unwrap();
+    sets_first(&mut v);
+    v
+}
+
+fn sets_first(v: &mut serde_json::Value) {
+    match v {
+        serde_json::Value::Object(m) => {
+            for (k, x) in m.iter_mut() {
+                if matches!(k.as_str(), "effects" | "entry" | "exit")
+                    && let Some(list) = x.as_array_mut()
+                {
+                    list.sort_by_key(|e| e.get("set").is_none());
+                }
+                sets_first(x);
+            }
+        }
+        serde_json::Value::Array(a) => a.iter_mut().for_each(sets_first),
+        _ => {}
+    }
 }
 
 fn check_stable(src: &str) {

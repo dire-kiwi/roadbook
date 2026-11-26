@@ -854,9 +854,13 @@ impl<'p> Cx<'_, 'p> {
         Some(self.nodes[node].id.clone())
     }
 
+    /// Checks and lowers effects: every `set`, then every `do`, each in the order written,
+    /// which is the order they run in.
     pub(crate) fn effects(&mut self, effects: &[Effect], scope: &Scope) -> Vec<ir::Effect> {
         let mut out = Vec::new();
-        for e in effects {
+        let sets = effects.iter().filter(|e| matches!(e, Effect::Set(_)));
+        let dos = effects.iter().filter(|e| matches!(e, Effect::Do(_)));
+        for e in sets.chain(dos) {
             match e {
                 Effect::Set(a) => {
                     let want = match self.vars.get(&a.var.name) {

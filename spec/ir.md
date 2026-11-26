@@ -6,7 +6,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 **Every member is always present.** Nothing is ever omitted. An absent value is `null`, a missing doc comment is `""`, and an empty list or map is `[]` or `{}`. This gives each input exactly one output, which matters because compiled IR is committed and hashed, and it means readers never need to tell a missing member from a null one. Readers reject members this page does not list.
 
-**Order is source order.** Maps keyed by name (`types`, `functions`, `actions`, `tasks`, `machines`, a machine's `events`) keep declaration order: the entry file's declarations first, then each imported file's in the order the files were first loaded (depth first: a file's imports, in the order written, are loaded before the next import of the file that imports it). Lists (fields, parameters, variables, states, transitions, effects, arguments) are in the order written. A JSON parser that does not keep member order loses nothing a runtime needs, since order in the maps is for readability and diffs only.
+**Order is source order.** Maps keyed by name (`types`, `functions`, `actions`, `tasks`, `machines`, a machine's `events`) keep declaration order: the entry file's declarations first, then each imported file's in the order the files were first loaded (depth first: a file's imports, in the order written, are loaded before the next import of the file that imports it). Lists (fields, parameters, variables, states, transitions, effects, arguments) are in the order written, except that a list of effects puts every `set` before every `do` (see [effects](#effects)). A JSON parser that does not keep member order loses nothing a runtime needs, since order in the maps is for readability and diffs only.
 
 **Names.** Upper-case names (`[A-Z][A-Za-z0-9]*`) are types, errors, events, states and machines. Lower-case names (`[a-z][A-Za-z0-9]*`) are variables, parameters, fields, functions, actions and tasks. Declaration names are unique across a project, so a name in `types`, `functions`, `actions`, `tasks` or `machines` identifies a declaration on its own.
 
@@ -150,7 +150,7 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
 | `doc`, `span` | The span runs from the state's first keyword (`state`, `final` or `parallel`) to its closing brace. |
 | `initial` | Id of the child entered first. Set exactly when `kind` is `compound`, otherwise `null`. |
 | `states` | Children, in source order. Empty for `atomic` and `final`. |
-| `entry`, `exit` | [Effects](#effects) run on entering and leaving the state, in source order. |
+| `entry`, `exit` | [Effects](#effects) run on entering and leaving the state: all `set` assignments, then all `do` actions, each in the order written. |
 | `invoke` | The task or machine run while the state is active, or `null`. At most one per state. |
 | `transitions` | The state's transitions, including its invoke's outcomes, in document order. |
 | `output`, `fail` | In a final state at the top level of a machine: the machine's result or failure expression. At most one of them is set. `null` everywhere else. |
@@ -213,7 +213,7 @@ The outcomes written inside `invoke { … }` are transitions of the state, with 
 | `set` | `set var = value` | `var`: a machine variable (not a parameter). `value`: an expression. |
 | `do` | `do action(args)` | `action`: a key of `actions`. `args`: expressions, positional, in parameter order. |
 
-`set a = 1, b = 2` is two `set` effects.
+`set a = 1, b = 2` is two `set` effects. Every list of effects (a transition's, an `entry`'s, an `exit`'s) holds all its `set` effects, in the order written, then all its `do` effects, in the order written, because that is the order they run in: `do f(a)  set a = 1` and `set a = 1  do f(a)` give the same list, and the same hash. A runtime runs the list in order.
 
 ## Expressions
 

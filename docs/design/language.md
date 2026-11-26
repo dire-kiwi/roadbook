@@ -101,7 +101,7 @@ on Submit if isValid(order) -> Paying  set attempts = 0  do audit("submitted", o
    ^trigger ^guard             ^target ^assignments      ^actions
 ```
 
-With no `-> Target` the transition is internal: the state is not left and re-entered. `set` assignments run before `do` actions.
+With no `-> Target` the transition is internal: the state is not left and re-entered. `set` assignments run before `do` actions: every `set`, in the order written, then every `do`, in the order written, wherever they are written, so a `do` sees the values its transition's `set`s assign. The same goes for `entry` and `exit`. The formatter writes every `set` clause before every `do` clause, so the source shows the order they run in.
 
 Inside a transition, three names are in scope besides the machine's variables: `event` (in `on`), `result` (in an invoke's `done`) and `error` (in an invoke's `fail`).
 
@@ -225,7 +225,7 @@ This is what lets host functions take plain non-optional arguments. In xstate th
 The layout, as implemented in `roadbook-syntax`. The example files and the charts on these pages are written in it.
 
 - **Lines.** Two-space indentation, one item per line, and no line wrapping. A file with syntax errors is not formatted.
-- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses. In a transition the target and each `set` or `do` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Consecutive clauses of one kind are merged (`set a = 1, b = 2`).
+- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses. In a transition the target and each `set` or `do` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Every `set` comes before every `do`, and clauses of one kind are merged: `do f()  set a = 1  set b = 2` is written `set a = 1, b = 2  do f()`.
 - **Blank lines** between items are kept, at most one. There are none at the start or end of a block or file.
 - **Lists.** No trailing commas. A list in a declaration (import names, fields, enum variants, parameters) with a line break right after its opening bracket stays multi-line: its elements are indented one level, keep the author's line breaks between them, and the closing bracket goes on its own line. Every other list is printed on one line.
 - **One-line states.** A state whose body is empty, or is a single item other than a state, an `invoke` or a block of branches, and contains no comment, is written on one line: `final state Charged { output receipt }`. Every other state is written as a block.

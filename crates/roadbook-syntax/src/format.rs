@@ -727,10 +727,13 @@ fn bare_record(e: &Expr) -> bool {
 }
 
 /// Consecutive effects of one kind share a clause; clauses are separated by two spaces.
+/// Every `set` before every `do`, each in the order written: the order they run in.
 fn effects(effects: &[Effect]) -> String {
     let mut out = String::new();
     let mut last: Option<bool> = None;
-    for e in effects {
+    let sets = effects.iter().filter(|e| matches!(e, Effect::Set(_)));
+    let dos = effects.iter().filter(|e| matches!(e, Effect::Do(_)));
+    for e in sets.chain(dos) {
         let is_set = matches!(e, Effect::Set(_));
         if last == Some(is_set) {
             out.push_str(", ");
