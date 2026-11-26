@@ -446,3 +446,175 @@ fn exports_with_a_main_entry_and_specific_patterns() {
         ]
     );
 }
+
+const LEAF: &str = "type Out { s: string }\n";
+
+fn importing(spec: &str) -> String {
+    format!(
+        "import {{ Out }} from \"{spec}\"\nmachine M(o: Out) {{\n  initial X\n  final state X {{}}\n}}\n"
+    )
+}
+
+/// Compiles `entry` in the project `proj` of `t`, with the loader `setup` makes.
+fn check_in(
+    t: &TempDir,
+    entry: &str,
+    setup: impl FnOnce(FsLoader) -> FsLoader,
+) -> roadbook_compiler::Compilation {
+    let mut l = setup(FsLoader::new(t.0.join("proj")));
+    compile(&mut l, entry, &Options::default()).unwrap()
+}
+
+/// An import names a file of the project or of a package, never one above either's root,
+/// and nothing outside is read: the file is never shown, nor put in the IR's `sources`.
+#[test]
+fn imports_do_not_go_above_the_project_root() {
+    let t = TempDir::new("above-root");
+    t.write("outside.road", "type Out { secret: string }\n");
+    for spec in [
+        "/../outside.road",
+        "../../outside.road",
+        "./../a/../../outside.road",
+        "/../../../../../../../../../../etc/os-release",
+    ] {
+        t.write("proj/charts/m.road", &importing(spec));
+        let out = check_in(&t, "charts/m.road", |l| l);
+        let rendered = out.render();
+        assert!(out.ir.is_none(), "{spec}");
+        assert_eq!(out.diagnostics.len(), 1, "{spec}\n{rendered}");
+        assert_eq!(out.diagnostics[0].code.to_string(), "RB0111");
+        assert!(
+            rendered.contains("goes above the project root"),
+            "{spec}\n{rendered}"
+        );
+        assert_eq!(out.files.len(), 1, "{spec}: read another file");
+        assert!(!rendered.contains("secret: string"), "{rendered}");
+    }
+
+    // `../` inside the project is fine.
+    t.write("proj/lib/out.road", LEAF);
+    for spec in [
+        "../lib/out.road",
+        "/lib/out.road",
+        "./../charts/../lib/out.road",
+    ] {
+        t.write("proj/charts/m.road", &importing(spec));
+        let out = check_in(&t, "charts/m.road", |l| l);
+        assert!(out.diagnostics.is_empty(), "{spec}\n{}", out.render());
+        assert_eq!(out.ir.unwrap().sources[1].path, "lib/out.road");
+    }
+
+    // An entry named outside the root may import its neighbours, but nothing further up.
+    t.write("side/m.road", &importing("./out.road"));
+    t.write("side/out.road", LEAF);
+    let out = check_in(&t, "../side/m.road", |l| l);
+    assert!(out.diagnostics.is_empty(), "{}", out.render());
+    t.write("side/m.road", &importing("../../outside.road"));
+    let out = check_in(&t, "../side/m.road", |l| l);
+    assert!(
+        out.render().contains("further above the project root"),
+        "{}",
+        out.render()
+    );
+    assert_eq!(out.files.len(), 1);
+}
+
+/// A package's relative import cannot leave the package's directory, even when `exports`
+/// maps its files somewhere other than their paths in the package say.
+#[test]
+fn imports_do_not_leave_a_package_through_exports() {
+    let t = TempDir::new("exports-escape");
+    t.write("proj/secret.road", "type Out { secret: string }\n");
+    // `pk/a/b/c.road` is `c.road` in the package's directory, so `../../secret.road` is
+    // `secret.road` of the package by its path but two directories above it on disk.
+    t.write(
+        "proj/node_modules/pk/package.json",
+        r#"{ "name": "pk", "exports": { "./a/b/*": "./*" } }"#,
+    );
+    t.write(
+        "proj/node_modules/pk/c.road",
+        "import { Out } from \"../../secret.road\"\ntype C { o: Out }\n",
+    );
+    t.write(
+        "proj/m.road",
+        "import { C } from \"pk/a/b/c.road\"\nmachine M(c: C) {\n  initial X\n  final state X {}\n}\n",
+    );
+    let out = check_in(&t, "m.road", |l| l.with_node_modules(true));
+    let rendered = out.render();
+    assert!(rendered.contains("outside package `pk`"), "{rendered}");
+    assert!(out.ir.is_none());
+    assert_eq!(out.files.len(), 2, "{rendered}");
+    assert!(!rendered.contains("secret: string"), "{rendered}");
+
+    // Within the package's directory, a relative import is fine however `exports` maps it.
+    t.write("proj/node_modules/pk/shared.road", LEAF);
+    t.write(
+        "proj/node_modules/pk/c.road",
+        "import { Out } from \"./shared.road\"\ntype C { o: Out }\n",
+    );
+    let out = check_in(&t, "m.road", |l| l.with_node_modules(true));
+    assert!(out.diagnostics.is_empty(), "{}", out.render());
+}
+
+/// A symbolic link inside the project or a package is followed only if it leads to a file
+/// inside it; a package directory that is itself a link (as package managers make) is fine.
+#[cfg(unix)]
+#[test]
+fn symbolic_links_do_not_lead_out_of_the_project_or_a_package() {
+    use std::os::unix::fs::symlink;
+    let t = TempDir::new("links");
+    t.write("outside.road", "type Out { secret: string }\n");
+    t.write("proj/lib/out.road", LEAF);
+    std::fs::create_dir_all(t.0.join("proj/charts")).unwrap();
+    symlink(t.0.join("outside.road"), t.0.join("proj/charts/evil.road")).unwrap();
+    symlink(
+        t.0.join("proj/lib/out.road"),
+        t.0.join("proj/charts/near.road"),
+    )
+    .unwrap();
+    std::fs::create_dir_all(t.0.join("elsewhere")).unwrap();
+    symlink(t.0.join("elsewhere"), t.0.join("proj/linked")).unwrap();
+    t.write("elsewhere/out.road", LEAF);
+
+    for spec in ["./evil.road", "../linked/out.road"] {
+        t.write("proj/charts/m.road", &importing(spec));
+        let out = check_in(&t, "charts/m.road", |l| l);
+        let rendered = out.render();
+        assert!(
+            rendered.contains("a symbolic link leads from it to outside the project"),
+            "{spec}\n{rendered}"
+        );
+        assert_eq!(out.files.len(), 1, "{spec}");
+        assert!(!rendered.contains("secret: string"), "{rendered}");
+    }
+    // An entry that is such a link is not read either.
+    let err = compile(
+        &mut FsLoader::new(t.0.join("proj")),
+        "charts/evil.road",
+        &Options::default(),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("symbolic link"), "{err}");
+
+    // A link to a file inside the project is followed.
+    t.write("proj/charts/m.road", &importing("./near.road"));
+    let out = check_in(&t, "charts/m.road", |l| l);
+    assert!(out.diagnostics.is_empty(), "{}", out.render());
+
+    // A package whose directory is a link, with a link inside it leading out of it.
+    t.write("pkgs/inv/out.road", LEAF);
+    symlink(t.0.join("outside.road"), t.0.join("pkgs/inv/evil.road")).unwrap();
+    std::fs::create_dir_all(t.0.join("proj/node_modules")).unwrap();
+    symlink(t.0.join("pkgs/inv"), t.0.join("proj/node_modules/inv")).unwrap();
+    t.write("proj/charts/m.road", &importing("inv/out.road"));
+    let out = check_in(&t, "charts/m.road", |l| l.with_node_modules(true));
+    assert!(out.diagnostics.is_empty(), "{}", out.render());
+    t.write("proj/charts/m.road", &importing("inv/evil.road"));
+    let out = check_in(&t, "charts/m.road", |l| l.with_node_modules(true));
+    assert!(
+        out.render().contains("outside package `inv`"),
+        "{}",
+        out.render()
+    );
+    assert_eq!(out.files.len(), 1);
+}
