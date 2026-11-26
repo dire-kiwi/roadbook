@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Roadbook trace record",
+  "description": "One record of a Roadbook trace: one line of a .jsonl trace file. See spec/trace.md for what each record means and spec/execution.md for when it is written. Every member listed for a kind is required, and no other member is allowed.",
+  "type": "object",
+  "required": ["t", "run", "kind"],
+  "properties": {
+    "t": {
+      "description": "The driver's clock when the record was written, in integer milliseconds: virtual time from 0 in conformance runs, since the Unix epoch otherwise.",
+      "$ref": "#/$defs/safeNatural"
+    },
+    "run": {
+      "description": "The run that wrote the record. A child run's id is its parent's id, a dot, and the id of the invoke that started it.",
+      "$ref": "#/$defs/runId"
+    },
+    "parent": {
+      "description": "The parent run's id. Present exactly on the records of a child run.",
+      "$ref": "#/$defs/runId"
+    },
+    "kind": { "type": "string" }
+  },
+  "if": { "properties": { "run": { "pattern": "\\." } } },
+  "then": { "required": ["parent"] },
+  "else": { "not": { "required": ["parent"] } },
+  "oneOf": [
+    {
+      "description": "The run started.",
+      "properties": {
+        "kind": { "const": "started" },
+        "machine": { "$ref": "#/$defs/upperName" },
+        "ir": { "$ref": "#/$defs/hash" },
+        "input": { "$ref": "#/$defs/args" }
+      },
+      "required": ["machine", "ir", "input"]
+    },
+    {
+      "description": "A state was entered (written before its entry effects).",
+      "properties": { "kind": { "const": "entered" }, "state": { "$ref": "#/$defs/stateId" } },
+      "required": ["state"]
+    },
+    {
+      "description": "A state was left (written after its work was cancelled and its exit effects ran).",
+      "properties": { "kind": { "const": "exited" }, "state": { "$ref": "#/$defs/stateId" } },
+      "required": ["state"]
+    },
+    {
+      "description": "The run took an input that enables a transition.",
+      "properties": { "kind": { "const": "event" }, "event": { "$ref": "#/$defs/event" } },
+      "required": ["event"]
+    },
+    {
+      "description": "The run took an input that enables no transition. Nothing changed.",
+      "properties": { "kind": { "const": "dropped" }, "event": { "$ref": "#/$defs/event" } },
+      "required": ["event"]
+    },
+    {
+      "description": "The run took the outcome of an invoke, or the expiry of a timer, that had already been cancelled. Nothing changed.",
+      "properties": { "kind": { "const": "stale" }, "event": { "$ref": "#/$defs/event" } },
+      "required": ["event"]
+    },
+    {
+      "description": "A transition was taken. It is named by its state and its index in that state's transitions.",
+      "properties": {
+        "kind": { "const": "transition" },
+        "from": { "$ref": "#/$defs/stateId" },
+        "index": { "$ref": "#/$defs/safeNatural" },
+        "to": {
+          "description": "The target state, or null for an internal transition.",
+          "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }]
+        }
+      },
+      "required": ["from", "index", "to"]
+    },
+    {
+      "description": "A variable was assigned.",
+      "properties": {
+        "kind": { "const": "set" },
+        "var": { "$ref": "#/$defs/lowerName" },
+        "value": { "$ref": "#/$defs/value" }
+      },
+      "required": ["var", "value"]
+    },
+    {
+      "description": "An action was run (written before the driver runs it).",
+      "properties": {
+        "kind": { "const": "action" },
+        "action": { "$ref": "#/$defs/lowerName" },
+        "args": { "$ref": "#/$defs/args" }
+      },
+      "required": ["action", "args"]
+    },
+    {
+      "description": "A task or child machine was started.",
+      "properties": {
+        "kind": { "const": "invoke.started" },
+        "invoke": { "$ref": "#/$defs/id" },
+        "state": { "$ref": "#/$defs/stateId" },
+        "src": { "$ref": "#/$defs/name" },
+        "args": { "$ref": "#/$defs/args" }
+      },
+      "required": ["invoke", "state", "src", "args"]
+    },
+    {
+      "description": "A running task or child machine was cancelled because its state was left.",
+      "properties": {
+        "kind": { "const": "invoke.cancelled" },
+        "invoke": { "$ref": "#/$defs/id" },
+        "state": { "$ref": "#/$defs/stateId" },
+        "src": { "$ref": "#/$defs/name" }
+      },
+      "required": ["invoke", "state", "src"]
+    },
+    {
+      "description": "An after timer was started.",
+      "properties": {
+        "kind": { "const": "timer.started" },
+        "timer": { "$ref": "#/$defs/id" },
+        "state": { "$ref": "#/$defs/stateId" },
+        "index": { "$ref": "#/$defs/safeNatural" },
+        "delay": { "$ref": "#/$defs/safeNatural" }
+      },
+      "required": ["timer", "state", "index", "delay"]
+    },
+    {
+      "description": "A running timer was cancelled because its state was left.",
+      "properties": {
+        "kind": { "const": "timer.cancelled" },
+        "timer": { "$ref": "#/$defs/id" },
+        "state": { "$ref": "#/$defs/stateId" },
+        "index": { "$ref": "#/$defs/safeNatural" }
+      },
+      "required": ["timer", "state", "index"]
+    },
+    {
+      "description": "The run reached a top-level final state with an output (null if the machine returns nothing). The last record of the run.",
+      "properties": {
+        "kind": { "const": "done" },
+        "state": { "$ref": "#/$defs/stateId" },
+        "output": { "$ref": "#/$defs/value" }
+      },
+      "required": ["state", "output"]
+    },
+    {
+      "description": "The run reached a top-level final state with a fail expression. The last record of the run.",
+      "properties": {
+        "kind": { "const": "failed" },
+        "state": { "$ref": "#/$defs/stateId" },
+        "error": { "$ref": "#/$defs/tagged" }
+      },
+      "required": ["state", "error"]
+    },
+    {
+      "description": "The run was cancelled from outside. The last record of the run.",
+      "properties": { "kind": { "const": "cancelled" } }
+    },
+    {
+      "description": "The run ended with a defect. The last record of the run.",
+      "properties": { "kind": { "const": "defect" }, "defect": { "$ref": "#/$defs/defect" } },
+      "required": ["defect"]
+    }
+  ],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "upperName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+    "lowerName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+    "name": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" },
+    "stateId": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)*$" },
+    "runId": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[1-9][0-9]*)*$" },
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "safeNatural": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "id": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "value": { "description": "A Roadbook value in its JSON form (spec/execution.md#values)." },
+    "args": {
+      "description": "Arguments keyed by parameter name.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/lowerName" }
+    },
+    "tagged": {
+      "description": "An error or event value: an object with _tag and the fields.",
+      "type": "object",
+      "required": ["_tag"],
+      "properties": { "_tag": { "$ref": "#/$defs/upperName" } }
+    },
+    "event": {
+      "description": "An input as the core received it.",
+      "type": "object",
+      "oneOf": [
+        {
+          "properties": { "kind": { "const": "event" }, "value": { "$ref": "#/$defs/tagged" } },
+          "required": ["kind", "value"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "invoke.done" },
+            "invoke": { "$ref": "#/$defs/id" },
+            "value": { "$ref": "#/$defs/value" }
+          },
+          "required": ["kind", "invoke", "value"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "invoke.fail" },
+            "invoke": { "$ref": "#/$defs/id" },
+            "error": { "$ref": "#/$defs/tagged" }
+          },
+          "required": ["kind", "invoke", "error"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "invoke.defect" },
+            "invoke": { "$ref": "#/$defs/id" },
+            "defect": { "$ref": "#/$defs/defect" }
+          },
+          "required": ["kind", "invoke", "defect"],
+          "additionalProperties": false
+        },
+        {
+          "properties": { "kind": { "const": "after" }, "timer": { "$ref": "#/$defs/id" } },
+          "required": ["kind", "timer"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "defect": {
+      "type": "object",
+      "oneOf": [
+        {
+          "description": "Host code threw, panicked, or returned a value of the wrong type.",
+          "properties": { "kind": { "const": "host" }, "message": { "type": "string" } },
+          "required": ["kind", "message"],
+          "additionalProperties": false
+        },
+        {
+          "description": "A variable was read before it had a value.",
+          "properties": { "kind": { "const": "unassigned" }, "var": { "$ref": "#/$defs/lowerName" } },
+          "required": ["kind", "var"],
+          "additionalProperties": false
+        },
+        {
+          "description": "Arithmetic left the int range or produced a non-finite float. expr is the operator node's text.",
+          "properties": { "kind": { "const": "overflow" }, "expr": { "type": "string" } },
+          "required": ["kind", "expr"],
+          "additionalProperties": false
+        },
+        {
+          "description": "A task or child machine failed with an error it does not declare.",
+          "properties": { "kind": { "const": "undeclared" }, "error": { "$ref": "#/$defs/upperName" } },
+          "required": ["kind", "error"],
+          "additionalProperties": false
+        },
+        {
+          "description": "Settling took more than 1000 microsteps.",
+          "properties": { "kind": { "const": "limit" } },
+          "required": ["kind"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
