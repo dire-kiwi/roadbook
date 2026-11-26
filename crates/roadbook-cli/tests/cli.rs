@@ -1292,49 +1292,23 @@ machine Order(item: Item, i: ref Inv, s: ref Stock, f: ref Far, a: ref A) {
     assert_eq!(
         imports(module("app/order.road.ts")),
         [
-            "import { type InvDef } from \"@shop/inv/inv.road.js\"".to_owned(),
+            "import type { InvDef } from \"@shop/inv/inv.road.js\"".to_owned(),
             "import { Item } from \"@shop/inv/types.road.js\"".to_owned(),
-            "import { type StockDef } from \"../libs/stock/src/stock.road.js\"".to_owned(),
-            format!("import {{ type FarDef }} from \"../../{outside_name}/far/far.road.js\""),
-            "import { type ADef } from \"../a/a.road.js\"".to_owned(),
+            "import type { StockDef } from \"../libs/stock/src/stock.road.js\"".to_owned(),
+            format!("import type {{ FarDef }} from \"../../{outside_name}/far/far.road.js\""),
+            "import type { ADef } from \"../a/a.road.js\"".to_owned(),
         ]
     );
     assert_eq!(
         imports(module("a/a.road.ts")),
-        ["import { type BDef } from \"../b/b.road.js\""]
+        ["import type { BDef } from \"../b/b.road.js\""]
     );
     assert_eq!(
         imports(module("b/b.road.ts")),
-        ["import { type ADef } from \"../a/a.road.js\""]
+        ["import type { ADef } from \"../a/a.road.js\""]
     );
 
-    let tsc = repo().join("packages/effect/node_modules/.bin/tsc");
-    if tsc.exists() {
-        std::fs::write(
-            dir.join("tsconfig.json"),
-            format!(
-                r#"{{ "extends": "{}", "compilerOptions": {{ "types": [] }}, "include": ["app/*.road.ts", "a/*.road.ts", "b/*.road.ts"] }}"#,
-                repo().join("packages/effect/tsconfig.json").display()
-            ),
-        )
-        .unwrap();
-        let out = Command::new(&tsc)
-            .args(["-p", "tsconfig.json", "--noEmit"])
-            .current_dir(&dir)
-            .output()
-            .unwrap();
-        assert!(
-            out.status.success(),
-            "tsc:\n{}{}",
-            text(&out.stdout),
-            text(&out.stderr)
-        );
-    } else {
-        eprintln!(
-            "note: {} is missing (run `pnpm install`); not typechecked",
-            tsc.display()
-        );
-    }
+    typecheck(&dir, r#""app/*.road.ts", "a/*.road.ts", "b/*.road.ts""#);
 
     // A package in `node_modules` that does not export the generated modules is an error:
     // the import could not be resolved.
@@ -1354,6 +1328,206 @@ machine Order(item: Item, i: ref Inv, s: ref Stock, f: ref Far, a: ref A) {
         text(&out.stderr)
     );
     let _ = std::fs::remove_dir_all(&outside);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Resolves what the generated modules import when Node runs them in a test project: `effect`
+/// and `@roadbook/effect` as `packages/effect` does, and `./x.road.js` to `./x.road.ts`.
+const NODE_HOOKS: &str = r#"
+import { registerHooks } from "node:module"
+import { existsSync } from "node:fs"
+import { fileURLToPath, pathToFileURL } from "node:url"
+const effect = pathToFileURL(process.env.ROADBOOK_EFFECT_PACKAGE).href
+registerHooks({
+  resolve(specifier, context, next) {
+    if (specifier === "effect" || specifier === "@roadbook/effect") {
+      return next(specifier, { ...context, parentURL: effect })
+    }
+    if (specifier.endsWith(".road.js") && context.parentURL !== undefined) {
+      const ts = new URL(specifier.slice(0, -3) + ".ts", context.parentURL)
+      if (existsSync(fileURLToPath(ts))) return next(ts.href, context)
+    }
+    return next(specifier, context)
+  }
+})
+"#;
+
+/// Typechecks the generated modules `include` matches in `dir` with `tsc` under the
+/// repository's settings (`verbatimModuleSyntax` among them). False, with a note, if `pnpm
+/// install` has not been run.
+fn typecheck(dir: &Path, include: &str) -> bool {
+    let tsc = repo().join("packages/effect/node_modules/.bin/tsc");
+    if !tsc.exists() {
+        eprintln!(
+            "note: {} is missing (run `pnpm install`); not typechecked",
+            tsc.display()
+        );
+        return false;
+    }
+    std::fs::write(
+        dir.join("tsconfig.json"),
+        format!(
+            r#"{{ "extends": "{}", "compilerOptions": {{ "types": [] }}, "include": [{include}] }}"#,
+            repo().join("packages/effect/tsconfig.json").display()
+        ),
+    )
+    .unwrap();
+    let out = Command::new(&tsc)
+        .args(["-p", "tsconfig.json", "--noEmit"])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "tsc:\n{}{}",
+        text(&out.stdout),
+        text(&out.stderr)
+    );
+    true
+}
+
+/// Modules of charts that import each other load and run under Node whichever is loaded
+/// first: what one takes from a module in its import cycle it reads lazily, since that module
+/// may not have run yet. A name that exists only as a type (an alias of a `ref`) is imported
+/// with `type`, as `verbatimModuleSyntax` requires and as Node needs, the module having no such
+/// export. (Skipped, with a note, without `pnpm install` or Node.)
+#[test]
+fn gen_modules_that_import_each_other_load_and_run() {
+    let a = "\
+import { Bad } from \"./b.road\"
+
+type T { n: int }
+
+task work(t: T) -> T ! Bad
+
+machine A(t: T) -> T ! Bad {
+  var out: T
+  initial Working
+  state Working {
+    invoke work(t) {
+      done     -> Done    set out = result
+      fail Bad -> Failed
+    }
+  }
+  final state Done   { output out }
+  final state Failed { fail Bad { t: t } }
+}
+";
+    let b = "\
+import { T } from \"./a.road\"
+
+error Bad { t: T }
+
+machine B() {
+  event Go { t: T }
+
+  initial Idle
+  state Idle {
+    on Go -> Gone
+  }
+  final state Gone {}
+}
+";
+    let w =
+        "machine Worker() {\n  initial X\n  final state X {}\n}\n\ntype WorkerRef = ref Worker\n";
+    let boss = "\
+import { WorkerRef } from \"./w.road\"
+import { Bad } from \"./b.road\"
+
+machine Boss(worker: WorkerRef) ! Bad {
+  initial X
+  final state X {}
+}
+";
+    let main = r#"
+import { Cause, Effect, Exit, Schema } from "effect"
+// The modules in the order given: the first one loaded runs after the modules it imports.
+const modules = {}
+for (const name of process.argv.slice(2)) modules[name] = await import(`./${name}.road.js`)
+const { A, T } = modules.a
+const { Bad, Go } = modules.b
+const check = (ok, what) => {
+  if (!ok) throw new Error(`failed: ${what}`)
+}
+const bad = Schema.decodeUnknownSync(Bad)({ _tag: "Bad", t: { n: 1 } })
+check(bad instanceof Bad && bad.t.n === 1, "a Bad decodes, with its field of a.road's type")
+check(Exit.isFailure(Schema.decodeUnknownExit(Bad)({ _tag: "Bad", t: { n: "one" } })), "a wrong T is refused")
+check(Schema.decodeUnknownSync(Go)({ _tag: "Go", t: { n: 2 } }).t.n === 2, "an event decodes")
+check(Schema.decodeUnknownSync(T)({ n: 3 }).n === 3, "a T decodes")
+const run = (work) => Effect.runPromiseExit(A.implement({ tasks: { work } }).run({ t: { n: 4 } }))
+const done = await run(({ t }) => Effect.succeed({ n: t.n + 1 }))
+check(Exit.isSuccess(done) && done.value.n === 5, "A succeeds")
+const failed = await run(({ t }) => Effect.fail(new Bad({ t })))
+const error = Exit.isFailure(failed) ? failed.cause.reasons.find(Cause.isFailReason)?.error : undefined
+check(error instanceof Bad && error.t.n === 4, "A fails with an instance of Bad")
+console.log("ok")
+"#;
+    let dir = project(
+        "gen-cycle",
+        &[
+            ("a.road", a),
+            ("b.road", b),
+            ("w.road", w),
+            ("boss.road", boss),
+            ("package.json", r#"{ "type": "module" }"#),
+            ("hooks.mjs", NODE_HOOKS),
+            ("main.mjs", main),
+        ],
+    );
+    let out = roadbook(&dir, &["gen"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let module = |path: &str| std::fs::read_to_string(dir.join(path)).unwrap();
+    let (a, b, boss) = (
+        module("a.road.ts"),
+        module("b.road.ts"),
+        module("boss.road.ts"),
+    );
+    assert!(a.contains("import { Bad } from \"./b.road.js\"\n"), "{a}");
+    assert!(
+        a.contains("const errors = { get Bad() { return Bad } }\n"),
+        "{a}"
+    );
+    assert!(
+        b.contains("export class Bad extends Schema.TaggedError<Bad>()(\"Bad\", { t: Schema.suspend(() => T) }) {}\n"),
+        "{b}"
+    );
+    assert!(
+        boss.contains("import { Bad } from \"./b.road.js\"\n"),
+        "{boss}"
+    );
+    assert!(
+        boss.contains("import type { WorkerRef } from \"./w.road.js\"\n"),
+        "{boss}"
+    );
+    assert!(boss.contains("const errors = { Bad }\n"), "{boss}");
+
+    if !typecheck(&dir, r#""*.road.ts""#) {
+        return;
+    }
+    for order in [["a", "b", "boss"], ["b", "a", "boss"], ["boss", "b", "a"]] {
+        let out = match Command::new("node")
+            .args(["--import", "./hooks.mjs", "main.mjs"])
+            .args(order)
+            .env(
+                "ROADBOOK_EFFECT_PACKAGE",
+                repo().join("packages/effect/package.json"),
+            )
+            .current_dir(&dir)
+            .output()
+        {
+            Ok(out) => out,
+            Err(e) => {
+                eprintln!("note: cannot run node ({e}); the modules were not run");
+                return;
+            }
+        };
+        assert!(
+            out.status.success() && text(&out.stdout) == "ok\n",
+            "node, loading {order:?}:\n{}{}",
+            text(&out.stdout),
+            text(&out.stderr)
+        );
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }
 

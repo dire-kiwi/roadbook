@@ -12,14 +12,26 @@
 //! - for every machine, a `Schema.TaggedStruct` per event it accepts and per event it emits, a
 //!   definition interface (`<Name>Def`) with its input, output, errors, events, emitted events,
 //!   state ids and the signatures of the functions, actions, tasks and machines it uses, and a
-//!   handle made by `Roadbook.make` from the compiled IR, which is inlined once per module.
+//!   handle made by `Roadbook.make` from the compiled IR, which is inlined once per module,
+//!   and the module's error classes: those of the files its declarations refer to, directly
+//!   or not (see `file_refs`).
 //!
 //! Declarations of other files are imported from their own generated modules: a file of the
 //! project by relative path (`./types.road.js`), a file of another package as
 //! [`Options::modules`] says (`roadbook gen` gives a relative path to where the file was found
 //! for a package of the `[packages]` table of `roadbook.toml`, and for one in `node_modules`
 //! the specifier its `exports` maps to the generated module), else by the package specifier
-//! `<package>/<path>.js` (`inventory/inventory.road.js`).
+//! `<package>/<path>.js` (`inventory/inventory.road.js`). A name that is only a type (a
+//! machine's `<Name>Def`, an alias of a type with a `ref` in it) is imported with `type`, and
+//! with `import type` if the module imports nothing else from that one, so that it is not
+//! loaded for it.
+//!
+//! Charts may import each other, and so may their modules. In an import cycle the module that
+//! is loaded first runs after the others, so a module reads what it imports from a module that
+//! may import it back, directly or not, only when it is first needed: a schema as
+//! `Schema.suspend(() => T)`, an error class through a getter of the errors map that
+//! `Roadbook.make` is given. Which modules may import which is read from the IR, which holds
+//! every file the entry file imports, directly or not (see `file_refs`).
 //!
 //! # Types the generator maps specially
 //!
@@ -32,9 +44,9 @@
 //! - Recursive records and aliases (`type Tree { children: Tree[] }`) are supported: each
 //!   reference inside the cycle is `Schema.suspend`ed and the types of the cycle get an
 //!   explicit interface. A cycle is rejected with [`GenError::Recursive`] if it spans several
-//!   files (the modules would import each other), contains an error type, or reaches an error
-//!   type (whose encoded form differs from its type, which `Schema.suspend` cannot express
-//!   without spelling out the encoded type).
+//!   files (the interfaces would have to be written across modules), contains an error type,
+//!   or reaches an error type (whose encoded form differs from its type, which
+//!   `Schema.suspend` cannot express without spelling out the encoded type).
 //! - An `error`'s class extends JavaScript's `Error`, so some field names are taken: see
 //!   [`error_field_conflict`]. Such a field is rejected with [`GenError::ErrorField`].
 
@@ -166,6 +178,8 @@ impl std::error::Error for GenError {}
 /// `roadbook gen` writes to `<file>.road.ts`. Deterministic: the same IR gives the same text.
 pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
     let entry = ir.sources.first().ok_or(GenError::NoEntry)?;
+    let refs = file_refs(ir);
+    let reached = reach(&refs, 0);
     let mut g = Gen {
         ir,
         imports: BTreeMap::new(),
@@ -173,6 +187,10 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
         duration: false,
         roadbook: false,
         cycle: cycles(ir)?,
+        lazy: (1..ir.sources.len())
+            .filter(|&f| reached[f] && reach(&refs, f)[0])
+            .map(|f| f as u32)
+            .collect(),
     };
     let mut items: Vec<String> = Vec::new();
     let mut names: Vec<String> = Vec::new();
@@ -231,12 +249,24 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
         names.push(format!("{name}Def"));
         if i == 0 {
             section.push(format!("const ir: unknown = {}", ir.to_json().trim_end()));
+            // The error classes of the files this one refers to, directly or not: those its
+            // machines can meet. One of a module that imports this one is read when it is
+            // first needed, as the modules may not have run yet when this one runs.
             let errors = ir
                 .types
                 .iter()
-                .filter(|(_, t)| matches!(t.def, TypeDef::Error { .. }))
-                .map(|(n, _)| g.named(n))
-                .collect::<Result<Vec<_>, _>>()?;
+                .filter(|(_, t)| {
+                    matches!(t.def, TypeDef::Error { .. }) && reached[t.span.file as usize]
+                })
+                .map(|(n, t)| {
+                    let n = g.named(n)?;
+                    Ok(if g.lazy.contains(&t.span.file) {
+                        format!("get {n}() {{ return {n} }}")
+                    } else {
+                        n.to_owned()
+                    })
+                })
+                .collect::<Result<Vec<_>, GenError>>()?;
             section.push(list("const errors = ", &errors, ""));
         }
         section.push(format!(
@@ -273,12 +303,18 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
             },
         };
         names.extend(imported.iter().map(|i| i.name.clone()));
-        let imported: Vec<String> = imported.iter().map(Import::render).collect();
-        imports.push(list(
-            "import ",
-            &imported,
-            &format!(" from \"{specifier}\""),
-        ));
+        // Names that exist only as types are imported with `type`: under
+        // `verbatimModuleSyntax` a value import of one fails, and at run time the module has
+        // no such export. A module only types are imported from is not loaded at all.
+        let (head, imported): (&str, Vec<String>) = if imported.iter().all(|i| i.type_only) {
+            (
+                "import type ",
+                imported.iter().map(|i| i.name.clone()).collect(),
+            )
+        } else {
+            ("import ", imported.iter().map(Import::render).collect())
+        };
+        imports.push(list(head, &imported, &format!(" from \"{specifier}\"")));
     }
 
     let mut seen = HashSet::new();
@@ -340,7 +376,8 @@ pub fn error_field_conflict(ir: &Ir, field: &Field) -> Option<&'static str> {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Import {
     name: String,
-    /// Whether it is only a type (a machine's `<Name>Def`), imported with `type`.
+    /// Whether it is only a type (a machine's `<Name>Def`, an alias of a type with a `ref` in
+    /// it), imported with `type`.
     type_only: bool,
 }
 
@@ -366,6 +403,10 @@ struct Gen<'a> {
     roadbook: bool,
     /// For each type on a cycle, the index (in `ir.types`) of its cycle's first type.
     cycle: HashMap<&'a str, usize>,
+    /// The files whose modules may import this one, directly or not: what this module imports
+    /// from them it reads only when first needed (`Schema.suspend`, a getter), since in an
+    /// import cycle the module that is loaded first runs after the others.
+    lazy: HashSet<u32>,
 }
 
 impl<'a> Gen<'a> {
@@ -380,12 +421,13 @@ impl<'a> Gen<'a> {
                     name: name.to_owned(),
                 })?;
         if decl.span.file != 0 {
+            let type_only = matches!(&decl.def, TypeDef::Alias { ty } if self.has_ref(ty));
             self.imports
                 .entry(decl.span.file)
                 .or_default()
                 .insert(Import {
                     name: key.clone(),
-                    type_only: false,
+                    type_only,
                 });
         }
         Ok(key)
@@ -468,6 +510,8 @@ impl<'a> Gen<'a> {
                 let n = self.named(n)?;
                 if cycle.is_some() && self.cycle.get(n).copied() == cycle {
                     format!("Schema.suspend((): Schema.Codec<{n}> => {n})")
+                } else if self.lazy.contains(&self.ir.types[n].span.file) {
+                    format!("Schema.suspend(() => {n})")
                 } else {
                     n.to_owned()
                 }
@@ -842,6 +886,97 @@ fn deps(decl: &TypeDecl) -> Vec<&str> {
     }
 }
 
+/// For each source, the sources its declarations refer to: by a type or a `ref`, through the
+/// signature of a function, action or task, or by a machine using or invoking one. The module
+/// generated for a file imports only from the files it reaches through these, and its errors
+/// map holds the error classes of exactly those files, so this graph tells which modules may
+/// import which, and reads the same from the IR of any file that imports this one, directly or
+/// not, as from its own. (A chart's imports are not in the IR, but an import nothing uses gives
+/// the module nothing to import.)
+fn file_refs(ir: &Ir) -> Vec<BTreeSet<u32>> {
+    let mut out = vec![BTreeSet::new(); ir.sources.len()];
+    let ty = |t: &TypeRef| match t.base() {
+        TypeRef::Named(n) => ir.types.get(n).map(|d| d.span.file),
+        TypeRef::Ref(m) => ir.machines.get(m).map(|d| d.span.file),
+        _ => None,
+    };
+    let fields = |fields: &[Field]| fields.iter().filter_map(|f| ty(&f.ty)).collect::<Vec<_>>();
+    let errors = |errors: &[String]| {
+        errors
+            .iter()
+            .filter_map(|e| ir.types.get(e).map(|d| d.span.file))
+            .collect::<Vec<_>>()
+    };
+    let mut add = |file: u32, to: Vec<u32>| {
+        if let Some(set) = out.get_mut(file as usize) {
+            set.extend(to.into_iter().filter(|&t| t != file));
+        }
+    };
+    for d in ir.types.values() {
+        let to = match &d.def {
+            TypeDef::Record { fields: f } | TypeDef::Error { fields: f } => fields(f),
+            TypeDef::Alias { ty: t } => ty(t).into_iter().collect(),
+            TypeDef::Enum { .. } | TypeDef::Extern => Vec::new(),
+        };
+        add(d.span.file, to);
+    }
+    for d in ir.functions.values() {
+        add(d.span.file, fields(&d.params));
+        add(d.span.file, ty(&d.returns).into_iter().collect());
+    }
+    for d in ir.actions.values() {
+        add(d.span.file, fields(&d.params));
+    }
+    for d in ir.tasks.values() {
+        add(d.span.file, fields(&d.params));
+        add(d.span.file, d.returns.iter().filter_map(ty).collect());
+        add(d.span.file, errors(&d.errors));
+    }
+    for m in ir.machines.values() {
+        let file = m.span.file;
+        add(file, fields(&m.params));
+        add(file, m.returns.iter().filter_map(ty).collect());
+        add(file, errors(&m.errors));
+        add(file, m.vars.iter().filter_map(|v| ty(&v.ty)).collect());
+        for e in m.events.values().chain(m.emits.values()) {
+            add(file, fields(&e.fields));
+        }
+        let mut uses = Uses::default();
+        uses.machine(m);
+        let used = (uses.fns.iter())
+            .filter_map(|n| ir.functions.get(*n).map(|d| d.span.file))
+            .chain(
+                uses.actions
+                    .iter()
+                    .filter_map(|n| ir.actions.get(*n).map(|d| d.span.file)),
+            )
+            .chain(
+                uses.tasks
+                    .iter()
+                    .filter_map(|n| ir.tasks.get(*n).map(|d| d.span.file)),
+            )
+            .chain(
+                uses.machines
+                    .iter()
+                    .filter_map(|n| ir.machines.get(*n).map(|d| d.span.file)),
+            );
+        add(file, used.collect());
+    }
+    out
+}
+
+/// Which sources `from` reaches through `refs`, itself included.
+fn reach(refs: &[BTreeSet<u32>], from: usize) -> Vec<bool> {
+    let mut seen = vec![false; refs.len()];
+    let mut stack = vec![from];
+    while let Some(i) = stack.pop() {
+        if i < seen.len() && !std::mem::replace(&mut seen[i], true) {
+            stack.extend(refs[i].iter().map(|&j| j as usize));
+        }
+    }
+    seen
+}
+
 /// For each entry-file type on a cycle, the index of the first type of its cycle. Fails if a
 /// cycle cannot be generated (see the crate documentation).
 fn cycles(ir: &Ir) -> Result<HashMap<&str, usize>, GenError> {
@@ -892,7 +1027,7 @@ fn cycles(ir: &Ir) -> Result<HashMap<&str, usize>, GenError> {
         let first = members.first().copied().unwrap_or(i);
         if members.iter().any(|&j| ir.types[j].span.file != 0) {
             return Err(fail(
-                "the cycle spans several files, whose modules would import each other",
+                "the cycle spans several files; declare its types in one file",
             ));
         }
         if members.iter().any(|&j| is_error(j)) {

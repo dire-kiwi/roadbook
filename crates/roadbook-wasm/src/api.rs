@@ -329,7 +329,7 @@ mod tests {
         let out = generate(fs, &config, "app/order.road");
         let code = out["code"].as_str().unwrap();
         assert!(
-            code.contains("import { type StockDef } from \"stock/stock.road.js\""),
+            code.contains("import type { StockDef } from \"stock/stock.road.js\""),
             "{code}"
         );
         assert!(out["error"].is_null());

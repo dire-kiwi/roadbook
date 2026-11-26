@@ -336,3 +336,101 @@ fn messaging_and_other_packages() {
     let code = gen_ok(&stock);
     assert!(code.contains("readonly emits: Reserved"), "{code}");
 }
+
+/// Charts that import each other: what a module takes from a module that may import it back
+/// is read lazily, since that module may not have run yet when it runs.
+#[test]
+fn import_cycles_are_read_lazily() {
+    let loader = MemoryLoader::new()
+        .with(
+            "a.road",
+            "import { Bad, Flag, Id } from \"./b.road\"\nimport { Far } from \"./far.road\"\n\n\
+             type T { n: int, flag: Flag?, far: Far }\ntype Ids = Id[]\n\n\
+             machine A(t: T) -> T ! Bad {\n  event Poke { ids: Ids, id: Id }\n  initial X\n  \
+             final state X { output t }\n}\n",
+        )
+        .with(
+            "b.road",
+            "import { T } from \"./a.road\"\n\nerror Bad { t: T }\nenum Flag { On, Off }\n\
+             type Id = string\n\nmachine B() {\n  initial X\n  final state X {}\n}\n",
+        )
+        .with("far.road", "type Far { s: string }\nerror Unrelated\n");
+    let a = gen_ok(&ir(&mut loader.clone(), "a.road"));
+    for line in [
+        "import { Bad, Flag, Id } from \"./b.road.js\"\n",
+        "import { Far, Unrelated } from \"./far.road.js\"\n",
+        "export const T = Schema.Struct({\n  n: Schema.Int,\n  \
+         flag: Schema.NullOr(Schema.suspend(() => Flag)),\n  far: Far\n})\n",
+        "export const Ids = Schema.Array(Schema.suspend(() => Id))\n",
+        "export const Poke = Schema.TaggedStruct(\"Poke\", { ids: Ids, id: Schema.suspend(() => Id) })\n",
+        "const errors = { get Bad() { return Bad }, Unrelated }\n",
+    ] {
+        assert!(a.contains(line), "no {line:?} in\n{a}");
+    }
+    let b = gen_ok(&ir(&mut loader.clone(), "b.road"));
+    for line in [
+        "import { T } from \"./a.road.js\"\n",
+        "export class Bad extends Schema.TaggedError<Bad>()(\"Bad\", { t: Schema.suspend(() => T) }) {}\n",
+        "const errors = { Bad, Unrelated }\n",
+    ] {
+        assert!(b.contains(line), "no {line:?} in\n{b}");
+    }
+    // `far.road` imports neither, so nothing is read lazily from it.
+    assert!(
+        b.contains("import { Unrelated } from \"./far.road.js\"\n"),
+        "{b}"
+    );
+}
+
+/// A module's errors map holds the error classes of the files its declarations refer to,
+/// directly or not, not those of a file it imports and does not use: so it imports nothing
+/// from that file, and two charts that import each other without using what they import do
+/// not make their modules import each other.
+#[test]
+fn errors_come_from_the_files_used() {
+    let loader = MemoryLoader::new()
+        .with(
+            "a.road",
+            "import { Gone } from \"./b.road\"\n\nmachine A() {\n  initial X\n  final state X {}\n}\n",
+        )
+        .with("b.road", "import { A } from \"./a.road\"\n\nerror Gone\n");
+    let a = gen_ok(&ir(&mut loader.clone(), "a.road"));
+    assert!(
+        !a.contains("\"./b.road.js\"") && a.contains("const errors = {}\n"),
+        "{a}"
+    );
+}
+
+/// A name that exists only as a type, a machine's definition or an alias of a type with a
+/// `ref` in it, is imported with `type`: on its own as `import type`, so the module is not
+/// loaded for it.
+#[test]
+fn types_are_imported_as_types() {
+    let loader = MemoryLoader::new()
+        .with(
+            "w.road",
+            "machine Worker() {\n  initial X\n  final state X {}\n}\n\n\
+             type WorkerRef = ref Worker\ntype Job { id: string }\n",
+        )
+        .with(
+            "only.road",
+            "import { WorkerRef } from \"./w.road\"\n\n\
+             machine Boss(w: WorkerRef) {\n  initial X\n  final state X {}\n}\n",
+        )
+        .with(
+            "mixed.road",
+            "import { Job, Worker, WorkerRef } from \"./w.road\"\n\n\
+             machine Boss(w: WorkerRef, v: ref Worker, job: Job) {\n  initial X\n  \
+             final state X {}\n}\n",
+        );
+    let only = gen_ok(&ir(&mut loader.clone(), "only.road"));
+    assert!(
+        only.contains("import type { WorkerRef } from \"./w.road.js\"\n"),
+        "{only}"
+    );
+    let mixed = gen_ok(&ir(&mut loader.clone(), "mixed.road"));
+    assert!(
+        mixed.contains("import { Job, type WorkerDef, type WorkerRef } from \"./w.road.js\"\n"),
+        "{mixed}"
+    );
+}
