@@ -43,7 +43,7 @@ editors/
 | `roadbook viz --diff <git range>` | Write a viewer showing what changed between two revisions (`main..HEAD`, `main...HEAD`, or one revision against the working tree), with `summary.md` and `summary.json`. |
 | `roadbook viz --coverage <traces…>` | Write the viewer shading each transition and state by how often the traces took it. |
 | `roadbook export mermaid\|scxml\|ir` | Other formats. Mermaid renders inline on GitHub. |
-| `roadbook paths <Machine>` | List the paths through a machine, for test generation and coverage. |
+| `roadbook paths <Machine> [file] [--json] [--max N]` | List the paths through a machine, from its initial state to each final state and each state with no way out, each loop taken at most once, for test generation and coverage. |
 
 ## Milestones
 
