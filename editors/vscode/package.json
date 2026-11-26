@@ -18,6 +18,15 @@
   "activationEvents": [
     "onWebviewPanel:roadbook.preview"
   ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In Restricted Mode the extension ignores the workspace's `roadbook.path`, which names a program to run, and runs the `roadbook` command line from your user settings or `PATH`.",
+      "restrictedConfigurations": [
+        "roadbook.path"
+      ]
+    }
+  },
   "contributes": {
     "languages": [
       {
@@ -82,12 +91,12 @@
           "type": "string",
           "default": "roadbook",
           "scope": "machine-overridable",
-          "markdownDescription": "The `roadbook` command line. A bare name is looked up on `PATH`; a relative path is taken from the first workspace folder. `${workspaceFolder}` and a leading `~` are expanded."
+          "markdownDescription": "The `roadbook` command line. A bare name is looked up on `PATH`; a relative path is taken from the first workspace folder. `${workspaceFolder}` and a leading `~` are expanded. A workspace's own value is used only once the workspace is trusted: in Restricted Mode it is ignored."
         },
         "roadbook.preview.updateOnChange": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Update the preview as you type (debounced), not only on save. Unsaved text is compiled from a hidden temporary file next to the chart, so its imports resolve."
+          "markdownDescription": "Update the preview as you type (debounced), not only on save. The language server compiles the chart with the unsaved text of every open editor, the files it imports included; without the server, the preview shows the saved file."
         },
         "roadbook.preview.debounce": {
           "type": "number",

@@ -14,7 +14,7 @@ export interface Api {
 export function activate(context: vscode.ExtensionContext): Api {
   const output = vscode.window.createOutputChannel('Roadbook', { log: true })
   const cli = new Cli(output)
-  const previews = new PreviewManager(context.extensionUri, () => cli.executable(), (m) => output.appendLine(m))
+  const previews = new PreviewManager(context.extensionUri, () => cli.executable(), () => cli.running(), (m) => output.appendLine(m))
   context.subscriptions.push(
     output,
     cli,
@@ -28,6 +28,9 @@ export function activate(context: vscode.ExtensionContext): Api {
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('roadbook.path')) void cli.restart()
     }),
+    // A trusted workspace's own `roadbook.path` applies from now on (see package.json,
+    // `untrustedWorkspaces`).
+    vscode.workspace.onDidGrantWorkspaceTrust(() => void cli.restart()),
   )
   void cli.start()
   return { cli, previews }

@@ -97,7 +97,8 @@ export async function run(): Promise<void> {
     )
   })
 
-  await step('the preview follows unsaved changes', async () => {
+  await step(lsp ? 'the preview follows unsaved changes' : 'unsaved changes SKIPPED: `roadbook lsp` is not available', async () => {
+    if (!lsp) return
     const drawn = waitFor(api.previews.events.event, on(broken, 'rendered'), 'the preview of the fixed, unsaved broken.road')
     // As if the reader had selected a state: the new page selects it again.
     const selection = { kind: 'state', id: 'Checkout.Backoff' } as const
@@ -117,8 +118,78 @@ export async function run(): Promise<void> {
     const p = (await problems).detail as Problems
     assert.equal(p.stale, true)
     assert.ok(p.diagnostics.length > 0)
-    assert.ok(fs.readdirSync(workspace.fsPath).every((f) => !f.includes('.preview-')), 'no temporary file is left')
+    assert.ok(fs.readdirSync(workspace.fsPath).every((f) => !f.includes('.preview-')), 'no temporary file is made')
     await vscode.commands.executeCommand('workbench.action.files.revert')
+  })
+
+  await step(lsp ? 'the preview follows unsaved changes to a file the chart imports' : 'imported files SKIPPED: `roadbook lsp` is not available', async () => {
+    if (!lsp) return
+    // broken.road, fixed and saved, draws.
+    const fixed = waitFor(api.previews.events.event, on(broken, 'rendered'), 'the preview of the fixed broken.road')
+    const fix = new vscode.WorkspaceEdit()
+    const at = doc.getText().indexOf('Chargd')
+    fix.replace(broken, new vscode.Range(doc.positionAt(at), doc.positionAt(at + 'Chargd'.length)), 'Charged')
+    assert.ok(await vscode.workspace.applyEdit(fix))
+    await doc.save()
+    await fixed
+    // An unsaved edit to types.road, which broken.road imports, breaks it.
+    const typesUri = vscode.Uri.joinPath(workspace, 'types.road')
+    const types = await vscode.workspace.openTextDocument(typesUri)
+    await vscode.window.showTextDocument(types, vscode.ViewColumn.One)
+    const problems = waitFor(api.previews.events.event, on(broken, 'problems'), 'the problems of broken.road after types.road changed')
+    const name = 'Receipt'
+    const rename = new vscode.WorkspaceEdit()
+    const where = types.getText().indexOf(`type ${name}`) + 'type '.length
+    rename.replace(typesUri, new vscode.Range(types.positionAt(where), types.positionAt(where + name.length)), `${name}Renamed`)
+    assert.ok(await vscode.workspace.applyEdit(rename))
+    assert.ok(types.isDirty)
+    const p = (await problems).detail as Problems
+    assert.ok(p.diagnostics.some((d) => d.file === 'broken.road' && d.message.includes(name)), JSON.stringify(p.diagnostics))
+    const back = waitFor(api.previews.events.event, on(broken, 'rendered'), 'the preview of broken.road once types.road is reverted')
+    await vscode.commands.executeCommand('workbench.action.files.revert')
+    await back
+  })
+
+  await step('the preview opens only charts of the project', async () => {
+    const preview = api.previews.get(broken)!
+    const shown = await preview.open('types.road', 1, 1, true)
+    assert.equal(shown?.document.uri.toString(), vscode.Uri.joinPath(workspace, 'types.road').toString())
+    const outside = path.relative(workspace.fsPath, path.join(repo, 'examples/shop/types.road')).split(path.sep).join('/')
+    assert.ok(outside.startsWith('../'), outside)
+    assert.equal(await preview.open(outside, 1, 1, true), undefined)
+    assert.equal(await preview.open('/etc/passwd', 1, 1, true), undefined)
+    assert.equal(await preview.open('../settings.json', 1, 1, true), undefined)
+  })
+
+  await step(lsp ? 'an untitled chart has diagnostics and a preview' : 'untitled charts SKIPPED: `roadbook lsp` is not available', async () => {
+    if (!lsp) return
+    const untitled = await vscode.workspace.openTextDocument({ language: 'roadbook', content: 'machine M() {\n  initial A\n  state A { always -> Dne }\n}\n' })
+    await vscode.window.showTextDocument(untitled, vscode.ViewColumn.One)
+    const has = () => vscode.languages.getDiagnostics(untitled.uri).some((d) => /Dne/.test(d.message))
+    if (!has()) await waitFor(vscode.languages.onDidChangeDiagnostics, has, 'diagnostics for the untitled chart', 30_000)
+    const drawn = waitFor(api.previews.events.event, on(untitled.uri, 'rendered'), 'the preview of the untitled chart')
+    const fix = new vscode.WorkspaceEdit()
+    const at = untitled.getText().indexOf('Dne')
+    fix.replace(untitled.uri, new vscode.Range(untitled.positionAt(at), untitled.positionAt(at + 3)), 'B }\n  final state B {')
+    assert.ok(await vscode.workspace.applyEdit(fix))
+    api.previews.showToSide(untitled.uri)
+    await drawn
+  })
+
+  await step(lsp ? 'restarts and stops asked for while the server starts are done in order' : 'restarts SKIPPED: `roadbook lsp` is not available', async () => {
+    if (!lsp) return
+    const first = api.cli.restart()
+    const second = api.cli.restart()
+    await Promise.all([first, second])
+    assert.equal(api.cli.status, true)
+    assert.ok(api.cli.running(), 'a server runs after two restarts')
+    const starting = api.cli.restart()
+    const stopping = api.cli.stop()
+    await Promise.all([starting, stopping])
+    assert.equal(api.cli.status, 'stopped')
+    assert.equal(api.cli.running(), undefined, 'no server runs after a stop asked for during a start')
+    await api.cli.start()
+    assert.equal(api.cli.status, true)
   })
 
   assert.deepEqual(csp, [], 'the preview broke its Content-Security-Policy')

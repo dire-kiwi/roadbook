@@ -6,8 +6,9 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { projectPath, projectRoot, resolveExecutable } from '../src/cli.ts'
-import { compileChart, parseCheck, renameInText, renameSource, tempFileFor } from '../src/preview/compile.ts'
+import { projectFile, projectPath, projectRoot, resolveExecutable } from '../src/cli.ts'
+import { compileChart, compileWithServer, fromServer, parseCheck } from '../src/preview/compile.ts'
+import { Serial } from '../src/serial.ts'
 import { sourcePath, spanOf } from '../src/preview/ir.ts'
 import type { Ir } from '../src/preview/ir.ts'
 
@@ -36,30 +37,85 @@ describe('helpers', () => {
     }
   })
 
-  it('names the temporary file next to the chart, hidden and not *.road', () => {
-    const t = tempFileFor('/p/shop/checkout.road', 42, 7)
-    expect(t).toBe(path.join('/p/shop', '.checkout.road.preview-42-7'))
-    expect(t.endsWith('.road')).toBe(false)
+  it('opens only the .road files inside the project', () => {
+    const root = path.resolve('/p/shop')
+    expect(projectFile(root, 'checkout.road')).toBe(path.join(root, 'checkout.road'))
+    expect(projectFile(root, 'charts/a.road')).toBe(path.join(root, 'charts', 'a.road'))
+    expect(projectFile(root, 'charts/../a.road')).toBe(path.join(root, 'a.road'))
+    expect(projectFile(root, '../other/a.road')).toBeUndefined()
+    expect(projectFile(root, 'charts/../../a.road')).toBeUndefined()
+    expect(projectFile(root, '/etc/a.road')).toBeUndefined()
+    expect(projectFile(root, 'C:/x/a.road')).toBeUndefined()
+    expect(projectFile(root, '..\\a.road')).toBeUndefined()
+    expect(projectFile(root, 'notes.txt')).toBeUndefined()
   })
 
-  it('renames the temporary file back to the chart in the IR, the diagnostics and text', () => {
-    const ir = { irVersion: '0.2', sources: [{ path: 'a/.c.road.preview-1-1', package: null }, { path: 'a/.c.road.preview-1-1', package: 'pkg' }], machines: {} }
-    expect(renameSource(ir, 'a/.c.road.preview-1-1', 'a/c.road').sources).toEqual([
-      { path: 'a/c.road', package: null },
-      { path: 'a/.c.road.preview-1-1', package: 'pkg' },
-    ])
-    expect(renameInText('--> a/.c.road.preview-1-1:3:4', 'a/.c.road.preview-1-1', 'a/c.road')).toBe('--> a/c.road:3:4')
+  it('declares roadbook.path restricted in untrusted workspaces', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(here, '../package.json'), 'utf8'))
+    expect(pkg.capabilities.untrustedWorkspaces).toMatchObject({ supported: 'limited', restrictedConfigurations: ['roadbook.path'] })
+    expect(pkg.contributes.configuration.properties['roadbook.path'].scope).toBe('machine-overridable')
+  })
+
+  it('reads the diagnostics of roadbook check --json', () => {
     const json = JSON.stringify({
       diagnostics: [
-        { code: 'RB0201', severity: 'error', message: 'unknown target state `X`', file: 'a/.c.road.preview-1-1', line: 3, col: 4, endLine: 3, endCol: 5, help: null },
+        { code: 'RB0201', severity: 'error', message: 'unknown target state `X`', file: 'a/c.road', line: 3, col: 4, endLine: 3, endCol: 5, help: null },
         { code: 'RB0901', severity: 'warning', message: 'w', file: 'a/types.road', line: 1, col: 1, endLine: 1, endCol: 2, help: 'h' },
       ],
     })
-    expect(parseCheck(json, 'a/.c.road.preview-1-1', 'a/c.road')).toEqual([
+    expect(parseCheck(json)).toEqual([
       { code: 'RB0201', severity: 'error', message: 'unknown target state `X`', file: 'a/c.road', line: 3, col: 4, endLine: 3, endCol: 5, help: null },
       { code: 'RB0901', severity: 'warning', message: 'w', file: 'a/types.road', line: 1, col: 1, endLine: 1, endCol: 2, help: 'h' },
     ])
-    expect(parseCheck('not json', 'x', 'y')).toBeUndefined()
+    expect(parseCheck('not json')).toBeUndefined()
+  })
+
+  it('reads what the language server answers to roadbook/ir', async () => {
+    const ir = { irVersion: '0.2', sources: [{ path: 'c.road', package: null }], machines: {} }
+    const ok = fromServer({ uri: 'file:///p/c.road', version: 3, root: '/p', entry: 'c.road', ir: JSON.stringify(ir), diagnostics: [] })
+    expect(ok).toEqual({ kind: 'ok', ir, irText: JSON.stringify(ir), root: '/p', entry: 'c.road' })
+    const warning = { code: 'RB0903', severity: 'warning', message: 'w', file: 'c.road', line: 1, col: 1, endLine: 1, endCol: 2, help: null }
+    const error = { ...warning, code: 'RB0201', severity: 'error' }
+    expect(fromServer({ uri: 'untitled:U', version: 1, root: null, entry: 'U.road', ir: null, diagnostics: [warning, error] })).toEqual({
+      kind: 'errors',
+      diagnostics: [error],
+      text: null,
+      root: null,
+      entry: 'U.road',
+    })
+    expect(fromServer(null).kind).toBe('fatal')
+    expect(fromServer({ entry: 'c.road', diagnostics: [], ir: '{' }).kind).toBe('fatal')
+
+    // The request: its parameters; a refusal is shown, a server that cannot answer is not.
+    const asked: unknown[] = []
+    const answering = { sendRequest: async (method: string, params: unknown) => (asked.push([method, params]), { entry: 'c.road', root: '/p', ir: JSON.stringify(ir), diagnostics: [] }) }
+    expect((await compileWithServer(answering, 'file:///p/c.road'))?.kind).toBe('ok')
+    expect(asked).toEqual([['roadbook/ir', { textDocument: { uri: 'file:///p/c.road' } }]])
+    const refusing = { sendRequest: () => Promise.reject(Object.assign(new Error('a file of another package'), { code: -32803 })) }
+    expect(await compileWithServer(refusing, 'file:///p/x.road')).toEqual({ kind: 'fatal', message: 'a file of another package' })
+    const stopped = { sendRequest: () => Promise.reject(Object.assign(new Error('Client is not running'), { code: -32097 })) }
+    expect(await compileWithServer(stopped, 'file:///p/c.road')).toBeUndefined()
+  })
+
+  it('runs operations one at a time, in order', async () => {
+    const serial = new Serial()
+    const log: string[] = []
+    const op = (name: string, ms: number, fail = false) => () =>
+      new Promise<string>((resolve, reject) => {
+        log.push(`start ${name}`)
+        setTimeout(() => {
+          log.push(`end ${name}`)
+          if (fail) reject(new Error(name))
+          else resolve(name)
+        }, ms)
+      })
+    const a = serial.run(op('start', 30))
+    const b = serial.run(op('restart', 1, true))
+    const c = serial.run(op('stop', 1))
+    await expect(a).resolves.toBe('start')
+    await expect(b).rejects.toThrow('restart')
+    await expect(c).resolves.toBe('stop')
+    expect(log).toEqual(['start start', 'end start', 'start restart', 'end restart', 'start stop', 'end stop'])
   })
 
   it('finds the span of a state or a transition', () => {
@@ -124,26 +180,21 @@ describe.skipIf(!roadbook)('with the command line', () => {
     expect(Object.keys(r.ir.machines)).toEqual(['Checkout'])
   })
 
-  it('compiles unsaved text, with its imports, and leaves no file behind', async () => {
-    const before = fs.readdirSync(path.dirname(checkout))
-    const text = fs.readFileSync(checkout, 'utf8').replace('state Backoff {', 'state Waiting {').replaceAll('-> Backoff', '-> Waiting')
-    const r = await compileChart(roadbook!, checkout, text)
-    expect(r.kind).toBe('ok')
-    if (r.kind !== 'ok') return
-    expect(r.ir.sources.map((s) => s.path)).toEqual(['examples/shop/checkout.road', 'examples/shop/types.road'])
-    expect(r.irText).toContain('"Checkout.Waiting"')
-    expect(fs.readdirSync(path.dirname(checkout))).toEqual(before)
-  })
-
-  it('gives the errors of unsaved text, named after the chart', async () => {
-    const text = fs.readFileSync(checkout, 'utf8').replace('-> Charged', '-> Chargd')
-    const r = await compileChart(roadbook!, checkout, text)
-    expect(r.kind).toBe('errors')
-    if (r.kind !== 'errors') return
-    expect(r.diagnostics).toEqual([
-      expect.objectContaining({ code: 'RB0201', severity: 'error', file: 'examples/shop/checkout.road', line: 14, help: 'did you mean `Charged`?' }),
-    ])
-    expect(r.diagnostics[0]!.message).not.toContain('.preview-')
+  it('gives the errors of the saved file', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rb-errors-'))
+    try {
+      fs.writeFileSync(path.join(dir, 'roadbook.toml'), '')
+      fs.copyFileSync(path.join(repo, 'examples/shop/types.road'), path.join(dir, 'types.road'))
+      fs.writeFileSync(path.join(dir, 'checkout.road'), fs.readFileSync(checkout, 'utf8').replace('-> Charged', '-> Chargd'))
+      const r = await compileChart(roadbook!, path.join(dir, 'checkout.road'))
+      expect(r.kind).toBe('errors')
+      if (r.kind !== 'errors') return
+      expect(r.diagnostics).toEqual([
+        expect.objectContaining({ code: 'RB0201', severity: 'error', file: 'checkout.road', line: 14, help: 'did you mean `Charged`?' }),
+      ])
+    } finally {
+      fs.rmSync(dir, { recursive: true })
+    }
   })
 
 })

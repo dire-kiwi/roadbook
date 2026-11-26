@@ -1,15 +1,18 @@
 // The live preview: a webview beside a `.road` editor showing the viewer for its chart, updated
 // on save and, debounced, as the text changes.
 //
-// Each update compiles the chart with the command line (compile.ts). When the IR differs from
-// the one shown, the page is replaced with one holding the new IR, and the bridge script in it
-// restores the machine and the selection the reader had. When the chart does not compile, the
-// last diagram stays and the errors are shown over it.
+// Each update compiles the chart (compile.ts): with the language server, which has the text of
+// every open editor, or, when it is not running, with the command line on the saved file. When
+// the IR differs from the one shown, the page is replaced with one holding the new IR, and the
+// bridge script in it restores the machine and the selection the reader had. When the chart
+// does not compile, the last diagram stays and the errors are shown over it. A change to any
+// open chart updates every preview, since the chart shown may import it.
 
 import path from 'node:path'
 import * as vscode from 'vscode'
-import { compileChart } from './compile.ts'
-import type { CompileResult } from './compile.ts'
+import { projectFile } from '../cli.ts'
+import { compileChart, compileWithServer } from './compile.ts'
+import type { CompileResult, IrServer } from './compile.ts'
 import { makeNonce, previewHtml } from './html.ts'
 import { sourcePath, spanOf } from './ir.ts'
 import type { Ir, Target } from './ir.ts'
@@ -19,6 +22,9 @@ export const VIEW_TYPE = 'roadbook.preview'
 
 /** Finds the command line, or explains why it cannot (and says so once). */
 export type ExecutableProvider = () => Promise<string | undefined>
+
+/** The running language server, if there is one. */
+export type ServerProvider = () => IrServer | undefined
 
 /** What the integration tests watch. */
 export interface PreviewEvent {
@@ -41,15 +47,20 @@ export class PreviewManager implements vscode.Disposable {
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly executable: ExecutableProvider,
+    private readonly server: ServerProvider,
     private readonly log: (message: string) => void,
   ) {
     this.disposables.push(
       this.events,
       vscode.workspace.onDidChangeTextDocument((e) => {
-        if (e.contentChanges.length === 0 || !settings().get<boolean>('preview.updateOnChange', true)) return
-        this.previews.get(e.document.uri.toString())?.schedule(settings().get<number>('preview.debounce', 300))
+        if (e.contentChanges.length === 0 || e.document.languageId !== 'roadbook' || !settings().get<boolean>('preview.updateOnChange', true)) return
+        const delay = settings().get<number>('preview.debounce', 300)
+        for (const p of this.previews.values()) p.schedule(delay)
       }),
-      vscode.workspace.onDidSaveTextDocument((d) => this.previews.get(d.uri.toString())?.schedule(0)),
+      vscode.workspace.onDidSaveTextDocument((d) => {
+        if (d.languageId !== 'roadbook') return
+        for (const p of this.previews.values()) p.schedule(0)
+      }),
       vscode.window.onDidChangeActiveColorTheme((t) => {
         for (const p of this.previews.values()) p.setTheme(themeOf(t.kind))
       }),
@@ -79,7 +90,7 @@ export class PreviewManager implements vscode.Disposable {
   private attach(panel: vscode.WebviewPanel, uri: vscode.Uri) {
     const dist = vscode.Uri.joinPath(this.extensionUri, 'dist')
     panel.webview.options = { enableScripts: true, localResourceRoots: [dist] }
-    const preview = new Preview(panel, uri, dist, this.executable, this.log, (e) => this.events.fire(e))
+    const preview = new Preview(panel, uri, dist, this.executable, this.server, this.log, (e) => this.events.fire(e))
     this.previews.set(uri.toString(), preview)
     panel.onDidDispose(() => {
       this.previews.delete(uri.toString())
@@ -101,8 +112,8 @@ function title(uri: vscode.Uri): string {
 export class Preview {
   /** The IR shown, as compiled: for revealing what is clicked, and to tell whether it changed. */
   private shown: { ir: Ir; irText: string } | null = null
-  /** The chart's project root and project path, once the command line has run. */
-  private root: string | undefined
+  /** The chart's project root (null for a document that is not a file) and project path, once compiled. */
+  private root: string | null = null
   private entry: string | undefined
   private problems: Problems | null = null
   private view: ViewState | null = null
@@ -118,6 +129,7 @@ export class Preview {
     readonly uri: vscode.Uri,
     private readonly dist: vscode.Uri,
     private readonly executable: ExecutableProvider,
+    private readonly server: ServerProvider,
     private readonly log: (message: string) => void,
     private readonly fire: (e: PreviewEvent) => void,
   ) {
@@ -148,21 +160,19 @@ export class Preview {
     }
   }
 
-  private async updateOnce() {
-    const doc = vscode.workspace.textDocuments.find((d) => d.uri.toString() === this.uri.toString())
-    if (this.uri.scheme !== 'file') return this.showProblems({ entry: this.uri.toString(), diagnostics: [], text: 'The preview needs a chart saved to a file.', stale: false })
+  private async compile(): Promise<CompileResult> {
+    const server = this.server()
+    const compiled = server && (await compileWithServer(server, this.uri.toString()))
+    if (compiled) return compiled
+    // No language server: the command line, which reads the saved file.
+    if (this.uri.scheme !== 'file') return { kind: 'fatal', message: 'The preview of a chart that is not saved to a file needs the language server (`roadbook lsp`).' }
     const exe = await this.executable()
-    if (!exe) {
-      return this.showProblems({
-        entry: path.basename(this.uri.fsPath),
-        diagnostics: [],
-        text: 'Cannot find the `roadbook` command line. Install it, or set `roadbook.path` to where it is.',
-        stale: this.shown !== null,
-      })
-    }
-    // Unsaved text goes through a temporary file; a saved or closed document is read from disk.
-    const text = doc?.isDirty ? doc.getText() : undefined
-    const result: CompileResult = await compileChart(exe, this.uri.fsPath, text)
+    if (!exe) return { kind: 'fatal', message: 'Cannot find the `roadbook` command line. Install it, or set `roadbook.path` to where it is.' }
+    return compileChart(exe, this.uri.fsPath)
+  }
+
+  private async updateOnce() {
+    const result = await this.compile()
     if (this.disposed) return
     if (result.kind === 'fatal') {
       return this.showProblems({ entry: path.basename(this.uri.fsPath), diagnostics: [], text: result.message, stale: this.shown !== null })
@@ -258,10 +268,18 @@ export class Preview {
     return this.open(file, span.line, span.col, true)
   }
 
-  /** Shows a project file at a 1-based line and column, beside the preview. */
-  private async open(file: string, line: number, col: number, preserveFocus: boolean): Promise<vscode.TextEditor | undefined> {
-    const uri = file === this.entry ? this.uri : this.root ? vscode.Uri.file(path.join(this.root, ...file.split('/'))) : undefined
-    if (!uri) return undefined
+  /**
+   * Shows a file of the chart's project at a 1-based line and column, beside the preview: the
+   * chart itself, or a `.road` file inside the project's root. Anything else a page asks for
+   * (`../` out of the project, an absolute path) is not opened.
+   */
+  async open(file: string, line: number, col: number, preserveFocus: boolean): Promise<vscode.TextEditor | undefined> {
+    const inProject = this.root === null ? undefined : projectFile(this.root, file)
+    const uri = file === this.entry ? this.uri : inProject ? vscode.Uri.file(inProject) : undefined
+    if (!uri) {
+      this.log(`preview: not opening \`${file}\`, which is not a chart of the project`)
+      return undefined
+    }
     const pos = new vscode.Position(Math.max(0, line - 1), Math.max(0, col - 1))
     const visible = vscode.window.visibleTextEditors.find((e) => e.document.uri.toString() === uri.toString())
     const editor = await vscode.window.showTextDocument(uri, {
