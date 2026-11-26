@@ -44,6 +44,8 @@ enum Group {
     Callable,
     Var,
     Event,
+    /// `children` lines: the machine, then `by` and the key.
+    Children,
     /// One-line states.
     State,
     /// Transitions and invoke outcomes, including the lines of their branch blocks.
@@ -534,6 +536,17 @@ impl Formatter<'_> {
                     Some(Group::Var),
                 );
             }
+            Item::Children(c) => self.row(
+                whole,
+                indent,
+                vec![
+                    format!("children {}:", c.name.name),
+                    c.machine.name.clone(),
+                    format!("by {}", ty(&c.key)),
+                ],
+                "",
+                Some(Group::Children),
+            ),
             Item::Event(e) | Item::Emits(e) => {
                 let kw = if let Item::Emits(_) = item {
                     "emits"
@@ -695,6 +708,7 @@ fn inline_item(item: &Item) -> Option<String> {
         Item::Var(_)
         | Item::Event(_)
         | Item::Emits(_)
+        | Item::Children(_)
         | Item::State(_)
         | Item::Invoke(_)
         | Item::Transition(_) => {
@@ -720,6 +734,8 @@ fn trigger(t: &Trigger) -> String {
     match t {
         Trigger::On(p) => format!("on {}", pattern(p)),
         Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
+        Trigger::ChildDone { from } => format!("on {}.done", from.name),
+        Trigger::ChildFail { from, error } => format!("on {}.fail {}", from.name, pattern(error)),
         Trigger::After(e) if bare_record(e) => format!("after ({})", expr(e)),
         Trigger::After(e) => format!("after {}", expr(e)),
         Trigger::Always => "always".into(),
@@ -740,8 +756,9 @@ fn bare_record(e: &Expr) -> bool {
 }
 
 /// Consecutive `set`s, and consecutive `do`s, share a clause; clauses are separated by two
-/// spaces. Every `set` comes first, then the `do`, `send` and `emit` effects, each in the
-/// order written: the order they run in. A `send` or `emit` is a clause of its own.
+/// spaces. Every `set` comes first, then the `do`, `send`, `emit`, `spawn` and `stop` effects,
+/// each in the order written: the order they run in. A `send`, `emit`, `spawn` or `stop` is a
+/// clause of its own.
 fn effects(effects: &[Effect]) -> String {
     let mut out = String::new();
     let mut last: Option<&'static str> = None;
@@ -753,6 +770,8 @@ fn effects(effects: &[Effect]) -> String {
             Effect::Do(_) => "do",
             Effect::Send(_) => "send",
             Effect::Emit(_) => "emit",
+            Effect::Spawn(_) => "spawn",
+            Effect::Stop(_) => "stop",
         };
         if last == Some(kw) && matches!(kw, "set" | "do") {
             out.push_str(", ");
@@ -767,6 +786,14 @@ fn effects(effects: &[Effect]) -> String {
             Effect::Set(a) => out.push_str(&format!("{} = {}", a.var.name, expr(&a.value))),
             Effect::Do(c) => out.push_str(&call(c)),
             Effect::Send(m) | Effect::Emit(m) => out.push_str(&message(m)),
+            Effect::Spawn(sp) => out.push_str(&format!(
+                "{}[{}] = {}({})",
+                sp.children.name,
+                expr(&sp.key),
+                sp.machine.name,
+                exprs(&sp.args)
+            )),
+            Effect::Stop(st) => out.push_str(&format!("{}[{}]", st.children.name, expr(&st.key))),
         }
         last = Some(kw);
     }
@@ -778,6 +805,11 @@ fn message(m: &Message) -> String {
     let mut out = String::new();
     if let Some(to) = &m.to {
         out.push_str(&to.name);
+        match &m.key {
+            Some(SendKey::Key(k)) => out.push_str(&format!("[{}]", expr(k))),
+            Some(SendKey::All { .. }) => out.push_str(".*"),
+            None => {}
+        }
         out.push('.');
     }
     out.push_str(&message_value(m));

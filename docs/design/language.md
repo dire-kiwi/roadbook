@@ -210,12 +210,12 @@ machine Hub() {
 
   initial Serving
   state Serving {
-    on Connected        spawn sessions[event.id] = Session(event.socket)
-    on Disconnected     stop sessions[event.id]
-    on Broadcast        send sessions.*.Notify { text: event.text }
-    on sessions.Typing  do showTyping(key)
-    on sessions.done    do logOut(key)
-    on sessions.fail *  do report(key, error)
+    on Connected       spawn sessions[event.id] = Session(event.socket)
+    on Disconnected    stop sessions[event.id]
+    on Broadcast       send sessions.*.Notify { text: event.text }
+    on sessions.Typing do showTyping(key)
+    on sessions.done   do logOut(key)
+    on sessions.fail * do report(key, error)
   }
 }
 ```
@@ -611,7 +611,7 @@ comment     = "//" … end of line ;        doc comment = "///" … end of line 
 Rules the grammar does not express:
 
 - Every comma-separated list accepts a trailing comma.
-- All keywords are reserved: `import type enum error extern fn action task machine var event emits initial state final parallel entry exit on after always done invoke output fail if else set do send emit spawn stop and or not true false`. `from`, `as`, `ref`, `children`, `by` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments, at the start of a type, at the start of a machine item, and after a collection's machine. `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field.
+- All keywords are reserved: `import type enum error extern fn action task machine var event emits initial state final parallel entry exit on after always done invoke output fail if else set do send emit and or not true false`. `from`, `as`, `ref`, `children`, `by`, `spawn`, `stop` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments, at the start of a type, in `children name:` at the start of a machine item, after a collection's machine, and in `spawn name[` and `stop name[` at the start of an effect. So `action stop()` is still a valid action. `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field.
 - A `///` comment documents the declaration, machine, state, event or variable that follows it. A `///` anywhere else is an error: use `//`.
 - A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust. A `{` after the event of a `send` or `emit` is always its record body.
 - `on name.Event` is told from `on Event` by the lower-case name and the `.` after it.
