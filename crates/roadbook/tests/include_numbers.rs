@@ -1,5 +1,5 @@
 //! Numbers across the generated code: a non-finite `float` from host code is a host defect,
-//! not `null`; `int` and `duration` read any integral JSON number; an error with fields checks
+//! not `null` (in an event sent from host code, the sender's); `int` and `duration` read any integral JSON number; an error with fields checks
 //! its `_tag`; an output that does not decode is a `Defect`; and dropping `result()`'s future
 //! stops the run.
 
@@ -147,20 +147,37 @@ async fn a_non_finite_machine_argument_is_a_host_defect() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_non_finite_float_in_an_event_is_a_host_defect() {
+async fn a_non_finite_float_in_an_event_is_the_senders_host_defect() {
     let sink = Arc::new(MemorySink::new());
     let config = roadbook::Config::new().sink(sink.clone());
-    let actor = scale::spawn_with(config, host(0.0), 1.0);
-    actor.send(scale::Event::Set { value: f64::NAN }).await;
-    let e = tokio::spawn(actor.result()).await.unwrap_err();
-    let d = defect_of(e);
-    assert!(not_finite(&d), "{d:?}");
-    let last = sink.records().last().unwrap().record.clone();
-    assert_eq!(last, Record::Defect { defect: d });
-    // A finite one is taken.
-    let actor = scale::spawn(host(0.0), 1.0);
+    let actor = Arc::new(scale::spawn_with(config, host(0.0), 1.0));
+    // `send` panics in the sender with the defect; nothing reaches the run.
+    let sender = actor.clone();
+    let e = tokio::spawn(async move { sender.send(scale::Event::Set { value: f64::NAN }).await })
+        .await
+        .unwrap_err();
+    assert!(not_finite(&defect_of(e)));
+    let handle = actor.handle();
+    let e = tokio::spawn(async move {
+        handle
+            .send(scale::Event::Set {
+                value: f64::INFINITY,
+            })
+            .await
+    })
+    .await
+    .unwrap_err();
+    assert!(not_finite(&defect_of(e)));
+    // The run goes on and takes a finite one.
     actor.send(scale::Event::Set { value: 4.0 }).await;
+    let actor = Arc::into_inner(actor).unwrap();
     assert_eq!(actor.result().await, Ok(4.0));
+    assert!(
+        !sink
+            .records()
+            .iter()
+            .any(|r| matches!(r.record, Record::Defect { .. }))
+    );
 }
 
 #[test]

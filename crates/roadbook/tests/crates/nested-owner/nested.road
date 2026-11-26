@@ -1,0 +1,12 @@
+// A fixture of roadbook's tests: a chart its crate includes in a module.
+
+/// Waits to be told to go.
+machine Nested() {
+  event Go
+
+  initial Idle
+
+  state Idle { on Go -> Done }
+
+  final state Done {}
+}

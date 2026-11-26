@@ -41,15 +41,17 @@ struct Slot<'a> {
 pub(crate) struct Driver<'a> {
     program: &'a Program,
     host: &'a dyn Host,
-    start: Option<(&'a str, Object, Vec<RunHandle>)>,
+    start: Option<(&'a str, Object)>,
     config: Config,
     id: String,
     parent: Option<String>,
     shared: Arc<Shared>,
     /// For a child run, the invoke context it claimed.
     ctx: Option<Arc<InvokeContext>>,
-    /// The runs this run holds a `ref` to, by id, from its arguments.
+    /// The runs this run holds a `ref` to, by id, from its arguments, or the host defect
+    /// that checking its handles met.
     peers: Arc<Peers>,
+    bad_ref: Option<Defect>,
     queue: VecDeque<Input>,
     invokes: BTreeMap<u64, Slot<'a>>,
     /// The context of every machine invoke whose outcome the core has not taken and that
@@ -92,10 +94,11 @@ fn resolve<'t>(program: &'t Program, mut ty: &'t TypeRef) -> &'t TypeRef {
     ty
 }
 
-/// The run ids in `value`, a value of type `ty`: the `ref`s in it.
-fn ref_ids(program: &Program, ty: &TypeRef, value: &Value, out: &mut Vec<String>) {
+/// The run ids in `value`, a value of type `ty`, each with the machine its `ref` type names:
+/// the `ref`s in it.
+fn ref_ids(program: &Program, ty: &TypeRef, value: &Value, out: &mut Vec<(String, String)>) {
     match (resolve(program, ty), value) {
-        (TypeRef::Ref(_), Value::String(id)) => out.push(id.clone()),
+        (TypeRef::Ref(m), Value::String(id)) => out.push((id.clone(), m.clone())),
         (TypeRef::Optional(t), v) if !v.is_null() => ref_ids(program, t, v, out),
         (TypeRef::List(t), Value::Array(items)) => {
             for v in items {
@@ -106,8 +109,9 @@ fn ref_ids(program: &Program, ty: &TypeRef, value: &Value, out: &mut Vec<String>
     }
 }
 
-/// The run ids in the arguments `args` of something with parameters `params`.
-fn arg_ref_ids(program: &Program, params: &[Field], args: &Object) -> Vec<String> {
+/// The run ids in the arguments `args` of something with parameters `params`, each with the
+/// machine its `ref` type names.
+fn arg_ref_ids(program: &Program, params: &[Field], args: &Object) -> Vec<(String, String)> {
     let mut out = Vec::new();
     for p in params {
         if let Some(v) = args.get(&p.name) {
@@ -121,6 +125,58 @@ fn arg_ref_ids(program: &Program, params: &[Field], args: &Object) -> Vec<String
 /// future that panics while it is dropped cannot unwind through the driver.
 fn drop_caught<T>(x: T) -> Result<(), Defect> {
     catch_unwind(AssertUnwindSafe(move || drop(x))).map_err(defect_from_panic)
+}
+
+/// Opens a run of `machine` with arguments `input` on `shared`: finds the handles of the runs
+/// that `input` names in `ref` arguments among `refs`, and subscribes the run to what each of
+/// them emits, before anything else can happen (`spawn` returns only after this). A run id
+/// with no handle there, a handle to a run of another machine (by name or machine hash) and
+/// a child run's handle are host defects before the run starts, as an argument that does not
+/// encode is; the run then subscribes to nothing.
+pub(crate) fn open(
+    program: &Program,
+    machine: &str,
+    input: &Object,
+    refs: &[RunHandle],
+    shared: &Arc<Shared>,
+) -> Result<Arc<Peers>, Defect> {
+    let Some(m) = program.ir().machines.get(machine) else {
+        return Ok(Arc::default());
+    };
+    let mut peers = Peers::new();
+    for (id, of) in arg_ref_ids(program, &m.params, input) {
+        if peers.contains_key(&id) {
+            continue;
+        }
+        let Some(h) = refs.iter().find(|h| h.id() == id) else {
+            return Err(Defect::host(format!(
+                "machine `{machine}` was given `{id}` as a `ref`, but no handle to a run with \
+                 that id"
+            )));
+        };
+        if h.child {
+            return Err(Defect::host(format!(
+                "machine `{machine}` was given `{id}` as a `ref {of}`, but that is a child run, \
+                 which only its parent can reach"
+            )));
+        }
+        let hash = program.ir().machines.get(&of).map(|m| m.hash.as_str());
+        if *h.machine != *of || hash.is_some_and(|hash| *h.hash != *hash) {
+            let what = if *h.machine == *of {
+                format!("another version of `{of}`")
+            } else {
+                format!("a `{}`", h.machine)
+            };
+            return Err(Defect::host(format!(
+                "machine `{machine}` was given `{id}` as a `ref {of}`, but that run is {what}"
+            )));
+        }
+        peers.insert(id, h.clone());
+    }
+    for peer in peers.values() {
+        peer.shared.subscribe(shared.clone());
+    }
+    Ok(Arc::new(peers))
 }
 
 fn blank() -> Snapshot {
@@ -142,13 +198,30 @@ fn blank() -> Snapshot {
 }
 
 impl<'a> Driver<'a> {
-    /// A root run with id `id`, whose `ref` arguments name runs among `refs`.
+    /// A root run with id `id`, whose `ref` arguments name runs among `refs`. It is open,
+    /// and subscribed to its peers, from now on.
     #[allow(clippy::too_many_arguments)]
     pub fn root(
         program: &'a Program,
         machine: &'a str,
         input: Object,
-        refs: Vec<RunHandle>,
+        refs: &[RunHandle],
+        host: &'a dyn Host,
+        config: &Config,
+        id: String,
+        shared: Arc<Shared>,
+    ) -> Self {
+        let peers = open(program, machine, &input, refs, &shared);
+        Self::opened(program, machine, input, peers, host, config, id, shared)
+    }
+
+    /// A root run that [`open`] has opened on `shared`, giving `peers`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn opened(
+        program: &'a Program,
+        machine: &'a str,
+        input: Object,
+        peers: Result<Arc<Peers>, Defect>,
         host: &'a dyn Host,
         config: &Config,
         id: String,
@@ -156,7 +229,8 @@ impl<'a> Driver<'a> {
     ) -> Self {
         Self::new(
             program,
-            (machine, input, refs),
+            (machine, input),
+            peers,
             host,
             config.clone(),
             id,
@@ -170,14 +244,16 @@ impl<'a> Driver<'a> {
         program: &'a Program,
         machine: &'a str,
         input: Object,
-        refs: Vec<RunHandle>,
+        refs: &[RunHandle],
         host: &'a dyn Host,
         ctx: &Arc<InvokeContext>,
     ) -> Self {
         let id = format!("{}.{}", ctx.parent, ctx.invoke);
+        let peers = open(program, machine, &input, refs, &ctx.token);
         Self::new(
             program,
-            (machine, input, refs),
+            (machine, input),
+            peers,
             host,
             ctx.config.clone(),
             id,
@@ -190,7 +266,8 @@ impl<'a> Driver<'a> {
     #[allow(clippy::too_many_arguments)]
     fn new(
         program: &'a Program,
-        start: (&'a str, Object, Vec<RunHandle>),
+        start: (&'a str, Object),
+        peers: Result<Arc<Peers>, Defect>,
         host: &'a dyn Host,
         config: Config,
         id: String,
@@ -198,6 +275,10 @@ impl<'a> Driver<'a> {
         shared: Arc<Shared>,
         ctx: Option<Arc<InvokeContext>>,
     ) -> Self {
+        let (peers, bad_ref) = match peers {
+            Ok(p) => (p, None),
+            Err(d) => (Arc::default(), Some(d)),
+        };
         Driver {
             program,
             host,
@@ -207,7 +288,8 @@ impl<'a> Driver<'a> {
             parent,
             shared,
             ctx,
-            peers: Arc::default(),
+            peers,
+            bad_ref,
             queue: VecDeque::new(),
             invokes: BTreeMap::new(),
             contexts: BTreeMap::new(),
@@ -226,14 +308,18 @@ impl<'a> Driver<'a> {
     /// Runs to the end. Also says whether the run took a cancel request, in which case a
     /// defect it ended with happened in its cancel step.
     pub async fn drive_reporting(mut self) -> (RunEnd, bool) {
-        if let Some(observer) = &self.config.observer {
-            observer(&self.id, RunHandle::new(self.shared.clone(), &self.id));
+        let (machine, input) = self.start.take().expect("a driver runs once");
+        // A run given a handle it cannot hold ends before it starts, with no record.
+        if let Some(defect) = self.bad_ref.take() {
+            self.close();
+            self.shared.finish(Finished::Ok);
+            return (RunEnd::Defect(defect), false);
         }
-        let (machine, input, refs) = self.start.take().expect("a driver runs once");
-        self.peers = Arc::new(self.find_peers(machine, &input, refs));
-        // Open from just before `start`, and subscribed to what every peer emits.
-        for peer in self.peers.values() {
-            peer.shared.subscribe(self.shared.clone());
+        if let Some(observer) = &self.config.observer {
+            let child = self.parent.is_some();
+            let handle =
+                RunHandle::new(self.shared.clone(), &self.id, self.program, machine, child);
+            observer(&self.id, handle);
         }
         let host = self.host;
         let peers = self.peers.clone();
@@ -269,30 +355,6 @@ impl<'a> Driver<'a> {
             self.publish();
         }
         self.end().await
-    }
-
-    /// The handles of the runs that `input` names in `ref` arguments, by id, found among
-    /// `refs`. A run id with no handle there is a host defect before the run starts, as an
-    /// argument that does not encode is.
-    fn find_peers(&self, machine: &str, input: &Object, refs: Vec<RunHandle>) -> Peers {
-        let Some(m) = self.program.ir().machines.get(machine) else {
-            return Peers::new();
-        };
-        let mut peers = Peers::new();
-        for id in arg_ref_ids(self.program, &m.params, input) {
-            if peers.contains_key(&id) {
-                continue;
-            }
-            match refs.iter().find(|h| h.id() == id) {
-                Some(h) => {
-                    peers.insert(id, h.clone());
-                }
-                None => std::panic::resume_unwind(Box::new(Defect::host(format!(
-                    "machine `{machine}` was given `{id}` as a `ref`, but no handle to a run                      with that id"
-                )))),
-            }
-        }
-        peers
     }
 
     /// Takes the core's snapshot. A run closes as soon as its core gives a snapshot that is
@@ -466,7 +528,7 @@ impl<'a> Driver<'a> {
                 };
                 let refs = arg_ref_ids(self.program, params.unwrap_or_default(), &args)
                     .iter()
-                    .filter_map(|id| self.peers.get(id).cloned())
+                    .filter_map(|(id, _)| self.peers.get(id).cloned())
                     .collect();
                 let call = Invocation {
                     kind: src_kind,
@@ -639,12 +701,15 @@ impl<'a> Driver<'a> {
 }
 
 /// A run's future dropped before it ended (a hard stop) drops what it holds; a host future
-/// that panics then is ignored, as for a cancelled invoke.
+/// that panics then is ignored, as for a cancelled invoke. The run is then finished: its
+/// handles say so, and a parent waiting for a child run that host code dropped stops
+/// waiting.
 impl Drop for Driver<'_> {
     fn drop(&mut self) {
         self.close();
         for (_, slot) in std::mem::take(&mut self.invokes) {
             let _ = drop_caught(slot);
         }
+        self.shared.finish(Finished::Ok);
     }
 }

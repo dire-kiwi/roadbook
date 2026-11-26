@@ -1,0 +1,14 @@
+[package]
+name = "nested-owner"
+description = "A fixture of roadbook's tests: a crate that includes its chart in a module, which other crates therefore cannot import"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+roadbook = { path = "../../.." }
+
+[lints]
+workspace = true

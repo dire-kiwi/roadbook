@@ -1,0 +1,18 @@
+// A fixture of roadbook's tests: the top of a diamond of crates.
+import { Left } from "left/left.road"
+import { Right } from "right/right.road"
+import { Inventory } from "inventory/inventory.road"
+
+/// Runs a Left and has it and a Right restock the inventory.
+machine Apex(stock: ref Inventory, r: ref Right) {
+  event Go
+
+  initial Running
+
+  state Running {
+    invoke Left(stock) as left { done -> Done }
+    on Go  send left.Go  send r.Go
+  }
+
+  final state Done {}
+}

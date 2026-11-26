@@ -1,0 +1,13 @@
+// A fixture of roadbook's tests: the last chart of a chain of crates.
+import { One } from "chain1/one.road"
+
+/// Tells its One to go.
+machine Two(o: ref One) {
+  event Go
+
+  initial Idle
+
+  state Idle { on Go -> Done  send o.Go }
+
+  final state Done {}
+}

@@ -1,0 +1,61 @@
+// Handles and what host code does with them: `include_handles.rs`.
+
+/// Sends the hub a reading from host code.
+action relay(hub: ref Hub)
+
+/// Answers every Ping with a Pong to the runs that hold a `ref` to it.
+machine Hub() {
+  event Ping
+  event Reading { value: float }
+  emits Pong
+
+  initial Up
+
+  state Up {
+    on Ping     emit Pong
+    on Reading -> Up
+  }
+}
+
+/// Waits for the hub's Pong.
+machine Burst(hub: ref Hub) {
+  initial Waiting
+
+  state Waiting { on hub.Pong -> Got }
+
+  final state Got {}
+}
+
+/// Has an action send the hub a reading.
+machine Relay(hub: ref Hub) {
+  event Go
+
+  initial Idle
+
+  state Idle { on Go -> Sent  do relay(hub) }
+
+  final state Sent {}
+}
+
+/// Invokes a Burst, and can leave it.
+machine Holder(hub: ref Hub) {
+  event Leave
+
+  initial Holding
+
+  state Holding {
+    invoke Burst(hub) { done -> Left }
+    on Leave -> Left
+  }
+
+  final state Left {}
+}
+
+/// Runs a hub of its own, as a child run.
+machine Keeper() {
+  initial Keeping
+
+  state Keeping { invoke Hub() { done -> Kept } }
+
+  final state Kept {}
+}

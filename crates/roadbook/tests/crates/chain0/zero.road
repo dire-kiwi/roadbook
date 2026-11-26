@@ -1,0 +1,12 @@
+// A fixture of roadbook's tests: the first chart of a chain of crates.
+
+/// Waits for a Ping.
+machine Zero() {
+  event Ping
+
+  initial Waiting
+
+  state Waiting { on Ping -> Pinged }
+
+  final state Pinged {}
+}

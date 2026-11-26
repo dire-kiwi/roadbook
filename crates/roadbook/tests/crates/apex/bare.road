@@ -1,0 +1,13 @@
+// A fixture of roadbook's tests: a chart importing from a package whose name has a hyphen.
+import { Shelf } from "hyphen-stock/stock.road"
+
+/// Stocks a shelf.
+machine Stocker(s: ref Shelf) {
+  event Go
+
+  initial Idle
+
+  state Idle { on Go -> Done  send s.Deliver }
+
+  final state Done {}
+}

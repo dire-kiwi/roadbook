@@ -1,0 +1,12 @@
+// A fixture of roadbook's tests: the chart of a package whose name has a hyphen.
+
+/// A shelf that takes one delivery.
+machine Shelf() {
+  event Deliver
+
+  initial Empty
+
+  state Empty { on Deliver -> Full }
+
+  final state Full {}
+}

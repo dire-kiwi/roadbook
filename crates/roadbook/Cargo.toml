@@ -23,6 +23,15 @@ tokio = { version = "1", optional = true, features = ["rt", "time"] }
 [dev-dependencies]
 # The examples' crate that owns `inventory.road`, under another name, for `include_renamed.rs`.
 inv = { package = "inventory", path = "../../examples/inventory" }
+# Fixture crates for `include_crates.rs` and `tests/ui/owner_in_module.rs`: a chain, a
+# diamond, a renamed dependency with a hyphen, and an owner that includes its chart in a module.
+apex = { path = "tests/crates/apex" }
+chain0 = { path = "tests/crates/chain0" }
+chain1 = { path = "tests/crates/chain1" }
+chain2 = { path = "tests/crates/chain2" }
+left = { path = "tests/crates/left" }
+nested-owner = { path = "tests/crates/nested-owner" }
+right = { path = "tests/crates/right" }
 roadbook-compiler = { path = "../roadbook-compiler" }
 roadbook-conformance = { path = "../roadbook-conformance" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "test-util"] }

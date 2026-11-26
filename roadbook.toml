@@ -13,6 +13,7 @@ exclude = [
 gen-exclude = [
   "crates/roadbook-compiler/tests/pass",
   "crates/roadbook/tests/charts",
+  "crates/roadbook/tests/crates",
   "packages/viewer/test/charts",
   "spec/conformance/charts",
 ]
@@ -28,3 +29,10 @@ allow-unassigned = [
 # imports `Inventory` from the package `inventory` as `"inventory/inventory.road"`.
 [packages]
 inventory = "examples/inventory"
+# The fixture crates of `crates/roadbook/tests/include_crates.rs`.
+chain0 = "crates/roadbook/tests/crates/chain0"
+chain1 = "crates/roadbook/tests/crates/chain1"
+hyphen-stock = "crates/roadbook/tests/crates/hyphen-stock"
+left = "crates/roadbook/tests/crates/left"
+nested-owner = "crates/roadbook/tests/crates/nested-owner"
+right = "crates/roadbook/tests/crates/right"

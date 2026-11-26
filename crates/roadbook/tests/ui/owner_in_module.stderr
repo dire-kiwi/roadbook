@@ -1,0 +1,15 @@
+error[E0432]: unresolved import `$crate`
+ --> tests/ui/owner_in_module.rs:4:1
+  |
+4 | roadbook::include!("charts/uses_nested.road");
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `nested` in the root
+  |
+  = note: this error originates in the macro `::nested_owner::__roadbook_chart_nested_2e_road` which comes from the expansion of the macro `roadbook::include` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation panicked: roadbook::include!("nested.road") is not at the crate root of package `nested-owner`, so other crates cannot import its chart: move it out of any `mod`, into the crate root (src/lib.rs)
+ --> tests/ui/owner_in_module.rs:4:1
+  |
+4 | roadbook::include!("charts/uses_nested.road");
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
+  |
+  = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `roadbook::include` (in Nightly builds, run with -Z macro-backtrace for more info)
