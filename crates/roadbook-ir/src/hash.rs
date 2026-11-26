@@ -302,34 +302,45 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
             w.type_name(e)?;
         }
     }
-    // The interfaces of the machines named but not walked whole. Event fields
-    // cannot hold a `ref`, so this adds no machine.
-    let peers: Vec<String> = w
-        .out
-        .interfaces
-        .difference(&w.out.machines)
-        .cloned()
-        .collect();
-    for p in &peers {
-        let m = &ir.machines[p];
-        w.machine = p.clone();
-        for e in m.events.values().chain(m.emits.values()) {
-            w.fields(&e.fields)?;
-        }
-    }
-    w.out.interfaces = peers.into_iter().collect();
-    w.machine = name.to_owned();
-    // Close the types over their own declarations.
+    // Close the types over their own declarations, and add the interfaces of
+    // the machines named but not walked whole, with the types their events
+    // name, until nothing new is found. (A `ref` alias among the types names a
+    // machine; event fields cannot hold a `ref`, so this ends at once.)
+    let mut walked: BTreeSet<String> = BTreeSet::new();
     let mut pending: Vec<String> = w.out.types.iter().cloned().collect();
-    while let Some(t) = pending.pop() {
-        let before = w.out.types.clone();
-        match &ir.types[&t].def {
-            TypeDef::Record { fields } | TypeDef::Error { fields } => w.fields(fields)?,
-            TypeDef::Alias { ty } => w.type_ref(ty)?,
-            TypeDef::Enum { .. } | TypeDef::Extern => {}
+    loop {
+        while let Some(t) = pending.pop() {
+            let before = w.out.types.clone();
+            match &ir.types[&t].def {
+                TypeDef::Record { fields } | TypeDef::Error { fields } => w.fields(fields)?,
+                TypeDef::Alias { ty } => w.type_ref(ty)?,
+                TypeDef::Enum { .. } | TypeDef::Extern => {}
+            }
+            pending.extend(w.out.types.difference(&before).cloned());
         }
+        let peers: Vec<String> = w
+            .out
+            .interfaces
+            .iter()
+            .filter(|p| !w.out.machines.contains(*p) && !walked.contains(*p))
+            .cloned()
+            .collect();
+        if peers.is_empty() {
+            break;
+        }
+        let before = w.out.types.clone();
+        for p in peers {
+            let m = &ir.machines[&p];
+            w.machine = p.clone();
+            for e in m.events.values().chain(m.emits.values()) {
+                w.fields(&e.fields)?;
+            }
+            walked.insert(p);
+        }
+        w.machine = name.to_owned();
         pending.extend(w.out.types.difference(&before).cloned());
     }
+    w.out.interfaces = walked;
     Ok(w.out)
 }
 
