@@ -1,0 +1,55 @@
+// Conformance chart: what a child sends and emits while it is being cancelled.
+// The Worker's exit effects send a note to a peer and emit Stopping to its parent.
+
+/// Write a line to the log.
+action log(text: string)
+
+/// Takes notes from every machine that holds a reference to it.
+machine Logbook() {
+  event Note  { text: string }
+  event Close
+
+  initial Open
+
+  state Open {
+    on Note             do log(event.text)
+    on Close -> Closed
+  }
+
+  final state Closed {}
+}
+
+/// Works until it is cancelled, then says so to the logbook and to its parent.
+machine Worker(book: ref Logbook) {
+  event Finish
+  emits Stopping
+
+  exit send book.Note { text: "worker stopped" }  emit Stopping
+
+  initial Working
+
+  state Working { on Finish -> Finished }
+
+  final state Finished {}
+}
+
+/// Watches a Worker, which it can restart or leave.
+machine Boss(book: ref Logbook) {
+  event Restart
+  event Leave
+
+  exit send book.Note { text: "boss stopped" }
+
+  initial Watching
+
+  state Watching {
+    invoke Worker(book) as worker {
+      done -> Idle
+    }
+    on worker.Stopping              do log("worker stopping")
+    on Restart         -> Watching
+    on Leave           -> Idle
+  }
+
+  state Idle { on Restart -> Watching }
+}

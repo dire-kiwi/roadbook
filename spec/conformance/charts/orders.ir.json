@@ -1,0 +1,1321 @@
+{
+  "irVersion": "0.2",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/orders.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Item": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "sku",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "One line of an order: a product and how many of it.",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 36
+      }
+    },
+    "OrderDraft": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "items",
+          "type": "Item[]",
+          "doc": ""
+        },
+        {
+          "name": "card",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "What the customer is buying.",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 48
+      }
+    },
+    "Receipt": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "orderId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "total",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "Proof of payment.",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 12,
+        "endCol": 45
+      }
+    },
+    "OutOfStock": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "reason",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "The warehouse cannot supply every item.",
+      "span": {
+        "file": 0,
+        "line": 15,
+        "col": 1,
+        "endLine": 15,
+        "endCol": 36
+      }
+    },
+    "PaymentDeclined": {
+      "kind": "error",
+      "fields": [],
+      "doc": "The card was refused.",
+      "span": {
+        "file": 0,
+        "line": 18,
+        "col": 1,
+        "endLine": 18,
+        "endCol": 22
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "releaseStock": {
+      "params": [
+        {
+          "name": "warehouse",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "orderId",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "Put the items held for an order back on the shelf.",
+      "span": {
+        "file": 0,
+        "line": 24,
+        "col": 1,
+        "endLine": 24,
+        "endCol": 56
+      }
+    },
+    "addStock": {
+      "params": [
+        {
+          "name": "warehouse",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "sku",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "Record a delivery.",
+      "span": {
+        "file": 0,
+        "line": 27,
+        "col": 1,
+        "endLine": 27,
+        "endCol": 58
+      }
+    }
+  },
+  "tasks": {
+    "reserveStock": {
+      "params": [
+        {
+          "name": "warehouse",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "orderId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "items",
+          "type": "Item[]",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [
+        "OutOfStock"
+      ],
+      "doc": "Hold `items` for an order, or fail if the warehouse cannot supply them all.",
+      "span": {
+        "file": 0,
+        "line": 21,
+        "col": 1,
+        "endLine": 21,
+        "endCol": 82
+      }
+    },
+    "charge": {
+      "params": [
+        {
+          "name": "orderId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "draft",
+          "type": "OrderDraft",
+          "doc": ""
+        }
+      ],
+      "returns": "Receipt",
+      "errors": [
+        "PaymentDeclined"
+      ],
+      "doc": "Charge the customer for the order.",
+      "span": {
+        "file": 0,
+        "line": 30,
+        "col": 1,
+        "endLine": 30,
+        "endCol": 77
+      }
+    }
+  },
+  "machines": {
+    "Inventory": {
+      "doc": "The stock of one warehouse, shared by every order. It answers a request by\nemitting Reserved or Rejected with the order's id.",
+      "span": {
+        "file": 0,
+        "line": 34,
+        "col": 1,
+        "endLine": 65,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "warehouse",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "orderId",
+          "type": "string",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 35,
+            "col": 3,
+            "endLine": 35,
+            "endCol": 22
+          }
+        },
+        {
+          "name": "items",
+          "type": "Item[]",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 36,
+            "col": 3,
+            "endLine": 36,
+            "endCol": 22
+          }
+        }
+      ],
+      "events": {
+        "Reserve": {
+          "fields": [
+            {
+              "name": "orderId",
+              "type": "string",
+              "doc": ""
+            },
+            {
+              "name": "items",
+              "type": "Item[]",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 38,
+            "col": 3,
+            "endLine": 38,
+            "endCol": 52
+          }
+        },
+        "Release": {
+          "fields": [
+            {
+              "name": "orderId",
+              "type": "string",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 39,
+            "col": 3,
+            "endLine": 39,
+            "endCol": 37
+          }
+        },
+        "Restock": {
+          "fields": [
+            {
+              "name": "sku",
+              "type": "string",
+              "doc": ""
+            },
+            {
+              "name": "qty",
+              "type": "int",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 40,
+            "col": 3,
+            "endLine": 40,
+            "endCol": 43
+          }
+        },
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 41,
+            "col": 3,
+            "endLine": 41,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {
+        "Reserved": {
+          "fields": [
+            {
+              "name": "orderId",
+              "type": "string",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 42,
+            "col": 3,
+            "endLine": 42,
+            "endCol": 37
+          }
+        },
+        "Rejected": {
+          "fields": [
+            {
+              "name": "orderId",
+              "type": "string",
+              "doc": ""
+            },
+            {
+              "name": "reason",
+              "type": "string",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 43,
+            "col": 3,
+            "endLine": 43,
+            "endCol": 53
+          }
+        }
+      },
+      "root": {
+        "id": "Inventory",
+        "name": "Inventory",
+        "kind": "compound",
+        "doc": "The stock of one warehouse, shared by every order. It answers a request by\nemitting Reserved or Rejected with the order's id.",
+        "span": {
+          "file": 0,
+          "line": 34,
+          "col": 1,
+          "endLine": 65,
+          "endCol": 2
+        },
+        "initial": "Inventory.Ready",
+        "states": [
+          {
+            "id": "Inventory.Ready",
+            "name": "Ready",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 50,
+              "col": 3,
+              "endLine": 53,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Reserve"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Inventory.Reserving",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "orderId",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "orderId"
+                      ],
+                      "type": "string",
+                      "text": "event.orderId"
+                    }
+                  },
+                  {
+                    "kind": "set",
+                    "var": "items",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "items"
+                      ],
+                      "type": "Item[]",
+                      "text": "event.items"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 51,
+                  "col": 5,
+                  "endLine": 51,
+                  "endCol": 78
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Inventory.Closed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 52,
+                  "col": 5,
+                  "endLine": 52,
+                  "endCol": 25
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Inventory.Reserving",
+            "name": "Reserving",
+            "kind": "atomic",
+            "doc": "One request at a time: another that arrives meanwhile is turned away.",
+            "span": {
+              "file": 0,
+              "line": 56,
+              "col": 3,
+              "endLine": 62,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "reserveStock",
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "warehouse"
+                  ],
+                  "type": "string",
+                  "text": "warehouse"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "orderId"
+                  ],
+                  "type": "string",
+                  "text": "orderId"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "items"
+                  ],
+                  "type": "Item[]",
+                  "text": "items"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 57,
+                "col": 5,
+                "endLine": 60,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Inventory.Ready",
+                "effects": [
+                  {
+                    "kind": "emit",
+                    "event": "Reserved",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "orderId",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "orderId"
+                            ],
+                            "type": "string",
+                            "text": "orderId"
+                          }
+                        }
+                      ],
+                      "type": "Reserved",
+                      "text": "Reserved { orderId: orderId }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 58,
+                  "col": 7,
+                  "endLine": 58,
+                  "endCol": 67
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "OutOfStock"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Inventory.Ready",
+                "effects": [
+                  {
+                    "kind": "emit",
+                    "event": "Rejected",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "orderId",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "orderId"
+                            ],
+                            "type": "string",
+                            "text": "orderId"
+                          }
+                        },
+                        {
+                          "name": "reason",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "error",
+                              "reason"
+                            ],
+                            "type": "string",
+                            "text": "error.reason"
+                          }
+                        }
+                      ],
+                      "type": "Rejected",
+                      "text": "Rejected { orderId: orderId, reason: error.reason }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 59,
+                  "col": 7,
+                  "endLine": 59,
+                  "endCol": 89
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Reserve"
+                },
+                "group": 2,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "emit",
+                    "event": "Rejected",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "orderId",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "orderId"
+                            ],
+                            "type": "string",
+                            "text": "event.orderId"
+                          }
+                        },
+                        {
+                          "name": "reason",
+                          "value": {
+                            "kind": "lit",
+                            "value": "busy",
+                            "type": "string",
+                            "text": "\"busy\""
+                          }
+                        }
+                      ],
+                      "type": "Rejected",
+                      "text": "Rejected { orderId: event.orderId, reason: \"busy\" }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 61,
+                  "col": 5,
+                  "endLine": 61,
+                  "endCol": 72
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Inventory.Closed",
+            "name": "Closed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 64,
+              "col": 3,
+              "endLine": 64,
+              "endCol": 24
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Release"
+            },
+            "group": 0,
+            "guard": null,
+            "target": null,
+            "effects": [
+              {
+                "kind": "do",
+                "action": "releaseStock",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "warehouse"
+                    ],
+                    "type": "string",
+                    "text": "warehouse"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "event",
+                      "orderId"
+                    ],
+                    "type": "string",
+                    "text": "event.orderId"
+                  }
+                ]
+              }
+            ],
+            "span": {
+              "file": 0,
+              "line": 47,
+              "col": 3,
+              "endLine": 47,
+              "endCol": 55
+            }
+          },
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Restock"
+            },
+            "group": 1,
+            "guard": null,
+            "target": null,
+            "effects": [
+              {
+                "kind": "do",
+                "action": "addStock",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "warehouse"
+                    ],
+                    "type": "string",
+                    "text": "warehouse"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "event",
+                      "sku"
+                    ],
+                    "type": "string",
+                    "text": "event.sku"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "event",
+                      "qty"
+                    ],
+                    "type": "int",
+                    "text": "event.qty"
+                  }
+                ]
+              }
+            ],
+            "span": {
+              "file": 0,
+              "line": 48,
+              "col": 3,
+              "endLine": 48,
+              "endCol": 58
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:ce476c9f805a78c0125d0aa5e47142cbacf245ae7a2b5d5ae3aa1de2c1afc5eb"
+    },
+    "Order": {
+      "doc": "Reserve the items with the warehouse, then take the payment.",
+      "span": {
+        "file": 0,
+        "line": 68,
+        "col": 1,
+        "endLine": 91,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "draft",
+          "type": "OrderDraft",
+          "doc": ""
+        },
+        {
+          "name": "inventory",
+          "type": "ref Inventory",
+          "doc": ""
+        }
+      ],
+      "returns": "Receipt",
+      "errors": [
+        "OutOfStock",
+        "PaymentDeclined"
+      ],
+      "vars": [
+        {
+          "name": "receipt",
+          "type": "Receipt",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 69,
+            "col": 3,
+            "endLine": 69,
+            "endCol": 23
+          }
+        },
+        {
+          "name": "problem",
+          "type": "OutOfStock",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 70,
+            "col": 3,
+            "endLine": 70,
+            "endCol": 26
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "root": {
+        "id": "Order",
+        "name": "Order",
+        "kind": "compound",
+        "doc": "Reserve the items with the warehouse, then take the payment.",
+        "span": {
+          "file": 0,
+          "line": 68,
+          "col": 1,
+          "endLine": 91,
+          "endCol": 2
+        },
+        "initial": "Order.Reserving",
+        "states": [
+          {
+            "id": "Order.Reserving",
+            "name": "Reserving",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 74,
+              "col": 3,
+              "endLine": 79,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "send",
+                "to": {
+                  "kind": "ref",
+                  "name": "inventory",
+                  "machine": "Inventory",
+                  "state": null
+                },
+                "event": "Reserve",
+                "value": {
+                  "kind": "record",
+                  "fields": [
+                    {
+                      "name": "orderId",
+                      "value": {
+                        "kind": "ref",
+                        "path": [
+                          "id"
+                        ],
+                        "type": "string",
+                        "text": "id"
+                      }
+                    },
+                    {
+                      "name": "items",
+                      "value": {
+                        "kind": "ref",
+                        "path": [
+                          "draft",
+                          "items"
+                        ],
+                        "type": "Item[]",
+                        "text": "draft.items"
+                      }
+                    }
+                  ],
+                  "type": "Inventory.Reserve",
+                  "text": "Reserve { orderId: id, items: draft.items }"
+                }
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "ref",
+                    "name": "inventory",
+                    "machine": "Inventory",
+                    "state": null
+                  },
+                  "event": "Reserved"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "orderId"
+                      ],
+                      "type": "string",
+                      "text": "event.orderId"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "id"
+                      ],
+                      "type": "string",
+                      "text": "id"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.orderId == id"
+                },
+                "target": "Order.Paying",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 76,
+                  "col": 5,
+                  "endLine": 76,
+                  "endCol": 59
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "ref",
+                    "name": "inventory",
+                    "machine": "Inventory",
+                    "state": null
+                  },
+                  "event": "Rejected"
+                },
+                "group": 1,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "orderId"
+                      ],
+                      "type": "string",
+                      "text": "event.orderId"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "id"
+                      ],
+                      "type": "string",
+                      "text": "id"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.orderId == id"
+                },
+                "target": "Order.Unavailable",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "problem",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "reason",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "reason"
+                            ],
+                            "type": "string",
+                            "text": "event.reason"
+                          }
+                        }
+                      ],
+                      "type": "OutOfStock",
+                      "text": "OutOfStock { reason: event.reason }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 77,
+                  "col": 5,
+                  "endLine": 77,
+                  "endCol": 115
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 5000,
+                    "type": "duration",
+                    "text": "5s"
+                  }
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Order.Unavailable",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "problem",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "reason",
+                          "value": {
+                            "kind": "lit",
+                            "value": "the warehouse did not answer",
+                            "type": "string",
+                            "text": "\"the warehouse did not answer\""
+                          }
+                        }
+                      ],
+                      "type": "OutOfStock",
+                      "text": "OutOfStock { reason: \"the warehouse did not answer\" }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 78,
+                  "col": 5,
+                  "endLine": 78,
+                  "endCol": 133
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.Paying",
+            "name": "Paying",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 81,
+              "col": 3,
+              "endLine": 86,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "charge",
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "id"
+                  ],
+                  "type": "string",
+                  "text": "id"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "draft"
+                  ],
+                  "type": "OrderDraft",
+                  "text": "draft"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 82,
+                "col": 5,
+                "endLine": 85,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Order.Paid",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "receipt",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "Receipt",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 83,
+                  "col": 7,
+                  "endLine": 83,
+                  "endCol": 61
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "PaymentDeclined"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Order.Declined",
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "ref",
+                      "name": "inventory",
+                      "machine": "Inventory",
+                      "state": null
+                    },
+                    "event": "Release",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "orderId",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "id"
+                            ],
+                            "type": "string",
+                            "text": "id"
+                          }
+                        }
+                      ],
+                      "type": "Inventory.Release",
+                      "text": "Release { orderId: id }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 84,
+                  "col": 7,
+                  "endLine": 84,
+                  "endCol": 79
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.Paid",
+            "name": "Paid",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 88,
+              "col": 3,
+              "endLine": 88,
+              "endCol": 45
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "receipt"
+              ],
+              "type": "Receipt",
+              "text": "receipt"
+            },
+            "fail": null
+          },
+          {
+            "id": "Order.Unavailable",
+            "name": "Unavailable",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 89,
+              "col": 3,
+              "endLine": 89,
+              "endCol": 43
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "ref",
+              "path": [
+                "problem"
+              ],
+              "type": "OutOfStock",
+              "text": "problem"
+            }
+          },
+          {
+            "id": "Order.Declined",
+            "name": "Declined",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 90,
+              "col": 3,
+              "endLine": 90,
+              "endCol": 51
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "record",
+              "fields": [],
+              "type": "PaymentDeclined",
+              "text": "PaymentDeclined"
+            }
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:4acb625ac346689b1399e54cca1ebad79f5509d474ffaab2dc727e628f6a243e"
+    }
+  }
+}

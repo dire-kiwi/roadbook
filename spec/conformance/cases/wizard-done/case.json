@@ -1,5 +1,6 @@
 {
   "description": "Entering the nested final state Complete completes Form. With no always enabled, Form's done transition is taken, then Review's always, all while settling the second Next.",
+  "requires": [],
   "chart": "charts/wizard.road",
   "machine": "Wizard",
   "input": {},

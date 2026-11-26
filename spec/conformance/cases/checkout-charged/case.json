@@ -1,5 +1,6 @@
 {
   "description": "The card is charged on the first attempt: invoke done leads to a final state whose output is the result.",
+  "requires": [],
   "chart": "charts/shop/checkout.road",
   "machine": "Checkout",
   "input": {

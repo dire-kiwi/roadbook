@@ -1,0 +1,30 @@
+// Conformance chart: two events sent from one machine to another arrive in the
+// order they were sent.
+
+/// Record which machine a sender talks to.
+action note(peer: ref Receiver)
+
+/// Must get First before Second.
+machine Receiver() {
+  event First
+  event Second
+
+  initial WaitingFirst
+
+  state WaitingFirst { on First -> WaitingSecond }
+
+  state WaitingSecond { on Second -> Done }
+
+  final state Done {}
+}
+
+/// Sends First, then Second, in one transition.
+machine Sender(peer: ref Receiver) {
+  event Go
+
+  initial Idle
+
+  state Idle { on Go -> Sent  do note(peer)  send peer.First  send peer.Second }
+
+  final state Sent {}
+}

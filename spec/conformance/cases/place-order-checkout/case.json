@@ -1,5 +1,6 @@
 {
   "description": "The whole request with Checkout run from its chart as child run r1.4. Confirming is left by its always transition in the step that entered it, after its entry action.",
+  "requires": [],
   "chart": "charts/shop/place_order.road",
   "machine": "PlaceOrder",
   "input": {

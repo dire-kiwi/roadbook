@@ -27,6 +27,7 @@ The `ir` member of each `started` record is the machine's hash from the IR. `reg
 ```jsonc
 {
   "description": "Two gateway failures with growing backoff, then a successful charge.",
+  "requires": [],                             // features beyond the first version's
   "chart": "charts/shop/checkout.road",       // relative to spec/conformance
   "machine": "Checkout",
   "input": { "order": { /* … */ }, "user": { /* … */ } },
@@ -49,45 +50,49 @@ Every member is required. Values are in their JSON form ([values](../execution.m
 | Member | Meaning |
 | --- | --- |
 | `description` | What the case checks. |
+| `requires` | The features the case needs beyond the first version's: `[]`, or `["messaging"]` for a case whose chart uses `send`, `emit`, `emits`, `on name.Event`, `invoke … as` or `ref` (milestone 5). A runner skips, and does not fail, a case that requires a feature its runtime does not implement yet. |
 | `chart` | The entry chart, relative to this directory. |
-| `machine` | The machine run as the root run, `r1`. |
-| `input` | Its arguments, keyed by parameter name. |
+| `machine` | The machine run as the root run, `r1`, which is started first. |
+| `input` | Its arguments, keyed by parameter name. Since no other run exists yet, it has no `ref` argument. |
 | `stub` | Machines that are scripted like tasks when invoked. Every other invoked machine runs from the chart as a child run. |
 | `fns` | For each function, a list of `{"args": [...], "returns": value}`: the result for those positional arguments. A call whose arguments match no entry (compared as canonical JSON) fails the case. Entries that are never called are allowed. |
 | `actions` | For each action, a list of `{"args": {...}, "defect": "message"}`: every call of that action with those arguments (keyed by parameter name, compared as canonical JSON) has the host defect `{"kind": "host", "message": "message"}`. Every other action call does nothing and returns at once. |
 | `script` | The steps, in order. |
-| `status` | The root run's status after the last step: `running`, `done`, `failed`, `cancelled` or `defect`. |
+| `status` | The root run's status after the last step: `running`, `done`, `failed`, `cancelled` or `defect`. (Other top-level runs give theirs in their `start` step.) |
 
 Script steps:
 
 | Step | Does |
 | --- | --- |
 | `{"advance": ms}` | Advances virtual time by `ms`, firing the timers that fall due on the way, one at a time. |
-| `{"event": {"_tag": "Cancel", …}}` | Gives the root run the external event. |
+| `{"event": {"_tag": "Cancel", …}}` | Gives the root run the external event, as host code does. With `"run": "r2"`, gives it to that top-level run instead. |
 | `{"task": "chargeCard", "done": value}` | Ends the running scripted invoke of `chargeCard` with success. |
 | `{"task": "chargeCard", "fail": {"_tag": …}}` | Ends it with that error, any error type of the chart. One the task does not declare reaches the core as `invoke.fail` all the same, which makes it an `undeclared` defect. |
 | `{"task": "chargeCard", "defect": "message"}` | Ends it with the host defect `{"kind": "host", "message": "message"}`. |
-| `{"cancel": true}` | Cancels the root run from outside. |
+| `{"cancel": true}` | Cancels the root run from outside. With `"run": "r2"`, cancels that top-level run instead. |
+| `{"start": "Order", "run": "r2", "input": {…}, "status": "done"}` | Starts another top-level run of a machine of the chart, as host code spawns one. `run` is its id: `r2` for the first `start` step, `r3` for the next, and so on. In `input`, the value of a `ref` argument is the id of a top-level run started before this one (running or ended), and the runner passes that run's handle. `status` is the run's status after the last step. |
 | `{"together": [step, …]}` | Two or more steps, `event` and `task` steps and at most one `advance`, whose inputs are all queued for one run before it takes the first: the way to make an outcome or an expiry arrive after its state was left. |
 
 `task` names a task or a stubbed machine. It refers to the one invoke of that name that is running (started, not cancelled, no outcome given yet) in any run; if several runs have one, `"run": "r1.4"` picks one. No match, or an ambiguous one, fails the case.
+
+**Run ids.** The root run is `r1`, the runs of `start` steps `r2`, `r3`, … in order, and child runs are named as always ([run ids](../execution.md#the-driver)), so `r2.1` is the child started by invoke 1 of `r2`. A `ref` in a trace is one of these ids ([values](../execution.md#values)). The trace groups each top-level run's tree after the previous one's: `r1`, `r1.1`, `r2`, `r2.1`, `r3`. Cases start at most eight other runs, so ids compare as numbers would.
 
 ## How a runner works
 
 A runner gives the driver scripted host code and a virtual clock, then drives it like this:
 
-1. Read `case.json` and the chart's IR. Check the IR's version and that it has the machine.
+1. Read `case.json` and the chart's IR. Skip the case if it requires a feature the runtime does not implement. Check the IR's version and that it has the machine.
 2. Bind the host: every task, and every machine in `stub`, to a scripted invoke that does nothing until the script ends it; every action to one that raises the host defect `actions` lists for its arguments, if any, and otherwise does nothing and returns at once; every function to the `fns` table. Every other machine runs from the chart.
 3. Set the virtual clock to 0, start the root run `r1` with `input`, and wait until the runs are **quiescent**.
-4. For each step of `script`, in order: fail the case if the root run has already ended; carry out the step; wait until quiescent.
-5. Check that the root run's status is `status`. A run still running is left as it is: the runner does not cancel it and writes nothing more.
+4. For each step of `script`, in order: fail the case if the step gives an input to a top-level run that has already ended, or if every top-level run has ended and the step is not a `start`; carry out the step; wait until quiescent.
+5. Check that the root run's status is `status` and that each other top-level run's is the `status` of its `start` step. A run still running is left as it is: the runner does not cancel it and writes nothing more.
 6. Arrange the records [grouped by run](../trace.md#order), write each in canonical form followed by a line feed, and compare the bytes with `trace.jsonl`.
 
 **Quiescent** means that every run's queue is empty, no run is carrying out commands, and every child run that has ended has had its outcome taken by its parent. Only scripted invokes and timers are then pending, and nothing happens until the runner acts.
 
-**Inputs.** Ending a scripted invoke gives its run the `invoke.done`, `invoke.fail` or `invoke.defect` input for that invoke's id; an event step gives the root run an `event` input; a cancel step a `cancel` request.
+**Inputs.** Ending a scripted invoke gives its run the `invoke.done`, `invoke.fail` or `invoke.defect` input for that invoke's id; an event step gives its run (the root run, or `run`) an `event` input; a cancel step a `cancel` request. A `start` step starts the run with the clock, timer and trace sink the others use, after the runs it holds a `ref` to; it gives no input to the runs already started, though its run's start step may send them messages. Messages and emitted events are never scripted: runs produce them, and the driver delivers them.
 
-**Together.** Every item of a `together` step is resolved first, in order, against the invokes running before the step (an invoke resolved by an earlier item of the same step no longer counts as running): an `event` item to the root run's `event` input, a `task` item to its invoke's outcome, and an `advance` item to the `after` input of every timer due in its window (below), in the order an `advance` step would fire them, after setting the clock to the window's end. Every input of the step must be for the same run; a step whose inputs are for two runs fails the case (which run steps first would then be up to the host's scheduler). The runner then appends all the inputs, in order, to that run's queue in one operation ([several inputs at once](../execution.md#one-queue-per-run)) and waits until quiescent. A scripted invoke whose outcome was appended this way is never ended otherwise; the driver drops it when the core takes the outcome. All records the step causes carry the clock as the step left it.
+**Together.** Every item of a `together` step is resolved first, in order, against the invokes running before the step (an invoke resolved by an earlier item of the same step no longer counts as running): an `event` item to its run's `event` input, a `task` item to its invoke's outcome, and an `advance` item to the `after` input of every timer due in its window (below), in the order an `advance` step would fire them, after setting the clock to the window's end. Every input of the step must be for the same run; a step whose inputs are for two runs fails the case (which run steps first would then be up to the host's scheduler). The runner then appends all the inputs, in order, to that run's queue in one operation ([several inputs at once](../execution.md#one-queue-per-run)) and waits until quiescent. A scripted invoke whose outcome was appended this way is never ended otherwise; the driver drops it when the core takes the outcome. All records the step causes carry the clock as the step left it.
 
 **Virtual time.** A timer is due at the virtual time at which the driver carried out its `timer.start`, plus its `delay`. `{"advance": d}` from time `now` repeats: of the running timers in all runs that are due at or before `now + d`, take the one with the earliest due time (ties go to the run that comes first in [run order](../trace.md#order), then to the lower timer id); set the clock to its due time; give its run the `after` input; wait until quiescent. When no timer is left in the window, it sets the clock to `now + d`. A timer started while an `advance` is firing timers is in the same window if it falls due at or before `now + d`, where `now` is the clock when the step began. Otherwise timers fire only during `advance`: a timer with delay 0 started by any other step fires at the next `advance`, even `{"advance": 0}`. Records carry the clock's value when written, so everything a step causes has the same `t`.
 
@@ -97,10 +102,15 @@ A runner gives the driver scripted host code and a virtual clock, then drives it
 - It starts and cancels timers only through the timer it was given, telling it the run id, the timer id and the delay, and it never completes a timer itself, even one with delay 0. A timer's expiry reaches its run only when the timer fires it.
 - It queues every input on one queue per run and takes them one at a time, and it can append a list of inputs to a run's queue in one operation.
 - It lets the runner wait until quiescent: every run's queue empty and no run carrying out commands.
+- It lets the runner start several top-level runs that share one clock, timer and trace sink, give it a started run's handle as a `ref` argument of another, and give events to and cancel any top-level run.
 
 So the runner's own virtual timer records every timer the driver starts, with its run, id and due time, forgets those the driver cancels, and fires them one at a time as above, waiting for quiescence after each. A Rust runner implements the `Timer` trait so. A TypeScript runner gives the driver its own `Timer` service in the same way; Effect's `TestClock` alone does not meet these rules, because `TestClock.adjust(d)` wakes every sleep in the window without waiting for the runs to settle between them, and it does not promise that `Effect.sleep` with a zero duration waits for the clock to move. A runner may still use `TestClock` as the clock records read, setting it to each due time in turn (`TestClock.setTime`) as its own timer fires.
 
-**A case must not depend on scheduling.** With every input of a step for one run, the one order these rules leave open is that of outcomes from two child runs of one parent that both end while the runs settle after a single step, since which child ends first is up to the scheduler. No case does that.
+**A case must not depend on scheduling.** With every input of a step for one run, these rules leave three orders open, and no case depends on them:
+
+- Outcomes from two child runs of one parent that both end while the runs settle after a single step: which child ends first is up to the scheduler.
+- Inputs that two runs push onto a third's queue in one step, unless one of them finished pushing before the other started. The messages and emitted events of one sender arrive in order ([order per pair](../execution.md#delivering-messages)), and a child's cancel step is over before its parent's step goes on, so in `cancel-parent-messages` the Logbook takes the Worker's note before Boss's. But nothing orders, say, an Inventory's two replies to two Orders that each forward something to a third run.
+- A message to a run that is cancelled in the same step: whether the run took the message before the cancel request is up to the scheduler. (A cancel request goes before what is queued, but the run may already have taken the message.)
 
 ## The cases
 
@@ -130,3 +140,13 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `defect-undeclared` | A stubbed machine failing with an error it does not declare is an `undeclared` defect inside the core. |
 | `alias-operators` | Comparison, equality and arithmetic on aliases (of an alias) of `int`, `float`, `duration` and an enum behave as on those types, with the alias-typed operand first; a variable whose type is an alias of an optional type starts as `null`. |
 | `run-ids` | Ten child runs: in run order `r1.10` comes after `r1.9`, since segments after the first compare as numbers. |
+| `child-messages` | A parent sends Pause and Resume to the child it invokes with `as`, which takes them as messages; the child's Progress reaches the parent's `on upload.Progress` as an emitted event of its invoke; the Progress emitted in the step that ends the child is taken before the child's outcome. |
+| `child-no-as` | A child invoked without `as` emits: nothing is delivered to its parent. |
+| `child-undelivered` | A send to a child that is not running is `undelivered` with `to` `null` and no `sent`: from an `entry` inside the invoking state in the step that enters it, and after the child's outcome was taken by a transition with no target. An emitted event with no `on` is dropped. |
+| `child-stale-emit` | What a child emits from its cancel step is stale for its parent, when the parent re-enters the invoking state (whose new child the event would otherwise match) and when it leaves it; what it sends from its cancel step reaches a peer. |
+| `cancel-parent-messages` | A top-level run cancelled from outside: its child's cancel step sends to a peer, which takes it, and emits to the parent, which has ended and does not get it; the parent's own exit sends to the peer, which takes it second. |
+| `peer-reply` | A request to a peer through a `ref` parameter, a reply emitted to every holder and matched on its id with a guard, a timeout cancelled by the reply; host code sending to the peer. |
+| `peer-two-holders` | One emitted event received by two holders of a `ref`: one drops it (its guard fails), the other takes it; a later one reaches only the holder still running; a send in the transition that ends the sender is delivered. |
+| `peer-timeout` | An `after` gives up on a peer that does not answer; the peer's late reply is not delivered to the ended run. |
+| `peer-stopped` | A send to a peer that has ended: `sent`, then the driver's `undelivered`. |
+| `pair-order` | Two sends from one run to another, in one transition, are taken in order; host code sends to a spawned peer, `r2`; a `ref` in `started` and in an action's arguments is a run id. |

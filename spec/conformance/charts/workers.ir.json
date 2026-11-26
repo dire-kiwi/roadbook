@@ -1,0 +1,623 @@
+{
+  "irVersion": "0.2",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/workers.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "text",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "Write a line to the log.",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Logbook": {
+      "doc": "Takes notes from every machine that holds a reference to it.",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 20,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Note": {
+          "fields": [
+            {
+              "name": "text",
+              "type": "string",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 31
+          }
+        },
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "root": {
+        "id": "Logbook",
+        "name": "Logbook",
+        "kind": "compound",
+        "doc": "Takes notes from every machine that holds a reference to it.",
+        "span": {
+          "file": 0,
+          "line": 8,
+          "col": 1,
+          "endLine": 20,
+          "endCol": 2
+        },
+        "initial": "Logbook.Open",
+        "states": [
+          {
+            "id": "Logbook.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 14,
+              "col": 3,
+              "endLine": 17,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Note"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "text"
+                        ],
+                        "type": "string",
+                        "text": "event.text"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 15,
+                  "col": 5,
+                  "endLine": 15,
+                  "endCol": 43
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Logbook.Closed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 16,
+                  "col": 5,
+                  "endLine": 16,
+                  "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Logbook.Closed",
+            "name": "Closed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 19,
+              "col": 3,
+              "endLine": 19,
+              "endCol": 24
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:ea114941b37d6ee259a772df819a88e87657553519fa6cb265ca9be61d45272e"
+    },
+    "Worker": {
+      "doc": "Works until it is cancelled, then says so to the logbook and to its parent.",
+      "span": {
+        "file": 0,
+        "line": 23,
+        "col": 1,
+        "endLine": 34,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "book",
+          "type": "ref Logbook",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Finish": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 24,
+            "col": 3,
+            "endLine": 24,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {
+        "Stopping": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 25,
+            "col": 3,
+            "endLine": 25,
+            "endCol": 17
+          }
+        }
+      },
+      "root": {
+        "id": "Worker",
+        "name": "Worker",
+        "kind": "compound",
+        "doc": "Works until it is cancelled, then says so to the logbook and to its parent.",
+        "span": {
+          "file": 0,
+          "line": 23,
+          "col": 1,
+          "endLine": 34,
+          "endCol": 2
+        },
+        "initial": "Worker.Working",
+        "states": [
+          {
+            "id": "Worker.Working",
+            "name": "Working",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 31,
+              "col": 3,
+              "endLine": 31,
+              "endCol": 42
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Finish"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Worker.Finished",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 31,
+                  "col": 19,
+                  "endLine": 31,
+                  "endCol": 40
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Worker.Finished",
+            "name": "Finished",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 33,
+              "col": 3,
+              "endLine": 33,
+              "endCol": 26
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [
+          {
+            "kind": "send",
+            "to": {
+              "kind": "ref",
+              "name": "book",
+              "machine": "Logbook",
+              "state": null
+            },
+            "event": "Note",
+            "value": {
+              "kind": "record",
+              "fields": [
+                {
+                  "name": "text",
+                  "value": {
+                    "kind": "lit",
+                    "value": "worker stopped",
+                    "type": "string",
+                    "text": "\"worker stopped\""
+                  }
+                }
+              ],
+              "type": "Logbook.Note",
+              "text": "Note { text: \"worker stopped\" }"
+            }
+          },
+          {
+            "kind": "emit",
+            "event": "Stopping",
+            "value": {
+              "kind": "record",
+              "fields": [],
+              "type": "Stopping",
+              "text": "Stopping"
+            }
+          }
+        ],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:0f33f9d20123fd2be3abb7c131970f3a164cbd82cfbbf443379c4440e4bf27e7"
+    },
+    "Boss": {
+      "doc": "Watches a Worker, which it can restart or leave.",
+      "span": {
+        "file": 0,
+        "line": 37,
+        "col": 1,
+        "endLine": 55,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "book",
+          "type": "ref Logbook",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Restart": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 38,
+            "col": 3,
+            "endLine": 38,
+            "endCol": 16
+          }
+        },
+        "Leave": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 39,
+            "col": 3,
+            "endLine": 39,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "root": {
+        "id": "Boss",
+        "name": "Boss",
+        "kind": "compound",
+        "doc": "Watches a Worker, which it can restart or leave.",
+        "span": {
+          "file": 0,
+          "line": 37,
+          "col": 1,
+          "endLine": 55,
+          "endCol": 2
+        },
+        "initial": "Boss.Watching",
+        "states": [
+          {
+            "id": "Boss.Watching",
+            "name": "Watching",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 45,
+              "col": 3,
+              "endLine": 52,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "machine",
+              "src": "Worker",
+              "as": "worker",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "book"
+                  ],
+                  "type": "ref Logbook",
+                  "text": "book"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 46,
+                "col": 5,
+                "endLine": 48,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Boss.Idle",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 47,
+                  "col": 7,
+                  "endLine": 47,
+                  "endCol": 19
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "child",
+                    "name": "worker",
+                    "machine": "Worker",
+                    "state": "Boss.Watching"
+                  },
+                  "event": "Stopping"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "worker stopping",
+                        "type": "string",
+                        "text": "\"worker stopping\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 49,
+                  "col": 5,
+                  "endLine": 49,
+                  "endCol": 62
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Restart"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Boss.Watching",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 50,
+                  "col": 5,
+                  "endLine": 50,
+                  "endCol": 35
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Leave"
+                },
+                "group": 3,
+                "guard": null,
+                "target": "Boss.Idle",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 51,
+                  "col": 5,
+                  "endLine": 51,
+                  "endCol": 31
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Boss.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 54,
+              "col": 3,
+              "endLine": 54,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Restart"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Boss.Watching",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 54,
+                  "col": 16,
+                  "endLine": 54,
+                  "endCol": 38
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [
+          {
+            "kind": "send",
+            "to": {
+              "kind": "ref",
+              "name": "book",
+              "machine": "Logbook",
+              "state": null
+            },
+            "event": "Note",
+            "value": {
+              "kind": "record",
+              "fields": [
+                {
+                  "name": "text",
+                  "value": {
+                    "kind": "lit",
+                    "value": "boss stopped",
+                    "type": "string",
+                    "text": "\"boss stopped\""
+                  }
+                }
+              ],
+              "type": "Logbook.Note",
+              "text": "Note { text: \"boss stopped\" }"
+            }
+          }
+        ],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:288f3620b17e185966dcf8f0c8f292c87cb375730ecb5d6811253623c1093c0c"
+    }
+  }
+}

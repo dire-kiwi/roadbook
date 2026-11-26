@@ -3,8 +3,9 @@
 //! These catch the kinds of mistake a hand-derived or a buggy trace makes:
 //! an `exited` that does not match the innermost active state, an invoke
 //! cancelled twice, a timer left running when the run ends, a child run
-//! whose result never reaches its parent. They do not decide which
-//! transition is right; that is what the expected traces are for.
+//! whose result never reaches its parent, a message received that was never
+//! sent or received out of order. They do not decide which transition is
+//! right; that is what the expected traces are for.
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -12,6 +13,16 @@ use roadbook_ir::{Ir, State};
 use serde_json::Value;
 
 use crate::{ROOT_RUN, Status, arrange, compare_run_ids};
+
+/// A message or emitted event a run took, for checking against its sender.
+struct Received {
+    line: usize,
+    run: String,
+    kind: String,
+    from: String,
+    message: u64,
+    value: Value,
+}
 
 #[derive(Default)]
 struct Run {
@@ -29,6 +40,18 @@ struct Run {
     /// `"cancelled"`.
     invoke_ends: HashMap<u64, (String, Value)>,
     expect: Option<&'static [&'static str]>,
+    next_message: u64,
+    /// Per message id: `sent` (with `to`) or `emitted` (with `null`), and
+    /// the value.
+    messages: HashMap<u64, (String, Value, Value)>,
+    /// The `sent` record just written, which an `undelivered` may follow.
+    last_sent: Option<(u64, Value, Value)>,
+}
+
+fn is_top_level(id: &str) -> bool {
+    id.strip_prefix('r').is_some_and(|n| {
+        !n.is_empty() && !n.starts_with('0') && n.bytes().all(|b| b.is_ascii_digit())
+    })
 }
 
 fn str_of<'a>(r: &'a Value, k: &str) -> &'a str {
@@ -47,12 +70,21 @@ fn find_state<'a>(s: &'a State, id: &str) -> Option<&'a State> {
 }
 
 /// Checks `records` (a whole trace, as compared) and returns one message per
-/// problem. `status` is the root run's expected status. With `ir`, state
-/// ids, transitions, invokes and hashes are also checked against it.
+/// problem. `status` is the root run's expected status, and the trace has no
+/// other top-level run. With `ir`, state ids, transitions, invokes and
+/// hashes are also checked against it.
 pub fn lint(records: &[Value], status: Status, ir: Option<&Ir>) -> Vec<String> {
+    lint_runs(records, &[(ROOT_RUN.to_owned(), status)], ir)
+}
+
+/// [`lint`] for a trace with several top-level runs: `statuses` lists each
+/// one's id and expected status, the root run's first
+/// ([`crate::Case::top_level_runs`]).
+pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&Ir>) -> Vec<String> {
     let mut problems = Vec::new();
     let mut runs: HashMap<String, Run> = HashMap::new();
     let mut order: Vec<String> = Vec::new();
+    let mut received: Vec<Received> = Vec::new();
 
     if arrange(records.to_vec()) != records {
         problems.push("records are not grouped by run in run order".to_owned());
@@ -72,8 +104,8 @@ pub fn lint(records: &[Value], status: Status, ir: Option<&Ir>) -> Vec<String> {
             let machine = str_of(r, "machine").to_owned();
             let parent = r.get("parent").and_then(Value::as_str).map(str::to_owned);
             match (&parent, id.rsplit_once('.')) {
-                (None, None) if order.is_empty() && id == ROOT_RUN => {}
-                (None, _) => bad(format!("run {id} is not the root run {ROOT_RUN}")),
+                (None, None) if statuses.iter().any(|(r, _)| *r == id) => {}
+                (None, _) => bad(format!("run {id} is not a top-level run of the case")),
                 (Some(p), Some((prefix, n))) if p == prefix => {
                     let n: u64 = n.parse().unwrap_or(0);
                     match runs.get(p).and_then(|pr| pr.started_invokes.get(&n)) {
@@ -101,6 +133,7 @@ pub fn lint(records: &[Value], status: Status, ir: Option<&Ir>) -> Vec<String> {
                     parent,
                     next_invoke: 1,
                     next_timer: 1,
+                    next_message: 1,
                     ..Run::default()
                 },
             );
@@ -123,6 +156,7 @@ pub fn lint(records: &[Value], status: Status, ir: Option<&Ir>) -> Vec<String> {
                 ));
             }
         }
+        let last_sent = run.last_sent.take();
         let machine = ir.and_then(|ir| ir.machines.get(&run.machine));
         let state_in_ir = |s: &str| machine.is_none_or(|m| find_state(&m.root, s).is_some());
 
@@ -169,7 +203,43 @@ pub fn lint(records: &[Value], status: Status, ir: Option<&Ir>) -> Vec<String> {
                         &["transition"]
                     });
                 }
-                if let Some(n) = e.get("invoke").and_then(Value::as_u64) {
+                if ekind == "message" || ekind == "emitted" {
+                    received.push(Received {
+                        line,
+                        run: id.clone(),
+                        kind: ekind.clone(),
+                        from: str_of(&e, "from").to_owned(),
+                        message: u64_of(&e, "message"),
+                        value: e.get("value").cloned().unwrap_or(Value::Null),
+                    });
+                }
+                if ekind == "message" {
+                    if kind == "stale" {
+                        bad("a message is never stale".to_owned());
+                    }
+                } else if ekind == "emitted" {
+                    match e.get("invoke").and_then(Value::as_u64) {
+                        Some(n) => {
+                            if str_of(&e, "from") != format!("{id}.{n}") {
+                                bad(format!(
+                                    "emitted event of invoke {n} is not from run {id}.{n}"
+                                ));
+                            }
+                            let live = run.invokes.contains_key(&n);
+                            if kind == "stale" && (live || n >= run.next_invoke) {
+                                bad(format!(
+                                    "stale emitted event of invoke {n}, which is running or never started"
+                                ));
+                            } else if kind != "stale" && !live {
+                                bad(format!("emitted event of invoke {n}, which is not running"));
+                            }
+                        }
+                        None if kind == "stale" => {
+                            bad("an emitted event from a peer is never stale".to_owned());
+                        }
+                        None => {}
+                    }
+                } else if let Some(n) = e.get("invoke").and_then(Value::as_u64) {
                     let live = run.invokes.contains_key(&n);
                     if kind == "stale" {
                         if live || n >= run.next_invoke {
@@ -222,6 +292,34 @@ pub fn lint(records: &[Value], status: Status, ir: Option<&Ir>) -> Vec<String> {
                 }
             }
             "set" | "action" => {}
+            "sent" | "emitted" => {
+                let n = u64_of(r, "message");
+                if n != run.next_message {
+                    bad(format!("message id {n}, expected {}", run.next_message));
+                }
+                run.next_message = n + 1;
+                let to = r.get("to").cloned().unwrap_or(Value::Null);
+                let value = r.get("value").cloned().unwrap_or(Value::Null);
+                if kind == "sent" {
+                    run.last_sent = Some((n, to.clone(), value.clone()));
+                }
+                run.messages.insert(n, (kind.to_owned(), to, value));
+            }
+            "undelivered" => {
+                let n = u64_of(r, "message");
+                let to = r.get("to").cloned().unwrap_or(Value::Null);
+                let value = r.get("value").cloned().unwrap_or(Value::Null);
+                if to.is_null() {
+                    if n != run.next_message {
+                        bad(format!("message id {n}, expected {}", run.next_message));
+                    }
+                    run.next_message = n + 1;
+                } else if last_sent != Some((n, to, value)) {
+                    bad(format!(
+                        "undelivered message {n} does not follow its `sent` record"
+                    ));
+                }
+            }
             "invoke.started" => {
                 let n = u64_of(r, "invoke");
                 let s = str_of(r, "state").to_owned();
@@ -303,12 +401,6 @@ pub fn lint(records: &[Value], status: Status, ir: Option<&Ir>) -> Vec<String> {
     // How each run ended, and whether its parent saw it.
     for id in &order {
         let run = &runs[id];
-        let end_kind = run.end.as_ref().map(|e| str_of(e, "kind").to_owned());
-        if id == ROOT_RUN && end_kind.as_deref() != status.final_record() {
-            problems.push(format!(
-                "run {id} ends with {end_kind:?}, but the case expects status {status:?}"
-            ));
-        }
         let Some(parent) = &run.parent else { continue };
         let n: u64 = id
             .rsplit_once('.')
@@ -345,11 +437,91 @@ pub fn lint(records: &[Value], status: Status, ir: Option<&Ir>) -> Vec<String> {
             )),
         }
     }
-    if runs.get(ROOT_RUN).is_some_and(|r| r.end.is_some()) {
-        for id in &order {
-            if runs[id].end.is_none() {
-                problems.push(format!("run {id} never ended, though the root run did"));
+    for (top, status) in statuses {
+        let end_kind = runs
+            .get(top)
+            .and_then(|r| r.end.as_ref())
+            .map(|e| str_of(e, "kind").to_owned());
+        if end_kind.as_deref() != status.final_record() {
+            problems.push(format!(
+                "run {top} ends with {end_kind:?}, but the case expects status {status:?}"
+            ));
+        }
+        if !runs.contains_key(top) {
+            problems.push(format!("top-level run {top} has no records"));
+        }
+        if end_kind.is_some() {
+            let below = format!("{top}.");
+            for id in &order {
+                if id.starts_with(&below) && runs[id].end.is_none() {
+                    problems.push(format!("run {id} never ended, though {top} did"));
+                }
             }
+        }
+    }
+    for id in &order {
+        if runs[id].parent.is_none() && !is_top_level(id) {
+            problems.push(format!("run {id} has no parent but is not named r<n>"));
+        }
+    }
+
+    // Every message or emitted event taken was sent, to this run, once, and
+    // the inputs from one sender are taken in the order it sent them.
+    let mut last: HashMap<(String, String), u64> = HashMap::new();
+    let mut seen: BTreeMap<(String, String, u64), usize> = BTreeMap::new();
+    for m in &received {
+        let line = m.line;
+        let Some(sender) = runs.get(&m.from) else {
+            problems.push(format!("line {line}: no run {} sent this", m.from));
+            continue;
+        };
+        match sender.messages.get(&m.message) {
+            Some((k, to, value)) => {
+                let want = if m.kind == "message" {
+                    "sent"
+                } else {
+                    "emitted"
+                };
+                if k != want {
+                    problems.push(format!(
+                        "line {line}: message {} of {} is `{k}`, not `{want}`",
+                        m.message, m.from
+                    ));
+                } else if k == "sent" && to.as_str() != Some(m.run.as_str()) {
+                    problems.push(format!(
+                        "line {line}: message {} of {} was sent to {to}, not {}",
+                        m.message, m.from, m.run
+                    ));
+                }
+                if *value != m.value {
+                    problems.push(format!(
+                        "line {line}: message {} of {} has another value",
+                        m.message, m.from
+                    ));
+                }
+            }
+            None => problems.push(format!(
+                "line {line}: {} has no message {}",
+                m.from, m.message
+            )),
+        }
+        let pair = (m.from.clone(), m.run.clone());
+        if last.get(&pair).is_some_and(|&prev| prev >= m.message) {
+            problems.push(format!(
+                "line {line}: message {} of {} is taken out of order",
+                m.message, m.from
+            ));
+        }
+        last.insert(pair, m.message);
+        let n = seen
+            .entry((m.from.clone(), m.run.clone(), m.message))
+            .or_default();
+        *n += 1;
+        if *n > 1 {
+            problems.push(format!(
+                "line {line}: message {} of {} is taken twice",
+                m.message, m.from
+            ));
         }
     }
     let mut sorted = order.clone();

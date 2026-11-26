@@ -1,5 +1,6 @@
 {
   "description": "Stop leaves Running while the Child run waits in its timer two levels down. The parent cancels the child, which cancels its timer and runs its exit effects innermost first, and only then runs Running's exit effect and the rest of its transition.",
+  "requires": [],
   "chart": "charts/cancel.road",
   "machine": "Parent",
   "input": {},

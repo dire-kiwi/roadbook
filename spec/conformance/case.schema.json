@@ -4,16 +4,22 @@
   "description": "A case.json: a machine, its input, the host's scripted behaviour and the expected final status. The expected trace is trace.jsonl next to it. See spec/conformance/README.md.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["description", "chart", "machine", "input", "stub", "fns", "actions", "script", "status"],
+  "required": ["description", "requires", "chart", "machine", "input", "stub", "fns", "actions", "script", "status"],
   "properties": {
     "description": { "description": "What the case checks, in a sentence or two.", "type": "string", "minLength": 1 },
+    "requires": {
+      "description": "Features the case needs beyond the first version's. A runner skips a case that requires a feature it does not implement.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["messaging"] }
+    },
     "chart": {
       "description": "The entry .road file, relative to spec/conformance. Its IR is the file next to it with .road replaced by .ir.json.",
       "type": "string",
       "pattern": "^[A-Za-z0-9_./-]+\\.road$"
     },
-    "machine": { "description": "The machine to run.", "$ref": "#/$defs/upperName" },
-    "input": { "description": "The machine's arguments, keyed by parameter name.", "type": "object" },
+    "machine": { "description": "The machine run as the root run, r1.", "$ref": "#/$defs/upperName" },
+    "input": { "description": "The machine's arguments, keyed by parameter name. A ref argument is the id of a top-level run already started, so the root run has none.", "type": "object" },
     "stub": {
       "description": "Machines that are scripted like tasks instead of run from the chart when invoked.",
       "type": "array",
@@ -55,19 +61,21 @@
       }
     },
     "script": {
-      "description": "What happens after the machine starts, in order. The runner lets every run settle after each step.",
+      "description": "What happens after the root run starts, in order. The runner lets every run settle after each step.",
       "type": "array",
       "items": { "$ref": "#/$defs/step" }
     },
     "status": {
       "description": "The root run's status after the script.",
-      "enum": ["running", "done", "failed", "cancelled", "defect"]
+      "$ref": "#/$defs/status"
     }
   },
   "$defs": {
     "upperName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
     "lowerName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
-    "runId": { "type": "string", "pattern": "^r1(\\.[1-9][0-9]*)*$" },
+    "runId": { "type": "string", "pattern": "^r[1-9][0-9]*(\\.[1-9][0-9]*)*$" },
+    "topRunId": { "type": "string", "pattern": "^r[1-9][0-9]*$" },
+    "status": { "enum": ["running", "done", "failed", "cancelled", "defect"] },
     "tagged": {
       "type": "object",
       "required": ["_tag"],
@@ -81,11 +89,11 @@
       "properties": { "advance": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 } }
     },
     "event": {
-      "description": "Send an external event to the root run.",
+      "description": "Give a top-level run an external event, as host code does: the root run, or the run named by run.",
       "type": "object",
       "additionalProperties": false,
       "required": ["event"],
-      "properties": { "event": { "$ref": "#/$defs/tagged" } }
+      "properties": { "event": { "$ref": "#/$defs/tagged" }, "run": { "$ref": "#/$defs/topRunId" } }
     },
     "task": {
       "description": "End the one running scripted invoke of this task (or stubbed machine): with done, fail or defect. run picks the run when several have one.",
@@ -106,11 +114,23 @@
       ]
     },
     "cancel": {
-      "description": "Cancel the root run from outside.",
+      "description": "Cancel a top-level run from outside: the root run, or the run named by run.",
       "type": "object",
       "additionalProperties": false,
       "required": ["cancel"],
-      "properties": { "cancel": { "const": true } }
+      "properties": { "cancel": { "const": true }, "run": { "$ref": "#/$defs/topRunId" } }
+    },
+    "start": {
+      "description": "Start another top-level run of a machine, as host code spawns one. run is its id: r2 for the first start step, r3 for the next, and so on. A ref argument is the id of a top-level run already started. status is the run's status after the last step.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "run", "input", "status"],
+      "properties": {
+        "start": { "$ref": "#/$defs/upperName" },
+        "run": { "$ref": "#/$defs/topRunId" },
+        "input": { "type": "object" },
+        "status": { "$ref": "#/$defs/status" }
+      }
     },
     "together": {
       "description": "Queue several inputs for one run before it takes the first of them, as when they arrive at the same moment. An advance item queues the expiries of the timers due in its window.",
@@ -134,6 +154,7 @@
         { "$ref": "#/$defs/event" },
         { "$ref": "#/$defs/task" },
         { "$ref": "#/$defs/cancel" },
+        { "$ref": "#/$defs/start" },
         { "$ref": "#/$defs/together" }
       ]
     }

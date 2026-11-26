@@ -109,7 +109,14 @@ This is where Roadbook is stricter than xstate, and it is the part that matters 
 
 `invoke Checkout(order, user)` starts a child instance with those arguments. Its `output` arrives as `done` and its `fail` as the matching `fail` branch. Leaving the invoking state cancels the child and everything the child started; the child's exit effects run, and the parent waits for them before it carries on leaving the state. From the parent's chart a child machine and a task are indistinguishable, which is what lets a test replace an entire sub-machine with a single function. Only the driver tells them apart, because a child run claims the invoke context its parent's driver provides ([child runs](../../spec/execution.md#child-runs)).
 
-Machines that exchange messages while they run, rather than only arguments and a result, are covered on the [actors and messaging](actors.md) page.
+### Messages between machines
+
+Machines that exchange messages while they run, rather than only arguments and a result, are designed on the [actors and messaging](actors.md) page and specified in [`spec/execution.md`](../../spec/execution.md#messages-between-runs). In terms of the rules above:
+
+- **A message is an input like any other.** `send` queues an event for another machine and carries on; the receiver takes it from its own queue by rule 1. `emit` queues one for the invoker (if it named the child with `as`) and for every machine holding a reference. Each is one more source pushing onto the receiver's single queue, so a message waits behind what arrived before it, and two from one sender arrive in the order sent.
+- **A child's emitted events are tied to its invoke**, as its outcome is: once the invoking state is left, what the child emitted is stale. Leaving the state still cancels the child and waits for its exit effects, which may send and emit.
+- **A send that reaches nothing is recorded**, as an unhandled event is: a message to a machine that has ended, or to a child that is not running, is `undelivered` in the trace.
+- **The core stays pure.** A `send` or `emit` is a command, like starting a task; the driver delivers it. The core knows only its own run id and the ids its arguments hold, so it needs no registry of machines.
 
 ## Definitions and instances
 
@@ -153,9 +160,9 @@ The **core** is a pure, synchronous function. It does no I/O and has no clock:
 step(ir, snapshot, event, fns) -> (snapshot', commands[])
 ```
 
-`snapshot` is the set of active states plus the variables, and the ids of the invokes and timers that are running, so that a stale outcome can be recognised. `commands` is a list of things for the outside world to do: run an action, start or cancel a task, start or cancel a timer, record a trace entry. `fns` gives the core the host's pure functions, which guards and expressions may call. A `start` function creates the first snapshot, and cancelling from outside is one more input to `step`. Both are specified, with the snapshot's JSON form, in [`spec/execution.md`](../../spec/execution.md).
+`snapshot` is the set of active states plus the variables, and the ids of the invokes and timers that are running, so that a stale outcome can be recognised. `commands` is a list of things for the outside world to do: run an action, start or cancel a task, start or cancel a timer, send a message or an emitted event, record a trace entry. `fns` gives the core the host's pure functions, which guards and expressions may call. A `start` function creates the first snapshot, and cancelling from outside is one more input to `step`. Both are specified, with the snapshot's JSON form, in [`spec/execution.md`](../../spec/execution.md).
 
-The **driver** owns the queue and carries out the commands using the host's concurrency: Effect fibers and scopes in TypeScript, futures in Rust. Each run has one first-in, first-out queue: external events, task outcomes, timer expiries and child runs' outcomes are all pushed onto it as they arrive, and the core takes them from it one at a time. A child run shares its parent's trace and clock through an ambient invoke context, and is cancelled through it so that its exit effects run.
+The **driver** owns the queue and carries out the commands using the host's concurrency: Effect fibers and scopes in TypeScript, futures in Rust. Each run has one first-in, first-out queue: external events, messages and emitted events from other runs, task outcomes, timer expiries and child runs' outcomes are all pushed onto it as they arrive, and the core takes them from it one at a time. A child run shares its parent's trace and clock through an ambient invoke context, and is cancelled through it so that its exit effects run.
 
 This split pays for itself three ways. The core is small enough to implement twice and compare. Tests of the core need no async and no fake clock. And the TypeScript core runs in the browser, which is what powers the viewer's simulate mode.
 

@@ -1,5 +1,6 @@
 {
   "description": "Effect order across nested states: entry outermost first, exit innermost first, set before do. An internal transition (Bump) leaves the invoke running; an external self-transition (Again) and a transition into the source's own child (Reset) exit and re-enter, restarting the invoke and the timer; cancelling from outside runs every exit effect.",
+  "requires": [],
   "chart": "charts/nest.road",
   "machine": "Nest",
   "input": {},

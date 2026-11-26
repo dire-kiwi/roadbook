@@ -1,0 +1,42 @@
+{
+  "description": "The Inventory does not answer within 5s, so the Order's `after` gives up. The Reserved it emits afterwards is not delivered to the Order, which has ended; only r1's `emitted` record shows it.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/orders.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Order",
+      "run": "r2",
+      "input": {
+        "id": "o1",
+        "draft": {
+          "items": [
+            {
+              "sku": "s1",
+              "qty": 2
+            }
+          ],
+          "card": "4242"
+        },
+        "inventory": "r1"
+      },
+      "status": "failed"
+    },
+    {
+      "advance": 5000
+    },
+    {
+      "task": "reserveStock",
+      "done": null
+    }
+  ],
+  "status": "running"
+}

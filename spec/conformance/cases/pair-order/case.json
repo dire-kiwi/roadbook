@@ -1,0 +1,29 @@
+{
+  "description": "Host code sends Go to a spawned peer, r2, whose one transition sends First and then Second to r1: r1 takes them in that order (it would drop Second if it came first). A `ref` is the run's id in the `started` record's input and in an action's arguments.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/pair.road",
+  "machine": "Receiver",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Sender",
+      "run": "r2",
+      "input": {
+        "peer": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Go"
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "done"
+}

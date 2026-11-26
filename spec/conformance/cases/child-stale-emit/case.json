@@ -1,0 +1,35 @@
+{
+  "description": "A Worker emits Stopping from its exit effects while its parent cancels it. Its parent takes the event after its invoke was cancelled, so it is stale, both when the parent re-enters the invoking state (and its `on worker.Stopping` would match the new child, invoke 2) and when it leaves it. The note the Worker sends from the same exit effects reaches the Logbook peer, r1, which both runs hold a `ref` to.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/workers.road",
+  "machine": "Logbook",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Boss",
+      "run": "r2",
+      "input": {
+        "book": "r1"
+      },
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Restart"
+      },
+      "run": "r2"
+    },
+    {
+      "event": {
+        "_tag": "Leave"
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "running"
+}

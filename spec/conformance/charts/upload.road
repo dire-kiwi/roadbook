@@ -1,0 +1,93 @@
+// Conformance chart: a parent and the child it invokes with `as` talking to each
+// other. The parent sends Pause and Resume, the child emits Progress.
+
+/// Store the chunk that starts at `offset`. Returns the offset after it.
+task sendChunk(offset: int) -> int
+
+/// Show how far the upload has got.
+action showProgress(offset: int)
+
+/// Sends chunks until `size` bytes are stored, reporting each one. Can be paused.
+machine Upload(size: int) -> int {
+  var offset: int = 0
+
+  event Pause
+  event Resume
+  emits Progress { offset: int }
+
+  initial Sending
+
+  state Sending {
+    always if offset >= size -> Done
+    invoke sendChunk(offset) {
+      done -> Sending  set offset = result  emit Progress { offset: result }
+    }
+    on Pause -> Paused
+  }
+
+  state Paused { on Resume -> Sending }
+
+  final state Done { output offset }
+}
+
+/// Uploads, pausing and resuming the child when asked, and shows its progress.
+machine Publish(size: int) -> int {
+  var shown:    int = 0
+  var uploaded: int
+
+  event PauseClicked
+  event ResumeClicked
+
+  initial Uploading
+
+  state Uploading {
+    invoke Upload(size) as upload {
+      done -> Published  set uploaded = result
+    }
+    on PauseClicked    send upload.Pause
+    on ResumeClicked   send upload.Resume
+    on upload.Progress set shown = event.offset  do showProgress(event.offset)
+  }
+
+  final state Published { output uploaded }
+}
+
+/// Invokes Upload without `as`, so it receives nothing the child emits.
+machine Quiet(size: int) -> int {
+  var uploaded: int
+
+  initial Uploading
+
+  state Uploading {
+    invoke Upload(size) {
+      done -> Over  set uploaded = result
+    }
+  }
+
+  final state Over { output uploaded }
+}
+
+/// Sends to its child before the child has started, and after its outcome was taken.
+machine Eager(size: int) -> int {
+  var uploaded: int = 0
+
+  event PauseClicked
+  event Finish
+
+  initial Uploading
+
+  state Uploading {
+    invoke Upload(size) as upload {
+      done set uploaded = result
+    }
+    on PauseClicked          send upload.Pause
+    on Finish       -> Over
+
+    initial Starting
+
+    /// Entered in the step that enters Uploading, before the child starts.
+    state Starting { entry send upload.Pause }
+  }
+
+  final state Over { output uploaded }
+}

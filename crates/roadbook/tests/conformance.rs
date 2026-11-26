@@ -8,6 +8,8 @@
 //!
 //! With `ROADBOOK_CONFORMANCE_OUT=<dir>`, each case's actual trace is also written to
 //! `<dir>/<case>.jsonl`.
+//!
+//! A case that `requires` a feature not in [`SUPPORTED`] is skipped, not failed.
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -24,6 +26,10 @@ use roadbook_conformance::{
 };
 use roadbook_core::{Object, SrcKind};
 use serde_json::Value;
+
+/// The features of `spec/conformance/case.schema.json`'s `requires` this runtime
+/// implements. Messaging (milestone 5) is not one yet.
+const SUPPORTED: &[&str] = &[];
 
 // ---- the executor ------------------------------------------------------------------------
 
@@ -406,8 +412,11 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                 }
                 timer.now.store(end, Ordering::SeqCst);
             }
-            Step::Event(v) => {
-                root.send(v.clone());
+            Step::Event(e) => {
+                if e.run.is_some() {
+                    return Err(at("events for other top-level runs need messaging".into()));
+                }
+                root.send(e.event.clone());
                 runner.settle().map_err(at)?;
             }
             Step::Task(t) => {
@@ -418,17 +427,22 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
                 }
                 runner.settle().map_err(at)?;
             }
-            Step::Cancel => {
+            Step::Cancel(None) => {
                 root.cancel();
                 runner.settle().map_err(at)?;
+            }
+            Step::Cancel(Some(_)) | Step::Start(_) => {
+                return Err(at("several top-level runs need messaging".into()));
             }
             Step::Together(items) => {
                 let mut inputs: Vec<(String, Input)> = Vec::new();
                 for item in items {
                     match item {
-                        Step::Event(v) => inputs.push((
-                            roadbook_conformance::ROOT_RUN.to_owned(),
-                            Input::Event { value: v.clone() },
+                        Step::Event(e) => inputs.push((
+                            e.run().to_owned(),
+                            Input::Event {
+                                value: e.event.clone(),
+                            },
                         )),
                         Step::Task(t) => {
                             let (run, invoke, _) =
@@ -506,7 +520,12 @@ fn every_case_passes_byte_for_byte() {
         std::fs::create_dir_all(dir).unwrap();
     }
     let mut failures = Vec::new();
+    let mut skipped = 0;
     for c in &cases {
+        if c.case.needs_more_than(SUPPORTED) {
+            skipped += 1;
+            continue;
+        }
         match run_case(c) {
             Ok(actual) => {
                 if let Some(dir) = &out {
@@ -523,16 +542,16 @@ fn every_case_passes_byte_for_byte() {
             Err(e) => failures.push(format!("{}: {e}", c.name)),
         }
     }
-    let passed = cases.len() - failures.len();
+    let run = cases.len() - skipped;
+    let passed = run - failures.len();
     println!(
-        "conformance: {passed} of {} cases pass byte for byte",
-        cases.len()
+        "conformance: {passed} of {run} cases pass byte for byte, {skipped} skipped (they require features this runtime does not implement)"
     );
     assert!(
         failures.is_empty(),
         "{} of {} cases failed:\n\n{}",
         failures.len(),
-        cases.len(),
+        run,
         failures.join("\n\n")
     );
 }

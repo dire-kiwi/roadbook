@@ -1,0 +1,43 @@
+{
+  "description": "Host code closes the Inventory, which ends. An Order started afterwards with a `ref` to it sends Reserve: the core writes `sent`, and the driver, finding r1 ended, writes `undelivered` right after it. The Order learns nothing more and times out.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/orders.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    },
+    {
+      "start": "Order",
+      "run": "r2",
+      "input": {
+        "id": "o1",
+        "draft": {
+          "items": [
+            {
+              "sku": "s1",
+              "qty": 2
+            }
+          ],
+          "card": "4242"
+        },
+        "inventory": "r1"
+      },
+      "status": "failed"
+    },
+    {
+      "advance": 5000
+    }
+  ],
+  "status": "done"
+}

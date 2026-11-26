@@ -1,5 +1,6 @@
 {
   "description": "Picking's guarded on Go fails, so its on * is not tried and the root's on Go is taken; on * takes an event Picking has no on for. A guarded fail Busy with no fallback drops the outcome rather than trying fail Gone. When Complete completes Form, Form's enabled always is taken before its done, and since it leaves and re-enters Form the completion is discarded; the next completion takes done. Passing is left by its always in the step that entered it, so its invoke and timer never start.",
+  "requires": [],
   "chart": "charts/select.road",
   "machine": "Select",
   "input": {},

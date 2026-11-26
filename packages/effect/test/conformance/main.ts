@@ -1,9 +1,15 @@
 /** `pnpm --filter @roadbook/effect conformance [case…]`: run the cases and print a line per case. */
-import { caseNames, runCase } from "./runner.ts"
+import { caseNames, isSupported, runCase } from "./runner.ts"
 
 const names = process.argv.length > 2 ? process.argv.slice(2) : caseNames()
 let passed = 0
+let skipped = 0
 for (const name of names) {
+  if (!isSupported(name)) {
+    skipped += 1
+    console.log(`skip  ${name}`)
+    continue
+  }
   const result = runCase(name)
   const ok = result.errors.length === 0 && result.actual === result.expected
   if (ok) passed += 1
@@ -20,5 +26,5 @@ for (const name of names) {
     }
   }
 }
-console.log(`conformance: ${passed}/${names.length} cases pass byte for byte`)
-process.exitCode = passed === names.length ? 0 : 1
+console.log(`conformance: ${passed}/${names.length - skipped} cases pass byte for byte, ${skipped} skipped`)
+process.exitCode = passed === names.length - skipped ? 0 : 1

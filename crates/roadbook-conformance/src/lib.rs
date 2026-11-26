@@ -33,8 +33,13 @@ pub const CASE_SCHEMA: &str = include_str!("../../../spec/conformance/case.schem
 /// The schema of one trace record, `spec/trace.schema.json`.
 pub const TRACE_SCHEMA: &str = include_str!("../../../spec/trace.schema.json");
 
-/// The id of the root run in every conformance run.
+/// The id of the root run in every conformance run: the case's `machine`,
+/// started first. Runs started by [`Step::Start`] are `r2`, `r3`, ….
 pub const ROOT_RUN: &str = "r1";
+
+/// The features a case can require beyond the first version's: a runner
+/// skips a case that requires one it does not implement.
+pub const FEATURES: &[&str] = &["messaging"];
 
 /// `spec/conformance` in this repository.
 pub fn conformance_dir() -> PathBuf {
@@ -47,6 +52,8 @@ pub fn conformance_dir() -> PathBuf {
 pub struct Case {
     /// What the case checks.
     pub description: String,
+    /// The features it needs beyond the first version's (see [`FEATURES`]).
+    pub requires: Vec<String>,
     /// The entry chart, relative to `spec/conformance`.
     pub chart: String,
     /// The machine run as the root run.
@@ -70,6 +77,31 @@ impl Case {
     /// chart.
     pub fn is_stubbed(&self, name: &str) -> bool {
         self.stub.iter().any(|s| s == name)
+    }
+
+    /// Whether the case needs a feature that is not in `supported`: a
+    /// runner that implements only `supported` skips it.
+    pub fn needs_more_than(&self, supported: &[&str]) -> bool {
+        self.requires
+            .iter()
+            .any(|f| !supported.contains(&f.as_str()))
+    }
+
+    /// Every top-level run the case starts: the root run `r1` first, then
+    /// each [`Step::Start`] in order, as `(run, machine, input, status)`.
+    pub fn top_level_runs(&self) -> Vec<(String, &str, &Value, Status)> {
+        let mut runs = vec![(
+            ROOT_RUN.to_owned(),
+            self.machine.as_str(),
+            &self.input,
+            self.status,
+        )];
+        for step in &self.script {
+            if let Step::Start(s) = step {
+                runs.push((s.run.clone(), s.machine.as_str(), &s.input, s.status));
+            }
+        }
+        runs
     }
 }
 
@@ -109,17 +141,49 @@ pub enum Step {
     /// Advance virtual time by this many milliseconds, firing due timers one
     /// at a time.
     Advance(u64),
-    /// Give the root run this external event, a tagged record.
-    Event(Value),
+    /// Give a top-level run an external event, as host code does.
+    Event(EventStep),
     /// End a running scripted invoke.
     Task(TaskStep),
-    /// Cancel the root run from outside.
-    Cancel,
+    /// Cancel a top-level run from outside: the root run when `None`.
+    Cancel(Option<String>),
+    /// Start another top-level run.
+    Start(StartStep),
     /// Queue all these inputs for one run before it takes the first. Only
     /// [`Step::Event`], [`Step::Task`] and at most one [`Step::Advance`]
     /// appear here; an advance queues the expiries of the timers due in its
     /// window.
     Together(Vec<Step>),
+}
+
+/// `{"event": …}`: give a top-level run an external event.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EventStep {
+    /// The run, a top-level run id: the root run when `None`.
+    pub run: Option<String>,
+    /// The event, a tagged record.
+    pub event: Value,
+}
+
+impl EventStep {
+    /// The run the event is for.
+    pub fn run(&self) -> &str {
+        self.run.as_deref().unwrap_or(ROOT_RUN)
+    }
+}
+
+/// `{"start": …}`: start another top-level run, as host code spawns one.
+#[derive(Debug, Clone, PartialEq)]
+pub struct StartStep {
+    /// The machine.
+    pub machine: String,
+    /// Its id: `r2` for the first start step, `r3` for the next, and so on.
+    pub run: String,
+    /// Its arguments. A `ref` argument is the id of a top-level run already
+    /// started.
+    pub input: Value,
+    /// Its status after the last step.
+    pub status: Status,
 }
 
 /// `{"task": …}`: end the running scripted invoke of a task or stubbed
@@ -169,16 +233,39 @@ fn step_from_value(v: Value) -> Result<Step, String> {
             .map(Step::Advance)
             .ok_or_else(|| "`advance` is a non-negative integer".into());
     }
-    if let Some(e) = m.remove("event") {
-        only(&m, &[])?;
-        return Ok(Step::Event(e));
+    let take_run = |m: &mut serde_json::Map<String, Value>| match m.remove("run") {
+        None => Ok(None),
+        Some(Value::String(r)) => Ok(Some(r)),
+        Some(_) => Err("`run` is a run id".to_owned()),
+    };
+    if let Some(event) = m.remove("event") {
+        only(&m, &["run"])?;
+        let run = take_run(&mut m)?;
+        return Ok(Step::Event(EventStep { run, event }));
     }
     if let Some(c) = m.remove("cancel") {
-        only(&m, &[])?;
+        only(&m, &["run"])?;
+        let run = take_run(&mut m)?;
         return match c {
-            Value::Bool(true) => Ok(Step::Cancel),
+            Value::Bool(true) => Ok(Step::Cancel(run)),
             _ => Err("`cancel` is `true`".into()),
         };
+    }
+    if let Some(machine) = m.remove("start") {
+        only(&m, &["run", "input", "status"])?;
+        let Value::String(machine) = machine else {
+            return Err("`start` is a machine name".into());
+        };
+        let run = take_run(&mut m)?.ok_or("a start step has a `run`")?;
+        let input = m.remove("input").ok_or("a start step has an `input`")?;
+        let status = m.remove("status").ok_or("a start step has a `status`")?;
+        let status = Status::deserialize(status).map_err(|e| e.to_string())?;
+        return Ok(Step::Start(StartStep {
+            machine,
+            run,
+            input,
+            status,
+        }));
     }
     if let Some(t) = m.remove("together") {
         only(&m, &[])?;
@@ -213,11 +300,7 @@ fn step_from_value(v: Value) -> Result<Step, String> {
         let Value::String(task) = task else {
             return Err("`task` is a name".into());
         };
-        let run = match m.remove("run") {
-            None => None,
-            Some(Value::String(r)) => Some(r),
-            Some(_) => return Err("`run` is a run id".into()),
-        };
+        let run = take_run(&mut m)?;
         let mut outcomes = Vec::new();
         if let Some(v) = m.remove("done") {
             outcomes.push(Outcome::Done(v));
@@ -507,9 +590,16 @@ mod tests {
 
     #[test]
     fn run_order_is_preorder() {
-        let mut ids = vec!["r1.10", "r1.4.2", "r1", "r1.4", "r1.7", "r1.4.10"];
+        let mut ids = vec![
+            "r1.10", "r2", "r1.4.2", "r1", "r2.1", "r1.4", "r1.7", "r1.4.10",
+        ];
         ids.sort_by(|a, b| compare_run_ids(a, b));
-        assert_eq!(ids, ["r1", "r1.4", "r1.4.2", "r1.4.10", "r1.7", "r1.10"]);
+        assert_eq!(
+            ids,
+            [
+                "r1", "r1.4", "r1.4.2", "r1.4.10", "r1.7", "r1.10", "r2", "r2.1"
+            ]
+        );
     }
 
     #[test]
@@ -532,10 +622,30 @@ mod tests {
             {"task": "t", "fail": {"_tag": "E"}, "run": "r1.2"},
             {"cancel": true},
             {"together": [{"event": {"_tag": "Go"}}, {"task": "t", "done": null}]},
-            {"together": [{"event": {"_tag": "Go"}}, {"advance": 10}]}
+            {"together": [{"event": {"_tag": "Go"}}, {"advance": 10}]},
+            {"event": {"_tag": "Go"}, "run": "r2"},
+            {"cancel": true, "run": "r2"},
+            {"start": "Order", "run": "r2", "input": {"inventory": "r1"}, "status": "done"}
         ]))
         .unwrap();
         assert_eq!(s[0], Step::Advance(5));
+        assert_eq!(
+            s[6],
+            Step::Event(EventStep {
+                run: Some("r2".into()),
+                event: json!({"_tag": "Go"})
+            })
+        );
+        assert_eq!(s[7], Step::Cancel(Some("r2".into())));
+        assert_eq!(
+            s[8],
+            Step::Start(StartStep {
+                machine: "Order".into(),
+                run: "r2".into(),
+                input: json!({"inventory": "r1"}),
+                status: Status::Done
+            })
+        );
         assert_eq!(
             s[2],
             Step::Task(TaskStep {
@@ -553,6 +663,9 @@ mod tests {
             json!({"together": [{"advance": 1}, {"cancel": true}]}),
             json!({"together": [{"advance": 1}, {"advance": 2}]}),
             json!({"cancel": false}),
+            json!({"start": "Order", "input": {}, "status": "done"}),
+            json!({"start": "Order", "run": "r2", "input": {}, "status": "over"}),
+            json!({"together": [{"advance": 1}, {"start": "A", "run": "r2", "input": {}, "status": "done"}]}),
         ] {
             assert!(
                 serde_json::from_value::<Step>(bad.clone()).is_err(),

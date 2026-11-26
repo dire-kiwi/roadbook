@@ -1,5 +1,6 @@
 {
   "description": "The card is declined: the failure is routed by its tag, and the final state's fail fails the run with the stored error.",
+  "requires": [],
   "chart": "charts/shop/checkout.road",
   "machine": "Checkout",
   "input": {
