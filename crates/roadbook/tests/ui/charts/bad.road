@@ -1,0 +1,11 @@
+// A chart with a deliberate error, for tests/ui/chart_error.rs.
+
+machine Bad() -> int {
+  initial Start
+
+  state Start {
+    always -> Nowhere
+  }
+
+  final state Done { output 1 }
+}

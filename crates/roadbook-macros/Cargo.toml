@@ -1,0 +1,22 @@
+[package]
+name = "roadbook-macros"
+description = "The roadbook::include! macro: compiles a chart at build time and generates its Rust types and traits"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+roadbook-compiler = { path = "../roadbook-compiler" }
+roadbook-ir = { path = "../roadbook-ir" }
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", default-features = false, features = ["parsing", "proc-macro", "printing"] }
+heck = "0.5"
+
+[lints]
+workspace = true

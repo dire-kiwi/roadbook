@@ -1,0 +1,40 @@
+// A second chart for include_shop.rs. Its `problem` has the same Rust method name as the
+// shop's, with another signature, so one struct implements both charts' `Handlers`. It also
+// carries durations through every position: arguments, results, fields and events.
+
+/// What `Greet` answers.
+type Greeting { text: string, waited: duration, steps: duration[], extra: duration? }
+
+/// Words for a code.
+fn problem(code: string) -> string
+
+/// The steps of a wait.
+fn steps(delay: duration) -> duration[]
+
+/// No extra wait.
+fn noExtra() -> duration?
+
+/// The greeting.
+fn greeting(text: string, waited: duration, steps: duration[], extra: duration?) -> Greeting
+
+/// Waits, then says how long it waited.
+task wait(delay: duration, steps: duration[], extra: duration?) -> duration
+
+/// Greets someone after a short wait.
+machine Greet(name: string, pause: duration) -> Greeting {
+  var waited: duration = 0ms
+
+  /// Stop waiting.
+  event Hurry { by: duration, note: string? }
+
+  initial Waiting
+
+  state Waiting {
+    invoke wait(pause, steps(pause), noExtra()) {
+      done -> Done  set waited = result
+    }
+    on Hurry -> Done  set waited = event.by
+  }
+
+  final state Done { output greeting(problem(name), waited, steps(waited), noExtra()) }
+}
