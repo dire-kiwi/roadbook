@@ -2,13 +2,13 @@
 
 `roadbook viz` turns charts into HTML with no agent and no service involved. It is a deterministic function of the IR: the same chart always gives the same page.
 
-The spike in [`spike/`](../../spike) already does this for the shop example: [`spike/out/shop.html`](../../spike/out/shop.html) is the interactive viewer for both machines.
+The viewer is [`packages/viewer`](../../packages/viewer) (`@roadbook/viewer`), built to one script that the CLI embeds: `crates/roadbook-cli/assets/roadbook-viewer.js` is committed, so building the CLI needs no Node. After changing `packages/viewer`, rebuild it with `pnpm --filter @roadbook/viewer build` and commit it; `pnpm test` and `cargo test` fail while it is stale. `roadbook viz examples/shop` draws the shop example.
 
-![PlaceOrder rendered by the spike](images/place-order.png)
+![PlaceOrder drawn by the viewer](images/place-order.png)
 
 ## What it produces
 
-One self-contained HTML file per entry chart, plus an index for the project. Each file inlines the IR, the viewer script, the layout engine and the styles. It has no network requests and no server, so it opens from disk, attaches to a pull request as a build artifact, and can be published as a static site from CI.
+One HTML page per entry chart, plus `index.html` for the project, in `roadbook-viz/` unless `-o` says otherwise. An entry chart is a file given (or found under a directory given, or in the project) that no other of those files imports; its page draws every machine of its compilation. Each page holds its IR. The viewer script, with the layout engine and the styles, is about 1.5 MB, almost all of it `elkjs`, so the pages of one directory share one copy, `roadbook-viewer.js`, loaded by a plain `<script src>` that also works from `file://`. With `--self-contained` every page inlines the script instead and is one file that works alone. Either way there are no network requests and no server, so the pages open from disk, attach to a pull request as a build artifact, and can be published as a static site from CI.
 
 The index lists every machine in the project and draws which machine invokes which. This is the "big state machine that delegates to more specific ones" view: start at the top-level machine and click down.
 
@@ -23,7 +23,9 @@ The index lists every machine in the project and draws which machine invokes whi
 | `invoke` of a task | A row inside the state: `invoke chargeCard(order, user)` |
 | `invoke` of a machine | The same row with a badge. Clicking it opens that machine. |
 | `entry`, `exit`, internal transitions | Rows inside the state |
-| Transition on an event | A solid arrow labelled with the event |
+| Collapsed compound state | A box with `+`, a bar under it and the row `12 states inside (collapsed)` |
+| Transition on an event | A solid arrow labelled with the event (`on *` for any event) |
+| Transition from a state hidden in a collapsed one | The same arrow, leaving the collapsed box from a small square |
 | `done` outcome | A solid arrow labelled `done` |
 | `fail` outcome | An arrow in the error colour labelled `fail CardDeclined` |
 | `after` | A dashed arrow labelled with the delay |
@@ -35,30 +37,32 @@ Every distinction is made in text or line style as well as colour, so the diagra
 
 Transitions written on a compound state leave from the container's border, which is how a reader sees at a glance that `Cancel` and the 30 second budget apply to every step inside `Processing`.
 
-![Checkout rendered by the spike](images/checkout.png)
+![Checkout drawn by the viewer](images/checkout.png)
 
 ## Layout
 
 Layout is done by ELK's layered algorithm (through `elkjs`), which is the established choice for statecharts because it handles nested containers and edges that cross between levels. It runs in the browser when the page loads and again when a state is collapsed or expanded. Transition labels are ELK edge labels placed on their own edge, so a label is never ambiguous about which arrow it belongs to.
 
-The drawing code is a pure function from the IR and a computed layout to SVG. The same function runs in Node to produce static, script-free SVG for places that cannot run scripts, such as a README or an email. The spike generates both forms, and the pictures on this page are its static output.
+The drawing code is a pure function from the IR and a computed layout to SVG. The same function runs in Node to produce static, script-free SVG for places that cannot run scripts, such as a README or an email (`packages/viewer/scripts/svg.ts`; the pictures on this page are its output, with text widths estimated rather than measured).
 
-### What the spike showed
+### What the spike showed, and what the viewer does about it
 
-- The two example machines lay out with no overlapping boxes or labels and no manual positioning.
-- Width is the constraint. `PlaceOrder` has six final states, which ELK puts in one row, so the whole chart is about 1450 units wide and has to be zoomed to read on a laptop screen. Grouping finals, or wrapping them, is worth trying.
-- A label on a long return edge can end up far from its source state. `after retryDelay(attempts)` in `Checkout` sits on the loop back to `Charging`, not next to `Backoff`.
-- One ELK option that preserves source order crashed `elkjs` 0.11.1 on a larger test chart with parallel regions and self-loops. The spike retries without it. The real viewer needs a layout fallback path and a set of stress charts in its tests.
-- The viewer inlines `elkjs`, which makes each HTML file about 1.6 MB. A project index that shares one copy across machines avoids repeating that.
+The viewer's tests lay out every example, every conformance chart and a stress chart (parallel regions, self-loops, deep nesting, many finals), opened and fully expanded, and check that no two state boxes overlap and no label overlaps a state or another label.
+
+- **Width with many final states.** ELK put `PlaceOrder`'s six finals in one row, about 1450 units wide. The viewer adds invisible edges between the final states of a container, three to a row, so they stack: `PlaceOrder` is now about 1220 by 1220.
+- **A return edge's label far from its source.** ELK's feedback-edge routing took `after retryDelay(attempts)` around the outside of `Checkout`. Without it, and with `centerLabelPlacementStrategy: TAIL_LAYER`, the label sits between `Backoff` and `Charging`, next to `Backoff`.
+- **The ELK option that crashed `elkjs`.** Model order (`considerModelOrder`) crashed 0.11.1 in nested graphs; 0.12 refuses it there with an `UnsupportedConfigurationException`. The viewer sets it on the root graph only, and falls back to plain layered, then to ELK's layered defaults, if ELK throws; the tests force both fallbacks.
+- **1.6 MB per file.** Pages share one copy of the script, as above; only `--self-contained` repeats it.
+- **Large charts.** A machine with more than 32 states opens with the containers at its deepest levels collapsed, as few levels as bring it to 32 drawn states. The 46-state `examples/large` opens with seven collapsed.
 
 ## Interaction
 
-- Pan, zoom and fit to view.
-- Collapse and expand compound states. Large charts open with deep levels collapsed.
-- Click a state or a transition for its details: doc comment, the invoked task's full signature, effects, and the source location as `file:line`.
+- Pan (drag), zoom (wheel, `+`, `-`) and fit to view (`f`). A chart too large to read whole opens at its top at a readable size.
+- Collapse and expand compound states with the `+`/`-` box in their title, a double click or the details panel; the layout is redone. Large charts open with deep levels collapsed; "Expand all" undoes it.
+- Click a state or a transition for its details: doc comment, the invoked task's full signature, guard, effects, and the source location as `file:line`.
 - Click a machine invoke to open the child machine, with a trail back.
-- Search by state, event, task or error name.
-- Light and dark themes.
+- Search (`/`) by state, event, task, machine, error or action name. Matches are highlighted; choosing one opens its machine, expands what hides it and selects it.
+- Light and dark themes, following the system, with a toggle that is remembered.
 
 ## Modes
 
@@ -76,6 +80,6 @@ Explore is the first milestone. The others arrive as the runtime pieces they dep
 
 ## Other outputs
 
-- **Mermaid.** `roadbook export mermaid` writes a `stateDiagram-v2` block. GitHub renders it inline, so a chart can sit in a README or a pull request description. It loses the detail panel and the drill-down, and its layout is coarser.
-- **Static SVG.** For documentation.
-- **Live.** `roadbook viz --watch` serves the viewer and reloads as charts change. Later, a running application can stream its trace to the viewer for a live view of what it is doing.
+- **Mermaid.** `roadbook export mermaid <file>` writes Markdown with a `stateDiagram-v2` block per machine; `--machine Name` writes one bare diagram. GitHub renders it inline, so a chart can sit in a README or a pull request description. States, nesting, parallel regions, initial and final states and labelled transitions survive, with invokes, `entry`, `exit`, internal transitions and results as state descriptions. It loses the line styles, the detail panel and the drill-down, and its layout is coarser.
+- **Static SVG.** For documentation, from `packages/viewer/scripts/svg.ts`. The CLI has no command for it yet, since it needs a JavaScript runtime to run ELK.
+- **Live.** `roadbook viz --watch [--port N]` rebuilds when a chart changes and serves the output on `127.0.0.1` (port 7357 by default), and the pages reload themselves. Later, a running application can stream its trace to the viewer for a live view of what it is doing.

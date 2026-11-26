@@ -1,6 +1,6 @@
 [package]
 name = "roadbook-cli"
-description = "The `roadbook` command line: check, fmt, export"
+description = "The `roadbook` command line: check, fmt, viz, export"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -15,10 +15,12 @@ path = "src/main.rs"
 clap.workspace = true
 roadbook-compiler = { path = "../roadbook-compiler" }
 roadbook-syntax = { path = "../roadbook-syntax" }
-
-[dev-dependencies]
 roadbook-ir = { path = "../roadbook-ir" }
 serde_json.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+sha2.workspace = true
 
 [lints]
 workspace = true

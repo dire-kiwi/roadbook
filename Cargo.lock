@@ -822,10 +822,12 @@ name = "roadbook-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "insta",
  "roadbook-compiler",
  "roadbook-ir",
  "roadbook-syntax",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

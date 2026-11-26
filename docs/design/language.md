@@ -2,7 +2,7 @@
 
 A `.road` file declares data shapes, the host functions a machine needs, and the machines themselves. It contains no implementation code. The compiler turns it into the [IR](semantics.md#the-ir), which everything else consumes.
 
-The examples on this page come from [`examples/shop`](../../examples/shop), which the spike compiles and renders.
+The examples on this page come from [`examples/shop`](../../examples/shop), which `roadbook viz` draws.
 
 ## A machine, top to bottom
 
@@ -457,7 +457,7 @@ Common mistakes, each reported by the compiler but easy to make:
 - `int` and `float` do not mix: `ratio * 2` is an error for a `float` `ratio`; write `2.0`.
 - A record value as an `after` delay needs parentheses: `after (Cfg { ms: 5 }) -> A`.
 
-Most of these rules, the split between `machineItem` and `stateItem`, and the requirement that a branch does something came from writing the spike's parser against the first draft of this grammar. The spike still implements that draft, which accepts everything above and is slightly more lenient.
+Most of these rules, the split between `machineItem` and `stateItem`, and the requirement that a branch does something came from writing the spike's parser against the first draft of this grammar. That parser was deleted once the Rust compiler replaced it.
 
 ## Not in the first version
 

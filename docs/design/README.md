@@ -55,9 +55,9 @@ machine Checkout(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUn
 }
 ```
 
-The diagram the spike generates from it:
+The diagram `roadbook viz` draws from it:
 
-![Checkout rendered by the spike](images/checkout.png)
+![Checkout drawn by the viewer](images/checkout.png)
 
 The code that implements it, in TypeScript with Effect v4:
 
@@ -113,8 +113,8 @@ This is a design, with a few pieces built to test its riskiest claims.
 
 | Claim | Evidence | Where |
 | --- | --- | --- |
-| The language can be parsed and checked. | A throwaway compiler in JavaScript parses the three example files, resolves imports and targets, and reports errors with locations. Writing it exposed about a dozen gaps in the first grammar, which are now fixed in the language page. | [`spike/compile.mjs`](../../spike/compile.mjs) |
-| A readable diagram can be produced from the IR with no manual layout. | A viewer that renders nested states, invokes, guards and effects for both example machines, interactive and static, checked in a browser. Its limits are listed on the visualization page. | [`spike/out/`](../../spike/out) |
+| The language can be parsed and checked. | A throwaway compiler in JavaScript parses the three example files, resolves imports and targets, and reports errors with locations. Writing it exposed about a dozen gaps in the first grammar, which are now fixed in the language page. | `spike/compile.mjs`, since replaced by [`crates/roadbook-compiler`](../../crates/roadbook-compiler) |
+| A readable diagram can be produced from the IR with no manual layout. | A viewer that renders nested states, invokes, guards and effects for both example machines, interactive and static, checked in a browser. What it showed, and what the real viewer does about it, is on the visualization page. | `spike/viewer`, since replaced by [`packages/viewer`](../../packages/viewer) and `roadbook viz` |
 | The TypeScript API's types work with Effect v4: exact inferred error and requirement types, and compile errors for missing, extra or wrongly typed implementations. | A type-level sketch that passes `tsc` against `effect@4.1.5`. | [`spike/api-ts`](../../spike/api-ts) |
 | The Rust API's shapes compile, including `Send` futures and one struct implementing several charts' handlers. | A hand-expanded sketch that passes `cargo check`. | [`spike/api-rust`](../../spike/api-rust) |
 | The Rust macro can find a chart that another crate ships, and refer to that crate's types. | A stand-in macro tried four mechanisms against path, git, vendored and registry dependencies and a downstream crate. Only a hidden macro exported by the owning crate worked everywhere; renamed dependencies need an alias. | [`spike/cross-crate`](../../spike/cross-crate) |
