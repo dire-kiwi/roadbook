@@ -26,6 +26,7 @@ export interface PlaceOrderDef extends Roadbook.MachineDef {
   readonly output: ApiResponse
   readonly error: never
   readonly event: Cancel
+  readonly emits: never
   readonly state:
     | "PlaceOrder"
     | "PlaceOrder.Authenticating"

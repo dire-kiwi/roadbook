@@ -34,6 +34,8 @@ export type RunResult =
 
 export interface Snapshot {
   readonly machine: string
+  /** The run's id, as given to `start`. */
+  readonly run: string
   readonly ir: string
   readonly status: Status
   /** Active state ids, in document order. */
@@ -45,6 +47,8 @@ export interface Snapshot {
   readonly timers: ReadonlyArray<TimerEntry>
   readonly nextInvoke: number
   readonly nextTimer: number
+  /** The id the next `send` or `emit` effect will get. */
+  readonly nextMessage: number
   readonly result: RunResult | null
 }
 
@@ -56,6 +60,19 @@ export interface Tagged {
 
 export type Input =
   | { readonly kind: "event"; readonly value: Tagged }
+  /** Run `from` sent one of this machine's events as its message `message`. */
+  | { readonly kind: "message"; readonly from: string; readonly message: number; readonly value: Tagged }
+  /**
+   * Run `from` emitted one of its machine's `emits` as its message `message`. `invoke` is the
+   * id of this run's invoke that started `from` when this run is its invoker, else `null`.
+   */
+  | {
+    readonly kind: "emitted"
+    readonly from: string
+    readonly invoke: number | null
+    readonly message: number
+    readonly value: Tagged
+  }
   | { readonly kind: "invoke.done"; readonly invoke: number; readonly value: Json }
   | { readonly kind: "invoke.fail"; readonly invoke: number; readonly error: Tagged }
   | { readonly kind: "invoke.defect"; readonly invoke: number; readonly defect: Defect }
@@ -75,6 +92,10 @@ export type CoreRecord =
   | { readonly kind: "transition"; readonly from: string; readonly index: number; readonly to: string | null }
   | { readonly kind: "set"; readonly var: string; readonly value: Json }
   | { readonly kind: "action"; readonly action: string; readonly args: { readonly [param: string]: Json } }
+  | { readonly kind: "sent"; readonly message: number; readonly to: string; readonly value: Tagged }
+  | { readonly kind: "emitted"; readonly message: number; readonly value: Tagged }
+  /** `to` is `null` when the core finds no child to send to, else the receiving run's id. */
+  | { readonly kind: "undelivered"; readonly message: number; readonly to: string | null; readonly value: Tagged }
   | {
     readonly kind: "invoke.started"
     readonly invoke: number
@@ -112,11 +133,26 @@ export type Command =
     readonly state: string
     readonly src: string
     readonly srcKind: "task" | "machine"
+    /** The invoke's `as` name, or `null`. */
+    readonly as: string | null
     readonly args: { readonly [param: string]: Json }
   }
   | { readonly kind: "invoke.cancel"; readonly invoke: number }
   | { readonly kind: "timer.start"; readonly timer: number; readonly delay: number }
   | { readonly kind: "timer.cancel"; readonly timer: number }
+  /**
+   * Queue message `message` for run `to`: the child run of this run's invoke `invoke`, or, when
+   * `invoke` is `null`, the peer `to`.
+   */
+  | {
+    readonly kind: "send"
+    readonly to: string
+    readonly invoke: number | null
+    readonly message: number
+    readonly value: Tagged
+  }
+  /** Queue the emitted event for this run's invoker (if it used `as`) and its subscribers. */
+  | { readonly kind: "emit"; readonly message: number; readonly value: Tagged }
 
 /** What the host's function `name` gave: its value, or a host defect. */
 export type FnResult = { readonly value: Json } | { readonly defect: Defect }

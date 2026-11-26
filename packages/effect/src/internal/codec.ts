@@ -2,10 +2,12 @@
  * Values at the API boundary. The core holds every value in its JSON form (execution.md's
  * "Values"); host code sees records as plain objects, errors as instances of their tagged error
  * classes, enums as string literals, `duration` as an Effect `Duration`, optional as `null` and
- * `int` as a `number`. The conversion is driven by the IR's type references.
+ * `int` as a `number`, and a `ref` as a handle to the run it refers to (its run id in the core).
+ * The conversion is driven by the IR's type references.
  */
-import { type Ir, parseTypeRef, type Field, type Json, type Tagged } from "@roadbook/core"
+import { type Field, type Ir, type Json, parseTypeRef, refMachine, type Tagged } from "@roadbook/core"
 import { Duration, Predicate } from "effect"
+import { portOf } from "./port.ts"
 
 /** A tagged error class, as the generated module exports it. */
 export type ErrorClass = new(fields: any) => unknown
@@ -66,13 +68,27 @@ const toJson = (value: unknown, what: string, ancestors: Array<object>): Json =>
   }
 }
 
+/** The handles a run was given, by run id: what its `ref`s decode to. */
+export type Refs = Map<string, object>
+
 export class Codec {
   readonly ir: Ir
   private readonly errors: Readonly<Record<string, ErrorClass>>
+  /**
+   * The handles of one run. Encoding a handle adds it here; decoding a run id reads it from
+   * here. Without a table, handles encode to their run ids and run ids cannot be decoded.
+   */
+  readonly refs: Refs | undefined
 
-  constructor(ir: Ir, errors: Readonly<Record<string, ErrorClass>>) {
+  constructor(ir: Ir, errors: Readonly<Record<string, ErrorClass>>, refs?: Refs) {
     this.ir = ir
     this.errors = errors
+    this.refs = refs
+  }
+
+  /** The same codec with a table of handles of its own, for one run. */
+  withRefs(refs: Refs): Codec {
+    return new Codec(this.ir, this.errors, refs)
   }
 
   // ---- host -> core ----
@@ -122,7 +138,15 @@ export class Codec {
       case "json":
         return toJson(value, what, [])
     }
-    const decl = this.ir.types[base]
+    const machine = refMachine(base)
+    if (machine !== undefined) {
+      const port = portOf(value)
+      if (port === undefined) throw new CodecError(`${what} is not a handle to a running ${machine}`)
+      if (port.machine !== machine) throw new CodecError(`${what} is a handle to a ${port.machine}, not a ${machine}`)
+      this.refs?.set(port.id, value as object)
+      return port.id
+    }
+    const decl = Object.hasOwn(this.ir.types, base) ? this.ir.types[base] : undefined
     if (decl === undefined) throw new CodecError(`${what} has unknown type ${base}`)
     switch (decl.kind) {
       case "alias":
@@ -194,7 +218,12 @@ export class Codec {
       case "json":
         return value
     }
-    const decl = this.ir.types[base]
+    if (refMachine(base) !== undefined) {
+      const handle = this.refs?.get(value as string)
+      if (handle === undefined) throw new CodecError(`no handle to the run ${JSON.stringify(value)}`)
+      return handle
+    }
+    const decl = Object.hasOwn(this.ir.types, base) ? this.ir.types[base] : undefined
     switch (decl?.kind) {
       case "alias":
         return this.decode(decl.type, value)

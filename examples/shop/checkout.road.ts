@@ -20,6 +20,7 @@ export interface CheckoutDef extends Roadbook.MachineDef {
   readonly output: Receipt
   readonly error: CardDeclined | GatewayUnavailable
   readonly event: never
+  readonly emits: never
   readonly state:
     | "Checkout"
     | "Checkout.Charging"

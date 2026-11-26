@@ -531,7 +531,7 @@ Most of these rules, the split between `machineItem` and `stateItem`, and the re
 
 Each of these has a planned shape, and the grammar leaves room for it.
 
-- **Keyed `spawn`.** A dynamic number of children, sketched on the [actors and messaging](actors.md#many-children) page. `send`, `emit`, `ref` and `invoke … as` are in the language (see [messages between machines](#messages-between-machines)); the runtimes do not run them yet.
+- **Keyed `spawn`.** A dynamic number of children, sketched on the [actors and messaging](actors.md#many-children) page. `send`, `emit`, `ref` and `invoke … as` are in the language (see [messages between machines](#messages-between-machines)); the TypeScript runtime runs them, the Rust runtime not yet.
 - **History states.** `history` and `deep history` pseudo-states, as in SCXML.
 - **Generic types and maps.** `map<string, T>` and user-defined generics.
 - **Retry sugar.** `invoke chargeCard(order) retry 3` as shorthand for the `Backoff` pattern above. The explicit states stay available and are what the diagram shows either way.

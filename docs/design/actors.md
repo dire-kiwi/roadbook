@@ -173,7 +173,7 @@ rustate's README describes message passing as planned and shared memory as the c
 
 ## Grammar additions
 
-Implemented in milestone 5 in the language, the compiler and IR 0.2 (the [language page](language.md#messages-between-machines) has the rules and checks, [`spec/ir.md`](../../spec/ir.md) the IR). What the runtimes do with it is specified in [`spec/execution.md`](../../spec/execution.md#messages-between-runs) and [`spec/trace.md`](../../spec/trace.md), and held to it by the conformance cases that `require` `messaging`. The runtimes do not implement it yet: they refuse a machine that uses it, and their conformance runners skip those cases.
+Implemented in milestone 5 in the language, the compiler and IR 0.2 (the [language page](language.md#messages-between-machines) has the rules and checks, [`spec/ir.md`](../../spec/ir.md) the IR). What the runtimes do with it is specified in [`spec/execution.md`](../../spec/execution.md#messages-between-runs) and [`spec/trace.md`](../../spec/trace.md), and held to it by the conformance cases that `require` `messaging`. The TypeScript runtime implements it ([typescript](typescript.md#messages)). The Rust runtime does not yet: it refuses a machine that uses it, and its conformance runner skips those cases.
 
 ```ebnf
 machineItem = … | "emits" Upper [ fields ] ;

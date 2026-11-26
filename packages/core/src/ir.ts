@@ -191,8 +191,7 @@ export const loadIr = (json: unknown): Ir => {
 
 /**
  * The machine `name` of `ir`, checked to be one this version of the runtime can run. Parallel
- * states (milestone 6) and messaging between machines (milestone 5: `emits`, `ref`,
- * `invoke … as`, `on name.Event`, `send`, `emit`) are refused here, before any run starts.
+ * states (milestone 6) are refused here, before any run starts.
  */
 export const getMachine = (ir: Ir, name: string): Machine => {
   const machine = Object.hasOwn(ir.machines, name) ? ir.machines[name] : undefined
@@ -205,50 +204,7 @@ export const getMachine = (ir: Ir, name: string): Machine => {
       `machine ${name}: state ${parallel} is a parallel state, which this runtime does not run yet (milestone 6)`
     )
   }
-  const messaging = findMessaging(machine)
-  if (messaging !== undefined) {
-    throw new IrError(
-      `machine ${name} uses ${messaging}: messaging between machines is not supported by this runtime yet (milestone 5)`
-    )
-  }
   return machine
-}
-
-/** The first messaging construct in a machine, described, or `undefined` if it uses none. */
-const findMessaging = (machine: Machine): string | undefined => {
-  const emitted = Object.keys(machine.emits)[0]
-  if (emitted !== undefined) return `emits ${emitted}`
-  const isRef = (type: string) => type.startsWith("ref ")
-  const param = machine.params.find((p) => isRef(p.type))
-  if (param !== undefined) return `the parameter ${param.name}: ${param.type}`
-  const variable = machine.vars.find((v) => isRef(v.type))
-  if (variable !== undefined) return `the variable ${variable.name}: ${variable.type}`
-  return stateMessaging(machine.root)
-}
-
-const stateMessaging = (state: State): string | undefined => {
-  const effect = (effects: ReadonlyArray<Effect>): string | undefined => {
-    for (const e of effects) {
-      if (e.kind === "send") return `send ${e.to.name}.${e.event}`
-      if (e.kind === "emit") return `emit ${e.event}`
-    }
-    return undefined
-  }
-  const own = effect(state.entry) ?? effect(state.exit)
-  if (own !== undefined) return `${own} in state ${state.id}`
-  if (state.invoke !== null && state.invoke.as !== null) {
-    return `invoke ${state.invoke.src}(…) as ${state.invoke.as} in state ${state.id}`
-  }
-  for (const t of state.transitions) {
-    if (t.trigger.kind === "emitted") return `on ${t.trigger.from.name}.${t.trigger.event} in state ${state.id}`
-    const found = effect(t.effects)
-    if (found !== undefined) return `${found} in state ${state.id}`
-  }
-  for (const child of state.states) {
-    const found = stateMessaging(child)
-    if (found !== undefined) return found
-  }
-  return undefined
 }
 
 const findParallel = (state: State): string | undefined => {
@@ -260,14 +216,22 @@ const findParallel = (state: State): string | undefined => {
   return undefined
 }
 
-/** A parsed type reference: its base name and its suffixes, applied left to right. */
+/**
+ * A parsed type reference: its base and its suffixes, applied left to right. The base is a
+ * builtin or a declared name (`Item`), an event type (`Upload.Progress`) or a handle type
+ * (`ref Inventory`, whose suffixes apply to the handle: `ref Inventory[]` is a list of them).
+ */
 export interface TypeRef {
   readonly base: string
   readonly suffixes: ReadonlyArray<"[]" | "?">
 }
 
+/** The machine of a `ref` base (`ref Inventory` gives `Inventory`), or `undefined`. */
+export const refMachine = (base: string): string | undefined =>
+  base.startsWith("ref ") ? base.slice(4) : undefined
+
 export const parseTypeRef = (type: string): TypeRef => {
-  const match = /^([A-Za-z][A-Za-z0-9]*)((?:\[\]|\?)*)$/.exec(type)
+  const match = /^(ref [A-Z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(?:\.[A-Z][A-Za-z0-9]*)?)((?:\[\]|\?)*)$/.exec(type)
   if (match === null) throw new IrError(`not a type reference: ${JSON.stringify(type)}`)
   const suffixes: Array<"[]" | "?"> = []
   const rest = match[2] ?? ""

@@ -1,6 +1,7 @@
 /**
  * The public types of a machine: what the generated code declares about it (`MachineDef`), the
- * implementations it needs (`Handlers`), and the handles `make` and `implement` return.
+ * implementations it needs (`Handlers`), the values `make` and `implement` return, and the
+ * handle of a running machine (`Handle`).
  */
 import type * as Core from "@roadbook/core"
 import type { Effect, Scope, Stream } from "effect"
@@ -18,7 +19,10 @@ export interface MachineDef {
   readonly input: object
   readonly output: unknown
   readonly error: unknown
+  /** The events the machine accepts: what `send` takes. */
   readonly event: unknown
+  /** The events the machine emits (`emits`), to its invoker and to the runs holding a `ref` to it. */
+  readonly emits: unknown
   /** Every state id, the root's included. */
   readonly state: string
   readonly fns: Record<string, { readonly args: object; readonly returns: unknown }>
@@ -89,10 +93,34 @@ export interface Snapshot<D extends MachineDef> {
   readonly core: Core.Snapshot
 }
 
+/** Brands a {@link Handle}, so that only the runtime makes one. Exists only as a type. */
+declare const HandleBrand: unique symbol
+
+/**
+ * A handle to a running top-level machine: what a `ref D` parameter of another machine takes,
+ * and how host code sends to the run. It is the TypeScript counterpart of Rust's `Ref`. The
+ * core holds it as the run's id; a run's `ref` arguments come back to host code (the arguments
+ * of an invoke, an action, a task or a function) as the same handle objects.
+ */
+export interface Handle<D extends MachineDef> {
+  readonly [HandleBrand]: D["name"]
+  /** The run's id, which is how snapshots and traces name it (`"r2"`). */
+  readonly id: string
+  /** The machine's name. */
+  readonly machine: D["name"]
+  /**
+   * Queue one of the machine's events, as an ordinary external event with no sender. Does
+   * nothing once the run has ended.
+   */
+  readonly send: (event: D["event"]) => Effect.Effect<void>
+}
+
 /** A running instance that accepts events. */
 export interface Actor<D extends MachineDef> {
-  /** Queue an event. Does nothing once the run has ended. */
+  /** Queue an event. Does nothing once the run has ended. The same as `handle.send`. */
   readonly send: (event: D["event"]) => Effect.Effect<void>
+  /** The run's handle, to pass as a `ref` argument to other machines. */
+  readonly handle: Handle<D>
   readonly snapshot: Effect.Effect<Snapshot<D>>
   /** The current snapshot, then one after every step. Ends after the run's final snapshot. */
   readonly changes: Stream.Stream<Snapshot<D>>

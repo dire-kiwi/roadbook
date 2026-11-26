@@ -1,12 +1,6 @@
 {
   // Every module `roadbook gen` wrote for examples/, checked against this package. The examples
-  // other than shop are not packages, so their imports are mapped here.
+  // other than shop are not packages, so their imports are mapped (in tsconfig.json).
   "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "paths": {
-      "effect": ["./node_modules/effect/dist/index.d.ts"],
-      "@roadbook/effect": ["./src/index.ts"]
-    }
-  },
   "include": ["../../examples/*/*.road.ts"]
 }

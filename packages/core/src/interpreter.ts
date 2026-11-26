@@ -2,7 +2,16 @@
  * The pure core: `start` and `step`, exactly as `spec/execution.md` specifies them. They do no
  * I/O, read no clock and never modify the snapshot they are given.
  */
-import { getMachine, type Effect, type Expr, type Ir, type Machine, type State, type Transition } from "./ir.ts"
+import {
+  type Address,
+  type Effect,
+  type Expr,
+  getMachine,
+  type Ir,
+  type Machine,
+  type State,
+  type Transition
+} from "./ir.ts"
 import type { Json } from "./json.ts"
 import type {
   Command,
@@ -23,14 +32,21 @@ import type {
 export const SETTLE_LIMIT = 1000
 
 /**
- * Start a run of machine `name` with `input` (its arguments keyed by parameter name), as
- * execution.md's `start`. Throws an `IrError` if the IR has no such machine or the machine has
- * a parallel state (not supported yet).
+ * Start run `run` of machine `name` with `input` (its arguments keyed by parameter name, a
+ * `ref` as the id of the run it refers to), as execution.md's `start`. Throws an `IrError` if
+ * the IR has no such machine or the machine has a parallel state (not supported yet).
  */
-export const start = (ir: Ir, name: string, input: { readonly [param: string]: Json }, fns: Fns): Stepped => {
+export const start = (
+  ir: Ir,
+  name: string,
+  run: string,
+  input: { readonly [param: string]: Json },
+  fns: Fns
+): Stepped => {
   const index = machineIndex(ir, name)
   const initial: Snapshot = {
     machine: name,
+    run,
     ir: index.machine.hash,
     status: "running",
     active: [],
@@ -40,6 +56,7 @@ export const start = (ir: Ir, name: string, input: { readonly [param: string]: J
     timers: [],
     nextInvoke: 1,
     nextTimer: 1,
+    nextMessage: 1,
     result: null
   }
   const started: Command = {
@@ -192,6 +209,7 @@ class Macrostep {
   timers: Array<TimerEntry>
   nextInvoke: number
   nextTimer: number
+  nextMessage: number
   result: RunResult | null
   readonly commands: Array<Command> = []
   /** The states entered during this macrostep. */
@@ -216,6 +234,7 @@ class Macrostep {
     this.timers = [...snapshot.timers]
     this.nextInvoke = snapshot.nextInvoke
     this.nextTimer = snapshot.nextTimer
+    this.nextMessage = snapshot.nextMessage
     this.result = snapshot.result
   }
 
@@ -224,6 +243,7 @@ class Macrostep {
     return {
       snapshot: {
         machine: s.machine,
+        run: s.run,
         ir: s.ir,
         status: this.status,
         active: this.active,
@@ -233,6 +253,7 @@ class Macrostep {
         timers: this.timers,
         nextInvoke: this.nextInvoke,
         nextTimer: this.nextTimer,
+        nextMessage: this.nextMessage,
         result: this.result
       },
       commands: this.commands
@@ -287,9 +308,19 @@ class Macrostep {
         break
       }
       case "event":
+      case "message":
         bindings = { event: input.value }
         selected = this.selectEvent(input.value, bindings)
         break
+      case "emitted": {
+        if (input.invoke !== null && !this.invokes.some((i) => i.id === input.invoke)) {
+          this.trace({ kind: "stale", event: input })
+          return
+        }
+        bindings = { event: input.value }
+        selected = this.selectEmitted(input, bindings)
+        break
+      }
     }
     if (selected === undefined) {
       this.trace({ kind: "dropped", event: input })
@@ -339,6 +370,29 @@ class Macrostep {
       if (selected !== undefined) return selected
     }
     return undefined
+  }
+
+  /** `on name.Event` for an emitted event: the address must name its sender. No `on *`. */
+  private selectEmitted(input: Extract<Input, { readonly kind: "emitted" }>, bindings: Bindings): Selected | undefined {
+    const name = input.value._tag
+    const matches = (t: Transition) =>
+      t.trigger.kind === "emitted" && t.trigger.event === name && this.namesSender(t.trigger.from, input)
+    for (const state of this.innermostFirst()) {
+      const selected = this.firstEnabled(state, matches, bindings)
+      if (selected !== undefined) return selected
+    }
+    return undefined
+  }
+
+  /** Whether `address` names the run that emitted `input`. */
+  private namesSender(address: Address, input: Extract<Input, { readonly kind: "emitted" }>): boolean {
+    if (address.kind === "child") {
+      return input.invoke !== null && this.invokes.find((i) => i.id === input.invoke)?.state === address.state
+    }
+    if (input.invoke !== null) return false
+    // A parameter, or a variable with a value; one with no value names no sender.
+    if (this.index.params.has(address.name)) return this.snapshot.input[address.name] === input.from
+    return Object.hasOwn(this.vars, address.name) && this.vars[address.name] === input.from
   }
 
   private selectOutcome(
@@ -441,14 +495,54 @@ class Macrostep {
       this.trace({ kind: "set", var: effect.var, value })
     }
     for (const effect of effects) {
-      if (effect.kind !== "do") continue
-      const params = this.ir.actions[effect.action]?.params ?? []
-      const args: Record<string, Json> = {}
-      effect.args.forEach((arg, i) => {
-        args[params[i]?.name ?? String(i)] = this.eval(arg, bindings)
-      })
-      this.trace({ kind: "action", action: effect.action, args })
-      this.commands.push({ kind: "action", action: effect.action, args })
+      switch (effect.kind) {
+        case "set":
+          break
+        case "do": {
+          const params = this.ir.actions[effect.action]?.params ?? []
+          const args: Record<string, Json> = {}
+          effect.args.forEach((arg, i) => {
+            args[params[i]?.name ?? String(i)] = this.eval(arg, bindings)
+          })
+          this.trace({ kind: "action", action: effect.action, args })
+          this.commands.push({ kind: "action", action: effect.action, args })
+          break
+        }
+        case "send": {
+          const message = this.nextMessage
+          this.nextMessage += 1
+          let to: string
+          let invoke: number | null
+          let value: Tagged
+          if (effect.to.kind === "child") {
+            const state = effect.to.state
+            const inv = this.invokes.find((i) => i.state === state)
+            value = this.eval(effect.value, bindings) as Tagged
+            if (inv === undefined) {
+              this.trace({ kind: "undelivered", message, to: null, value })
+              break
+            }
+            to = `${this.snapshot.run}.${inv.id}`
+            invoke = inv.id
+          } else {
+            // The address is read before the value, as an expression `ref` would read it.
+            to = this.readName(effect.to.name) as string
+            invoke = null
+            value = this.eval(effect.value, bindings) as Tagged
+          }
+          this.trace({ kind: "sent", message, to, value })
+          this.commands.push({ kind: "send", to, invoke, message, value })
+          break
+        }
+        case "emit": {
+          const message = this.nextMessage
+          this.nextMessage += 1
+          const value = this.eval(effect.value, bindings) as Tagged
+          this.trace({ kind: "emitted", message, value })
+          this.commands.push({ kind: "emit", message, value })
+          break
+        }
+      }
     }
   }
 
@@ -496,6 +590,7 @@ class Macrostep {
           state: id,
           src: invoke.src,
           srcKind: invoke.kind,
+          as: invoke.as,
           args
         })
       }
@@ -556,11 +651,7 @@ class Macrostep {
         let value: Json
         if (name === undefined) throw new Error("empty ref path")
         if (Object.hasOwn(bindings, name)) value = (bindings as Record<string, Json>)[name]!
-        else if (this.index.params.has(name)) value = this.snapshot.input[name] ?? null
-        else if (this.index.vars.has(name)) {
-          if (!Object.hasOwn(this.vars, name)) throw new Abort({ kind: "unassigned", var: name })
-          value = this.vars[name]!
-        } else value = null
+        else value = this.readName(name)
         for (const field of fields) value = readField(value, field)
         return value
       }
@@ -574,7 +665,8 @@ class Macrostep {
       }
       case "record": {
         const record: Record<string, Json> = {}
-        if (this.ir.types[expr.type]?.kind === "error") record["_tag"] = expr.type
+        const tag = this.tagOf(expr.type)
+        if (tag !== undefined) record["_tag"] = tag
         for (const field of expr.fields) record[field.name] = this.eval(field.value, bindings)
         return record
       }
@@ -583,6 +675,28 @@ class Macrostep {
       case "op":
         return this.evalOp(expr, bindings)
     }
+  }
+
+  /** A parameter, or a variable (an `unassigned` defect if it has no value). */
+  private readName(name: string): Json {
+    if (this.index.params.has(name)) return this.snapshot.input[name] ?? null
+    if (this.index.vars.has(name)) {
+      if (!Object.hasOwn(this.vars, name)) throw new Abort({ kind: "unassigned", var: name })
+      return this.vars[name]!
+    }
+    return null
+  }
+
+  /**
+   * The `_tag` of a record of type `type`, if it has one: an error's name, or an event's
+   * (`Machine.Name`, or a bare event of this machine) without the machine.
+   */
+  private tagOf(type: string): string | undefined {
+    if (Object.hasOwn(this.ir.types, type)) return this.ir.types[type]!.kind === "error" ? type : undefined
+    const dot = type.indexOf(".")
+    if (dot !== -1) return type.slice(dot + 1)
+    const m = this.index.machine
+    return Object.hasOwn(m.emits, type) || Object.hasOwn(m.events, type) ? type : undefined
   }
 
   private evalOp(expr: Extract<Expr, { kind: "op" }>, bindings: Bindings): Json {

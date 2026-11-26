@@ -5,6 +5,8 @@
  * replaces only what the README lets a runner replace: the clock and timer (a virtual `Timer`
  * that fires one timer at a time), and the host code (scripted tasks and stubbed machines, the
  * `fns` table, the `actions` table). Every other machine runs from the chart as a child run.
+ * `start` steps spawn more top-level runs the same way, with the handles of the runs started
+ * before them as their `ref` arguments.
  *
  * Quiescence. Every fiber runs on a manual `Scheduler` that queues tasks instead of using
  * `setImmediate`, and nothing in a case waits on real time or I/O: scripted invokes wait on the
@@ -24,7 +26,7 @@ import * as Roadbook from "../../src/index.ts"
 
 type Step =
   | { readonly advance: number }
-  | { readonly event: Core.Tagged }
+  | { readonly event: Core.Tagged; readonly run?: string }
   | {
     readonly task: string
     readonly run?: string
@@ -32,7 +34,13 @@ type Step =
     readonly fail?: Core.Tagged
     readonly defect?: string
   }
-  | { readonly cancel: true }
+  | { readonly cancel: true; readonly run?: string }
+  | {
+    readonly start: string
+    readonly run: string
+    readonly input: { readonly [param: string]: Core.Json }
+    readonly status: Core.Status
+  }
   | { readonly together: ReadonlyArray<Step> }
 
 export interface Case {
@@ -51,10 +59,10 @@ export interface Case {
 export const conformanceDir = path.resolve(import.meta.dirname, "../../../../spec/conformance")
 
 /**
- * The features of case.schema.json's `requires` this runtime implements. Messaging (milestone 5)
- * is not one yet. A case that requires another is skipped, not failed.
+ * The features of case.schema.json's `requires` this runtime implements. A case that requires
+ * another is skipped, not failed.
  */
-export const supported: ReadonlyArray<string> = []
+export const supported: ReadonlyArray<string> = ["messaging"]
 
 /** Whether this runtime implements everything case `name` requires. */
 export const isSupported = (name: string): boolean => {
@@ -254,19 +262,32 @@ export const runCase = (name: string): CaseResult => {
     return exit.value
   }
 
+  // The top-level runs: the root, then one per `start` step, each spawned with the others'
+  // clock, timer, trace sink and observer.
   const scope = Scope.makeUnsafe()
-  const root = handleFor(spec.machine)
-  const actor = exec(
-    root.spawn(spec.input).pipe(
-      Scope.provide(scope),
-      Effect.provideService(Roadbook.TraceSink, { write: (record) => records.push(record) }),
-      Effect.provideService(Roadbook.Timer, timer),
-      Effect.provideService(Roadbook.RootRunId, () => "r1"),
-      Effect.provideService(Roadbook.RunObserver, { started: (run) => runs.set(run.id, run) })
+  const actors = new Map<string, Roadbook.Actor<any>>()
+  const machineOf = new Map<string, string>()
+  const spawnTop = (machine: string, run: string, input: { readonly [param: string]: Core.Json }) => {
+    const decl = ir.machines[machine] ?? fail(`the chart has no machine ${machine}`)
+    // A `ref` argument is the id of a top-level run started before: pass its handle.
+    const handles = new Map<string, object>([...actors].map(([id, actor]) => [id, actor.handle]))
+    const args = new Codec(ir, {}, handles).decodeArgs(decl.params, input)
+    const actor = exec(
+      handleFor(machine).spawn(args).pipe(
+        Scope.provide(scope),
+        Effect.provideService(Roadbook.TraceSink, { write: (record) => records.push(record) }),
+        Effect.provideService(Roadbook.Timer, timer),
+        Effect.provideService(Roadbook.RootRunId, () => run),
+        Effect.provideService(Roadbook.RunObserver, { started: (handle) => runs.set(handle.id, handle) })
+      )
     )
-  )
-  const rootRun = () => runs.get("r1") ?? fail("the root run was not named r1")
-  const status = () => rootRun().snapshot().status
+    if (actor.handle.id !== run) fail(`the run of ${machine} was not named ${run}`)
+    actors.set(run, actor)
+    machineOf.set(run, machine)
+  }
+  const statusOf = (run: string) => (runs.get(run) ?? fail(`no run ${run}`)).snapshot().status
+  const actorOf = (run: string) => actors.get(run) ?? fail(`no top-level run ${run}`)
+  const statuses = new Map<string, Core.Status>([["r1", spec.status]])
 
   /** The running scripted invoke a `task` step refers to. */
   const findScripted = (step: { readonly task: string; readonly run?: string }, taken: ReadonlySet<Scripted>) => {
@@ -294,8 +315,8 @@ export const runCase = (name: string): CaseResult => {
       a.due - b.due || compareRunIds(a.run, b.run) || a.timer - b.timer
     )
 
-  const decodeEvent = (event: Core.Tagged) => {
-    const decl = ir.machines[spec.machine]?.events[event._tag]
+  const decodeEvent = (run: string, event: Core.Tagged) => {
+    const decl = ir.machines[machineOf.get(run) ?? ""]?.events[event._tag]
     const fields: Record<string, unknown> = {}
     for (const field of decl?.fields ?? []) fields[field.name] = codec.decode(field.type, event[field.name] ?? null)
     return { ...fields, _tag: event._tag }
@@ -312,7 +333,8 @@ export const runCase = (name: string): CaseResult => {
       }
       now = end
     } else if ("event" in step) {
-      exec(actor.send(decodeEvent(step.event)))
+      const run = step.run ?? "r1"
+      exec(actorOf(run).send(decodeEvent(run, step.event)))
     } else if ("task" in step) {
       const entry = findScripted(step, new Set())
       scripted.delete(entry)
@@ -326,12 +348,16 @@ export const runCase = (name: string): CaseResult => {
       )
       scheduler.drain()
     } else if ("cancel" in step) {
-      exec(Effect.exit(actor.cancel))
+      exec(Effect.exit(actorOf(step.run ?? "r1").cancel))
+    } else if ("start" in step) {
+      if (actors.has(step.run)) fail(`a second run named ${step.run}`)
+      spawnTop(step.start, step.run, step.input)
+      statuses.set(step.run, step.status)
     } else {
       const inputs: Array<{ readonly run: string; readonly input: Core.Input }> = []
       const taken = new Set<Scripted>()
       for (const item of step.together) {
-        if ("event" in item) inputs.push({ run: "r1", input: { kind: "event", value: item.event } })
+        if ("event" in item) inputs.push({ run: item.run ?? "r1", input: { kind: "event", value: item.event } })
         else if ("task" in item) {
           const entry = findScripted(item, taken)
           taken.add(entry)
@@ -355,13 +381,30 @@ export const runCase = (name: string): CaseResult => {
     }
   }
 
+  /** The top-level runs a step gives an input to directly. */
+  const targets = (step: Step): Array<string> =>
+    "together" in step
+      ? step.together.flatMap(targets)
+      : "event" in step || "cancel" in step
+      ? [step.run ?? "r1"]
+      : []
+
   try {
+    spawnTop(spec.machine, "r1", spec.input)
     scheduler.drain()
     for (const step of spec.script) {
-      if (status() !== "running") fail(`the root run had already ended (${status()}) before step ${JSON.stringify(step)}`)
+      const what = JSON.stringify(step)
+      for (const run of targets(step)) {
+        if (statusOf(run) !== "running") fail(`${run} had already ended (${statusOf(run)}) before step ${what}`)
+      }
+      if (!("start" in step) && [...actors.keys()].every((run) => statusOf(run) !== "running")) {
+        fail(`every top-level run had ended before step ${what}`)
+      }
       carryOut(step)
     }
-    if (status() !== spec.status) fail(`the root run's status is ${status()}, not ${spec.status}`)
+    for (const [run, status] of statuses) {
+      if (statusOf(run) !== status) fail(`the status of ${run} is ${statusOf(run)}, not ${status}`)
+    }
   } catch (error) {
     if (!(error instanceof CaseFailure)) errors.push(String((error as Error)?.stack ?? error))
   }

@@ -9,18 +9,25 @@
 //!   interface for a record, `Schema.Literals` for an enum, a `Schema.TaggedError` class for
 //!   an error, the aliased schema for an alias. Types come in source order, except that a
 //!   type follows the types of this file its schema refers to;
-//! - for every machine, a `Schema.TaggedStruct` per event, a definition interface (`<Name>Def`)
-//!   with its input, output, errors, events, state ids and the signatures of the functions,
-//!   actions, tasks and machines it uses, and a handle made by `Roadbook.make` from the
-//!   compiled IR, which is inlined once per module.
+//! - for every machine, a `Schema.TaggedStruct` per event it accepts and per event it emits, a
+//!   definition interface (`<Name>Def`) with its input, output, errors, events, emitted events,
+//!   state ids and the signatures of the functions, actions, tasks and machines it uses, and a
+//!   handle made by `Roadbook.make` from the compiled IR, which is inlined once per module.
 //!
-//! Declarations of other files are imported from their own generated modules, by relative
-//! path (`./types.road.js`).
+//! Declarations of other files are imported from their own generated modules: a file of the
+//! project by relative path (`./types.road.js`), a file of another package by a relative path
+//! to the generated module in the package's directory when [`Options::packages`] maps it (as
+//! the `[packages]` table of `roadbook.toml` does), else by the package specifier
+//! (`inventory/inventory.road.js`), which Node resolves in `node_modules`.
 //!
 //! # Types the generator maps specially
 //!
 //! - An `extern type` maps to `Schema.Unknown` and the TypeScript type `unknown`: there is no
 //!   way yet to bind it to a host type.
+//! - `ref M` maps to `Roadbook.Handle<MDef>`, the handle of a running `M`, with `MDef` imported
+//!   (as a type) from `M`'s module when another file declares it. A handle has no schema: refs
+//!   appear only in machine inputs, variables and the parameters of host code, never in a
+//!   record, error or event, so an alias of a type with a `ref` in it is a type alias only.
 //! - Recursive records and aliases (`type Tree { children: Tree[] }`) are supported: each
 //!   reference inside the cycle is `Schema.suspend`ed and the types of the cycle get an
 //!   explicit interface. A cycle is rejected with [`GenError::Recursive`] if it spans several
@@ -44,10 +51,24 @@ const WIDTH: usize = 100;
 /// The runtime the generated module is written for.
 const RUNTIME: &str = "@roadbook/effect";
 
-/// Choices about the generated code. There are none yet.
+/// Choices about the generated code.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
-pub struct Options {}
+pub struct Options {
+    /// The directories of other packages, by package name, as project paths (relative to the
+    /// project root, `/`-separated): the `[packages]` table of `roadbook.toml`. A module
+    /// imports a file of a package listed here by a relative path to the package's directory,
+    /// and a file of any other package by the package specifier.
+    pub packages: BTreeMap<String, String>,
+}
+
+impl Options {
+    /// These options with `packages` as the package directories.
+    pub fn with_packages(mut self, packages: BTreeMap<String, String>) -> Options {
+        self.packages = packages;
+        self
+    }
+}
 
 /// Why a module could not be generated.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,12 +94,6 @@ pub enum GenError {
         /// The name.
         name: String,
     },
-    /// A chart that uses messaging or imports from another package, which this generator
-    /// does not support yet.
-    Unsupported {
-        /// What it uses.
-        what: String,
-    },
     /// A field of an `error` that its class cannot have: see [`error_field_conflict`].
     ErrorField {
         /// The file declaring the error, as in `ir.sources`.
@@ -100,11 +115,6 @@ impl fmt::Display for GenError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             GenError::NoEntry => write!(f, "the IR has no sources, so there is no entry file"),
-            GenError::Unsupported { what } => write!(
-                f,
-                "the TypeScript generator does not support messaging between machines or imports \
-                 from other packages yet: the chart uses {what}"
-            ),
             GenError::Undeclared { kind, name } => {
                 write!(f, "the IR uses {kind} `{name}` but does not declare it")
             }
@@ -145,41 +155,13 @@ impl std::error::Error for GenError {}
 /// The text of the TypeScript module for the entry file of `ir` (`ir.sources[0]`): what
 /// `roadbook gen` writes to `<file>.road.ts`. Deterministic: the same IR gives the same text.
 pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
-    let _ = options;
     let entry = ir.sources.first().ok_or(GenError::NoEntry)?;
-    if let Some(s) = ir.sources.iter().find(|s| s.package.is_some()) {
-        let what = format!(
-            "`{}/{}`, a file of another package",
-            s.package.as_deref().unwrap_or(""),
-            s.path
-        );
-        return Err(GenError::Unsupported { what });
-    }
-    for (name, m) in &ir.machines {
-        if let Some(what) = m.messaging() {
-            return Err(GenError::Unsupported {
-                what: format!("{what} (machine `{name}`)"),
-            });
-        }
-    }
-    let has_ref = |t: &TypeRef| t.ref_base().is_some();
-    let host_ref = ir
-        .functions
-        .iter()
-        .map(|(n, d)| (n, &d.params))
-        .chain(ir.actions.iter().map(|(n, d)| (n, &d.params)))
-        .chain(ir.tasks.iter().map(|(n, d)| (n, &d.params)))
-        .find(|(_, ps)| ps.iter().any(|p| has_ref(&p.ty)));
-    if let Some((name, _)) = host_ref {
-        return Err(GenError::Unsupported {
-            what: format!("a `ref` parameter of `{name}`"),
-        });
-    }
     let mut g = Gen {
         ir,
         imports: BTreeMap::new(),
         schema: false,
         duration: false,
+        roadbook: false,
         cycle: cycles(ir)?,
     };
     let mut items: Vec<String> = Vec::new();
@@ -202,14 +184,16 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
         .collect();
     let mut event_count: HashMap<&str, usize> = HashMap::new();
     for (_, m) in &machines {
-        for e in m.events.keys() {
+        for e in m.events.keys().chain(m.emits.keys()) {
             *event_count.entry(e).or_default() += 1;
         }
     }
     for (i, (name, m)) in machines.iter().enumerate() {
         let mut section = Vec::new();
         let mut events = Vec::new();
-        for (event, decl) in &m.events {
+        let mut emitted = Vec::new();
+        let declared = m.events.iter().map(|e| (e, false));
+        for ((event, decl), emits) in declared.chain(m.emits.iter().map(|e| (e, true))) {
             let ident = if event_count[event.as_str()] > 1 {
                 format!("{name}{event}")
             } else {
@@ -227,9 +211,13 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
                 )
             ));
             names.push(ident.clone());
-            events.push(ident);
+            if emits {
+                emitted.push(ident);
+            } else {
+                events.push(ident);
+            }
         }
-        section.push(g.definition(name, m, events)?);
+        section.push(g.definition(name, m, events, emitted)?);
         names.push(format!("{name}Def"));
         if i == 0 {
             section.push(format!("const ir: unknown = {}", ir.to_json().trim_end()));
@@ -259,22 +247,34 @@ pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
         imports.push("import type { Duration } from \"effect\"".to_owned());
         names.push("Duration".into());
     }
-    if !machines.is_empty() {
+    if !machines.is_empty() || g.roadbook {
         imports.push(format!("import * as Roadbook from \"{RUNTIME}\""));
         names.push("Roadbook".into());
     }
     for (file, imported) in &g.imports {
-        let path = ir
-            .sources
-            .get(*file as usize)
-            .map(|s| s.path.as_str())
-            .unwrap_or_default();
-        let imported: Vec<&str> = imported.iter().copied().collect();
-        names.extend(imported.iter().map(|n| n.to_string()));
+        let source = ir.sources.get(*file as usize);
+        let path = source.map(|s| s.path.as_str()).unwrap_or_default();
+        let specifier = match source.and_then(|s| s.package.as_deref()) {
+            None => relative(&entry.path, path),
+            Some(package) => match options.packages.get(package) {
+                Some(dir) => {
+                    let dir = dir.trim_start_matches("./").trim_end_matches('/');
+                    let path = if dir.is_empty() || dir == "." {
+                        path.to_owned()
+                    } else {
+                        format!("{dir}/{path}")
+                    };
+                    relative(&entry.path, &path)
+                }
+                None => format!("{package}/{path}.js"),
+            },
+        };
+        names.extend(imported.iter().map(|i| i.name.clone()));
+        let imported: Vec<String> = imported.iter().map(Import::render).collect();
         imports.push(list(
             "import ",
             &imported,
-            &format!(" from \"{}\"", relative(&entry.path, path)),
+            &format!(" from \"{specifier}\""),
         ));
     }
 
@@ -333,14 +333,34 @@ pub fn error_field_conflict(ir: &Ir, field: &Field) -> Option<&'static str> {
     }
 }
 
+/// A name a module imports from another module.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct Import {
+    name: String,
+    /// Whether it is only a type (a machine's `<Name>Def`), imported with `type`.
+    type_only: bool,
+}
+
+impl Import {
+    fn render(&self) -> String {
+        if self.type_only {
+            format!("type {}", self.name)
+        } else {
+            self.name.clone()
+        }
+    }
+}
+
 struct Gen<'a> {
     ir: &'a Ir,
-    /// Names to import, by index of the source declaring them.
-    imports: BTreeMap<u32, BTreeSet<&'a str>>,
+    /// Names to import, by index of the source declaring them, sorted by name.
+    imports: BTreeMap<u32, BTreeSet<Import>>,
     /// Whether `Schema` is used.
     schema: bool,
     /// Whether the type `Duration` is used.
     duration: bool,
+    /// Whether `Roadbook` is used outside a machine's section (a `ref` in a type).
+    roadbook: bool,
     /// For each type on a cycle, the index (in `ir.types`) of its cycle's first type.
     cycle: HashMap<&'a str, usize>,
 }
@@ -357,9 +377,52 @@ impl<'a> Gen<'a> {
                     name: name.to_owned(),
                 })?;
         if decl.span.file != 0 {
-            self.imports.entry(decl.span.file).or_default().insert(key);
+            self.imports
+                .entry(decl.span.file)
+                .or_default()
+                .insert(Import {
+                    name: key.clone(),
+                    type_only: false,
+                });
         }
         Ok(key)
+    }
+
+    /// `Roadbook.Handle<MDef>`, the type of `ref M`, importing `MDef` if another file
+    /// declares `M`.
+    fn handle(&mut self, machine: &str) -> Result<String, GenError> {
+        let (name, decl) =
+            self.ir
+                .machines
+                .get_key_value(machine)
+                .ok_or_else(|| GenError::Undeclared {
+                    kind: "machine",
+                    name: machine.to_owned(),
+                })?;
+        let def = format!("{name}Def");
+        if decl.span.file != 0 {
+            self.imports
+                .entry(decl.span.file)
+                .or_default()
+                .insert(Import {
+                    name: def.clone(),
+                    type_only: true,
+                });
+        }
+        self.roadbook = true;
+        Ok(format!("Roadbook.Handle<{def}>"))
+    }
+
+    /// Whether a type has a `ref` in it, through aliases.
+    fn has_ref(&self, t: &TypeRef) -> bool {
+        match t.base() {
+            TypeRef::Ref(_) => true,
+            TypeRef::Named(n) => match self.ir.types.get(n).map(|d| &d.def) {
+                Some(TypeDef::Alias { ty }) => self.has_ref(ty),
+                _ => false,
+            },
+            _ => false,
+        }
     }
 
     /// The TypeScript type of a type reference.
@@ -381,11 +444,7 @@ impl<'a> Gen<'a> {
             TypeRef::Named(n) => self.named(n)?.to_owned(),
             TypeRef::List(t) => format!("ReadonlyArray<{}>", self.ts(t)?),
             TypeRef::Optional(t) => format!("{} | null", self.ts(t)?),
-            TypeRef::Ref(m) => {
-                return Err(GenError::Unsupported {
-                    what: format!("`ref {m}`"),
-                });
-            }
+            TypeRef::Ref(m) => self.handle(m)?,
         })
     }
 
@@ -412,9 +471,12 @@ impl<'a> Gen<'a> {
             }
             TypeRef::List(t) => format!("Schema.Array({})", self.schema(t, cycle)?),
             TypeRef::Optional(t) => format!("Schema.NullOr({})", self.schema(t, cycle)?),
+            // The compiler allows a `ref` in no record, error or event field, and an alias of
+            // one has no schema (see `type_item`), so no schema refers to a handle.
             TypeRef::Ref(m) => {
-                return Err(GenError::Unsupported {
-                    what: format!("`ref {m}`"),
+                return Err(GenError::Undeclared {
+                    kind: "schema for the type",
+                    name: format!("ref {m}"),
                 });
             }
         })
@@ -508,6 +570,9 @@ impl<'a> Gen<'a> {
                     )
                 }
             }
+            TypeDef::Alias { ty } if self.has_ref(ty) => {
+                format!("export type {name} = {}", self.ts(ty)?)
+            }
             TypeDef::Alias { ty } => {
                 let schema = self.schema(ty, cycle)?;
                 let ts = if cycle.is_some() {
@@ -575,6 +640,7 @@ impl<'a> Gen<'a> {
         name: &str,
         m: &'a Machine,
         events: Vec<String>,
+        emitted: Vec<String>,
     ) -> Result<String, GenError> {
         let ir = self.ir;
         let mut uses = Uses::default();
@@ -652,6 +718,7 @@ impl<'a> Gen<'a> {
             ("output".into(), self.returns(m.returns.as_ref())?),
             ("error".into(), self.errors(&m.errors)?),
             ("event".into(), Ty::union(events)),
+            ("emits".into(), Ty::union(emitted)),
             ("state".into(), Ty::union(states)),
             ("fns".into(), Ty::Obj(fns)),
             ("actions".into(), Ty::Obj(actions)),
