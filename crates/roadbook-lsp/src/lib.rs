@@ -8,7 +8,13 @@
 //! - go to definition, find references, rename (checked: case, reserved words, clashes, and
 //!   a recompilation that must resolve every use as before) and hover, for every kind of
 //!   name, across files;
-//! - document formatting with the canonical formatter, and the outline of a file.
+//! - document formatting with the canonical formatter, and the outline of a file;
+//! - `roadbook/ir`, a request of its own: a document compiled as an entry, as `roadbook
+//!   export ir` would, with the unsaved buffers (see the README).
+//!
+//! Files of other packages are compiled as the project's files reach them, never as
+//! entries, and only their errors are reported. A document that is not a file (an untitled
+//! buffer) is compiled on its own, with no project.
 //!
 //! The compiler does the work: each change compiles the files it can affect (every file
 //! connected to it by imports, either way) with the unsaved editor buffers laid over the file

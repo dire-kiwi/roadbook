@@ -6,8 +6,9 @@
 
 use std::collections::HashMap;
 use std::error::Error;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::mpsc;
 
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{
@@ -30,7 +31,7 @@ use crate::FindProject;
 use crate::outline::outline;
 use crate::rename;
 use crate::text::{Encoding, Lines, uri_path};
-use crate::world::{Analysis, Doc, World, key};
+use crate::world::{Analysis, Doc, World, key, memory_key};
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -85,17 +86,31 @@ pub fn run(connection: Connection, find: FindProject) -> Result<()> {
         },
     });
     connection.initialize_finish(id, result)?;
+    // `lsp_server`'s standard input reader hands over each message only when it is taken
+    // (its channel has no room), so nothing would ever be queued behind a compilation. A
+    // thread takes every message as it arrives and queues it here, without bound, so that
+    // the changes made while a compilation runs are all taken in before the next one.
+    let (queue, inbox) = mpsc::channel();
+    let incoming = connection.receiver.clone();
+    std::thread::spawn(move || {
+        for msg in incoming {
+            if queue.send(msg).is_err() {
+                break;
+            }
+        }
+    });
     let mut server = Server {
         connection: &connection,
+        inbox,
         world: World::new(find),
         enc,
     };
-    while let Ok(msg) = connection.receiver.recv() {
+    while let Ok(msg) = server.inbox.recv() {
         if server.handle(msg)? {
             return Ok(());
         }
-        // Take in every change already queued before compiling.
-        while let Ok(msg) = connection.receiver.try_recv() {
+        // Take in every message already queued before compiling.
+        while let Ok(msg) = server.inbox.try_recv() {
             if server.handle(msg)? {
                 return Ok(());
             }
@@ -107,8 +122,27 @@ pub fn run(connection: Connection, find: FindProject) -> Result<()> {
 
 struct Server<'c> {
     connection: &'c Connection,
+    /// The client's messages, in order.
+    inbox: mpsc::Receiver<Message>,
     world: World,
     enc: Encoding,
+}
+
+/// How the server identifies a document: the file's [`key`], or for a document that is not
+/// a file (an untitled buffer) a key of its own.
+fn doc_key(uri: &Uri) -> Option<PathBuf> {
+    match uri_path(uri) {
+        Some(path) => Some(key(&path)),
+        None if uri.as_str().starts_with("file:") => None,
+        None => Some(memory_key(uri)),
+    }
+}
+
+/// The parameters of `roadbook/ir`.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct IrParams {
+    text_document: TextDocumentIdentifier,
 }
 
 /// An error answer: the request cannot be done, with a reason for the user.
@@ -129,8 +163,9 @@ impl Server<'_> {
     fn handle(&mut self, msg: Message) -> Result<bool> {
         match msg {
             Message::Request(req) => {
-                if self.connection.handle_shutdown(&req)? {
-                    return Ok(true);
+                if req.method == "shutdown" {
+                    self.respond(req.id, Some(Ok(Value::Null)));
+                    return Ok(self.await_exit());
                 }
                 self.flush();
                 let id = req.id.clone();
@@ -141,6 +176,26 @@ impl Server<'_> {
             Message::Response(_) => {}
         }
         Ok(false)
+    }
+
+    /// After `shutdown`: waits for `exit`, refusing any request meanwhile. `true` once it
+    /// comes, or the client is gone.
+    fn await_exit(&self) -> bool {
+        while let Ok(msg) = self.inbox.recv() {
+            match msg {
+                Message::Notification(n) if n.method == "exit" => return true,
+                Message::Request(r) => {
+                    let response = Response::new_err(
+                        r.id,
+                        ErrorCode::InvalidRequest as i32,
+                        "the server is shutting down".into(),
+                    );
+                    let _ = self.connection.sender.send(response.into());
+                }
+                _ => {}
+            }
+        }
+        true
     }
 
     fn respond(&self, id: RequestId, answer: Option<Answer>) {
@@ -163,6 +218,7 @@ impl Server<'_> {
             "textDocument/formatting" => params(p).and_then(|p| self.format(p)),
             "textDocument/documentSymbol" => params(p).and_then(|p| self.symbols(p)),
             "textDocument/codeAction" => params(p).and_then(|p| self.code_actions(p)),
+            "roadbook/ir" => params(p).and_then(|p| self.ir(p)),
             _ => return None,
         })
     }
@@ -171,9 +227,8 @@ impl Server<'_> {
         match n.method.as_str() {
             "textDocument/didOpen" => {
                 if let Ok(p) = serde_json::from_value::<DidOpenTextDocumentParams>(n.params)
-                    && let Some(path) = uri_path(&p.text_document.uri)
+                    && let Some(path) = doc_key(&p.text_document.uri)
                 {
-                    let path = key(&path);
                     let known = self.world.analyses.contains_key(&path);
                     self.world.docs.insert(
                         path.clone(),
@@ -188,9 +243,8 @@ impl Server<'_> {
             }
             "textDocument/didChange" => {
                 if let Ok(p) = serde_json::from_value::<DidChangeTextDocumentParams>(n.params)
-                    && let Some(path) = uri_path(&p.text_document.uri)
+                    && let Some(path) = doc_key(&p.text_document.uri)
                 {
-                    let path = key(&path);
                     if let Some(doc) = self.world.docs.get_mut(&path) {
                         // Full synchronisation: the last change is the whole text.
                         if let Some(c) = p.content_changes.into_iter().last() {
@@ -203,16 +257,15 @@ impl Server<'_> {
             }
             "textDocument/didSave" => {
                 if let Ok(p) = serde_json::from_value::<DidSaveTextDocumentParams>(n.params)
-                    && let Some(path) = uri_path(&p.text_document.uri)
+                    && let Some(path) = doc_key(&p.text_document.uri)
                 {
-                    self.world.touch(key(&path), true);
+                    self.world.touch(path, true);
                 }
             }
             "textDocument/didClose" => {
                 if let Ok(p) = serde_json::from_value::<DidCloseTextDocumentParams>(n.params)
-                    && let Some(path) = uri_path(&p.text_document.uri)
+                    && let Some(path) = doc_key(&p.text_document.uri)
                 {
-                    let path = key(&path);
                     self.world.docs.remove(&path);
                     self.world.touch(path, false);
                 }
@@ -309,7 +362,7 @@ impl Server<'_> {
 
     /// The analysis of a document, the file's id in it and the byte offset of a position.
     fn at(&self, uri: &Uri, pos: Position) -> Option<(Rc<Analysis>, FileId, u32)> {
-        let path = key(&uri_path(uri)?);
+        let path = doc_key(uri)?;
         let a = self.world.analyses.get(&path)?.clone();
         let file = a.file_id(&path)?;
         let offset = Lines::new(a.text(file)).offset(pos, self.enc);
@@ -413,8 +466,32 @@ impl Server<'_> {
         })
     }
 
+    /// `roadbook/ir`: the document compiled as an entry, as `roadbook export ir` would
+    /// compile it, with the open documents as they are in the editor.
+    fn ir(&mut self, p: IrParams) -> Answer {
+        let uri = p.text_document.uri;
+        let Some(path) = doc_key(&uri) else {
+            return Err(Failed(format!("`{}` is not a local file", uri.as_str())));
+        };
+        let compiled = self.world.entry_ir(&path).map_err(Failed)?;
+        let out = &compiled.out;
+        let diagnostics: Vec<Value> = out
+            .diagnostics
+            .iter()
+            .map(|d| roadbook_compiler::json::diagnostic(d, &out.files))
+            .collect();
+        Ok(serde_json::json!({
+            "uri": uri.as_str(),
+            "version": self.world.docs.get(&path).map(|d| d.version),
+            "root": compiled.root.map(|r| r.to_string_lossy().into_owned()),
+            "entry": compiled.entry,
+            "ir": out.ir.as_ref().map(|ir| ir.to_json()),
+            "diagnostics": diagnostics,
+        }))
+    }
+
     fn document_text(&self, doc: &TextDocumentIdentifier) -> Option<String> {
-        self.world.text(&key(&uri_path(&doc.uri)?))
+        self.world.text(&doc_key(&doc.uri)?)
     }
 
     fn format(&self, p: DocumentFormattingParams) -> Answer {
@@ -440,7 +517,7 @@ impl Server<'_> {
     }
 
     fn code_actions(&self, p: CodeActionParams) -> Answer {
-        let Some(path) = uri_path(&p.text_document.uri).map(|p| key(&p)) else {
+        let Some(path) = doc_key(&p.text_document.uri) else {
             return Ok(Value::Null);
         };
         let Some(a) = self.world.analyses.get(&path) else {

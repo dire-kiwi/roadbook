@@ -33,11 +33,16 @@ pub fn renameable(analysis: &Analysis, id: SymbolId) -> Result<Edits, String> {
                     s.name
                 )
             })?;
-        if !path.starts_with(&analysis.project) {
+        if analysis.packaged.contains(path) || !path.starts_with(&analysis.project) {
+            let shown = path
+                .strip_prefix(&analysis.project)
+                .unwrap_or(path)
+                .to_string_lossy()
+                .replace('\\', "/");
             return Err(format!(
-                "`{}` is declared or used in `{}`, outside the project",
-                s.name,
-                path.display()
+                "`{}` is declared or used in `{shown}`, a file of another package: rename \
+                 edits only the project's own files",
+                s.name
             ));
         }
         edits.entry(path.to_path_buf()).or_default().push(span);
@@ -220,6 +225,17 @@ fn clash(index: &SymbolIndex, id: SymbolId, new: &str) -> Option<String> {
             K::Record | K::Alias | K::Enum | K::Error | K::Extern | K::Machine
         )
     };
+    // Whether state `outer` is state `inner` or contains it.
+    let contains = |outer: Option<SymbolId>, inner: Option<SymbolId>| {
+        let mut at = inner;
+        while let Some(i) = at {
+            if Some(i) == outer {
+                return true;
+            }
+            at = index.symbol(i).parent;
+        }
+        false
+    };
     let machine_of = |mut i: SymbolId| loop {
         let x = index.symbol(i);
         match x.parent {
@@ -234,6 +250,12 @@ fn clash(index: &SymbolIndex, id: SymbolId, new: &str) -> Option<String> {
                 || typeish(o.kind)
         }
         K::State | K::Field | K::Variant => o.kind == s.kind && o.parent == s.parent,
+        // Two `as` names clash only when one invoking state contains the other: states
+        // side by side may use the same one.
+        K::InvokeName if o.kind == K::InvokeName => {
+            machine_of(oid) == machine_of(id)
+                && (contains(s.parent, o.parent) || contains(o.parent, s.parent))
+        }
         K::Parameter | K::Variable | K::InvokeName => {
             matches!(o.kind, K::Parameter | K::Variable | K::InvokeName)
                 && machine_of(oid) == machine_of(id)

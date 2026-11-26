@@ -10,7 +10,17 @@ crate is the library behind it.
   as a quick fix (code action). A change compiles the files it can affect, unsaved buffers
   laid over the file system: every file connected to it by imports, either way (what it
   imports, what imports it, and so on), as `roadbook check` would check them together. Each of those files gets
-  its diagnostics published, opened or not, and an empty list once it is clean.
+  its diagnostics published, opened or not, and an empty list once it is clean. Changes
+  that arrive while a compilation runs are taken in together, so typing fast compiles far
+  fewer times than it changes the text.
+- **Files of other packages** (in `node_modules`, or a `[packages]` directory) belong to
+  their package, as they do for `roadbook check`: they are never compiled as entries of the
+  project, but as the project's files that import them reach them, so their imports resolve
+  from the package (a `/` path from the package's root) and only their errors are reported,
+  never warnings. A package's file that no file of the project imports gets no diagnostics.
+- **Untitled documents** (any URI that is not a `file:` one) are compiled on their own, as a
+  single file in memory with no project and no options; they can import nothing. Everything
+  below works in them.
 - **Go to definition** and **find references** for every kind of name: states (in targets,
   each segment of a dotted target, and `initial`), types, aliases, enums and their variants,
   errors (in `!` lists, `fail` outcomes and values), extern types, fields (in reads, record
@@ -25,7 +35,10 @@ crate is the library behind it.
   files are compiled again with the edit applied: every use must resolve to the same thing
   as before (so a renamed state cannot capture a target that meant a state further out), and
   no error may appear (two declarations with one name among files compiled together).
-  Declarations are renamed in every file that imports or uses them.
+  Declarations are renamed in every file that imports or uses them. A rename that would edit
+  a file of another package (a declaration or a use in one) is refused, saying which file.
+  `invoke … as` names follow the compiler's rule: two states side by side may use the same
+  one, but not a state and a state inside it.
 - **Hover**: the declaration's signature (`task chargeCard(order: Order, user: User) ->
   Receipt ! CardDeclined | GatewayUnavailable`, `var attempts: int = 0`, `final state
   Checkout.Charged`), what it belongs to or which file declares it, and its `///` comment.
@@ -43,6 +56,33 @@ The answers about names come from the compiler's symbol index
 what the compiler resolved, so a file with syntax errors, whose declarations the compiler
 leaves out, has no definitions or references until it parses again (its diagnostics and
 outline still work).
+
+## The `roadbook/ir` request
+
+A request of the server's own, for editors that show the diagram of the chart being edited
+(the VS Code extension's preview): the document compiled as an entry, as `roadbook export
+ir <file>` compiles it, but with every open document's text in place of the file on disk.
+So the IR follows unsaved edits to the chart and to the files it imports, and the chart is
+compiled under its own project path with the project's options (`allow-unassigned`), as
+the command line does.
+
+```ts
+// params
+{ textDocument: { uri: string } }
+// result
+{
+  uri: string,
+  version: number | null,     // the document's version compiled; null if it is not open
+  root: string | null,        // the project's root directory; null for an untitled document
+  entry: string,              // the document's project path, as the IR's `sources` name it
+  ir: string | null,          // the IR as `roadbook export ir` prints it; null on errors
+  diagnostics: Diagnostic[],  // errors and warnings, as `roadbook check --json` prints them
+}
+```
+
+A file that is not open is read from disk. The request fails (`RequestFailed`, with a
+message) for a file of another package, which is not an entry of the project, and for a
+URI the server cannot read.
 
 ## Running it
 
@@ -64,7 +104,10 @@ extension, language id `roadbook`. With `vscode-languageclient`:
 ```ts
 const server = { command: "roadbook", args: ["lsp"], transport: TransportKind.stdio }
 const client = new LanguageClient("roadbook", "Roadbook", server, {
-  documentSelector: [{ scheme: "file", language: "roadbook" }],
+  documentSelector: [
+    { scheme: "file", language: "roadbook" },
+    { scheme: "untitled", language: "roadbook" },
+  ],
   synchronize: { fileEvents: workspace.createFileSystemWatcher("**/*.road") },
 })
 ```
@@ -86,4 +129,5 @@ roadbook_lsp::run_stdio(Box::new(|file: &std::path::Path| {
 
 `run` takes any `lsp_server::Connection`; the tests drive it in-process with
 `Connection::memory()` (`tests/server.rs`), and `crates/roadbook-cli/tests/lsp.rs` drives
-the `roadbook lsp` binary over stdio.
+the `roadbook lsp` binary over stdio (an editor session, and many changes sent at once
+compiled together).
