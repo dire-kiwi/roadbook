@@ -332,6 +332,20 @@
           "properties": { "kind": { "const": "limit" } },
           "required": ["kind"],
           "additionalProperties": false
+        },
+        {
+          "description": "A strict machine was given one of its own events, or a message, that enabled no transition. event is the input, of kind event or message.",
+          "properties": {
+            "kind": { "const": "unhandled" },
+            "event": {
+              "allOf": [
+                { "$ref": "#/$defs/event" },
+                { "properties": { "kind": { "enum": ["event", "message"] } } }
+              ]
+            }
+          },
+          "required": ["kind", "event"],
+          "additionalProperties": false
         }
       ]
     }

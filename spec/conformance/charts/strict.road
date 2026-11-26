@@ -1,0 +1,35 @@
+// Conformance chart: a strict machine. An event of its own that enables no transition is a
+// defect; `ignore` takes an event and does nothing; invoke outcomes and timer expiries whose
+// guards all fail are still dropped.
+
+/// Looks something up; the case only ever gives it small numbers.
+task fetch() -> int
+
+/// Opens and closes, and takes a loud knock anywhere and a quiet one only while open.
+strict machine Lock() {
+  event Open
+  event Close
+  event Knock { loud: bool }
+
+  /// Never set: the guarded timer below is never enabled.
+  var tries: int = 0
+
+  initial Closed
+
+  on Knock if event.loud ignore
+
+  state Closed {
+    on Open               -> Opened
+    on Close              ignore
+    after 1s if tries > 0 -> Opened
+
+    invoke fetch() {
+      done if result > 10 -> Opened
+    }
+  }
+
+  state Opened {
+    on Close -> Closed
+    on Knock ignore
+  }
+}

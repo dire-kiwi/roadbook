@@ -412,7 +412,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0014` | `done`, `invoke`, `output` or `fail` directly in a machine body. | `machine M() { done -> A }` |
 | `RB0015` | `var` or `event` inside a state. | `state A { var x: int }` |
 | `RB0016` | A machine item at the top level of a file. | `state A {}` outside a machine |
-| `RB0017` | A transition with no target, `set` or `do`. | `on Go` |
+| `RB0017` | A transition with no target, `set`, `do`, `send`, `emit` or `ignore`. | `on Go` |
 | `RB0018` | A record value as an `after` delay without parentheses. | `after Cfg { ms: 5 } -> A` |
 | `RB0019` | An invoke outcome outside `invoke { }`. | `fail CardDeclined -> Declined` in a state |
 | `RB0020` | Something other than an outcome inside `invoke { }`. | `fail declined`, `on Go -> A` in an invoke |
@@ -421,6 +421,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0023` | A `///` comment that documents nothing. | `/// note` above a transition |
 | `RB0024` | A lower-case type name that is not a built-in type. | `x: integer` |
 | `RB0025` | Nesting more than 64 levels deep. | 65 nested states, or `((((…))))` |
+| `RB0026` | `ignore` outside an `on` transition, or with a target or effects. | `after 5s ignore`, `on Go ignore -> A` |
 
 The compiler's codes:
 

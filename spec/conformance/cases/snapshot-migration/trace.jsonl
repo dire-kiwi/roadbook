@@ -1,7 +1,7 @@
-{"input":{"start":0},"ir":"sha256:1fa81f452da00ee2767aeec05233a81ed2e52266bd1c14968a8ba72f0fa0cede","kind":"started","machine":"Counter","run":"r1","t":0}
+{"input":{"start":0},"ir":"sha256:121ffb804521789a539097692b58ff86eadeaefc04bbfea5ac74dc4fbad09f8f","kind":"started","machine":"Counter","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Counter","t":0}
 {"kind":"entered","run":"r1","state":"Counter.Counting","t":0}
-{"ir":"sha256:1fa81f452da00ee2767aeec05233a81ed2e52266bd1c14968a8ba72f0fa0cede","kind":"restored","machine":"Counter","migrated":"sha256:0000000000000000000000000000000000000000000000000000000000000000","run":"r2","snapshot":{"active":["Counter","Counter.Counting"],"input":{"start":0},"invokes":[],"ir":"sha256:1fa81f452da00ee2767aeec05233a81ed2e52266bd1c14968a8ba72f0fa0cede","machine":"Counter","nextInvoke":1,"nextMessage":1,"nextTimer":1,"result":null,"run":"r7","snapshotVersion":1,"status":"running","timers":[],"vars":{"n":3}},"t":0}
+{"ir":"sha256:121ffb804521789a539097692b58ff86eadeaefc04bbfea5ac74dc4fbad09f8f","kind":"restored","machine":"Counter","migrated":"sha256:0000000000000000000000000000000000000000000000000000000000000000","run":"r2","snapshot":{"active":["Counter","Counter.Counting"],"input":{"start":0},"invokes":[],"ir":"sha256:121ffb804521789a539097692b58ff86eadeaefc04bbfea5ac74dc4fbad09f8f","machine":"Counter","nextInvoke":1,"nextMessage":1,"nextTimer":1,"result":null,"run":"r7","snapshotVersion":1,"status":"running","timers":[],"vars":{"n":3}},"t":0}
 {"event":{"kind":"event","value":{"_tag":"Add","by":4}},"kind":"event","run":"r2","t":0}
 {"from":"Counter.Counting","index":0,"kind":"transition","run":"r2","t":0,"to":null}
 {"kind":"set","run":"r2","t":0,"value":7,"var":"n"}

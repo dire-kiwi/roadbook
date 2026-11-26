@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "packages/viewer/test/charts/edges.road",
@@ -58,6 +58,7 @@
         "endLine": 19,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -194,7 +195,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:5d921e35768548ccd8bc90fa1b926b61c59842db5f229a406805a3a880018d8e"
+      "hash": "sha256:4b27b4a76d28456d2568f3f007b4e812ab2c8ffc7a9a7ff790f0a0956c157ff5"
     },
     "Note": {
       "doc": "States Mermaid would read as keywords.",
@@ -205,6 +206,7 @@
         "endLine": 38,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -734,7 +736,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:8c034c6541160c3e8e0033968ddb0b8bc9731f3d760a7b1b7ee72b7d2f8b3ede"
+      "hash": "sha256:27cbad83ebd7ed3c39c5233850f5ddd751b483c8563c3ccf15d0032ba673658f"
     },
     "Same": {
       "doc": "A state named like its machine, which has transitions of its own.",
@@ -745,6 +747,7 @@
         "endLine": 47,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -863,7 +866,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:833720a5b68648e8db2b9544d5fd67fb20d416b63d48da6f9fe7f6124133974a"
+      "hash": "sha256:818fa480c64f4beb0f3ef9ecdf19f888f8969eacd2b821869782cadeca458302"
     },
     "Rows": {
       "doc": "Containers with an invoke, entry, exit and internal transitions, and labels with syntax.",
@@ -874,6 +877,7 @@
         "endLine": 70,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -1195,7 +1199,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:5c270bc52d22586036fcf246f2ee8ae16b443d8f13f47c90510d3442ef7bc811"
+      "hash": "sha256:25df6f1a24f1dc8514a4b2f7e0226f3a14f1f52ef625b51592f6e297680c67e6"
     }
   }
 }

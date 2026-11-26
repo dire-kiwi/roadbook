@@ -375,6 +375,7 @@ pub(crate) fn lower<'p>(
     ir::Machine {
         doc: doc(&d.doc),
         span: ir_span(d.span),
+        strict: m.strict,
         params: m
             .params
             .iter()

@@ -380,6 +380,10 @@ class Macrostep {
       }
     }
     if (selected.length === 0) {
+      // A strict machine fails on one of its own events, or a message, that it does not handle.
+      if (this.index.machine.strict && (input.kind === "event" || input.kind === "message")) {
+        throw new Abort({ kind: "unhandled", event: input })
+      }
       this.trace({ kind: "dropped", event: input })
       return
     }

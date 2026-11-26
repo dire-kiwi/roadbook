@@ -1,0 +1,38 @@
+// Conformance chart: strict machines and messages. A message is one of the receiver's own
+// events, so a strict receiver fails on one it does not handle; an emitted event is not, and
+// a send that reaches no run does not fail a strict sender.
+
+/// Takes a loud knock while shut and any knock while ajar; tells its visitors when it opens.
+strict machine Door() {
+  event Knock { loud: bool }
+  event Open
+  event Close
+
+  emits Opened
+
+  initial Shut
+
+  state Shut {
+    on Knock if event.loud ignore
+    on Open                -> Ajar  emit Opened
+  }
+
+  state Ajar {
+    on Knock ignore
+    on Close -> Shut
+  }
+}
+
+/// Knocks on its door when told to. Hears `Opened` only while it waits for it.
+strict machine Visitor(door: ref Door) {
+  event Go   { loud: bool }
+  event Wait
+
+  initial Idle
+
+  on Go send door.Knock { loud: event.loud }
+
+  state Idle { on Wait -> Waiting }
+
+  state Waiting { on door.Opened -> Idle }
+}

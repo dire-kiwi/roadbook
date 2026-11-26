@@ -483,6 +483,11 @@ impl Formatter<'_> {
             }
             DeclKind::Machine(m) => {
                 let header = (start, m.body.span.start.offset + 1);
+                let head = if m.strict {
+                    format!("strict {head}")
+                } else {
+                    head
+                };
                 let mut head = self.params(&d.name, &m.params, head, header, 0);
                 if let Some(t) = &m.returns {
                     head += &format!(" -> {}", ty(t));
@@ -705,6 +710,10 @@ fn inline_item(item: &Item) -> Option<String> {
 
 /// `[head, target, effects]`, with the head left for the caller to fill in.
 fn branch_cells(b: &Branch) -> Vec<String> {
+    if b.ignore {
+        // In the target's column, so it lines up with the targets of the transitions around it.
+        return vec![String::new(), "ignore".into(), String::new()];
+    }
     let target = b.target.as_ref().map_or(String::new(), |t| {
         let path: Vec<_> = t.path.iter().map(|p| p.name.as_str()).collect();
         format!("-> {}", path.join("."))

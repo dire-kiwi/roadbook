@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.2" },
+    "irVersion": { "const": "0.3" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -204,10 +204,11 @@
     "machine": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["doc", "span", "params", "returns", "errors", "vars", "events", "emits", "root", "hash"],
+      "required": ["doc", "span", "strict", "params", "returns", "errors", "vars", "events", "emits", "root", "hash"],
       "properties": {
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" },
+        "strict": { "type": "boolean", "description": "Written strict machine: an event or message of its own that enables no transition is an unhandled defect instead of being dropped." },
         "params": { "$ref": "#/$defs/fields" },
         "returns": { "oneOf": [{ "$ref": "#/$defs/typeRef" }, { "type": "null" }] },
         "errors": { "$ref": "#/$defs/errors" },

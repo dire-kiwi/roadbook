@@ -13,6 +13,8 @@ export type Defect =
   | { readonly kind: "overflow"; readonly expr: string }
   | { readonly kind: "undeclared"; readonly error: string }
   | { readonly kind: "limit" }
+  /** A `strict` machine was given one of its own events, or a message, that enabled no transition. */
+  | { readonly kind: "unhandled"; readonly event: Extract<Input, { readonly kind: "event" | "message" }> }
 
 export interface InvokeEntry {
   readonly id: number

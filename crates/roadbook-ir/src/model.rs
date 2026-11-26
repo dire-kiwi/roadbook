@@ -259,8 +259,11 @@ pub struct TaskDecl {
 pub struct Machine {
     /// Doc comment, `""` if none.
     pub doc: String,
-    /// The whole declaration, from `machine` to the closing brace.
+    /// The whole declaration, from `machine` (or `strict`) to the closing brace.
     pub span: Span,
+    /// Written `strict machine`: one of its own events or messages that
+    /// enables no transition is an `unhandled` defect instead of being dropped.
+    pub strict: bool,
     /// Parameters, in order. They are read-only variables.
     pub params: Vec<Field>,
     /// Result type, `null` if the machine returns nothing.
@@ -424,7 +427,8 @@ pub struct Transition {
     pub group: u32,
     /// The guard, `null` if unguarded (including `else`).
     pub guard: Option<Expr>,
-    /// Target state id, `null` for an internal transition.
+    /// Target state id, `null` for an internal transition. With no target
+    /// and no effects, the transition is an `ignore`.
     pub target: Option<String>,
     /// Effects: every `set` assignment, then the `do`, `send` and `emit`
     /// effects in the order written.

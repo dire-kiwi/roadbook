@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "spec/conformance/charts/upload.road",
@@ -58,6 +58,7 @@
         "endLine": 31,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "size",
@@ -369,7 +370,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:1588792051fa7eb110030f9ee2c0e854b30c0bdad6167347d22fdbcd29ba9e12"
+      "hash": "sha256:e8cf509d240b99adacd2003909d85018ece60103763f5677cef6dfe9d1cbab49"
     },
     "Publish": {
       "doc": "Uploads, pausing and resuming the child when asked, and shows its progress.",
@@ -380,6 +381,7 @@
         "endLine": 53,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "size",
@@ -689,7 +691,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:19c6cfdf0a7bf5ae3be5cc4c27352858fccc08a244e85f1966b6b9ff1e137cc1"
+      "hash": "sha256:3868bc63f5337028cfdefe02b2afee21d653ce70eef50bc70ae96178b4a38959"
     },
     "Quiet": {
       "doc": "Invokes Upload without `as`, so it receives nothing the child emits.",
@@ -700,6 +702,7 @@
         "endLine": 68,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "size",
@@ -848,7 +851,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:56b06b4a67a26e3150ee35f1d5197c1751f9ce89daf71d91cedc1d32272d1d50"
+      "hash": "sha256:6a7f438808be922d4548dbccdeb91542543804885837fdc51276ba4777a0df77"
     },
     "Eager": {
       "doc": "Sends to its child before the child has started, and after its outcome was taken.",
@@ -859,6 +862,7 @@
         "endLine": 93,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "size",
@@ -1125,7 +1129,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:17afb401c77b51ab73549262c9d469f5061d126e13d401117704e54778b10127"
+      "hash": "sha256:a564a50031ab39ad236a12d3161195576a875735edd4563eec0f63bbdadb6365"
     }
   }
 }

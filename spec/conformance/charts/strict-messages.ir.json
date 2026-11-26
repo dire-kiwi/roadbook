@@ -1,0 +1,445 @@
+{
+  "irVersion": "0.3",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/strict-messages.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Door": {
+      "doc": "Takes a loud knock while shut and any knock while ajar; tells its visitors when it opens.",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 24,
+        "endCol": 2
+      },
+      "strict": true,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Knock": {
+          "fields": [
+            {
+              "name": "loud",
+              "type": "bool",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 7,
+            "col": 3,
+            "endLine": 7,
+            "endCol": 29
+          }
+        },
+        "Open": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 13
+          }
+        },
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {
+        "Opened": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 15
+          }
+        }
+      },
+      "root": {
+        "id": "Door",
+        "name": "Door",
+        "kind": "compound",
+        "doc": "Takes a loud knock while shut and any knock while ajar; tells its visitors when it opens.",
+        "span": {
+          "file": 0,
+          "line": 6,
+          "col": 1,
+          "endLine": 24,
+          "endCol": 2
+        },
+        "initial": "Door.Shut",
+        "states": [
+          {
+            "id": "Door.Shut",
+            "name": "Shut",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 15,
+              "col": 3,
+              "endLine": 18,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Knock"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "ref",
+                  "path": [
+                    "event",
+                    "loud"
+                  ],
+                  "type": "bool",
+                  "text": "event.loud"
+                },
+                "target": null,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 16,
+                  "col": 5,
+                  "endLine": 16,
+                  "endCol": 34
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Open"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Door.Ajar",
+                "effects": [
+                  {
+                    "kind": "emit",
+                    "event": "Opened",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Opened",
+                      "text": "Opened"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 17,
+                  "col": 5,
+                  "endLine": 17,
+                  "endCol": 48
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Door.Ajar",
+            "name": "Ajar",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 20,
+              "col": 3,
+              "endLine": 23,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Knock"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 5,
+                  "endLine": 21,
+                  "endCol": 20
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Door.Shut",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:4956f96830cef794f94776a0e7b8dd460f2d862ffbdbb1459df6a9745f7ea530"
+    },
+    "Visitor": {
+      "doc": "Knocks on its door when told to. Hears `Opened` only while it waits for it.",
+      "span": {
+        "file": 0,
+        "line": 27,
+        "col": 1,
+        "endLine": 38,
+        "endCol": 2
+      },
+      "strict": true,
+      "params": [
+        {
+          "name": "door",
+          "type": "ref Door",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [
+            {
+              "name": "loud",
+              "type": "bool",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 28,
+            "col": 3,
+            "endLine": 28,
+            "endCol": 28
+          }
+        },
+        "Wait": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 29,
+            "col": 3,
+            "endLine": 29,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "root": {
+        "id": "Visitor",
+        "name": "Visitor",
+        "kind": "compound",
+        "doc": "Knocks on its door when told to. Hears `Opened` only while it waits for it.",
+        "span": {
+          "file": 0,
+          "line": 27,
+          "col": 1,
+          "endLine": 38,
+          "endCol": 2
+        },
+        "initial": "Visitor.Idle",
+        "states": [
+          {
+            "id": "Visitor.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 35,
+              "col": 3,
+              "endLine": 35,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Wait"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Visitor.Waiting",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 35,
+                  "col": 16,
+                  "endLine": 35,
+                  "endCol": 34
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Visitor.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 37,
+              "col": 3,
+              "endLine": 37,
+              "endCol": 43
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "ref",
+                    "name": "door",
+                    "machine": "Door",
+                    "state": null
+                  },
+                  "event": "Opened"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Visitor.Idle",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 19,
+                  "endLine": 37,
+                  "endCol": 41
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Go"
+            },
+            "group": 0,
+            "guard": null,
+            "target": null,
+            "effects": [
+              {
+                "kind": "send",
+                "to": {
+                  "kind": "ref",
+                  "name": "door",
+                  "machine": "Door",
+                  "state": null
+                },
+                "event": "Knock",
+                "value": {
+                  "kind": "record",
+                  "fields": [
+                    {
+                      "name": "loud",
+                      "value": {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "loud"
+                        ],
+                        "type": "bool",
+                        "text": "event.loud"
+                      }
+                    }
+                  ],
+                  "type": "Door.Knock",
+                  "text": "Knock { loud: event.loud }"
+                }
+              }
+            ],
+            "span": {
+              "file": 0,
+              "line": 33,
+              "col": 3,
+              "endLine": 33,
+              "endCol": 45
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:237c17e8feacd45521862cdea4e56cf46409d7912df29d37221cb04c7b26843d"
+    }
+  }
+}

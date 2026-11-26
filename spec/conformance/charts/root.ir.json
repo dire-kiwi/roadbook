@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "spec/conformance/charts/root.road",
@@ -38,6 +38,7 @@
         "endLine": 31,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "int",
       "errors": [],
@@ -350,7 +351,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:290dea8a971a0388c077ffed7c81c2bc3ed4a4b2fd2ddfa1a04acdb40ac7a312"
+      "hash": "sha256:51c6f2129d4d7dae1949609b6ab16f866b074917c869b017c6e5ad5b5dfc2351"
     }
   }
 }

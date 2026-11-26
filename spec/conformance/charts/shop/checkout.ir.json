@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "spec/conformance/charts/shop/checkout.road",
@@ -470,6 +470,7 @@
         "endLine": 32,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "order",
@@ -885,7 +886,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4549a2211c30e8dcc753fc13a57e8f7cfae5f89b018c94545bcbafdc7e6b3aa6"
+      "hash": "sha256:85d2fa798fcdf39774403671f8acf2fe20ae821217287610a108ce3096517ca7"
     }
   }
 }

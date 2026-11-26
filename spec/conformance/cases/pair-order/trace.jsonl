@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:a3ddda38b14b5ec2a94886b68e786f3aa4c678c3782515d40561f8ed17d83566","kind":"started","machine":"Receiver","run":"r1","t":0}
+{"input":{},"ir":"sha256:9ceaabfa4e3e9d8d3a225282ed3830621c5c74cb026049c4d8e7537e52e41d5d","kind":"started","machine":"Receiver","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Receiver","t":0}
 {"kind":"entered","run":"r1","state":"Receiver.WaitingFirst","t":0}
 {"event":{"from":"r2","kind":"message","message":1,"value":{"_tag":"First"}},"kind":"event","run":"r1","t":0}
@@ -12,7 +12,7 @@
 {"kind":"exited","run":"r1","state":"Receiver.Done","t":0}
 {"kind":"exited","run":"r1","state":"Receiver","t":0}
 {"kind":"done","output":null,"run":"r1","state":"Receiver.Done","t":0}
-{"input":{"peer":"r1"},"ir":"sha256:44fcb592287cddc7c3313a3ff3a57b939f2c6ffe34de436657f2877d3c3091b2","kind":"started","machine":"Sender","run":"r2","t":0}
+{"input":{"peer":"r1"},"ir":"sha256:01ddf2169d8486962ee33b46948a6b07a59d6b8de354993cbee79bfa9fa666fb","kind":"started","machine":"Sender","run":"r2","t":0}
 {"kind":"entered","run":"r2","state":"Sender","t":0}
 {"kind":"entered","run":"r2","state":"Sender.Idle","t":0}
 {"event":{"kind":"event","value":{"_tag":"Go"}},"kind":"event","run":"r2","t":0}

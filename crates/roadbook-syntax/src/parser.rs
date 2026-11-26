@@ -80,6 +80,7 @@ fn is_decl_start(k: T) -> bool {
                 | K::Action
                 | K::Task
                 | K::Machine
+                | K::Strict
         )
     )
 }
@@ -443,7 +444,7 @@ impl Parser<'_> {
                     self.error(d);
                     Err(Fail)
                 }
-                _ => Err(self.unexpected("a declaration (`type`, `enum`, `error`, `extern`, `fn`, `action`, `task`, `machine`) or `import`")),
+                _ => Err(self.unexpected("a declaration (`type`, `enum`, `error`, `extern`, `fn`, `action`, `task`, `machine`, `strict machine`) or `import`")),
             };
             match item {
                 Ok(i) => items.push(i),
@@ -592,7 +593,11 @@ impl Parser<'_> {
                     },
                 )
             }
-            K::Machine => {
+            K::Machine | K::Strict => {
+                let strict = k == K::Strict;
+                if strict && self.eat_kw(K::Machine).is_none() {
+                    return Err(self.unexpected("`machine` after `strict`"));
+                }
                 let name = self.upper("a machine name")?;
                 let params = self.params()?;
                 let returns = if self.eat_p(P::Arrow).is_some() {
@@ -605,6 +610,7 @@ impl Parser<'_> {
                 (
                     name,
                     DeclKind::Machine(Machine {
+                        strict,
                         params,
                         returns,
                         errors,
@@ -1018,7 +1024,8 @@ impl Parser<'_> {
 
     fn transition(&mut self, start: Span, trigger: Trigger) -> PResult<Transition> {
         let trigger_span = self.since(start);
-        let branches = self.branches(trigger_span)?;
+        let ignore = matches!(trigger, Trigger::On(_) | Trigger::Receive { .. });
+        let branches = self.branches(trigger_span, ignore)?;
         Ok(Transition {
             trigger,
             branches,
@@ -1027,7 +1034,8 @@ impl Parser<'_> {
         })
     }
 
-    fn branches(&mut self, trigger: Span) -> PResult<Branches> {
+    /// `ignore` says whether a branch may be `ignore`: only in an `on` transition.
+    fn branches(&mut self, trigger: Span, ignore: bool) -> PResult<Branches> {
         if !self.at_p(P::LBrace) {
             let start = self.tok().span;
             let guard = if self.eat_kw(K::If).is_some() {
@@ -1035,7 +1043,7 @@ impl Parser<'_> {
             } else {
                 None
             };
-            return Ok(Branches::Single(self.action(start, guard, trigger)?));
+            return Ok(Branches::Single(self.action(start, guard, trigger, ignore)?));
         }
         let open = self.bump();
         let mut branches: Vec<Branch> = Vec::new();
@@ -1062,7 +1070,7 @@ impl Parser<'_> {
                 T::Keyword(K::If) => {
                     self.bump();
                     match self.expr(false) {
-                        Ok(guard) => self.action(t.span, Some(guard), t.span),
+                        Ok(guard) => self.action(t.span, Some(guard), t.span, ignore),
                         Err(f) => Err(f),
                     }
                 }
@@ -1079,9 +1087,9 @@ impl Parser<'_> {
                 T::Keyword(K::Else) => {
                     self.bump();
                     seen_else = true;
-                    self.action(t.span, None, t.span)
+                    self.action(t.span, None, t.span, ignore)
                 }
-                T::Punct(P::Arrow) | T::Keyword(K::Set | K::Do | K::Send | K::Emit) => {
+                T::Punct(P::Arrow) | T::Keyword(K::Set | K::Do | K::Send | K::Emit | K::Ignore) => {
                     let d = Diagnostic::error(
                         codes::MALFORMED_BRANCH_BLOCK,
                         t.span,
@@ -1115,21 +1123,72 @@ impl Parser<'_> {
         })
     }
 
-    fn action(&mut self, start: Span, guard: Option<Expr>, trigger: Span) -> PResult<Branch> {
+    fn action(
+        &mut self,
+        start: Span,
+        guard: Option<Expr>,
+        trigger: Span,
+        ignore: bool,
+    ) -> PResult<Branch> {
+        if let Some(kw) = self.eat_kw(K::Ignore) {
+            if !ignore {
+                let d = Diagnostic::error(
+                    codes::MISPLACED_IGNORE,
+                    kw.span,
+                    "only an `on` transition can `ignore` its event",
+                )
+                .with_secondary(trigger, "this transition")
+                .with_help("`ignore` takes an event and does nothing; a timer, `always` or `done` with nothing to do can be removed");
+                self.error(d);
+                return Err(Fail);
+            }
+            if self.at_p(P::Arrow) || self.at_kw(K::Set) || self.at_kw(K::Do) || self.at_kw(K::Send) || self.at_kw(K::Emit) {
+                let d = Diagnostic::error(
+                    codes::MISPLACED_IGNORE,
+                    kw.span.to(self.tok().span),
+                    "`ignore` stands alone: a branch that ignores its event has no target and no effects",
+                )
+                .with_help("remove `ignore`, or the target and effects");
+                self.error(d);
+                return Err(Fail);
+            }
+            return Ok(Branch {
+                guard,
+                target: None,
+                effects: Vec::new(),
+                ignore: true,
+                span: self.since(start),
+            });
+        }
         let target = if self.eat_p(P::Arrow).is_some() {
             Some(self.target()?)
         } else {
             None
         };
         let effects = self.effects()?;
+        if (target.is_some() || !effects.is_empty()) && self.at_kw(K::Ignore) {
+            let d = Diagnostic::error(
+                codes::MISPLACED_IGNORE,
+                self.tok().span,
+                "`ignore` stands alone: a branch that ignores its event has no target and no effects",
+            )
+            .with_help("remove `ignore`, or the target and effects");
+            self.error(d);
+            return Err(Fail);
+        }
         if target.is_none() && effects.is_empty() {
+            let (expected, help) = if ignore {
+                ("`-> Target`, `set`, `do`, `send`, `emit` or `ignore`", "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`) or messages (`send child.Event`, `emit Event`), or write `ignore` to take the event and do nothing")
+            } else {
+                ("`-> Target`, `set`, `do`, `send` or `emit`", "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`) or messages (`send child.Event`, `emit Event`)")
+            };
             let msg = format!(
-                "a transition must do something: expected `-> Target`, `set`, `do`, `send` or `emit`, found {}",
+                "a transition must do something: expected {expected}, found {}",
                 self.found()
             );
             let d = Diagnostic::error(codes::TRANSITION_DOES_NOTHING, self.tok().span, msg)
                 .with_secondary(trigger, "this transition")
-                .with_help("give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`) or messages (`send child.Event`, `emit Event`)");
+                .with_help(help);
             self.error(d);
             return Err(Fail);
         }
@@ -1137,6 +1196,7 @@ impl Parser<'_> {
             guard,
             target,
             effects,
+            ignore: false,
             span: self.since(start),
         })
     }

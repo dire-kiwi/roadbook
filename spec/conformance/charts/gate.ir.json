@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "spec/conformance/charts/gate.road",
@@ -80,6 +80,7 @@
         "endLine": 39,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "who",
@@ -600,7 +601,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:471e8a6a9ac12ef023a62bbcbb013fcfc71b3a2cc07edb9cbc13c8aa6e840b12"
+      "hash": "sha256:718b0717ceff7d81eb416c544b015ed29b17acd795bb49eeb6629533df6d327e"
     }
   }
 }

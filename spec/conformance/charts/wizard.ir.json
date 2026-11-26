@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "spec/conformance/charts/wizard.road",
@@ -38,6 +38,7 @@
         "endLine": 28,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "int",
       "errors": [],
@@ -408,7 +409,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:6f7c9b2b4e9077aa8f1bc00959442c11a69b71a85041b93c475642771df2813d"
+      "hash": "sha256:30511025045ee58c3cccbd3a2828f62b86152ef7cc598c9d781dcffc73adcd1a"
     }
   }
 }

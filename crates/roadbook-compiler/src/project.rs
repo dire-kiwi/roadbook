@@ -291,6 +291,7 @@ impl Project {
                     items.push(ast::Item::Emits(ast_event(e, d)));
                 }
                 let kind = DeclKind::Machine(ast::Machine {
+                    strict: m.strict,
                     params: ast_fields(&m.params, span),
                     returns: m.returns.as_ref().map(|t| ast_type(t, span)),
                     errors: m.errors.iter().map(|e| ident(e, span)).collect(),

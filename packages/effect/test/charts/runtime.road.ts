@@ -20,7 +20,7 @@ export interface OverflowDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "packages/effect/test/charts/runtime.road",
@@ -86,6 +86,7 @@ const ir: unknown = {
         "endLine": 16,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "int",
       "errors": [],
@@ -175,7 +176,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4410f109e767b5224f8812917e5cdcfce9604683266fcaecd39670e574a93e79"
+      "hash": "sha256:33a36b1cdaf9c46beb6858c71b04673ceac795f0767bcabc4e12ab349859d650"
     },
     "Settle": {
       "doc": "Settles forever: every microstep takes the `always` again.",
@@ -186,6 +187,7 @@ const ir: unknown = {
         "endLine": 29,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -319,7 +321,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:acf86afbd412c6422063720dfc326c76c723951c01aa7d5d534869787174cc8b"
+      "hash": "sha256:cf762d255371c27be953b50463d3c8d9158527be1369df81f041b88fe25f70f3"
     },
     "Early": {
       "doc": "Reads `a` before it has a value, in `b`'s initial value.",
@@ -330,6 +332,7 @@ const ir: unknown = {
         "endLine": 39,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "int",
       "errors": [],
@@ -434,7 +437,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:c7a570059a601fb08a37b888ec4025fcd8be75de79b5ae99bb6c3b7879e77c1f"
+      "hash": "sha256:b4bc463356e46cd351966824fe7fe767610481003504fa8531ae8240ca82b3be"
     },
     "Leftover": {
       "doc": "Outer's work is cancelled after Inner's exit effect, so a defect there leaves it running.",
@@ -445,6 +448,7 @@ const ir: unknown = {
         "endLine": 59,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -608,7 +612,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ae481c107303aac40dd0fa0c565c9bebddaca2eba327c2e60f77e9977e372c3a"
+      "hash": "sha256:c78d01976d9f89d3160a1f6d0db8eeff186d897b72e7211cafd9709b075a0e62"
     },
     "Payload": {
       "doc": "Ends with whatever the host's `payload` returns, which must be JSON.",
@@ -619,6 +623,7 @@ const ir: unknown = {
         "endLine": 66,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "json",
       "errors": [],
@@ -674,7 +679,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:3fdad329deb922bce7a7ef95184d42c0f9df80d6b70794b7536ff731c6ba944f"
+      "hash": "sha256:b5aa74b356f29f9a2f482b9667d9362f6d0079ccac88d9c716a84ca88990c0c8"
     }
   }
 }

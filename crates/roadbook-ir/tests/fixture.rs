@@ -1,7 +1,8 @@
-//! The `place_order.road` fixture: schema, round trip and hashes.
+//! The `place_order.road` and `orders.road` fixtures: schema, round trip and
+//! hashes.
 //!
-//! Run with `ROADBOOK_BLESS=1` to rewrite the fixture's `hash` fields after
-//! editing it by hand.
+//! Run with `ROADBOOK_BLESS=1` to rewrite the fixtures' `hash` fields after
+//! editing them by hand.
 
 use std::path::Path;
 
@@ -32,18 +33,20 @@ fn schema_errors(v: &jsonschema::Validator, doc: &Value) -> Vec<String> {
 
 #[test]
 fn bless_or_check_hashes() {
-    let mut ir = fixture();
-    fill_hashes(&mut ir).unwrap();
-    if std::env::var_os("ROADBOOK_BLESS").is_some() {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/place_order.ir.json");
-        std::fs::write(path, ir.to_json()).unwrap();
-        return;
+    for (file, json) in [("place_order.ir.json", FIXTURE), ("orders.ir.json", ORDERS)] {
+        let stored = Ir::from_json(json).unwrap();
+        let mut ir = stored.clone();
+        fill_hashes(&mut ir).unwrap();
+        if std::env::var_os("ROADBOOK_BLESS").is_some() {
+            let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data").join(file);
+            std::fs::write(path, ir.to_json()).unwrap();
+            continue;
+        }
+        assert_eq!(
+            ir, stored,
+            "{file}: stored hashes are stale: rerun with ROADBOOK_BLESS=1"
+        );
     }
-    assert_eq!(
-        ir,
-        fixture(),
-        "stored hashes are stale: rerun with ROADBOOK_BLESS=1"
-    );
 }
 
 #[test]

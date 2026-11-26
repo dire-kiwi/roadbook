@@ -430,6 +430,13 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             Input::Defect { .. } => unreachable!("handled by step"),
         }
         if chosen.is_empty() {
+            // A strict machine fails on one of its own events, or a message, that it does not
+            // handle.
+            if self.m.strict && matches!(input, Input::Event { .. } | Input::Message { .. }) {
+                return Err(Defect::Unhandled {
+                    event: Box::new(input.clone()),
+                });
+            }
             self.trace(Record::Dropped { event: input });
             return Ok(());
         }

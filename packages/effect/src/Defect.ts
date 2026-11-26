@@ -12,6 +12,8 @@ const describe = (defect: Core.Defect): string => {
       return `failed with error ${defect.error}, which it does not declare`
     case "limit":
       return "settling took more than 1000 microsteps"
+    case "unhandled":
+      return `${defect.event.value._tag} enabled no transition in a strict machine`
   }
 }
 

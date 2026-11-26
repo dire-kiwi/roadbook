@@ -50,7 +50,7 @@ export interface OrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "examples/orders/orders.road",
@@ -283,6 +283,7 @@ const ir: unknown = {
         "endLine": 43,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "id",
@@ -789,7 +790,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4acb625ac346689b1399e54cca1ebad79f5509d474ffaab2dc727e628f6a243e"
+      "hash": "sha256:54f873affeaee399b7a92ffc0f0039bfe791178f6ff706bcc7b4d324c4f9dadc"
     },
     "Inventory": {
       "doc": "The stock of one warehouse, shared by every order. An order asks it to reserve items, and\nit answers by emitting `Reserved` or `Rejected` with the order's id, which every holder of\na reference to it receives.",
@@ -800,6 +801,7 @@ const ir: unknown = {
         "endLine": 51,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "warehouse",
@@ -1370,7 +1372,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ce476c9f805a78c0125d0aa5e47142cbacf245ae7a2b5d5ae3aa1de2c1afc5eb"
+      "hash": "sha256:700aa432b21d12c192ee6a13c59bf76017abcd3a3f36cd65e95c31e3de713cbd"
     }
   }
 }
