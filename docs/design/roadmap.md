@@ -44,6 +44,7 @@ editors/
 | `roadbook viz --coverage <traces…>` | Write the viewer shading each transition and state by how often the traces took it. |
 | `roadbook export mermaid\|scxml\|ir` | Other formats. Mermaid renders inline on GitHub. |
 | `roadbook paths <Machine> [file] [--json] [--max N]` | List the paths through a machine, from its initial state to each final state and each state with no way out, each loop taken at most once, for test generation and coverage. |
+| `roadbook lsp` | The language server, on standard input and output, for editors: diagnostics, go to definition, references, rename, hover, formatting, outline. |
 
 ## Milestones
 

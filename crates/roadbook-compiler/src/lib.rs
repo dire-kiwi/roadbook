@@ -20,12 +20,17 @@
 //! `analysis` (`always` cycles, recursion, definite assignment in `assign`, warnings) and finally the machine hashes. Each
 //! pass reports what it finds; a pass whose input has errors is skipped, so one mistake does
 //! not produce a cascade. Diagnostic codes are in [`codes`].
+//!
+//! While names are resolved, the [`index`] records every declared name and every use the
+//! compiler resolved ([`Compilation::index`]), for editors: go to definition, references,
+//! rename and hover.
 
 mod analysis;
 mod assign;
 mod check;
 pub mod codes;
 mod expr;
+pub mod index;
 pub mod json;
 pub mod loader;
 mod machine;
@@ -33,14 +38,13 @@ mod names;
 mod project;
 mod types;
 
+pub use index::{Reference, Symbol, SymbolId, SymbolIndex, SymbolKind};
 pub use loader::{FsLoader, Loaded, Loader, MemoryLoader};
 pub use project::LoadError;
 pub use roadbook_ir::Ir;
-pub use roadbook_syntax::{Diagnostic, Severity};
+pub use roadbook_syntax::{Diagnostic, FileId, Severity, Span};
 
 use std::collections::{HashMap, HashSet};
-
-use roadbook_syntax::FileId;
 
 /// Choices that change what is reported, not what is compiled.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -65,6 +69,8 @@ pub struct Compilation {
     /// spans: the root files and everything they import, in load order. For [`compile`] this
     /// is the IR's `sources`.
     pub files: Vec<(String, String)>,
+    /// Every name the files declare and every use the compiler resolved, for editors.
+    pub index: SymbolIndex,
 }
 
 impl Compilation {
@@ -134,6 +140,7 @@ pub fn check(
         ir: None,
         diagnostics: Vec::new(),
         files: Vec::new(),
+        index: SymbolIndex::default(),
     };
     let mut ids: HashMap<String, FileId> = HashMap::new();
     let mut used: HashSet<analysis::DeclKey> = HashSet::new();
@@ -159,6 +166,7 @@ pub fn check(
                 out.diagnostics.push(d);
             }
         }
+        out.index.merge(unit.compilation.index, &map);
         used.extend(unit.used);
         for mut c in unit.candidates {
             c.span.file = map[c.span.file.0 as usize];
@@ -187,6 +195,7 @@ pub fn compile_source(path: &str, source: &str, options: &Options) -> Compilatio
             ir: None,
             diagnostics: Vec::new(),
             files: Vec::new(),
+            index: SymbolIndex::default(),
         },
     }
 }
@@ -228,11 +237,14 @@ impl Unit {
             candidates.clear();
         }
         sort(&mut diagnostics);
+        let mut index = std::mem::take(&mut ck.index);
+        index.finish();
         Ok(Unit {
             compilation: Compilation {
                 ir,
                 diagnostics,
                 files: project.file_list(),
+                index,
             },
             candidates,
             used,

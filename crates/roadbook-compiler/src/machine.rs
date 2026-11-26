@@ -14,6 +14,7 @@ use roadbook_syntax::{Diagnostic, Span, expr_text, message_value};
 
 use crate::check::{Checker, Sig, SigKind, doc, ir_span};
 use crate::codes;
+use crate::index::{SymbolId, SymbolKind};
 use crate::names::{Found, is_type, kind_phrase, suggest};
 use crate::types::{BOOL, DURATION, Ty, ir_type};
 
@@ -140,6 +141,10 @@ struct Node<'p> {
     depth: usize,
     /// `invoke Machine(…) as name`: the name and the machine.
     alias: Option<(&'p Ident, String)>,
+    /// The state's symbol (the machine's, for the root).
+    symbol: Option<SymbolId>,
+    /// The symbol of the `as` name.
+    alias_symbol: Option<SymbolId>,
 }
 
 pub(crate) struct Var {
@@ -151,6 +156,8 @@ pub(crate) struct Cx<'c, 'p> {
     pub ck: &'c mut Checker<'p>,
     pub file: usize,
     pub machine: String,
+    /// The machine's symbol, which its parameters, variables and events are members of.
+    pub symbol: Option<SymbolId>,
     pub vars: HashMap<String, Var>,
     pub events: HashMap<String, Vec<(String, Ty)>>,
     pub emits: HashMap<String, Vec<(String, Ty)>>,
@@ -173,10 +180,12 @@ pub(crate) fn lower<'p>(
 ) -> ir::Machine {
     let name = d.name.name.clone();
     let sig = ck.sigs.get(&name).cloned();
+    let symbol = ck.decl_symbol(&name);
     let mut cx = Cx {
         ck,
         file,
         machine: name.clone(),
+        symbol,
         vars: HashMap::new(),
         events: HashMap::new(),
         emits: HashMap::new(),
@@ -352,6 +361,8 @@ pub(crate) fn lower<'p>(
         state: None,
         depth: 0,
         alias: None,
+        symbol,
+        alias_symbol: None,
     });
     cx.build_tree(0);
     cx.check_aliases();
@@ -424,9 +435,34 @@ impl<'p> Cx<'_, 'p> {
             }
             let idx = self.nodes.len();
             let id = format!("{}.{}", self.nodes[parent].id, s.name.name);
-            let alias = s.body.invokes().next().and_then(|inv| {
+            let invoke = s.body.invokes().next();
+            let alias = invoke.and_then(|inv| {
                 let a = inv.alias.as_ref()?;
                 Some((a, inv.callee.name.clone()))
+            });
+            let word = match s.kind {
+                StateKind::Normal => "state",
+                StateKind::Final => "final state",
+                StateKind::Parallel => "parallel state",
+            };
+            let symbol = self.ck.define(
+                SymbolKind::State,
+                &s.name,
+                s.span,
+                self.nodes[parent].symbol,
+                &s.doc,
+                format!("{word} {id}"),
+            );
+            let alias_symbol = invoke.and_then(|inv| {
+                let a = inv.alias.as_ref()?;
+                Some(self.ck.define(
+                    SymbolKind::InvokeName,
+                    a,
+                    a.span,
+                    Some(symbol),
+                    &None,
+                    format!("invoke {}(…) as {}", inv.callee.name, a.name),
+                ))
             });
             self.nodes.push(Node {
                 name: s.name.name.clone(),
@@ -438,6 +474,8 @@ impl<'p> Cx<'_, 'p> {
                 state: Some(s),
                 depth: self.nodes[parent].depth + 1,
                 alias,
+                symbol: Some(symbol),
+                alias_symbol,
             });
             self.nodes[parent].children.push(idx);
             self.build_tree(idx);
@@ -527,6 +565,9 @@ impl<'p> Cx<'_, 'p> {
             if let Some((alias, machine)) = &self.nodes[a].alias
                 && alias.name == name.name
             {
+                if let Some(symbol) = self.nodes[a].alias_symbol {
+                    self.ck.index.refer(symbol, name.span);
+                }
                 // An invoke of a machine that is not declared (already reported) names a child
                 // with no known events: the name is in scope, but nothing is checked against it.
                 let known = matches!(
@@ -548,6 +589,7 @@ impl<'p> Cx<'_, 'p> {
         }
         if let Some(v) = self.vars.get(&name.name) {
             let t = v.ty.clone();
+            self.ck.refer_member(self.file, self.symbol, name);
             let why = match self.ck.env.expand(&t) {
                 Ty::Ref(machine) => {
                     let address = ir::Address {
@@ -687,6 +729,8 @@ impl<'p> Cx<'_, 'p> {
                     .get(&address.machine)
                     .cloned()
                     .unwrap_or_default();
+                let receiver = self.ck.decl_symbol(&address.machine);
+                self.ck.refer_member(self.file, receiver, event);
                 let fields = iface.events.get(&event.name).cloned();
                 if fields.is_none() {
                     self.not_declared(
@@ -707,6 +751,7 @@ impl<'p> Cx<'_, 'p> {
                 })
             }
             None => {
+                self.ck.refer_member(self.file, self.symbol, event);
                 let fields = self.emits.get(&event.name).cloned();
                 if fields.is_some() {
                     self.info.emitted.insert(event.name.clone());
@@ -1152,7 +1197,10 @@ impl<'p> Cx<'_, 'p> {
             return None;
         };
         match self.child(idx, &first.name) {
-            Some(c) => Some(self.nodes[c].id.clone()),
+            Some(c) => {
+                self.refer_state(c, first);
+                Some(self.nodes[c].id.clone())
+            }
             None => {
                 let names: Vec<String> = children
                     .iter()
@@ -1222,6 +1270,8 @@ impl<'p> Cx<'_, 'p> {
                         scope,
                     );
                 };
+                let sender = self.ck.decl_symbol(&address.machine);
+                self.ck.refer_member(self.file, sender, event);
                 let iface = self
                     .ck
                     .interfaces
@@ -1256,6 +1306,7 @@ impl<'p> Cx<'_, 'p> {
                 }
             }
             Trigger::On(Pattern::Name(n)) => {
+                self.ck.refer_member(self.file, self.symbol, n);
                 if self.events.contains_key(&n.name) {
                     self.info.used_events.insert(n.name.clone());
                     scope.event = Implicit::Has(Ty::Event(n.name.clone()));
@@ -1382,6 +1433,9 @@ impl<'p> Cx<'_, 'p> {
         }
         let written: Vec<&str> = t.path.iter().map(|p| p.name.as_str()).collect();
         let written = written.join(".");
+        if let Some(n) = found {
+            self.refer_state(n, head);
+        }
         let Some(mut node) = found else {
             // The states in scope, nearest first, for the message.
             let mut visible: Vec<String> = Vec::new();
@@ -1421,7 +1475,10 @@ impl<'p> Cx<'_, 'p> {
         };
         for seg in &t.path[1..] {
             match self.child(node, &seg.name) {
-                Some(c) => node = c,
+                Some(c) => {
+                    self.refer_state(c, seg);
+                    node = c;
+                }
                 None => {
                     let parent = self.nodes[node].id.clone();
                     let children: Vec<String> = self.nodes[node]
@@ -1456,6 +1513,12 @@ impl<'p> Cx<'_, 'p> {
         Some(node)
     }
 
+    fn refer_state(&mut self, node: usize, name: &Ident) {
+        if let Some(symbol) = self.nodes[node].symbol {
+            self.ck.index.refer(symbol, name.span);
+        }
+    }
+
     /// Checks and lowers effects: every `set`, then the `do`, `send` and `emit` effects, each
     /// in the order written, which is the order they run in. With each effect, what it reads.
     pub(crate) fn effects(
@@ -1473,6 +1536,7 @@ impl<'p> Cx<'_, 'p> {
             let before = out.len();
             match e {
                 Effect::Set(a) => {
+                    self.ck.refer_member(self.file, self.symbol, &a.var);
                     let want = match self.vars.get(&a.var.name) {
                         Some(v) if v.param => {
                             self.ck.diags.push(
@@ -1596,6 +1660,7 @@ impl<'p> Cx<'_, 'p> {
             SigKind::Task => matches!(k, DeclKind::Task { .. }),
             SigKind::Machine => matches!(k, DeclKind::Machine(_)),
         };
+        self.ck.refer_decl(self.file, n);
         match self.ck.names.lookup(self.file, &n.name) {
             Found::Decl(id) if accept(&self.ck.names.decl(id).kind) => {
                 self.ck.used.insert(n.name.clone());
@@ -1760,6 +1825,13 @@ impl<'p> Cx<'_, 'p> {
                     ir::Trigger::InvokeDone
                 }
                 Trigger::Fail(Pattern::Name(n)) => {
+                    // The error the callee declares by that name, imported here or not.
+                    match self.ck.decl_symbol(&n.name) {
+                        Some(e) if sig.as_ref().is_some_and(|s| s.errors.contains(&n.name)) => {
+                            self.ck.index.refer(e, n.span);
+                        }
+                        _ => self.ck.refer_decl(self.file, n),
+                    }
                     scope.error = Implicit::Has(Ty::Unknown);
                     if let Some(sig) = &sig {
                         if sig.errors.contains(&n.name) {

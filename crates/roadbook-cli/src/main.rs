@@ -14,7 +14,7 @@ mod commands;
 mod report;
 mod workspace;
 
-use commands::{check, export, fmt, r#gen, paths, viz};
+use commands::{check, export, fmt, r#gen, lsp, paths, viz};
 
 /// Exit codes shared by every command.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -53,6 +53,8 @@ enum Command {
     Export(export::Format),
     /// List the paths through a machine, from its initial state to each final or stuck state.
     Paths(paths::Args),
+    /// Run the language server on standard input and output, for editors.
+    Lsp(lsp::Args),
 }
 
 fn main() -> ExitCode {
@@ -64,6 +66,7 @@ fn main() -> ExitCode {
         Command::Viz(args) => viz::run(args),
         Command::Export(format) => export::run(format),
         Command::Paths(args) => paths::run(args),
+        Command::Lsp(args) => lsp::run(args),
     };
     ExitCode::from(exit as u8)
 }
