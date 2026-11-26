@@ -1,0 +1,21 @@
+type Evt { type: string }
+type R {
+  fn: int,
+  task: int
+}
+fn g(error: int) -> int
+
+machine M(event: int) {
+  var result: int = 0
+  var error: string = ""
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0013 at 1:12
+// expect: RB0013 at 3:3
+// expect: RB0013 at 4:3
+// expect: RB0013 at 6:6
+// expect: RB0013 at 8:11
+// expect: RB0013 at 9:7
+// expect: RB0013 at 10:7

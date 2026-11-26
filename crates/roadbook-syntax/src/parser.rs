@@ -259,21 +259,33 @@ impl Parser<'_> {
     /// A keyword where a name is required is consumed as the name (with an error) when it is on
     /// the same line as the tokens around it, which is when the author most likely meant it as
     /// one. Otherwise the name is probably missing and the keyword starts the next item.
+    /// A keyword followed by `:` is always meant as a name (a field, parameter or variable),
+    /// since no keyword is followed by `:`.
     fn keyword_as_name(&mut self, what: &str) -> PResult<Ident> {
         let t = self.tok();
         let next = self.tokens[(self.pos + 1).min(self.tokens.len() - 1)];
         let same_line =
             next.span.start.line == t.span.end.line && self.prev().end.line == t.span.start.line;
-        if next.kind == T::Eof || !same_line || is_decl_start(t.kind) {
+        let named = next.kind == T::Punct(P::Colon);
+        if !named && (next.kind == T::Eof || !same_line || is_decl_start(t.kind)) {
             return Err(self.unexpected(what));
         }
         let word = self.text(t).to_string();
+        let instead = match word.as_str() {
+            "type" => "kind".to_string(),
+            "error" => "failure".to_string(),
+            "event" => "message".to_string(),
+            "state" => "status".to_string(),
+            w => format!("{w}Name"),
+        };
         let d = Diagnostic::error(
             codes::RESERVED_NAME,
             t.span,
             format!("`{word}` is a keyword and cannot be used as {what}"),
         )
-        .with_help("choose another name");
+        .with_help(format!(
+            "keywords are reserved; rename it, for example to `{instead}`"
+        ));
         self.error(d);
         self.bump();
         Ok(Ident {
@@ -610,16 +622,17 @@ impl Parser<'_> {
         })
     }
 
-    /// A comma-separated list between `open` and its closer, trailing comma allowed. Returns
-    /// the elements and the span from the opener to the closer.
     /// Whether the current token starts a top-level declaration. `error` does so only before an
     /// upper-case name: elsewhere it is the implicit name of an invoke's `fail` outcome, as in
-    /// `do log(error)`.
+    /// `do log(error)`. A declaration keyword followed by `:` is a misused name.
     fn at_decl_start(&self) -> bool {
         is_decl_start(self.peek())
             && (self.peek() != T::Keyword(K::Error) || self.nth(1) == T::Upper)
+            && self.nth(1) != T::Punct(P::Colon)
     }
 
+    /// A comma-separated list between `open` and its closer, trailing comma allowed. Returns
+    /// the elements and the span from the opener to the closer.
     fn list<E>(
         &mut self,
         open: P,
