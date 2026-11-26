@@ -73,6 +73,8 @@ pub struct Field {
     /// Its type.
     #[serde(rename = "type")]
     pub ty: TypeRef,
+    /// Written `sensitive`: its value is redacted in trace records.
+    pub sensitive: bool,
     /// Doc comment, `""` if none.
     pub doc: String,
 }
@@ -282,7 +284,7 @@ pub struct Machine {
     pub hash: String,
 }
 
-/// `var name: T [= expr]`.
+/// `[sensitive] var name: T [= expr]`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Var {
@@ -291,6 +293,8 @@ pub struct Var {
     /// Its type.
     #[serde(rename = "type")]
     pub ty: TypeRef,
+    /// Written `sensitive var`: its value is redacted in trace records.
+    pub sensitive: bool,
     /// Initial value, `null` if the variable starts unassigned.
     pub init: Option<Expr>,
     /// Doc comment, `""` if none.
@@ -323,6 +327,19 @@ pub enum StateKind {
     Parallel,
     /// `final state`.
     Final,
+    /// `history Name`: a shallow history pseudo-state of its parent.
+    History,
+    /// `deep history Name`: a deep history pseudo-state of its parent.
+    #[serde(rename = "deepHistory")]
+    DeepHistory,
+}
+
+impl StateKind {
+    /// Whether this is a history pseudo-state, `history` or `deepHistory`: never active, and
+    /// never one of its parent's children in the sense of `spec/execution.md`.
+    pub fn is_history(self) -> bool {
+        matches!(self, StateKind::History | StateKind::DeepHistory)
+    }
 }
 
 /// A state.

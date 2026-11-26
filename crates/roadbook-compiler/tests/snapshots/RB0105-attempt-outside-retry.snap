@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0105]: unknown variable `n` in machine `M`
+  --> RB0105-attempt-outside-retry.road:10:27
+   |
+10 |       fail Busy -> B  set n = attempt
+   |                           ^
+   |
+   = help: declare it in the machine body: `var n: <type>`
+
+error[RB0105]: unknown variable `attempt` in machine `M`
+  --> RB0105-attempt-outside-retry.road:10:31
+   |
+10 |       fail Busy -> B  set n = attempt
+   |                               ^^^^^^^
+   |
+   = help: `attempt` counts failed attempts only in a retry's delay: `invoke f() retry 3 after backoff(attempt) { … }`

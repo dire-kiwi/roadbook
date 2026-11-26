@@ -371,7 +371,10 @@ impl Formatter<'_> {
     fn fields(fields: &[Field]) -> Vec<(Span, String)> {
         fields
             .iter()
-            .map(|f| (f.span, format!("{}: {}", f.name.name, ty(&f.ty))))
+            .map(|f| {
+                let sensitive = if f.sensitive { "sensitive " } else { "" };
+                (f.span, format!("{sensitive}{}: {}", f.name.name, ty(&f.ty)))
+            })
             .collect()
     }
 
@@ -529,7 +532,14 @@ impl Formatter<'_> {
                 self.row(
                     whole,
                     indent,
-                    vec![format!("var {}:", v.name.name), t],
+                    vec![
+                        format!(
+                            "{}var {}:",
+                            if v.sensitive { "sensitive " } else { "" },
+                            v.name.name
+                        ),
+                        t,
+                    ],
                     "",
                     Some(Group::Var),
                 );
@@ -560,10 +570,17 @@ impl Formatter<'_> {
                     args_end = a.span.end.offset;
                 }
                 let rparen = self.find(args_end, Punct::RParen);
-                let open = self.find(rparen.span.end.offset, Punct::LBrace);
+                let head_end = inv
+                    .retry
+                    .as_ref()
+                    .map_or(rparen.span.end.offset, |r| r.span.end.offset);
+                let open = self.find(head_end, Punct::LBrace);
                 let mut head = format!("invoke {}({})", inv.callee.name, exprs(&inv.args));
                 if let Some(a) = &inv.alias {
                     head += &format!(" as {}", a.name);
+                }
+                if let Some(r) = &inv.retry {
+                    head += &retry_text(r);
                 }
                 self.row(
                     (whole.0, open.span.end.offset),
@@ -579,6 +596,16 @@ impl Formatter<'_> {
                 self.close_block((whole.1 - 1, whole.1), indent, "}".into(), None);
             }
             Item::Transition(t) => self.transition(t, indent),
+            Item::History(h) => {
+                let kw = if h.deep { "deep history" } else { "history" };
+                self.row(
+                    whole,
+                    indent,
+                    vec![format!("{kw} {}", h.name.name)],
+                    "",
+                    None,
+                );
+            }
             _ => {
                 let text = inline_item(item).expect("every other item is one line");
                 self.row(whole, indent, vec![text], "", None);
@@ -672,7 +699,8 @@ fn state_prefix(kind: StateKind) -> &'static str {
     }
 }
 
-/// The text of an item that fits on one line, or `None` for states, invokes and branch blocks.
+/// The text of an item that fits on one line, or `None` for states, invokes, branch blocks
+/// and history states, which keep a line of their own.
 fn inline_item(item: &Item) -> Option<String> {
     Some(match item {
         Item::Initial(n) => format!("initial {}", n.name),
@@ -697,6 +725,7 @@ fn inline_item(item: &Item) -> Option<String> {
         | Item::Emits(_)
         | Item::State(_)
         | Item::Invoke(_)
+        | Item::History(_)
         | Item::Transition(_) => {
             return None;
         }
@@ -726,6 +755,21 @@ fn trigger(t: &Trigger) -> String {
         Trigger::Done => "done".into(),
         Trigger::Fail(p) => format!("fail {}", pattern(p)),
     }
+}
+
+/// ` retry N [on E | F] [after delay]`, with a leading space.
+fn retry_text(r: &Retry) -> String {
+    let mut text = format!(" retry {}", r.count);
+    if !r.errors.is_empty() {
+        let names: Vec<&str> = r.errors.iter().map(|e| e.name.as_str()).collect();
+        text += &format!(" on {}", names.join(" | "));
+    }
+    match &r.delay {
+        Some(e) if bare_record(e) => text += &format!(" after ({})", expr(e)),
+        Some(e) => text += &format!(" after {}", expr(e)),
+        None => {}
+    }
+    text
 }
 
 /// Whether an `after` delay has a record value outside any parentheses, which would read as

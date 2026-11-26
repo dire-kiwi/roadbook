@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/pair.road",
@@ -14,6 +14,7 @@
         {
           "name": "peer",
           "type": "ref Receiver",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -203,6 +204,7 @@
         {
           "name": "peer",
           "type": "ref Receiver",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -212,6 +214,7 @@
         {
           "name": "target",
           "type": "ref Receiver",
+          "sensitive": false,
           "init": {
             "kind": "ref",
             "path": [

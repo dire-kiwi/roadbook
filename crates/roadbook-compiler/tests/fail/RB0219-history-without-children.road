@@ -1,0 +1,16 @@
+machine M() {
+  event Go
+  initial A
+  state A {
+    history H
+    on Go -> A.H
+  }
+  state B {
+    initial C
+    state C { on Go -> B.Back }
+    deep history Back
+  }
+  final state D {}
+}
+
+// expect: RB0219 at 5:5

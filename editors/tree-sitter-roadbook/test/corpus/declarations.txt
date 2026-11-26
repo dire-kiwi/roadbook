@@ -241,3 +241,58 @@ type T { from: string, as: int, ref: bool, string: json, result: int }
       (field_declaration
         (identifier)
         (builtin_type)))))
+
+================================================================================
+Sensitive fields, parameters and variables, and `sensitive` as a name
+================================================================================
+
+type Login { user: string, sensitive password: string, sensitive: bool }
+task check(sensitive pin: int) -> bool
+machine M(sensitive key: string) {
+  /// The session.
+  sensitive var token: string = key
+  var sensitive: int = 0
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (type_declaration
+    name: (type_identifier)
+    fields: (fields
+      (field_declaration
+        name: (identifier)
+        type: (builtin_type))
+      (field_declaration
+        (sensitive)
+        name: (identifier)
+        type: (builtin_type))
+      (field_declaration
+        name: (identifier)
+        type: (builtin_type))))
+  (task_declaration
+    name: (identifier)
+    parameters: (parameters
+      (parameter
+        (sensitive)
+        name: (identifier)
+        type: (builtin_type)))
+    return_type: (builtin_type))
+  (machine_declaration
+    name: (type_identifier)
+    parameters: (parameters
+      (parameter
+        (sensitive)
+        name: (identifier)
+        type: (builtin_type)))
+    body: (machine_body
+      (doc_comment)
+      (variable_declaration
+        (sensitive)
+        name: (identifier)
+        type: (builtin_type)
+        value: (identifier))
+      (variable_declaration
+        name: (identifier)
+        type: (builtin_type)
+        value: (integer)))))

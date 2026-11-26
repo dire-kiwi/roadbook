@@ -9,6 +9,7 @@ import type { Address, Effect, EventDecl, Ir, State, TaskDecl, Machine } from '.
 import { own } from './ir.ts'
 import {
   baseType,
+  childStates,
   effectEvent,
   effectText,
   eventDecl,
@@ -16,9 +17,13 @@ import {
   eventKey,
   findState,
   guardText,
+  historyText,
   invokeText,
+  isHistory,
+  kindText,
   messageSites,
   paramsText,
+  parentState,
   signatureText,
   sourceText,
   talks,
@@ -52,6 +57,13 @@ const docHtml = (doc: string) => (doc ? `<p class="rb-doc">${esc(doc).replace(/\
 
 function shortId(ctx: PanelContext, id: string): string {
   return id.slice(ctx.machine.length + 1) || id
+}
+
+/** A transition's target as the panel names it: `Processing.Paying`, `Working.Previous (history)`. */
+function targetText(ctx: PanelContext, id: string): string {
+  const m = own(ctx.ir.machines, ctx.machine)
+  const s = m && findState(m, id)
+  return shortId(ctx, id) + (s && isHistory(s) ? ` (${kindText(s)})` : '')
 }
 
 function stateLink(ctx: PanelContext, id: string, label?: string): string {
@@ -125,7 +137,7 @@ function transitionSummary(ctx: PanelContext, state: State, index: number, withS
   const g = guardText(state, index)
   const kind = triggerKind(t.trigger)
   const cls = kind === 'done' ? 'rb-t-done' : kind === 'fail' ? 'rb-t-fail' : ''
-  const target = t.target ? shortId(ctx, t.target) : 'stays (internal)'
+  const target = t.target ? targetText(ctx, t.target) : 'stays (internal)'
   return (
     `<button class="rb-tlink" type="button" data-select-transition="${esc(JSON.stringify([state.id, index]))}">` +
     (withSource ? `<span class="rb-arrow-text">${esc(shortId(ctx, state.id))}: </span>` : '') +
@@ -207,7 +219,7 @@ export function machinePanel(ctx: PanelContext): string {
   const { ir } = ctx
   const m = own(ir.machines, ctx.machine)!
   const tree = (s: State): string =>
-    `<li>${stateLink(ctx, s.id, s.name)} <span class="rb-chip">${s.kind}${ctx.collapsed.has(s.id) ? ', collapsed' : ''}</span>${s.states.length ? `<ul>${s.states.map(tree).join('')}</ul>` : ''}</li>`
+    `<li>${stateLink(ctx, s.id, s.name)} <span class="rb-chip">${esc(kindText(s))}${ctx.collapsed.has(s.id) ? ', collapsed' : ''}</span>${s.states.length ? `<ul>${s.states.map(tree).join('')}</ul>` : ''}</li>`
   const callers = callersOf(ir, ctx.machine).map(([name, id]) => `<button class="rb-link rb-mono" type="button" data-open-machine="${esc(name)}">${esc(id)}</button>`)
   return (
     head(esc(ctx.machine), 'machine', false) +
@@ -216,7 +228,7 @@ export function machinePanel(ctx: PanelContext): string {
     section('Signature', code(signatureText('machine', ctx.machine, m)) + signatureKv(ir, m)) +
     section(
       'Variables',
-      list(m.vars.map((v) => `${esc(v.name)}: ${typeHtml(ir, v.type)}${v.init ? ` = ${esc(v.init.text)}` : ' <span class="rb-note">(assigned later)</span>'}${v.doc ? `<span class="rb-sub rb-note">${esc(v.doc)}</span>` : ''}`)),
+      list(m.vars.map((v) => `${v.sensitive ? 'sensitive ' : ''}${esc(v.name)}: ${typeHtml(ir, v.type)}${v.init ? ` = ${esc(v.init.text)}` : ' <span class="rb-note">(assigned later)</span>'}${v.doc ? `<span class="rb-sub rb-note">${esc(v.doc)}</span>` : ''}`)),
     ) +
     section('Events it accepts', eventItems(ctx.machine, m.events)) +
     section('Events it emits', eventItems(ctx.machine, m.emits)) +
@@ -229,9 +241,31 @@ export function machinePanel(ctx: PanelContext): string {
   )
 }
 
+/** A history state: what entering it does, its parent, and the transitions that target it. */
+export function historyPanel(ctx: PanelContext, state: State): string {
+  const { ir } = ctx
+  const m = own(ir.machines, ctx.machine)!
+  const parent = parentState(m, state.id)
+  let incoming = ''
+  walkStates(m.root, (s) => {
+    s.transitions.forEach((t, i) => {
+      if (t.target === state.id) incoming += transitionSummary(ctx, s, i, true)
+    })
+  })
+  return (
+    head(esc(state.name), `${kindText(state)} state`, true) +
+    `<p class="rb-path">${esc(state.id)} · ${esc(sourceText(ir, state.span))}</p>` +
+    docHtml(state.doc) +
+    section('What it does', parent ? `<p>${esc(historyText(state, parent))}</p><p class="rb-empty">A history state is never active: a transition to it enters those states instead.</p>` : '') +
+    section('History of', parent ? stateLink(ctx, parent.id) : '') +
+    section('Transitions in', incoming || '<p class="rb-empty">None: no transition targets it.</p>')
+  )
+}
+
 export function statePanel(ctx: PanelContext, state: State): string {
   const { ir } = ctx
   const m = own(ir.machines, ctx.machine)!
+  if (isHistory(state)) return historyPanel(ctx, state)
   const parents: State[] = []
   let incoming = ''
   walkStates(m.root, (s) => {
@@ -253,7 +287,9 @@ export function statePanel(ctx: PanelContext, state: State): string {
   const toggle = state.states.length
     ? `<p><button class="rb-btn" type="button" data-toggle="${esc(state.id)}">${collapsed ? 'Expand' : 'Collapse'} ${esc(state.name)}</button></p>`
     : ''
-  const children = state.states.length ? list(state.states.map((c) => `${stateLink(ctx, c.id, c.name)} <span class="rb-chip">${c.kind}</span>`)) : ''
+  const chip = (c: State) => `${stateLink(ctx, c.id, c.name)} <span class="rb-chip">${esc(kindText(c))}</span>`
+  const children = list(childStates(state).map(chip))
+  const histories = list(state.states.filter(isHistory).map(chip))
   return (
     head(esc(state.name), `${state.kind} state${isInitial ? ', initial' : ''}${collapsed ? ', collapsed' : ''}`, true) +
     `<p class="rb-path">${esc(state.id)} · ${esc(sourceText(ir, state.span))}</p>` +
@@ -263,6 +299,7 @@ export function statePanel(ctx: PanelContext, state: State): string {
     invokeSection(ctx, state) +
     section('Starts in', state.initial ? stateLink(ctx, state.initial) : '') +
     section(state.kind === 'parallel' ? 'Regions' : 'States inside', children) +
+    section('History states', histories) +
     section('On entry', list(state.entry.map((e) => effectHtml(ctx, e)))) +
     section('On exit', list(state.exit.map((e) => effectHtml(ctx, e)))) +
     section('Transitions out', out || (state.kind === 'final' ? '<p class="rb-empty">None: this state ends its parent.</p>' : '<p class="rb-empty">None.</p>')) +
@@ -331,6 +368,8 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
   const branchNote =
     group.length > 1 ? `<p class="rb-empty">Branch ${pos} of ${group.length} for <code>${esc(triggerSource(t.trigger))}</code>; branches are tried in order.</p>` : ''
   const title = `${esc(short)} <span class="rb-arrow-text">→</span> ${t.target ? esc(shortId(ctx, t.target)) : '(stays)'}`
+  const target = t.target ? findState(m, t.target) : null
+  const targetParent = target && isHistory(target) ? parentState(m, target.id) : null
   return (
     head(title, 'transition', true) +
     `<p class="rb-path">${esc(sourceText(ir, t.span))}</p>` +
@@ -341,7 +380,9 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
     section(
       'To',
       t.target
-        ? stateLink(ctx, t.target) + (t.target === state.id ? '<p class="rb-empty">The state is left and entered again: its exit and entry effects run.</p>' : '')
+        ? stateLink(ctx, t.target) +
+            (t.target === state.id ? '<p class="rb-empty">The state is left and entered again: its exit and entry effects run.</p>' : '') +
+            (target && targetParent ? `<p class="rb-empty">A ${esc(kindText(target))} state. ${esc(historyText(target, targetParent))}</p>` : '')
         : '<p class="rb-empty">Internal: the state is not left, so no exit or entry effects run.</p>',
     ) +
     extra
@@ -396,7 +437,7 @@ export function eventPanel(ctx: PanelContext, name: string): string {
         ? `${esc(ctx.machine)} emits it to the machine that invoked it and to every machine holding a ref to it.`
         : `${esc(ctx.machine)} accepts it: another machine sends it with <code>send name.${esc(name)}</code>, or host code through the machine's handle.`
     }</p>`) +
-    section('Fields', list(decl.fields.map((f) => `${esc(f.name)}: ${esc(f.type)}${f.doc ? `<span class="rb-sub rb-note">${esc(f.doc)}</span>` : ''}`))) +
+    section('Fields', list(decl.fields.map((f) => `${f.sensitive ? 'sensitive ' : ''}${esc(f.name)}: ${esc(f.type)}${f.doc ? `<span class="rb-sub rb-note">${esc(f.doc)}</span>` : ''}`))) +
     body
   )
 }

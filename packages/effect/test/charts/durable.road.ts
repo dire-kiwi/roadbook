@@ -36,7 +36,7 @@ export interface PipelineDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable.road",
@@ -76,6 +76,7 @@ const ir: unknown = {
         {
           "name": "text",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -95,6 +96,7 @@ const ir: unknown = {
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -124,6 +126,7 @@ const ir: unknown = {
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -133,6 +136,7 @@ const ir: unknown = {
         {
           "name": "total",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -155,6 +159,7 @@ const ir: unknown = {
             {
               "name": "by",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -610,6 +615,7 @@ const ir: unknown = {
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -619,6 +625,7 @@ const ir: unknown = {
         {
           "name": "total",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -641,6 +648,7 @@ const ir: unknown = {
             {
               "name": "by",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -956,6 +964,7 @@ const ir: unknown = {
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -978,6 +987,7 @@ const ir: unknown = {
             {
               "name": "by",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1008,6 +1018,7 @@ const ir: unknown = {
             {
               "name": "n",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1187,11 +1198,13 @@ const ir: unknown = {
         {
           "name": "counter",
           "type": "ref Counter",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "goal",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],

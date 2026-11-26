@@ -46,7 +46,7 @@ export interface CheckoutDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "examples/shop/checkout.road",
@@ -64,11 +64,13 @@ const ir: unknown = {
         {
           "name": "sku",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "qty",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -87,11 +89,13 @@ const ir: unknown = {
         {
           "name": "items",
           "type": "LineItem[]",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "coupon",
           "type": "string?",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -110,16 +114,19 @@ const ir: unknown = {
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "items",
           "type": "LineItem[]",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "totalCents",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -138,11 +145,13 @@ const ir: unknown = {
         {
           "name": "chargeId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "amountCents",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -161,11 +170,13 @@ const ir: unknown = {
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "role",
           "type": "Role",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -199,11 +210,13 @@ const ir: unknown = {
         {
           "name": "status",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "body",
           "type": "json",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -234,6 +247,7 @@ const ir: unknown = {
         {
           "name": "issues",
           "type": "string[]",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -252,6 +266,7 @@ const ir: unknown = {
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -283,6 +298,7 @@ const ir: unknown = {
         {
           "name": "attempt",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -301,11 +317,13 @@ const ir: unknown = {
         {
           "name": "order",
           "type": "Order",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "receipt",
           "type": "Receipt",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -324,6 +342,7 @@ const ir: unknown = {
         {
           "name": "issues",
           "type": "string[]",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -342,11 +361,13 @@ const ir: unknown = {
         {
           "name": "status",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "code",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -367,16 +388,19 @@ const ir: unknown = {
         {
           "name": "user",
           "type": "User",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "order",
           "type": "Order",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "receipt",
           "type": "Receipt",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -394,11 +418,13 @@ const ir: unknown = {
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "order",
           "type": "Order",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -418,6 +444,7 @@ const ir: unknown = {
         {
           "name": "token",
           "type": "string",
+          "sensitive": true,
           "doc": ""
         }
       ],
@@ -431,7 +458,7 @@ const ir: unknown = {
         "line": 19,
         "col": 1,
         "endLine": 19,
-        "endCol": 71
+        "endCol": 72
       }
     },
     "validateOrder": {
@@ -439,6 +466,7 @@ const ir: unknown = {
         {
           "name": "draft",
           "type": "OrderDraft",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -452,7 +480,7 @@ const ir: unknown = {
         "line": 20,
         "col": 1,
         "endLine": 20,
-        "endCol": 72
+        "endCol": 73
       }
     },
     "priceOrder": {
@@ -460,11 +488,13 @@ const ir: unknown = {
         {
           "name": "order",
           "type": "Order",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "user",
           "type": "User",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -476,7 +506,7 @@ const ir: unknown = {
         "line": 21,
         "col": 1,
         "endLine": 21,
-        "endCol": 51
+        "endCol": 52
       }
     },
     "chargeCard": {
@@ -484,11 +514,13 @@ const ir: unknown = {
         {
           "name": "order",
           "type": "Order",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "user",
           "type": "User",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -503,7 +535,7 @@ const ir: unknown = {
         "line": 22,
         "col": 1,
         "endLine": 22,
-        "endCol": 89
+        "endCol": 90
       }
     }
   },
@@ -521,11 +553,13 @@ const ir: unknown = {
         {
           "name": "order",
           "type": "Order",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "user",
           "type": "User",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -538,6 +572,7 @@ const ir: unknown = {
         {
           "name": "attempts",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -556,6 +591,7 @@ const ir: unknown = {
         {
           "name": "receipt",
           "type": "Receipt",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -569,6 +605,7 @@ const ir: unknown = {
         {
           "name": "declined",
           "type": "CardDeclined",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {

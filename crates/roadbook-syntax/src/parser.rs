@@ -133,7 +133,11 @@ impl Parser<'_> {
     }
 
     fn nth(&self, n: usize) -> T {
-        self.tokens[(self.pos + n).min(self.tokens.len() - 1)].kind
+        self.nth_tok(n).kind
+    }
+
+    fn nth_tok(&self, n: usize) -> Token {
+        self.tokens[(self.pos + n).min(self.tokens.len() - 1)]
     }
 
     fn bump(&mut self) -> Token {
@@ -334,6 +338,12 @@ impl Parser<'_> {
     }
 
     /// A variable or parameter name: lower-case, and not the implicit name `result`.
+    /// Whether the current token is the word `sensitive` used as a modifier: followed by
+    /// `next` (a field or parameter name, or `var`).
+    fn at_sensitive(&self, next: T) -> bool {
+        self.at(T::Lower) && self.text(self.tok()) == "sensitive" && self.nth(1) == next
+    }
+
     fn binding(&mut self, what: &str) -> PResult<Ident> {
         let id = self.lower(what)?;
         if id.name == "result" {
@@ -392,7 +402,7 @@ impl Parser<'_> {
                 };
                 self.diags.push(
                     Diagnostic::error(codes::DOC_COMMENT_DOCUMENTS_NOTHING, c.span, "this doc comment does not document anything")
-                        .with_help("`///` documents the declaration, machine, state, event or variable that follows it; use `//` for other comments")
+                        .with_help("`///` documents the declaration, machine, state, history state, event or variable that follows it; use `//` for other comments")
                         .with_fix("make it a plain comment", slashes, "//"),
                 );
             }
@@ -679,6 +689,11 @@ impl Parser<'_> {
     }
 
     fn field(&mut self, param: bool) -> PResult<Field> {
+        let start = self.tok().span;
+        let sensitive = self.at_sensitive(T::Lower);
+        if sensitive {
+            self.bump();
+        }
         let name = if param {
             self.binding("a parameter name")?
         } else {
@@ -687,7 +702,8 @@ impl Parser<'_> {
         self.expect_p(P::Colon, &format!(" and a type after `{}`", name.name))?;
         let ty = self.type_ref()?;
         Ok(Field {
-            span: name.span.to(ty.span),
+            span: start.to(ty.span),
+            sensitive,
             name,
             ty,
         })
@@ -793,14 +809,33 @@ impl Parser<'_> {
     /// One body item. `Ok(None)` is a well-formed item in the wrong kind of body, reported and
     /// left out of the tree.
     fn item(&mut self, kind: BodyKind) -> PResult<Option<Item>> {
-        let t = self.tok();
+        if let Some(deep) = self.at_history() {
+            let h = self.history(deep)?;
+            if kind == BodyKind::Machine {
+                let word = if deep { "deep history" } else { "history" };
+                let d = Diagnostic::error(
+                    codes::NOT_IN_MACHINE_BODY,
+                    h.span,
+                    format!("`{word}` is only allowed in a state with child states, not directly in a machine body"),
+                )
+                .with_help("the machine is never left, so it has nothing to return to; put the history state in the state it returns to");
+                self.error(d);
+                return Ok(None);
+            }
+            return Ok(Some(Item::History(h)));
+        }
+        let mut t = self.tok();
+        // `sensitive var`: `sensitive` is not reserved, so it is a modifier only here.
+        if self.at_sensitive(T::Keyword(K::Var)) {
+            t = self.nth_tok(1);
+        }
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
                     "a machine item (`var`, `event`, `emits`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`) or `}`"
                 }
                 BodyKind::State => {
-                    "a state item (`initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
+                    "a state item (`initial`, `state`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
                 }
             };
             return Err(self.unexpected(expected));
@@ -929,9 +964,45 @@ impl Parser<'_> {
         Ok(Some(item))
     }
 
-    fn var(&mut self) -> PResult<Var> {
+    /// `Some(deep)` at the start of `history Name` or `deep history`. Both words are
+    /// contextual: no name can start an item, so they are not reserved.
+    fn at_history(&self) -> Option<bool> {
+        if !self.at(T::Lower) {
+            return None;
+        }
+        match self.text(self.tok()) {
+            "history" if self.nth(1) == T::Upper => Some(false),
+            "deep" if matches!(self.nth(1), T::Lower | T::Upper) => Some(true),
+            _ => None,
+        }
+    }
+
+    fn history(&mut self, deep: bool) -> PResult<History> {
         let doc = self.take_doc();
         let start = self.bump().span;
+        if deep {
+            if !(self.at(T::Lower) && self.text(self.tok()) == "history") {
+                return Err(self.unexpected("`history` after `deep`"));
+            }
+            self.bump();
+        }
+        let name = self.upper("the name of the history state")?;
+        Ok(History {
+            doc,
+            deep,
+            name,
+            span: self.since(start),
+        })
+    }
+
+    fn var(&mut self) -> PResult<Var> {
+        let doc = self.take_doc();
+        let start = self.tok().span;
+        let sensitive = self.at_sensitive(T::Keyword(K::Var));
+        if sensitive {
+            self.bump();
+        }
+        self.bump();
         let name = self.binding("a variable name")?;
         self.expect_p(P::Colon, &format!(" and a type after `var {}`", name.name))?;
         let ty = self.type_ref()?;
@@ -942,6 +1013,7 @@ impl Parser<'_> {
         };
         Ok(Var {
             doc,
+            sensitive,
             name,
             ty,
             init,
@@ -1263,6 +1335,11 @@ impl Parser<'_> {
         } else {
             None
         };
+        let retry = if self.at(T::Lower) && self.text(self.tok()) == "retry" {
+            Some(self.retry()?)
+        } else {
+            None
+        };
         let open = self.expect_p(P::LBrace, " and the invoke's outcomes (`done`, `fail`)")?;
         let mut outcomes = Vec::new();
         let errors_before = self.diags.len();
@@ -1298,7 +1375,39 @@ impl Parser<'_> {
             callee,
             args,
             alias,
+            retry,
             outcomes,
+            span: self.since(start),
+        })
+    }
+
+    /// `retry N [on E | …] [after delay]`, at `retry`.
+    fn retry(&mut self) -> PResult<Retry> {
+        let start = self.bump().span;
+        if !self.at(T::Int) {
+            return Err(self.unexpected("the number of retries after `retry`"));
+        }
+        let t = self.bump();
+        let count = self.text(t).parse().unwrap_or(i64::MAX);
+        let mut errors = Vec::new();
+        if self.eat_kw(K::On).is_some() {
+            errors.push(self.upper("an error name")?);
+            while self.eat_p(P::Pipe).is_some() {
+                errors.push(self.upper("an error name")?);
+            }
+        }
+        let delay = if self.eat_kw(K::After).is_some() {
+            let delay = self.expr(true)?;
+            self.check_record_after(&delay)?;
+            Some(delay)
+        } else {
+            None
+        };
+        Ok(Retry {
+            count,
+            count_span: t.span,
+            errors,
+            delay,
             span: self.since(start),
         })
     }

@@ -43,6 +43,22 @@ fn each_syntax_error_has_its_code() {
             s("    invoke U() as Up {\n      done -> S\n    }"),
             "RB0012",
         ),
+        (
+            s("    invoke f() retry {\n      done -> S\n    }"),
+            "RB0010",
+        ),
+        (
+            s("    invoke f() retry 2 on {\n      done -> S\n    }"),
+            "RB0010",
+        ),
+        (
+            s("    invoke f() retry 2 after Cfg { ms: 5 } {\n      done -> S\n    }"),
+            "RB0018",
+        ),
+        (
+            s("    invoke f() retry 2 on busy {\n      done -> S\n    }"),
+            "RB0012",
+        ),
         (m("  var send: int"), "RB0013"),
         (m("  var emits: int"), "RB0013"),
         (
@@ -63,6 +79,10 @@ fn each_syntax_error_has_its_code() {
         (m("  done -> A"), "RB0014"),
         (m("  invoke t() { done -> A }"), "RB0014"),
         (m("  output 1"), "RB0014"),
+        (m("  history H"), "RB0014"),
+        (m("  deep history H"), "RB0014"),
+        (s("    deep H"), "RB0010"),
+        (s("    deep history h"), "RB0012"),
         (s("    var x: int"), "RB0015"),
         (s("    event Go"), "RB0015"),
         (s("    emits Go"), "RB0015"),

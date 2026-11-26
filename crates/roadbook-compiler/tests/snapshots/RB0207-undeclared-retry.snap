@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0207]: `ping` does not declare the error `Bsy`, so it cannot be retried
+ --> RB0207-undeclared-retry.road:9:30
+  |
+9 |     invoke ping() retry 2 on Bsy | Timeout {
+  |                              ^^^
+  |
+  = help: did you mean `Busy`?
+
+error[RB0207]: `ping` does not declare the error `Timeout`, so it cannot be retried
+ --> RB0207-undeclared-retry.road:9:36
+  |
+9 |     invoke ping() retry 2 on Bsy | Timeout {
+  |                                    ^^^^^^^
+  |
+  = help: retry only errors the task or machine declares

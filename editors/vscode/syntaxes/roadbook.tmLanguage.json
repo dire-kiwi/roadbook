@@ -102,6 +102,7 @@
           "endCaptures": { "0": { "name": "punctuation.definition.parameters.end.roadbook" } },
           "patterns": [
             { "include": "#comments" },
+            { "include": "#sensitive" },
             {
               "match": "\\b([a-z][A-Za-z0-9]*)\\s*(:)",
               "captures": {
@@ -158,10 +159,11 @@
           }
         },
         {
-          "match": "\\b(var)\\s+([a-z][A-Za-z0-9]*)",
+          "match": "\\b(?:(sensitive)\\s+)?(var)\\s+([a-z][A-Za-z0-9]*)",
           "captures": {
-            "1": { "name": "storage.type.var.roadbook" },
-            "2": { "name": "variable.other.definition.roadbook" }
+            "1": { "name": "storage.modifier.sensitive.roadbook" },
+            "2": { "name": "storage.type.var.roadbook" },
+            "3": { "name": "variable.other.definition.roadbook" }
           }
         },
         {
@@ -169,6 +171,14 @@
           "captures": {
             "1": { "name": "storage.modifier.$1.roadbook" },
             "2": { "name": "storage.type.state.roadbook" },
+            "3": { "name": "entity.name.type.state.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(?:(deep)\\s+)?(history)\\s+([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "storage.modifier.deep.roadbook" },
+            "2": { "name": "storage.type.history.roadbook" },
             "3": { "name": "entity.name.type.state.roadbook" }
           }
         },
@@ -225,6 +235,20 @@
             "1": { "name": "keyword.control.as.roadbook" },
             "2": { "name": "variable.other.definition.roadbook" }
           }
+        },
+        {
+          "match": "\\b(retry)\\s+([0-9]+)(?:\\s+(on)\\s+([A-Z][A-Za-z0-9]*(?:\\s*\\|\\s*[A-Z][A-Za-z0-9]*)*))?",
+          "captures": {
+            "1": { "name": "keyword.control.retry.roadbook" },
+            "2": { "name": "constant.numeric.integer.roadbook" },
+            "3": { "name": "keyword.control.on.roadbook" },
+            "4": {
+              "patterns": [
+                { "match": "[A-Z][A-Za-z0-9]*", "name": "entity.name.type.error.roadbook" },
+                { "match": "\\|", "name": "keyword.operator.error.roadbook" }
+              ]
+            }
+          }
         }
       ]
     },
@@ -237,8 +261,15 @@
       }
     },
 
+    "sensitive": {
+      "comment": "`sensitive` is not reserved: it is a modifier only before a field or parameter name and its `:`, or before `var`.",
+      "match": "\\bsensitive(?=\\s+(?:var\\b|[a-z][A-Za-z0-9]*\\s*:))",
+      "name": "storage.modifier.sensitive.roadbook"
+    },
+
     "keywords": {
       "patterns": [
+        { "include": "#sensitive" },
         {
           "match": "\\b(initial|entry|exit|on|after|always|done|invoke|output|fail|if|else)\\b",
           "name": "keyword.control.$1.roadbook"

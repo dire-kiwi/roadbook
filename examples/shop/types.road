@@ -16,10 +16,10 @@ error CardDeclined       { reason: string }
 error GatewayUnavailable
 
 // Tasks: effectful, fallible, cancellable. Implemented in Rust / TypeScript.
-task authenticate(token: string)          -> User    ! Unauthenticated
-task validateOrder(draft: OrderDraft)     -> Order   ! ValidationFailed
-task priceOrder(order: Order, user: User) -> Order
-task chargeCard(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUnavailable
+task authenticate(sensitive token: string) -> User    ! Unauthenticated
+task validateOrder(draft: OrderDraft)      -> Order   ! ValidationFailed
+task priceOrder(order: Order, user: User)  -> Order
+task chargeCard(order: Order, user: User)  -> Receipt ! CardDeclined | GatewayUnavailable
 
 // Actions: effectful, cannot fail, awaited in order.
 action sendConfirmationEmail(user: User, order: Order, receipt: Receipt)

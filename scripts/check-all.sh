@@ -91,8 +91,9 @@ for (const c of durable) {
     failed = true
   }
 }
-if (durable.length < 46) {
-  console.error(`the durable driver ran only ${durable.length} cases`)
+const withoutSuspend = cases.filter((c) => !fs.readFileSync(path.join(dir, c, "case.json"), "utf8").includes('"suspend"'))
+if (durable.length !== withoutSuspend.length) {
+  console.error(`the durable driver ran ${durable.length} cases, not the ${withoutSuspend.length} without suspend steps`)
   failed = true
 }
 console.log(`identical traces from the durable driver for its ${durable.length} cases`)
@@ -110,7 +111,7 @@ step "Editors: the tree-sitter grammar (generated parser, corpus, every chart, q
 if command -v tree-sitter >/dev/null; then
   editors/tree-sitter-roadbook/check.sh
 else
-  echo "skipped: the tree-sitter CLI is not installed (npm install -g tree-sitter-cli@0.26)"
+  echo "skipped: the tree-sitter CLI is not installed (npm install -g tree-sitter-cli@0.26.9)"
 fi
 
 printf '\nAll checks passed.\n'

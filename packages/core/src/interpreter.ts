@@ -4,15 +4,18 @@
  */
 import {
   type Address,
+  childrenOf,
   type Effect,
   type Expr,
   getMachine,
   type Ir,
+  isHistory,
   type Machine,
   type State,
   type Transition
 } from "./ir.ts"
 import type { Json } from "./json.ts"
+import { redactor } from "./redact.ts"
 import type {
   Command,
   CoreRecord,
@@ -58,11 +61,12 @@ export const start = (
     nextInvoke: 1,
     nextTimer: 1,
     nextMessage: 1,
+    history: {},
     result: null
   }
   const started: Command = {
     kind: "trace",
-    record: { kind: "started", machine: name, ir: index.machine.hash, input }
+    record: redactor(ir).record(index.machine, { kind: "started", machine: name, ir: index.machine.hash, input })
   }
   const macro = new Macrostep(ir, index, initial, fns)
   macro.commands.push(started)
@@ -137,11 +141,19 @@ export const restore = (
     nextInvoke: saved.nextInvoke,
     nextTimer: saved.nextTimer,
     nextMessage: saved.nextMessage,
+    // A version 1 snapshot, written before history states, has none.
+    history: saved.history ?? {},
     result: saved.result
   }
   const restored: Command = {
     kind: "trace",
-    record: { kind: "restored", machine: saved.machine, ir: index.machine.hash, migrated, snapshot: saved }
+    record: redactor(ir).record(index.machine, {
+      kind: "restored",
+      machine: saved.machine,
+      ir: index.machine.hash,
+      migrated,
+      snapshot: saved
+    })
   }
   try {
     const macro = new Macrostep(ir, index, snapshot, fns)
@@ -197,7 +209,7 @@ class MachineIndex {
       const child = this.state(state.initial)
       return [child, ...this.defaultEntry(child)]
     }
-    if (state.kind === "parallel") return state.states.flatMap((child) => [child, ...this.defaultEntry(child)])
+    if (state.kind === "parallel") return childrenOf(state).flatMap((child) => [child, ...this.defaultEntry(child)])
     return []
   }
 
@@ -267,6 +279,7 @@ class Macrostep {
   nextInvoke: number
   nextTimer: number
   nextMessage: number
+  history: Record<string, ReadonlyArray<string>>
   result: RunResult | null
   readonly commands: Array<Command> = []
   /** The states entered during this macrostep. */
@@ -292,6 +305,7 @@ class Macrostep {
     this.nextInvoke = snapshot.nextInvoke
     this.nextTimer = snapshot.nextTimer
     this.nextMessage = snapshot.nextMessage
+    this.history = { ...snapshot.history }
     this.result = snapshot.result
   }
 
@@ -311,34 +325,45 @@ class Macrostep {
         nextInvoke: this.nextInvoke,
         nextTimer: this.nextTimer,
         nextMessage: this.nextMessage,
+        history: this.history,
         result: this.result
       },
       commands: this.commands
     }
   }
 
+  /**
+   * Emit a trace record, redacted (`spec/trace.md#redaction`). An `event`, `dropped` or `stale`
+   * record holds an input {@link Macrostep.take} has already redacted.
+   */
   private trace(record: CoreRecord) {
-    this.commands.push({ kind: "trace", record })
+    const r = redactor(this.ir)
+    this.commands.push({ kind: "trace", record: r.active ? r.record(this.index.machine, record) : record })
   }
 
   take(input: Exclude<Input, { readonly kind: "defect" }>) {
+    // The input as its record shows it, redacted while the invoke it may be the outcome of is
+    // still in the snapshot.
+    if (input.kind === "cancel") {
+      this.cancelRun()
+      return
+    }
+    const r = redactor(this.ir)
+    const shown = r.active ? r.input(this.index.machine, this.invokes, input) : input
     let selected: ReadonlyArray<Selected> = []
     let bindings: Bindings = NO_BINDINGS
     switch (input.kind) {
-      case "cancel":
-        this.cancelRun()
-        return
       case "invoke.done":
       case "invoke.fail":
       case "invoke.defect": {
         const inv = this.invokes.find((i) => i.id === input.invoke)
         if (inv === undefined) {
-          this.trace({ kind: "stale", event: input })
+          this.trace({ kind: "stale", event: shown })
           return
         }
         this.invokes = this.invokes.filter((i) => i !== inv)
         if (input.kind === "invoke.defect") {
-          this.trace({ kind: "event", event: input })
+          this.trace({ kind: "event", event: shown })
           this.failWithDefect(input.defect)
           return
         }
@@ -357,7 +382,7 @@ class Macrostep {
       case "after": {
         const tm = this.timers.find((t) => t.id === input.timer)
         if (tm === undefined) {
-          this.trace({ kind: "stale", event: input })
+          this.trace({ kind: "stale", event: shown })
           return
         }
         this.timers = this.timers.filter((t) => t !== tm)
@@ -371,7 +396,7 @@ class Macrostep {
         break
       case "emitted": {
         if (input.invoke !== null && !this.invokes.some((i) => i.id === input.invoke)) {
-          this.trace({ kind: "stale", event: input })
+          this.trace({ kind: "stale", event: shown })
           return
         }
         bindings = { event: input.value }
@@ -380,10 +405,10 @@ class Macrostep {
       }
     }
     if (selected.length === 0) {
-      this.trace({ kind: "dropped", event: input })
+      this.trace({ kind: "dropped", event: shown })
       return
     }
-    this.trace({ kind: "event", event: input })
+    this.trace({ kind: "event", event: shown })
     this.microstep(selected, bindings)
     this.settle()
     if (this.status === "running") this.startWork()
@@ -547,17 +572,71 @@ class Macrostep {
     return this.active.filter((id) => this.index.isProperAncestor(domain, this.index.state(id)))
   }
 
-  /** The states a transition enters, below its domain down to the target and its default entry. */
-  private entrySet(t: Selected, target: State): Array<State> {
-    const domain = this.domain(t, target)
+  /** The states from just below `domain` down to `target`, outermost first. */
+  private pathFrom(domain: State, target: State): Array<State> {
     const path: Array<State> = []
     for (let s: State | undefined = target; s !== undefined && s !== domain; s = this.index.parent(s)) path.unshift(s)
+    return path
+  }
+
+  /** The states a transition enters, below its domain down to the target and its default entry. */
+  private entrySet(t: Selected, target: State): Array<State> {
+    if (isHistory(target)) return this.historyEntrySet(t, target)
+    const path = this.pathFrom(this.domain(t, target), target)
     const set = [...path, ...this.index.defaultEntry(target)]
     for (const p of path) {
       if (p === target || p.kind !== "parallel") continue
-      for (const c of p.states) if (!path.includes(c)) set.push(c, ...this.index.defaultEntry(c))
+      for (const c of childrenOf(p)) if (!path.includes(c)) set.push(c, ...this.index.defaultEntry(c))
     }
     return set
+  }
+
+  /**
+   * execution.md's `entrySet` for a history target `h`: what `h` recorded, or its parent's
+   * default entry, each with the path down to it from the domain (computed with `h` as the
+   * target) and its own default entry; then every region on the way that none of them is in,
+   * by default entry. `h` itself is never entered.
+   */
+  private historyEntrySet(t: Selected, h: State): Array<State> {
+    const parent = this.index.parent(h)!
+    const recorded = this.history[h.id]
+    const targets = recorded !== undefined
+      ? recorded.map((id) => this.index.state(id))
+      : parent.kind === "compound"
+      ? [this.index.state(parent.initial!)]
+      : [...childrenOf(parent)]
+    const domain = this.domain(t, h)
+    const set = new Set<State>()
+    for (const r of targets) {
+      for (const s of this.pathFrom(domain, r)) set.add(s)
+      for (const s of this.index.defaultEntry(r)) set.add(s)
+    }
+    const inSet = (c: State): boolean => [...set].some((s) => s === c || this.index.isProperAncestor(c, s))
+    for (const q of [...set]) {
+      if (q.kind !== "parallel") continue
+      for (const c of childrenOf(q)) {
+        if (!inSet(c)) for (const s of [c, ...this.index.defaultEntry(c)]) set.add(s)
+      }
+    }
+    return [...set]
+  }
+
+  /**
+   * execution.md's `recordHistory`: for each state about to be exited, what each of its history
+   * states records, from the active states as they are before anything is exited.
+   */
+  private recordHistory(exits: ReadonlySet<string>) {
+    for (const id of exits) {
+      const s = this.index.state(id)
+      for (const h of s.states) {
+        if (h.kind === "history") {
+          this.history[h.id] = this.active.filter((a) => this.index.parent(this.index.state(a)) === s)
+        } else if (h.kind === "deepHistory") {
+          const leaves = this.activeLeaves().filter((leaf) => this.index.isProperAncestor(s, leaf))
+          this.history[h.id] = leaves.map((leaf) => leaf.id)
+        }
+      }
+    }
   }
 
   /** Take the transitions of `selected` together: every exit, then every effect, then every entry. */
@@ -566,6 +645,7 @@ class Macrostep {
       this.trace({ kind: "transition", from: source.id, index, to: transition.target })
     }
     const exits = new Set(selected.flatMap((t) => this.exitSet(t)))
+    this.recordHistory(exits)
     for (const state of this.innermostFirst()) {
       if (exits.has(state.id)) this.exitState(state)
     }
@@ -640,7 +720,7 @@ class Macrostep {
       case "compound":
         return state.states.some((c) => c.kind === "final" && this.active.includes(c.id))
       case "parallel":
-        return state.states.every((c) => this.inFinalState(c))
+        return childrenOf(state).every((c) => this.inFinalState(c))
       default:
         return false
     }
@@ -678,7 +758,8 @@ class Macrostep {
             const inv = this.invokes.find((i) => i.state === state)
             value = this.eval(effect.value, bindings) as Tagged
             if (inv === undefined) {
-              this.trace({ kind: "undelivered", message, to: null, value })
+              const shown = redactor(this.ir).sent(effect.to.machine, value) as Tagged
+              this.trace({ kind: "undelivered", message, to: null, value: shown })
               break
             }
             to = `${this.snapshot.run}.${inv.id}`
@@ -689,7 +770,7 @@ class Macrostep {
             invoke = null
             value = this.eval(effect.value, bindings) as Tagged
           }
-          this.trace({ kind: "sent", message, to, value })
+          this.trace({ kind: "sent", message, to, value: redactor(this.ir).sent(effect.to.machine, value) as Tagged })
           this.commands.push({ kind: "send", to, invoke, message, value })
           break
         }

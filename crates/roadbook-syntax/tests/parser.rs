@@ -140,3 +140,22 @@ fn implicit_names_are_arguments() {
     let file = parse(src);
     assert_eq!(file.machines().count(), 1);
 }
+
+#[test]
+fn retry_is_a_name_everywhere_but_after_an_invoke() {
+    // `retry` means something only after an invoke's arguments or its `as` name.
+    let file = parse(
+        "fn retry(retry: int) -> int\nmachine M(retry: int) {\n  var x: int = retry(retry)\n  state A {\n    invoke Retry(retry) as retry retry 1 {\n      done -> A\n    }\n  }\n}\n",
+    );
+    let inv = machine(&file)
+        .body
+        .states()
+        .next()
+        .unwrap()
+        .body
+        .invokes()
+        .next()
+        .unwrap();
+    assert_eq!(inv.alias.as_ref().unwrap().name, "retry");
+    assert_eq!(inv.retry.as_ref().unwrap().count, 1);
+}

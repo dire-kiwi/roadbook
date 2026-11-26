@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Roadbook saved snapshot",
-  "description": "A saved snapshot of a top-level run: the core's snapshot (spec/execution.md#snapshot) with the format version and each timer's due time. See spec/execution.md#saving-and-restoring for what each member means and how a runtime restores one. Every member is required, and no other member is allowed.",
+  "description": "A saved snapshot of a top-level run: the core's snapshot (spec/execution.md#snapshot) with the format version and each timer's due time. See spec/execution.md#saving-and-restoring for what each member means and how a runtime restores one. It holds real values, those of sensitive parameters and variables too: nothing in it is redacted (spec/trace.md#redaction). Every member is required, and no other member is allowed. Version 1, written before history states, has no history member; version 2 has it.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -20,8 +20,11 @@
     "nextMessage",
     "result"
   ],
+  "if": { "properties": { "snapshotVersion": { "const": 2 } } },
+  "then": { "required": ["history"] },
+  "else": { "properties": { "history": false } },
   "properties": {
-    "snapshotVersion": { "description": "The version of this format.", "const": 1 },
+    "snapshotVersion": { "description": "The version of this format: 2, or 1 for a snapshot written before history states.", "enum": [1, 2] },
     "machine": { "description": "The machine's name, a key of the IR's machines.", "$ref": "#/$defs/upperName" },
     "run": {
       "description": "The id the run had when it was saved. A restored run gets a new id.",
@@ -79,6 +82,17 @@
     "nextInvoke": { "$ref": "#/$defs/id" },
     "nextTimer": { "$ref": "#/$defs/id" },
     "nextMessage": { "$ref": "#/$defs/id" },
+    "history": {
+      "description": "What each history state recorded, keyed by its id: state ids, in document order. A history state that has recorded nothing has no member.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/stateId" },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "uniqueItems": true,
+        "items": { "$ref": "#/$defs/stateId" }
+      }
+    },
     "result": {
       "description": "null while running and when cancelled; the output, the error or the defect once the run has ended.",
       "oneOf": [

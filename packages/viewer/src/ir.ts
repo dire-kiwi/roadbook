@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.2) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.4) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -12,6 +12,8 @@ export interface Span {
 export interface Field {
   name: string
   type: string
+  /** Marked `sensitive`: traces show its value as "<redacted>". */
+  sensitive: boolean
   doc: string
 }
 
@@ -53,6 +55,8 @@ export interface TaskDecl {
 export interface Var {
   name: string
   type: string
+  /** Marked `sensitive`: traces show its value as "<redacted>". */
+  sensitive: boolean
   init: Expr | null
   doc: string
   span: Span
@@ -64,7 +68,12 @@ export interface EventDecl {
   span: Span
 }
 
-export type StateKind = 'atomic' | 'compound' | 'parallel' | 'final'
+/**
+ * `history` and `deepHistory` are history pseudo-states (`history Name`, `deep history Name`):
+ * in their parent's `states`, never active, only ever a transition's target. A state's
+ * children and a parallel state's regions are its other `states`.
+ */
+export type StateKind = 'atomic' | 'compound' | 'parallel' | 'final' | 'history' | 'deepHistory'
 
 export interface Invoke {
   kind: 'task' | 'machine'
@@ -162,4 +171,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.2'
+export const IR_VERSION = '0.4'

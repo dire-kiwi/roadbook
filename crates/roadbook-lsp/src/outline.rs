@@ -1,6 +1,6 @@
 //! The outline of a file: its declarations, and in a machine its parameters, variables,
-//! events and states, nested as they are written. Built from the syntax tree alone, so it
-//! is there even when the file does not compile.
+//! events and states (history states among them), nested as they are written. Built from
+//! the syntax tree alone, so it is there even when the file does not compile.
 
 use lsp_types::{DocumentSymbol, SymbolKind as Kind};
 use roadbook_compiler::index::{declaration, type_text};
@@ -131,6 +131,15 @@ impl Outline<'_> {
                     ));
                 }
                 Item::State(s) => out.push(self.state(s)),
+                // A pseudo-state, shown among the states it returns to.
+                Item::History(h) => out.push(self.symbol(
+                    &h.name.name,
+                    Kind::OBJECT,
+                    Some(if h.deep { "deep history" } else { "history" }.into()),
+                    h.span,
+                    h.name.span,
+                    vec![],
+                )),
                 _ => {}
             }
         }

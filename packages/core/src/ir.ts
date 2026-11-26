@@ -1,11 +1,11 @@
 /**
- * The Roadbook IR, version 0.2, as `spec/ir.md` describes it. The types mirror the JSON;
+ * The Roadbook IR, version 0.4, as `spec/ir.md` describes it. The types mirror the JSON;
  * {@link loadIr} checks the version before anything else.
  */
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.2"
+export const IR_VERSION = "0.4"
 
 export interface Span {
   readonly file: number
@@ -20,6 +20,8 @@ export interface Field {
   readonly name: string
   /** A type reference in canonical source form: `LineItem[]`, `string?`, `ref Inventory`. */
   readonly type: string
+  /** Marked `sensitive`: trace records show its value as `"<redacted>"`. */
+  readonly sensitive: boolean
   readonly doc: string
 }
 
@@ -54,6 +56,8 @@ export interface TaskDecl {
 export interface Variable {
   readonly name: string
   readonly type: string
+  /** Marked `sensitive`: trace records show its value as `"<redacted>"`. */
+  readonly sensitive: boolean
   readonly init: Expr | null
   readonly doc: string
   readonly span: Span
@@ -78,7 +82,8 @@ export interface Machine {
   readonly hash: string
 }
 
-export type StateKind = "atomic" | "compound" | "parallel" | "final"
+/** `history` and `deepHistory` are history pseudo-states (ir.md, "History states"). */
+export type StateKind = "atomic" | "compound" | "parallel" | "final" | "history" | "deepHistory"
 
 export interface State {
   readonly id: string
@@ -165,6 +170,16 @@ export interface Ir {
   readonly tasks: Readonly<Record<string, TaskDecl>>
   readonly machines: Readonly<Record<string, Machine>>
 }
+
+/** Whether `state` is a history pseudo-state: never active, and never one of its parent's children. */
+export const isHistory = (state: State): boolean => state.kind === "history" || state.kind === "deepHistory"
+
+/**
+ * The children of `state` in execution.md's sense: its `states` that are not history states,
+ * in order. A parallel state's regions are these.
+ */
+export const childrenOf = (state: State): ReadonlyArray<State> =>
+  state.states.some(isHistory) ? state.states.filter((c) => !isHistory(c)) : state.states
 
 /** Thrown by {@link loadIr} for a document this package cannot run. */
 export class IrError extends Error {

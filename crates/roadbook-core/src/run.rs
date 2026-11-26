@@ -1,6 +1,6 @@
 //! `start` and `step`, exactly as `spec/execution.md` gives them.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 use roadbook_ir::{
     Address, AddressKind, Effect, Machine, State, StateKind, Transition, Trigger, TypeRef,
@@ -76,6 +76,7 @@ impl Program {
             next_invoke: 1,
             next_timer: 1,
             next_message: 1,
+            history: Default::default(),
             result: None,
         };
         let started = Record::Started {
@@ -207,7 +208,10 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         self.idx.by_id[id]
     }
 
-    fn trace(&mut self, record: Record) {
+    /// Emits a trace record, redacted (`spec/trace.md#redaction`). An `event`, `dropped` or
+    /// `stale` record holds an input [`Ctx::take`] has already redacted.
+    fn trace(&mut self, mut record: Record) {
+        self.program.redactor().record(self.m, &mut record);
         self.cmds.push(Command::Trace { record });
     }
 
@@ -274,8 +278,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         let state = self.state(s);
         match state.kind {
             StateKind::Compound => {
-                if let Some(init) = &state.initial {
-                    let c = self.index_of(init);
+                if state.initial.is_some() {
+                    let c = self.idx.initial[s].expect("an initial state is a child");
                     out.push(c);
                     self.default_entry_into(c, out);
                 }
@@ -286,7 +290,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     self.default_entry_into(c, out);
                 }
             }
-            StateKind::Atomic | StateKind::Final => {}
+            StateKind::Atomic | StateKind::Final | StateKind::History | StateKind::DeepHistory => {}
         }
     }
 
@@ -330,6 +334,14 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     // ---- step ----------------------------------------------------------------------------
 
     fn take(&mut self, input: Input) -> R {
+        // The input as its record shows it, redacted while the invoke it may be the outcome
+        // of is still in the snapshot. `None` when the IR marks nothing sensitive.
+        let redactor = self.program.redactor();
+        let shown = redactor.active().then(|| {
+            let mut shown = input.clone();
+            redactor.input(self.m, &self.snap.invokes, &mut shown);
+            shown
+        });
         let chosen: Vec<Tr>;
         let bound: Option<(&'static str, Value)>;
         match &input {
@@ -338,7 +350,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             | Input::InvokeFail { invoke, .. }
             | Input::InvokeDefect { invoke, .. } => {
                 let Some(pos) = self.snap.invokes.iter().position(|i| i.id == *invoke) else {
-                    self.trace(Record::Stale { event: input });
+                    self.trace(Record::Stale {
+                        event: shown.unwrap_or(input),
+                    });
                     return Ok(());
                 };
                 let inv = self.snap.invokes.remove(pos);
@@ -346,7 +360,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 match &input {
                     Input::InvokeDefect { defect, .. } => {
                         let defect = defect.clone();
-                        self.trace(Record::Event { event: input });
+                        self.trace(Record::Event {
+                            event: shown.unwrap_or(input),
+                        });
                         self.fail_with_defect(defect);
                         return Ok(());
                     }
@@ -391,7 +407,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             }
             Input::After { timer } => {
                 let Some(pos) = self.snap.timers.iter().position(|t| t.id == *timer) else {
-                    self.trace(Record::Stale { event: input });
+                    self.trace(Record::Stale {
+                        event: shown.unwrap_or(input),
+                    });
                     return Ok(());
                 };
                 let tm = self.snap.timers.remove(pos);
@@ -420,7 +438,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             } => {
                 if let Some(i) = invoke {
                     if !self.snap.invokes.iter().any(|e| e.id == *i) {
-                        self.trace(Record::Stale { event: input });
+                        self.trace(Record::Stale {
+                            event: shown.unwrap_or(input),
+                        });
                         return Ok(());
                     }
                 }
@@ -430,10 +450,14 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             Input::Defect { .. } => unreachable!("handled by step"),
         }
         if chosen.is_empty() {
-            self.trace(Record::Dropped { event: input });
+            self.trace(Record::Dropped {
+                event: shown.unwrap_or(input),
+            });
             return Ok(());
         }
-        self.trace(Record::Event { event: input });
+        self.trace(Record::Event {
+            event: shown.unwrap_or(input),
+        });
         self.microstep(&chosen, bound.as_ref().map(|(n, v)| (*n, v)))?;
         self.settle()?;
         if self.snap.status == Status::Running {
@@ -513,16 +537,17 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         &mut self,
         mut first: impl FnMut(&mut Self, usize) -> R<Option<Tr>>,
     ) -> R<Vec<Tr>> {
-        let mut offered: HashMap<usize, Option<Tr>> = HashMap::new();
+        // A run has few active states: a list is quicker than a map.
+        let mut offered: Vec<(usize, Option<Tr>)> = Vec::new();
         let mut enabled: Vec<Tr> = Vec::new();
         for leaf in self.active_leaves() {
             let mut cur = Some(leaf);
             while let Some(s) = cur {
-                let t = match offered.get(&s) {
-                    Some(t) => *t,
+                let t = match offered.iter().find(|(o, _)| *o == s) {
+                    Some((_, t)) => *t,
                     None => {
                         let t = first(self, s)?;
-                        offered.insert(s, t);
+                        offered.push((s, t));
                         t
                     }
                 };
@@ -564,10 +589,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     }
 
     fn target(&self, (source, index): Tr) -> Option<usize> {
-        self.state(source).transitions[index]
-            .target
-            .as_ref()
-            .map(|id| self.index_of(id))
+        self.idx.targets[source][index]
     }
 
     /// The domain of a transition from `source` to `target`: the root for one of the root's,
@@ -604,6 +626,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     /// the target, the target's default entry, and every other region of a parallel state on
     /// the path by default entry.
     fn entry_set(&self, t: Tr, target: usize) -> Vec<usize> {
+        if self.state(target).kind.is_history() {
+            return self.history_entry_set(t, target);
+        }
         let domain = self.domain(t.0, target);
         let mut path = Vec::new();
         let mut cur = Some(target);
@@ -626,6 +651,49 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     }
                 }
             }
+        }
+        set
+    }
+
+    /// `entrySet` for a transition to history state `h`: the paths from just below the domain
+    /// to what `h` recorded (or to the states its parent's default entry starts with), their
+    /// default entries, and every region of a parallel state among them that none of them is
+    /// in, by default entry. Unsorted.
+    fn history_entry_set(&self, t: Tr, h: usize) -> Vec<usize> {
+        let domain = self.domain(t.0, h);
+        let p = self.idx.parents[h].expect("a history state has a parent");
+        let parent = self.state(p);
+        let targets: Vec<usize> = match self.snap.history.get(&self.state(h).id) {
+            Some(record) => record.iter().map(|id| self.index_of(id)).collect(),
+            None if parent.kind == StateKind::Compound => {
+                parent.initial.iter().map(|id| self.index_of(id)).collect()
+            }
+            None => self.idx.children[p].clone(),
+        };
+        let mut set = Vec::new();
+        for r in targets {
+            let mut cur = Some(r);
+            while let Some(c) = cur.filter(|&c| c != domain) {
+                if !set.contains(&c) {
+                    set.push(c);
+                }
+                cur = self.idx.parents[c];
+            }
+            self.default_entry_into(r, &mut set);
+        }
+        let mut i = 0;
+        while i < set.len() {
+            let q = set[i];
+            if self.state(q).kind == StateKind::Parallel {
+                for &c in &self.idx.children[q] {
+                    let covered = set.iter().any(|&x| x == c || self.idx.is_ancestor(c, x));
+                    if !covered {
+                        set.push(c);
+                        self.default_entry_into(c, &mut set);
+                    }
+                }
+            }
+            i += 1;
         }
         set
     }
@@ -689,6 +757,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         let mut exits: Vec<usize> = t.iter().flat_map(|&x| self.exit_set(x)).collect();
         exits.sort_unstable();
         exits.dedup();
+        self.record_history(&exits);
         for s in exits.into_iter().rev() {
             self.exit_state(s)?;
         }
@@ -705,6 +774,30 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         entries.sort_unstable();
         entries.dedup();
         self.enter_states(&entries, None)
+    }
+
+    /// `recordHistory`: for each state about to be exited, what each of its history states
+    /// records, from the active states as they are before anything is exited.
+    fn record_history(&mut self, exits: &[usize]) {
+        for &s in exits {
+            for h in &self.state(s).states {
+                let record: Vec<usize> = match h.kind {
+                    StateKind::History => self.idx.children[s]
+                        .iter()
+                        .copied()
+                        .filter(|&c| self.is_active(c))
+                        .collect(),
+                    StateKind::DeepHistory => self
+                        .active_leaves()
+                        .into_iter()
+                        .filter(|&l| self.idx.is_ancestor(s, l))
+                        .collect(),
+                    _ => continue,
+                };
+                let ids = record.iter().map(|&i| self.state(i).id.clone()).collect();
+                self.snap.history.insert(h.id.clone(), ids);
+            }
+        }
     }
 
     fn exit_state(&mut self, s: usize) -> R {
@@ -795,7 +888,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         let children = &self.idx.children[s];
         match self.state(s).kind {
             StateKind::Final => true,
-            StateKind::Atomic => false,
+            StateKind::Atomic | StateKind::History | StateKind::DeepHistory => false,
             StateKind::Compound => children
                 .iter()
                 .any(|&c| self.is_active(c) && self.state(c).kind == StateKind::Final),
@@ -835,6 +928,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 }
                 Effect::Send { to, value, .. } => {
                     let message = self.next_message();
+                    let receiver = to.machine.as_str();
                     let (to, invoke, value) = match to.kind {
                         AddressKind::Child => {
                             let inv = self
@@ -845,6 +939,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                                 .map(|i| i.id);
                             let value = self.eval(value, implicit)?;
                             let Some(inv) = inv else {
+                                let mut value = value;
+                                self.program.redactor().sent(receiver, &mut value);
                                 self.trace(Record::Undelivered {
                                     message,
                                     to: None,
@@ -860,10 +956,12 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                             (to, None, self.eval(value, implicit)?)
                         }
                     };
+                    let mut shown = value.clone();
+                    self.program.redactor().sent(receiver, &mut shown);
                     self.trace(Record::Sent {
                         message,
                         to: to.clone(),
-                        value: value.clone(),
+                        value: shown,
                     });
                     self.cmds.push(Command::Send {
                         to,

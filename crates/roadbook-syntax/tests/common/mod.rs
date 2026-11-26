@@ -31,6 +31,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  var a: int = 1\n  var b: string?\n  var c: Order[]\n  event Go\n  event Change { value: int, note: string }\n  initial S\n  state S {}\n}\n",
     ),
     (
+        "sensitive",
+        "type Login { user: string, sensitive password: string, sensitive: bool }\nerror Denied { sensitive token: string }\ntask check(sensitive password: string) -> bool\nmachine M(sensitive key: string) {\n  /// The session.\n  sensitive var token: string?\n  var sensitive: int = 0\n  event Submit { sensitive sensitive: string }\n  emits Done { sensitive code: int }\n  initial S\n  state S {}\n}\n",
+    ),
+    (
         "states",
         "machine M() {\n  initial A\n  state A {\n    initial Inner\n    state Inner { on Go -> Done }\n    final state Done {}\n  }\n  parallel state P {\n    state R1 {}\n    state R2 {}\n  }\n  final state Z {}\n}\n",
     ),
@@ -49,6 +53,10 @@ pub const CASES: &[(&str, &str)] = &[
     (
         "invoke",
         "machine M() {\n  state A {\n    invoke charge(order, user) {\n      done -> B  set r = result\n      fail CardDeclined -> C  set d = error\n      fail * -> D\n      fail Gateway {\n        if attempts < 3 -> Backoff\n        else -> GaveUp\n      }\n    }\n  }\n  state B {\n    invoke Checkout() {\n      done -> A\n    }\n  }\n}\n",
+    ),
+    (
+        "retry",
+        "machine M() {\n  state A {\n    invoke charge(order) retry 3 on Gateway | Timeout after backoff(attempt) {\n      done -> B\n      fail * -> C\n    }\n  }\n  state B {\n    invoke Checkout() retry 1 {\n      done -> A\n    }\n  }\n  state C {\n    invoke fetch() retry 2 after (Cfg { ms: 5 }) {\n      done -> A\n    }\n  }\n}\n",
     ),
     (
         "messaging",

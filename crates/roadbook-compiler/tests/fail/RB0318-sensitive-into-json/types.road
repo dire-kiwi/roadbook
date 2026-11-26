@@ -1,0 +1,6 @@
+type Creds { user: string, sensitive password: string }
+
+/// An alias across files keeps the fields' marks.
+type Login = Creds
+
+type Session { login: Login? }

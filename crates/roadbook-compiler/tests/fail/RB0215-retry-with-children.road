@@ -1,0 +1,25 @@
+error Busy
+task ping() ! Busy
+
+machine M() {
+  initial A
+  state A {
+    invoke ping() retry 2 {
+      done      -> B
+      fail Busy -> B
+    }
+    initial Inner
+    state Inner {}
+  }
+  parallel state P {
+    invoke ping() retry 1 {
+      done      -> B
+      fail Busy -> B
+    }
+    state R {}
+  }
+  final state B {}
+}
+
+// expect: RB0215 at 7:19
+// expect: RB0215 at 15:19

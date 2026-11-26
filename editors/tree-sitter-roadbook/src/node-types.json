@@ -1206,6 +1206,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "sensitive",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -1500,6 +1510,32 @@
     }
   },
   {
+    "type": "history_state",
+    "named": true,
+    "fields": {
+      "kind": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "deep",
+            "named": false
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "import",
     "named": true,
     "fields": {
@@ -1579,6 +1615,16 @@
           },
           {
             "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
+      "retry": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "retry",
             "named": true
           }
         ]
@@ -2122,6 +2168,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "sensitive",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -2294,6 +2350,98 @@
     }
   },
   {
+    "type": "retry",
+    "named": true,
+    "fields": {
+      "count": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "integer",
+            "named": true
+          }
+        ]
+      },
+      "delay": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "duration",
+            "named": true
+          },
+          {
+            "type": "enum_value",
+            "named": true
+          },
+          {
+            "type": "field_expression",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "negation",
+            "named": true
+          },
+          {
+            "type": "not_expression",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "record_value",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "error": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "send",
     "named": true,
     "fields": {
@@ -2328,6 +2476,11 @@
         ]
       }
     }
+  },
+  {
+    "type": "sensitive",
+    "named": true,
+    "fields": {}
   },
   {
     "type": "set",
@@ -2422,6 +2575,10 @@
         },
         {
           "type": "fail",
+          "named": true
+        },
+        {
+          "type": "history_state",
           "named": true
         },
         {
@@ -2742,6 +2899,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "sensitive",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -2858,6 +3025,10 @@
     "extra": true
   },
   {
+    "type": "deep",
+    "named": false
+  },
+  {
     "type": "do",
     "named": false
   },
@@ -2947,6 +3118,10 @@
     "named": false
   },
   {
+    "type": "history",
+    "named": false
+  },
+  {
     "type": "identifier",
     "named": true
   },
@@ -3011,7 +3186,15 @@
     "named": false
   },
   {
+    "type": "retry",
+    "named": false
+  },
+  {
     "type": "send",
+    "named": false
+  },
+  {
+    "type": "sensitive",
     "named": false
   },
   {

@@ -193,3 +193,75 @@ machine M() -> Receipt ! CardDeclined {
                 (field_value
                   (identifier)
                   (integer))))))))))
+
+================================================================================
+Retrying an invoke
+================================================================================
+
+machine M() {
+  state A {
+    invoke fetch(id) retry 3 on Busy | Gone after backoff(attempt) {
+      done      -> B
+      fail *    -> C
+    }
+    invoke Child() retry 1 after (Cfg { ms: 5 }) {
+      done -> B
+    }
+    invoke ping() retry 2 {
+      done -> B
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (invoke
+            (identifier)
+            (arguments
+              (identifier))
+            (retry
+              (integer)
+              (type_identifier)
+              (type_identifier)
+              (call
+                (identifier)
+                (arguments
+                  (identifier))))
+            (done_transition
+              (target
+                (type_identifier)))
+            (fail_transition
+              (wildcard)
+              (target
+                (type_identifier))))
+          (invoke
+            (type_identifier)
+            (arguments)
+            (retry
+              (integer)
+              (parenthesized_expression
+                (record_value
+                  (type_identifier)
+                  (record_body
+                    (field_value
+                      (identifier)
+                      (integer))))))
+            (done_transition
+              (target
+                (type_identifier))))
+          (invoke
+            (identifier)
+            (arguments)
+            (retry
+              (integer))
+            (done_transition
+              (target
+                (type_identifier)))))))))

@@ -82,6 +82,10 @@ export const DIAGRAM_CSS = `
 .rb-kind-final > .rb-box { stroke-width: 1.6; }
 .rb-collapsed > .rb-box { stroke-width: 1.8; }
 .rb-sep { stroke: var(--rb-border); stroke-width: 1; }
+/* a history state: a small circle marked H, or H* for a deep one */
+.rb-history > .rb-box { stroke-width: 1.5; }
+.rb-history-mark { font-size: 12px; font-weight: 750; fill: var(--rb-fg); }
+.rb-legend-swatch .rb-history-mark { font-size: 10px; }
 
 .rb-title { font-size: 13px; font-weight: 650; }
 .rb-tag { font-size: 11px; fill: var(--rb-muted) !important; }
@@ -376,6 +380,7 @@ details.rb-choice[open] > summary { border-style: dashed; margin-bottom: 5px; }
 .rb-advance label { font: 12.5px var(--rb-mono); }
 .rb-active-path { margin: 0; font-size: 12.5px; }
 .rb-vars .rb-vnote { color: var(--rb-muted); font-family: var(--rb-sans); font-size: 11.5px; }
+.rb-redacted { color: var(--rb-muted); font-family: var(--rb-sans); font-style: italic; }
 .rb-file { display: inline-block; }
 .rb-problems summary { cursor: pointer; color: var(--rb-err); font-size: 13px; margin-top: 8px; }
 /* diff and coverage panels */

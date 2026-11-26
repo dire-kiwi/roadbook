@@ -21,8 +21,9 @@ module.exports = grammar({
 
   word: ($) => $.identifier,
 
-  // Every keyword is reserved: none can be a name. `from`, `as`, `ref` and the built-in type
-  // names are not, because they mean something only where no name can appear.
+  // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref`, `sensitive`,
+  // `history`, `deep` and
+  // the built-in type names are not, because they mean something only where no name can appear.
   reserved: {
     global: (_) => [
       'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'var',
@@ -88,7 +89,14 @@ module.exports = grammar({
 
     fields: ($) => seq('{', commaSep($.field_declaration), '}'),
 
-    field_declaration: ($) => seq(field('name', $.identifier), ':', field('type', $._type)),
+    // `sensitive` is not reserved: a modifier before a field or parameter name, or `var`, and a
+    // name anywhere else, a field's or parameter's too (`sensitive: bool`).
+    field_declaration: ($) =>
+      seq(optional($.sensitive), field('name', $._member_name), ':', field('type', $._type)),
+
+    _member_name: ($) => choice($.identifier, alias('sensitive', $.identifier)),
+
+    sensitive: (_) => 'sensitive',
 
     function_declaration: ($) =>
       seq(
@@ -113,7 +121,8 @@ module.exports = grammar({
 
     parameters: ($) => seq('(', commaSep($.parameter), ')'),
 
-    parameter: ($) => seq(field('name', $.identifier), ':', field('type', $._type)),
+    parameter: ($) =>
+      seq(optional($.sensitive), field('name', $._member_name), ':', field('type', $._type)),
 
     errors: ($) =>
       seq('!', field('error', $.type_identifier), repeat(seq('|', field('error', $.type_identifier)))),
@@ -149,6 +158,7 @@ module.exports = grammar({
 
     variable_declaration: ($) =>
       seq(
+        optional($.sensitive),
         'var',
         field('name', $.identifier),
         ':',
@@ -175,7 +185,11 @@ module.exports = grammar({
     state_body: ($) => seq('{', repeat($._state_item), '}'),
 
     _state_item: ($) =>
-      choice($._common_item, $.done_transition, $.invoke, $.output, $.fail),
+      choice($._common_item, $.history_state, $.done_transition, $.invoke, $.output, $.fail),
+
+    // `history` and `deep` are not reserved: they mean something only at the start of an item.
+    history_state: ($) =>
+      seq(optional(field('kind', 'deep')), 'history', field('name', $.type_identifier)),
 
     _common_item: ($) =>
       choice(
@@ -217,9 +231,22 @@ module.exports = grammar({
         field('callee', $._name),
         field('arguments', $.arguments),
         optional(seq('as', field('alias', $.identifier))),
+        optional(field('retry', $.retry)),
         '{',
         repeat1(choice($.done_transition, $.fail_transition)),
         '}',
+      ),
+
+    // `retry 3 on Busy | Gone after backoff(attempt)`: a record value as the delay must be
+    // parenthesised, since the invoke's `{` follows, as after an `after` trigger.
+    retry: ($) =>
+      seq(
+        'retry',
+        field('count', $.integer),
+        optional(
+          seq('on', field('error', $.type_identifier), repeat(seq('|', field('error', $.type_identifier)))),
+        ),
+        optional(seq('after', field('delay', $._expression))),
       ),
 
     fail_transition: ($) =>

@@ -23,6 +23,7 @@
   "event"
   "emits"
   "state"
+  "history"
   "initial"
   "entry"
   "exit"
@@ -32,6 +33,7 @@
   "done"
   "invoke"
   "as"
+  "retry"
   "output"
   "fail"
   "set"
@@ -55,7 +57,10 @@
 [
   "final"
   "parallel"
+  "deep"
 ] @keyword.modifier
+
+(sensitive) @keyword.modifier
 
 [
   "if"
@@ -133,6 +138,9 @@
 ; ─── States and events ───
 
 (state_declaration
+  name: (type_identifier) @label)
+
+(history_state
   name: (type_identifier) @label)
 
 (initial

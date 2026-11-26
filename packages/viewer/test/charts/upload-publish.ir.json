@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -17,11 +17,13 @@
         {
           "name": "title",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -40,11 +42,13 @@
         {
           "name": "title",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "url",
           "type": "Url",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -63,11 +67,13 @@
         {
           "name": "name",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "size",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -98,6 +104,7 @@
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -117,11 +124,13 @@
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -140,11 +149,13 @@
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -165,6 +176,7 @@
         {
           "name": "percent",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -184,11 +196,13 @@
         {
           "name": "title",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "url",
           "type": "Url",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -208,11 +222,13 @@
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -234,6 +250,7 @@
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -265,6 +282,7 @@
         {
           "name": "draft",
           "type": "Draft",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -276,6 +294,7 @@
         {
           "name": "percent",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -294,6 +313,7 @@
         {
           "name": "url",
           "type": "Url",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -307,6 +327,7 @@
         {
           "name": "post",
           "type": "Post",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -320,6 +341,7 @@
         {
           "name": "failure",
           "type": "UploadFailed",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -753,6 +775,7 @@
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -764,6 +787,7 @@
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -782,6 +806,7 @@
         {
           "name": "url",
           "type": "Url",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -795,6 +820,7 @@
         {
           "name": "failure",
           "type": "UploadFailed",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -836,6 +862,7 @@
             {
               "name": "percent",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],

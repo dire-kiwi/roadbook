@@ -15,6 +15,14 @@ machine Worker(settings: Settings, peer: ref Worker) {
   var text: string = "tab\t quote\" backslash\\ newline\n bad\q"
   emits Ready { level: Level }
 
+  state Paused {
+    initial Idle
+    /// Back to where `Paused` was.
+    history Last
+    deep history All
+    state Idle { on * -> Paused.Last }
+  }
+
   parallel state Running {
     state A {
       on * -> Running.B
@@ -27,6 +35,12 @@ machine Worker(settings: Settings, peer: ref Worker) {
       on peer.Ready if event.level == Level.High -> A emit Ready { level: Level.Low }
       invoke Child(settings) as child {
         done -> A send peer.Ping {}
+        fail * -> B
+      }
+    }
+    state C {
+      invoke fetch(retry) retry 3 on Busy | Gone after backoff(attempt) {
+        done -> A
         fail * -> B
       }
     }

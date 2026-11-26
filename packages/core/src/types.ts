@@ -49,7 +49,17 @@ export interface Snapshot {
   readonly nextTimer: number
   /** The id the next `send` or `emit` effect will get. */
   readonly nextMessage: number
+  /**
+   * What each history state has recorded, keyed by its id: state ids in document order. A
+   * history state whose parent no microstep has exited yet has no member.
+   */
+  readonly history: History
   readonly result: RunResult | null
+}
+
+/** A snapshot's `history`: what each history state recorded, keyed by the history state's id. */
+export interface History {
+  readonly [historyState: string]: ReadonlyArray<string>
 }
 
 /** A timer of a saved snapshot: the core's entry with the time it is due on the driver's clock. */
@@ -61,11 +71,15 @@ export interface SavedTimer extends TimerEntry {
 /**
  * A saved snapshot (execution.md, "The saved snapshot"): the core's snapshot as a run's last
  * step left it, with the format version and each timer's due time. Plain JSON, matching
- * `spec/snapshot.schema.json`; both runtimes save the same run as the same document.
+ * `spec/snapshot.schema.json`; both runtimes save the same run as the same document. A run is
+ * always saved as version 2; version 1, written before history states, has no `history` and
+ * restores as if it had `{}`.
  */
-export interface Saved extends Omit<Snapshot, "timers"> {
-  readonly snapshotVersion: 1
+export interface Saved extends Omit<Snapshot, "timers" | "history"> {
+  readonly snapshotVersion: 1 | 2
   readonly timers: ReadonlyArray<SavedTimer>
+  /** Set exactly in version 2. */
+  readonly history?: History
 }
 
 /** A tagged record: an event or an error value. */

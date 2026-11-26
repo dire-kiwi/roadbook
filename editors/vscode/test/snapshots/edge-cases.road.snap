@@ -117,6 +117,37 @@
 #                       ^^^^^ entity.name.type.roadbook
 #                             ^ punctuation.section.braces.roadbook
 >
+>  state Paused {
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^^^ entity.name.type.state.roadbook
+#               ^ punctuation.section.braces.roadbook
+>    initial Idle
+#    ^^^^^^^ keyword.control.initial.roadbook
+#            ^^^^ entity.name.type.state.roadbook
+>    /// Back to where `Paused` was.
+#    ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#       ^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+#                      ^^^^^^^^ comment.line.documentation.roadbook markup.inline.raw.roadbook
+#                              ^^^^^ comment.line.documentation.roadbook
+>    history Last
+#    ^^^^^^^ storage.type.history.roadbook
+#            ^^^^ entity.name.type.state.roadbook
+>    deep history All
+#    ^^^^ storage.modifier.deep.roadbook
+#         ^^^^^^^ storage.type.history.roadbook
+#                 ^^^ entity.name.type.state.roadbook
+>    state Idle { on * -> Paused.Last }
+#    ^^^^^ storage.type.state.roadbook
+#          ^^^^ entity.name.type.state.roadbook
+#               ^ punctuation.section.braces.roadbook
+#                 ^^ keyword.control.trigger.roadbook
+#                    ^ keyword.operator.wildcard.roadbook
+#                      ^^ keyword.operator.arrow.roadbook
+#                         ^^^^^^^^^^^ entity.name.type.state.roadbook
+#                                     ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>
 >  parallel state Running {
 #  ^^^^^^^^ storage.modifier.parallel.roadbook
 #           ^^^^^ storage.type.state.roadbook
@@ -239,6 +270,41 @@
 #                            ^^^^ entity.name.type.event.roadbook
 #                                 ^ punctuation.section.braces.roadbook
 #                                  ^ punctuation.section.braces.roadbook
+>        fail * -> B
+#        ^^^^ keyword.control.fail.roadbook
+#             ^ keyword.operator.wildcard.roadbook
+#               ^^ keyword.operator.arrow.roadbook
+#                  ^ entity.name.type.state.roadbook
+>      }
+#      ^ punctuation.section.braces.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>    state C {
+#    ^^^^^ storage.type.state.roadbook
+#          ^ entity.name.type.state.roadbook
+#            ^ punctuation.section.braces.roadbook
+>      invoke fetch(retry) retry 3 on Busy | Gone after backoff(attempt) {
+#      ^^^^^^ keyword.control.invoke.roadbook
+#             ^^^^^ entity.name.function.call.roadbook
+#                  ^ punctuation.section.parens.roadbook
+#                   ^^^^^ variable.other.roadbook
+#                        ^ punctuation.section.parens.roadbook
+#                          ^^^^^ keyword.control.retry.roadbook
+#                                ^ constant.numeric.integer.roadbook
+#                                  ^^ keyword.control.on.roadbook
+#                                     ^^^^ entity.name.type.error.roadbook
+#                                          ^ keyword.operator.error.roadbook
+#                                            ^^^^ entity.name.type.error.roadbook
+#                                                 ^^^^^ keyword.control.after.roadbook
+#                                                       ^^^^^^^ entity.name.function.call.roadbook
+#                                                              ^ punctuation.section.parens.roadbook
+#                                                               ^^^^^^^ variable.other.roadbook
+#                                                                      ^ punctuation.section.parens.roadbook
+#                                                                        ^ punctuation.section.braces.roadbook
+>        done -> A
+#        ^^^^ keyword.control.done.roadbook
+#             ^^ keyword.operator.arrow.roadbook
+#                ^ entity.name.type.state.roadbook
 >        fail * -> B
 #        ^^^^ keyword.control.fail.roadbook
 #             ^ keyword.operator.wildcard.roadbook

@@ -18,11 +18,11 @@ Because both runtimes interpret the same IR the viewer draws, the picture cannot
 
 The IR is fully resolved: state ids are absolute (`PlaceOrder.Processing.Paying`), targets are ids, names are checked, every expression carries its type, and every declaration, state, variable, event, invoke and transition carries its source span and doc comment. It is versioned (`irVersion`) and has a published JSON Schema, so third-party tools can read it and a runtime can refuse an IR it does not understand. The field-by-field reference is [`spec/ir.md`](../../spec/ir.md) and the schema is [`spec/ir.schema.json`](../../spec/ir.schema.json).
 
-An abridged IR for `Checkout` (`/* … */` marks what is left out; the spike emits an earlier draft of this shape, without `type` on expressions, end positions in spans or the hash):
+An abridged IR for `Checkout` (`/* … */` marks what is left out):
 
 ```jsonc
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [{ "path": "examples/shop/checkout.road", "package": null },
               { "path": "examples/shop/types.road", "package": null }],
   "types": {
@@ -93,6 +93,7 @@ Roadbook machines are statecharts with the semantics of SCXML, the W3C standard 
 4. **Unhandled events are dropped and recorded.** An event with no enabled transition changes nothing. It appears in the trace as dropped, so it is visible. A machine can opt into `strict`, which turns a dropped event into a failure.
 5. **Parallel states** are active in all regions at once. Entering one enters every region, in the order they are written; leaving it exits them all, the last region first. Each region looks for a transition for the event on its own, from its innermost state outward, and the transitions found are taken together, in one step: all their exits, then all their effects in region order, then all their entries. If two would exit the same state, the one in the earlier region wins, unless the other belongs to a state inside the first one's, which wins as the inner state always does. A transition from one region into another leaves the parallel state and enters it again. `always` transitions in several regions are likewise taken together, and the parallel state is done (its `done` is enabled) when every region is in a final state.
 6. **Final.** Reaching a final child completes the parent, which enables the parent's `done` transition. Reaching a top-level final state ends the machine with its `output` or `fail`, evaluated on entering it; then every active state is exited, so the machine's own `exit` effects run last.
+7. **History states.** A transition to a `history` state of a compound or parallel state enters the child that state was in when a transition last left it; to a `deep history` state, every state it was in down to the leaves. Before the state has been left, it is entered as usual, at its `initial`. Restoring enters states again, with their entry effects and fresh work; it does not resume what ran in them. Which states the transition leaves is decided as for an ordinary target, never by what was recorded.
 
 ### Work is tied to states
 
@@ -103,7 +104,7 @@ This is where Roadbook is stricter than xstate, and it is the part that matters 
 - **Timers belong to states.** `after 30s` starts when the state is entered and is cancelled when it is left. Its delay is evaluated when it starts, after the entry effects.
 - **Cancelling a machine from outside exits its states.** Each state's work is cancelled and its `exit` effects run, innermost first, as on any exit. A parent leaving an invoking state cancels a child machine this way.
 - **Actions are awaited.** Each `do` action finishes before the next thing happens, and actions cannot fail. Long or fallible work belongs in a task, where its failure has a visible branch.
-- **Defects are not flow.** A bug in host code (a thrown exception, a panic) is not one of the declared errors. It fails the whole machine run, cancels everything it started, and propagates to whoever ran it: the parent machine's invoke, or the HTTP adapter. No `exit` effect runs. Runtime errors in the chart's own expressions (integer overflow, and until definite assignment exists, reading an unassigned variable) are defects too.
+- **Defects are not flow.** A bug in host code (a thrown exception, a panic) is not one of the declared errors. It fails the whole machine run, cancels everything it started, and propagates to whoever ran it: the parent machine's invoke, or the HTTP adapter. No `exit` effect runs. Runtime errors in the chart's own expressions (integer overflow, and reading an unassigned variable where the compile-time check `RB0403` is skipped, as for files listed in `allow-unassigned`) are defects too.
 
 ### Child machines
 
@@ -199,7 +200,7 @@ Every runtime can emit a trace: an ordered stream of JSON records describing wha
 
 Records name states and transitions by the ids in the IR, so the viewer can light up exactly what ran. A child machine's records carry their own `run` id and the parent's: the child started by invoke 4 of run `r1` is `r1.4`, so a trace of a whole request nests the way the charts do. Within one run, records are in the order things happened. Across runs, the interleaving depends on how the host schedules fibers or futures, so traces are compared with each run's records grouped together, in run order.
 
-Values in a trace go through the generated schemas. Fields can be marked `sensitive` in the chart to be redacted. Trace output is off by default and goes wherever the application points it: a file, stdout, an OpenTelemetry exporter (each state becomes a span, each transition a span event), or a live connection to the viewer.
+Values in a trace go through the generated schemas. Fields, parameters and variables marked `sensitive` in the chart are shown as `"<redacted>"`: the core redacts every record as it emits it, by the declared types, so no driver or exporter holds the real value and both runtimes write the same bytes ([redaction](../../spec/trace.md#redaction)). Saved snapshots keep the real values. Trace output is off by default and goes wherever the application points it: a file, stdout, an OpenTelemetry exporter (each state becomes a span, each transition a span event), or a live connection to the viewer.
 
 ## Conformance
 

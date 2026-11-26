@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0201]: unknown target state `Work.Last.A`: `M.Work.Last` is a history state, which has no children
+  --> RB0201-through-history.road:10:24
+   |
+10 |     on Go -> Work.Last.A
+   |                        ^
+   |
+   = help: target the history state itself, `-> Work.Last`, to return to where its parent was

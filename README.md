@@ -62,4 +62,4 @@ scripts/check-all.sh                     # every check: formatting, clippy, test
                                          # runtimes' conformance traces compared, the viewer bundle
 ```
 
-`.github/workflows/ci.yml` runs `scripts/check-all.sh`. Nothing is published to crates.io or npm.
+`.github/workflows/ci.yml` runs `scripts/check-all.sh` on GitHub ([dire-kiwi/roadbook](https://github.com/dire-kiwi/roadbook)) for every push and pull request. Nothing is published to crates.io or npm.

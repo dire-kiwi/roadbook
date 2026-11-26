@@ -15,8 +15,8 @@ use crate::{RunResult, Saved};
 /// Why a saved snapshot was refused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Refusal {
-    /// It does not match `snapshot.schema.json`, its version is not 1, or it does not fit
-    /// the machine.
+    /// It does not match `snapshot.schema.json`, its version is not 1 or 2, or it does not
+    /// fit the machine.
     Invalid,
     /// The IR has no machine of its name, or it is not the machine asked for.
     Machine,
@@ -238,6 +238,12 @@ impl Program {
                     return Err(format!("`{}` is active but its parent is not", st.id));
                 }
             }
+            if st.kind.is_history() {
+                return Err(format!(
+                    "`active` names `{}`, which is a history state",
+                    st.id
+                ));
+            }
             let on = idx.children[i].iter().filter(|&&c| is_active(c)).count();
             match st.kind {
                 StateKind::Compound if on != 1 => {
@@ -254,6 +260,10 @@ impl Program {
                 }
                 _ => {}
             }
+        }
+        // History.
+        for (h, record) in s.history.iter().flatten() {
+            self.recordable(&s.machine, h, record)?;
         }
         // Invokes.
         let mut ids = HashSet::new();
@@ -343,6 +353,71 @@ impl Program {
                 && !s.vars.contains_key(&var.name)
             {
                 return Err(format!("`vars` lacks the optional variable `{}`", var.name));
+            }
+        }
+        Ok(())
+    }
+
+    /// Whether `record` is what history state `h` of `machine` could have recorded: one child
+    /// of a compound parent or every child of a parallel one for a shallow history state, the
+    /// leaves of a configuration below the parent for a deep one; in document order.
+    fn recordable(&self, machine: &str, h: &str, record: &[String]) -> Result<(), String> {
+        let (m, idx) = self.machine(machine).ok_or("no such machine")?;
+        let hi = idx
+            .by_id
+            .get(h)
+            .copied()
+            .filter(|&i| idx.state(m, i).kind.is_history())
+            .ok_or_else(|| format!("`history` has `{h}`, which is not a history state"))?;
+        let p = idx.parents[hi].ok_or("a history state has no parent")?;
+        let mut states = Vec::new();
+        for id in record {
+            let i = *idx
+                .by_id
+                .get(id)
+                .ok_or_else(|| format!("`history.{h}` names `{id}`, which `{machine}` has not"))?;
+            if states.last().is_some_and(|&l| l >= i) {
+                return Err(format!("`history.{h}` is not in document order"));
+            }
+            states.push(i);
+        }
+        let bad = || format!("`history.{h}` is not what `{h}` could have recorded");
+        let parent = idx.state(m, p);
+        if idx.state(m, hi).kind == StateKind::History {
+            let fits = match parent.kind {
+                StateKind::Compound => states.len() == 1 && idx.children[p].contains(&states[0]),
+                _ => states == idx.children[p],
+            };
+            return if fits { Ok(()) } else { Err(bad()) };
+        }
+        // Deep: atomic or final states below the parent, which with their ancestors up to it
+        // have one child for each compound state and every child for each parallel one.
+        let mut config = vec![p];
+        for &l in &states {
+            let kind = idx.state(m, l).kind;
+            if !matches!(kind, StateKind::Atomic | StateKind::Final) || !idx.is_ancestor(p, l) {
+                return Err(bad());
+            }
+            let mut cur = Some(l);
+            while let Some(c) = cur.filter(|&c| c != p) {
+                config.push(c);
+                cur = idx.parents[c];
+            }
+        }
+        config.sort_unstable();
+        config.dedup();
+        for &c in &config {
+            let on = idx.children[c]
+                .iter()
+                .filter(|x| config.binary_search(x).is_ok())
+                .count();
+            let fits = match idx.state(m, c).kind {
+                StateKind::Compound => on == 1,
+                StateKind::Parallel => on == idx.children[c].len(),
+                _ => true,
+            };
+            if !fits {
+                return Err(bad());
             }
         }
         Ok(())
@@ -464,15 +539,46 @@ const MEMBERS: [&str; 14] = [
 /// The largest integer `spec/snapshot.schema.json` allows, 2^53 − 1.
 const MAX_SAFE: u64 = 9_007_199_254_740_991;
 
-/// Checks `v` against `spec/snapshot.schema.json`, including `snapshotVersion` being 1.
+/// Checks `v` against `spec/snapshot.schema.json`, including `snapshotVersion` being 1 (with
+/// no `history`) or 2 (with one).
 pub(crate) fn schema(v: &Value) -> Result<(), String> {
     let o = v.as_object().ok_or("a saved snapshot is an object")?;
-    exactly(o, &MEMBERS, "a saved snapshot")?;
-    if o["snapshotVersion"].as_u64() != Some(Saved::VERSION) {
+    let version = o.get("snapshotVersion").and_then(Value::as_u64);
+    let mut members = MEMBERS.to_vec();
+    if version == Some(2) {
+        members.push("history");
+    }
+    let what = match version {
+        Some(v @ (1 | 2)) => format!("a version {v} saved snapshot"),
+        _ => "a saved snapshot".to_owned(),
+    };
+    exactly(o, &members, &what)?;
+    if !matches!(version, Some(1 | 2)) {
         return Err(format!(
-            "its snapshotVersion is {}, not 1",
+            "its snapshotVersion is {}, not 1 or 2",
             o["snapshotVersion"]
         ));
+    }
+    if let Some(h) = o.get("history") {
+        let h = h.as_object().ok_or("`history` is not an object")?;
+        for (k, record) in h {
+            if !state_id(k) {
+                return Err(format!(
+                    "`history` has the member `{k}`, which is not a state id"
+                ));
+            }
+            let record = record
+                .as_array()
+                .filter(|r| !r.is_empty())
+                .ok_or_else(|| format!("`history.{k}` is not a list of states"))?;
+            let mut seen = HashSet::new();
+            for s in record {
+                string(s, "a recorded state", state_id)?;
+                if !seen.insert(s.as_str()) {
+                    return Err(format!("`history.{k}` names {s} twice"));
+                }
+            }
+        }
     }
     string(&o["machine"], "machine", upper_name)?;
     string(&o["run"], "run", is_run_id)?;

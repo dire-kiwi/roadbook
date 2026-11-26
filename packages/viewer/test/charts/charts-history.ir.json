@@ -1,0 +1,772 @@
+{
+  "irVersion": "0.4",
+  "sources": [
+    {
+      "path": "packages/viewer/test/charts/history.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 19
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Histories": {
+      "doc": "History states drawn as circles inside their parents.",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 58,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 13
+          }
+        }
+      ],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 11
+          }
+        },
+        "Pause": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 14
+          }
+        },
+        "Resume": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 15
+          }
+        },
+        "Reset": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "root": {
+        "id": "Histories",
+        "name": "Histories",
+        "kind": "compound",
+        "doc": "History states drawn as circles inside their parents.",
+        "span": {
+          "file": 0,
+          "line": 7,
+          "col": 1,
+          "endLine": 58,
+          "endCol": 2
+        },
+        "initial": "Histories.Work",
+        "states": [
+          {
+            "id": "Histories.Work",
+            "name": "Work",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 16,
+              "col": 3,
+              "endLine": 30,
+              "endCol": 4
+            },
+            "initial": "Histories.Work.A",
+            "states": [
+              {
+                "id": "Histories.Work.Last",
+                "name": "Last",
+                "kind": "history",
+                "doc": "Back to where `Work` was.",
+                "span": {
+                  "file": 0,
+                  "line": 19,
+                  "col": 5,
+                  "endLine": 19,
+                  "endCol": 17
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Histories.Work.All",
+                "name": "All",
+                "kind": "deepHistory",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 20,
+                  "col": 5,
+                  "endLine": 20,
+                  "endCol": 21
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Histories.Work.A",
+                "name": "A",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 38
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Go"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Histories.Work.B",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "n",
+                        "value": {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 22,
+                      "col": 15,
+                      "endLine": 22,
+                      "endCol": 36
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Histories.Work.B",
+                "name": "B",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 6
+                },
+                "initial": "Histories.Work.B.B1",
+                "states": [
+                  {
+                    "id": "Histories.Work.B.B1",
+                    "name": "B1",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 26,
+                      "col": 7,
+                      "endLine": 26,
+                      "endCol": 31
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Go"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Histories.Work.B.B2",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 26,
+                          "col": 18,
+                          "endLine": 26,
+                          "endCol": 29
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Histories.Work.B.B2",
+                    "name": "B2",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 27,
+                      "col": 7,
+                      "endLine": 27,
+                      "endCol": 36
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Reset"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Histories.Work.Last",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 27,
+                          "col": 18,
+                          "endLine": 27,
+                          "endCol": 34
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "n"
+                        ],
+                        "type": "int",
+                        "text": "n"
+                      }
+                    ]
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Pause"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Histories.Paused",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 29,
+                  "col": 5,
+                  "endLine": 29,
+                  "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Histories.Paused",
+            "name": "Paused",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 32,
+              "col": 3,
+              "endLine": 36,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Resume"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Histories.Work.All",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 5,
+                  "endLine": 33,
+                  "endCol": 26
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Histories.Work.Last",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 34,
+                  "col": 5,
+                  "endLine": 34,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Reset"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Histories.Both",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 35,
+                  "col": 5,
+                  "endLine": 35,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Histories.Both",
+            "name": "Both",
+            "kind": "parallel",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 38,
+              "col": 3,
+              "endLine": 51,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [
+              {
+                "id": "Histories.Both.Again",
+                "name": "Again",
+                "kind": "deepHistory",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 39,
+                  "col": 5,
+                  "endLine": 39,
+                  "endCol": 23
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Histories.Both.Regions",
+                "name": "Regions",
+                "kind": "history",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 40,
+                  "col": 5,
+                  "endLine": 40,
+                  "endCol": 20
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Histories.Both.Left",
+                "name": "Left",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 41,
+                  "col": 5,
+                  "endLine": 46,
+                  "endCol": 6
+                },
+                "initial": "Histories.Both.Left.L1",
+                "states": [
+                  {
+                    "id": "Histories.Both.Left.Inside",
+                    "name": "Inside",
+                    "kind": "deepHistory",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 43,
+                      "col": 7,
+                      "endLine": 43,
+                      "endCol": 26
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Histories.Both.Left.L1",
+                    "name": "L1",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 44,
+                      "col": 7,
+                      "endLine": 44,
+                      "endCol": 31
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Go"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Histories.Both.Left.L2",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 44,
+                          "col": 18,
+                          "endLine": 44,
+                          "endCol": 29
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Histories.Both.Left.L2",
+                    "name": "L2",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 45,
+                      "col": 7,
+                      "endLine": 45,
+                      "endCol": 36
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Pause"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Histories.Away",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 45,
+                          "col": 18,
+                          "endLine": 45,
+                          "endCol": 34
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Histories.Both.Right",
+                "name": "Right",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 47,
+                  "col": 5,
+                  "endLine": 50,
+                  "endCol": 6
+                },
+                "initial": "Histories.Both.Right.R1",
+                "states": [
+                  {
+                    "id": "Histories.Both.Right.R1",
+                    "name": "R1",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 49,
+                      "col": 7,
+                      "endLine": 49,
+                      "endCol": 35
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Resume"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Histories.Both.Right.R1",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 49,
+                          "col": 18,
+                          "endLine": 49,
+                          "endCol": 33
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Histories.Away",
+            "name": "Away",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 53,
+              "col": 3,
+              "endLine": 57,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Resume"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Histories.Both.Again",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 54,
+                  "col": 5,
+                  "endLine": 54,
+                  "endCol": 28
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Histories.Both.Regions",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 55,
+                  "col": 5,
+                  "endLine": 55,
+                  "endCol": 26
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Reset"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Histories.Both.Left.Inside",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 56,
+                  "col": 5,
+                  "endLine": 56,
+                  "endCol": 33
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:acc92e402f45f7988c25103e8727ca3992713f50103fc95c4093b2b01569ed8f"
+    }
+  }
+}

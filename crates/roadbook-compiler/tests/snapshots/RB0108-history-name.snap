@@ -1,0 +1,12 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0108]: state `A` is declared twice in `M.Work`
+ --> RB0108-history-name.road:7:11
+  |
+6 |     history A
+  |             - first declared here
+7 |     state A { on Go -> Out }
+  |           ^
+  |
+  = help: sibling states need different names

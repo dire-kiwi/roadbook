@@ -209,6 +209,7 @@ fn write(
                         moved: d.and_then(|d| d.moved.clone()),
                         only_moved: d.is_some_and(|d| d.only_moved()),
                         states: d.map(|d| d.state_counts()).unwrap_or_default(),
+                        history: d.map(|d| d.history_counts()).unwrap_or_default(),
                         transitions: d.map(|d| d.transition_counts()).unwrap_or_default(),
                     }
                 })
@@ -520,6 +521,8 @@ struct MachineRow {
     /// Whether moving is all that changed.
     only_moved: bool,
     states: Counts,
+    /// The history states among `states`.
+    history: Counts,
     transitions: Counts,
 }
 
@@ -592,6 +595,15 @@ struct Summary<'a> {
 }
 
 impl Summary<'_> {
+    /// The history states among the states of [`totals`](Self::totals).
+    fn history_totals(&self) -> Counts {
+        let mut h = Counts::default();
+        for r in self.machines {
+            h.add(r.history);
+        }
+        h
+    }
+
     fn totals(&self) -> (MachineCounts, Counts, Counts) {
         let (mut m, mut s, mut t) = (
             MachineCounts::default(),
@@ -660,6 +672,7 @@ impl Summary<'_> {
             "changed": self.charts.iter().any(|c| c.status != "unchanged"),
             "machines": machine_counts_json(m),
             "states": s.to_json(),
+            "historyStates": self.history_totals().to_json(),
             "transitions": t.to_json(),
             "declarations": self.decl_counts().to_json(),
             "changes": self.changed().map(|(_, r)| {
@@ -669,6 +682,7 @@ impl Summary<'_> {
                     "chart": self.charts[r.page].entry,
                     "page": self.names[r.page],
                     "states": r.states.to_json(),
+                    "historyStates": r.history.to_json(),
                     "transitions": r.transitions.to_json(),
                 });
                 if let Some((from, to)) = &r.moved {
@@ -737,8 +751,15 @@ impl Summary<'_> {
             (false, 0) => words(m.counts),
             (false, n) => format!("{}, {n} moved", words(m.counts)),
         };
+        // History states are states: counted with them, and named when there are any.
+        let h = self.history_totals();
+        let history = if h.is_empty() {
+            String::new()
+        } else {
+            format!(" (history states: {})", words(h))
+        };
         out.push_str(&format!(
-            "Machines: {machine_words}. States: {}. Transitions: {}.\n\n",
+            "Machines: {machine_words}. States: {}{history}. Transitions: {}.\n\n",
             words(s),
             words(t)
         ));
@@ -756,10 +777,13 @@ impl Summary<'_> {
                 if let Some((from, to)) = &r.moved {
                     chart.push_str(&format!(" (moved from {} to {})", code(from), code(to)));
                 }
+                let mut states = signs(r.states);
+                if !r.history.is_empty() {
+                    states.push_str(&format!(" (history {})", signs(r.history)));
+                }
                 out.push_str(&format!(
-                    "| {mark} {status} | {} | {chart} | {} | {} |\n",
+                    "| {mark} {status} | {} | {chart} | {states} | {} |\n",
                     code(&r.name),
-                    signs(r.states),
                     signs(r.transitions)
                 ));
             }

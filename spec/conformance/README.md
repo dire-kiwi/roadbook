@@ -55,7 +55,7 @@ Every member is required. Values are in their JSON form ([values](../execution.m
 | Member | Meaning |
 | --- | --- |
 | `description` | What the case checks. |
-| `requires` | The features the case needs beyond the first version's, any of: `messaging` for a case whose chart uses `send`, `emit`, `emits`, `on name.Event`, `invoke … as` or `ref`, or that starts several top-level runs (milestone 5); `parallel` for a case whose chart has a parallel state, and `snapshots` for a case whose script has `snapshot`, `restore` or `suspend` steps (milestone 6). `[]` for none. A runner skips, and does not fail, a case that requires a feature its runtime does not implement yet. |
+| `requires` | The features the case needs beyond the first version's, any of: `messaging` for a case whose chart uses `send`, `emit`, `emits`, `on name.Event`, `invoke … as` or `ref`, or that starts several top-level runs (milestone 5); `parallel` for a case whose chart has a parallel state, and `snapshots` for a case whose script has `snapshot`, `restore` or `suspend` steps (milestone 6); `history` for a case whose chart has a history state. `[]` for none. A runner skips, and does not fail, a case that requires a feature its runtime does not implement yet. |
 | `chart` | The entry chart, relative to this directory. |
 | `machine` | The machine run as the root run, `r1`, which is started first. |
 | `input` | Its arguments, keyed by parameter name. Since no other run exists yet, it has no `ref` argument. |
@@ -133,6 +133,9 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `checkout-declined` | `fail CardDeclined` is routed by tag, and a final state's `fail` fails the run. |
 | `checkout-retry` | The retry loop: an `after` whose delay comes from a function and reads a variable set by the state's entry, under virtual time; invokes restarted with new ids. |
 | `checkout-gave-up` | A guarded block tried in order, falling through to `else` once the guard fails; a bare error as the failure. |
+| `retry-exhausted` | `retry 2 on Busy after backoff(attempt)` as the compiler writes it out: the waits in `Backoff` read the counter, the retrying state's `entry` and `exit` run once, the failure after the last retry takes the outcome's own branch; entering the state again sets the counter back to 0; an error not listed is not retried. |
+| `retry-deadline` | The retrying state's own `after` fires during a wait, cancelling the wait's timer and leaving `Backoff` and the state. |
+| `retry-immediate` | A `retry` with no delay and `fail *`: the failure re-enters `Attempt` at once, restarting the invoke with a new id and no timer. |
 | `place-order-checkout` | `PlaceOrder` running `Checkout` from its chart as child run `r1.4`; an `always` that leaves `Confirming` in the step that entered it, after its entry action; actions with arguments. (`Confirming` has no work; `select-rules` shows that a state left this way does not start its work.) |
 | `place-order-checkout-stubbed` | The same with `Checkout` stubbed: `r1`'s records are identical, and there is no child run. |
 | `place-order-cancel` | `Cancel` on the compound `Processing` cancels its timer and the child invoke of `Paying`; the child run is cancelled from outside and exits its states. |
@@ -179,3 +182,8 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `snapshot-ended` | Saving a run that has ended gives its final snapshot: `done`, `cancelled` and `defect`. |
 | `float-forms` | Integers written as floats (`1.0`, `-0.0`, `10000.0`) in a snapshot and an event are the integers, and are saved in integer form. |
 | `resume-order` | The request-handler flow: create and suspend, restore and pay (suspend waits for the task the payment started), restore and deliver, and a late payment to a restored order whose deadline passed, which expires first. |
+| `redact-values` | Redaction (`vault.road`, its types in another file): a sensitive parameter, a field of an alias of a record, inside a list of an alias and an optional, in `started`, `action` and `invoke.started` arguments, `event` and `dropped` inputs, an error's field in `invoke.fail`, `set` of a sensitive variable and of a record, a list a function returned, a stale result (redacted whole), and `done`; functions get the real values. |
+| `redact-failure` | An error's sensitive field in the variable it is set to and in `failed`. |
+| `redact-child` | Redaction in messages to and from a child (`teller.road`): its arguments and `started`, an `undelivered` send before it runs, `sent` and the child's `message` input, its `emitted` event and the parent's `emitted` input, a sensitive variable set from it. |
+| `redact-peer` | Redaction between peers: `sent` and `message`, an `emitted` input through a `ref`, and the driver's `undelivered` after `sent` to an ended run, which repeats the redacted value. |
+| `redact-snapshot` | A saved snapshot keeps the real values; the `restored` record of the run restored from it shows them redacted. |

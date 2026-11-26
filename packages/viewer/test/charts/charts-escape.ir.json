@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "packages/viewer/test/charts/escape.road",
@@ -39,6 +39,7 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -58,6 +59,7 @@
         {
           "name": "s",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -90,11 +92,13 @@
         {
           "name": "s",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "peer",
           "type": "ref EscapePeer",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -106,6 +110,7 @@
         {
           "name": "t",
           "type": "string",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": "</script><img src=x onerror=alert(3)>",
@@ -128,6 +133,7 @@
             {
               "name": "who",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1047,11 +1053,13 @@
         {
           "name": "s",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "other",
           "type": "ref EscapePeer",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -1064,6 +1072,7 @@
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1083,6 +1092,7 @@
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],

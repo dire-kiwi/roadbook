@@ -1,6 +1,7 @@
 //! The core's data: snapshots, inputs, commands, trace records and defects, each serialising
 //! to exactly the JSON form `spec/execution.md` and `spec/trace.md` give.
 
+use std::collections::BTreeMap;
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -8,6 +9,9 @@ use serde_json::{Map, Value};
 
 /// A JSON object: arguments keyed by parameter name, variables keyed by name.
 pub type Object = Map<String, Value>;
+
+/// What each history state recorded, keyed by its id: state ids, in document order.
+pub type History = BTreeMap<String, Vec<String>>;
 
 /// A run's status. Only [`Status::Running`] is not final.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -153,6 +157,8 @@ pub struct Snapshot {
     pub next_timer: u64,
     /// The id the next `send` or `emit` effect will get.
     pub next_message: u64,
+    /// What each history state recorded when its parent was last exited.
+    pub history: History,
     /// `null` while running and when cancelled.
     pub result: Option<RunResult>,
 }
@@ -569,7 +575,7 @@ pub struct SavedTimer {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Saved {
-    /// The version of the format, `1`.
+    /// The version of the format: `2`, or `1` for one written before history states.
     pub snapshot_version: u64,
     /// The machine's name.
     pub machine: String,
@@ -595,13 +601,17 @@ pub struct Saved {
     pub next_timer: u64,
     /// The id the next `send` or `emit` effect will get.
     pub next_message: u64,
+    /// What each history state recorded. `None` only in a version 1 snapshot, which has no
+    /// `history` member and restores as if it were empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub history: Option<History>,
     /// `null` while running and when cancelled.
     pub result: Option<RunResult>,
 }
 
 impl Saved {
-    /// The version of the format this runtime writes and reads.
-    pub const VERSION: u64 = 1;
+    /// The version of the format this runtime writes. It reads this one and version 1.
+    pub const VERSION: u64 = 2;
 
     /// `snap` saved, with each timer due at `due(id)`.
     pub fn new(snap: &Snapshot, mut due: impl FnMut(&TimerEntry) -> u64) -> Saved {
@@ -629,6 +639,7 @@ impl Saved {
             next_invoke: snap.next_invoke,
             next_timer: snap.next_timer,
             next_message: snap.next_message,
+            history: Some(snap.history.clone()),
             result: snap.result.clone(),
         };
         // Integers in integer form: a float that holds one (`2.0`, `-0.0`) is saved as it.
@@ -636,7 +647,8 @@ impl Saved {
         saved
     }
 
-    /// The core's snapshot: without the version and the due times, as run `run`.
+    /// The core's snapshot: without the version and the due times, as run `run`, with an
+    /// empty `history` for a version 1 snapshot.
     pub fn to_snapshot(&self, run: &str) -> Snapshot {
         Snapshot {
             machine: self.machine.clone(),
@@ -660,6 +672,7 @@ impl Saved {
             next_invoke: self.next_invoke,
             next_timer: self.next_timer,
             next_message: self.next_message,
+            history: self.history.clone().unwrap_or_default(),
             result: self.result.clone(),
         }
     }

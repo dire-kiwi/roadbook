@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0118]: `attempt` is ambiguous: `M` has a parameter named `attempt`
+ --> RB0118-attempt-shadowed.road:8:41
+  |
+8 |     invoke ping() retry 2 after backoff(attempt) {
+  |                                         ^^^^^^^
+  |
+  = help: in a retry's delay `attempt` counts the failed attempts; rename the parameter or variable, or write the retry out as explicit states

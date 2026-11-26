@@ -304,6 +304,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       nextInvoke: 1,
       nextTimer: 1,
       nextMessage: 1,
+      history: {},
       result: null
     }
     const ref = yield* SubscriptionRef.make(snapshot)
@@ -341,6 +342,10 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
 
     // A durable run does not write the records of the steps it takes again on replay.
     let quiet = false
+    // The message and value of the last `sent` record: the core writes it, redacted, right
+    // before the `send` command, and an `undelivered` record repeats it.
+    let lastSent: { readonly message: number; readonly value: Core.Tagged } | undefined
+
     const write = (record: Core.CoreRecord) =>
       quiet ? Effect.void : Effect.map(env.timer.now, (t) => {
         env.sink.write(
@@ -555,6 +560,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       const carry = (command: Core.Command): Effect.Effect<Core.Defect | undefined> => {
         switch (command.kind) {
           case "trace":
+            if (command.record.kind === "sent") lastSent = { message: command.record.message, value: command.record.value }
             return Effect.as(write(command.record), undefined)
           case "action":
             return doAction(command.action, command.args)
@@ -618,7 +624,11 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           const peer = portOf(refs.get(to))
           if (peer !== undefined && push(peer, input)) return Effect.succeed(undefined)
         }
-        return Effect.as(write({ kind: "undelivered", message, to, value }), undefined)
+        // The value as the `sent` record showed it, redacted. The core always writes that record
+        // first; were it missing, only the event's tag is shown.
+        const shown = lastSent?.message === message ? lastSent.value : { _tag: value._tag }
+        lastSent = undefined
+        return Effect.as(write({ kind: "undelivered", message, to, value: shown }), undefined)
       }
 
       const carryOut = (stepped: Core.Stepped) =>

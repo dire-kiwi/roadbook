@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/defects.road",
@@ -39,6 +39,7 @@
         {
           "name": "memo",
           "type": "string?",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -84,6 +85,7 @@
         {
           "name": "limit",
           "type": "int",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -97,6 +99,7 @@
         {
           "name": "memo",
           "type": "string?",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
