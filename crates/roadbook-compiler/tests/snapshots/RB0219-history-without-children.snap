@@ -1,8 +1,8 @@
 ---
 source: crates/roadbook-compiler/tests/fail.rs
 ---
-error[RB0215]: `history H`: `M.A` has no child states
- --> RB0215-history-without-children.road:5:5
+error[RB0219]: `history H`: `M.A` has no child states
+ --> RB0219-history-without-children.road:5:5
   |
 5 |     history H
   |     ^^^^^^^^^

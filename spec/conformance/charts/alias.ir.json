@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/alias.road",
@@ -102,6 +102,7 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -119,6 +120,7 @@
         {
           "name": "note",
           "type": "Note",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -147,6 +149,7 @@
         {
           "name": "limit",
           "type": "Money",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -156,6 +159,7 @@
         {
           "name": "m",
           "type": "Cash",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 5,
@@ -174,6 +178,7 @@
         {
           "name": "r",
           "type": "Ratio",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 1.5,
@@ -192,6 +197,7 @@
         {
           "name": "w",
           "type": "Wait",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 1000,
@@ -210,6 +216,7 @@
         {
           "name": "t",
           "type": "Tier",
+          "sensitive": false,
           "init": {
             "kind": "enum",
             "variant": "Low",
@@ -228,6 +235,7 @@
         {
           "name": "note",
           "type": "Note",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -245,6 +253,7 @@
             {
               "name": "by",
               "type": "Money",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -262,11 +271,13 @@
             {
               "name": "ratio",
               "type": "Ratio",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "wait",
               "type": "Wait",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -284,6 +295,7 @@
             {
               "name": "tier",
               "type": "Tier",
+              "sensitive": false,
               "doc": ""
             }
           ],

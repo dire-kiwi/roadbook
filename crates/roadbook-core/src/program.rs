@@ -5,6 +5,8 @@ use std::fmt;
 
 use roadbook_ir::{Ir, Machine, State, TypeDef, TypeRef};
 
+use crate::redact::{Marks, Redactor};
+
 /// An IR document, checked and indexed for the interpreter.
 ///
 /// Build one with [`Program::new`] (or [`Program::from_json`]) and keep it for as long as runs
@@ -13,6 +15,7 @@ use roadbook_ir::{Ir, Machine, State, TypeDef, TypeRef};
 pub struct Program {
     ir: Ir,
     machines: HashMap<String, MachineIndex>,
+    marks: Marks,
 }
 
 /// The states of one machine, in document order: a state's index is its position in a
@@ -27,6 +30,10 @@ pub(crate) struct MachineIndex {
     /// child: it is never active.
     pub children: Vec<Vec<usize>>,
     pub by_id: HashMap<String, usize>,
+    /// For each state, its transitions' targets' indices, in order (`None`: no target).
+    pub targets: Vec<Vec<Option<usize>>>,
+    /// For each state, its initial child's index, if it names one.
+    pub initial: Vec<Option<usize>>,
 }
 
 /// Why an IR cannot be run.
@@ -47,7 +54,8 @@ impl fmt::Display for ProgramError {
 impl std::error::Error for ProgramError {}
 
 impl Program {
-    /// Indexes `ir`.
+    /// Indexes `ir`. An IR whose transition targets or initial states name states their
+    /// machine does not have is refused.
     pub fn new(ir: Ir) -> Result<Program, ProgramError> {
         let mut machines = HashMap::new();
         for (name, m) in &ir.machines {
@@ -56,11 +64,47 @@ impl Program {
                 parents: Vec::new(),
                 children: Vec::new(),
                 by_id: HashMap::new(),
+                targets: Vec::new(),
+                initial: Vec::new(),
             };
             walk(&m.root, None, &mut Vec::new(), &mut idx);
+            // A target or initial state the machine does not have: refused here, since the
+            // interpreter would have nothing to enter.
+            let index = |id: &String, what: &str, of: &str| {
+                idx.by_id.get(id).copied().ok_or_else(|| {
+                    ProgramError::Read(format!(
+                        "{what} `{id}` of state `{of}` is not a state of machine `{name}`"
+                    ))
+                })
+            };
+            for i in 0..idx.paths.len() {
+                let s = idx.state(m, i);
+                let targets = s
+                    .transitions
+                    .iter()
+                    .map(|t| {
+                        t.target
+                            .as_ref()
+                            .map(|id| index(id, "the target", &s.id))
+                            .transpose()
+                    })
+                    .collect::<Result<_, _>>()?;
+                let initial = s
+                    .initial
+                    .as_ref()
+                    .map(|id| index(id, "the initial state", &s.id))
+                    .transpose()?;
+                idx.targets.push(targets);
+                idx.initial.push(initial);
+            }
             machines.insert(name.clone(), idx);
         }
-        Ok(Program { ir, machines })
+        let marks = Marks::new(&ir);
+        Ok(Program {
+            ir,
+            machines,
+            marks,
+        })
     }
 
     /// Reads an IR document ([`Ir::from_json`]) and indexes it.
@@ -72,6 +116,13 @@ impl Program {
     /// The IR.
     pub fn ir(&self) -> &Ir {
         &self.ir
+    }
+
+    pub(crate) fn redactor(&self) -> Redactor<'_> {
+        Redactor {
+            ir: &self.ir,
+            marks: &self.marks,
+        }
     }
 
     /// `t` with aliases expanded at the top, transitively: `Money` for `type Money = int` is

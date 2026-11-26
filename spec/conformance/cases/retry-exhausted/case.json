@@ -1,0 +1,75 @@
+{
+  "description": "`retry 2 on Busy after backoff(attempt)` written out: two Busy failures wait backoff(1) and backoff(2) in Backoff with the state's entry and exit run once; the third goes to `fail Busy`'s own branch. Entering the state again sets the count back to 0, and Gone, not listed, is not retried.",
+  "requires": [],
+  "chart": "charts/retry.road",
+  "machine": "Fetcher",
+  "input": {
+    "id": "d1"
+  },
+  "stub": [],
+  "fns": {
+    "backoff": [
+      {
+        "args": [
+          1
+        ],
+        "returns": 100
+      },
+      {
+        "args": [
+          2
+        ],
+        "returns": 200
+      }
+    ]
+  },
+  "actions": {},
+  "script": [
+    {
+      "task": "fetch",
+      "fail": {
+        "_tag": "Busy"
+      }
+    },
+    {
+      "advance": 100
+    },
+    {
+      "task": "fetch",
+      "fail": {
+        "_tag": "Busy"
+      }
+    },
+    {
+      "advance": 200
+    },
+    {
+      "task": "fetch",
+      "fail": {
+        "_tag": "Busy"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Again"
+      }
+    },
+    {
+      "task": "fetch",
+      "fail": {
+        "_tag": "Busy"
+      }
+    },
+    {
+      "advance": 100
+    },
+    {
+      "task": "fetch",
+      "fail": {
+        "_tag": "Gone",
+        "reason": "deleted"
+      }
+    }
+  ],
+  "status": "failed"
+}

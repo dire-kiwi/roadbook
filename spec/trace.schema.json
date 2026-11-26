@@ -44,7 +44,7 @@
           "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }]
         },
         "snapshot": {
-          "description": "The saved snapshot the run was restored from, after any migration (spec/snapshot.schema.json).",
+          "description": "The saved snapshot the run was restored from, after any migration (spec/snapshot.schema.json), redacted like every value of a record (spec/trace.md#redaction): not a snapshot to restore.",
           "type": "object",
           "required": ["snapshotVersion", "machine", "run", "ir", "status", "active", "input", "vars", "invokes", "timers", "nextInvoke", "nextTimer", "nextMessage", "result"]
         }
@@ -222,7 +222,9 @@
     "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
     "safeNatural": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
     "id": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
-    "value": { "description": "A Roadbook value in its JSON form (spec/execution.md#values)." },
+    "value": {
+      "description": "A Roadbook value in its JSON form (spec/execution.md#values), redacted: the value of every field, parameter or variable marked sensitive is the string \"<redacted>\" (spec/trace.md#redaction)."
+    },
     "args": {
       "description": "Arguments keyed by parameter name.",
       "type": "object",

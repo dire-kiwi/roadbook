@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/orders.road",
@@ -13,11 +13,13 @@
         {
           "name": "sku",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "qty",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -36,11 +38,13 @@
         {
           "name": "items",
           "type": "Item[]",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "card",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -59,11 +63,13 @@
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "total",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -82,6 +88,7 @@
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -114,11 +121,13 @@
         {
           "name": "warehouse",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -136,16 +145,19 @@
         {
           "name": "warehouse",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "sku",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "qty",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -165,16 +177,19 @@
         {
           "name": "warehouse",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "items",
           "type": "Item[]",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -196,11 +211,13 @@
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "draft",
           "type": "OrderDraft",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -232,6 +249,7 @@
         {
           "name": "warehouse",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -241,6 +259,7 @@
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -254,6 +273,7 @@
         {
           "name": "items",
           "type": "Item[]",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -271,11 +291,13 @@
             {
               "name": "orderId",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "items",
               "type": "Item[]",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -293,6 +315,7 @@
             {
               "name": "orderId",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -310,11 +333,13 @@
             {
               "name": "sku",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "qty",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -345,6 +370,7 @@
             {
               "name": "orderId",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -362,11 +388,13 @@
             {
               "name": "orderId",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "reason",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -813,16 +841,19 @@
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "draft",
           "type": "OrderDraft",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "inventory",
           "type": "ref Inventory",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -835,6 +866,7 @@
         {
           "name": "receipt",
           "type": "Receipt",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -848,6 +880,7 @@
         {
           "name": "problem",
           "type": "OutOfStock",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {

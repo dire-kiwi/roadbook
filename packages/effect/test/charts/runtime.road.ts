@@ -20,7 +20,7 @@ export interface OverflowDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.3",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "packages/effect/test/charts/runtime.road",
@@ -48,6 +48,7 @@ const ir: unknown = {
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -93,6 +94,7 @@ const ir: unknown = {
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 9007199254740991,
@@ -193,6 +195,7 @@ const ir: unknown = {
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -337,6 +340,7 @@ const ir: unknown = {
         {
           "name": "a",
           "type": "int",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -350,6 +354,7 @@ const ir: unknown = {
         {
           "name": "b",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "op",
             "op": "+",

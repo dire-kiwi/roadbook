@@ -1,0 +1,47 @@
+// Conformance chart: `retry`, which the compiler writes out as explicit states.
+
+error Busy
+error Gone { reason: string }
+
+action log(what: string)
+fn backoff(attempt: int) -> duration
+task fetch(id: string)   -> string   ! Busy | Gone
+task save(body: string)              ! Busy | Gone
+
+/// Fetch a document with retries, then save it.
+machine Fetcher(id: string) -> string ! Busy | Gone {
+  var body: string
+  var why:  string = ""
+
+  event Again
+
+  initial Loading
+
+  /// Busy is retried twice with a growing delay, Gone is not. The deadline covers every
+  /// attempt and every wait.
+  state Loading {
+    entry do log("loading")
+    exit do log("left loading")
+    invoke fetch(id) retry 2 on Busy after backoff(attempt) {
+      done      -> Saving   set body = result
+      fail Busy -> Waiting
+      fail Gone -> Missing  set why = error.reason
+    }
+    after 10s -> TimedOut
+  }
+
+  state Waiting { on Again -> Loading }
+
+  /// Every error is retried once, at once.
+  state Saving {
+    invoke save(body) retry 1 {
+      done   -> Saved
+      fail * -> Unsaved
+    }
+  }
+
+  final state Saved    { output body }
+  final state Unsaved  { fail Busy }
+  final state Missing  { fail Gone { reason: why } }
+  final state TimedOut { fail Busy }
+}

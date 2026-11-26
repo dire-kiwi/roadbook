@@ -396,7 +396,7 @@ export function rootIsVisible(machine: Machine): boolean {
 }
 
 export function paramsText(params: Field[]): string {
-  return params.map((p) => `${p.name}: ${p.type}`).join(', ')
+  return params.map((p) => `${p.sensitive ? 'sensitive ' : ''}${p.name}: ${p.type}`).join(', ')
 }
 
 /** `machine Checkout(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUnavailable` */

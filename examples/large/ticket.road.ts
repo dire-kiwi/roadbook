@@ -227,7 +227,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.3",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -304,21 +304,25 @@ const ir: unknown = {
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "customerId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "subject",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "priority",
           "type": "Priority",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -337,21 +341,25 @@ const ir: unknown = {
         {
           "name": "category",
           "type": "Category",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "priority",
           "type": "Priority",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "spamScore",
           "type": "float",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "duplicateOf",
           "type": "string?",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -370,11 +378,13 @@ const ir: unknown = {
         {
           "name": "answered",
           "type": "bool",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "score",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -393,21 +403,25 @@ const ir: unknown = {
         {
           "name": "ticketId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "reason",
           "type": "CloseReason",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "reopens",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "rating",
           "type": "int?",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -450,6 +464,7 @@ const ir: unknown = {
         {
           "name": "retryAfter",
           "type": "duration",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -493,6 +508,7 @@ const ir: unknown = {
         {
           "name": "c",
           "type": "Classification",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -511,6 +527,7 @@ const ir: unknown = {
         {
           "name": "c",
           "type": "Classification",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -529,6 +546,7 @@ const ir: unknown = {
         {
           "name": "attempt",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -547,6 +565,7 @@ const ir: unknown = {
         {
           "name": "p",
           "type": "Priority",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -565,6 +584,7 @@ const ir: unknown = {
         {
           "name": "p",
           "type": "Priority",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -583,16 +603,19 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "reason",
           "type": "CloseReason",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "reopens",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -611,16 +634,19 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "reopens",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "survey",
           "type": "SurveyResult",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -641,11 +667,13 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "template",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -663,16 +691,19 @@ const ir: unknown = {
         {
           "name": "agentId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "template",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -690,11 +721,13 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "tier",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -712,11 +745,13 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "body",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -734,11 +769,13 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "text",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -758,6 +795,7 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -779,11 +817,13 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "category",
           "type": "Category",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -805,6 +845,7 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -826,6 +867,7 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -845,6 +887,7 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -864,6 +907,7 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -885,6 +929,7 @@ const ir: unknown = {
         {
           "name": "surveyId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -916,6 +961,7 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -925,6 +971,7 @@ const ir: unknown = {
         {
           "name": "classification",
           "type": "Classification",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -938,6 +985,7 @@ const ir: unknown = {
         {
           "name": "priority",
           "type": "Priority",
+          "sensitive": false,
           "init": {
             "kind": "enum",
             "variant": "Normal",
@@ -956,6 +1004,7 @@ const ir: unknown = {
         {
           "name": "category",
           "type": "Category",
+          "sensitive": false,
           "init": {
             "kind": "enum",
             "variant": "Other",
@@ -974,6 +1023,7 @@ const ir: unknown = {
         {
           "name": "agentId",
           "type": "string",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -987,6 +1037,7 @@ const ir: unknown = {
         {
           "name": "classifyAttempts",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -1005,6 +1056,7 @@ const ir: unknown = {
         {
           "name": "bugAttempts",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -1023,6 +1075,7 @@ const ir: unknown = {
         {
           "name": "retryWait",
           "type": "duration",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 60000,
@@ -1041,6 +1094,7 @@ const ir: unknown = {
         {
           "name": "bugId",
           "type": "string",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": "",
@@ -1059,6 +1113,7 @@ const ir: unknown = {
         {
           "name": "reopens",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -1077,6 +1132,7 @@ const ir: unknown = {
         {
           "name": "resolution",
           "type": "string",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -1090,6 +1146,7 @@ const ir: unknown = {
         {
           "name": "survey",
           "type": "SurveyResult",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -1107,6 +1164,7 @@ const ir: unknown = {
             {
               "name": "agentId",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1124,6 +1182,7 @@ const ir: unknown = {
             {
               "name": "body",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1141,6 +1200,7 @@ const ir: unknown = {
             {
               "name": "body",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1158,6 +1218,7 @@ const ir: unknown = {
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1296,6 +1357,7 @@ const ir: unknown = {
             {
               "name": "ticketId",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -4392,6 +4454,7 @@ const ir: unknown = {
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -4401,6 +4464,7 @@ const ir: unknown = {
         {
           "name": "surveyId",
           "type": "string",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -4414,6 +4478,7 @@ const ir: unknown = {
         {
           "name": "polls",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -4432,6 +4497,7 @@ const ir: unknown = {
         {
           "name": "score",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,

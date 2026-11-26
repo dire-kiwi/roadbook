@@ -438,3 +438,26 @@ machine M() {
         ["M.P", "M.P.X", "M.P.X.A2", "M.P.Y", "M.P.Y.B"]
     );
 }
+
+/// A hand-written IR whose transition or initial state names a state the machine does not
+/// have is refused when it is indexed: running it would have nothing to enter.
+#[test]
+fn an_ir_naming_a_missing_state_is_refused() {
+    let src =
+        "machine M() {\n  event Go\n  initial A\n  state A { on Go -> B }\n  final state B {}\n}\n";
+    let ir = || {
+        roadbook_compiler::compile_source("t.road", src, &Default::default())
+            .ir
+            .unwrap()
+    };
+    let mut bad_target = ir();
+    let m = bad_target.machines.get_mut("M").unwrap();
+    m.root.states[0].transitions[0].target = Some("M.Nope".into());
+    let e = Program::new(bad_target).unwrap_err().to_string();
+    assert!(e.contains("the target `M.Nope` of state `M.A`"), "{e}");
+
+    let mut bad_initial = ir();
+    bad_initial.machines.get_mut("M").unwrap().root.initial = Some("M.Nope".into());
+    let e = Program::new(bad_initial).unwrap_err().to_string();
+    assert!(e.contains("the initial state `M.Nope` of state `M`"), "{e}");
+}

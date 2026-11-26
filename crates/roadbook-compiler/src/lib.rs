@@ -36,6 +36,7 @@ pub mod loader;
 mod machine;
 mod names;
 mod project;
+mod sensitive;
 mod types;
 
 pub use index::{Reference, Symbol, SymbolId, SymbolIndex, SymbolKind};

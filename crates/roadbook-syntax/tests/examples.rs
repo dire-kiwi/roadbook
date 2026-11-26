@@ -95,6 +95,12 @@ fn doc_snippets_are_fixed_points() {
     }
     assert_eq!(
         checked,
-        ["README.md", "language.md", "language.md", "alternatives.md"]
+        [
+            "README.md",
+            "language.md",
+            "language.md",
+            "language.md",
+            "alternatives.md"
+        ]
     );
 }

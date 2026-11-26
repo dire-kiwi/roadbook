@@ -2,7 +2,8 @@
 # Checks the tree-sitter grammar: the committed parser is what grammar.js generates, the corpus
 # tests pass, every chart in the repository parses with no ERROR or MISSING node (except the
 # compiler's fixtures that fail parsing on purpose), and the queries load. Needs the
-# tree-sitter CLI (0.26) and a C compiler.
+# tree-sitter CLI 0.26.9 (the version that generated src/; other releases write a different one)
+# and a C compiler.
 #
 #   editors/tree-sitter-roadbook/check.sh
 set -euo pipefail

@@ -1,11 +1,11 @@
 /**
- * The Roadbook IR, version 0.3, as `spec/ir.md` describes it. The types mirror the JSON;
+ * The Roadbook IR, version 0.4, as `spec/ir.md` describes it. The types mirror the JSON;
  * {@link loadIr} checks the version before anything else.
  */
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.3"
+export const IR_VERSION = "0.4"
 
 export interface Span {
   readonly file: number
@@ -20,6 +20,8 @@ export interface Field {
   readonly name: string
   /** A type reference in canonical source form: `LineItem[]`, `string?`, `ref Inventory`. */
   readonly type: string
+  /** Marked `sensitive`: trace records show its value as `"<redacted>"`. */
+  readonly sensitive: boolean
   readonly doc: string
 }
 
@@ -54,6 +56,8 @@ export interface TaskDecl {
 export interface Variable {
   readonly name: string
   readonly type: string
+  /** Marked `sensitive`: trace records show its value as `"<redacted>"`. */
+  readonly sensitive: boolean
   readonly init: Expr | null
   readonly doc: string
   readonly span: Span

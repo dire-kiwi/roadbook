@@ -8,7 +8,7 @@ import { Checkout } from "./checkout.road"
 
 /// POST /orders: authenticate, validate, price, take payment, confirm.
 /// Every final state is one HTTP response.
-machine PlaceOrder(token: string, draft: OrderDraft) -> ApiResponse {
+machine PlaceOrder(sensitive token: string, draft: OrderDraft) -> ApiResponse {
   var user:    User
   var order:   Order
   var receipt: Receipt

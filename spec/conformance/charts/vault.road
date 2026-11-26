@@ -1,0 +1,59 @@
+// Conformance chart: redaction. Every value a trace record shows of a sensitive field,
+// parameter or variable is "<redacted>": in records and errors, at any depth of lists,
+// optionals and aliases (declared in another file), in events, arguments, results and
+// outputs, and in the snapshot a `restored` record holds. teller.road has the messages.
+
+import { Login, Logins, Session, Profile, Locked } from "./vault_types.road"
+
+/// Note a sign-in attempt.
+action audit(who: string, login: Login)
+
+/// Keep a session's secret, and the sessions it belongs to.
+action remember(sensitive secret: string, sessions: Session[])
+
+/// Check a login and its PIN.
+task signIn(login: Login, sensitive pin: int) -> Session ! Locked
+
+/// Load the profile a session belongs to.
+task loadProfile(session: Session) -> Profile
+
+/// The sessions to keep: the one given, twice.
+fn both(session: Session) -> Session[]
+
+/// Signs a user in, with a retry after a lockout, and loads their profile.
+machine Vault(login: Login, sensitive pin: int, extra: Logins, backup: Session?) -> Profile ! Locked {
+  event Retry { sensitive pin: int, note: string }
+  event Nudge { sensitive why: string }
+
+  sensitive var current: int = pin
+  var session:           Session
+  var profile:           Profile
+  var locked:            Locked
+
+  initial SigningIn
+
+  state SigningIn {
+    entry do audit(login.user, login)
+    invoke signIn(login, current) {
+      done        -> Loading  set session = result
+      fail Locked -> Waiting  set locked = error
+    }
+  }
+
+  state Waiting {
+    on Retry                -> SigningIn  set current = event.pin
+    on Nudge if current < 0 -> GaveUp
+    after 1s                -> GaveUp
+  }
+
+  state Loading {
+    entry do remember(session.token, both(session))
+    invoke loadProfile(session) {
+      done -> Loaded  set profile = result
+    }
+    on Retry -> Loading
+  }
+
+  final state Loaded { output profile }
+  final state GaveUp { fail locked }
+}

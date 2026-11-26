@@ -13,4 +13,4 @@ machine M() {
   final state D {}
 }
 
-// expect: RB0215 at 5:5
+// expect: RB0219 at 5:5

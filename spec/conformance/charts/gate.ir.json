@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/gate.road",
@@ -13,6 +13,7 @@
         {
           "name": "amount",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -31,11 +32,13 @@
         {
           "name": "who",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "amount",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -56,6 +59,7 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -84,6 +88,7 @@
         {
           "name": "who",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -93,6 +98,7 @@
         {
           "name": "count",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -115,6 +121,7 @@
             {
               "name": "amount",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
