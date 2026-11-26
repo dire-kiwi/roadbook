@@ -467,6 +467,15 @@ impl<'p> Cx<'_, 'p> {
             if let Some((alias, machine)) = &self.nodes[a].alias
                 && alias.name == name.name
             {
+                // An invoke of a machine that is not declared (already reported) names a child
+                // with no known events: the name is in scope, but nothing is checked against it.
+                let known = matches!(
+                    self.ck.names.lookup(self.file, machine),
+                    Found::Decl(id) if matches!(self.ck.names.decl(id).kind, DeclKind::Machine(_))
+                );
+                if !known {
+                    return None;
+                }
                 let address = ir::Address {
                     kind: ir::AddressKind::Child,
                     name: name.name.clone(),
