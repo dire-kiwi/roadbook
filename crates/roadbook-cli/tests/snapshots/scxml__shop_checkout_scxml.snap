@@ -1,0 +1,48 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Charge the customer's card, retrying while the payment gateway is down. -->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Checkout" datamodel="roadbook" initial="Checkout_Charging" rb:returns="Receipt" rb:errors="CardDeclined GatewayUnavailable">
+  <datamodel>
+    <data id="order" rb:type="Order" rb:param="true"/>
+    <data id="user" rb:type="User" rb:param="true"/>
+    <data id="attempts" expr="0" rb:type="int"/>
+    <data id="receipt" rb:type="Receipt"/>
+    <data id="declined" rb:type="CardDeclined"/>
+  </datamodel>
+  <!-- One attempt against the payment gateway. -->
+  <state id="Checkout_Charging">
+    <invoke id="Checkout_Charging_invoke" type="urn:roadbook:task" src="chargeCard">
+      <param name="order" expr="order"/>
+      <param name="user" expr="user"/>
+    </invoke>
+    <transition event="done.invoke.Checkout_Charging_invoke" target="Checkout_Charged">
+      <assign location="receipt" expr="result"/>
+    </transition>
+    <transition event="error.CardDeclined.Checkout_Charging_invoke" target="Checkout_Declined">
+      <assign location="declined" expr="error"/>
+    </transition>
+    <transition event="error.GatewayUnavailable.Checkout_Charging_invoke" cond="attempts &lt; 3" target="Checkout_Backoff"/>
+    <transition event="error.GatewayUnavailable.Checkout_Charging_invoke" target="Checkout_GaveUp"/>
+  </state>
+  <!-- Wait before the next attempt. The delay grows with each attempt. -->
+  <state id="Checkout_Backoff">
+    <onentry>
+      <assign location="attempts" expr="attempts + 1"/>
+      <send id="Checkout_Backoff_after_0" event="roadbook.after.Checkout_Backoff.0" delayexpr="retryDelay(attempts)"/>
+    </onentry>
+    <onexit>
+      <cancel sendid="Checkout_Backoff_after_0"/>
+    </onexit>
+    <transition event="roadbook.after.Checkout_Backoff.0" target="Checkout_Charging"/>
+  </state>
+  <final id="Checkout_Charged">
+    <donedata>
+      <content expr="receipt"/>
+    </donedata>
+  </final>
+  <final id="Checkout_Declined" rb:fail="declined"/>
+  <final id="Checkout_GaveUp" rb:fail="GatewayUnavailable"/>
+</scxml>
