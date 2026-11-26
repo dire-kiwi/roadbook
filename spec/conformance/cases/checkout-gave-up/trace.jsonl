@@ -1,4 +1,4 @@
-{"input":{"order":{"id":"o1","items":[{"qty":2,"sku":"apple"}],"totalCents":4200},"user":{"id":"u1","role":"Customer"}},"ir":"sha256:4549a2211c30e8dcc753fc13a57e8f7cfae5f89b018c94545bcbafdc7e6b3aa6","kind":"started","machine":"Checkout","run":"r1","t":0}
+{"input":{"order":{"id":"o1","items":[{"qty":2,"sku":"apple"}],"totalCents":4200},"user":{"id":"u1","role":"Customer"}},"ir":"sha256:4143d2981902392d9c0e6b4521e72c62e52d37de4596c32ed4e9feebb8281b03","kind":"started","machine":"Checkout","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Checkout","t":0}
 {"kind":"entered","run":"r1","state":"Checkout.Charging","t":0}
 {"args":{"order":{"id":"o1","items":[{"qty":2,"sku":"apple"}],"totalCents":4200},"user":{"id":"u1","role":"Customer"}},"invoke":1,"kind":"invoke.started","run":"r1","src":"chargeCard","state":"Checkout.Charging","t":0}

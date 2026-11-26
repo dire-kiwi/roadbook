@@ -8,7 +8,7 @@ import { copyJson, type Json } from "./json.ts"
 import type { Saved, Snapshot } from "./types.ts"
 
 /** The `snapshotVersion` this runtime saves and restores. */
-export const SNAPSHOT_VERSION = 1
+export const SNAPSHOT_VERSION = 2
 
 /** Why a saved snapshot was refused. */
 export type RefusalReason = "invalid" | "machine" | "ir" | "migration" | "ended" | "ref"
@@ -39,6 +39,7 @@ export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Sav
   input: snapshot.input,
   vars: snapshot.vars,
   invokes: snapshot.invokes,
+  spawned: snapshot.spawned,
   timers: snapshot.timers.map((t) => ({ ...t, due: due(t.id) })),
   nextInvoke: snapshot.nextInvoke,
   nextTimer: snapshot.nextTimer,
@@ -89,7 +90,7 @@ export const checkSaved = (ir: Ir, machine: string, json: unknown, migrate?: Mig
 
 // ---- the shape: snapshot.schema.json --------------------------------------------------------
 
-/** Whether `u` matches `snapshot.schema.json` with `snapshotVersion` 1. Its values are not checked. */
+/** Whether `u` matches `snapshot.schema.json` with `snapshotVersion` 2. Its values are not checked. */
 export const isSaved = (u: unknown): u is Saved => shapeIssue(u) === undefined
 
 const UPPER = /^[A-Z][A-Za-z0-9]*$/
@@ -116,6 +117,7 @@ const MEMBERS = [
   "input",
   "vars",
   "invokes",
+  "spawned",
   "timers",
   "nextInvoke",
   "nextTimer",
@@ -165,6 +167,18 @@ const shapeIssue = (json: unknown): string | undefined => {
     const issue = membersIssue(inv, ["id", "state", "src"], "an invoke")
     if (issue !== undefined) return issue
     if (!isId(inv["id"]) || !matches(STATE_ID, inv["state"]) || !matches(NAME, inv["src"])) return "an invoke is malformed"
+  }
+  const spawned = json["spawned"]
+  if (!Array.isArray(spawned)) return "spawned is not a list"
+  for (const ch of spawned) {
+    if (!isObject(ch)) return "a spawned child is not an object"
+    const issue = membersIssue(ch, ["id", "children", "key", "args"], "a spawned child")
+    if (issue !== undefined) return issue
+    const key = ch["key"]
+    if (
+      !isId(ch["id"]) || !matches(LOWER, ch["children"]) || !(typeof key === "string" || Number.isInteger(key)) ||
+      !isObject(ch["args"]) || !Object.keys(ch["args"]).every((k) => LOWER.test(k))
+    ) return "a spawned child is malformed"
   }
   const timers = json["timers"]
   if (!Array.isArray(timers)) return "timers is not a list"
@@ -237,6 +251,30 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
     if (invokeIds.has(inv.id)) return `invoke id ${inv.id} is repeated`
     invokeIds.add(inv.id)
     if (inv.id >= saved.nextInvoke) return `invoke id ${inv.id} is not below nextInvoke`
+  }
+  const keys = new Set<string>()
+  for (const ch of saved.spawned) {
+    const decl = Object.hasOwn(m.children, ch.children) ? m.children[ch.children] : undefined
+    if (decl === undefined) return `spawned child ${ch.id} is of ${ch.children}, which is not a collection of the machine`
+    const keyIssue = valueIssue(ir, decl.key, ch.key, `the key of spawned child ${ch.id}`)
+    if (keyIssue !== undefined) return keyIssue
+    const child = ir.machines[decl.machine]
+    if (child === undefined) return `the machine of ${ch.children} is not in the IR`
+    const names = new Set(child.params.map((p) => p.name))
+    const absent = child.params.find((p) => !Object.hasOwn(ch.args, p.name))
+    if (absent !== undefined) return `spawned child ${ch.id} has no argument ${absent.name}`
+    const other = Object.keys(ch.args).find((k) => !names.has(k))
+    if (other !== undefined) return `spawned child ${ch.id} has an argument ${other}, which is not a parameter`
+    for (const p of child.params) {
+      const issue = valueIssue(ir, p.type, ch.args[p.name] ?? null, `the argument ${p.name} of spawned child ${ch.id}`)
+      if (issue !== undefined) return issue
+    }
+    const key = `${ch.children} ${JSON.stringify(ch.key)}`
+    if (keys.has(key)) return `two spawned children of ${ch.children} have the key ${JSON.stringify(ch.key)}`
+    keys.add(key)
+    if (invokeIds.has(ch.id)) return `invoke id ${ch.id} is repeated`
+    invokeIds.add(ch.id)
+    if (ch.id >= saved.nextInvoke) return `spawned child id ${ch.id} is not below nextInvoke`
   }
   const timerKeys = new Set<string>()
   const timerIds = new Set<number>()

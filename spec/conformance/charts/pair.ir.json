@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "spec/conformance/charts/pair.road",
@@ -67,6 +67,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Receiver",
         "name": "Receiver",
@@ -188,7 +189,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:a3ddda38b14b5ec2a94886b68e786f3aa4c678c3782515d40561f8ed17d83566"
+      "hash": "sha256:5fdb64925d105748fbaa97703fa0ef20123f7271f9c047ad6710efeb93c8f861"
     },
     "Sender": {
       "doc": "Sends First, then Second, in one transition, to the same peer named two ways.",
@@ -244,6 +245,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Sender",
         "name": "Sender",
@@ -307,6 +309,7 @@
                       "machine": "Receiver",
                       "state": null
                     },
+                    "key": null,
                     "event": "First",
                     "value": {
                       "kind": "record",
@@ -323,6 +326,7 @@
                       "machine": "Receiver",
                       "state": null
                     },
+                    "key": null,
                     "event": "Second",
                     "value": {
                       "kind": "record",
@@ -373,7 +377,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:44fcb592287cddc7c3313a3ff3a57b939f2c6ffe34de436657f2877d3c3091b2"
+      "hash": "sha256:eb05f9df3530e0eb9efa009b1b0aa92adfa6be4133e740ae08ecc0085f0cb1a7"
     }
   }
 }

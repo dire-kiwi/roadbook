@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "spec/conformance/charts/fetch.road",
@@ -167,6 +167,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Fetch",
         "name": "Fetch",
@@ -460,7 +461,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:35b2a51e8d585b19d0f89d57149c94ca8f3f9ec42b37079b4260846d80b6cc76"
+      "hash": "sha256:cbd4f45fb8b39d6f993b3b17e8f9ea794d198999cca881a94f5aed215ddc71b1"
     }
   }
 }

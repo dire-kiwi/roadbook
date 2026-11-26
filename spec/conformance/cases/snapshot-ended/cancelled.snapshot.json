@@ -1,1 +1,1 @@
-{"active":[],"input":{"start":1},"invokes":[],"ir":"sha256:1fa81f452da00ee2767aeec05233a81ed2e52266bd1c14968a8ba72f0fa0cede","machine":"Counter","nextInvoke":1,"nextMessage":1,"nextTimer":1,"result":null,"run":"r3","snapshotVersion":1,"status":"cancelled","timers":[],"vars":{"n":1}}
+{"active":[],"input":{"start":1},"invokes":[],"ir":"sha256:742be138418d8169a43c384901a9e4a5fa7551911c74196ecef43df2fbd3bfb0","machine":"Counter","nextInvoke":1,"nextMessage":1,"nextTimer":1,"result":null,"run":"r3","snapshotVersion":2,"spawned":[],"status":"cancelled","timers":[],"vars":{"n":1}}

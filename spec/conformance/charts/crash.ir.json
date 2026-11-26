@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "spec/conformance/charts/crash.road",
@@ -58,6 +58,7 @@
       "vars": [],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Crash",
         "name": "Crash",
@@ -287,7 +288,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:cc06b1198cd0e16680f1447e14355ff9679581bf725284f80af1d002db61b32d"
+      "hash": "sha256:3fc5aa06243d1bfb0134f2ae946fcbd83734938a83fb4d5c8b154bd370394429"
     },
     "Child": {
       "doc": "Waits for Stop, which never comes, logging its exit.",
@@ -322,6 +323,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Child",
         "name": "Child",
@@ -419,7 +421,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:15b778f27b21412cfb7482423212d528973b52fc295512a99f859a752bb9a33e"
+      "hash": "sha256:0d4b6d81feac5442ec667ec178d4a11392e94c2de8e1ad59084931d6834a54e2"
     }
   }
 }

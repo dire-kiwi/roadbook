@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "spec/conformance/charts/upload.road",
@@ -130,6 +130,7 @@
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Upload",
         "name": "Upload",
@@ -369,7 +370,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:1588792051fa7eb110030f9ee2c0e854b30c0bdad6167347d22fdbcd29ba9e12"
+      "hash": "sha256:2dfcc699b1e6a7e02872f0fd1eec6d9b1f2461b6bdb40cd21707268d4c63b783"
     },
     "Publish": {
       "doc": "Uploads, pausing and resuming the child when asked, and shows its progress.",
@@ -447,6 +448,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -546,6 +548,7 @@
                       "machine": "Upload",
                       "state": "Publish.Uploading"
                     },
+                    "key": null,
                     "event": "Pause",
                     "value": {
                       "kind": "record",
@@ -580,6 +583,7 @@
                       "machine": "Upload",
                       "state": "Publish.Uploading"
                     },
+                    "key": null,
                     "event": "Resume",
                     "value": {
                       "kind": "record",
@@ -689,7 +693,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:19c6cfdf0a7bf5ae3be5cc4c27352858fccc08a244e85f1966b6b9ff1e137cc1"
+      "hash": "sha256:011b442c4ad62fdb56358ff4814016f581607aba08f10d883f102663dcc2baae"
     },
     "Quiet": {
       "doc": "Invokes Upload without `as`, so it receives nothing the child emits.",
@@ -726,6 +730,7 @@
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Quiet",
         "name": "Quiet",
@@ -848,7 +853,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:56b06b4a67a26e3150ee35f1d5197c1751f9ce89daf71d91cedc1d32272d1d50"
+      "hash": "sha256:7a264e683974e6f31998b80960905c0b24b8b775773814667a533c40e8c26ff5"
     },
     "Eager": {
       "doc": "Sends to its child before the child has started, and after its outcome was taken.",
@@ -913,6 +918,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Eager",
         "name": "Eager",
@@ -964,6 +970,7 @@
                       "machine": "Upload",
                       "state": "Eager.Uploading"
                     },
+                    "key": null,
                     "event": "Pause",
                     "value": {
                       "kind": "record",
@@ -1051,6 +1058,7 @@
                       "machine": "Upload",
                       "state": "Eager.Uploading"
                     },
+                    "key": null,
                     "event": "Pause",
                     "value": {
                       "kind": "record",
@@ -1125,7 +1133,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:17afb401c77b51ab73549262c9d469f5061d126e13d401117704e54778b10127"
+      "hash": "sha256:4f46421e39b48b6ae5bb7eed2478e8a076dc733f9ef4a68ac7ce6fa63db8d0ab"
     }
   }
 }

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "spec/conformance/charts/many.road",
@@ -45,6 +45,7 @@
       ],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Many",
         "name": "Many",
@@ -202,7 +203,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:cc67f5c40224b57bab8cf2bb0c9946f6898a681b43d34959bcd9dfbff849ba36"
+      "hash": "sha256:ea754c818a9b16aa4fe4ec6e6041a299a470d5c717e53587ed3746a609e07bce"
     },
     "Leaf": {
       "doc": "Ends as soon as it starts.",
@@ -219,6 +220,7 @@
       "vars": [],
       "events": {},
       "emits": {},
+      "children": {},
       "root": {
         "id": "Leaf",
         "name": "Leaf",
@@ -262,7 +264,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:9bab064cd516fdd09780533f7855d0a2ab53cc01bd1d2da756021a0ade2e7543"
+      "hash": "sha256:f46b96287f26624177949dd2cb5f91c6d0dd7c7d665afd12e9519da544b20486"
     }
   }
 }

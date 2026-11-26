@@ -254,6 +254,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       input: coreInput,
       vars: {},
       invokes: [],
+      spawned: [],
       timers: [],
       nextInvoke: 1,
       nextTimer: 1,
@@ -316,7 +317,20 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       const timers = yield* FiberMap.make<number>()
       const tokens = new Map<number, CancelToken>()
 
-      const startInvoke = (command: Extract<Core.Command, { kind: "invoke.start" }>) => {
+      /**
+       * Start an invoke, or a spawned child (`spawn.start`, a machine whose emitted events always
+       * reach this run, and whose outcome comes back as a `spawn.*` input).
+       */
+      const startInvoke = (
+        command: Extract<Core.Command, { kind: "invoke.start" }> | {
+          readonly kind: "spawn"
+          readonly invoke: number
+          readonly src: string
+          readonly srcKind: "machine"
+          readonly as: string
+          readonly args: { readonly [param: string]: Core.Json }
+        }
+      ) => {
         const token: CancelToken = {
           claimed: false,
           cancelled: false,
@@ -350,7 +364,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           Effect.exit,
           Effect.flatMap((exit) => {
             if (token.cancelled) return Effect.void
-            return Queue.offer(queue, outcomeInput(codec, command.invoke, src, returns, exit))
+            const outcome = outcomeInput(codec, command.invoke, src, returns, exit)
+            return Queue.offer(queue, command.kind === "spawn" ? spawnOutcome(outcome) : outcome)
           }),
           Effect.provideService(CurrentInvoke, context),
           Effect.annotateLogs("roadbook.invoke", command.invoke)
@@ -399,6 +414,17 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             return startInvoke(command)
           case "invoke.cancel":
             return stopInvoke(command.invoke)
+          case "spawn.start":
+            return startInvoke({
+              kind: "spawn",
+              invoke: command.spawn,
+              src: command.src,
+              srcKind: "machine",
+              as: "",
+              args: command.args
+            })
+          case "spawn.stop":
+            return stopInvoke(command.spawn)
           case "timer.start": {
             const expiry = env.timer.sleep({ run: env.runId, timer: command.timer, delay: command.delay }).pipe(
               Effect.andThen(Queue.offer(queue, { kind: "after", timer: command.timer }))
@@ -484,8 +510,12 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           yield* SubscriptionRef.set(ref, snapshot)
         })
 
-      /** Idle: between steps, nothing queued, and no invoke running (execution.md, "Suspending"). */
-      const idle = () => Queue.sizeUnsafe(queue) - wakes === 0 && snapshot.invokes.length === 0
+      /**
+       * Idle: between steps, nothing queued, and no invoke or spawned child running (execution.md,
+       * "Suspending").
+       */
+      const idle = () =>
+        Queue.sizeUnsafe(queue) - wakes === 0 && snapshot.invokes.length === 0 && snapshot.spawned.length === 0
 
       /**
        * Stop an idle run that was asked to suspend, which the check that found it idle has
@@ -536,6 +566,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             // An invoke or timer is forgotten once its outcome or expiry is taken.
             if (next.kind === "invoke.done" || next.kind === "invoke.fail" || next.kind === "invoke.defect") {
               yield* stopInvoke(next.invoke)
+            } else if (next.kind === "spawn.done" || next.kind === "spawn.fail" || next.kind === "spawn.defect") {
+              yield* stopInvoke(next.spawn)
             } else if (next.kind === "after") {
               dues.delete(next.timer)
               yield* FiberMap.remove(timers, next.timer)
@@ -613,6 +645,20 @@ const causeDefect = (cause: Cause.Cause<unknown>): Core.Defect => {
   const fail = cause.reasons.find(Cause.isFailReason)
   if (fail !== undefined) return hostDefect(fail.error)
   return { kind: "host", message: "interrupted" }
+}
+
+/** The `spawn.*` input for a spawned child's outcome, from the `invoke.*` one an invoke's would be. */
+const spawnOutcome = (input: Core.Input): Core.Input => {
+  switch (input.kind) {
+    case "invoke.done":
+      return { kind: "spawn.done", spawn: input.invoke, value: input.value }
+    case "invoke.fail":
+      return { kind: "spawn.fail", spawn: input.invoke, error: input.error }
+    case "invoke.defect":
+      return { kind: "spawn.defect", spawn: input.invoke, defect: input.defect }
+    default:
+      return input
+  }
 }
 
 /** The input an invoke's exit gives its run. */

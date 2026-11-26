@@ -5,7 +5,7 @@
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.2"
+export const IR_VERSION = "0.3"
 
 export interface Span {
   readonly file: number
@@ -74,8 +74,18 @@ export interface Machine {
   readonly vars: ReadonlyArray<Variable>
   readonly events: Readonly<Record<string, EventDecl>>
   readonly emits: Readonly<Record<string, EventDecl>>
+  readonly children: Readonly<Record<string, ChildrenDecl>>
   readonly root: State
   readonly hash: string
+}
+
+/** `children name: Machine by Key`: a keyed collection of spawned children. */
+export interface ChildrenDecl {
+  readonly machine: string
+  /** The key type: `string`, `int` or an enum, or an alias of one. */
+  readonly key: string
+  readonly doc: string
+  readonly span: Span
 }
 
 export type StateKind = "atomic" | "compound" | "parallel" | "final"
@@ -104,9 +114,12 @@ export interface Invoke {
   readonly span: Span
 }
 
-/** Another running machine: an invoked child by its `as` name, or a `ref` parameter or variable. */
+/**
+ * Another running machine: an invoked child by its `as` name, a `ref` parameter or variable, or
+ * the spawned children of a collection.
+ */
 export interface Address {
-  readonly kind: "child" | "ref"
+  readonly kind: "child" | "ref" | "children"
   readonly name: string
   readonly machine: string
   readonly state: string | null
@@ -121,6 +134,8 @@ export type Trigger =
   | { readonly kind: "done" }
   | { readonly kind: "invoke.done" }
   | { readonly kind: "invoke.fail"; readonly error: string }
+  | { readonly kind: "spawn.done"; readonly children: string }
+  | { readonly kind: "spawn.fail"; readonly children: string; readonly error: string }
 
 export interface Transition {
   readonly trigger: Trigger
@@ -134,8 +149,23 @@ export interface Transition {
 export type Effect =
   | { readonly kind: "set"; readonly var: string; readonly value: Expr }
   | { readonly kind: "do"; readonly action: string; readonly args: ReadonlyArray<Expr> }
-  | { readonly kind: "send"; readonly to: Address; readonly event: string; readonly value: Expr }
+  | {
+    readonly kind: "send"
+    readonly to: Address
+    /** For a collection, the child's key, or `null` for every running child. */
+    readonly key: Expr | null
+    readonly event: string
+    readonly value: Expr
+  }
   | { readonly kind: "emit"; readonly event: string; readonly value: Expr }
+  | {
+    readonly kind: "spawn"
+    readonly children: string
+    readonly machine: string
+    readonly key: Expr
+    readonly args: ReadonlyArray<Expr>
+  }
+  | { readonly kind: "stop"; readonly children: string; readonly key: Expr }
 
 interface ExprBase {
   readonly type: string

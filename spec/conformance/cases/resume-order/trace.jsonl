@@ -1,9 +1,9 @@
-{"input":{"id":"o1"},"ir":"sha256:6ae1c132e34692919ad8977d8619a1c8414fb382b9cd13dc7ff5f32d85d9ec6c","kind":"started","machine":"Order","run":"r1","t":0}
+{"input":{"id":"o1"},"ir":"sha256:f36438279bd13f89beba13d798aea779199fdd367f0a0e75f4a9810d3a5a715b","kind":"started","machine":"Order","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Order","t":0}
 {"kind":"entered","run":"r1","state":"Order.AwaitingPayment","t":0}
 {"delay":259200000,"index":0,"kind":"timer.started","run":"r1","state":"Order.AwaitingPayment","t":0,"timer":1}
 {"kind":"suspended","run":"r1","t":0}
-{"ir":"sha256:6ae1c132e34692919ad8977d8619a1c8414fb382b9cd13dc7ff5f32d85d9ec6c","kind":"restored","machine":"Order","migrated":null,"run":"r2","snapshot":{"active":["Order","Order.AwaitingPayment"],"input":{"id":"o1"},"invokes":[],"ir":"sha256:6ae1c132e34692919ad8977d8619a1c8414fb382b9cd13dc7ff5f32d85d9ec6c","machine":"Order","nextInvoke":1,"nextMessage":1,"nextTimer":2,"result":null,"run":"r1","snapshotVersion":1,"status":"running","timers":[{"delay":259200000,"due":259200000,"id":1,"index":0,"state":"Order.AwaitingPayment"}],"vars":{"paid":0,"tracking":""}},"t":3600000}
+{"ir":"sha256:f36438279bd13f89beba13d798aea779199fdd367f0a0e75f4a9810d3a5a715b","kind":"restored","machine":"Order","migrated":null,"run":"r2","snapshot":{"active":["Order","Order.AwaitingPayment"],"input":{"id":"o1"},"invokes":[],"ir":"sha256:f36438279bd13f89beba13d798aea779199fdd367f0a0e75f4a9810d3a5a715b","machine":"Order","nextInvoke":1,"nextMessage":1,"nextTimer":2,"result":null,"run":"r1","snapshotVersion":2,"spawned":[],"status":"running","timers":[{"delay":259200000,"due":259200000,"id":1,"index":0,"state":"Order.AwaitingPayment"}],"vars":{"paid":0,"tracking":""}},"t":3600000}
 {"delay":255600000,"index":0,"kind":"timer.started","run":"r2","state":"Order.AwaitingPayment","t":3600000,"timer":1}
 {"event":{"kind":"event","value":{"_tag":"PaymentReceived","amount":42}},"kind":"event","run":"r2","t":3600000}
 {"from":"Order.AwaitingPayment","index":1,"kind":"transition","run":"r2","t":3600000,"to":"Order.Shipping"}
@@ -18,7 +18,7 @@
 {"kind":"set","run":"r2","t":3600000,"value":"t-1","var":"tracking"}
 {"kind":"entered","run":"r2","state":"Order.AwaitingDelivery","t":3600000}
 {"kind":"suspended","run":"r2","t":3600000}
-{"ir":"sha256:6ae1c132e34692919ad8977d8619a1c8414fb382b9cd13dc7ff5f32d85d9ec6c","kind":"restored","machine":"Order","migrated":null,"run":"r3","snapshot":{"active":["Order","Order.AwaitingDelivery"],"input":{"id":"o1"},"invokes":[],"ir":"sha256:6ae1c132e34692919ad8977d8619a1c8414fb382b9cd13dc7ff5f32d85d9ec6c","machine":"Order","nextInvoke":2,"nextMessage":1,"nextTimer":2,"result":null,"run":"r2","snapshotVersion":1,"status":"running","timers":[],"vars":{"paid":42,"tracking":"t-1"}},"t":90000000}
+{"ir":"sha256:f36438279bd13f89beba13d798aea779199fdd367f0a0e75f4a9810d3a5a715b","kind":"restored","machine":"Order","migrated":null,"run":"r3","snapshot":{"active":["Order","Order.AwaitingDelivery"],"input":{"id":"o1"},"invokes":[],"ir":"sha256:f36438279bd13f89beba13d798aea779199fdd367f0a0e75f4a9810d3a5a715b","machine":"Order","nextInvoke":2,"nextMessage":1,"nextTimer":2,"result":null,"run":"r2","snapshotVersion":2,"spawned":[],"status":"running","timers":[],"vars":{"paid":42,"tracking":"t-1"}},"t":90000000}
 {"event":{"kind":"event","value":{"_tag":"Delivered"}},"kind":"event","run":"r3","t":90000000}
 {"from":"Order.AwaitingDelivery","index":0,"kind":"transition","run":"r3","t":90000000,"to":"Order.Complete"}
 {"kind":"exited","run":"r3","state":"Order.AwaitingDelivery","t":90000000}
@@ -26,7 +26,7 @@
 {"kind":"exited","run":"r3","state":"Order.Complete","t":90000000}
 {"kind":"exited","run":"r3","state":"Order","t":90000000}
 {"kind":"done","output":null,"run":"r3","state":"Order.Complete","t":90000000}
-{"ir":"sha256:6ae1c132e34692919ad8977d8619a1c8414fb382b9cd13dc7ff5f32d85d9ec6c","kind":"restored","machine":"Order","migrated":null,"run":"r4","snapshot":{"active":["Order","Order.AwaitingPayment"],"input":{"id":"o1"},"invokes":[],"ir":"sha256:6ae1c132e34692919ad8977d8619a1c8414fb382b9cd13dc7ff5f32d85d9ec6c","machine":"Order","nextInvoke":1,"nextMessage":1,"nextTimer":2,"result":null,"run":"r1","snapshotVersion":1,"status":"running","timers":[{"delay":259200000,"due":259200000,"id":1,"index":0,"state":"Order.AwaitingPayment"}],"vars":{"paid":0,"tracking":""}},"t":349200000}
+{"ir":"sha256:f36438279bd13f89beba13d798aea779199fdd367f0a0e75f4a9810d3a5a715b","kind":"restored","machine":"Order","migrated":null,"run":"r4","snapshot":{"active":["Order","Order.AwaitingPayment"],"input":{"id":"o1"},"invokes":[],"ir":"sha256:f36438279bd13f89beba13d798aea779199fdd367f0a0e75f4a9810d3a5a715b","machine":"Order","nextInvoke":1,"nextMessage":1,"nextTimer":2,"result":null,"run":"r1","snapshotVersion":2,"spawned":[],"status":"running","timers":[{"delay":259200000,"due":259200000,"id":1,"index":0,"state":"Order.AwaitingPayment"}],"vars":{"paid":0,"tracking":""}},"t":349200000}
 {"event":{"kind":"after","timer":1},"kind":"event","run":"r4","t":349200000}
 {"from":"Order.AwaitingPayment","index":0,"kind":"transition","run":"r4","t":349200000,"to":"Order.Expired"}
 {"kind":"exited","run":"r4","state":"Order.AwaitingPayment","t":349200000}

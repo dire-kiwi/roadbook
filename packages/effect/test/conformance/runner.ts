@@ -72,7 +72,7 @@ export const conformanceDir = path.resolve(import.meta.dirname, "../../../../spe
  * The features of case.schema.json's `requires` this runtime implements. A case that requires
  * another is skipped, not failed.
  */
-export const supported: ReadonlyArray<string> = ["messaging", "parallel", "snapshots"]
+export const supported: ReadonlyArray<string> = ["messaging", "parallel", "snapshots", "spawn"]
 
 /** Whether this runtime implements everything case `name` requires. */
 export const isSupported = (name: string): boolean => {

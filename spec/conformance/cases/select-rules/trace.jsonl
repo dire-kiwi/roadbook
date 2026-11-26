@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:bdc3ad2702c0eac707e70b1a0441797a80725877e985300e09f00674a8f4c72d","kind":"started","machine":"Select","run":"r1","t":0}
+{"input":{},"ir":"sha256:e5dc1cc23c065777e2d1247ca7595e0ed1f0f58765e6484056f296ab4aa9cc3d","kind":"started","machine":"Select","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Select","t":0}
 {"kind":"entered","run":"r1","state":"Select.Picking","t":0}
 {"event":{"kind":"event","value":{"_tag":"Go","n":-1}},"kind":"event","run":"r1","t":0}
