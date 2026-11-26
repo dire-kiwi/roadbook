@@ -618,3 +618,103 @@ fn symbolic_links_do_not_lead_out_of_the_project_or_a_package() {
     );
     assert_eq!(out.files.len(), 1);
 }
+
+const VAULT: &str = "\
+type Secret { label: string, sensitive value: string }
+type Key = Secret
+
+task fetch(sensitive id: string) -> Key
+
+machine Locker(sensitive pin: int) {
+  event Open { sensitive code: string }
+  emits Opened { sensitive code: string }
+
+  initial Shut
+  state Shut {
+    on Open -> Shut  emit Opened { code: event.code }
+  }
+}
+";
+
+const SAFE: &str = "\
+import { Key, fetch, Locker } from \"vault/vault.road\"
+
+machine Safe(sensitive pin: int, id: string) {
+  var label: string = \"\"
+  var leaked: string = \"\"
+  var key: Key
+  var blob: json = \"\"
+
+  initial Fetching
+  state Fetching {
+    invoke fetch(id) {
+      done -> Open  set key = result, label = result.label, leaked = result.value, blob = result
+    }
+  }
+  state Open {
+    invoke Locker(pin) as locker { done -> Shut }
+    on locker.Opened set leaked = event.code
+  }
+  final state Shut {}
+}
+";
+
+/// The `sensitive` marks of another package's declarations reach the IR, and the checks,
+/// whether the package is read from its sources or from its compiled IR.
+#[test]
+fn sensitive_marks_cross_packages() {
+    let mut dep = MemoryLoader::new().with("vault.road", VAULT);
+    let compiled = compile(&mut dep, "vault.road", &Options::default())
+        .unwrap()
+        .ir
+        .unwrap();
+    for loaded in [Loaded::Source(VAULT.into()), Loaded::Compiled(Box::new(compiled))] {
+        let mut l = MemoryLoader::new()
+            .with("safe.road", SAFE)
+            .with_package("vault", "vault.road", loaded);
+        let out = compile(&mut l, "safe.road", &Options::default()).unwrap();
+        let found: Vec<(String, u32, u32)> = out
+            .diagnostics
+            .iter()
+            .map(|d| (d.code.to_string(), d.span.start.line, d.span.start.col))
+            .collect();
+        assert_eq!(
+            found,
+            [
+                ("RB0317".to_string(), 12, 70),
+                ("RB0318".to_string(), 12, 91),
+                ("RB0317".to_string(), 17, 35),
+            ],
+            "{}",
+            out.render()
+        );
+        let ok = SAFE
+            .replace("leaked = result.value, blob = result", "blob = result.label")
+            .replace("on locker.Opened set leaked = event.code", "on locker.Opened set label = \"opened\"");
+        let mut l = MemoryLoader::new()
+            .with("safe.road", ok)
+            .with_package("vault", "vault.road", Loaded::Source(VAULT.into()));
+        let out = compile(&mut l, "safe.road", &Options::default()).unwrap();
+        assert!(out.diagnostics.is_empty(), "{}", out.render());
+        let ir = out.ir.unwrap();
+        let roadbook_ir::TypeDef::Record { fields } = &ir.types["Secret"].def else {
+            panic!("Secret is a record");
+        };
+        assert_eq!(
+            fields.iter().map(|f| f.sensitive).collect::<Vec<_>>(),
+            [false, true]
+        );
+        assert!(ir.tasks["fetch"].params[0].sensitive);
+        assert!(ir.machines["Locker"].params[0].sensitive);
+        assert!(ir.machines["Locker"].emits["Opened"].fields[0].sensitive);
+        assert!(ir.machines["Safe"].params[0].sensitive);
+        check_schema_ir(&ir);
+    }
+}
+
+fn check_schema_ir(ir: &Ir) {
+    let value: serde_json::Value = serde_json::from_str(&ir.to_json()).unwrap();
+    let validator = common::validator();
+    let errors: Vec<String> = validator.iter_errors(&value).map(|e| e.to_string()).collect();
+    assert!(errors.is_empty(), "{errors:#?}");
+}

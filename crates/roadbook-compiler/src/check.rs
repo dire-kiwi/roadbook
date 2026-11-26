@@ -180,7 +180,11 @@ impl<'p> Checker<'p> {
                         self.member(id, SymbolKind::Parameter, &p.name, p.span, &None, signature);
                     }
                     for v in m.body.vars() {
-                        let mut signature = format!("var {}", index::field_text_of(&v.name, &v.ty));
+                        let mut signature = format!(
+                            "{}var {}",
+                            if v.sensitive { "sensitive " } else { "" },
+                            index::field_text_of(&v.name, &v.ty)
+                        );
                         if let Some(init) = &v.init {
                             signature.push_str(&format!(" = {}", roadbook_syntax::expr_text(init)));
                         }
