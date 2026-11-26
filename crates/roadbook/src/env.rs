@@ -266,7 +266,10 @@ impl Config {
     }
 
     /// Calls `f` with the id and handle of every run as it starts, the root and every child
-    /// run below it. A test uses this to give inputs to a child run directly.
+    /// run below it. A test uses this to give inputs to a child run directly. A child run's
+    /// handle, and the root's for `run` and `run_with`, ignore [`crate::RunHandle::cancel`]
+    /// and [`crate::RunHandle::suspend`]: those runs end only by themselves (or, for a child,
+    /// when its parent leaves the invoking state).
     pub fn on_run(mut self, f: impl Fn(&str, crate::RunHandle) + Send + Sync + 'static) -> Self {
         self.observer = Some(Arc::new(f));
         self

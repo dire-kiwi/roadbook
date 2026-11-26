@@ -445,8 +445,11 @@ impl<'a> Driver<'a> {
         }
         if let Some(observer) = &self.config.observer {
             let child = self.parent.is_some();
-            let handle =
+            let mut handle =
                 RunHandle::new(self.shared.clone(), &self.id, self.program, &machine, child);
+            if !self.suspendable {
+                handle = handle.runs_to_the_end();
+            }
             observer(&self.id, handle);
         }
         let host = self.host;

@@ -286,6 +286,87 @@ async fn dropping_a_root_run_is_a_hard_stop() {
     }
 }
 
+/// A `Config` that keeps the handle of every run as it starts.
+fn observed(sink: Arc<MemorySink>) -> (Config, Arc<Mutex<Vec<roadbook::RunHandle>>>) {
+    let handles = Arc::new(Mutex::new(Vec::new()));
+    let kept = handles.clone();
+    let config = Config::new()
+        .sink(sink)
+        .run_id("r1")
+        .on_run(move |_, h| kept.lock().unwrap().push(h));
+    (config, handles)
+}
+
+async fn settle() {
+    for _ in 0..10 {
+        tokio::task::yield_now().await;
+    }
+}
+
+#[tokio::test]
+async fn a_child_runs_handle_ignores_cancel() {
+    // Cancelling a child through its handle once ended the child, which then waited for ever
+    // for a cancel from its parent, so the parent never heard of it and stayed in Calling.
+    let program = program();
+    let host = host(&program, Mode::TaskNeverEnds);
+    let sink = Arc::new(MemorySink::new());
+    let (config, handles) = observed(sink.clone());
+    let (fut, root) = dynamic::start(&config, &program, "Main", input(3), &[], &host);
+    let driver = async {
+        settle().await;
+        let child = handles.lock().unwrap()[1].clone();
+        assert!(child.is_child());
+        child.cancel();
+        settle().await;
+        // Ignored: the child goes on, and only its parent can cancel it.
+        assert!(!child.is_finished());
+        // Nor can a cancel be queued as an input.
+        let pushed = std::panic::catch_unwind(|| child.push(vec![roadbook::Input::Cancel]));
+        assert!(pushed.is_err());
+        assert!(!child.is_finished());
+        assert_eq!(*host.actions.lock().unwrap(), ["enter Calling"]);
+        root.send(json!({"_tag": "Stop"}));
+    };
+    let (end, ()) = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        tokio::join!(fut, driver)
+    })
+    .await
+    .expect("the run hangs");
+    assert_eq!(end, RunEnd::Done(json!(3)));
+    let records: Vec<Value> = sink.records().iter().map(|r| r.to_json()).collect();
+    assert_eq!(last_of(&records, "r1.1")["kind"], "cancelled");
+    assert_eq!(
+        *host.actions.lock().unwrap(),
+        ["enter Calling", "exit Child", "exit Calling", "exit Main"]
+    );
+}
+
+#[tokio::test]
+async fn the_handle_of_a_run_with_run_ignores_cancel() {
+    // `run_with` gives an output or an error, never a cancellation: a cancel through the
+    // root's handle once left its caller waiting for ever.
+    let program = program();
+    let host = host(&program, Mode::TaskNeverEnds);
+    let sink = Arc::new(MemorySink::new());
+    let (config, handles) = observed(sink.clone());
+    let fut = dynamic::run_with(&config, &program, "Main", input(3), &[], &host);
+    let driver = async {
+        settle().await;
+        let root = handles.lock().unwrap()[0].clone();
+        assert!(!root.is_child());
+        root.cancel();
+        settle().await;
+        assert!(!root.is_finished());
+        root.send(json!({"_tag": "Stop"}));
+    };
+    let (end, ()) = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        tokio::join!(fut, driver)
+    })
+    .await
+    .expect("the run hangs");
+    assert_eq!(end, Ok(json!(3)));
+}
+
 #[test]
 fn a_root_run_id_must_be_a_run_id() {
     // Ids the snapshot schema accepts.
