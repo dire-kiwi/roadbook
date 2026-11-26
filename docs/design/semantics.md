@@ -90,6 +90,38 @@ This is where Waymark is stricter than xstate, and it is the part that matters m
 
 Machines that exchange messages while they run, rather than only arguments and a result, are covered on the [actors and messaging](actors.md) page.
 
+## Definitions and instances
+
+A chart is a definition. Running it creates an instance. The two have very different costs, and the difference answers the question of what happens under load.
+
+**The definition is built once.** The compiled IR and the bound implementations (`PlaceOrderLive` in TypeScript, the `App` that implements `Handlers` in Rust) are created at start-up and shared by every run. Nothing is parsed or validated per request.
+
+**An instance is small.** It is the set of active state ids, the variables, and whatever the active states have started. `run` creates one, drives it to a final state and drops it. It does not need a queue or a handle, and in Rust it is a single future that borrows the handlers. A thousand concurrent requests are a thousand small instances of one definition, isolated from each other, each cancellable on its own and each with its own trace.
+
+xstate works the same way: `createMachine` once, then `createActor(machine, { input })` per request and `toPromise(actor)` for the result. "One actor per machine" means one actor per running instance, never one per definition.
+
+Which lifetime an instance has depends on what it models:
+
+| It models | Lifetime | How |
+| --- | --- | --- |
+| One request or one job | The request | `run(input)`. The common case for an HTTP endpoint. |
+| A service inside the process: a connection manager, an inventory, a rate limiter | The process | `spawn` once at start-up. Request machines reach it through a `ref` parameter or host code calls `send`. |
+| An entity that outlives a request: an order over several days, a checkout session across several HTTP calls | The entity | One instance per id, either kept in memory in a keyed collection, or saved between events as below. |
+
+### Saving and restoring
+
+For the third row, an instance does not have to stay in memory. A snapshot is plain data with a schema, and the core's `step` function is pure, so a request handler can load the snapshot for an id, apply one event, wait for the machine to settle, save the new snapshot and reply:
+
+```ts
+const snapshot = yield* store.load(orderId)                       // decoded with the generated schema
+const next = yield* OrderLive.resume(snapshot, { _tag: "PaymentReceived", amount })
+yield* store.save(orderId, next)
+```
+
+xstate offers the same pattern, with `actor.getPersistedSnapshot()` and `createActor(machine, { snapshot })`, and with the pure `transition(machine, snapshot, event)` for servers that keep no actors at all.
+
+Two rules make this safe. A snapshot records the IR hash it was taken with, and restoring it into a changed chart is refused unless a migration is supplied. And a snapshot taken while a task is running restarts that task on restore, so a machine meant to be saved should wait in states that have no `invoke`, or use tasks that are safe to repeat. Surviving a crash in the middle of a task without repeating it is durable execution, which is a later driver and not part of this.
+
 ## A pure core and a driver
 
 Each runtime is split in two.
