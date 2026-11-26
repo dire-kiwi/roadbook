@@ -572,6 +572,14 @@ impl Parser<'_> {
 
     /// A comma-separated list between `open` and its closer, trailing comma allowed. Returns
     /// the elements and the span from the opener to the closer.
+    /// Whether the current token starts a top-level declaration. `error` does so only before an
+    /// upper-case name: elsewhere it is the implicit name of an invoke's `fail` outcome, as in
+    /// `do log(error)`.
+    fn at_decl_start(&self) -> bool {
+        is_decl_start(self.peek())
+            && (self.peek() != T::Keyword(K::Error) || self.nth(1) == T::Upper)
+    }
+
     fn list<E>(
         &mut self,
         open: P,
@@ -588,7 +596,7 @@ impl Parser<'_> {
             if self.at_p(close) {
                 break;
             }
-            if self.at(T::Eof) || is_decl_start(self.peek()) {
+            if self.at(T::Eof) || self.at_decl_start() {
                 return Err(self.unclosed(open_tok, what));
             }
             out.push(elem(self)?);
@@ -596,7 +604,7 @@ impl Parser<'_> {
                 if self.at_p(close) {
                     break;
                 }
-                if self.at(T::Eof) || is_decl_start(self.peek()) {
+                if self.at(T::Eof) || self.at_decl_start() {
                     return Err(self.unclosed(open_tok, what));
                 }
                 return Err(self.unexpected(&format!("`,` or `{}`", close.as_str())));

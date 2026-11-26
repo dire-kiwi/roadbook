@@ -48,7 +48,8 @@ pub const UNKNOWN_BUILTIN_TYPE: Code = Code(24);
 
 #[cfg(test)]
 mod tests {
-    /// Every code defined here is in the table in `language.md`, and the table has no others.
+    /// Every code defined here is in the table in `language.md`, and the table has no other
+    /// syntax codes.
     #[test]
     fn codes_are_documented() {
         let defined: Vec<String> = include_str!("codes.rs")
@@ -65,6 +66,7 @@ mod tests {
             .lines()
             .filter_map(|l| l.strip_prefix("| `RB"))
             .map(|l| format!("RB{}", &l[..4]))
+            .filter(|c| c.starts_with("RB00"))
             .collect();
         assert_eq!(defined, table);
     }
