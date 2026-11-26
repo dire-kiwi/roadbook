@@ -59,7 +59,7 @@ export interface ChartDiff {
 export interface IndexDiff {
   from: string
   to: string
-  summary: { machines: Counts; states: Counts; transitions: Counts }
+  summary: { machines: Counts & { moved?: number }; states: Counts; transitions: Counts }
   /** By index in the index's `machines`. */
   machines: { status: DiffStatus; states: Counts; transitions: Counts }[]
   /** By index in the index's `pages`. */

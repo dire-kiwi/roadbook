@@ -1,4 +1,6 @@
 //! `roadbook viz [paths…] [-o dir] [--self-contained] [--trace run.jsonl | --coverage traces… | --diff range] [--watch [--port N]]`
+//! (`--coverage` takes one file or directory and is repeated for more:
+//! `--coverage a.jsonl --coverage traces/`)
 //!
 //! Writes one HTML page per entry chart, plus `index.html`, the project index. An entry chart
 //! is a `.road` file given (or found under a directory given, or in the project if none is)
@@ -8,7 +10,8 @@
 //! and still opens from `file://`. `--self-contained` inlines the script in every page instead.
 //! `--trace` puts a trace (spec/trace.md) in the pages that have its top-level run's machine,
 //! which then open in replay mode. `--coverage` puts many traces in the pages that have a
-//! machine of theirs, which then open in coverage mode. `--diff` draws what changed between two
+//! machine of theirs, which then open in coverage mode; a line that is not a trace record (a truncated last line, as
+//! a production trace often has) is skipped with a warning, as the page does. `--diff` draws what changed between two
 //! git revisions instead (`changes.rs`, `diff.rs`, `git.rs`).
 //!
 //! The viewer script is `packages/viewer` built by its `build.mjs` into `assets/`, and is
@@ -63,10 +66,10 @@ pub struct Args {
     /// `summary.json` next to the pages.
     #[arg(long, value_name = "RANGE", conflicts_with_all = ["watch", "trace", "coverage"])]
     diff: Option<String>,
-    /// Traces (JSON Lines files, or directories searched for `*.jsonl`) to shade the charts
-    /// with: how often each transition was taken and each state entered. The pages open in
-    /// coverage mode.
-    #[arg(long, value_name = "TRACES", num_args = 1..)]
+    /// A trace (a JSON Lines file, or a directory searched for `*.jsonl`) to shade the charts
+    /// with: how often each transition was taken and each state entered. Repeat it for more
+    /// (`--coverage a.jsonl --coverage traces/`). The pages open in coverage mode.
+    #[arg(long, value_name = "TRACES")]
     coverage: Vec<PathBuf>,
 }
 
@@ -310,7 +313,9 @@ struct RunHead {
 }
 
 /// The files of `--coverage`: each file given, and every `*.jsonl` under each directory given,
-/// sorted. Each must be a trace: JSON Lines of records with a `kind` and a `run`.
+/// sorted. Each is read as a trace: JSON Lines of records with a `kind` and a `run`. A line
+/// that is not one (a truncated last line is usual in a production trace) is skipped, and the
+/// skipped lines of each file are counted in a warning; the page lists them too.
 fn read_coverage(paths: &[PathBuf]) -> Result<Vec<CoverageTrace>, String> {
     fn walk(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
         let entries = std::fs::read_dir(dir)
@@ -342,24 +347,16 @@ fn read_coverage(paths: &[PathBuf]) -> Result<Vec<CoverageTrace>, String> {
         let text = std::fs::read_to_string(&path)
             .map_err(|e| format!("cannot read the trace `{}`: {e}", path.display()))?;
         let mut runs: Vec<(String, RunHead)> = Vec::new();
+        let mut skipped: Vec<usize> = Vec::new();
         for (i, line) in text.lines().enumerate() {
             if line.trim().is_empty() {
                 continue;
             }
-            let record: serde_json::Value = serde_json::from_str(line).map_err(|e| {
-                format!(
-                    "`{}`, line {}: not a JSON record: {e}",
-                    path.display(),
-                    i + 1
-                )
-            })?;
-            let member = |m: &str| record.get(m).and_then(|v| v.as_str());
+            let record = serde_json::from_str::<serde_json::Value>(line).ok();
+            let member = |m: &str| record.as_ref()?.get(m)?.as_str();
             let (Some(kind), Some(run)) = (member("kind"), member("run")) else {
-                return Err(format!(
-                    "`{}`, line {}: not a trace record (it needs `kind` and `run`)",
-                    path.display(),
-                    i + 1
-                ));
+                skipped.push(i + 1);
+                continue;
             };
             if let Some((_, r)) = runs.iter_mut().find(|(id, _)| id == run) {
                 r.records += 1;
@@ -373,6 +370,17 @@ fn read_coverage(paths: &[PathBuf]) -> Result<Vec<CoverageTrace>, String> {
                     },
                 ));
             }
+        }
+        if let Some(first) = skipped.first() {
+            let n = skipped.len();
+            eprintln!(
+                "warning: `{}`: {n} line{} {} not a trace record (line {first}{}); coverage skips {}",
+                path.display(),
+                if n == 1 { "" } else { "s" },
+                if n == 1 { "is" } else { "are" },
+                if n == 1 { "" } else { " and others" },
+                if n == 1 { "it" } else { "them" },
+            );
         }
         out.push(CoverageTrace {
             name: path.display().to_string(),

@@ -1437,7 +1437,7 @@ fn viz_diff_draws_two_commits_as_one_chart() {
     assert_eq!(summary["changed"], true);
     assert_eq!(
         summary["machines"],
-        serde_json::json!({ "added": 1, "removed": 1, "changed": 1 })
+        serde_json::json!({ "added": 1, "removed": 1, "changed": 1, "moved": 0 })
     );
     // Notifying and GivenUp added, GaveUp removed (and Old's and New's one state each).
     assert_eq!(
@@ -1583,4 +1583,191 @@ fn viz_coverage_embeds_the_traces_of_each_page() {
     );
     assert_eq!(res.status.code(), Some(2));
     assert!(text(&res.stderr).contains("none of the traces"));
+
+    // `--coverage` takes one value: the paths after it are charts, not traces. A truncated
+    // last line, usual in a production trace, is skipped with a warning.
+    let traces = out_dir("coverage-traces");
+    std::fs::create_dir_all(&traces).unwrap();
+    let mut cut =
+        std::fs::read_to_string(repo().join("spec/conformance/cases/checkout-charged/trace.jsonl"))
+            .unwrap();
+    cut.push_str("{\"kind\":\"entered\",\"run\":\"r1\",\"sta");
+    let cut_path = traces.join("cut.jsonl");
+    std::fs::write(&cut_path, &cut).unwrap();
+    let retry = repo().join("spec/conformance/cases/checkout-retry/trace.jsonl");
+    let out = out_dir("coverage-one-value");
+    let o = out.to_str().unwrap();
+    let res = roadbook(
+        &repo(),
+        &[
+            "viz",
+            "--coverage",
+            cut_path.to_str().unwrap(),
+            "--coverage",
+            retry.to_str().unwrap(),
+            "examples/shop/checkout.road",
+            "-o",
+            o,
+        ],
+    );
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    let err = text(&res.stderr);
+    assert!(
+        err.contains("cut.jsonl`: 1 line is not a trace record (line "),
+        "{err}"
+    );
+    assert!(err.contains("2 trace files"), "{err}");
+    let mut files: Vec<String> = std::fs::read_dir(&out)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    files.sort();
+    assert_eq!(files, ["checkout.html", "index.html", "roadbook-viewer.js"]);
+    let data = page_data(&std::fs::read_to_string(out.join("checkout.html")).unwrap());
+    assert_eq!(data["coverage"].as_array().unwrap().len(), 2);
+    let _ = std::fs::remove_dir_all(&traces);
+}
+
+/// A repository holding a project, with its files committed as `main`'s first commit.
+fn diff_repo(name: &str, files: &[(&str, &str)]) -> PathBuf {
+    let dir = project(name, files);
+    git(&dir, &["init", "-q", "-b", "main"]);
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "one"]);
+    dir
+}
+
+/// Runs `roadbook viz --diff HEAD` (against the working tree) and reads the summaries.
+fn diff_summary(dir: &Path, name: &str) -> (PathBuf, serde_json::Value, String) {
+    let out = out_dir(name);
+    let res = roadbook(dir, &["viz", "--diff", "HEAD", "-o", out.to_str().unwrap()]);
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    let json =
+        serde_json::from_str(&std::fs::read_to_string(out.join("summary.json")).unwrap()).unwrap();
+    let md = std::fs::read_to_string(out.join("summary.md")).unwrap();
+    (out, json, md)
+}
+
+const TICKET: &str = "type Ticket { id: string }\n";
+const DESK: &str = "import { Ticket } from \"./ticket.road\"\n\nmachine Desk(t: Ticket) {\n  event Next\n  initial Open\n  state Open { on Next -> Closed }\n  final state Closed {}\n}\n";
+const LAMP: &str = "machine Lamp() {\n  event Flip\n  initial Off\n  state Off { on Flip -> On }\n  final state On {}\n}\n";
+
+#[test]
+fn viz_diff_matches_machines_across_files() {
+    // A chart renamed: its machine moved, not removed and added; no page for the old name.
+    let dir = diff_repo(
+        "diff-moved",
+        &[
+            ("desk.road", DESK),
+            ("ticket.road", TICKET),
+            ("lamp.road", LAMP),
+        ],
+    );
+    std::fs::rename(dir.join("lamp.road"), dir.join("light.road")).unwrap();
+    let (out, json, md) = diff_summary(&dir, "diff-moved");
+    assert!(!out.join("lamp.html").exists());
+    assert_eq!(
+        json["machines"],
+        serde_json::json!({ "added": 0, "removed": 0, "changed": 0, "moved": 1 })
+    );
+    assert_eq!(json["changes"][0]["machine"], "Lamp");
+    assert_eq!(json["changes"][0]["status"], "moved");
+    assert_eq!(
+        json["changes"][0]["moved"],
+        serde_json::json!({ "from": "lamp.road", "to": "light.road" })
+    );
+    assert!(
+        md.contains("| → moved | `Lamp` | `light.road` (moved from `lamp.road` to `light.road`) | none | none |"),
+        "{md}"
+    );
+    let page = page_data(&std::fs::read_to_string(out.join("light.html")).unwrap());
+    let lamp = &page["diff"]["machines"]["Lamp"];
+    assert_eq!(lamp["changes"][0]["what"], "file");
+    assert_eq!(page["diff"]["status"], "changed");
+
+    // A chart that starts importing another, which is then no entry of its own: nothing
+    // changed in any machine.
+    std::fs::rename(dir.join("light.road"), dir.join("lamp.road")).unwrap();
+    std::fs::write(
+        dir.join("desk.road"),
+        format!("import {{ Lamp }} from \"./lamp.road\"\n{DESK}"),
+    )
+    .unwrap();
+    let (out, json, md) = diff_summary(&dir, "diff-imported");
+    assert!(!out.join("lamp.html").exists());
+    assert_eq!(json["changed"], false, "{json:#}");
+    assert_eq!(md.lines().nth(2), Some("No machine changed."), "{md}");
+}
+
+#[test]
+fn viz_diff_reports_declarations_and_the_machines_that_use_them() {
+    let dir = diff_repo(
+        "diff-decls",
+        &[
+            ("desk.road", DESK),
+            ("ticket.road", TICKET),
+            ("lamp.road", LAMP),
+        ],
+    );
+    std::fs::write(
+        dir.join("ticket.road"),
+        "type Ticket { id: string, title: string }\n",
+    )
+    .unwrap();
+    let (_, json, md) = diff_summary(&dir, "diff-decls");
+    assert_eq!(json["changed"], true);
+    assert_eq!(json["machines"]["changed"], 0);
+    assert_eq!(
+        json["decls"],
+        serde_json::json!([{ "name": "Ticket", "status": "changed", "machines": ["Desk"] }])
+    );
+    assert_eq!(
+        json["declarations"],
+        serde_json::json!({ "added": 0, "removed": 0, "changed": 1 })
+    );
+    assert!(!md.contains("No machine changed"), "{md}");
+    assert!(md.contains("Machines: none changed."), "{md}");
+    assert!(md.contains("| ~ changed | `Ticket` | `Desk` |"), "{md}");
+}
+
+#[test]
+fn viz_diff_summary_escapes_what_comes_from_the_charts() {
+    // A file name that would end the code span and the table row, add HTML, a mention, a link
+    // and a heading.
+    let evil = "evil`|<img src=x> @octocat [x](https:e.vil)\n## injected.road";
+    let dir = diff_repo("diff-evil", &[("lamp.road", LAMP)]);
+    std::fs::write(dir.join(evil), LAMP.replace("Lamp", "Evil")).unwrap();
+    let (_, json, md) = diff_summary(&dir, "diff-evil");
+    assert_eq!(json["changes"][0]["chart"], evil);
+    // Every line is the heading, a sentence, or a table row of five cells.
+    let lines: Vec<&str> = md.lines().filter(|l| !l.is_empty()).collect();
+    assert_eq!(lines.len(), 5, "{md}");
+    assert!(lines[0].starts_with("### Chart changes: "));
+    assert!(lines[1].starts_with("Machines: 1 added"));
+    let row = lines[4];
+    assert_eq!(row.matches('|').count(), 6, "{row}");
+    assert!(row.starts_with("| + added | `Evil` | <code>evil"), "{row}");
+    // Nothing of the name is markup: no backtick, pipe, angle bracket, at sign, bracket or line
+    // break of its own, only character references inside `<code>`.
+    let cell = &row[row.find("<code>").unwrap() + 6..row.find("</code>").unwrap()];
+    let mut bare = String::new();
+    for (i, part) in cell.split("&#").enumerate() {
+        // Each part after the first begins with a reference's number and `;`.
+        let rest = if i == 0 {
+            part
+        } else {
+            part.split_once(';').unwrap().1
+        };
+        bare.push_str(rest);
+    }
+    assert_eq!(
+        bare, "evilimg srcx octocat xhttpsevil injectedroad",
+        "{cell}"
+    );
+    assert!(cell.contains("&#64;octocat"), "{cell}");
+    assert!(
+        cell.contains("&#9166;"),
+        "the line break shows as ⏎: {cell}"
+    );
+    assert!(!md.contains("\n## injected"), "{md}");
 }

@@ -5,7 +5,9 @@
 //! it: each machine, state and transition is added, removed, changed or unchanged, and a changed
 //! one lists its changes with the text before and after.
 //!
-//! **Matching.** Machines are matched by name, states by id (the path of names from the
+//! **Matching.** Machines are matched by name (the caller, `changes.rs`, puts the machine
+//! each is matched with across the whole project into the before version; one declared in
+//! another file than before has the change `file`, and is moved), states by id (the path of names from the
 //! machine: `Checkout.Charging`), so a state renamed or moved to another parent is a removed
 //! state and an added one. A transition is matched by its source state and its trigger (the
 //! event, the sender and event of an emitted one, the error of a `fail`; `after` by the keyword
@@ -103,8 +105,12 @@ impl Counts {
 #[derive(Clone, Debug)]
 pub struct MachineDiff {
     pub status: Status,
-    /// Changes to the machine itself: its signature, doc comment, variables and events.
+    /// Changes to the machine itself: its signature, doc comment, variables and events, the
+    /// file it is declared in, and what its body has as a state would (`initial`, `entry`,
+    /// `exit`). Its transitions are with the others, under the machine's id.
     pub changes: Vec<Change>,
+    /// The file it was declared in and is declared in now, if they differ.
+    pub moved: Option<(String, String)>,
     /// The states that are not unchanged, by id, in document order of the merged machine.
     pub states: Vec<(String, Element)>,
     /// The transitions that are not unchanged, by source state id and index in the merged
@@ -113,6 +119,14 @@ pub struct MachineDiff {
 }
 
 impl MachineDiff {
+    /// Whether it changed only by moving to another file.
+    pub fn only_moved(&self) -> bool {
+        self.moved.is_some()
+            && self.changes.len() == 1
+            && self.states.is_empty()
+            && self.transitions.is_empty()
+    }
+
     pub fn state_counts(&self) -> Counts {
         let mut c = Counts::default();
         for (_, e) in &self.states {
@@ -293,6 +307,7 @@ pub fn diff(before: Option<&Ir>, after: Option<&Ir>, before_label: &str) -> Char
         let mut d = MachineDiff {
             status: Status::Unchanged,
             changes: Vec::new(),
+            moved: None,
             states: Vec::new(),
             transitions: Vec::new(),
         };
@@ -304,8 +319,20 @@ pub fn diff(before: Option<&Ir>, after: Option<&Ir>, before_label: &str) -> Char
                 a.root.clone()
             }
             Some(b) => {
-                d.changes = machine_changes(name, b, a);
-                let mut m = Merge { d: &mut d, offset };
+                let (fb, fa) = (
+                    source_text(b_ir, b.span.file),
+                    source_text(a_ir, a.span.file),
+                );
+                if fb != fa {
+                    d.changes.push(change("file", fb.clone(), fa.clone()));
+                    d.moved = Some((fb, fa));
+                }
+                d.changes.extend(machine_changes(name, b, a));
+                let mut m = Merge {
+                    d: &mut d,
+                    offset,
+                    root: &a.root.id,
+                };
                 let root = m.state(&a.root, Some(&b.root));
                 if !d.changes.is_empty() || !d.states.is_empty() || !d.transitions.is_empty() {
                     d.status = Status::Changed;
@@ -325,20 +352,14 @@ pub fn diff(before: Option<&Ir>, after: Option<&Ir>, before_label: &str) -> Char
         let mut d = MachineDiff {
             status: Status::Removed,
             changes: Vec::new(),
+            moved: None,
             states: Vec::new(),
             transitions: Vec::new(),
         };
         mark_all(&b.root, Status::Removed, &mut d);
         d.states.retain(|(id, _)| id != name);
         let mut m = b.clone();
-        shift(&mut m.span);
-        for v in &mut m.vars {
-            shift(&mut v.span);
-        }
-        for e in m.events.values_mut().chain(m.emits.values_mut()) {
-            shift(&mut e.span);
-        }
-        shift_state(&mut m.root, offset);
+        shift_machine(&mut m, offset);
         ir.machines.insert(name.clone(), m);
         machines.push((name.clone(), d));
     }
@@ -370,7 +391,114 @@ fn document_order(root: &State) -> HashMap<&str, usize> {
     out
 }
 
-fn empty_ir() -> Ir {
+/// A source file as the summary names it: `checkout.road`, `inventory/inventory.road` for a
+/// file of the package `inventory`.
+pub fn source_text(ir: &Ir, file: u32) -> String {
+    match ir.sources.get(file as usize) {
+        Some(Source {
+            path,
+            package: Some(p),
+        }) => format!("{p}/{path}"),
+        Some(s) => s.path.clone(),
+        None => String::new(),
+    }
+}
+
+/// Points every span of `m` at the sources `offset` further on, for a machine moved into an
+/// IR whose sources have others before its own.
+pub fn shift_machine(m: &mut Machine, offset: u32) {
+    m.span.file += offset;
+    for v in &mut m.vars {
+        v.span.file += offset;
+    }
+    for e in m.events.values_mut().chain(m.emits.values_mut()) {
+        e.span.file += offset;
+    }
+    shift_state(&mut m.root, offset);
+}
+
+/// The machines of `ir` that use the declaration `name` (a type, function, action or task):
+/// name it in a type, an invoke, a `do`, an error or an expression, or use a declaration that
+/// does, in the IR's order.
+pub fn users(ir: &Ir, name: &str) -> Vec<String> {
+    let json = |x: Result<Value, serde_json::Error>| names_in(&x.unwrap_or(Value::Null));
+    // The declarations that use it, directly or through one another.
+    let mut via: HashSet<String> = HashSet::from([name.to_string()]);
+    let decls: Vec<(&String, HashSet<String>)> = ir
+        .types
+        .iter()
+        .map(|(n, d)| (n, json(serde_json::to_value(d))))
+        .chain(
+            ir.functions
+                .iter()
+                .map(|(n, d)| (n, json(serde_json::to_value(d)))),
+        )
+        .chain(
+            ir.actions
+                .iter()
+                .map(|(n, d)| (n, json(serde_json::to_value(d)))),
+        )
+        .chain(
+            ir.tasks
+                .iter()
+                .map(|(n, d)| (n, json(serde_json::to_value(d)))),
+        )
+        .collect();
+    loop {
+        let known = via.len();
+        for (n, names) in &decls {
+            if !via.contains(n.as_str()) && names.iter().any(|x| via.contains(x)) {
+                via.insert(n.to_string());
+            }
+        }
+        if via.len() == known {
+            break;
+        }
+    }
+    ir.machines
+        .iter()
+        .filter(|(_, m)| {
+            json(serde_json::to_value(m))
+                .iter()
+                .any(|x| via.contains(x))
+        })
+        .map(|(n, _)| n.clone())
+        .collect()
+}
+
+/// The identifiers in the text of an IR value that can name a declaration: those in its
+/// types, expressions, invokes, actions and errors, not in state names, targets, event names
+/// or doc comments.
+fn names_in(v: &Value) -> HashSet<String> {
+    const NOT: &[&str] = &[
+        "id", "name", "doc", "target", "initial", "hash", "event", "kind", "span", "path",
+    ];
+    fn walk(v: &Value, out: &mut HashSet<String>) {
+        match v {
+            Value::String(s) => {
+                for w in s.split(|c: char| !(c.is_alphanumeric() || c == '_')) {
+                    if !w.is_empty() {
+                        out.insert(w.to_string());
+                    }
+                }
+            }
+            Value::Array(list) => list.iter().for_each(|x| walk(x, out)),
+            Value::Object(map) => {
+                for (k, x) in map {
+                    if !NOT.contains(&k.as_str()) {
+                        walk(x, out);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut out = HashSet::new();
+    walk(v, &mut out);
+    out
+}
+
+pub fn empty_ir() -> Ir {
     Ir {
         ir_version: roadbook_ir::IR_VERSION.to_string(),
         sources: Vec::new(),
@@ -454,6 +582,8 @@ fn shift_state(s: &mut State, offset: u32) {
 struct Merge<'a> {
     d: &'a mut MachineDiff,
     offset: u32,
+    /// The machine's root state's id: what differs in it is the machine's.
+    root: &'a str,
 }
 
 impl Merge<'_> {
@@ -464,7 +594,12 @@ impl Merge<'_> {
             return a.clone();
         };
         let changes = state_changes(a, b);
-        if !changes.is_empty() {
+        if a.id == self.root {
+            // The machine's body: its doc comment is the machine's, compared already.
+            self.d
+                .changes
+                .extend(changes.into_iter().filter(|c| c.what != "doc"));
+        } else if !changes.is_empty() {
             self.d.states.push((a.id.clone(), changed(changes)));
         }
         let mut out = a.clone();
@@ -1104,6 +1239,57 @@ machine M(n: int) -> int ! Declined {
         let whats: Vec<&str> = m.changes.iter().map(|c| c.what.as_str()).collect();
         assert_eq!(whats, ["var tries", "var extra", "event Pause"]);
         assert_eq!(m.changes[0].after.as_deref(), Some("var tries: int = 1"));
+    }
+
+    #[test]
+    fn the_machine_body_is_the_machine_not_a_state() {
+        // The doc comment, `initial` and a transition of the machine's body.
+        let base = BASE.replace(
+            "machine M(n: int)",
+            "/// Takes a payment.\nmachine M(n: int)",
+        );
+        let after = base
+            .replace("/// Takes a payment.", "/// Takes a card payment.")
+            .replace("  initial A\n", "  initial C\n")
+            .replace("  event Stop\n", "  event Stop\n\n  on Stop -> Out\n");
+        let d = diff(Some(&ir(&base)), Some(&ir(&after)), "main");
+        let m = &d.machines[0].1;
+        assert_eq!(m.status, Status::Changed);
+        let whats: Vec<&str> = m.changes.iter().map(|c| c.what.as_str()).collect();
+        assert_eq!(whats, ["doc", "initial"]);
+        assert_eq!(m.changes[1].before.as_deref(), Some("A"));
+        assert_eq!(m.changes[1].after.as_deref(), Some("C"));
+        // No state changed: the machine is not counted as one, nor its doc twice.
+        assert!(m.states.is_empty(), "{:?}", m.states);
+        assert_eq!(m.state_counts(), Counts::default());
+        assert_eq!(m.transition_counts().added, 1);
+        assert!(m.transitions.iter().any(|((id, _), _)| id == "M"));
+    }
+
+    #[test]
+    fn a_machine_from_another_file_is_moved() {
+        let mut b = ir(BASE);
+        b.sources[0].path = "old.road".into();
+        let d = diff(Some(&b), Some(&ir(BASE)), "main");
+        let m = &d.machines[0].1;
+        assert_eq!(m.status, Status::Changed);
+        assert_eq!(
+            m.moved,
+            Some(("old.road".to_string(), "chart.road".to_string()))
+        );
+        assert!(m.only_moved());
+        assert_eq!(m.changes[0].what, "file");
+    }
+
+    #[test]
+    fn users_of_a_declaration_directly_or_through_another() {
+        let both = format!(
+            "{BASE}\ntype Wrap {{ d: Declined }}\nmachine N(w: Wrap) {{\n  initial X\n  final state X {{}}\n}}\nmachine O() {{\n  initial X\n  final state X {{}}\n}}\n"
+        );
+        let c = ir(&both);
+        assert_eq!(users(&c, "Declined"), ["M", "N"]);
+        assert_eq!(users(&c, "charge"), ["M"]);
+        assert_eq!(users(&c, "log"), Vec::<String>::new());
     }
 
     #[test]

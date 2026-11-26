@@ -44,7 +44,10 @@ export function diffSummaryHtml(index: ProjectIndex): string {
   const d = index.diff!
   const s = d.summary
   let h = `<section class="rb-diff-summary"><h2>Changes <span class="rb-cnote">${esc(d.from)} → ${esc(d.to)}</span></h2>`
-  h += `<p>Machines: ${esc(countsWords(s.machines))}. States: ${esc(countsWords(s.states))}. Transitions: ${esc(countsWords(s.transitions))}.</p>`
+  // Machines that only moved to another file are counted apart (`roadbook viz --diff` matches
+  // machines across files).
+  const machines = [countsWords(s.machines), s.machines.moved ? `${s.machines.moved} moved` : ''].filter((x) => x && !(x === 'none' && s.machines.moved)).join(', ')
+  h += `<p>Machines: ${esc(machines)}. States: ${esc(countsWords(s.states))}. Transitions: ${esc(countsWords(s.transitions))}.</p>`
   const changed = index.machines.map((m, i) => ({ m, d: d.machines[i] })).filter((x) => x.d && x.d.status !== 'unchanged')
   if (changed.length) {
     h += `<table class="rb-table"><thead><tr><th>Machine</th><th>Change</th><th>States</th><th>Transitions</th><th>Chart</th></tr></thead><tbody>${changed

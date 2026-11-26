@@ -284,13 +284,15 @@ const LOOP: &str = "machine Loop() {
 fn loops_are_taken_once_stuck_states_end_and_nested_finals_take_the_parents_done() {
     let dir = project("loop", &[("loop.road", LOOP)]);
     let v = json_of(&roadbook(&dir, &["paths", "Loop", "--json"]));
-    // Trying#2 (Next) leads only round Ping and Pong, which loop: no path.
+    // Trying#2 (Next) leads only round Ping and Pong: those paths end where they would loop.
     assert_eq!(
         steps(&v),
         [
             "Work.Trying#0>Work.Waiting#0>Work.Trying#1>Work#0",
+            "Work.Trying#0>Work.Waiting#0>Work.Trying#2>Ping#0>Pong#0",
             "Work.Trying#0>Work.Waiting#1",
             "Work.Trying#1>Work#0",
+            "Work.Trying#2>Ping#0>Pong#0",
         ]
     );
     let ends: Vec<(&str, &str)> = v["paths"]
@@ -303,25 +305,81 @@ fn loops_are_taken_once_stuck_states_end_and_nested_finals_take_the_parents_done
         ends,
         [
             ("final", "Loop.Done"),
+            ("loop", "Loop.Ping"),
             ("stuck", "Loop.Stuck"),
-            ("final", "Loop.Done")
+            ("final", "Loop.Done"),
+            ("loop", "Loop.Ping"),
         ]
     );
-    assert_eq!(v["paths"][2]["steps"][0]["to"], "Loop.Work.Finished");
-    assert_eq!(v["paths"][2]["steps"][1]["trigger"], "done");
+    assert_eq!(v["paths"][3]["steps"][0]["to"], "Loop.Work.Finished");
+    assert_eq!(v["paths"][3]["steps"][1]["trigger"], "done");
     let out = roadbook(&dir, &["paths", "Loop", "loop.road"]);
     assert_eq!(
         text(&out.stdout),
-        "Loop: 3 paths
+        "Loop: 5 paths
 1. Work.Trying
      --Retry--> Work.Waiting
      --Retry--> Work.Trying
      --Finish--> Work.Finished
      --done--> Done (final)
-2. Work.Trying --Retry--> Work.Waiting --Give--> Stuck (stuck)
-3. Work.Trying --Finish--> Work.Finished --done--> Done (final)
+2. Work.Trying
+     --Retry--> Work.Waiting
+     --Retry--> Work.Trying
+     --Next--> Ping
+     --Next--> Pong
+     --Next--> Ping (loops)
+3. Work.Trying --Retry--> Work.Waiting --Give--> Stuck (stuck)
+4. Work.Trying --Finish--> Work.Finished --done--> Done (final)
+5. Work.Trying --Next--> Ping --Next--> Pong --Next--> Ping (loops)
 "
     );
+}
+
+#[test]
+fn a_machine_with_no_final_or_stuck_state_lists_its_loops() {
+    let chart = "machine AB() {\n  event Go\n  event Back\n  initial A\n  state A { on Go -> B }\n  state B {\n    on Go   -> A\n    on Back -> A\n  }\n}\n";
+    let dir = project("ab", &[("ab.road", chart)]);
+    let out = roadbook(&dir, &["paths", "AB"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(
+        text(&out.stdout),
+        "AB: 2 paths\n1. A --Go--> B --Go--> A (loops)\n2. A --Go--> B --Back--> A (loops)\n"
+    );
+    let v = json_of(&roadbook(&dir, &["paths", "AB", "--json"]));
+    assert_eq!(v["paths"][0]["end"], "loop");
+    assert_eq!(v["paths"][0]["state"], "AB.A");
+}
+
+#[test]
+fn a_stuck_start_is_one_path_with_no_steps() {
+    let chart = "machine S() {\n  initial A\n  state A {}\n}\n";
+    let dir = project("stuck-start", &[("s.road", chart)]);
+    let out = roadbook(&dir, &["paths", "S"]);
+    assert_eq!(text(&out.stdout), "S: 1 path\n1. A (stuck)\n");
+}
+
+#[test]
+fn a_machine_in_a_project_local_package_is_one_declaration() {
+    // The package's file is a file of the project too: compiled as itself, and imported by
+    // another chart through the package, it is still one declaration.
+    let dir = project(
+        "package",
+        &[
+            ("pkgs/inv/inv.road", LOOP),
+            (
+                "app.road",
+                "import { Loop } from \"inv/inv.road\"\n\nmachine App() {\n  initial A\n  state A {\n    invoke Loop() {\n      done -> B\n    }\n  }\n  final state B {}\n}\n",
+            ),
+        ],
+    );
+    std::fs::write(
+        dir.join("roadbook.toml"),
+        "[packages]\ninv = \"pkgs/inv\"\n",
+    )
+    .unwrap();
+    let out = roadbook(&dir, &["paths", "Loop"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(text(&out.stdout).starts_with("Loop: 5 paths\n"));
 }
 
 #[test]
@@ -358,6 +416,43 @@ fn a_parallel_state_is_one_position() {
         text(&out.stdout),
         "Par: 2 paths\n1. Both --Stop--> Halted (final)\n2. Both --done--> Finished (final)\n"
     );
+}
+
+#[test]
+fn a_transition_in_a_region_that_leaves_the_parallel_state_is_a_step_from_it() {
+    // Both is left only from inside Left; Right's Go stays inside it, so is not a step.
+    let chart = "machine Par() {
+  event Go
+  event Stop
+
+  initial Both
+
+  parallel state Both {
+    state Left {
+      initial L1
+      state L1 { on Stop -> Out }
+    }
+
+    state Right {
+      initial R1
+      state R1 { on Go -> R2 }
+      state R2 { on Go -> R1 }
+    }
+  }
+
+  final state Out {}
+}
+";
+    let dir = project("parallel-region", &[("par.road", chart)]);
+    let out = roadbook(&dir, &["paths", "Par"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(text(&out.stderr), "");
+    assert_eq!(
+        text(&out.stdout),
+        "Par: 1 path\n1. Both --Stop--> Out (final)\n"
+    );
+    let v = json_of(&roadbook(&dir, &["paths", "Par", "--json"]));
+    assert_eq!(v["paths"][0]["steps"][0]["from"], "Par.Both.Left.L1");
 }
 
 #[test]

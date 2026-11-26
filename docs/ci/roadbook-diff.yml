@@ -11,10 +11,11 @@ on:
     paths:
       - "**/*.road"
       - "roadbook.toml"
+      - "package.json"
 
 permissions:
   contents: read
-  pull-requests: write # to post the comment
+  pull-requests: write # to post the comment (forks and Dependabot get a read-only token anyway)
 
 concurrency:
   group: chart-changes-${{ github.event.pull_request.number }}
@@ -26,7 +27,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # The pull request's head commit. By default a pull request checks out the merge
+          # commit GitHub makes of it into the base, which is neither the head nor a commit
+          # anyone pushed; with the head, `origin/<base>...HEAD` below is exactly what the pull
+          # request changes since it forked, as GitHub's "Files changed" shows it.
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0 # the base branch's history, which the diff reads with git
+
+      # A chart that imports from an npm package (`import { … } from "@shop/inventory/…"`)
+      # reads it from `node_modules`, which git does not hold: install the project's packages
+      # when it has a `package.json`. Both sides of the diff read the packages installed here,
+      # the pull request's. Install scripts are not run: the charts need only the files.
+      - uses: actions/setup-node@v4
+        if: hashFiles('package.json') != ''
+        with:
+          node-version: 22
+      - name: Install the npm packages the charts import
+        if: hashFiles('package.json') != ''
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            corepack enable
+            pnpm install --frozen-lockfile --ignore-scripts
+          elif [ -f yarn.lock ]; then
+            corepack enable
+            yarn install --frozen-lockfile --ignore-scripts # Yarn 1; Yarn 2+: --immutable --mode=skip-build
+          elif [ -f package-lock.json ]; then
+            npm ci --ignore-scripts
+          else
+            npm install --ignore-scripts --no-audit --no-fund
+          fi
 
       # Install the `roadbook` command. In the Roadbook repository itself this builds it from
       # source; elsewhere, install a released binary instead.
@@ -35,12 +64,14 @@ jobs:
       - name: Install roadbook
         run: cargo install --locked --path crates/roadbook-cli
 
-      # `origin/<base>...HEAD`: what the pull request changes since it forked from the base,
-      # whatever has landed on the base since.
+      # `origin/<base>...HEAD`: what the pull request (HEAD, its head commit) changes since it
+      # forked from the base, whatever has landed on the base since.
       - name: Draw the changes
         env:
           BASE: ${{ github.base_ref }}
-        run: roadbook viz --diff "origin/${BASE}...HEAD" -o roadbook-diff
+        run: |
+          roadbook viz --diff "origin/${BASE}...HEAD" -o roadbook-diff
+          cat roadbook-diff/summary.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the pages
         id: upload
@@ -51,8 +82,6 @@ jobs:
           retention-days: 14
 
       - name: Post or update the comment
-        # A pull request from a fork gets a read-only token: no comment there.
-        if: github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         env:
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
@@ -68,7 +97,15 @@ jobs:
             ].join('\n')
             const { owner, repo } = context.repo
             const issue_number = context.issue.number
-            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number })
-            const mine = comments.find((c) => c.user.type === 'Bot' && c.body.includes(marker))
-            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body })
-            else await github.rest.issues.createComment({ owner, repo, issue_number, body })
+            try {
+              const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number })
+              const mine = comments.find((c) => c.user.type === 'Bot' && c.body.includes(marker))
+              if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body })
+              else await github.rest.issues.createComment({ owner, repo, issue_number, body })
+            } catch (e) {
+              // A pull request from a fork, or from Dependabot, gets a read-only token: no
+              // comment, and no failure. The summary is on the run's page and the pages are in
+              // the artifact.
+              if (e.status !== 403 && e.status !== 404) throw e
+              core.notice(`No comment on the pull request: the token cannot write to it (${e.status}), as for a fork or Dependabot. The summary is on this run's page, and the pages are in the artifact roadbook-diff.`)
+            }

@@ -3,14 +3,25 @@
 //!
 //! Each side is compiled on its own: the `.road` files it has under the project root (less
 //! `exclude`, and only those under the paths given, if any), each read from that revision with
-//! its imports, and its entry charts found as `roadbook viz` finds them. A chart is matched
-//! across the sides by the project path of its entry file, so one can be added, removed or
-//! changed; [`super::diff`] matches what is inside. A chart that does not compile at a side gets
-//! a page showing that side's diagnostics instead of a drawing. Next to the pages and the index
-//! go `summary.md` (for a pull request comment) and `summary.json`. The configuration
+//! its imports, and its entry charts found as `roadbook viz` finds them. A page is drawn for
+//! each entry path of either side. A chart that does not compile at a side gets a page showing
+//! that side's diagnostics instead of a drawing. Next to the pages and the index go
+//! `summary.md` (for a pull request comment) and `summary.json`. The configuration
 //! (`roadbook.toml`) is the working tree's for both sides.
+//!
+//! **Matching across the project.** A declaration (machine, type, function, action, task) is
+//! known on a side by its kind, name and the file it is in. Each one after is matched with the
+//! one before in the same file with the same kind and name; those left are matched by kind and
+//! name alone where exactly one of that kind and name is left on each side, whatever file and
+//! entry chart they are in (a moved one: names are unique within an entry and its imports,
+//! not across the project). Each page then compares the after version of its chart with what
+//! each of its declarations is matched with before, wherever that was, so renaming a file or
+//! importing a chart from another one does not remove and re-add its machines: a machine
+//! declared in another file than before is moved. A declaration before that is matched with
+//! one after on another page is left out of this page's before version, and a page that is
+//! only before and is left with no machine is not drawn: what it had lives on elsewhere.
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use roadbook_compiler::Ir;
@@ -68,6 +79,7 @@ fn write(
     fn find<'a>(side: &'a Charts, e: &str) -> Option<&'a Result<Ir, String>> {
         side.iter().find(|(x, _)| x == e).map(|(_, r)| r)
     }
+    let matching = Matching::new(&before, &after);
     let mut charts: Vec<Chart> = Vec::new();
     for e in entries {
         let (b, a) = (find(&before, e), find(&after, e));
@@ -91,12 +103,22 @@ fn write(
             b.and_then(|r| r.as_ref().ok()),
             a.and_then(|r| r.as_ref().ok()),
         );
-        let d = diff::diff(b, a, from.label());
-        let status = match (b, a) {
-            (None, _) => "added",
-            (_, None) => "removed",
-            _ if d.changed() => "changed",
-            _ => "unchanged",
+        // What this chart's declarations are matched with before, wherever they were.
+        let matched = matching.before_of(b, a, &before);
+        let empty = matched.machines.is_empty()
+            && matched.types.is_empty()
+            && matched.functions.is_empty()
+            && matched.actions.is_empty()
+            && matched.tasks.is_empty();
+        let (d, status) = match (b, a) {
+            (None, Some(a)) if empty => (diff::diff(None, Some(a), from.label()), "added"),
+            (_, None) if matched.machines.is_empty() => continue, // it all lives on elsewhere
+            (_, None) => (diff::diff(Some(&matched), None, from.label()), "removed"),
+            (_, a) => {
+                let d = diff::diff(Some(&matched), a, from.label());
+                let status = if d.changed() { "changed" } else { "unchanged" };
+                (d, status)
+            }
         };
         charts.push(Chart {
             entry: e.to_string(),
@@ -179,6 +201,8 @@ fn write(
                         name,
                         page,
                         status: d.map_or(Status::Unchanged, |d| d.status),
+                        moved: d.and_then(|d| d.moved.clone()),
+                        only_moved: d.is_some_and(|d| d.only_moved()),
                         states: d.map(|d| d.state_counts()).unwrap_or_default(),
                         transitions: d.map(|d| d.transition_counts()).unwrap_or_default(),
                     }
@@ -186,12 +210,14 @@ fn write(
                 .collect()
         })
         .unwrap_or_default();
+    let decls = decl_rows(&charts);
     let summary = Summary {
         from: from.label().to_string(),
         to: to.label().to_string(),
         charts: &charts,
         names: &names,
         machines: &machines,
+        decls: &decls,
     };
     index["diff"] = summary.index_json();
     writes.push((
@@ -233,6 +259,192 @@ fn write(
     );
     Ok(())
 }
+
+/// A declaration on one side: its kind, name, and the file it is in.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+struct Key {
+    kind: &'static str,
+    name: String,
+    file: String,
+}
+
+/// Runs `$body` once per kind of declaration, with `$kind` its name and `$map` the field of
+/// [`Ir`] that holds it.
+macro_rules! each_kind {
+    (|$kind:ident, $map:ident| $body:block) => {{
+        macro_rules! one {
+            ($k:literal, $m:ident) => {{
+                let $kind: &'static str = $k;
+                macro_rules! $map {
+                    ($ir:expr) => {
+                        $ir.$m
+                    };
+                }
+                $body
+            }};
+        }
+        one!("machine", machines);
+        one!("type", types);
+        one!("function", functions);
+        one!("action", actions);
+        one!("task", tasks);
+    }};
+}
+
+/// Which declaration after is which before, across every chart of the project.
+struct Matching {
+    /// After to before, and before to after.
+    a2b: HashMap<Key, Key>,
+    b2a: HashMap<Key, Key>,
+    /// The chart (index in the before side) each declaration before is first found in.
+    where_before: HashMap<Key, usize>,
+}
+
+fn key(ir: &Ir, kind: &'static str, name: &str, span: &roadbook_ir::Span) -> Key {
+    Key {
+        kind,
+        name: name.to_string(),
+        file: diff::source_text(ir, span.file),
+    }
+}
+
+/// Every declaration of a side, and the first chart it is found in.
+fn declarations(side: &Charts) -> Vec<(Key, usize)> {
+    let mut out: Vec<(Key, usize)> = Vec::new();
+    let mut seen: HashSet<Key> = HashSet::new();
+    for (i, (_, ir)) in side.iter().enumerate() {
+        let Ok(ir) = ir else { continue };
+        each_kind!(|kind, map| {
+            for (name, x) in &map!(ir) {
+                let k = key(ir, kind, name, &x.span);
+                if seen.insert(k.clone()) {
+                    out.push((k, i));
+                }
+            }
+        });
+    }
+    out
+}
+
+impl Matching {
+    fn new(before: &Charts, after: &Charts) -> Matching {
+        let b = declarations(before);
+        let a = declarations(after);
+        let mut m = Matching {
+            a2b: HashMap::new(),
+            b2a: HashMap::new(),
+            where_before: b.iter().cloned().collect(),
+        };
+        // The same file, kind and name.
+        for (k, _) in &a {
+            if m.where_before.contains_key(k) {
+                m.a2b.insert(k.clone(), k.clone());
+                m.b2a.insert(k.clone(), k.clone());
+            }
+        }
+        // Then by kind and name, where exactly one of each is left.
+        let left = |side: &[(Key, usize)], taken: &HashMap<Key, Key>| {
+            let mut by: HashMap<(&'static str, String), Vec<Key>> = HashMap::new();
+            for (k, _) in side {
+                if !taken.contains_key(k) {
+                    by.entry((k.kind, k.name.clone()))
+                        .or_default()
+                        .push(k.clone());
+                }
+            }
+            by
+        };
+        let (lb, la) = (left(&b, &m.b2a), left(&a, &m.a2b));
+        for (id, ka) in la {
+            if let (Some(kb), [ka]) = (lb.get(&id), ka.as_slice())
+                && let [kb] = kb.as_slice()
+            {
+                m.a2b.insert(ka.clone(), kb.clone());
+                m.b2a.insert(kb.clone(), ka.clone());
+            }
+        }
+        m
+    }
+
+    /// The before version of a chart for its page: its own before version `b` (if any), less
+    /// what is matched with a declaration after that this chart (`a`) does not have, plus
+    /// what `a`'s declarations are matched with in other charts before. Spans of what comes
+    /// from another chart point into copies of that chart's sources, appended.
+    fn before_of(&self, b: Option<&Ir>, a: Option<&Ir>, before: &Charts) -> Ir {
+        let mut out = b.cloned().unwrap_or_else(diff::empty_ir);
+        let mut grafted: HashMap<usize, u32> = HashMap::new();
+        each_kind!(|kind, map| {
+            let names: Vec<String> = map!(out).keys().cloned().collect();
+            for n in names {
+                let kb = key(&out, kind, &n, &map!(out)[&n].span);
+                let here = a.and_then(|a| map!(a).get(&n).map(|x| key(a, kind, &n, &x.span)));
+                let keep = match (self.b2a.get(&kb), &here) {
+                    // Matched: kept if this chart has what it is matched with.
+                    (Some(ka), here) => here.as_ref() == Some(ka),
+                    // Removed, or compared by name with one here that is matched with none.
+                    (None, Some(ka)) => !self.a2b.contains_key(ka),
+                    (None, None) => true,
+                };
+                if !keep {
+                    map!(out).shift_remove(&n);
+                }
+            }
+            if let Some(a) = a {
+                for (n, x) in &map!(a) {
+                    let Some(kb) = self.a2b.get(&key(a, kind, n, &x.span)) else {
+                        continue;
+                    };
+                    if map!(out)
+                        .get(n)
+                        .is_some_and(|y| key(&out, kind, n, &y.span) == *kb)
+                    {
+                        continue;
+                    }
+                    let chart = self.where_before[kb];
+                    let Ok(from) = &before[chart].1 else {
+                        continue;
+                    };
+                    let offset = *grafted.entry(chart).or_insert_with(|| {
+                        let at = out.sources.len() as u32;
+                        out.sources.extend(from.sources.iter().cloned());
+                        at
+                    });
+                    let mut y = map!(from)[n].clone();
+                    y.shift(offset);
+                    map!(out).insert(n.clone(), y);
+                }
+            }
+        });
+        out
+    }
+}
+
+/// Points a declaration's spans at the sources `offset` further on.
+trait Shift {
+    fn shift(&mut self, offset: u32);
+}
+
+impl Shift for roadbook_ir::Machine {
+    fn shift(&mut self, offset: u32) {
+        diff::shift_machine(self, offset);
+    }
+}
+
+macro_rules! shift_span {
+    ($($t:ty),*) => {$(
+        impl Shift for $t {
+            fn shift(&mut self, offset: u32) {
+                self.span.file += offset;
+            }
+        }
+    )*};
+}
+shift_span!(
+    roadbook_ir::TypeDecl,
+    roadbook_ir::FunctionDecl,
+    roadbook_ir::ActionDecl,
+    roadbook_ir::TaskDecl
+);
 
 /// The entry charts of one side, compiled.
 fn side_charts(
@@ -288,8 +500,68 @@ struct MachineRow {
     name: String,
     page: usize,
     status: Status,
+    /// The file it was declared in and is now, if it moved.
+    moved: Option<(String, String)>,
+    /// Whether moving is all that changed.
+    only_moved: bool,
     states: Counts,
     transitions: Counts,
+}
+
+impl MachineRow {
+    /// `moved` for a machine that only moved, else its status.
+    fn status_text(&self) -> &'static str {
+        if self.only_moved {
+            "moved"
+        } else {
+            self.status.as_str()
+        }
+    }
+}
+
+/// A type, function, action or task that is not unchanged, and the machines that use it.
+struct DeclRow {
+    name: String,
+    status: Status,
+    machines: Vec<String>,
+}
+
+/// The declarations that are not unchanged, across the charts, each with the machines that use
+/// it (in any chart), in the order of the charts.
+fn decl_rows(charts: &[Chart]) -> Vec<DeclRow> {
+    let mut out: Vec<DeclRow> = Vec::new();
+    for c in charts {
+        for (name, e) in &c.diff.decls {
+            let users = diff::users(&c.diff.ir, name);
+            let row = match out
+                .iter_mut()
+                .position(|r| r.name == *name && r.status == e.status)
+            {
+                Some(i) => &mut out[i],
+                None => {
+                    out.push(DeclRow {
+                        name: name.clone(),
+                        status: e.status,
+                        machines: Vec::new(),
+                    });
+                    out.last_mut().unwrap()
+                }
+            };
+            for u in users {
+                if !row.machines.contains(&u) {
+                    row.machines.push(u);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Machines added, removed, changed and only moved.
+#[derive(Clone, Copy, Default)]
+struct MachineCounts {
+    counts: Counts,
+    moved: usize,
 }
 
 struct Summary<'a> {
@@ -298,22 +570,41 @@ struct Summary<'a> {
     charts: &'a [Chart],
     names: &'a [String],
     machines: &'a [MachineRow],
+    decls: &'a [DeclRow],
 }
 
 impl Summary<'_> {
-    fn totals(&self) -> (Counts, Counts, Counts) {
-        let (mut m, mut s, mut t) = (Counts::default(), Counts::default(), Counts::default());
+    fn totals(&self) -> (MachineCounts, Counts, Counts) {
+        let (mut m, mut s, mut t) = (
+            MachineCounts::default(),
+            Counts::default(),
+            Counts::default(),
+        );
         for r in self.machines {
             match r.status {
-                Status::Added => m.added += 1,
-                Status::Removed => m.removed += 1,
-                Status::Changed => m.changed += 1,
+                _ if r.only_moved => m.moved += 1,
+                Status::Added => m.counts.added += 1,
+                Status::Removed => m.counts.removed += 1,
+                Status::Changed => m.counts.changed += 1,
                 Status::Unchanged => {}
             }
             s.add(r.states);
             t.add(r.transitions);
         }
         (m, s, t)
+    }
+
+    fn decl_counts(&self) -> Counts {
+        let mut c = Counts::default();
+        for r in self.decls {
+            match r.status {
+                Status::Added => c.added += 1,
+                Status::Removed => c.removed += 1,
+                Status::Changed => c.changed += 1,
+                Status::Unchanged => {}
+            }
+        }
+        c
     }
 
     /// The machines that changed, in the order of the index.
@@ -329,7 +620,7 @@ impl Summary<'_> {
         json!({
             "from": self.from,
             "to": self.to,
-            "summary": { "machines": m.to_json(), "states": s.to_json(), "transitions": t.to_json() },
+            "summary": { "machines": machine_counts_json(m), "states": s.to_json(), "transitions": t.to_json() },
             "machines": self.machines.iter().map(|r| json!({
                 "status": r.status.as_str(),
                 "states": r.states.to_json(),
@@ -349,16 +640,28 @@ impl Summary<'_> {
             "from": self.from,
             "to": self.to,
             "changed": self.charts.iter().any(|c| c.status != "unchanged"),
-            "machines": m.to_json(),
+            "machines": machine_counts_json(m),
             "states": s.to_json(),
             "transitions": t.to_json(),
-            "changes": self.changed().map(|(_, r)| json!({
-                "machine": r.name,
+            "declarations": self.decl_counts().to_json(),
+            "changes": self.changed().map(|(_, r)| {
+                let mut v = json!({
+                    "machine": r.name,
+                    "status": r.status_text(),
+                    "chart": self.charts[r.page].entry,
+                    "page": self.names[r.page],
+                    "states": r.states.to_json(),
+                    "transitions": r.transitions.to_json(),
+                });
+                if let Some((from, to)) = &r.moved {
+                    v["moved"] = json!({ "from": from, "to": to });
+                }
+                v
+            }).collect::<Vec<_>>(),
+            "decls": self.decls.iter().map(|r| json!({
+                "name": r.name,
                 "status": r.status.as_str(),
-                "chart": self.charts[r.page].entry,
-                "page": self.names[r.page],
-                "states": r.states.to_json(),
-                "transitions": r.transitions.to_json(),
+                "machines": r.machines,
             })).collect::<Vec<_>>(),
             "errors": self.charts.iter().zip(self.names).flat_map(|(c, page)| c.errors.iter().map(move |(side, _)| json!({
                 "chart": c.entry,
@@ -368,9 +671,16 @@ impl Summary<'_> {
         })
     }
 
+    /// The summary for a pull request comment. Everything that comes from the charts or the
+    /// command line (paths, names, revisions) goes through [`code`], so a file name cannot
+    /// end the table, mention anyone or add a link.
     fn markdown(&self) -> String {
         let (m, s, t) = self.totals();
-        let mut out = format!("### Chart changes: `{}` → `{}`\n\n", self.from, self.to);
+        let mut out = format!(
+            "### Chart changes: {} → {}\n\n",
+            code(&self.from),
+            code(&self.to)
+        );
         let errors: Vec<String> = self
             .charts
             .iter()
@@ -381,33 +691,71 @@ impl Summary<'_> {
                     } else {
                         &self.to
                     };
-                    format!("- `{}` does not compile at `{label}`\n", c.entry)
+                    format!("- {} does not compile at {}\n", code(&c.entry), code(label))
                 })
             })
             .collect();
-        if m.is_empty() && errors.is_empty() {
+        let machines_changed = !m.counts.is_empty() || m.moved > 0;
+        if !machines_changed && self.decls.is_empty() && errors.is_empty() {
             out.push_str("No machine changed.\n");
             return out;
         }
+        let machine_words = match (m.counts.is_empty(), m.moved) {
+            (true, 0) => words(m.counts),
+            (true, n) => format!("{n} moved"),
+            (false, 0) => words(m.counts),
+            (false, n) => format!("{}, {n} moved", words(m.counts)),
+        };
         out.push_str(&format!(
-            "Machines: {}. States: {}. Transitions: {}.\n\n",
-            words(m),
+            "Machines: {machine_words}. States: {}. Transitions: {}.\n\n",
             words(s),
             words(t)
         ));
-        if !m.is_empty() {
+        if machines_changed {
             out.push_str(
                 "| | Machine | Chart | States | Transitions |\n| --- | --- | --- | --- | --- |\n",
             );
             for (_, r) in self.changed() {
+                let (mark, status) = if r.only_moved {
+                    ("→", "moved")
+                } else {
+                    (mark(r.status), r.status.as_str())
+                };
+                let mut chart = code(&self.charts[r.page].entry);
+                if let Some((from, to)) = &r.moved {
+                    chart.push_str(&format!(" (moved from {} to {})", code(from), code(to)));
+                }
                 out.push_str(&format!(
-                    "| {} {} | `{}` | `{}` | {} | {} |\n",
-                    mark(r.status),
-                    r.status.as_str(),
-                    r.name,
-                    self.charts[r.page].entry,
+                    "| {mark} {status} | {} | {chart} | {} | {} |\n",
+                    code(&r.name),
                     signs(r.states),
                     signs(r.transitions)
+                ));
+            }
+        }
+        if !self.decls.is_empty() {
+            if machines_changed {
+                out.push('\n');
+            }
+            out.push_str(&format!(
+                "Declarations: {}.\n\n| | Declaration | Used by |\n| --- | --- | --- |\n",
+                words(self.decl_counts())
+            ));
+            for r in self.decls {
+                let users = if r.machines.is_empty() {
+                    "no machine".to_string()
+                } else {
+                    r.machines
+                        .iter()
+                        .map(|n| code(n))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                };
+                out.push_str(&format!(
+                    "| {} {} | {} | {users} |\n",
+                    mark(r.status),
+                    r.status.as_str(),
+                    code(&r.name)
                 ));
             }
         }
@@ -417,6 +765,47 @@ impl Summary<'_> {
         }
         out
     }
+}
+
+fn machine_counts_json(m: MachineCounts) -> Value {
+    let mut v = m.counts.to_json();
+    v["moved"] = m.moved.into();
+    v
+}
+
+/// `s` as inline code in GitHub Markdown, safe anywhere in a line or a table cell whatever it
+/// holds. Printable ASCII but `` ` ``, `|` and `\` makes a code span, inside which nothing is
+/// Markdown, HTML, a mention or a link, and which only those could end (a backslash could
+/// escape a following `|` for the table). Anything else makes a `<code>` element with every
+/// character but letters, digits and spaces as a numeric character reference, so none of it
+/// can end the code or the table cell, start HTML, a link, a mention or a heading, or break
+/// the line (a line break shows as `⏎`); GitHub makes no mention or link inside `<code>`.
+/// Control and invisible formatting characters (which could reorder the text shown) show as
+/// `�`.
+fn code(s: &str) -> String {
+    let plain = |c: char| (c == ' ' || c.is_ascii_graphic()) && !"`|\\".contains(c);
+    if !s.is_empty() && s.chars().all(plain) {
+        return format!("`{s}`");
+    }
+    let mut out = String::from("<code>");
+    for c in s.chars() {
+        let invisible = matches!(c,
+            '\u{200B}'..='\u{200F}' | '\u{2028}'..='\u{202E}' | '\u{2060}'..='\u{206F}'
+            | '\u{FEFF}' | '\u{FFF9}'..='\u{FFFB}');
+        let shown = match c {
+            '\n' => '⏎',
+            '\r' => continue,
+            _ if c.is_control() || invisible => '\u{FFFD}',
+            _ => c,
+        };
+        if shown.is_ascii_alphanumeric() || shown == ' ' {
+            out.push(shown);
+        } else {
+            out.push_str(&format!("&#{};", shown as u32));
+        }
+    }
+    out.push_str("</code>");
+    out
 }
 
 /// `+`, `−` or `~`, as the pages mark them.
@@ -457,4 +846,26 @@ fn words(c: Counts) -> String {
         "{} added, {} removed, {} changed",
         c.added, c.removed, c.changed
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::code;
+
+    #[test]
+    fn code_is_a_span_when_nothing_in_it_can_end_it() {
+        assert_eq!(code("shop/place_order.road"), "`shop/place_order.road`");
+        assert_eq!(code("origin/main...HEAD~1"), "`origin/main...HEAD~1`");
+        assert_eq!(
+            code("@octocat [x](https://e.vil)"),
+            "`@octocat [x](https://e.vil)`"
+        );
+        assert_eq!(code("a|b"), "<code>a&#124;b</code>");
+        assert_eq!(code("a\\"), "<code>a&#92;</code>");
+        assert_eq!(code("`x`"), "<code>&#96;x&#96;</code>");
+        assert_eq!(code("a\r\nb"), "<code>a&#9166;b</code>");
+        assert_eq!(code("a\u{202E}b"), "<code>a&#65533;b</code>");
+        assert_eq!(code("café"), "<code>caf&#233;</code>");
+        assert_eq!(code(""), "<code></code>");
+    }
 }

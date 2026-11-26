@@ -98,6 +98,24 @@ describe('coverage', () => {
     expect(d.stale.runs).toBe(0)
   })
 
+  it('counts a state or transition named like an Object property as any other', () => {
+    // A record naming `constructor` or `__proto__` must not read or write what every object
+    // inherits: the shading of the real states stays a number.
+    const one = traces.find((t) => t.name === 'checkout-retry')!
+    const run = parseTrace(one.text).records.find((r) => r.kind === 'started')!.run
+    const odd = ['constructor', '__proto__', 'toString'].map((state) => JSON.stringify({ kind: 'entered', run, t: 0, state })).join('\n')
+    const c = coverage(shop, [{ name: 'odd.jsonl', text: `${one.text}${odd}\n` }])
+    const mc = c.machines.Checkout!
+    expect(mc.states.constructor).toBe(1)
+    expect(mc.states.__proto__).toBe(1)
+    expect(Object.getPrototypeOf(mc.states)).toBe(null)
+    const marks = coverageAnnotations(shop, c, 'Checkout')
+    for (const s of allStates(shop.machines.Checkout!).filter((s) => s.id !== 'Checkout')) {
+      expect(marks.state!(s.id)!.cls, s.id).toMatch(/^rb-cov-(never|[1-4])$/)
+    }
+    expect(marks.state!('constructor')!.cls).toMatch(/^rb-cov-[1-4]$/)
+  })
+
   it('shades on a logarithmic scale and says never in text', () => {
     expect(shade(0, 100)).toBe('never')
     expect(shade(1, 100)).toBe(1)
