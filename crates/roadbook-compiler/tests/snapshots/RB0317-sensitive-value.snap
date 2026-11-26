@@ -1,10 +1,10 @@
 ---
 source: crates/roadbook-compiler/tests/fail.rs
 ---
-error[RB0317]: `key` is sensitive, and the initial value of `leaked` is not
+error[RB0317]: `pin` is sensitive, and the initial value of `leaked` is not
   --> RB0317-sensitive-value.road:25:24
    |
-25 |   var leaked: string = key
+25 |   var leaked: string = pin
    |                        ^^^ a trace would show this value
    |
    = help: traces redact only what is marked: mark `leaked` `sensitive` too, or derive what may be shown with a `fn`
@@ -17,10 +17,10 @@ error[RB0317]: `-count + 1` is sensitive, and the initial value of `shown` is no
    |
    = help: traces redact only what is marked: mark `shown` `sensitive` too, or derive what may be shown with a `fn`
 
-error[RB0317]: `strong(key) and count < 3` is sensitive, and the initial value of `few` is not
+error[RB0317]: `strong(pin) and count < 3` is sensitive, and the initial value of `few` is not
   --> RB0317-sensitive-value.road:28:19
    |
-28 |   var few: bool = strong(key) and count < 3
+28 |   var few: bool = strong(pin) and count < 3
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ a trace would show this value
    |
    = help: traces redact only what is marked: mark `few` `sensitive` too, or derive what may be shown with a `fn`
@@ -73,10 +73,10 @@ error[RB0317]: `copy.ttl` is sensitive, and an `after` delay is not
    |
    = help: traces show an `after` delay as it is: carry the value in a field marked `sensitive`, or derive what may be shown with a `fn`
 
-error[RB0317]: `key` is sensitive, and argument `shown` of `Child` is not
+error[RB0317]: `pin` is sensitive, and argument `shown` of `Child` is not
   --> RB0317-sensitive-value.road:53:23
    |
-53 |     invoke Child(key, key) { done -> E }
+53 |     invoke Child(pin, pin) { done -> E }
    |                       ^^^ a trace would show this value
    |
    = help: traces redact only what is marked: mark parameter `shown` of `Child` `sensitive` too, or derive what may be shown with a `fn`
