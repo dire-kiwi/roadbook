@@ -61,7 +61,7 @@ Progress is recorded on each milestone below as it finishes.
 | M5. Messaging | Done, 26 November 2026 |
 | M6. Depth | Done, 26 November 2026 |
 | M7. Review tooling | Done, 26 November 2026 |
-| M8. Editors | In progress |
+| M8. Editors | Done, 26 November 2026 |
 
 **M1. Language and IR.** Parser, name resolution, the structural checks, IR and its schema, `check` and `fmt`, in Rust. Covers atomic, compound and final states, events, guards, `invoke`, `after`, `always`. Type checking of expressions and arguments. The shop example compiles, and bad charts produce the diagnostics described in the language page.
 
@@ -92,6 +92,8 @@ Progress is recorded on each milestone below as it finishes.
 *Done.* `roadbook viz --diff <range>` draws both revisions of each chart as one diagram, with added, removed, changed and moved states, transitions, machines and declarations marked in text and line style as well as colour, and writes `summary.md` and `summary.json`. Coverage (`roadbook viz --coverage`, or traces dropped on a page) shades each state and transition by how often the traces took it and flags the ones never taken. `roadbook paths` lists the paths through a machine for test generation. `docs/ci/roadbook-diff.yml` is a GitHub Actions recipe that builds the diff pages for a pull request, uploads them and comments a summary; this repository has no remote, so it was checked locally and under Node with a stand-in client but never run on GitHub. An independent review found an argument-parsing bug, unescaped chart text in the pull-request comment, and gaps in matching across files; all are fixed.
 
 **M8. Editors.** Tree-sitter grammar, language server (diagnostics, go to definition, rename), VS Code extension with live preview.
+
+*Done.* The tree-sitter grammar (`editors/tree-sitter-roadbook`) parses every chart in the repository, with highlight, locals, fold and indent queries for Neovim, Helix and Zed; `scripts/check-all.sh` checks it. The language server (`roadbook lsp`, `crates/roadbook-lsp`, on a symbol index added to the compiler without changing its output) gives diagnostics with the compiler's fixes as quick fixes, go to definition, references, hover, rename that refuses to capture or clash, formatting and an outline, across files and packages and for unsaved and untitled documents. The VS Code extension (`editors/vscode`) adds the language, highlighting, the server and a live preview that compiles through the server, so it sees every unsaved buffer; its integration test passed in a real VS Code (headless). An independent review found edge cases with packages under `node_modules`, the preview's compilation, rename scoping and workspace trust; all are fixed.
 
 **Later.** History states, keyed `spawn`, retry sugar, a durable driver, generated Rust state machines for hot paths.
 
