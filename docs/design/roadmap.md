@@ -47,7 +47,22 @@ editors/
 
 Each milestone ends with something usable, and the order puts the riskiest assumptions first.
 
+Progress is recorded on each milestone below as it finishes.
+
+| Milestone | Status |
+| --- | --- |
+| M1. Language and IR | Done, 26 November 2026 |
+| M2. Viewer | In progress |
+| M3. TypeScript runtime | Not started |
+| M4. Rust runtime | Not started |
+| M5. Messaging | Not started |
+| M6. Depth | Not started |
+| M7. Review tooling | Not started |
+| M8. Editors | Not started |
+
 **M1. Language and IR.** Parser, name resolution, the structural checks, IR and its schema, `check` and `fmt`, in Rust. Covers atomic, compound and final states, events, guards, `invoke`, `after`, `always`. Type checking of expressions and arguments. The shop example compiles, and bad charts produce the diagnostics described in the language page.
+
+*Done.* `crates/roadbook-syntax`, `roadbook-ir`, `roadbook-compiler` and `roadbook-cli` (`check [--json]`, `fmt [--check]`, `export ir`); `spec/ir.md` and `spec/ir.schema.json`. Every check on the language page has a failing chart and an expected diagnostic, except definite assignment, which stays in M6 as planned. `examples/shop` checks and formats clean. Four further charts were written from prose by an agent that had read only the language page (`examples/README.md`); all compiled clean on the first attempt, and what was unclear went back into the language page. Two independent reviews found edge-case bugs (non-finite floats, deep nesting, multi-file projects, a root-level `always` loop), which are fixed. The behavioural contract for M3 and M4 (`spec/execution.md`, the trace format and the conformance cases) was written during M1 as well.
 
 **M2. Viewer.** `roadbook viz` in explore mode, built from the spike: layout, drill-down into child machines, details panel, project index. `export mermaid`. At this point the project already delivers its main promise for charts that are written but not yet run.
 
