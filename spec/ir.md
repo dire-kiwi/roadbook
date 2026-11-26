@@ -1,4 +1,4 @@
-# The Roadbook IR, version 0.2
+# The Roadbook IR, version 0.3
 
 The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with messaging and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
@@ -22,7 +22,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 ```jsonc
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources":   [{ "path": "examples/shop/place_order.road", "package": null },
                 { "path": "examples/shop/types.road", "package": null }],
   "types":     { /* Name: type declaration */ },
@@ -171,14 +171,18 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
 | --- | --- |
 | `id` | Absolute dotted path from the machine: `PlaceOrder.Processing.Paying`. Unique within the machine. Traces, targets and `initial` use it. |
 | `name` | The last segment of `id`. |
-| `kind` | `atomic` (no children), `compound` (children, one active at a time), `parallel` (children are regions, all active at once) or `final`. |
-| `doc`, `span` | The span runs from the state's first keyword (`state`, `final` or `parallel`) to its closing brace. |
-| `initial` | Id of the child entered first. Set exactly when `kind` is `compound`, otherwise `null`. |
-| `states` | Children, in source order. Empty for `atomic` and `final`. |
+| `kind` | `atomic` (no children), `compound` (children, one active at a time), `parallel` (children are regions, all active at once), `final`, or `history` and `deepHistory` for a [history state](#history-states). |
+| `doc`, `span` | The span runs from the state's first keyword (`state`, `final` or `parallel`) to its closing brace; for a history state, from `history` or `deep` to the end of its name. |
+| `initial` | Id of the child entered first. Set exactly when `kind` is `compound`, otherwise `null`. Never a history state. |
+| `states` | Children, in source order, history states among them. Empty for `atomic`, `final`, `history` and `deepHistory`. |
 | `entry`, `exit` | [Effects](#effects) run on entering and leaving the state: all `set` assignments, then all `do` actions, each in the order written. |
 | `invoke` | The task or machine run while the state is active, or `null`. At most one per state. |
 | `transitions` | The state's transitions, including its invoke's outcomes, in document order. |
 | `output`, `fail` | In a final state at the top level of a machine: the machine's result or failure expression. At most one of them is set. `null` everywhere else. |
+
+### History states
+
+`history Name` and `deep history Name` are states of kind `history` and `deepHistory` in the `states` of the state they are written in, their parent, at the position they are written. Their parent is a `compound` or `parallel` state that is not the root, and has at least one child that is not a history state. They are pseudo-states: `initial` is `null`, `states`, `entry`, `exit` and `transitions` are `[]`, and `invoke`, `output` and `fail` are `null`. Only a transition's `target` names one. Whether a state is `atomic`, `compound` or `parallel`, which child is its `initial`, and which children are a parallel state's regions are all decided by its other children: wherever the IR or [`execution.md`](execution.md) speaks of a state's children or regions, it means those that are not history states. What entering one does is in [`execution.md`](execution.md#history-states).
 
 ## Invoke
 
@@ -232,7 +236,7 @@ A child is addressed only from its invoking state and that state's descendants, 
 | `trigger` | What enables it. See below. |
 | `group` | The index, from 0, of the trigger block the transition was written in, among the blocks of its state. A single-line trigger is a block with one branch. The branches of one block are consecutive and share `group`; guards within a group are tried in order. |
 | `guard` | Boolean expression, or `null` for an unguarded branch (including `else`). |
-| `target` | Id of the target state, or `null` for an internal transition (the state is not left). |
+| `target` | Id of the target state, a history state among them, or `null` for an internal transition (the state is not left). |
 | `effects` | [Effects](#effects) run when the transition is taken: all `set` assignments, then all `do` actions, each in the order written. |
 | `span` | For a single-branch trigger, from the trigger keyword to the end of the branch. For a branch in a block, from its `if` or `else` to the end of the branch. |
 
@@ -336,12 +340,16 @@ So comments, formatting, source positions, file names, packages, declaration ord
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.2`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.3`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
+
+## Changes from 0.2
+
+Version 0.3 adds [history states](#history-states): the state kinds `history` and `deepHistory`. Nothing else changed, so a machine with no history state has the hash it had in 0.2, and its saved snapshots still restore.
 
 ## Changes from 0.1
 
