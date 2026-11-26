@@ -6,11 +6,11 @@ use std::collections::{HashMap, HashSet};
 use indexmap::IndexMap;
 use roadbook_ir as ir;
 use roadbook_syntax::ast::{
-    self, Body, Branches, Decl, DeclKind, Effect, Ident, Invoke, Item, Pattern, State, StateKind,
-    Target, Transition, Trigger,
+    self, Body, Branches, Decl, DeclKind, Effect, Ident, Invoke, Item, Message, Pattern, State,
+    StateKind, Target, Transition, Trigger,
 };
 use roadbook_syntax::diagnostic::Code;
-use roadbook_syntax::{Diagnostic, Span, expr_text};
+use roadbook_syntax::{Diagnostic, Span, expr_text, message_value};
 
 use crate::check::{Checker, Sig, SigKind, doc, ir_span};
 use crate::codes;
@@ -35,6 +35,28 @@ pub(crate) struct MachineInfo {
     /// Declared events with their name spans, in order.
     pub events: Vec<(String, Span)>,
     pub used_events: HashSet<String>,
+    /// Declared emitted events with their name spans, in order.
+    pub emits: Vec<(String, Span)>,
+    /// The events an `emit` of the machine sends.
+    pub emitted: HashSet<String>,
+    /// Every `on name.Event`: the event's span, the sending machine and the event.
+    pub receives: Vec<(Span, String, String)>,
+}
+
+/// Where effects run, for the check that a `send` to an invoked child finds it running.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Place {
+    /// The `entry` of a state (by node).
+    Entry(usize),
+    /// The `exit` of a state.
+    Exit(usize),
+    /// A transition written in a state, with its target, and whether it is an outcome of the
+    /// state's invoke.
+    Transition {
+        node: usize,
+        target: Option<usize>,
+        outcome: bool,
+    },
 }
 
 /// What an implicit name (`event`, `result`, `error`) means at some point.
@@ -73,6 +95,8 @@ struct Node<'p> {
     /// `None` for the machine's root.
     state: Option<&'p State>,
     depth: usize,
+    /// `invoke Machine(…) as name`: the name and the machine.
+    alias: Option<(&'p Ident, String)>,
 }
 
 pub(crate) struct Var {
@@ -86,6 +110,7 @@ pub(crate) struct Cx<'c, 'p> {
     pub machine: String,
     pub vars: HashMap<String, Var>,
     pub events: HashMap<String, Vec<(String, Ty)>>,
+    pub emits: HashMap<String, Vec<(String, Ty)>>,
     returns: Option<Ty>,
     errors: Vec<String>,
     nodes: Vec<Node<'p>>,
@@ -107,6 +132,7 @@ pub(crate) fn lower<'p>(
         machine: name.clone(),
         vars: HashMap::new(),
         events: HashMap::new(),
+        emits: HashMap::new(),
         returns: sig.as_ref().and_then(|s| s.returns.clone()),
         errors: sig.as_ref().map(|s| s.errors.clone()).unwrap_or_default(),
         nodes: Vec::new(),
@@ -116,6 +142,9 @@ pub(crate) fn lower<'p>(
             states: HashMap::new(),
             events: Vec::new(),
             used_events: HashSet::new(),
+            emits: Vec::new(),
+            emitted: HashSet::new(),
+            receives: Vec::new(),
         },
     };
 
@@ -162,22 +191,32 @@ pub(crate) fn lower<'p>(
         var_tys.push(ty);
     }
 
-    // Events.
+    // Events and emitted events: one namespace. Their field types are in the interface.
+    let iface = cx.ck.interfaces.get(&name).cloned().unwrap_or_default();
     let mut events = IndexMap::new();
-    for e in m.body.events() {
-        if events.contains_key(&e.name.name) {
-            let first = cx.info.events.iter().find(|(n, _)| *n == e.name.name);
-            let mut diag = Diagnostic::error(
-                codes::DUPLICATE_NAME,
-                e.name.span,
-                format!("event `{}` is declared twice", e.name.name),
+    let mut emits = IndexMap::new();
+    let mut first_seen: HashMap<String, Span> = HashMap::new();
+    for (is_emits, e) in m.body.items.iter().filter_map(|i| match i {
+        Item::Event(e) => Some((false, e)),
+        Item::Emits(e) => Some((true, e)),
+        _ => None,
+    }) {
+        let word = if is_emits { "emitted event" } else { "event" };
+        if let Some(first) = first_seen.get(&e.name.name) {
+            cx.ck.diags.push(
+                Diagnostic::error(
+                    codes::DUPLICATE_NAME,
+                    e.name.span,
+                    format!("event `{}` is declared twice", e.name.name),
+                )
+                .with_secondary(*first, "first declared here")
+                .with_help(
+                    "the events a machine accepts and those it emits share one set of names",
+                ),
             );
-            if let Some((_, s)) = first {
-                diag = diag.with_secondary(*s, "first declared here");
-            }
-            cx.ck.diags.push(diag);
             continue;
         }
+        first_seen.insert(e.name.name.clone(), e.name.span);
         if let Some(&id) = cx.ck.names.global.get(e.name.name.as_str()) {
             let other = cx.ck.names.decl(id);
             if is_type(&other.kind) || matches!(other.kind, DeclKind::Machine(_)) {
@@ -187,7 +226,7 @@ pub(crate) fn lower<'p>(
                         codes::DUPLICATE_DECLARATION,
                         e.name.span,
                         format!(
-                            "event `{}` has the name of {} declared in `{path}`",
+                            "{word} `{}` has the name of {} declared in `{path}`",
                             e.name.name,
                             kind_phrase(&other.kind)
                         ),
@@ -197,30 +236,30 @@ pub(crate) fn lower<'p>(
                 );
             }
         }
-        cx.ck.unique(e.fields.iter().map(|f| &f.name), "field");
-        let fields: Vec<(String, Ty)> = e
-            .fields
-            .iter()
-            .map(|f| (f.name.name.clone(), cx.ck.resolve(file, &f.ty)))
-            .collect();
-        cx.events.insert(e.name.name.clone(), fields);
-        cx.info.events.push((e.name.name.clone(), e.name.span));
-        events.insert(
-            e.name.name.clone(),
-            ir::EventDecl {
-                fields: e
-                    .fields
-                    .iter()
-                    .map(|f| ir::Field {
-                        name: f.name.name.clone(),
-                        ty: ir_type(&f.ty),
-                        doc: String::new(),
-                    })
-                    .collect(),
-                doc: doc(&e.doc),
-                span: ir_span(e.span),
-            },
-        );
+        let decl = ir::EventDecl {
+            fields: e
+                .fields
+                .iter()
+                .map(|f| ir::Field {
+                    name: f.name.name.clone(),
+                    ty: ir_type(&f.ty),
+                    doc: String::new(),
+                })
+                .collect(),
+            doc: doc(&e.doc),
+            span: ir_span(e.span),
+        };
+        if is_emits {
+            let fields = iface.emits.get(&e.name.name).cloned().unwrap_or_default();
+            cx.emits.insert(e.name.name.clone(), fields);
+            cx.info.emits.push((e.name.name.clone(), e.name.span));
+            emits.insert(e.name.name.clone(), decl);
+        } else {
+            let fields = iface.events.get(&e.name.name).cloned().unwrap_or_default();
+            cx.events.insert(e.name.name.clone(), fields);
+            cx.info.events.push((e.name.name.clone(), e.name.span));
+            events.insert(e.name.name.clone(), decl);
+        }
     }
 
     // Variable initialisers may read parameters and other variables.
@@ -252,8 +291,10 @@ pub(crate) fn lower<'p>(
         body: &m.body,
         state: None,
         depth: 0,
+        alias: None,
     });
     cx.build_tree(0);
+    cx.check_aliases();
     let mut root = cx.lower_state(0);
     root.doc = doc(&d.doc);
     root.span = ir_span(d.span);
@@ -276,6 +317,7 @@ pub(crate) fn lower<'p>(
         errors: m.errors.iter().map(|e| e.name.clone()).collect(),
         vars,
         events,
+        emits,
         root,
         hash: String::new(),
     }
@@ -290,6 +332,7 @@ fn trigger_key(t: &Trigger) -> String {
     };
     match t {
         Trigger::On(p) => format!("on {}", pattern(p)),
+        Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
         Trigger::After(e) => format!("after {}", expr_text(e)),
         Trigger::Always => "always".into(),
         Trigger::Done => "done".into(),
@@ -321,6 +364,10 @@ impl<'p> Cx<'_, 'p> {
             }
             let idx = self.nodes.len();
             let id = format!("{}.{}", self.nodes[parent].id, s.name.name);
+            let alias = s.body.invokes().next().and_then(|inv| {
+                let a = inv.alias.as_ref()?;
+                Some((a, inv.callee.name.clone()))
+            });
             self.nodes.push(Node {
                 name: s.name.name.clone(),
                 name_span: s.name.span,
@@ -330,9 +377,358 @@ impl<'p> Cx<'_, 'p> {
                 body: &s.body,
                 state: Some(s),
                 depth: self.nodes[parent].depth + 1,
+                alias,
             });
             self.nodes[parent].children.push(idx);
             self.build_tree(idx);
+        }
+    }
+
+    /// Reports `as` names that cannot be used: on a task, the name of a parameter or variable,
+    /// or the name of an invoke around it. Such a name is not in scope.
+    fn check_aliases(&mut self) {
+        for i in 0..self.nodes.len() {
+            let Some((alias, callee)) = self.nodes[i].alias.clone() else {
+                continue;
+            };
+            let mut bad = None;
+            if !callee.starts_with(|c: char| c.is_ascii_uppercase()) {
+                bad = Some(
+                    Diagnostic::error(
+                        codes::ALIAS_ON_TASK,
+                        alias.span,
+                        format!(
+                            "`{callee}` is a task, so `as {}` gives it a name nothing can use",
+                            alias.name
+                        ),
+                    )
+                    .with_help(
+                        "only an invoked machine can be sent events and emit them; remove `as …`",
+                    ),
+                );
+            } else if let Some(v) = self.vars.get(&alias.name) {
+                let what = if v.param { "a parameter" } else { "a variable" };
+                bad = Some(
+                    Diagnostic::error(
+                        codes::DUPLICATE_NAME,
+                        alias.span,
+                        format!("`{}` is already {what} of `{}`", alias.name, self.machine),
+                    )
+                    .with_help("an `as` name shares the machine's names with its parameters and variables; choose another"),
+                );
+            } else {
+                let mut up = self.nodes[i].parent;
+                while let Some(a) = up {
+                    if let Some((outer, _)) = &self.nodes[a].alias
+                        && outer.name == alias.name
+                    {
+                        bad = Some(
+                            Diagnostic::error(
+                                codes::DUPLICATE_NAME,
+                                alias.span,
+                                format!(
+                                    "`{}` already names the machine invoked by `{}`, which contains this state",
+                                    alias.name, self.nodes[a].id
+                                ),
+                            )
+                            .with_secondary(outer.span, "named here")
+                            .with_help("choose another name: both children run at once here"),
+                        );
+                        break;
+                    }
+                    up = self.nodes[a].parent;
+                }
+            }
+            if let Some(d) = bad {
+                self.ck.diags.push(d);
+                self.nodes[i].alias = None;
+            }
+        }
+    }
+
+    /// Whether `a` is a proper descendant of `of`.
+    fn inside(&self, a: usize, of: usize) -> bool {
+        let mut up = self.nodes[a].parent;
+        while let Some(p) = up {
+            if p == of {
+                return true;
+            }
+            up = self.nodes[p].parent;
+        }
+        false
+    }
+
+    /// Resolves the `name` of `send name.E` or `on name.E` written in `node`: the innermost
+    /// `invoke … as name` of the state or a state containing it, else a parameter or variable
+    /// of type `ref`. Returns the address and, for a child, the invoking state's node.
+    fn address(&mut self, node: usize, name: &Ident) -> Option<(ir::Address, Option<usize>)> {
+        let mut up = Some(node);
+        while let Some(a) = up {
+            if let Some((alias, machine)) = &self.nodes[a].alias
+                && alias.name == name.name
+            {
+                let address = ir::Address {
+                    kind: ir::AddressKind::Child,
+                    name: name.name.clone(),
+                    machine: machine.clone(),
+                    state: Some(self.nodes[a].id.clone()),
+                };
+                return Some((address, Some(a)));
+            }
+            up = self.nodes[a].parent;
+        }
+        if let Some(v) = self.vars.get(&name.name) {
+            let t = v.ty.clone();
+            let why = match self.ck.env.expand(&t) {
+                Ty::Ref(machine) => {
+                    let address = ir::Address {
+                        kind: ir::AddressKind::Ref,
+                        name: name.name.clone(),
+                        machine,
+                        state: None,
+                    };
+                    return Some((address, None));
+                }
+                Ty::Unknown => return None,
+                Ty::Optional(_) if self.ck.env.has_ref(&t) => {
+                    format!("`{}` is `{t}`, which may be absent", name.name)
+                }
+                Ty::List(_) if self.ck.env.has_ref(&t) => {
+                    format!("`{}` is `{t}`, a list of handles, not one", name.name)
+                }
+                _ => format!("`{}` is `{t}`, not a `ref`", name.name),
+            };
+            self.ck.diags.push(
+                Diagnostic::error(codes::NOT_A_REF, name.span, why)
+                    .with_help("events are sent to, and received from, an `invoke … as name` or a parameter or variable of type `ref Machine`"),
+            );
+            return None;
+        }
+        let elsewhere = self
+            .nodes
+            .iter()
+            .find(|n| n.alias.as_ref().is_some_and(|(a, _)| a.name == name.name))
+            .map(|n| n.id.clone());
+        let mut d = match &elsewhere {
+            Some(state) => Diagnostic::error(
+                codes::UNKNOWN_ADDRESS,
+                name.span,
+                format!("`{}` is not in scope here: it names the machine `{state}` invokes", name.name),
+            )
+            .with_help(format!(
+                "an `as` name is in scope only in the invoking state and the states inside it, while the child runs; move this into `{state}`"
+            )),
+            None => Diagnostic::error(
+                codes::UNKNOWN_ADDRESS,
+                name.span,
+                format!("unknown machine `{}` to talk to", name.name),
+            ),
+        };
+        if elsewhere.is_none() {
+            let mut candidates: Vec<String> = Vec::new();
+            let mut up = Some(node);
+            while let Some(a) = up {
+                if let Some((alias, _)) = &self.nodes[a].alias {
+                    candidates.push(alias.name.clone());
+                }
+                up = self.nodes[a].parent;
+            }
+            for (n, v) in &self.vars {
+                if matches!(self.ck.env.expand(&v.ty), Ty::Ref(_)) {
+                    candidates.push(n.clone());
+                }
+            }
+            candidates.sort();
+            if let Some(s) = suggest(&name.name, candidates.iter().map(String::as_str)) {
+                d = d.with_help(format!("did you mean `{s}`?")).with_fix(
+                    format!("replace with `{s}`"),
+                    name.span,
+                    s,
+                );
+            } else {
+                d = d.with_help("name an invoked machine with `invoke Machine(…) as name`, or take a parameter of type `ref Machine`");
+            }
+        }
+        self.ck.diags.push(d);
+        None
+    }
+
+    /// Reports a `send` to the child invoked by `invoking` from a place where it is not
+    /// running: the child starts after the invoking state's `entry`, stops before its `exit`
+    /// and has ended when an outcome is taken, and a transition that leaves the invoking state
+    /// stops it before its effects run.
+    fn check_running(&mut self, place: Place, invoking: usize, name: &Ident) {
+        let state = self.nodes[invoking].id.clone();
+        let why = match place {
+            Place::Entry(n) if n == invoking => Some(format!(
+                "in the `entry` of `{state}`, its child has not started yet: it starts once the step that enters `{state}` has settled"
+            )),
+            Place::Exit(n) if n == invoking => Some(format!(
+                "in the `exit` of `{state}`, its child has already been stopped"
+            )),
+            Place::Transition {
+                node,
+                outcome: true,
+                ..
+            } if node == invoking => Some(format!(
+                "in an outcome of the invoke of `{state}`, its child has already ended"
+            )),
+            Place::Transition {
+                node,
+                target: Some(t),
+                ..
+            } if !(self.inside(node, invoking) && self.inside(t, invoking)) => Some(format!(
+                "this transition leaves `{state}`, which stops its child before the transition's effects run"
+            )),
+            _ => None,
+        };
+        if let Some(why) = why {
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::CHILD_NOT_RUNNING,
+                    name.span,
+                    format!("`{}` is not running here: {why}", name.name),
+                )
+                .with_help("send to an invoked child from a transition that stays inside the invoking state, or from the states inside it"),
+            );
+        }
+    }
+
+    /// Checks and lowers the event value of a `send` (`to` is `Some`) or an `emit`.
+    fn message(&mut self, m: &Message, scope: &Scope, place: Place) -> Option<ir::Effect> {
+        let current = match place {
+            Place::Entry(n) | Place::Exit(n) | Place::Transition { node: n, .. } => n,
+        };
+        let event = &m.event;
+        match &m.to {
+            Some(to) => {
+                let (address, invoking) = self.address(current, to)?;
+                if let Some(i) = invoking {
+                    self.check_running(place, i, to);
+                }
+                let iface = self
+                    .ck
+                    .interfaces
+                    .get(&address.machine)
+                    .cloned()
+                    .unwrap_or_default();
+                let fields = iface.events.get(&event.name).cloned();
+                if fields.is_none() {
+                    self.not_declared(
+                        codes::NOT_ACCEPTED,
+                        &address.machine,
+                        &iface,
+                        event,
+                        false,
+                        &to.name,
+                    );
+                }
+                let ty = Ty::Event(format!("{}.{}", address.machine, event.name));
+                let value = self.message_value(m, &ty, fields.as_deref(), scope);
+                Some(ir::Effect::Send {
+                    to: address,
+                    event: event.name.clone(),
+                    value,
+                })
+            }
+            None => {
+                let fields = self.emits.get(&event.name).cloned();
+                if fields.is_some() {
+                    self.info.emitted.insert(event.name.clone());
+                } else {
+                    let iface = self
+                        .ck
+                        .interfaces
+                        .get(&self.machine)
+                        .cloned()
+                        .unwrap_or_default();
+                    let machine = self.machine.clone();
+                    self.not_declared(codes::NOT_EMITTED, &machine, &iface, event, true, "");
+                }
+                let ty = Ty::Event(event.name.clone());
+                let value = self.message_value(m, &ty, fields.as_deref(), scope);
+                Some(ir::Effect::Emit {
+                    event: event.name.clone(),
+                    value,
+                })
+            }
+        }
+    }
+
+    /// "`Upload` does not accept `Stop`" (`emitted` false: a `send`) or "… does not emit"
+    /// (an `emit`, or `on name.E` with `via` the name).
+    fn not_declared(
+        &mut self,
+        code: Code,
+        machine: &str,
+        iface: &crate::check::Interface,
+        event: &Ident,
+        emitted: bool,
+        via: &str,
+    ) {
+        let (verb, list, other, keyword) = if emitted {
+            ("emit", &iface.emits, &iface.events, "emits")
+        } else {
+            ("accept", &iface.events, &iface.emits, "event")
+        };
+        let own = machine == self.machine && via.is_empty();
+        let mut d = Diagnostic::error(
+            code,
+            event.span,
+            format!("`{machine}` does not {verb} the event `{}`", event.name),
+        );
+        let declared: Vec<String> = list.keys().map(|k| format!("`{k}`")).collect();
+        d = d.with_label(if declared.is_empty() {
+            format!("`{machine}` declares no `{keyword}`")
+        } else {
+            format!("`{machine}` {verb}s {}", declared.join(", "))
+        });
+        if other.contains_key(&event.name) {
+            let help = if emitted {
+                format!(
+                    "`{}` is an event `{machine}` accepts, not one it emits",
+                    event.name
+                )
+            } else {
+                format!(
+                    "`{}` is an event `{machine}` emits: receive it with `on {via}.{}`",
+                    event.name, event.name
+                )
+            };
+            d = d.with_help(help);
+        } else if let Some(s) = suggest(&event.name, list.keys().map(String::as_str)) {
+            d = d.with_help(format!("did you mean `{s}`?")).with_fix(
+                format!("replace with `{s}`"),
+                event.span,
+                s,
+            );
+        } else if own {
+            d = d.with_help(format!(
+                "declare it in the machine body: `{keyword} {}`",
+                event.name
+            ));
+        } else {
+            d = d.with_help(format!(
+                "declare it in `{machine}`: `{keyword} {}`",
+                event.name
+            ));
+        }
+        self.ck.diags.push(d);
+    }
+
+    fn message_value(
+        &mut self,
+        m: &Message,
+        ty: &Ty,
+        fields: Option<&[(String, Ty)]>,
+        scope: &Scope,
+    ) -> ir::Expr {
+        let shown = m.event.name.clone();
+        let out = self.record_fields(&shown, ty, fields, &m.fields, m.value_span, scope);
+        ir::Expr {
+            kind: ir::ExprKind::Record { fields: out },
+            ty: ty.to_ir(),
+            text: message_value(m),
         }
     }
 
@@ -437,17 +833,21 @@ impl<'p> Cx<'_, 'p> {
                 );
             }
             match item {
-                Item::Entry(h) => entry.extend(self.effects(&h.effects, &Scope::none())),
-                Item::Exit(h) => exit.extend(self.effects(&h.effects, &Scope::none())),
+                Item::Entry(h) => {
+                    entry.extend(self.effects(&h.effects, &Scope::none(), Place::Entry(idx)))
+                }
+                Item::Exit(h) => {
+                    exit.extend(self.effects(&h.effects, &Scope::none(), Place::Exit(idx)))
+                }
                 Item::Transition(t) => {
                     self.duplicate_trigger(&mut keys, t, &id, "");
-                    let (trigger, scope) = self.state_trigger(&t.trigger);
+                    let (trigger, scope) = self.state_trigger(idx, &t.trigger);
                     self.branches(
                         idx,
                         t,
                         trigger,
                         &scope,
-                        group,
+                        (group, false),
                         &mut transitions,
                         &mut triggers,
                     );
@@ -503,7 +903,11 @@ impl<'p> Cx<'_, 'p> {
                         fail.get_or_insert(e);
                     }
                 }
-                Item::Var(_) | Item::Event(_) | Item::Initial(_) | Item::State(_) => {}
+                Item::Var(_)
+                | Item::Event(_)
+                | Item::Emits(_)
+                | Item::Initial(_)
+                | Item::State(_) => {}
             }
         }
 
@@ -627,7 +1031,7 @@ impl<'p> Cx<'_, 'p> {
                 let doc = match item {
                     Item::State(s) => s.doc.as_ref(),
                     Item::Var(v) => v.doc.as_ref(),
-                    Item::Event(e) => e.doc.as_ref(),
+                    Item::Event(e) | Item::Emits(e) => e.doc.as_ref(),
                     _ => None,
                 };
                 let at = doc.map_or(item.span(), |d| d.span).shrink_to_start();
@@ -698,9 +1102,53 @@ impl<'p> Cx<'_, 'p> {
 
     /// The IR trigger and the implicit names in scope for an `on`, `after`, `always` or `done`
     /// written in a state or the machine body.
-    fn state_trigger(&mut self, t: &Trigger) -> (ir::Trigger, Scope) {
+    fn state_trigger(&mut self, idx: usize, t: &Trigger) -> (ir::Trigger, Scope) {
         let mut scope = Scope::none();
         let trigger = match t {
+            Trigger::Receive { from, event } => {
+                scope.event = Implicit::Has(Ty::Unknown);
+                let Some((address, _)) = self.address(idx, from) else {
+                    // Reported; the trigger is not lowered further.
+                    return (
+                        ir::Trigger::Event {
+                            event: event.name.clone(),
+                        },
+                        scope,
+                    );
+                };
+                let iface = self
+                    .ck
+                    .interfaces
+                    .get(&address.machine)
+                    .cloned()
+                    .unwrap_or_default();
+                if iface.emits.contains_key(&event.name) {
+                    scope.event =
+                        Implicit::Has(Ty::Event(format!("{}.{}", address.machine, event.name)));
+                    self.ck
+                        .received
+                        .insert((address.machine.clone(), event.name.clone()));
+                    self.info.receives.push((
+                        event.span,
+                        address.machine.clone(),
+                        event.name.clone(),
+                    ));
+                } else {
+                    let machine = address.machine.clone();
+                    self.not_declared(
+                        codes::NOT_EMITTED,
+                        &machine,
+                        &iface,
+                        event,
+                        true,
+                        &from.name,
+                    );
+                }
+                ir::Trigger::Emitted {
+                    from: address,
+                    event: event.name.clone(),
+                }
+            }
             Trigger::On(Pattern::Name(n)) => {
                 if self.events.contains_key(&n.name) {
                     self.info.used_events.insert(n.name.clone());
@@ -760,6 +1208,8 @@ impl<'p> Cx<'_, 'p> {
         (trigger, scope)
     }
 
+    /// The branches of a transition written in node `idx`; `(group, outcome)` is its group
+    /// and whether it is an outcome of the state's invoke.
     #[allow(clippy::too_many_arguments)]
     fn branches(
         &mut self,
@@ -767,7 +1217,7 @@ impl<'p> Cx<'_, 'p> {
         t: &Transition,
         trigger: ir::Trigger,
         scope: &Scope,
-        group: u32,
+        (group, outcome): (u32, bool),
         out: &mut Vec<ir::Transition>,
         triggers: &mut Vec<Span>,
     ) {
@@ -776,8 +1226,14 @@ impl<'p> Cx<'_, 'p> {
                 .guard
                 .as_ref()
                 .map(|g| self.expect(g, scope, &BOOL, "a guard"));
-            let target = b.target.as_ref().and_then(|tg| self.target(idx, tg));
-            let effects = self.effects(&b.effects, scope);
+            let target_node = b.target.as_ref().and_then(|tg| self.target(idx, tg));
+            let target = target_node.map(|n| self.nodes[n].id.clone());
+            let place = Place::Transition {
+                node: idx,
+                target: target_node,
+                outcome,
+            };
+            let effects = self.effects(&b.effects, scope, place);
             let span = match &t.branches {
                 Branches::Single(_) => t.span,
                 Branches::Block { .. } => b.span,
@@ -797,7 +1253,7 @@ impl<'p> Cx<'_, 'p> {
     /// Resolves a target: the first segment among the siblings of the state the transition is
     /// written in, then among its parent's siblings, and so on outward (for the machine body,
     /// among the top-level states); each further segment names a child of the one before.
-    fn target(&mut self, from: usize, t: &Target) -> Option<String> {
+    fn target(&mut self, from: usize, t: &Target) -> Option<usize> {
         let head = &t.path[0];
         let mut scope = self.nodes[from].parent.unwrap_or(from);
         let mut found = None;
@@ -879,16 +1335,21 @@ impl<'p> Cx<'_, 'p> {
                 }
             }
         }
-        Some(self.nodes[node].id.clone())
+        Some(node)
     }
 
-    /// Checks and lowers effects: every `set`, then every `do`, each in the order written,
-    /// which is the order they run in.
-    pub(crate) fn effects(&mut self, effects: &[Effect], scope: &Scope) -> Vec<ir::Effect> {
+    /// Checks and lowers effects: every `set`, then the `do`, `send` and `emit` effects, each
+    /// in the order written, which is the order they run in.
+    pub(crate) fn effects(
+        &mut self,
+        effects: &[Effect],
+        scope: &Scope,
+        place: Place,
+    ) -> Vec<ir::Effect> {
         let mut out = Vec::new();
         let sets = effects.iter().filter(|e| matches!(e, Effect::Set(_)));
-        let dos = effects.iter().filter(|e| matches!(e, Effect::Do(_)));
-        for e in sets.chain(dos) {
+        let rest = effects.iter().filter(|e| !matches!(e, Effect::Set(_)));
+        for e in sets.chain(rest) {
             match e {
                 Effect::Set(a) => {
                     let want = match self.vars.get(&a.var.name) {
@@ -932,6 +1393,11 @@ impl<'p> Cx<'_, 'p> {
                         args,
                     });
                 }
+                Effect::Send(m) | Effect::Emit(m) => {
+                    if let Some(e) = self.message(m, scope, place) {
+                        out.push(e);
+                    }
+                }
             }
         }
         out
@@ -942,6 +1408,24 @@ impl<'p> Cx<'_, 'p> {
     pub(crate) fn unknown_variable(&self, n: &Ident, params: bool) -> Diagnostic {
         if let Found::Decl(id) = self.ck.names.lookup(self.file, &n.name) {
             return self.ck.names.wrong_kind(n, id, "a variable");
+        }
+        if let Some(state) = self
+            .nodes
+            .iter()
+            .find(|x| x.alias.as_ref().is_some_and(|(a, _)| a.name == n.name))
+        {
+            return Diagnostic::error(
+                codes::UNKNOWN_VARIABLE,
+                n.span,
+                format!(
+                    "`{}` names the machine `{}` invokes, not a value",
+                    n.name, state.id
+                ),
+            )
+            .with_help(format!(
+                "an `as` name is used only in `send {0}.Event` and `on {0}.Event`",
+                n.name
+            ));
         }
         let mut d = Diagnostic::error(
             codes::UNKNOWN_VARIABLE,
@@ -1221,7 +1705,15 @@ impl<'p> Cx<'_, 'p> {
                 // The parser accepts only `done` and `fail` here.
                 _ => ir::Trigger::InvokeDone,
             };
-            self.branches(idx, o, trigger, &scope, *group, transitions, triggers);
+            self.branches(
+                idx,
+                o,
+                trigger,
+                &scope,
+                (*group, true),
+                transitions,
+                triggers,
+            );
             *group += 1;
         }
 
@@ -1232,6 +1724,11 @@ impl<'p> Cx<'_, 'p> {
                 ir::InvokeKind::Task
             },
             src: callee,
+            alias: inv
+                .alias
+                .as_ref()
+                .filter(|_| is_machine)
+                .map(|a| a.name.clone()),
             args,
             span: ir_span(inv.span),
         }

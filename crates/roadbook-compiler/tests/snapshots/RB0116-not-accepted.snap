@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0116]: `Upload` does not accept the event `Paus`
+  --> RB0116-not-accepted.road:19:23
+   |
+19 |     on Go send upload.Paus
+   |                       ^^^^ `Upload` accepts `Pause`
+   |
+   = help: did you mean `Pause`?
+
+error[RB0116]: `Upload` does not accept the event `Progress`
+  --> RB0116-not-accepted.road:22:19
+   |
+22 |   on Go send peer.Progress { percent: 1 }
+   |                   ^^^^^^^^ `Upload` accepts `Pause`
+   |
+   = help: `Progress` is an event `Upload` emits: receive it with `on peer.Progress`

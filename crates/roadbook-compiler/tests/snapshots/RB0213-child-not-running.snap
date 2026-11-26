@@ -1,0 +1,42 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0213]: `child` is not running here: in the `entry` of `M.Running`, its child has not started yet: it starts once the step that enters `M.Running` has settled
+  --> RB0213-child-not-running.road:14:16
+   |
+14 |     entry send child.Poke
+   |                ^^^^^
+   |
+   = help: send to an invoked child from a transition that stays inside the invoking state, or from the states inside it
+
+error[RB0213]: `child` is not running here: in the `exit` of `M.Running`, its child has already been stopped
+  --> RB0213-child-not-running.road:15:15
+   |
+15 |     exit send child.Poke
+   |               ^^^^^
+   |
+   = help: send to an invoked child from a transition that stays inside the invoking state, or from the states inside it
+
+error[RB0213]: `child` is not running here: in an outcome of the invoke of `M.Running`, its child has already ended
+  --> RB0213-child-not-running.road:17:26
+   |
+17 |       done -> Done  send child.Poke
+   |                          ^^^^^
+   |
+   = help: send to an invoked child from a transition that stays inside the invoking state, or from the states inside it
+
+error[RB0213]: `child` is not running here: this transition leaves `M.Running`, which stops its child before the transition's effects run
+  --> RB0213-child-not-running.road:20:28
+   |
+20 |     on Leave -> Done  send child.Poke
+   |                            ^^^^^
+   |
+   = help: send to an invoked child from a transition that stays inside the invoking state, or from the states inside it
+
+error[RB0213]: `child` is not running here: this transition leaves `M.Running`, which stops its child before the transition's effects run
+  --> RB0213-child-not-running.road:26:33
+   |
+26 |       on Leave -> Running  send child.Poke
+   |                                 ^^^^^
+   |
+   = help: send to an invoked child from a transition that stays inside the invoking state, or from the states inside it

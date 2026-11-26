@@ -1,0 +1,16 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0101]: unknown machine `Invntory`
+ --> RB0101-unknown-ref.road:6:22
+  |
+6 | machine M(stock: ref Invntory, other: ref Warehouse) {
+  |                      ^^^^^^^^
+  |
+  = help: did you mean `Inventory`?
+
+error[RB0101]: unknown machine `Warehouse`
+ --> RB0101-unknown-ref.road:6:43
+  |
+6 | machine M(stock: ref Invntory, other: ref Warehouse) {
+  |                                           ^^^^^^^^^

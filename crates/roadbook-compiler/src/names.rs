@@ -126,6 +126,20 @@ impl<'p> Names<'p> {
                 });
             }
         }
+        // In the files of a compiled IR, every name of the IR is in scope: the IR was checked
+        // when it was compiled, and its names are unique.
+        for group in &project.groups {
+            for &fi in group {
+                if project.files[fi].compiled.is_none() {
+                    continue;
+                }
+                for &other in group {
+                    for (&name, &id) in &own[other] {
+                        names.scopes[fi].entry(name).or_insert(id);
+                    }
+                }
+            }
+        }
         for (fi, file) in project.files.iter().enumerate() {
             if file.syntax_errors {
                 continue;
@@ -268,7 +282,15 @@ impl<'p> Names<'p> {
                 );
             }
         }
-        let spec = relative(&f.path, &self.project.files[from].path);
+        let target = &self.project.files[from].file;
+        let spec = if target.package == f.file.package {
+            relative(&f.file.path, &target.path)
+        } else if target.package.is_some() {
+            target.to_string()
+        } else {
+            // A package cannot import a file of the project that imports it.
+            return d;
+        };
         let start = Pos {
             offset: 0,
             line: 1,

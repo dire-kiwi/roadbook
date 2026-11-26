@@ -1,0 +1,26 @@
+machine Upload() {
+  event Pause
+  emits Progress { percent: int }
+  initial Sending
+  state Sending {
+    entry emit Progress { percent: 1 }
+    on Pause -> Done
+  }
+  final state Done {}
+}
+
+machine M(peer: ref Upload) {
+  event Go
+  initial A
+  state A {
+    invoke Upload() as upload {
+      done -> Done
+    }
+    on Go send upload.Paus
+  }
+  final state Done {}
+  on Go send peer.Progress { percent: 1 }
+}
+
+// expect: RB0116 at 19:23
+// expect: RB0116 at 22:19

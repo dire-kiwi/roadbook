@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0315]: `count` is `int`, not a `ref`
+  --> RB0315-not-a-ref.road:13:16
+   |
+13 |     on Go send count.Ping
+   |                ^^^^^
+   |
+   = help: events are sent to, and received from, an `invoke … as name` or a parameter or variable of type `ref Machine`
+
+error[RB0315]: `maybe` is `ref Peer?`, which may be absent
+  --> RB0315-not-a-ref.road:14:8
+   |
+14 |     on maybe.Pong -> A
+   |        ^^^^^
+   |
+   = help: events are sent to, and received from, an `invoke … as name` or a parameter or variable of type `ref Machine`
+
+error[RB0315]: `many` is `ref Peer[]`, a list of handles, not one
+  --> RB0315-not-a-ref.road:16:14
+   |
+16 |   on Go send many.Ping
+   |              ^^^^
+   |
+   = help: events are sent to, and received from, an `invoke … as name` or a parameter or variable of type `ref Machine`

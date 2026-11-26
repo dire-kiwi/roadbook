@@ -1,0 +1,13 @@
+task fetch() -> int
+
+machine M() {
+  initial A
+  state A {
+    invoke fetch() as fetching {
+      done -> Done
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0214 at 6:23

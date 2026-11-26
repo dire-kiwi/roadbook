@@ -1,0 +1,87 @@
+// Every messaging construct, with no diagnostics.
+
+/// One line of an order.
+type Item { sku: string, qty: int }
+
+/// A handle by another name.
+type Stock = ref Inventory
+
+error Busy
+
+/// No items.
+fn nothing() -> Item[]
+
+/// Remember which warehouse an order went to.
+action note(warehouse: ref Inventory, orderId: string)
+
+/// Ask the warehouse in host code.
+task ping(warehouse: Stock) ! Busy
+
+/// A peer: a long-lived machine others hold references to.
+machine Inventory() {
+  /// Hold the items for an order.
+  event Reserve { orderId: string, items: Item[] }
+  event Close
+  /// The items are held.
+  emits Reserved { orderId: string }
+  emits Closed
+
+  initial Open
+  state Open {
+    on Reserve          emit Reserved { orderId: event.orderId }
+    on Close   -> Done  emit Closed
+  }
+  final state Done {}
+}
+
+/// A child that reports progress to its invoker and takes events from it.
+machine Worker(stock: ref Inventory) {
+  event Pause
+  event Resume
+  emits Progress { percent: int }
+
+  initial Working
+  state Working {
+    entry emit Progress { percent: 0 }  send stock.Reserve { orderId: "w", items: nothing() }
+    on Pause -> Paused
+  }
+  state Paused { on Resume -> Working }
+}
+
+machine Parent(stock: ref Inventory, spare: Stock) {
+  var held:    ref Inventory = stock
+  var percent: int = 0
+  var later:   ref Inventory
+
+  event Go
+  event Stop
+  event Swap
+
+  initial Running
+
+  on stock.Closed -> Finished
+  on Swap                      set later = spare, held = later
+
+  state Running {
+    invoke Worker(held) as worker {
+      done -> Finished
+    }
+    on Go                                    set percent = 0  send worker.Pause  do note(held, "x")
+    on worker.Progress                       set percent = event.percent  send worker.Resume
+    on held.Reserved if event.orderId == "x" send worker.Resume
+    initial Inner
+    state Inner {
+      entry send worker.Pause
+      exit send worker.Resume
+      on Stop -> Running.Other  send worker.Pause
+    }
+    state Other {
+      invoke ping(spare) {
+        done      -> Running.Inner  send worker.Resume
+        fail Busy -> Running.Inner
+      }
+    }
+  }
+
+  final state Finished { entry send stock.Close }
+}

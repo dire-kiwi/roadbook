@@ -1,0 +1,18 @@
+machine Peer() {
+  event Reserve { qty: int }
+  emits Reserved
+  initial A
+  state A {
+    on Reserve -> A  emit Reserved { qty: 1 }
+  }
+}
+
+machine M(peer: ref Peer) {
+  initial A
+  state A {
+    entry send peer.Reserve { qty: 1, sku: "x" }
+  }
+}
+
+// expect: RB0304 at 6:38
+// expect: RB0304 at 13:39

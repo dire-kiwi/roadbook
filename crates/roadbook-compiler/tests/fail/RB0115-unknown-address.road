@@ -1,0 +1,33 @@
+machine Child() {
+  event Stop
+  emits Tick
+  initial A
+  state A {
+    entry emit Tick
+    on Stop -> Done
+  }
+  final state Done {}
+}
+
+machine M() {
+  event Go
+  initial Running
+  state Running {
+    invoke Child() as child {
+      done -> Done
+    }
+    on Go send chld.Stop
+  }
+  state Other {
+    on Go send child.Stop
+  }
+  final state Done {
+    entry send nobody.Stop
+  }
+  on child.Tick -> Done
+}
+
+// expect: RB0115 at 19:16
+// expect: RB0115 at 22:16
+// expect: RB0115 at 25:16
+// expect: RB0115 at 27:6

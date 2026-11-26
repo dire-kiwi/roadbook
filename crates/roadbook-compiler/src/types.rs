@@ -2,8 +2,8 @@
 //!
 //! The rules (also in `language.md`): no implicit conversions; `int` and `float` are distinct;
 //! `T` is assignable to `T?` but not the reverse; a list is assignable to a list whose element
-//! type its own element type is assignable to; any value is assignable to `json`; aliases are
-//! transparent.
+//! type its own element type is assignable to; any value but a `ref` is assignable to `json`;
+//! aliases are transparent.
 
 use std::collections::HashMap;
 use std::fmt;
@@ -21,9 +21,12 @@ pub(crate) enum Ty {
     Named(String),
     List(Box<Ty>),
     Optional(Box<Ty>),
-    /// The type of `event` in `on Name`: the machine's event `Name`, which is not a declared
-    /// type (an event may share its name with one).
+    /// An event's type: in `on Name`, the machine's event `Name`; for the value of an
+    /// `emit Name`, its emitted event; `Machine.Name` for an event of another machine (in
+    /// `on child.Name` and in `send child.Name`). Events are not declared types.
     Event(String),
+    /// `ref Machine`: a handle to a running machine.
+    Ref(String),
     Unknown,
 }
 
@@ -35,6 +38,7 @@ impl Ty {
         match self {
             Ty::Builtin(b) => TypeRef::Builtin(*b),
             Ty::Named(n) | Ty::Event(n) => TypeRef::Named(n.clone()),
+            Ty::Ref(m) => TypeRef::Ref(m.clone()),
             Ty::List(t) => t.to_ir().list(),
             Ty::Optional(t) => t.to_ir().optional(),
             // Only reached when there are errors, and then the IR is not returned.
@@ -53,6 +57,7 @@ impl fmt::Display for Ty {
             Ty::Builtin(b) => f.write_str(b.name()),
             Ty::Named(n) => f.write_str(n),
             Ty::Event(n) => write!(f, "event {n}"),
+            Ty::Ref(m) => write!(f, "ref {m}"),
             Ty::List(t) => write!(f, "{t}[]"),
             Ty::Optional(t) => write!(f, "{t}?"),
             Ty::Unknown => f.write_str("_"),
@@ -67,6 +72,7 @@ pub(crate) fn ir_type(t: &ast::TypeRef) -> TypeRef {
         ast::TypeKind::Named(n) => TypeRef::Named(n.name.clone()),
         ast::TypeKind::List(t) => ir_type(t).list(),
         ast::TypeKind::Optional(t) => ir_type(t).optional(),
+        ast::TypeKind::Ref(m) => TypeRef::Ref(m.name.clone()),
     }
 }
 
@@ -136,6 +142,11 @@ impl TypeEnv {
         }
     }
 
+    /// Whether the type is a `ref`, or is made of one with `[]` and `?`, through aliases.
+    pub fn has_ref(&self, t: &Ty) -> bool {
+        has_ref(&self.expand(t))
+    }
+
     /// Whether `==` and `!=` are defined on the type: scalars and enums.
     pub fn is_equatable(&self, t: &Ty) -> bool {
         match self.expand(t) {
@@ -152,10 +163,19 @@ impl TypeEnv {
     }
 }
 
+fn has_ref(t: &Ty) -> bool {
+    match t {
+        Ty::Ref(_) => true,
+        Ty::List(e) | Ty::Optional(e) => has_ref(e),
+        _ => false,
+    }
+}
+
 fn assignable(from: &Ty, to: &Ty) -> bool {
     match (from, to) {
         (Ty::Unknown, _) | (_, Ty::Unknown) => true,
-        (_, Ty::Builtin(Builtin::Json)) => true,
+        // A handle is not data: it has no JSON form.
+        (f, Ty::Builtin(Builtin::Json)) => !has_ref(f),
         (Ty::Optional(f), Ty::Optional(t)) => assignable(f, t),
         (f, Ty::Optional(t)) => assignable(f, t),
         (Ty::List(f), Ty::List(t)) => assignable(f, t),
@@ -195,5 +215,12 @@ mod tests {
         assert!(!env.assignable(&Ty::Named("Order".into()), &string));
         assert!(!env.assignable(&Ty::Event("Order".into()), &Ty::Named("Order".into())));
         assert!(env.assignable(&Ty::Event("Order".into()), &json));
+        let inv = Ty::Ref("Inventory".into());
+        assert!(env.assignable(&inv, &inv));
+        assert!(env.assignable(&inv, &opt(&inv)));
+        assert!(!env.assignable(&inv, &Ty::Ref("Other".into())));
+        assert!(!env.assignable(&inv, &json));
+        assert!(!env.assignable(&list(&inv), &list(&json)));
+        assert!(!env.is_equatable(&inv));
     }
 }

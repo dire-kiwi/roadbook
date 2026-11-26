@@ -46,10 +46,22 @@ impl Sig {
     }
 }
 
+/// What other machines see of a machine: the events it accepts and the events it emits, with
+/// their fields' types.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Interface {
+    pub events: IndexMap<String, Vec<(String, Ty)>>,
+    pub emits: IndexMap<String, Vec<(String, Ty)>>,
+}
+
 pub(crate) struct Checker<'p> {
     pub names: Names<'p>,
     pub env: TypeEnv,
     pub sigs: HashMap<String, Sig>,
+    /// Every machine's interface, by name.
+    pub interfaces: HashMap<String, Interface>,
+    /// `(machine, event)` for every `on name.Event` of the compilation.
+    pub received: HashSet<(String, String)>,
     pub diags: Vec<Diagnostic>,
     /// Names of the functions, actions, tasks and machines something uses.
     pub used: HashSet<String>,
@@ -100,6 +112,8 @@ impl<'p> Checker<'p> {
             names,
             env: TypeEnv::default(),
             sigs: HashMap::new(),
+            interfaces: HashMap::new(),
+            received: HashSet::new(),
             diags,
             used: HashSet::new(),
             machines: Vec::new(),
@@ -111,8 +125,89 @@ impl<'p> Checker<'p> {
         for (t, e, inner) in std::mem::take(&mut c.optionals) {
             c.double_optional(&t, &e, &inner);
         }
+        c.no_ref_in_fields();
         c.resolve_signatures();
+        c.resolve_interfaces();
         c
+    }
+
+    /// Whether `file` is a file of a compiled IR, whose declarations were checked when it was
+    /// compiled.
+    pub fn is_compiled(&self, file: usize) -> bool {
+        self.names.project.files[file].compiled.is_some()
+    }
+
+    /// Reports a `ref` where none can be: in a field of a record, error or event, or in what a
+    /// function, task or machine returns. A machine gets a handle only as a parameter or
+    /// through `invoke … as`, so that the signatures show who can talk to whom.
+    fn no_ref(&mut self, file: usize, t: &ast::TypeRef, ty: &Ty, what: &str) {
+        if self.is_compiled(file) || !self.env.has_ref(ty) {
+            return;
+        }
+        let message = if matches!(ty, Ty::Ref(_)) {
+            format!("{what} cannot be `{ty}`")
+        } else {
+            format!("{what} cannot be `{ty}`: it holds a `ref`")
+        };
+        self.diags.push(
+            Diagnostic::error(codes::REF_NOT_ALLOWED, t.span, message)
+            .with_help("a machine gets a `ref` only as a parameter of its own, or through `invoke … as name`, so that who can talk to whom shows in the charts' signatures; pass it as a parameter instead"),
+        );
+    }
+
+    fn no_ref_in_fields(&mut self) {
+        for (file, d) in self.decls() {
+            let (DeclKind::Record { fields } | DeclKind::Error { fields }) = &d.kind else {
+                continue;
+            };
+            let resolved: Vec<Ty> = match self.env.defs.get(&d.name.name) {
+                Some(TypeDef::Record(fs) | TypeDef::Error(fs)) => {
+                    fs.iter().map(|(_, t)| t.clone()).collect()
+                }
+                _ => continue,
+            };
+            for (f, t) in fields.iter().zip(resolved) {
+                let what = format!("field `{}` of `{}`", f.name.name, d.name.name);
+                self.no_ref(file, &f.ty, &t, &what);
+            }
+        }
+    }
+
+    /// The events every machine accepts and emits. Their fields are resolved here, once; a
+    /// name declared twice is reported with the machine and keeps its first declaration.
+    fn resolve_interfaces(&mut self) {
+        for (file, d) in self.decls() {
+            let DeclKind::Machine(m) = &d.kind else {
+                continue;
+            };
+            let mut iface = Interface::default();
+            for (emits, e) in m
+                .body
+                .events()
+                .map(|e| (false, e))
+                .chain(m.body.emits().map(|e| (true, e)))
+            {
+                if iface.events.contains_key(&e.name.name) || iface.emits.contains_key(&e.name.name)
+                {
+                    continue;
+                }
+                self.unique(e.fields.iter().map(|f| &f.name), "field");
+                let mut fields = Vec::new();
+                for f in &e.fields {
+                    let t = self.resolve(file, &f.ty);
+                    let what = format!("field `{}` of event `{}`", f.name.name, e.name.name);
+                    self.no_ref(file, &f.ty, &t, &what);
+                    fields.push((f.name.name.clone(), t));
+                }
+                let map = if emits {
+                    &mut iface.emits
+                } else {
+                    &mut iface.events
+                };
+                map.insert(e.name.name.clone(), fields);
+            }
+            self.interfaces.insert(d.name.name.clone(), iface);
+        }
     }
 
     /// The non-duplicate declarations, in load order, with their file.
@@ -146,7 +241,15 @@ impl<'p> Checker<'p> {
             ast::TypeKind::Named(n) => match self.names.lookup(file, &n.name) {
                 Found::Decl(id) if is_type(&self.names.decl(id).kind) => Ty::Named(n.name.clone()),
                 Found::Decl(id) => {
-                    let d = self.names.wrong_kind(n, id, "a type");
+                    let mut d = self.names.wrong_kind(n, id, "a type");
+                    if matches!(self.names.decl(id).kind, DeclKind::Machine(_)) {
+                        d = d
+                            .with_help(format!(
+                                "a handle to a running `{}` is written `ref {}`",
+                                n.name, n.name
+                            ))
+                            .with_fix("write `ref`", n.span.shrink_to_start(), "ref ");
+                    }
                     self.diags.push(d);
                     Ty::Unknown
                 }
@@ -159,6 +262,29 @@ impl<'p> Checker<'p> {
                     Ty::Unknown
                 }
             },
+            ast::TypeKind::Ref(n) => {
+                let is_machine = |k: &DeclKind| matches!(k, DeclKind::Machine(_));
+                match self.names.lookup(file, &n.name) {
+                    Found::Decl(id) if is_machine(&self.names.decl(id).kind) => {
+                        Ty::Ref(n.name.clone())
+                    }
+                    Found::Decl(id) => {
+                        let d = self.names.wrong_kind(n, id, "a machine").with_help(
+                            "`ref` names a machine: a handle to a running instance of it",
+                        );
+                        self.diags.push(d);
+                        Ty::Unknown
+                    }
+                    Found::Poisoned => Ty::Unknown,
+                    Found::Missing => {
+                        let d =
+                            self.names
+                                .unknown(file, n, codes::UNKNOWN_TYPE, "machine", is_machine);
+                        self.diags.push(d);
+                        Ty::Unknown
+                    }
+                }
+            }
         }
     }
 
@@ -314,7 +440,12 @@ impl<'p> Checker<'p> {
                 _ => continue,
             };
             let params = self.fields(file, params, "parameter");
-            let returns = returns.map(|r| self.resolve(file, r));
+            let returns = returns.map(|r| {
+                let t = self.resolve(file, r);
+                let what = format!("what `{}` returns", d.name.name);
+                self.no_ref(file, r, &t, &what);
+                t
+            });
             self.unique(errors.iter(), "error");
             let mut errs = Vec::new();
             for e in errors {
@@ -344,7 +475,8 @@ impl<'p> Checker<'p> {
                 .files
                 .iter()
                 .map(|f| ir::Source {
-                    path: f.path.clone(),
+                    path: f.file.path.clone(),
+                    package: f.file.package.clone(),
                 })
                 .collect(),
             types: IndexMap::new(),
@@ -355,6 +487,21 @@ impl<'p> Checker<'p> {
         };
         for (file, d) in self.decls() {
             let name = d.name.name.clone();
+            if let Some((_, c)) = &project.files[file].compiled {
+                // Checked when it was compiled: copied as it is.
+                if let Some(t) = c.types.get(&name) {
+                    out.types.insert(name, t.clone());
+                } else if let Some(f) = c.functions.get(&name) {
+                    out.functions.insert(name, f.clone());
+                } else if let Some(a) = c.actions.get(&name) {
+                    out.actions.insert(name, a.clone());
+                } else if let Some(t) = c.tasks.get(&name) {
+                    out.tasks.insert(name, t.clone());
+                } else if let Some(m) = c.machines.get(&name) {
+                    out.machines.insert(name, m.clone());
+                }
+                continue;
+            }
             let (doc, span) = (doc(&d.doc), ir_span(d.span));
             let def = match &d.kind {
                 DeclKind::Record { fields } => Some(ir::TypeDef::Record {

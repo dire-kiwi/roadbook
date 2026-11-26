@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0105]: `child` names the machine `M.A` invokes, not a value
+  --> RB0105-alias-as-value.road:19:22
+   |
+19 |       invoke Watcher(child) {
+   |                      ^^^^^
+   |
+   = help: an `as` name is used only in `send child.Event` and `on child.Event`

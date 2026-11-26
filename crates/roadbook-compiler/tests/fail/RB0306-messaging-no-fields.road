@@ -1,0 +1,17 @@
+machine Peer() {
+  emits Ready
+  initial A
+  state A {
+    entry emit Ready
+  }
+}
+
+machine M(peer: ref Peer) {
+  var n: int = 0
+  initial A
+  state A {
+    on peer.Ready -> A  set n = event.count
+  }
+}
+
+// expect: RB0306 at 13:39
