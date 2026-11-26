@@ -6,7 +6,7 @@
 export * from "./ir.ts"
 export * from "./json.ts"
 export * from "./types.ts"
-export { compareCodePoints, restore, SETTLE_LIMIT, start, step } from "./interpreter.ts"
+export { compareCodePoints, heard, restore, SETTLE_LIMIT, start, step } from "./interpreter.ts"
 export {
   checkSaved,
   type Checked,

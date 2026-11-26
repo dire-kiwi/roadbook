@@ -103,7 +103,7 @@ The precise rules are in [`spec/execution.md`](../../spec/execution.md#messages-
 
 - **Sending is queuing.** `send` puts the event in the receiver's queue and continues. The receiver handles it later, by the ordinary one-event-at-a-time rule. A sender never runs the receiver's transitions and never waits for them. A sent event is one of the receiver's own events, so `on Pause` takes it exactly as it would take `Pause` from host code.
 - **Order is preserved per pair.** Two events sent from A to B arrive in the order sent, and so does everything else A queues for B: A's emitted events, and a child's outcome, which comes after everything the child emitted. Nothing orders what two different machines send to a third.
-- **Emitted events arrive as events.** They are queued for the invoker, if it named the child with `as`, and for every machine holding a reference, and are handled by `on name.Event`. An invoker without `as` has no name to handle them under, and is not sent them. With no matching transition they are dropped and traced like any unhandled event. It is decided, but not built, that a machine with no `on` for an event will not be sent it at all ([who receives emitted events](#who-receives-emitted-events)).
+- **Emitted events arrive as events.** They are queued for the invoker, if it named the child with `as`, and for every machine holding a reference, and are handled by `on name.Event`. Only a machine that has an `on` for an event, in any state, is sent it ([who receives emitted events](#who-receives-emitted-events)): an invoker without `as` has no name to handle them under, and a holder that only sends to the peer is sent nothing. One that is sent an event and has no matching transition when it takes it drops it, traced like any unhandled event.
 - **Holding a reference** means having it among the machine's arguments, from start to end: a machine gets a `ref` only as an argument, so the machines it can hear from are fixed when it starts. `on inventory.Reserved` is taken for an event from whichever machine the parameter or variable `inventory` holds.
 - **A child's emitted events belong to its invoke.** One that arrives after the invoking state was left, or re-entered with a new child, is stale, like an outcome that arrives late: a child cancelled by its parent can still emit from its exit effects, and its parent ignores what it said.
 - **Sending to a machine that is not running** is dropped and traced as `undelivered`: a peer that has ended, or a child that has not started yet or has already finished. The compiler rules out the plain cases for invoked children (a send from the invoking state's own `entry`, `exit` or outcomes, or from a transition that leaves it); what it cannot see, a send from a state inside the invoking state in the step that enters it, before the child starts, or after the child's outcome was taken by a transition that stays, is undelivered at run time. Whether a [`strict` machine](language.md#strict-machines), which is decided but not built, also fails on an undelivered send is left to its implementation.
@@ -221,7 +221,7 @@ recordBody  = "{" [ lower ":" expr { "," lower ":" expr } ] "}" ;
 
 ## Decided after the milestones
 
-The first draft left four questions about messaging open. They were decided on 27 November 2026, after milestone 5 had built the rest of this page. Two of the decisions are what already exists; two need code that is not written yet.
+The first draft left four questions about messaging open. They were decided on 27 November 2026, after milestone 5 had built the rest of this page. Two of the decisions are what already existed, and the filter on emitted events has been built since; `call` needs code that is not written yet.
 
 ### Asking a peer
 
@@ -271,16 +271,16 @@ Making an overflow a failure was rejected: one full queue would end a long-lived
 
 ### Who receives emitted events
 
-**Decided: only machines that handle them. Not built.** A run receives an emitted event `E` from a run of machine `M` only if its own machine has an `on x.E` where `x` is an `as` name, parameter or variable of machine `M`. Until this is built, every holder of a reference receives every emitted event and writes `dropped` when it has no enabled transition ([`spec/execution.md`](../../spec/execution.md#messages-between-runs)).
+**Decided: only machines that handle them. Built.** A run receives an emitted event `E` from a run of machine `M` only if its own machine has an `on x.E` where `x` is an `as` name, parameter or variable of machine `M` ([`spec/execution.md`](../../spec/execution.md#messages-between-runs)). Before it was built, every holder of a reference received every emitted event and wrote `dropped` when it had no enabled transition.
 
-The first draft called this an optimisation the compiler could make without changing the language. The language does not change, but traces do, so it is a rule of the semantics: a holder with no `on` for an event no longer writes a `dropped` record for it. A holder that has one and cannot take it (its guard fails, or it is in a state with no such transition) still writes `dropped`.
+The first draft called this an optimisation the compiler could make without changing the language. The language does not change, but traces do, so it is a rule of the semantics: a holder with no `on` for an event writes no `dropped` record for it. A holder that has one and cannot take it (its guard fails, or it is in a state with no such transition) still writes `dropped`.
 
 - **The filter is by machine, not by name.** One run can be held under two names, as a parameter and a variable, and an `on` under either name is enough.
 - **It is decided statically**, from the chart, when the run subscribes. Filtering by the transitions enabled in the current state was rejected: the state when an event is queued is not the state when it is taken, so events would be lost depending on timing.
 - **It extends an existing rule.** An invoker without `as` is already not sent its child's emitted events, since it cannot have an `on` for them.
-- **Nothing in the language, the IR, the hashes or snapshots changes**, and no chart needs editing. The compiler already works out which machines receive which emitted events, for a warning.
+- **Nothing in the language, the IR, the hashes or snapshots changes**, and no chart needs editing. Every `on x.E` is in the IR with the machine `x` names, so each runtime works out, when it loads the IR, which events each machine hears from which (`Program::heard` in Rust, `heard` in `@roadbook/core`).
 
-What it changes: the rule in [`spec/execution.md`](../../spec/execution.md#messages-between-runs); in each runtime, the set of events kept with each subscription and a check before delivering; and the conformance cases, where `child-undelivered` loses its `dropped` record and a new case covers a holder that only sends. `peer-two-holders` stays as it is, since its holder has an `on` and fails on the guard. The viewer already draws emitted events from `on` triggers.
+What it changed: the rule in [`spec/execution.md`](../../spec/execution.md#messages-between-runs); in each runtime, the set of events kept with each subscription, and with an invoke's `as`, and a check before delivering; and the conformance cases, where `child-undelivered` lost its `dropped` record and `peer-send-only` covers a holder that only sends. `peer-two-holders` stays as it was, since its holder has an `on` and fails on the guard. The viewer already drew emitted events from `on` triggers.
 
 ### Supervision
 

@@ -1,7 +1,7 @@
 //! The driver: one future per run, one FIFO per run, and the core's commands carried out in
 //! order (`spec/execution.md#the-driver`).
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::future::poll_fn;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Arc;
@@ -206,7 +206,8 @@ pub(crate) fn open(
         peers.insert(id, h.clone());
     }
     for peer in peers.values() {
-        peer.shared.subscribe(shared.clone());
+        let events = program.heard(machine, &peer.machine);
+        peer.shared.subscribe(shared.clone(), events);
     }
     Ok(Arc::new(peers))
 }
@@ -720,7 +721,10 @@ impl<'a> Driver<'a> {
                         invoke,
                         token: Arc::new(Shared::default()),
                         parent_queue: self.shared.clone(),
-                        alias,
+                        heard: match alias {
+                            Some(_) => self.program.heard(&self.snap.machine, &src),
+                            None => HashSet::new(),
+                        },
                     })
                 });
                 if let Some(ctx) = &ctx {
@@ -791,7 +795,11 @@ impl<'a> Driver<'a> {
                 Ok(())
             }
             Command::Emit { message, value } => {
-                if let Some(ctx) = self.ctx.as_ref().filter(|c| c.alias.is_some()) {
+                let tag = value
+                    .get("_tag")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                if let Some(ctx) = self.ctx.as_ref().filter(|c| c.heard.contains(tag)) {
                     ctx.parent_queue.deliver(Input::Emitted {
                         from: self.id.clone(),
                         invoke: Some(ctx.invoke),
@@ -799,7 +807,7 @@ impl<'a> Driver<'a> {
                         value: value.clone(),
                     });
                 }
-                for run in self.shared.subscribers() {
+                for run in self.shared.subscribers(tag) {
                     if !Arc::ptr_eq(&run, &self.shared) {
                         run.deliver(Input::Emitted {
                             from: self.id.clone(),

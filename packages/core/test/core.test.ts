@@ -6,6 +6,7 @@ import {
   compareCodePoints,
   type Fns,
   getMachine,
+  heard,
   IrError,
   isRunId,
   loadIr,
@@ -138,5 +139,15 @@ describe("start and step", () => {
       { kind: "trace", record: { kind: "stale", event: { kind: "invoke.done", invoke: 9, value: null } } }
     ])
     expect(stale.snapshot).toEqual(started.snapshot)
+  })
+})
+
+describe("heard", () => {
+  it("is the emitted events of a sender's machine that a machine has an `on` for", () => {
+    const ir = readIr("orders.ir.json")
+    expect([...heard(ir, "Order", "Inventory")].sort()).toEqual(["Rejected", "Reserved"])
+    // A Supplier holds a `ref Inventory` only to send to it.
+    expect(heard(ir, "Supplier", "Inventory").size).toBe(0)
+    expect(heard(ir, "Inventory", "Order").size).toBe(0)
   })
 })

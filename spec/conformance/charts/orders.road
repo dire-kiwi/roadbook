@@ -1,6 +1,7 @@
 // Conformance chart: a long-lived Inventory peer and the Orders that hold a
 // reference to it, as in examples/orders and examples/inventory. Every order
 // receives every reply and picks out its own by id; an order gives up after 5s.
+// A Supplier holds a reference only to send deliveries, and receives no replies.
 
 /// One line of an order: a product and how many of it.
 type Item { sku: string, qty: int }
@@ -88,4 +89,20 @@ machine Order(id: string, draft: OrderDraft, inventory: ref Inventory) -> Receip
   final state Paid        { output receipt }
   final state Unavailable { fail problem }
   final state Declined    { fail PaymentDeclined }
+}
+
+/// Passes deliveries on to the warehouse. It has no `on` for what the Inventory
+/// emits, so it is sent none of it.
+machine Supplier(inventory: ref Inventory) {
+  event Deliver { sku: string, qty: int }
+  event Stop
+
+  initial Open
+
+  state Open {
+    on Deliver             send inventory.Restock { sku: event.sku, qty: event.qty }
+    on Stop    -> Stopped
+  }
+
+  final state Stopped {}
 }

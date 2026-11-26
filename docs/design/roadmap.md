@@ -120,7 +120,7 @@ M3 and M4 are independent once M1 is done and can run in parallel. M2 depends on
 
 ## Decided questions
 
-The first draft left seven questions open, each with a default the design assumed. They were decided on 27 November 2026 and moved into the pages they belong to. Four of the decisions need code, which is not written yet; until it is, the pages say what is decided and what is built.
+The first draft left seven questions open, each with a default the design assumed. They were decided on 27 November 2026 and moved into the pages they belong to. Four of the decisions needed code; one of them, the filter on emitted events, is built, and until the others are, the pages say what is decided and what is built.
 
 | Question | Decision | Built | Where |
 | --- | --- | --- | --- |
@@ -129,7 +129,7 @@ The first draft left seven questions open, each with a default the design assume
 | Strict events | An opt-in `strict` modifier on a machine | No | [Language](language.md#strict-machines) |
 | Exit actions on cancellation | They run, as now, and must be quick | Yes | [Semantics](semantics.md#cancelling-from-outside) |
 | Equality on records | Scalars and enums only, as now; the future design is written down | Yes | [Language](language.md#equality) |
-| Messaging details | `call` declarations; unbounded queues; emitted events only to machines that handle them; no supervision yet | Unbounded queues and no supervision are what exists; `call` and the filter are not built | [Actors and messaging](actors.md#decided-after-the-milestones) |
+| Messaging details | `call` declarations; unbounded queues; emitted events only to machines that handle them; no supervision yet | Unbounded queues, no supervision and the filter on emitted events are built; `call` is not | [Actors and messaging](actors.md#decided-after-the-milestones) |
 | Generated files in git | Committed, and marked as generated for GitHub | Yes | [TypeScript](typescript.md#what-gets-generated) |
 
 ### The name

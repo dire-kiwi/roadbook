@@ -237,3 +237,23 @@ fn an_optional_alias_var_starts_as_null() {
     let (s, _) = p.start("M", "r1", Map::new(), &mut no_fns).unwrap();
     assert_eq!(s.vars.get("s"), Some(&Value::Null));
 }
+
+#[test]
+fn a_machine_hears_the_emitted_events_it_has_an_on_for_anywhere() {
+    let p = program(concat!(
+        "machine P() {\n  emits A\n  emits B\n  emits C\n  initial S\n  state S {}\n}\n",
+        "machine Q(p: ref P, other: ref P) {\n  initial Outer\n  on p.A -> Outer\n  state Outer {\n    initial Inner\n    state Inner { on other.B -> Inner }\n  }\n}\n",
+        "machine R() {\n  initial S\n  state S {\n    invoke P() as kid { done -> S }\n    on kid.C -> S\n  }\n}\n",
+    ));
+    let heard = |m: &str, sender: &str| {
+        let mut events: Vec<_> = p.heard(m, sender).into_iter().collect();
+        events.sort();
+        events
+    };
+    // By machine, not by name: an `on` under either parameter is enough, at any depth.
+    assert_eq!(heard("Q", "P"), ["A", "B"]);
+    assert_eq!(heard("R", "P"), ["C"]);
+    assert!(heard("P", "Q").is_empty());
+    assert!(heard("Q", "R").is_empty());
+    assert!(heard("Missing", "P").is_empty());
+}
