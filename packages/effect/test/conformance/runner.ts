@@ -15,12 +15,24 @@
  * is empty, no run is carrying out commands and every ended child's outcome has been taken. The
  * runner drains the scheduler after each action, synchronously, and that is "wait until
  * quiescent".
+ *
+ * Durable mode (`runCase(name, true)`) runs every top-level run through `Durable.workflow` on
+ * `WorkflowEngine.layerMemory` instead, with parking off: `start` and `restore` start workflow
+ * executions, events and cancels go through the durable machine's `send` and `cancel`, and
+ * `snapshot` steps read its `snapshot`. The engine names executions by a SHA-256 of their key,
+ * which WebCrypto computes in a promise, so in this mode waiting until quiescent also lets
+ * promises settle (the runner's WebCrypto resolves at once); it skips the cases with `suspend`
+ * steps, since a durable run parks instead of suspending.
  */
 import * as Core from "@roadbook/core"
-import { Cause, Effect, Exit, type Fiber, References, Scheduler, Scope } from "effect"
+import { Cause, Context, Effect, Exit, type Fiber, Layer, References, Scheduler, Scope } from "effect"
+import { WebCrypto } from "effect/crypto"
+import { WorkflowEngine } from "effect/workflow"
+import { createHash } from "node:crypto"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { Codec } from "../../src/internal/codec.ts"
+import { Durable } from "../../src/entry-durable.ts"
 import * as Roadbook from "../../src/index.ts"
 
 // ---- the case files ---------------------------------------------------------------------------
@@ -80,6 +92,14 @@ export const isSupported = (name: string): boolean => {
   return spec.requires.every((feature) => supported.includes(feature))
 }
 
+/** Whether durable mode runs case `name`: not if it has `suspend` steps (durable runs park). */
+export const isDurable = (name: string): boolean => {
+  const spec = JSON.parse(fs.readFileSync(path.join(conformanceDir, "cases", name, "case.json"), "utf8")) as Case
+  const suspends = (steps: ReadonlyArray<Step>): boolean =>
+    steps.some((step) => "suspend" in step || ("together" in step && suspends(step.together)))
+  return !suspends(spec.script)
+}
+
 export const caseNames = (): Array<string> =>
   fs.readdirSync(path.join(conformanceDir, "cases")).filter((name) =>
     fs.existsSync(path.join(conformanceDir, "cases", name, "case.json"))
@@ -131,6 +151,11 @@ class ManualScheduler implements Scheduler.Scheduler {
     }
   }
 
+  /** Whether a task is waiting. */
+  pending(): boolean {
+    return this.tasks.length > 0
+  }
+
   /** Run tasks until there are none: the runs are then quiescent. */
   drain() {
     let rounds = 0
@@ -170,7 +195,21 @@ interface PendingTimer {
   fire: () => void
 }
 
-export const runCase = (name: string): CaseResult => {
+/** A top-level run, as the runner drives it. */
+interface TopRun {
+  readonly handle: { readonly id: string }
+  readonly send: (event: unknown) => Effect.Effect<void>
+  readonly cancel: Effect.Effect<void>
+  readonly save: Effect.Effect<Core.Saved>
+  readonly suspend: Effect.Effect<Core.Saved>
+}
+
+/** WebCrypto whose digest resolves at once, so that settling promises is one turn. */
+const syncCrypto = {
+  subtle: { digest: async (_: string, data: Uint8Array) => new Uint8Array(createHash("sha256").update(data).digest()) }
+} as unknown as Crypto
+
+export const runCase = async (name: string, durable = false): Promise<CaseResult> => {
   const dir = path.join(conformanceDir, "cases", name)
   const spec = JSON.parse(fs.readFileSync(path.join(dir, "case.json"), "utf8")) as Case
   const expected = fs.readFileSync(path.join(dir, "trace.jsonl"), "utf8")
@@ -263,9 +302,18 @@ export const runCase = (name: string): CaseResult => {
   // Every run, as the driver reports it.
   const runs = new Map<string, Roadbook.RunHandle>()
   const scheduler = new ManualScheduler()
-  const exec = <A, E>(effect: Effect.Effect<A, E>): A => {
-    const fiber = Effect.runFork(effect, { scheduler })
+  /** Wait until quiescent: in durable mode, until no promise brings a task either. */
+  const settle = async () => {
     scheduler.drain()
+    while (durable) {
+      await new Promise((resolve) => setImmediate(resolve))
+      if (!scheduler.pending()) return
+      scheduler.drain()
+    }
+  }
+  const exec = async <A, E>(effect: Effect.Effect<A, E>): Promise<A> => {
+    const fiber = Effect.runFork(effect, { scheduler })
+    await settle()
     const exit = fiber.pollUnsafe()
     if (exit === undefined) throw new Error("an effect of the runner did not complete")
     if (Exit.isFailure(exit)) throw new Error(`an effect of the runner failed: ${exit.cause}`)
@@ -275,14 +323,76 @@ export const runCase = (name: string): CaseResult => {
   // The top-level runs: the root, then one per `start` step, each spawned with the others'
   // clock, timer, trace sink and observer.
   const scope = Scope.makeUnsafe()
-  const actors = new Map<string, Roadbook.Actor<any>>()
+  const actors = new Map<string, TopRun>()
   const machineOf = new Map<string, string>()
-  const spawnTop = (machine: string, run: string, input: { readonly [param: string]: Core.Json }) => {
+  const sink: Roadbook.TraceSink = { write: (record) => records.push(record) }
+  const observer: Roadbook.RunObserver = { started: (handle) => runs.set(handle.id, handle) }
+
+  // Durable mode: a durable machine per machine of the chart, on one in-memory engine, whose
+  // bodies run with the runner's sink, timer and observer. Each execution's key is the run's
+  // name, which is also its run id.
+  let key = ""
+  const names = new Map<string, string>()
+  const flows = new Map<string, ReturnType<typeof Durable.workflow<any, never>>>()
+  let engine: Context.Context<WorkflowEngine.WorkflowEngine> | undefined
+  const inEngine = <A, E>(effect: Effect.Effect<A, E, WorkflowEngine.WorkflowEngine>): Effect.Effect<A, E> =>
+    effect.pipe(Effect.provideContext(engine!), Effect.provideService(WebCrypto.WebCrypto, syncCrypto))
+  const startEngine = async () => {
+    for (const machine of Object.keys(ir.machines)) {
+      if (spec.stub.includes(machine)) continue
+      flows.set(
+        machine,
+        Durable.workflow(handleFor(machine), {
+          name: machine,
+          idempotencyKey: () => key,
+          runId: (id) => names.get(id) ?? id,
+          park: false
+        })
+      )
+    }
+    const layers = [...flows.values()].map((flow) => flow.layer) as unknown as [Layer.Layer<never>]
+    const layer = Layer.mergeAll(...layers).pipe(
+      Layer.provideMerge(WorkflowEngine.layerMemory)
+    )
+    engine = await exec(
+      (Layer.buildWithScope(layer, scope) as Effect.Effect<Context.Context<WorkflowEngine.WorkflowEngine>>).pipe(
+        Effect.provideService(Roadbook.TraceSink, sink),
+        Effect.provideService(Roadbook.Timer, timer),
+        Effect.provideService(Roadbook.RunObserver, observer)
+      )
+    )
+  }
+  /** Name the execution of key `run` of `machine`'s workflow `run`, and give its id. */
+  const nameExecution = async (machine: string, run: string) => {
+    const flow = flows.get(machine) ?? fail(`no durable machine ${machine}`)
+    key = run
+    const id = await exec(inEngine(flow.workflow.executionId({ key: run, begin: null } as never)))
+    names.set(id, run)
+    return { flow, id }
+  }
+  const durableTop = async (flow: ReturnType<typeof Durable.workflow<any, never>>, id: string): Promise<TopRun> => ({
+    handle: await exec(inEngine(flow.handle(id))),
+    send: (event) => inEngine(flow.send(id, event)),
+    cancel: inEngine(flow.cancel(id)),
+    save: inEngine(flow.snapshot(id)),
+    suspend: Effect.die("a durable run does not suspend")
+  })
+
+  const spawnTop = async (machine: string, run: string, input: { readonly [param: string]: Core.Json }) => {
     const decl = ir.machines[machine] ?? fail(`the chart has no machine ${machine}`)
     // A `ref` argument is the id of a top-level run started before: pass its handle.
     const handles = new Map<string, object>([...actors].map(([id, actor]) => [id, actor.handle]))
     const args = new Codec(ir, {}, handles).decodeArgs(decl.params, input)
-    const actor = exec(
+    if (durable) {
+      const { flow, id } = await nameExecution(machine, run)
+      await exec(inEngine(flow.start(args)))
+      const top = await durableTop(flow, id)
+      if (top.handle.id !== run) fail(`the run of ${machine} was not named ${run}`)
+      actors.set(run, top)
+      machineOf.set(run, machine)
+      return
+    }
+    const actor = await exec(
       handleFor(machine).spawn(args).pipe(
         Scope.provide(scope),
         Effect.provideService(Roadbook.TraceSink, { write: (record) => records.push(record) }),
@@ -323,7 +433,7 @@ export const runCase = (name: string): CaseResult => {
   }
   const nextRun = () => `r${actors.size + 1}`
 
-  const restoreTop = (step: Extract<Step, { readonly restore: string }>) => {
+  const restoreTop = async (step: Extract<Step, { readonly restore: string }>) => {
     const text = readSnapshot(step.restore)
     const json = JSON.parse(text) as Core.Json
     const named = typeof json === "object" && json !== null && !Array.isArray(json)
@@ -342,19 +452,28 @@ export const runCase = (name: string): CaseResult => {
     }
     const before = records.length
     const run = step.run ?? nextRun()
-    const exit = exec(Effect.exit(
-      handleFor(machine).restore(json as never, options).pipe(
-        Scope.provide(scope),
-        Effect.provideService(Roadbook.TraceSink, { write: (record) => records.push(record) }),
-        Effect.provideService(Roadbook.Timer, timer),
-        Effect.provideService(Roadbook.RootRunId, () => run),
-        Effect.provideService(Roadbook.RunObserver, { started: (handle) => runs.set(handle.id, handle) })
-      )
-    ))
+    let exit: Exit.Exit<TopRun, unknown>
+    if (durable) {
+      const { flow, id } = await nameExecution(machine, run)
+      const started = await exec(Effect.exit(inEngine(flow.restore(json as never, options))))
+      exit = Exit.isSuccess(started) ? Exit.succeed(await durableTop(flow, id)) : started as Exit.Exit<never, unknown>
+    } else {
+      exit = await exec(Effect.exit(
+        handleFor(machine).restore(json as never, options).pipe(
+          Scope.provide(scope),
+          Effect.provideService(Roadbook.TraceSink, sink),
+          Effect.provideService(Roadbook.Timer, timer),
+          Effect.provideService(Roadbook.RootRunId, () => run),
+          Effect.provideService(Roadbook.RunObserver, observer)
+        )
+      ))
+    }
     if (step.migrate !== undefined && calls !== 1) fail(`the migration was called ${calls} times, not once`)
     if (step.refused !== undefined) {
       if (Exit.isSuccess(exit)) fail(`restoring ${step.restore} was not refused`)
-      const error = Exit.isFailure(exit) ? exit.cause.reasons.find(Cause.isFailReason)?.error : undefined
+      const error = (Exit.isFailure(exit) ? exit.cause.reasons.find(Cause.isFailReason)?.error : undefined) as
+        | Roadbook.RestoreError
+        | undefined
       if (!(error instanceof Roadbook.RestoreError)) fail(`restoring ${step.restore} failed otherwise: ${String(exit)}`)
       if (error!.reason !== step.refused) fail(`restoring ${step.restore} was refused for ${error!.reason}, not ${step.refused}`)
       if (records.length !== before) fail(`a refused restore wrote ${records.length - before} records`)
@@ -406,19 +525,19 @@ export const runCase = (name: string): CaseResult => {
     return { ...fields, _tag: event._tag }
   }
 
-  const carryOut = (step: Step) => {
+  const carryOut = async (step: Step) => {
     if ("advance" in step) {
       const end = now + step.advance
       for (let next = dueBy(end)[0]; next !== undefined; next = dueBy(end)[0]) {
         now = next.due
         timers.delete(next)
         next.fire()
-        scheduler.drain()
+        await settle()
       }
       now = end
     } else if ("event" in step) {
       const run = step.run ?? "r1"
-      exec(actorOf(run).send(decodeEvent(run, step.event)))
+      await exec(actorOf(run).send(decodeEvent(run, step.event)))
     } else if ("task" in step) {
       const entry = findScripted(step, new Set())
       scripted.delete(entry)
@@ -430,22 +549,22 @@ export const runCase = (name: string): CaseResult => {
           ? Effect.fail(codec.decodeError(step.fail))
           : Effect.die(new Error(step.defect ?? ""))
       )
-      scheduler.drain()
+      await settle()
     } else if ("cancel" in step) {
-      exec(Effect.exit(actorOf(step.run ?? "r1").cancel))
+      await exec(Effect.exit(actorOf(step.run ?? "r1").cancel))
     } else if ("snapshot" in step) {
-      compareSaved(step.snapshot, exec(actorOf(step.run ?? "r1").save))
+      compareSaved(step.snapshot, await exec(actorOf(step.run ?? "r1").save))
     } else if ("restore" in step) {
-      restoreTop(step)
+      await restoreTop(step)
     } else if ("suspend" in step) {
       const run = step.run ?? "r1"
       suspending.add(run)
       const fiber = Effect.runFork(actorOf(run).suspend, { scheduler })
       pendingSuspends.push({ name: step.suspend, run, fiber })
-      scheduler.drain()
+      await settle()
     } else if ("start" in step) {
       if (actors.has(step.run)) fail(`a second run named ${step.run}`)
-      spawnTop(step.start, step.run, step.input)
+      await spawnTop(step.start, step.run, step.input)
       statuses.set(step.run, step.status)
     } else {
       const inputs: Array<{ readonly run: string; readonly input: Core.Input }> = []
@@ -471,7 +590,7 @@ export const runCase = (name: string): CaseResult => {
       if (run === undefined) fail("an empty together step")
       if (inputs.some((i) => i.run !== run)) fail("a together step with inputs for two runs")
       const handle = runs.get(run!) ?? fail(`no run ${run}`)
-      exec(handle.offerAll(inputs.map((i) => i.input) as never))
+      await exec(handle.offerAll(inputs.map((i) => i.input) as never))
     }
   }
 
@@ -487,8 +606,9 @@ export const runCase = (name: string): CaseResult => {
   const givesInput = (step: Step) => "event" in step || "task" in step || "cancel" in step || "together" in step
 
   try {
-    spawnTop(spec.machine, "r1", spec.input)
-    scheduler.drain()
+    if (durable) await startEngine()
+    await spawnTop(spec.machine, "r1", spec.input)
+    await settle()
     for (const step of spec.script) {
       const what = JSON.stringify(step)
       for (const run of targets(step)) {
@@ -500,7 +620,7 @@ export const runCase = (name: string): CaseResult => {
       ) {
         fail(`every top-level run had ended or been suspended before step ${what}`)
       }
-      carryOut(step)
+      await carryOut(step)
       checkSuspends()
     }
     for (const pending of pendingSuspends) fail(`suspending ${pending.run} never gave snapshot ${pending.name}`)

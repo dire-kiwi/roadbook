@@ -19,6 +19,11 @@ export interface Port {
   open: boolean
   /** The runs that hold a `ref` to this one and are open: they receive what it emits. */
   readonly subscribers: Set<Port>
+  /**
+   * For a durable run's handle, whose run may be live in this process, parked, recovering or
+   * ended: how an input reaches it. Returns whether the run will take it (false once it ended).
+   */
+  readonly deliver?: (input: Core.Input) => boolean
 }
 
 /**
@@ -30,7 +35,8 @@ export interface Wake {
 }
 
 /** Push `input` onto the run's queue if the run is open. Returns whether it was pushed. */
-export const push = (port: Port, input: Core.Input): boolean => port.open && Queue.offerUnsafe(port.queue, input)
+export const push = (port: Port, input: Core.Input): boolean =>
+  port.deliver !== undefined ? port.deliver(input) : port.open && Queue.offerUnsafe(port.queue, input)
 
 /** The port behind every handle, keyed by the handle object. */
 const ports = new WeakMap<object, Port>()
