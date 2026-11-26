@@ -264,7 +264,9 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       port.open = false
       for (const peer of peers) {
         peer.subscribers.delete(port)
-        entryOfPort(peer)?.unsubscribe(env.runId)
+        // A durable run that only stops (it parks, or the process does) stays subscribed: what
+        // its peers emit meanwhile wakes it, or waits for it.
+        if (snapshot.status !== "running") entryOfPort(peer)?.unsubscribe(env.runId)
       }
       if (entry !== undefined && snapshot.status !== "running") entry.close()
     }
