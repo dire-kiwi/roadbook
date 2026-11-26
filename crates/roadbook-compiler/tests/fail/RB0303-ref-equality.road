@@ -1,0 +1,14 @@
+machine Peer() {
+  initial A
+  state A {}
+}
+
+machine M(a: ref Peer, b: ref Peer) {
+  event Go
+  initial A
+  state A {
+    on Go if a == b -> A
+  }
+}
+
+// expect: RB0303 at 10:14

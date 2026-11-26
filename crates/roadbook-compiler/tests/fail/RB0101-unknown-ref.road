@@ -1,0 +1,12 @@
+machine Inventory() {
+  initial A
+  state A {}
+}
+
+machine M(stock: ref Invntory, other: ref Warehouse) {
+  initial A
+  state A {}
+}
+
+// expect: RB0101 at 6:22
+// expect: RB0101 at 6:43

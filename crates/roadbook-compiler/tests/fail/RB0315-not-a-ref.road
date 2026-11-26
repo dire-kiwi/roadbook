@@ -1,0 +1,21 @@
+machine Peer() {
+  event Ping
+  initial A
+  state A {
+    on Ping -> A
+  }
+}
+
+machine M(count: int, maybe: ref Peer?, many: ref Peer[]) {
+  event Go
+  initial A
+  state A {
+    on Go send count.Ping
+    on maybe.Pong -> A
+  }
+  on Go send many.Ping
+}
+
+// expect: RB0315 at 13:16
+// expect: RB0315 at 14:8
+// expect: RB0315 at 16:14

@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0305]: `Reserve` value is missing field `sku`
+  --> RB0305-messaging-missing-field.road:12:21
+   |
+12 |     entry send peer.Reserve { qty: 1 }
+   |                     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: give every field: `Reserve { sku: <string> }`

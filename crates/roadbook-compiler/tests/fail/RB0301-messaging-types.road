@@ -1,0 +1,24 @@
+machine Peer() {
+  event Reserve { qty: int }
+  emits Reserved { qty: int }
+  initial A
+  state A {
+    on Reserve -> A  emit Reserved { qty: "all" }
+  }
+}
+
+action log(value: json)
+
+machine M(peer: ref Peer) {
+  var count: string = ""
+  initial A
+  state A {
+    entry send peer.Reserve { qty: 1.5 }  do log(peer)
+    on peer.Reserved -> A  set count = event.qty
+  }
+}
+
+// expect: RB0301 at 6:43
+// expect: RB0301 at 16:36
+// expect: RB0301 at 16:50
+// expect: RB0301 at 17:40

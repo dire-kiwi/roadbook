@@ -1,0 +1,25 @@
+machine Child() {
+  event Done
+  emits Tick
+  initial A
+  state A {
+    entry emit Tick
+    on Done -> A
+  }
+}
+
+machine M(peer: ref Child) {
+  event Done
+  initial A
+  state A {
+    invoke Child() as child {
+      done -> A
+    }
+    on Done -> A
+    on child.Tick -> A
+    on peer.Tick -> A
+    on child.Tick -> A
+  }
+}
+
+// expect: RB0205 at 21:5

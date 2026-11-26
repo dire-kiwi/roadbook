@@ -1,0 +1,112 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          params:
+            - name: peer
+              ty:
+                ref: Peer
+            - name: peers
+              ty:
+                optional:
+                  list:
+                    ref: Peer
+          returns: ~
+          errors: []
+          body:
+            - emits:
+                name: Progress
+                fields:
+                  - name: percent
+                    ty:
+                      builtin: int
+            - emits:
+                name: Done
+                fields: []
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - invoke:
+                      callee: Upload
+                      args:
+                        - var: file
+                      alias: upload
+                      outcomes:
+                        - trigger: done
+                          branches:
+                            single:
+                              guard: ~
+                              target:
+                                - B
+                              effects:
+                                - emit:
+                                    event: Done
+                                    fields: []
+                  - transition:
+                      trigger:
+                        "on":
+                          name: Pause
+                      branches:
+                        single:
+                          guard: ~
+                          target: ~
+                          effects:
+                            - send:
+                                to: upload
+                                event: Pause
+                                fields: []
+                  - transition:
+                      trigger:
+                        receive:
+                          from: upload
+                          event: Progress
+                      branches:
+                        single:
+                          guard: ~
+                          target: ~
+                          effects:
+                            - set:
+                                var: p
+                                value:
+                                  field:
+                                    - var: event
+                                    - percent
+                            - emit:
+                                event: Progress
+                                fields:
+                                  - name: percent
+                                    value:
+                                      var: p
+                  - transition:
+                      trigger:
+                        receive:
+                          from: peer
+                          event: Reserved
+                      branches:
+                        single:
+                          guard: ~
+                          target:
+                            - B
+                          effects:
+                            - send:
+                                to: peer
+                                event: Ack
+                                fields:
+                                  - name: id
+                                    value:
+                                      int: 1
+                            - do:
+                                name: log
+                                args: []
+                  - entry:
+                      - send:
+                          to: peer
+                          event: Hello
+                          fields: []
+comments: []

@@ -1,0 +1,42 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0316]: field `from` of event `Hello` cannot be `ref Peer`
+ --> RB0316-ref-not-allowed.road:2:23
+  |
+2 |   event Hello { from: ref Peer }
+  |                       ^^^^^^^^
+  |
+  = help: a machine gets a `ref` only as a parameter of its own, or through `invoke … as name`, so that who can talk to whom shows in the charts' signatures; pass it as a parameter instead
+
+error[RB0316]: field `peer` of `Holder` cannot be `ref Peer`
+ --> RB0316-ref-not-allowed.road:9:21
+  |
+9 | type Holder { peer: ref Peer }
+  |                     ^^^^^^^^
+  |
+  = help: a machine gets a `ref` only as a parameter of its own, or through `invoke … as name`, so that who can talk to whom shows in the charts' signatures; pass it as a parameter instead
+
+error[RB0316]: field `peers` of `Gone` cannot be `Peers`: it holds a `ref`
+  --> RB0316-ref-not-allowed.road:11:21
+   |
+11 | error Gone { peers: Peers }
+   |                     ^^^^^
+   |
+   = help: a machine gets a `ref` only as a parameter of its own, or through `invoke … as name`, so that who can talk to whom shows in the charts' signatures; pass it as a parameter instead
+
+error[RB0316]: what `find` returns cannot be `ref Peer`
+  --> RB0316-ref-not-allowed.road:12:24
+   |
+12 | fn find(id: string) -> ref Peer
+   |                        ^^^^^^^^
+   |
+   = help: a machine gets a `ref` only as a parameter of its own, or through `invoke … as name`, so that who can talk to whom shows in the charts' signatures; pass it as a parameter instead
+
+error[RB0316]: what `look` returns cannot be `ref Peer?`: it holds a `ref`
+  --> RB0316-ref-not-allowed.road:13:26
+   |
+13 | task look(id: string) -> ref Peer?
+   |                          ^^^^^^^^^
+   |
+   = help: a machine gets a `ref` only as a parameter of its own, or through `invoke … as name`, so that who can talk to whom shows in the charts' signatures; pass it as a parameter instead

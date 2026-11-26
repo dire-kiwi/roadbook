@@ -1,0 +1,14 @@
+type Order { id: string }
+
+machine Peer() {
+  initial A
+  state A {}
+}
+
+machine M(order: ref Order, peer: Peer) {
+  initial A
+  state A {}
+}
+
+// expect: RB0109 at 8:22
+// expect: RB0109 at 8:35

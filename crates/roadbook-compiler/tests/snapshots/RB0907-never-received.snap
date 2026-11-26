@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0907]: nothing receives the event `Progress` that `Child` emits
+ --> RB0907-never-received.road:2:9
+  |
+2 |   emits Progress { percent: int }
+  |         ^^^^^^^^
+  |
+  = help: no checked chart receives it with `on <name>.Progress`; check the charts that use `Child` together with this one, or remove the declaration (host code holding a handle may still receive it)

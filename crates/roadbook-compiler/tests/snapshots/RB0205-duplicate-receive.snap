@@ -1,0 +1,13 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0205]: trigger `on child.Tick` is written twice in `M.A`
+  --> RB0205-duplicate-receive.road:21:5
+   |
+19 |     on child.Tick -> A
+   |     ------------- first written here
+...
+21 |     on child.Tick -> A
+   |     ^^^^^^^^^^^^^
+   |
+   = help: put every branch in one block, where their order is explicit: `on child.Tick { if … -> A  else -> B }`

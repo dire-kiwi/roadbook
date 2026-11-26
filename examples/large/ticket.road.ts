@@ -226,16 +226,19 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "examples/large/ticket.road"
+      "path": "examples/large/ticket.road",
+      "package": null
     },
     {
-      "path": "examples/large/types.road"
+      "path": "examples/large/types.road",
+      "package": null
     },
     {
-      "path": "examples/large/survey.road"
+      "path": "examples/large/survey.road",
+      "package": null
     }
   ],
   "types": {
@@ -1316,6 +1319,7 @@ const ir: unknown = {
           }
         }
       },
+      "emits": {},
       "root": {
         "id": "SupportTicket",
         "name": "SupportTicket",
@@ -1363,6 +1367,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "classify",
+                  "as": null,
                   "args": [
                     {
                       "kind": "ref",
@@ -1798,6 +1803,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "routeTicket",
+                  "as": null,
                   "args": [
                     {
                       "kind": "ref",
@@ -2811,6 +2817,7 @@ const ir: unknown = {
                         "invoke": {
                           "kind": "task",
                           "src": "fileBug",
+                          "as": null,
                           "args": [
                             {
                               "kind": "ref",
@@ -3226,6 +3233,7 @@ const ir: unknown = {
                         "invoke": {
                           "kind": "task",
                           "src": "verifyFix",
+                          "as": null,
                           "args": [
                             {
                               "kind": "ref",
@@ -3379,6 +3387,7 @@ const ir: unknown = {
                         "invoke": {
                           "kind": "task",
                           "src": "draftResolution",
+                          "as": null,
                           "args": [
                             {
                               "kind": "ref",
@@ -3858,6 +3867,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "machine",
                   "src": "SatisfactionSurvey",
+                  "as": null,
                   "args": [
                     {
                       "kind": "ref",
@@ -4366,7 +4376,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:f7cbbd963cff90bf63da00a511d77ccbd1c3b90763693cd39b36e6a96252f836"
+      "hash": "sha256:7f96d2837a1616ec2d171a9090a2b476c8e62a73138ede3cf310d01a164c1e7e"
     },
     "SatisfactionSurvey": {
       "doc": "Send a satisfaction survey and wait up to a week for the answer.",
@@ -4438,6 +4448,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "emits": {},
       "root": {
         "id": "SatisfactionSurvey",
         "name": "SatisfactionSurvey",
@@ -4471,6 +4482,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "sendSurvey",
+              "as": null,
               "args": [
                 {
                   "kind": "ref",
@@ -4603,6 +4615,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "pollSurvey",
+              "as": null,
               "args": [
                 {
                   "kind": "ref",
@@ -4837,7 +4850,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:aa6129bb77d52f1c26219f1c7b39e968e6b7d3cd63449a12ce56bda745669340"
+      "hash": "sha256:d95f65321be55edf329f35e27050d197f6ba171de54443347c8a927540442726"
     }
   }
 }

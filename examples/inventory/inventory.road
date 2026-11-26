@@ -1,0 +1,51 @@
+/// One line of an order: a product and how many of it.
+type Item { sku: string, qty: int }
+
+/// The warehouse cannot supply every item.
+error OutOfStock { reason: string }
+
+/// Hold `items` for an order, or fail if the warehouse cannot supply them all.
+task reserveStock(warehouse: string, orderId: string, items: Item[]) ! OutOfStock
+
+/// Put the items held for an order back on the shelf.
+action releaseStock(warehouse: string, orderId: string)
+
+/// Record a delivery.
+action addStock(warehouse: string, sku: string, qty: int)
+
+/// The stock of one warehouse, shared by every order. An order asks it to reserve items, and
+/// it answers by emitting `Reserved` or `Rejected` with the order's id, which every holder of
+/// a reference to it receives.
+machine Inventory(warehouse: string) {
+  var orderId: string
+  var items:   Item[]
+
+  event Reserve  { orderId: string, items: Item[] }
+  event Release  { orderId: string }
+  event Restock  { sku: string, qty: int }
+  event Close
+  emits Reserved { orderId: string }
+  emits Rejected { orderId: string, reason: string }
+
+  initial Ready
+
+  on Release do releaseStock(warehouse, event.orderId)
+  on Restock do addStock(warehouse, event.sku, event.qty)
+
+  /// Waiting for the next request.
+  state Ready {
+    on Reserve -> Reserving  set orderId = event.orderId, items = event.items
+    on Close   -> Closed
+  }
+
+  /// One request at a time: another that arrives meanwhile is turned away at once.
+  state Reserving {
+    invoke reserveStock(warehouse, orderId, items) {
+      done            -> Ready  emit Reserved { orderId: orderId }
+      fail OutOfStock -> Ready  emit Rejected { orderId: orderId, reason: error.reason }
+    }
+    on Reserve emit Rejected { orderId: event.orderId, reason: "busy" }
+  }
+
+  final state Closed {}
+}

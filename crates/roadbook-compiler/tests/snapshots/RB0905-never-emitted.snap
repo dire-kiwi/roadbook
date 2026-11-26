@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0905]: `Child` declares `emits Progress` but never emits it
+ --> RB0905-never-emitted.road:2:9
+  |
+2 |   emits Progress { percent: int }
+  |         ^^^^^^^^
+  |
+  = help: emit it with `emit Progress` where it happens, or remove the declaration
+
+warning[RB0906]: `Child` declares `emits Progress` but never emits it, so this is never taken
+  --> RB0905-never-emitted.road:18:14
+   |
+18 |     on child.Progress -> Done
+   |              ^^^^^^^^
+   |
+   = help: `Child` has no `emit Progress`

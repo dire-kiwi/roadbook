@@ -1,0 +1,19 @@
+machine Peer() {
+  event Hello { from: ref Peer }
+  initial A
+  state A {
+    on Hello -> A
+  }
+}
+
+type Holder { peer: ref Peer }
+type Peers = ref Peer[]
+error Gone { peers: Peers }
+fn find(id: string) -> ref Peer
+task look(id: string) -> ref Peer?
+
+// expect: RB0316 at 2:23
+// expect: RB0316 at 9:21
+// expect: RB0316 at 11:21
+// expect: RB0316 at 12:24
+// expect: RB0316 at 13:26

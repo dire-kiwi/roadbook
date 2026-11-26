@@ -1,0 +1,24 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0109]: `Order` is a record type, not a machine
+ --> RB0109-ref-wrong-kind.road:8:22
+  |
+1 | type Order { id: string }
+  |      ----- declared here
+...
+8 | machine M(order: ref Order, peer: Peer) {
+  |                      ^^^^^
+  |
+  = help: `ref` names a machine: a handle to a running instance of it
+
+error[RB0109]: `Peer` is a machine, not a type
+ --> RB0109-ref-wrong-kind.road:8:35
+  |
+3 | machine Peer() {
+  |         ---- declared here
+...
+8 | machine M(order: ref Order, peer: Peer) {
+  |                                   ^^^^
+  |
+  = help: a handle to a running `Peer` is written `ref Peer`

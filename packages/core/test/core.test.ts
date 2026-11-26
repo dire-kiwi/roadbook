@@ -31,7 +31,7 @@ describe("compareCodePoints", () => {
 
 describe("loadIr", () => {
   it("refuses another IR version, naming both", () => {
-    expect(() => loadIr({ irVersion: "0.2" })).toThrow(/"0\.2".*0\.1/)
+    expect(() => loadIr({ irVersion: "0.1" })).toThrow(/"0\.1".*0\.2/)
     expect(() => loadIr([])).toThrow(IrError)
   })
   it("refuses a machine with a parallel state", () => {
@@ -40,6 +40,21 @@ describe("loadIr", () => {
     const parallel = { ...ir, machines: { Nest: { ...nest, root: { ...nest.root, kind: "parallel" as const } } } }
     expect(() => getMachine(parallel, "Nest")).toThrow(/parallel state/)
     expect(() => getMachine(ir, "Nope")).toThrow(/no machine "Nope"/)
+  })
+  it("refuses a machine that uses messaging", () => {
+    const ir = readIr("nest.ir.json")
+    const nest = ir.machines["Nest"]!
+    const field = { name: "percent", type: "int", doc: "" }
+    const emits = { ...nest, emits: { Progress: { fields: [field], doc: "", span: nest.span } } }
+    expect(() => getMachine({ ...ir, machines: { Nest: emits } }, "Nest")).toThrow(
+      /uses emits Progress: messaging between machines is not supported/
+    )
+    const param = { ...nest, params: [{ name: "stock", type: "ref Inventory", doc: "" }] }
+    expect(() => getMachine({ ...ir, machines: { Nest: param } }, "Nest")).toThrow(/the parameter stock: ref Inventory/)
+    const value = { kind: "record" as const, fields: [], type: "Inventory.Ping", text: "Ping" }
+    const to = { kind: "ref" as const, name: "stock", machine: "Inventory", state: null }
+    const sending = { ...nest, root: { ...nest.root, entry: [{ kind: "send" as const, to, event: "Ping", value }] } }
+    expect(() => getMachine({ ...ir, machines: { Nest: sending } }, "Nest")).toThrow(/send stock\.Ping in state Nest/)
   })
 })
 

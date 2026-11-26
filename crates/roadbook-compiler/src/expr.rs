@@ -1,7 +1,7 @@
 //! Expressions: type checking and lowering to IR expression nodes.
 
 use roadbook_ir::{self as ir, Builtin, ExprKind as K, Literal, MAX_SAFE_INTEGER, Op};
-use roadbook_syntax::ast::{BinaryOp, DeclKind, Expr, ExprKind, UnaryOp};
+use roadbook_syntax::ast::{BinaryOp, DeclKind, Expr, ExprKind, FieldValue, UnaryOp};
 use roadbook_syntax::{Diagnostic, expr_text};
 
 use crate::check::SigKind;
@@ -215,68 +215,8 @@ impl Cx<'_, '_> {
                     }
                     None => (Ty::Unknown, None),
                 };
-                let mut seen: Vec<&str> = Vec::new();
-                let mut out = Vec::new();
-                for fv in fields {
-                    let declared = decl_fields
-                        .as_ref()
-                        .and_then(|fs| fs.iter().find(|(n, _)| *n == fv.name.name))
-                        .map(|(_, t)| t.clone());
-                    if seen.contains(&fv.name.name.as_str()) {
-                        self.ck.diags.push(Diagnostic::error(
-                            codes::DUPLICATE_NAME,
-                            fv.name.span,
-                            format!("field `{}` is given twice", fv.name.name),
-                        ));
-                    }
-                    seen.push(&fv.name.name);
-                    let value = match (&declared, &decl_fields) {
-                        (Some(ft), _) => {
-                            let what = format!("field `{}` of `{}`", fv.name.name, t.name);
-                            self.expect(&fv.value, scope, ft, &what)
-                        }
-                        (None, Some(fs)) => {
-                            let names: Vec<&str> = fs.iter().map(|(n, _)| n.as_str()).collect();
-                            let d = self.no_such_field(&ty, &fv.name, &names);
-                            self.ck.diags.push(d);
-                            self.expr(&fv.value, scope).0
-                        }
-                        (None, None) => self.expr(&fv.value, scope).0,
-                    };
-                    out.push(ir::FieldValue {
-                        name: fv.name.name.clone(),
-                        value,
-                    });
-                }
-                if let Some(fs) = &decl_fields {
-                    let missing: Vec<&(String, Ty)> = fs
-                        .iter()
-                        .filter(|(n, _)| !seen.contains(&n.as_str()))
-                        .collect();
-                    if !missing.is_empty() {
-                        let list: Vec<String> =
-                            missing.iter().map(|(n, _)| format!("`{n}`")).collect();
-                        let example: Vec<String> =
-                            missing.iter().map(|(n, t)| format!("{n}: <{t}>")).collect();
-                        self.ck.diags.push(
-                            Diagnostic::error(
-                                codes::MISSING_FIELD,
-                                e.span,
-                                format!(
-                                    "`{}` value is missing field{} {}",
-                                    t.name,
-                                    if missing.len() == 1 { "" } else { "s" },
-                                    list.join(", ")
-                                ),
-                            )
-                            .with_help(format!(
-                                "give every field: `{} {{ {} }}`",
-                                t.name,
-                                example.join(", ")
-                            )),
-                        );
-                    }
-                }
+                let out =
+                    self.record_fields(&t.name, &ty, decl_fields.as_deref(), fields, e.span, scope);
                 (node(K::Record { fields: out }, &ty, e), ty)
             }
             ExprKind::Unary(UnaryOp::Not, x) => {
@@ -386,6 +326,79 @@ impl Cx<'_, '_> {
         }
     }
 
+    /// Checks the fields of a record, error or event value against the declared ones, if
+    /// known (every field, once, and no others), and lowers them. `name` is the type as
+    /// written; `span` is the whole value.
+    pub(crate) fn record_fields(
+        &mut self,
+        name: &str,
+        ty: &Ty,
+        decl_fields: Option<&[(String, Ty)]>,
+        fields: &[FieldValue],
+        span: roadbook_syntax::Span,
+        scope: &Scope,
+    ) -> Vec<ir::FieldValue> {
+        let mut seen: Vec<&str> = Vec::new();
+        let mut out = Vec::new();
+        for fv in fields {
+            let declared = decl_fields
+                .and_then(|fs| fs.iter().find(|(n, _)| *n == fv.name.name))
+                .map(|(_, t)| t.clone());
+            if seen.contains(&fv.name.name.as_str()) {
+                self.ck.diags.push(Diagnostic::error(
+                    codes::DUPLICATE_NAME,
+                    fv.name.span,
+                    format!("field `{}` is given twice", fv.name.name),
+                ));
+            }
+            seen.push(&fv.name.name);
+            let value = match (&declared, decl_fields) {
+                (Some(ft), _) => {
+                    let what = format!("field `{}` of `{name}`", fv.name.name);
+                    self.expect(&fv.value, scope, ft, &what)
+                }
+                (None, Some(fs)) => {
+                    let names: Vec<&str> = fs.iter().map(|(n, _)| n.as_str()).collect();
+                    let d = self.no_such_field(ty, &fv.name, &names);
+                    self.ck.diags.push(d);
+                    self.expr(&fv.value, scope).0
+                }
+                (None, None) => self.expr(&fv.value, scope).0,
+            };
+            out.push(ir::FieldValue {
+                name: fv.name.name.clone(),
+                value,
+            });
+        }
+        if let Some(fs) = decl_fields {
+            let missing: Vec<&(String, Ty)> = fs
+                .iter()
+                .filter(|(n, _)| !seen.contains(&n.as_str()))
+                .collect();
+            if !missing.is_empty() {
+                let list: Vec<String> = missing.iter().map(|(n, _)| format!("`{n}`")).collect();
+                let example: Vec<String> =
+                    missing.iter().map(|(n, t)| format!("{n}: <{t}>")).collect();
+                self.ck.diags.push(
+                    Diagnostic::error(
+                        codes::MISSING_FIELD,
+                        span,
+                        format!(
+                            "`{name}` value is missing field{} {}",
+                            if missing.len() == 1 { "" } else { "s" },
+                            list.join(", ")
+                        ),
+                    )
+                    .with_help(format!(
+                        "give every field: `{name} {{ {} }}`",
+                        example.join(", ")
+                    )),
+                );
+            }
+        }
+        out
+    }
+
     fn out_of_range(&mut self, e: &Expr) {
         self.ck.diags.push(
             Diagnostic::error(
@@ -430,7 +443,21 @@ impl Cx<'_, '_> {
         let expanded = self.ck.env.expand(t);
         let fields: Vec<(String, Ty)> = match &expanded {
             Ty::Unknown => return Ty::Unknown,
-            Ty::Event(name) => self.events.get(name).cloned().unwrap_or_default(),
+            Ty::Event(name) => match name.split_once('.') {
+                Some((machine, event)) => self
+                    .ck
+                    .interfaces
+                    .get(machine)
+                    .and_then(|i| i.events.get(event).or_else(|| i.emits.get(event)))
+                    .cloned()
+                    .unwrap_or_default(),
+                None => self
+                    .events
+                    .get(name)
+                    .or_else(|| self.emits.get(name))
+                    .cloned()
+                    .unwrap_or_default(),
+            },
             Ty::Named(_) if self.ck.env.fields(&expanded).is_some() => {
                 self.ck.env.fields(&expanded).unwrap_or_default().to_vec()
             }

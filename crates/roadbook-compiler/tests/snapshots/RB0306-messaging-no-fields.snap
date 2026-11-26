@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0306]: `event Peer.Ready` has no fields, so it has no field `count`
+  --> RB0306-messaging-no-fields.road:13:39
+   |
+13 |     on peer.Ready -> A  set n = event.count
+   |                                       ^^^^^
+   |
+   = help: declare the field on `Peer.Ready`, or do not read it

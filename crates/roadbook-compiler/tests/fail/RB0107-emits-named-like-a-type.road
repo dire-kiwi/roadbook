@@ -1,0 +1,11 @@
+type Progress { percent: int }
+
+machine M() {
+  emits Progress { percent: int }
+  initial A
+  state A {
+    entry emit Progress { percent: 1 }
+  }
+}
+
+// expect: RB0107 at 4:9

@@ -36,8 +36,13 @@ pub struct Ir {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Source {
-    /// Relative to the project root, with `/` separators.
+    /// With `/` separators: relative to the project root for a file of the
+    /// project, relative to the package's root for a file of another package.
     pub path: String,
+    /// The package the file belongs to (`inventory`, `@shop/inventory`), or
+    /// `None` for a file of the project itself. Every declaration whose span
+    /// is in such a file comes from that package.
+    pub package: Option<String>,
 }
 
 /// A source range. Lines and columns are 1-based; columns count Unicode
@@ -266,6 +271,9 @@ pub struct Machine {
     pub vars: Vec<Var>,
     /// Events the machine accepts, keyed by name, in source order.
     pub events: IndexMap<String, EventDecl>,
+    /// Events the machine emits (`emits Name { fields }`), keyed by name, in
+    /// source order. No name is both in `events` and in `emits`.
+    pub emits: IndexMap<String, EventDecl>,
     /// The root state. Its `id` and `name` are the machine's name, it is
     /// `compound`, and it holds the `entry`, `exit`, `on`, `after` and
     /// `always` items written directly in the machine body.
@@ -291,7 +299,7 @@ pub struct Var {
     pub span: Span,
 }
 
-/// `event Name [{ fields }]`.
+/// `event Name [{ fields }]`, or `emits Name [{ fields }]`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct EventDecl {
@@ -368,10 +376,41 @@ pub struct Invoke {
     pub kind: InvokeKind,
     /// Its name.
     pub src: String,
+    /// The name given with `invoke Machine(…) as name`, through which the
+    /// state and its descendants send to the child and receive what it
+    /// emits. `None` without `as`; always `None` for a task.
+    #[serde(rename = "as")]
+    pub alias: Option<String>,
     /// Arguments, positional, in parameter order.
     pub args: Vec<Expr>,
     /// From `invoke` to the closing brace.
     pub span: Span,
+}
+
+/// Whether an [`Address`] names an invoked child or a `ref` value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AddressKind {
+    /// The child machine of an `invoke … as name`.
+    Child,
+    /// A parameter or variable of type `ref Machine`.
+    Ref,
+}
+
+/// Another running machine, as a `send` names its receiver and an
+/// `on name.Event` trigger its sender.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Address {
+    /// A child or a ref.
+    pub kind: AddressKind,
+    /// The `as` name, or the parameter or variable.
+    pub name: String,
+    /// The machine at the other end, a key of [`Ir::machines`].
+    pub machine: String,
+    /// For a child, the id of the state whose invoke is named `name`: the
+    /// innermost such state containing the item. `None` for a ref.
+    pub state: Option<String>,
 }
 
 /// A transition.
@@ -387,7 +426,8 @@ pub struct Transition {
     pub guard: Option<Expr>,
     /// Target state id, `null` for an internal transition.
     pub target: Option<String>,
-    /// Effects, `set` assignments before `do` actions.
+    /// Effects: every `set` assignment, then the `do`, `send` and `emit`
+    /// effects in the order written.
     pub effects: Vec<Effect>,
     /// The branch: the whole line for a single-branch trigger, from `if` or
     /// `else` for a branch in a block.
@@ -404,7 +444,17 @@ pub enum Trigger {
         /// The event's name, a key of [`Machine::events`].
         event: String,
     },
-    /// `on *`: any event the state has no `on` for.
+    /// `on name.Event`: an event emitted by an invoked child or by the
+    /// machine a `ref` holds.
+    #[serde(rename = "emitted")]
+    Emitted {
+        /// The sender.
+        from: Address,
+        /// The event's name, a key of the sender's [`Machine::emits`].
+        event: String,
+    },
+    /// `on *`: any event the state has no `on` for. Only the machine's own
+    /// events: never an emitted one.
     #[serde(rename = "any")]
     Any,
     /// `after delay`: the state has been active for `delay`.
@@ -449,4 +499,72 @@ pub enum Effect {
         /// Arguments, positional, in parameter order.
         args: Vec<Expr>,
     },
+    /// `send name.Event [{ fields }]`: queue an event for another machine.
+    Send {
+        /// The receiver.
+        to: Address,
+        /// The event's name, a key of the receiver's [`Machine::events`].
+        event: String,
+        /// The event's value: a `record` expression whose type is
+        /// `Machine.Event`.
+        value: Expr,
+    },
+    /// `emit Event [{ fields }]`: emit one of the machine's own `emits`.
+    Emit {
+        /// The event's name, a key of the machine's [`Machine::emits`].
+        event: String,
+        /// The event's value: a `record` expression whose type is the
+        /// event's bare name.
+        value: Expr,
+    },
+}
+
+impl Machine {
+    /// The first use of messaging in the machine, described for a "not supported" message:
+    /// an `emits`, a `ref` type, an `invoke … as`, an `on name.Event`, a `send` or an `emit`.
+    /// `None` if it uses none. A reader that does not implement messaging refuses a machine
+    /// for which this is `Some`.
+    pub fn messaging(&self) -> Option<String> {
+        if let Some(e) = self.emits.keys().next() {
+            return Some(format!("`emits {e}`"));
+        }
+        let has_ref = |t: &TypeRef| t.ref_base().is_some();
+        if let Some(p) = self.params.iter().find(|p| has_ref(&p.ty)) {
+            return Some(format!("the parameter `{}: {}`", p.name, p.ty));
+        }
+        if let Some(v) = self.vars.iter().find(|v| has_ref(&v.ty)) {
+            return Some(format!("the variable `{}: {}`", v.name, v.ty));
+        }
+        state_messaging(&self.root)
+    }
+}
+
+fn state_messaging(s: &State) -> Option<String> {
+    let effects = |effects: &[Effect]| {
+        effects.iter().find_map(|e| match e {
+            Effect::Send { to, event, .. } => Some(format!("`send {}.{event}`", to.name)),
+            Effect::Emit { event, .. } => Some(format!("`emit {event}`")),
+            _ => None,
+        })
+    };
+    if let Some(found) = effects(&s.entry).or_else(|| effects(&s.exit)) {
+        return Some(format!("{found} in state `{}`", s.id));
+    }
+    if let Some(Invoke {
+        alias: Some(a),
+        src,
+        ..
+    }) = &s.invoke
+    {
+        return Some(format!("`invoke {src}(…) as {a}` in state `{}`", s.id));
+    }
+    for t in &s.transitions {
+        if let Trigger::Emitted { from, event } = &t.trigger {
+            return Some(format!("`on {}.{event}` in state `{}`", from.name, s.id));
+        }
+        if let Some(found) = effects(&t.effects) {
+            return Some(format!("{found} in state `{}`", s.id));
+        }
+    }
+    s.states.iter().find_map(state_messaging)
 }

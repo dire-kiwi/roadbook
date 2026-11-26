@@ -1,8 +1,9 @@
 {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "spec/conformance/charts/race.road"
+      "path": "spec/conformance/charts/race.road",
+      "package": null
     }
   ],
   "types": {},
@@ -82,6 +83,7 @@
           }
         }
       },
+      "emits": {},
       "root": {
         "id": "Race",
         "name": "Race",
@@ -115,6 +117,7 @@
             "invoke": {
               "kind": "task",
               "src": "slow",
+              "as": null,
               "args": [],
               "span": {
                 "file": 0,
@@ -194,6 +197,7 @@
             "invoke": {
               "kind": "task",
               "src": "quick",
+              "as": null,
               "args": [],
               "span": {
                 "file": 0,
@@ -273,7 +277,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:54687b3a953178dd2f2ba6f9967e07581758e3a3f946bc3a8725ef806845c07c"
+      "hash": "sha256:47f654efd81dd78fe1fc0c2dc5b879393ea7ebd3f98732d3be2cf0674e811cae"
     }
   }
 }

@@ -44,13 +44,15 @@ export interface SatisfactionSurveyDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "examples/large/survey.road"
+      "path": "examples/large/survey.road",
+      "package": null
     },
     {
-      "path": "examples/large/types.road"
+      "path": "examples/large/types.road",
+      "package": null
     }
   ],
   "types": {
@@ -784,6 +786,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "emits": {},
       "root": {
         "id": "SatisfactionSurvey",
         "name": "SatisfactionSurvey",
@@ -817,6 +820,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "sendSurvey",
+              "as": null,
               "args": [
                 {
                   "kind": "ref",
@@ -949,6 +953,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "pollSurvey",
+              "as": null,
               "args": [
                 {
                   "kind": "ref",
@@ -1183,7 +1188,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:aa6129bb77d52f1c26219f1c7b39e968e6b7d3cd63449a12ce56bda745669340"
+      "hash": "sha256:d95f65321be55edf329f35e27050d197f6ba171de54443347c8a927540442726"
     }
   }
 }

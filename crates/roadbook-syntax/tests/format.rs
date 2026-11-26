@@ -39,6 +39,12 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  entry set a = 1 set b = 2 do f() do g() set c = 3\n}\n",
         "machine M() {\n  entry set a = 1, b = 2, c = 3  do f(), g()\n}\n",
     ),
+    // `send` and `emit` come after every `set`, in the order written with the `do`s, each a
+    // clause of its own; an empty body goes.
+    (
+        "machine M(p: ref  P) {\n  emits Progress{percent:int}\n  emits Done {}\n  event Go\n  state A {\n    invoke U( ) as   u { done -> B }\n    on u.Progress  emit Progress {percent: event.percent,} set n = 1\n    on Go do f() send p.Ping {} do g() do h() set x = 1 emit Done\n  }\n}\n",
+        "machine M(p: ref P) {\n  emits Progress { percent: int }\n  emits Done\n  event Go\n  state A {\n    invoke U() as u {\n      done -> B\n    }\n    on u.Progress set n = 1  emit Progress { percent: event.percent }\n    on Go         set x = 1  do f()  send p.Ping  do g(), h()  emit Done\n  }\n}\n",
+    ),
     // A record value as an `after` delay keeps its parentheses.
     (
         "machine M() {\n  after (Cfg { ms: 1 }) -> A\n  after (d) -> A\n}\n",

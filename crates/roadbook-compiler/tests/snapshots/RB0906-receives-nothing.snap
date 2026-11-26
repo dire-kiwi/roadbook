@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0905]: `Child` declares `emits Finished` but never emits it
+ --> RB0906-receives-nothing.road:2:9
+  |
+2 |   emits Finished
+  |         ^^^^^^^^
+  |
+  = help: emit it with `emit Finished` where it happens, or remove the declaration
+
+warning[RB0906]: `Child` declares `emits Finished` but never emits it, so this is never taken
+  --> RB0906-receives-nothing.road:16:14
+   |
+16 |     on child.Finished -> Done
+   |              ^^^^^^^^
+   |
+   = help: `Child` has no `emit Finished`

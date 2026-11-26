@@ -1,0 +1,25 @@
+machine Child() {
+  emits Progress { percent: int }
+  emits Finished
+  initial A
+  state A {
+    entry emit Finished
+    after 1s -> Done
+  }
+  final state Done {}
+}
+
+machine M() {
+  initial A
+  state A {
+    invoke Child() as child {
+      done -> Done
+    }
+    on child.Progress -> Done
+    on child.Finished -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0905 at 2:9
+// expect: RB0906 at 18:14

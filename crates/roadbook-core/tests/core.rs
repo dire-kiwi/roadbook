@@ -155,6 +155,20 @@ fn parallel_states_are_refused() {
 }
 
 #[test]
+fn messaging_is_refused() {
+    let c = roadbook_compiler::compile_source(
+        "t.road",
+        "machine M() {\n  emits Ping\n  initial A\n  state A { entry emit Ping }\n}\n",
+        &Default::default(),
+    );
+    let ir = c.ir.expect("the compiler accepts messaging");
+    assert!(matches!(
+        Program::new(ir),
+        Err(ProgramError::Messaging { machine, .. }) if machine == "M"
+    ));
+}
+
+#[test]
 fn operators_see_through_aliases() {
     // Each guard holds only if its operator works on the aliased type: a `false` guard
     // drops `Go`.

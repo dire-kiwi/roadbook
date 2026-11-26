@@ -1,8 +1,9 @@
 {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "spec/conformance/charts/many.road"
+      "path": "spec/conformance/charts/many.road",
+      "package": null
     }
   ],
   "types": {},
@@ -43,6 +44,7 @@
         }
       ],
       "events": {},
+      "emits": {},
       "root": {
         "id": "Many",
         "name": "Many",
@@ -76,6 +78,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Leaf",
+              "as": null,
               "args": [],
               "span": {
                 "file": 0,
@@ -199,7 +202,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:3d8d3f62b1f47abcb7e8c769102eea222d8488000adffcfc896f169b591b0a06"
+      "hash": "sha256:cc67f5c40224b57bab8cf2bb0c9946f6898a681b43d34959bcd9dfbff849ba36"
     },
     "Leaf": {
       "doc": "Ends as soon as it starts.",
@@ -215,6 +218,7 @@
       "errors": [],
       "vars": [],
       "events": {},
+      "emits": {},
       "root": {
         "id": "Leaf",
         "name": "Leaf",
@@ -258,7 +262,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ca1c5ba430666515362aabf39086be7b65c9a3858d4632372e2fe153426e6b6a"
+      "hash": "sha256:9bab064cd516fdd09780533f7855d0a2ab53cc01bd1d2da756021a0ade2e7543"
     }
   }
 }

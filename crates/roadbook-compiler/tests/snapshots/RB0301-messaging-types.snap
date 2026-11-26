@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0301]: mismatched types: expected `int`, found `string`
+ --> RB0301-messaging-types.road:6:43
+  |
+6 |     on Reserve -> A  emit Reserved { qty: "all" }
+  |                                           ^^^^^ field `qty` of `Reserved` must be `int`
+
+error[RB0301]: mismatched types: expected `int`, found `float`
+  --> RB0301-messaging-types.road:16:36
+   |
+16 |     entry send peer.Reserve { qty: 1.5 }  do log(peer)
+   |                                    ^^^ field `qty` of `Reserve` must be `int`
+
+error[RB0301]: mismatched types: expected `json`, found `ref Peer`
+  --> RB0301-messaging-types.road:16:50
+   |
+16 |     entry send peer.Reserve { qty: 1.5 }  do log(peer)
+   |                                                  ^^^^ argument `value` of `log` must be `json`
+
+error[RB0301]: mismatched types: expected `string`, found `int`
+  --> RB0301-messaging-types.road:17:40
+   |
+17 |     on peer.Reserved -> A  set count = event.qty
+   |                                        ^^^^^^^^^ the value assigned to `count` must be `string`

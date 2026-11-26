@@ -1,8 +1,9 @@
 {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "spec/conformance/charts/cancel.road"
+      "path": "spec/conformance/charts/cancel.road",
+      "package": null
     }
   ],
   "types": {},
@@ -54,6 +55,7 @@
           }
         }
       },
+      "emits": {},
       "root": {
         "id": "Parent",
         "name": "Parent",
@@ -100,6 +102,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Child",
+              "as": null,
               "args": [],
               "span": {
                 "file": 0,
@@ -202,7 +205,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:14d47e7f35e957f503e82011e532eccad77b9e67dc298ace7c5b4c2edc5ffa99"
+      "hash": "sha256:e1137ed99c06fc6b8e71f085a2c72962293966b6f19298ea82cc9632dcf0aa38"
     },
     "Child": {
       "doc": "Waits five seconds two levels down, logging every exit.",
@@ -218,6 +221,7 @@
       "errors": [],
       "vars": [],
       "events": {},
+      "emits": {},
       "root": {
         "id": "Child",
         "name": "Child",
@@ -366,7 +370,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:8765be69736459620685ae1e120d6f30a9adce2fe5b21489df9c0d53e61f6b60"
+      "hash": "sha256:f0467525b78b35bb541d5fdb54a20f38e906a33aa61418275e85936208a312e1"
     }
   }
 }

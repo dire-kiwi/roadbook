@@ -158,19 +158,21 @@ pub(crate) fn run(
         };
         let tree = Tree::new(&m.root);
         always_cycles(&tree, info, diags);
-        warnings(
-            &tree,
-            info,
-            project.roots.contains(&info.file),
-            options,
-            diags,
-        );
+        // Another package's charts are its own business: only errors are reported in them.
+        if project.files[info.file].file.package.is_none() {
+            let root_file = project.roots.contains(&info.file);
+            warnings(&tree, info, root_file, options, diags);
+            message_warnings(doc, m, info, root_file, diags);
+        }
 
         // States entered without waiting: through `always`, `done` and invoke outcomes.
         let eager = tree.reachable(|t| {
             !matches!(
                 t.trigger,
-                Trigger::Event { .. } | Trigger::Any | Trigger::After { .. }
+                Trigger::Event { .. }
+                    | Trigger::Emitted { .. }
+                    | Trigger::Any
+                    | Trigger::After { .. }
             )
         });
         let mut edges = Vec::new();
@@ -461,13 +463,70 @@ fn warnings(
     }
 }
 
-/// A function, action or task, by the project path of its file and its name.
+/// Whether a machine's IR has an `emit` of `event` anywhere.
+fn emits_somewhere(s: &ir::State, event: &str) -> bool {
+    let has = |effects: &[ir::Effect]| {
+        effects
+            .iter()
+            .any(|e| matches!(e, ir::Effect::Emit { event: x, .. } if x == event))
+    };
+    has(&s.entry)
+        || has(&s.exit)
+        || s.transitions.iter().any(|t| has(&t.effects))
+        || s.states.iter().any(|c| emits_somewhere(c, event))
+}
+
+/// `emits` that the machine never emits, and `on name.E` for an `E` that the sender never
+/// emits.
+fn message_warnings(
+    doc: &ir::Ir,
+    m: &ir::Machine,
+    info: &MachineInfo,
+    root_file: bool,
+    diags: &mut Vec<Diagnostic>,
+) {
+    if root_file {
+        for (e, span) in &info.emits {
+            if !emits_somewhere(&m.root, e) {
+                diags.push(
+                    Diagnostic::warning(
+                        codes::NEVER_EMITTED,
+                        *span,
+                        format!("`{}` declares `emits {e}` but never emits it", info.name),
+                    )
+                    .with_help(format!(
+                        "emit it with `emit {e}` where it happens, or remove the declaration"
+                    )),
+                );
+            }
+        }
+    }
+    for (span, machine, event) in &info.receives {
+        if let Some(sender) = doc.machines.get(machine)
+            && sender.emits.contains_key(event)
+            && !emits_somewhere(&sender.root, event)
+        {
+            diags.push(
+                Diagnostic::warning(
+                    codes::RECEIVES_NOTHING,
+                    *span,
+                    format!("`{machine}` declares `emits {event}` but never emits it, so this is never taken"),
+                )
+                .with_help(format!("`{machine}` has no `emit {event}`")),
+            );
+        }
+    }
+}
+
+/// A function, action or task, by the project path of its file and its name; or an emitted
+/// event, by the file of its machine and `Machine.Event`.
 pub(crate) type DeclKey = (String, String);
 
 /// A declaration an "unused" warning may be given for, if no checked file uses it.
 #[derive(Clone, Debug)]
 pub(crate) struct UnusedCandidate {
     pub key: DeclKey,
+    /// "function", "action", "task", or "emitted event" for an `emits` no `on` receives.
     pub what: &'static str,
     pub span: Span,
 }
@@ -481,13 +540,27 @@ pub(crate) fn uses(
     let key = |file: usize, name: &str| (project.files[file].path.clone(), name.to_string());
     let mut candidates = Vec::new();
     for e in &ck.names.decls {
-        let what = match e.decl.kind {
+        if e.duplicate || ck.is_compiled(e.file) {
+            continue;
+        }
+        let what = match &e.decl.kind {
             DeclKind::Fn { .. } => "function",
             DeclKind::Action { .. } => "action",
             DeclKind::Task { .. } => "task",
+            DeclKind::Machine(m) => {
+                for x in m.body.emits() {
+                    let name = format!("{}.{}", e.decl.name.name, x.name.name);
+                    candidates.push(UnusedCandidate {
+                        key: key(e.file, &name),
+                        what: "emitted event",
+                        span: x.name.span,
+                    });
+                }
+                continue;
+            }
             _ => continue,
         };
-        if !e.duplicate {
+        {
             candidates.push(UnusedCandidate {
                 key: key(e.file, &e.decl.name.name),
                 what,
@@ -495,7 +568,7 @@ pub(crate) fn uses(
             });
         }
     }
-    let used = ck
+    let mut used: HashSet<DeclKey> = ck
         .used
         .iter()
         .filter_map(|n| {
@@ -505,11 +578,30 @@ pub(crate) fn uses(
                 .map(|id| key(ck.names.decls[id.0].file, n))
         })
         .collect();
+    for (machine, event) in &ck.received {
+        if let Some(id) = ck.names.global.get(machine.as_str()) {
+            used.insert(key(
+                ck.names.decls[id.0].file,
+                &format!("{machine}.{event}"),
+            ));
+        }
+    }
     (candidates, used)
 }
 
 /// The "unused" warning for a candidate.
 pub(crate) fn unused_warning(c: &UnusedCandidate) -> Diagnostic {
+    if c.what == "emitted event" {
+        let (machine, event) = c.key.1.split_once('.').unwrap_or(("", &c.key.1));
+        return Diagnostic::warning(
+            codes::NEVER_RECEIVED,
+            c.span,
+            format!("nothing receives the event `{event}` that `{machine}` emits"),
+        )
+        .with_help(format!(
+            "no checked chart receives it with `on <name>.{event}`; check the charts that use `{machine}` together with this one, or remove the declaration (host code holding a handle may still receive it)"
+        ));
+    }
     Diagnostic::warning(
         codes::UNUSED_DECLARATION,
         c.span,

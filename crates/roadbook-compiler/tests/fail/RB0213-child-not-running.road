@@ -1,0 +1,37 @@
+machine Child() {
+  event Poke
+  initial A
+  state A {
+    on Poke -> A
+  }
+}
+
+machine M() {
+  event Go
+  event Leave
+  initial Running
+  state Running {
+    entry send child.Poke
+    exit send child.Poke
+    invoke Child() as child {
+      done -> Done  send child.Poke
+    }
+    on Go send child.Poke
+    on Leave -> Done  send child.Poke
+    initial Inner
+    state Inner {
+      entry send child.Poke
+      exit send child.Poke
+      on Go -> Running.Other  send child.Poke
+      on Leave -> Running  send child.Poke
+    }
+    state Other {}
+  }
+  final state Done {}
+}
+
+// expect: RB0213 at 14:16
+// expect: RB0213 at 15:15
+// expect: RB0213 at 17:26
+// expect: RB0213 at 20:28
+// expect: RB0213 at 26:33

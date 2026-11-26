@@ -1,0 +1,34 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0115]: unknown machine `chld` to talk to
+  --> RB0115-unknown-address.road:19:16
+   |
+19 |     on Go send chld.Stop
+   |                ^^^^
+   |
+   = help: did you mean `child`?
+
+error[RB0115]: `child` is not in scope here: it names the machine `M.Running` invokes
+  --> RB0115-unknown-address.road:22:16
+   |
+22 |     on Go send child.Stop
+   |                ^^^^^
+   |
+   = help: an `as` name is in scope only in the invoking state and the states inside it, while the child runs; move this into `M.Running`
+
+error[RB0115]: unknown machine `nobody` to talk to
+  --> RB0115-unknown-address.road:25:16
+   |
+25 |     entry send nobody.Stop
+   |                ^^^^^^
+   |
+   = help: name an invoked machine with `invoke Machine(…) as name`, or take a parameter of type `ref Machine`
+
+error[RB0115]: `child` is not in scope here: it names the machine `M.Running` invokes
+  --> RB0115-unknown-address.road:27:6
+   |
+27 |   on child.Tick -> Done
+   |      ^^^^^
+   |
+   = help: an `as` name is in scope only in the invoking state and the states inside it, while the child runs; move this into `M.Running`

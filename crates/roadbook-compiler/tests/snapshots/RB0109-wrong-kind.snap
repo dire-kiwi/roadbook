@@ -8,6 +8,8 @@ error[RB0109]: `M` is a machine, not a type
   |         - declared here
 6 |   var n: M
   |          ^
+  |
+  = help: a handle to a running `M` is written `ref M`
 
 error[RB0109]: `audit` is an action, not a task
  --> RB0109-wrong-kind.road:9:12

@@ -1,0 +1,43 @@
+machine Child() {
+  event Go
+  emits Go
+  emits Done
+  emits Done
+  initial A
+  state A {
+    on Go -> A  emit Done
+  }
+}
+
+machine M(child: int) {
+  var other: int = 0
+  initial A
+  state A {
+    invoke Child() as child {
+      done -> B
+    }
+  }
+  state B {
+    invoke Child() as other {
+      done -> C
+    }
+  }
+  state C {
+    invoke Child() as inner {
+      done -> Done
+    }
+    initial Deeper
+    state Deeper {
+      invoke Child() as inner {
+        done -> Deeper
+      }
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0108 at 3:9
+// expect: RB0108 at 5:9
+// expect: RB0108 at 16:23
+// expect: RB0108 at 21:23
+// expect: RB0108 at 31:25

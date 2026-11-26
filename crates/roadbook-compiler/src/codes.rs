@@ -38,6 +38,17 @@ pub const UNKNOWN_VARIANT: Code = Code(113);
 /// A `set` of a machine parameter. Parameters are read-only.
 pub const ASSIGN_TO_PARAMETER: Code = Code(114);
 
+/// A `send name.E` or `on name.E` whose `name` is neither an `invoke … as name` in scope nor a
+/// parameter or variable.
+pub const UNKNOWN_ADDRESS: Code = Code(115);
+
+/// A `send name.E` of an event the receiving machine does not declare with `event`.
+pub const NOT_ACCEPTED: Code = Code(116);
+
+/// An `emit E` of an event the machine does not declare with `emits`, or an `on name.E` of an
+/// event the sending machine does not.
+pub const NOT_EMITTED: Code = Code(117);
+
 // ───────────── structure ─────────────
 
 /// A transition target that does not resolve to a state.
@@ -64,6 +75,14 @@ pub const STATE_KIND_MISMATCH: Code = Code(210);
 pub const ACTIVITY_IN_FINAL_STATE: Code = Code(211);
 /// A `done` transition in a state with no child states, which can never be taken.
 pub const DONE_WITHOUT_CHILDREN: Code = Code(212);
+
+/// A `send` to an invoked child where the child is not running: in the invoking state's own
+/// `entry` or `exit`, in its invoke's outcomes, or in a transition that leaves the invoking
+/// state.
+pub const CHILD_NOT_RUNNING: Code = Code(213);
+
+/// `invoke task(…) as name`: only an invoked machine has a name to send to.
+pub const ALIAS_ON_TASK: Code = Code(214);
 
 // ───────────── types ─────────────
 
@@ -97,6 +116,14 @@ pub const ALIAS_CYCLE: Code = Code(313);
 /// A type made optional twice, such as `string??`.
 pub const DOUBLE_OPTIONAL: Code = Code(314);
 
+/// A `send name.E` or `on name.E` through a value that is not a `ref`: another type, or a
+/// `ref` that is optional or a list.
+pub const NOT_A_REF: Code = Code(315);
+
+/// A `ref` in a field of a record, error or event, or in what a function, task or machine
+/// returns.
+pub const REF_NOT_ALLOWED: Code = Code(316);
+
 // ───────────── analyses ─────────────
 
 /// A cycle of unguarded `always` transitions, or an unguarded `always` with no target.
@@ -115,6 +142,15 @@ pub const UNUSED_DECLARATION: Code = Code(903);
 /// An `invoke` with no `after` on its state or any state containing it. Off by default.
 pub const INVOKE_WITHOUT_TIMEOUT: Code = Code(904);
 
+/// An `emits E` that no `emit E` of the machine sends.
+pub const NEVER_EMITTED: Code = Code(905);
+
+/// An `on name.E` where the sending machine declares `emits E` but never emits it.
+pub const RECEIVES_NOTHING: Code = Code(906);
+
+/// An `emits E` that no `on name.E` in the checked charts receives.
+pub const NEVER_RECEIVED: Code = Code(907);
+
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
     UNKNOWN_TYPE,
@@ -131,6 +167,9 @@ pub const ALL: &[Code] = &[
     IMPORT_NOT_DECLARED,
     UNKNOWN_VARIANT,
     ASSIGN_TO_PARAMETER,
+    UNKNOWN_ADDRESS,
+    NOT_ACCEPTED,
+    NOT_EMITTED,
     UNKNOWN_TARGET,
     MISSING_INITIAL,
     BAD_INITIAL,
@@ -143,6 +182,8 @@ pub const ALL: &[Code] = &[
     STATE_KIND_MISMATCH,
     ACTIVITY_IN_FINAL_STATE,
     DONE_WITHOUT_CHILDREN,
+    CHILD_NOT_RUNNING,
+    ALIAS_ON_TASK,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
     BAD_OPERANDS,
@@ -157,12 +198,17 @@ pub const ALL: &[Code] = &[
     LITERAL_OUT_OF_RANGE,
     ALIAS_CYCLE,
     DOUBLE_OPTIONAL,
+    NOT_A_REF,
+    REF_NOT_ALLOWED,
     ALWAYS_CYCLE,
     UNBOUNDED_RECURSION,
     UNREACHABLE_STATE,
     NO_WAY_OUT,
     UNUSED_DECLARATION,
     INVOKE_WITHOUT_TIMEOUT,
+    NEVER_EMITTED,
+    RECEIVES_NOTHING,
+    NEVER_RECEIVED,
 ];
 
 #[cfg(test)]

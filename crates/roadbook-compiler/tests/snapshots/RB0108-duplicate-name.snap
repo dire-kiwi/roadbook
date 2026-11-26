@@ -37,6 +37,8 @@ error[RB0108]: event `Go` is declared twice
   |         -- first declared here
 8 |   event Go
   |         ^^
+  |
+  = help: the events a machine accepts and those it emits share one set of names
 
 error[RB0108]: state `A` is declared twice in `M`
   --> RB0108-duplicate-name.road:13:9

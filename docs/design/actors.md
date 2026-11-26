@@ -115,6 +115,8 @@ Three things have to hold for a machine in one crate to message a machine in ano
 import { Inventory } from "inventory/inventory.road"
 ```
 
+A path that does not start with `./`, `../` or `/` names a file in another package: its first segment is the package (its first two for `@scope/name`), the rest the file in it. The command line finds the package in the `[packages]` table of `roadbook.toml` or, as Node does, in `node_modules` ([projects](language.md#projects)); [`examples/orders`](../../examples/orders) imports [`examples/inventory`](../../examples/inventory) through the root `roadbook.toml`. The compiled IR stays self-contained: the imported machine and everything it uses are in it, each file of the other package named in `sources` by its package and its path in the package, which is also what marks its declarations as the other package's ([`spec/ir.md`](../../spec/ir.md#sources)).
+
 **Types.** The importing crate does not generate its own copy of `Inventory`'s types. Its generated code refers to the owning crate's: `inventory::Event`, `inventory::Ref`. There is one definition of each type, so the Rust compiler checks every cross-crate send.
 
 **Delivery.** A `Ref` is a cloneable, `Send` handle around the target's queue.
@@ -133,7 +135,7 @@ stock.handle().send(inventory::Event::Restock { sku, qty }).await;
 
 TypeScript works the same way with packages: the chart imports `"@shop/inventory/inventory.road"`, and the generated file imports types from that package's generated file.
 
-The Rust macro does not look for the dependency's `.road` file at all. [`spike/cross-crate`](../../spike/cross-crate) tried four mechanisms against path, git, vendored and registry dependencies, and against a crate that is itself a dependency. Each crate's `roadbook::include!` embeds the IR and also exports a hidden `macro_rules!` for each chart. An importing chart's macro expands to a call into that macro, which calls back with the IR and `$crate`. This works for every kind of dependency, always sees the version that is actually compiled, needs no build script or configuration, and Cargo's normal dependency tracking rebuilds the importer when the chart changes.
+The Rust macro does not look for the dependency's `.road` file at all. The compiler's loader takes an import satisfied by an already compiled IR (`Loaded::Compiled`), whose declarations enter the importing chart's scope as a parsed file's would and are copied into its IR unchanged, so their hashes are the dependency's. [`spike/cross-crate`](../../spike/cross-crate) tried four mechanisms against path, git, vendored and registry dependencies, and against a crate that is itself a dependency. Each crate's `roadbook::include!` embeds the IR and also exports a hidden `macro_rules!` for each chart. An importing chart's macro expands to a call into that macro, which calls back with the IR and `$crate`. This works for every kind of dependency, always sees the version that is actually compiled, needs no build script or configuration, and Cargo's normal dependency tracking rebuilds the importer when the chart changes.
 
 The other three mechanisms were rejected:
 
@@ -165,14 +167,31 @@ rustate's README describes message passing as planned and shared memory as the c
 
 ## Grammar additions
 
+Implemented in milestone 5 in the language, the compiler and IR 0.2 (the [language page](language.md#messages-between-machines) has the rules and checks, [`spec/ir.md`](../../spec/ir.md) the IR). The runtimes and the viewer do not handle it yet; the runtimes refuse a machine that uses it.
+
 ```ebnf
 machineItem = … | "emits" Upper [ fields ] ;
 type        = … | "ref" Upper ;
-stateItem   = … | "invoke" name "(" … ")" [ "as" lower ] "{" outcome { outcome } "}"
-                | "on" lower "." Upper branches ;
+stateItem   = … | "invoke" name "(" … ")" [ "as" lower ] "{" outcome { outcome } "}" ;
+commonItem  = … | "on" lower "." Upper branches ;
 effect      = … | "send" lower "." Upper [ recordBody ]
                 | "emit" Upper [ recordBody ] ;
+recordBody  = "{" [ lower ":" expr { "," lower ":" expr } ] "}" ;
 ```
+
+`emits`, `send` and `emit` are reserved words; `ref` and `as` are not, since they mean something only where no name can appear. `on name.Event` is a common item, so a machine can handle a `ref` parameter's events in its body.
+
+### Decided while implementing
+
+- **Two namespaces of triggers.** The events a machine accepts (`event`) are its own and are triggered as `on Name`. The events it receives from others are named through their sender, `on upload.Progress`, a different trigger from `on Progress` and from `on other.Progress`. `on *` matches only the machine's own events, never an emitted one, so a catch-all does not swallow a child's progress reports.
+- **One namespace of declarations.** A machine's `event` and `emits` names are one set: no name is both accepted and emitted. Like events, emitted events cannot be named like a type, error or machine.
+- **A child is addressed only while it runs.** `upload` is in scope in the invoking state and its descendants. On top of that, the compiler rejects a `send` to it from the invoking state's own `entry` (the child starts after the step settles), `exit` (it is stopped before the exit effects run) and invoke outcomes (it has ended), and from a transition that leaves the invoking state (leaving stops it before the transition's effects run). Sends from the `entry` of a state inside the invoking state, in the step that enters the invoking state, happen before the child has started; the semantics page has to say whether they are queued for it.
+- **Where a `ref` can be.** Machine parameters, variables, and the parameters of functions, actions and tasks, so a `ref` can be passed to an invoked machine and to host code. Not in fields of records, errors or events, nor in results: a machine still cannot conjure a reference, and events cannot carry references around. `==` is not defined on `ref`s, and a `ref` is not `json`.
+- **An `as` name is not a value.** It is used only in `send name.E` and `on name.E`, so it cannot be stored in a variable that outlives the child. It shares the machine's namespace with parameters and variables, and cannot shadow an enclosing `as`.
+- **A machine does not receive its own emitted events.**
+- **Effect order.** Every `set` of a list runs first, then the `do`, `send` and `emit` effects in the order written, so a message carries the values its transition assigns.
+- **Warnings.** An `emits` its machine never emits, an `on name.E` for an event the sender never emits, and an `emits` nothing in the checked charts receives (host code holding a handle may still).
+- **Hash.** A machine that holds a `ref Inventory` includes only `Inventory`'s interface, its `events` and `emits`, in its hash: a change to how the peer works inside does not invalidate the snapshots of the machines that talk to it.
 
 ## Open questions
 

@@ -1,0 +1,43 @@
+// `inventory` is another package: the root `roadbook.toml` maps it to `examples/inventory`.
+import { Inventory, Item, OutOfStock } from "inventory/inventory.road"
+
+/// What the customer is buying.
+type OrderDraft { items: Item[], card: string }
+
+/// Proof of payment.
+type Receipt { orderId: string, total: int }
+
+/// The card was refused.
+error PaymentDeclined
+
+/// Charge the customer for the order.
+task charge(orderId: string, draft: OrderDraft) -> Receipt ! PaymentDeclined
+
+/// Reserve the items with the warehouse, then take the payment. The warehouse is a peer that
+/// lives longer than any order: whoever starts the order passes it in.
+machine Order(id: string, draft: OrderDraft, inventory: ref Inventory) -> Receipt ! OutOfStock | PaymentDeclined {
+  var receipt: Receipt
+  var problem: OutOfStock
+
+  initial Reserving
+
+  /// The warehouse answers every holder of a reference to it, so each order listens for its
+  /// own id.
+  state Reserving {
+    entry send inventory.Reserve { orderId: id, items: draft.items }
+    on inventory.Reserved if event.orderId == id -> Paying
+    on inventory.Rejected if event.orderId == id -> Unavailable  set problem = OutOfStock { reason: event.reason }
+    after 5s                                     -> Unavailable  set problem = OutOfStock { reason: "the warehouse did not answer" }
+  }
+
+  state Paying {
+    invoke charge(id, draft) {
+      done                 -> Paid      set receipt = result
+      fail PaymentDeclined -> Declined  send inventory.Release { orderId: id }
+    }
+  }
+
+  final state Paid        { output receipt }
+  final state Unavailable { fail problem }
+  final state Declined    { fail PaymentDeclined }
+}

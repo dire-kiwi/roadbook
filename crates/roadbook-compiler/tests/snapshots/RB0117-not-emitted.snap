@@ -1,0 +1,34 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0117]: `Upload` does not emit the event `Progres`
+ --> RB0117-not-emitted.road:6:16
+  |
+6 |     entry emit Progres { percent: 1 }
+  |                ^^^^^^^ `Upload` emits `Progress`
+  |
+  = help: did you mean `Progress`?
+
+error[RB0117]: `Upload` does not emit the event `Pause`
+ --> RB0117-not-emitted.road:7:28
+  |
+7 |     on Pause -> Done  emit Pause
+  |                            ^^^^^ `Upload` emits `Progress`
+  |
+  = help: `Pause` is an event `Upload` accepts, not one it emits
+
+error[RB0117]: `Upload` does not emit the event `Pause`
+  --> RB0117-not-emitted.road:18:15
+   |
+18 |     on upload.Pause -> Done
+   |               ^^^^^ `Upload` emits `Progress`
+   |
+   = help: `Pause` is an event `Upload` accepts, not one it emits
+
+error[RB0117]: `Upload` does not emit the event `Finished`
+  --> RB0117-not-emitted.road:19:13
+   |
+19 |     on peer.Finished -> Done
+   |             ^^^^^^^^ `Upload` emits `Progress`
+   |
+   = help: declare it in `Upload`: `emits Finished`

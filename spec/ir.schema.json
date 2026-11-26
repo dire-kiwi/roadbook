@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Roadbook IR 0.1",
+  "title": "Roadbook IR 0.2",
   "description": "The compiled form of a Roadbook project: one document per entry file. See spec/ir.md for what each member means. Every member listed is required; absent values are null, missing docs are \"\", and empty lists and maps are [] and {}.",
   "type": "object",
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.1" },
+    "irVersion": { "const": "0.2" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -43,9 +43,14 @@
     "upperName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
     "lowerName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "typeRef": {
-      "description": "A type in canonical source form: a built-in or a declared name, then any number of [] and ? suffixes.",
+      "description": "A type in canonical source form: a built-in, a declared name, an event type Machine.Event, or ref Machine, then any number of [] and ? suffixes.",
       "type": "string",
-      "pattern": "^(string|int|float|bool|duration|json|[A-Z][A-Za-z0-9]*)(\\[\\]|\\?)*$"
+      "pattern": "^(string|int|float|bool|duration|json|[A-Z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?|ref [A-Z][A-Za-z0-9]*)(\\[\\]|\\?)*$"
+    },
+    "eventType": {
+      "description": "The type of an event value: an event of the machine by its bare name, or Machine.Event.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?$"
     },
     "stateId": {
       "description": "Absolute dotted path of a state, starting with the machine name.",
@@ -58,12 +63,19 @@
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path"],
+      "required": ["path", "package"],
       "properties": {
         "path": {
-          "description": "Relative to the project root, with / separators.",
+          "description": "With / separators: relative to the project root, or to the package's root for a file of another package.",
           "type": "string",
           "pattern": "^[^/\\\\][^\\\\]*$"
+        },
+        "package": {
+          "description": "The package the file belongs to, or null for a file of the project.",
+          "oneOf": [
+            { "type": "string", "pattern": "^(@[^/@\\s]+/)?[^/@\\s]+$" },
+            { "type": "null" }
+          ]
         }
       }
     },
@@ -192,7 +204,7 @@
     "machine": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["doc", "span", "params", "returns", "errors", "vars", "events", "root", "hash"],
+      "required": ["doc", "span", "params", "returns", "errors", "vars", "events", "emits", "root", "hash"],
       "properties": {
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" },
@@ -201,6 +213,11 @@
         "errors": { "$ref": "#/$defs/errors" },
         "vars": { "type": "array", "items": { "$ref": "#/$defs/var" } },
         "events": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/upperName" },
+          "additionalProperties": { "$ref": "#/$defs/eventDecl" }
+        },
+        "emits": {
           "type": "object",
           "propertyNames": { "$ref": "#/$defs/upperName" },
           "additionalProperties": { "$ref": "#/$defs/eventDecl" }
@@ -292,19 +309,42 @@
     "invoke": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "src", "args", "span"],
+      "required": ["kind", "src", "as", "args", "span"],
       "properties": {
         "kind": { "enum": ["task", "machine"] },
         "src": { "type": "string" },
+        "as": { "oneOf": [{ "$ref": "#/$defs/lowerName" }, { "type": "null" }] },
         "args": { "type": "array", "items": { "$ref": "#/$defs/expr" } },
         "span": { "$ref": "#/$defs/span" }
       },
       "allOf": [
         {
           "if": { "properties": { "kind": { "const": "task" } } },
-          "then": { "properties": { "src": { "$ref": "#/$defs/lowerName" } } },
+          "then": { "properties": { "src": { "$ref": "#/$defs/lowerName" }, "as": { "type": "null" } } },
           "else": { "properties": { "src": { "$ref": "#/$defs/upperName" } } }
         }
+      ]
+    },
+    "address": {
+      "description": "Another running machine: an invoked child by its as name, or a parameter or variable of type ref.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "name", "machine", "state"],
+      "properties": {
+        "kind": { "enum": ["child", "ref"] },
+        "name": { "$ref": "#/$defs/lowerName" },
+        "machine": { "$ref": "#/$defs/upperName" },
+        "state": { "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }] }
+      },
+      "if": { "properties": { "kind": { "const": "child" } } },
+      "then": { "properties": { "state": { "$ref": "#/$defs/stateId" } } },
+      "else": { "properties": { "state": { "type": "null" } } }
+    },
+    "eventValue": {
+      "description": "The value of a sent or emitted event: a record expression whose type is the event.",
+      "allOf": [
+        { "$ref": "#/$defs/expr" },
+        { "properties": { "kind": { "const": "record" }, "type": { "$ref": "#/$defs/eventType" } } }
       ]
     },
     "transition": {
@@ -327,6 +367,16 @@
           "additionalProperties": false,
           "required": ["kind", "event"],
           "properties": { "kind": { "const": "event" }, "event": { "$ref": "#/$defs/upperName" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "from", "event"],
+          "properties": {
+            "kind": { "const": "emitted" },
+            "from": { "$ref": "#/$defs/address" },
+            "event": { "$ref": "#/$defs/upperName" }
+          }
         },
         {
           "type": "object",
@@ -371,6 +421,27 @@
             "kind": { "const": "do" },
             "action": { "$ref": "#/$defs/lowerName" },
             "args": { "type": "array", "items": { "$ref": "#/$defs/expr" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "to", "event", "value"],
+          "properties": {
+            "kind": { "const": "send" },
+            "to": { "$ref": "#/$defs/address" },
+            "event": { "$ref": "#/$defs/upperName" },
+            "value": { "$ref": "#/$defs/eventValue" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "event", "value"],
+          "properties": {
+            "kind": { "const": "emit" },
+            "event": { "$ref": "#/$defs/upperName" },
+            "value": { "$ref": "#/$defs/eventValue" }
           }
         }
       ]
@@ -453,7 +524,7 @@
                 }
               }
             },
-            "type": { "$ref": "#/$defs/upperName" },
+            "type": { "$ref": "#/$defs/eventType" },
             "text": { "type": "string" }
           }
         },

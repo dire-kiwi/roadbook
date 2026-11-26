@@ -1,0 +1,26 @@
+machine Child() {
+  initial A
+  state A {}
+}
+
+machine Watcher(child: ref Child) {
+  initial A
+  state A {}
+}
+
+machine M() {
+  initial A
+  state A {
+    invoke Child() as child {
+      done -> A
+    }
+    initial Inner
+    state Inner {
+      invoke Watcher(child) {
+        done -> Inner
+      }
+    }
+  }
+}
+
+// expect: RB0105 at 19:22

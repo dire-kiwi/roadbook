@@ -197,6 +197,11 @@ impl<'a> Gen<'a> {
                 let e = self.ty(e, sup);
                 quote!(::core::option::Option<#e>)
             }
+            TypeRef::Ref(_) => {
+                quote!(::core::compile_error!(
+                    "`ref` types are not supported by roadbook::include! yet"
+                ))
+            }
         }
     }
 
@@ -215,6 +220,7 @@ impl<'a> Gen<'a> {
                 Some(TypeDef::Alias { ty }) if depth < 64 => self.is_wire_at(ty, depth + 1),
                 _ => false,
             },
+            TypeRef::Ref(_) => false,
         }
     }
 
@@ -242,6 +248,7 @@ impl<'a> Gen<'a> {
                 Some(TypeDef::Alias { ty }) if depth < 64 => self.by_value(ty, depth + 1),
                 _ => false,
             },
+            TypeRef::Ref(_) => false,
         }
     }
 
@@ -1289,6 +1296,7 @@ impl Uses {
                 self.actions.insert(action.clone());
                 args.iter().for_each(|a| self.expr(a));
             }
+            Effect::Send { value, .. } | Effect::Emit { value, .. } => self.expr(value),
         }
     }
 

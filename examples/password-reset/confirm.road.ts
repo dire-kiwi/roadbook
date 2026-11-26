@@ -76,13 +76,15 @@ export interface ConfirmPasswordResetDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "examples/password-reset/confirm.road"
+      "path": "examples/password-reset/confirm.road",
+      "package": null
     },
     {
-      "path": "examples/password-reset/types.road"
+      "path": "examples/password-reset/types.road",
+      "package": null
     }
   ],
   "types": {
@@ -443,6 +445,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "emits": {},
       "root": {
         "id": "ConfirmPasswordReset",
         "name": "ConfirmPasswordReset",
@@ -490,6 +493,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "findResetToken",
+                  "as": null,
                   "args": [
                     {
                       "kind": "ref",
@@ -685,6 +689,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "hashPassword",
+                  "as": null,
                   "args": [
                     {
                       "kind": "ref",
@@ -756,6 +761,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "updatePassword",
+                  "as": null,
                   "args": [
                     {
                       "kind": "ref",
@@ -1152,7 +1158,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:20bd49dbec903392a9feaaf59acaa1462653e880c2b4abaddc38ff111dee26b9"
+      "hash": "sha256:45f130d1f03f1b3519e81af06926eac3dfe281e78e724cead4f2c509a8d6e221"
     }
   }
 }

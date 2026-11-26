@@ -91,6 +91,7 @@ fn is_item_start(k: T) -> bool {
         T::Keyword(
             K::Var
                 | K::Event
+                | K::Emits
                 | K::Initial
                 | K::State
                 | K::Final
@@ -696,6 +697,14 @@ impl Parser<'_> {
         let t = self.tok();
         let kind = match t.kind {
             T::Upper => TypeKind::Named(self.bump_ident()),
+            T::Lower if self.text(t) == "ref" && self.nth(1) == T::Upper => {
+                self.bump();
+                TypeKind::Ref(self.bump_ident())
+            }
+            T::Lower if self.text(t) == "ref" => {
+                self.bump();
+                return Err(self.unexpected("the name of a machine after `ref`"));
+            }
             T::Lower => {
                 self.bump();
                 let id = self.ident(t);
@@ -711,7 +720,10 @@ impl Parser<'_> {
             }
             _ => return Err(self.unexpected("a type")),
         };
-        let mut ty = TypeRef { kind, span: t.span };
+        let mut ty = TypeRef {
+            kind,
+            span: t.span.to(self.prev()),
+        };
         let base = self.depth;
         loop {
             if matches!(self.peek(), T::Punct(P::LBracket | P::Question)) {
@@ -785,7 +797,7 @@ impl Parser<'_> {
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
-                    "a machine item (`var`, `event`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`) or `}`"
+                    "a machine item (`var`, `event`, `emits`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`) or `}`"
                 }
                 BodyKind::State => {
                     "a state item (`initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
@@ -793,11 +805,12 @@ impl Parser<'_> {
             };
             return Err(self.unexpected(expected));
         };
-        let machine_only = matches!(k, K::Var | K::Event);
+        let machine_only = matches!(k, K::Var | K::Event | K::Emits);
         let state_only = matches!(k, K::Done | K::Invoke | K::Output | K::Fail);
         let item = match k {
             K::Var => Item::Var(self.var()?),
             K::Event => Item::Event(self.event()?),
+            K::Emits => Item::Emits(self.event()?),
             K::Initial => {
                 self.bump();
                 Item::Initial(self.upper("the name of the initial state")?)
@@ -807,7 +820,8 @@ impl Parser<'_> {
                 self.bump();
                 let effects = self.effects()?;
                 if effects.is_empty() {
-                    let expected = format!("`set` or `do` after `{}`", self.text(t));
+                    let expected =
+                        format!("`set`, `do`, `send` or `emit` after `{}`", self.text(t));
                     return Err(self.unexpected(&expected));
                 }
                 let hook = Hook {
@@ -822,8 +836,16 @@ impl Parser<'_> {
             }
             K::On => {
                 self.bump();
-                let pattern = self.pattern("an event name or `*`")?;
-                Item::Transition(self.transition(t.span, Trigger::On(pattern))?)
+                let trigger = if self.at(T::Lower) && self.nth(1) == T::Punct(P::Dot) {
+                    let from = self.bump_ident();
+                    self.bump();
+                    let event =
+                        self.upper(&format!("the name of an event `{}` emits", from.name))?;
+                    Trigger::Receive { from, event }
+                } else {
+                    Trigger::On(self.pattern("an event name, `*` or `name.Event`")?)
+                };
+                Item::Transition(self.transition(t.span, trigger)?)
             }
             K::After => {
                 self.bump();
@@ -855,7 +877,8 @@ impl Parser<'_> {
                     T::Upper => {
                         matches!(
                             self.nth(1),
-                            T::Punct(P::Arrow) | T::Keyword(K::If | K::Set | K::Do)
+                            T::Punct(P::Arrow)
+                                | T::Keyword(K::If | K::Set | K::Do | K::Send | K::Emit)
                         ) || self.nth(1) == T::Punct(P::LBrace)
                             && matches!(self.nth(2), T::Keyword(K::If | K::Else))
                     }
@@ -889,7 +912,7 @@ impl Parser<'_> {
         let word = self.text(t).to_string();
         if kind == BodyKind::State && machine_only {
             let d = Diagnostic::error(codes::NOT_IN_STATE, t.span, format!("`{word}` is only allowed directly in a machine body"))
-                .with_help(format!("move the `{word}` to the top of the machine; a machine's variables and events are shared by all its states"));
+                .with_help(format!("move the `{word}` to the top of the machine; a machine's variables and events belong to all its states"));
             self.error(d);
             return Ok(None);
         }
@@ -1058,7 +1081,7 @@ impl Parser<'_> {
                     seen_else = true;
                     self.action(t.span, None, t.span)
                 }
-                T::Punct(P::Arrow) | T::Keyword(K::Set | K::Do) => {
+                T::Punct(P::Arrow) | T::Keyword(K::Set | K::Do | K::Send | K::Emit) => {
                     let d = Diagnostic::error(
                         codes::MALFORMED_BRANCH_BLOCK,
                         t.span,
@@ -1101,12 +1124,12 @@ impl Parser<'_> {
         let effects = self.effects()?;
         if target.is_none() && effects.is_empty() {
             let msg = format!(
-                "a transition must do something: expected `-> Target`, `set` or `do`, found {}",
+                "a transition must do something: expected `-> Target`, `set`, `do`, `send` or `emit`, found {}",
                 self.found()
             );
             let d = Diagnostic::error(codes::TRANSITION_DOES_NOTHING, self.tok().span, msg)
                 .with_secondary(trigger, "this transition")
-                .with_help("give it a target (`-> State`), assignments (`set x = …`) or actions (`do f(…)`)");
+                .with_help("give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`) or messages (`send child.Event`, `emit Event`)");
             self.error(d);
             return Err(Fail);
         }
@@ -1127,10 +1150,25 @@ impl Parser<'_> {
         Ok(Target { path, span })
     }
 
-    /// Zero or more `set …` and `do …` clauses.
+    /// Zero or more `set …`, `do …`, `send …` and `emit …` clauses.
     fn effects(&mut self) -> PResult<Vec<Effect>> {
         let mut out = Vec::new();
         loop {
+            if let Some(kw) = self.eat_kw(K::Send) {
+                let to = self.lower("the name of the machine to send to")?;
+                self.expect_p(
+                    P::Dot,
+                    &format!(" and the event to send after `send {}`", to.name),
+                )?;
+                let event = self.upper("an event name")?;
+                out.push(Effect::Send(self.message(kw.span, Some(to), event)?));
+                continue;
+            }
+            if let Some(kw) = self.eat_kw(K::Emit) {
+                let event = self.upper("the name of an event the machine emits")?;
+                out.push(Effect::Emit(self.message(kw.span, None, event)?));
+                continue;
+            }
             if self.eat_kw(K::Set).is_some() {
                 loop {
                     let var = self.lower("a variable name")?;
@@ -1157,6 +1195,33 @@ impl Parser<'_> {
                 return Ok(out);
             }
         }
+    }
+
+    /// The rest of a `send` or `emit`: the optional record body after the event's name.
+    fn message(&mut self, start: Span, to: Option<Ident>, event: Ident) -> PResult<Message> {
+        let mut fields = Vec::new();
+        if self.at_p(P::LBrace) {
+            let what = format!("the fields of `{}`", event.name);
+            fields = self.list(P::LBrace, &what, |p| p.field_value())?.0;
+        }
+        Ok(Message {
+            to,
+            value_span: event.span.to(self.prev()),
+            event,
+            fields,
+            span: self.since(start),
+        })
+    }
+
+    fn field_value(&mut self) -> PResult<FieldValue> {
+        let name = self.lower("a field name")?;
+        self.expect_p(P::Colon, &format!(" after the field name `{}`", name.name))?;
+        let value = self.expr(false)?;
+        Ok(FieldValue {
+            span: name.span.to(value.span),
+            name,
+            value,
+        })
     }
 
     /// In `set` and `do` lists: eat a comma, and say whether another element follows (a
@@ -1192,6 +1257,12 @@ impl Parser<'_> {
             return Err(self.unexpected(&format!("`(` and the arguments of `{}`", callee.name)));
         }
         let (args, _) = self.list(P::LParen, "the argument list", |p| p.expr(false))?;
+        let alias = if self.at(T::Lower) && self.text(self.tok()) == "as" {
+            self.bump();
+            Some(self.binding("the name of the invoked machine")?)
+        } else {
+            None
+        };
         let open = self.expect_p(P::LBrace, " and the invoke's outcomes (`done`, `fail`)")?;
         let mut outcomes = Vec::new();
         let errors_before = self.diags.len();
@@ -1226,6 +1297,7 @@ impl Parser<'_> {
         Ok(Invoke {
             callee,
             args,
+            alias,
             outcomes,
             span: self.since(start),
         })
@@ -1440,14 +1512,7 @@ impl Parser<'_> {
                 }
                 let (fields, span) =
                     self.list(P::LBrace, &format!("the record value `{}`", ty.name), |p| {
-                        let name = p.lower("a field name")?;
-                        p.expect_p(P::Colon, &format!(" after the field name `{}`", name.name))?;
-                        let value = p.expr(false)?;
-                        Ok(FieldValue {
-                            span: name.span.to(value.span),
-                            name,
-                            value,
-                        })
+                        p.field_value()
                     })?;
                 return Ok(Expr {
                     span: t.span.to(span),

@@ -62,16 +62,24 @@ impl Builtin {
 /// `Display` and `FromStr` convert to and from that string, and
 /// `parse(display(t)) == t` for every `t`.
 ///
-/// Milestone 5 adds `ref Name` (a handle to a running machine). It will be a
-/// new variant, written `ref Name` with the same suffix rules.
+/// `ref Name` is a handle to a running machine `Name`, with the same suffix
+/// rules: `ref Inventory[]` is a list of handles. It is the one form with a
+/// space.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeRef {
     /// A built-in type such as `int`.
     Builtin(Builtin),
-    /// A declared type, error or extern type, by name (`Order`). Inside a
-    /// machine the bare `event` value of an `on` transition has the event's
-    /// name as its type, which names an entry in the machine's `events`.
+    /// A declared type, error or extern type, by name (`Order`).
+    ///
+    /// Event types are named here too. Inside a machine, the bare name of one
+    /// of its own events or emitted events (`Cancel`, `Progress`) is that
+    /// event: the type of `event` in `on Cancel`, of the value of
+    /// `emit Progress { … }`. A dotted name `Machine.Event` (`Upload.Pause`)
+    /// is an event of another machine: the type of `event` in
+    /// `on upload.Progress`, of the value of `send upload.Pause`.
     Named(String),
+    /// `ref Name`: a handle to a running machine, a key of `machines`.
+    Ref(String),
     /// `T[]`
     List(Box<TypeRef>),
     /// `T?`
@@ -102,10 +110,19 @@ impl TypeRef {
         }
     }
 
-    /// The declared name this type refers to, if its base is not a built-in.
+    /// The declared name this type refers to, if its base is a declared type
+    /// (not a built-in or a `ref`).
     pub fn named_base(&self) -> Option<&str> {
         match self.base() {
             TypeRef::Named(n) => Some(n),
+            _ => None,
+        }
+    }
+
+    /// The machine a `ref` names, if the base of this type is a `ref`.
+    pub fn ref_base(&self) -> Option<&str> {
+        match self.base() {
+            TypeRef::Ref(n) => Some(n),
             _ => None,
         }
     }
@@ -122,6 +139,7 @@ impl fmt::Display for TypeRef {
         match self {
             TypeRef::Builtin(b) => f.write_str(b.name()),
             TypeRef::Named(n) => f.write_str(n),
+            TypeRef::Ref(n) => write!(f, "ref {n}"),
             TypeRef::List(t) => write!(f, "{t}[]"),
             TypeRef::Optional(t) => write!(f, "{t}?"),
         }
@@ -138,8 +156,9 @@ impl fmt::Display for TypeRefError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "`{}` is not a type: expected a built-in (string, int, float, bool, duration, json) \
-             or an upper-case name, followed by any number of `[]` and `?`",
+            "`{}` is not a type: expected a built-in (string, int, float, bool, duration, json), \
+             an upper-case name, `Machine.Event` or `ref Machine`, followed by any number of \
+             `[]` and `?`",
             self.input
         )
     }
@@ -161,13 +180,27 @@ impl FromStr for TypeRef {
         let err = || TypeRefError {
             input: s.to_owned(),
         };
-        let base_len = s
-            .find(|c: char| !c.is_ascii_alphanumeric())
-            .unwrap_or(s.len());
-        let (base, mut rest) = s.split_at(base_len);
-        let mut t = if let Some(b) = Builtin::from_name(base) {
+        let (is_ref, body) = match s.strip_prefix("ref ") {
+            Some(rest) => (true, rest),
+            None => (false, s),
+        };
+        let base_len = body
+            .find(|c: char| !c.is_ascii_alphanumeric() && c != '.')
+            .unwrap_or(body.len());
+        let (base, mut rest) = body.split_at(base_len);
+        let mut t = if is_ref {
+            if !is_upper_name(base) {
+                return Err(err());
+            }
+            TypeRef::Ref(base.to_owned())
+        } else if let Some(b) = Builtin::from_name(base) {
             TypeRef::Builtin(b)
         } else if is_upper_name(base) {
+            TypeRef::Named(base.to_owned())
+        } else if let Some((m, e)) = base.split_once('.')
+            && is_upper_name(m)
+            && is_upper_name(e)
+        {
             TypeRef::Named(base.to_owned())
         } else {
             return Err(err());
@@ -216,6 +249,9 @@ mod tests {
             "string[]?",
             "string?[]",
             "A1[][]",
+            "ref Inventory",
+            "ref Inventory[]?",
+            "Upload.Progress",
         ] {
             let t: TypeRef = s.parse().unwrap();
             assert_eq!(t.to_string(), s);
@@ -228,6 +264,10 @@ mod tests {
             "Order[]".parse::<TypeRef>().unwrap().named_base(),
             Some("Order")
         );
+        let r = "ref Inventory[]".parse::<TypeRef>().unwrap();
+        assert_eq!(r, TypeRef::Ref("Inventory".into()).list());
+        assert_eq!(r.ref_base(), Some("Inventory"));
+        assert_eq!(r.named_base(), None);
     }
 
     #[test]
@@ -239,7 +279,13 @@ mod tests {
             "Order[",
             "[]",
             "?",
-            "ref Order",
+            "ref order",
+            "ref  Order",
+            "ref int",
+            "ref Order.Event",
+            "Order.",
+            "Order.event",
+            "A.B.C",
             "int!",
             "Or_der",
         ] {

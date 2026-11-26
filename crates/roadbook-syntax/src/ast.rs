@@ -191,6 +191,8 @@ pub enum TypeKind {
     List(Box<TypeRef>),
     /// `T?`
     Optional(Box<TypeRef>),
+    /// `ref Machine`: a handle to a running machine.
+    Ref(Ident),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -264,6 +266,15 @@ impl Body {
             }
         })
     }
+    pub fn emits(&self) -> impl Iterator<Item = &EventDecl> {
+        self.items.iter().filter_map(|i| {
+            if let Item::Emits(e) = i {
+                Some(e)
+            } else {
+                None
+            }
+        })
+    }
     pub fn initials(&self) -> impl Iterator<Item = &Ident> {
         self.items.iter().filter_map(|i| {
             if let Item::Initial(n) = i {
@@ -317,13 +328,15 @@ impl Body {
     }
 }
 
-/// An item of a machine or state body. `Var` and `Event` occur only in a machine body;
-/// `Invoke`, `Output`, `Fail` and `done` transitions only in a state.
+/// An item of a machine or state body. `Var`, `Event` and `Emits` occur only in a machine
+/// body; `Invoke`, `Output`, `Fail` and `done` transitions only in a state.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Item {
     Var(Var),
     Event(EventDecl),
+    /// `emits Name [{ fields }]`
+    Emits(EventDecl),
     /// `initial Name`
     Initial(Ident),
     State(State),
@@ -341,7 +354,7 @@ impl Item {
     pub fn span(&self) -> Span {
         match self {
             Item::Var(v) => v.span,
-            Item::Event(e) => e.span,
+            Item::Event(e) | Item::Emits(e) => e.span,
             Item::Initial(n) => n.span,
             Item::State(s) => s.span,
             Item::Entry(h) | Item::Exit(h) => h.span,
@@ -364,7 +377,7 @@ pub struct Var {
     pub span: Span,
 }
 
-/// `event Name [{ fields }]`
+/// `event Name [{ fields }]`, or `emits Name [{ fields }]`
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct EventDecl {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -432,6 +445,11 @@ pub struct Transition {
 pub enum Trigger {
     /// `on Event` or `on *`
     On(Pattern),
+    /// `on name.Event`: an event emitted by an invoked child or a `ref`.
+    Receive {
+        from: Ident,
+        event: Ident,
+    },
     /// `after expr`
     After(Expr),
     Always,
@@ -511,6 +529,10 @@ pub struct Target {
 pub enum Effect {
     Set(Assign),
     Do(Call),
+    /// `send name.Event [{ fields }]`
+    Send(Message),
+    /// `emit Event [{ fields }]`
+    Emit(Message),
 }
 
 impl Effect {
@@ -518,8 +540,26 @@ impl Effect {
         match self {
             Effect::Set(a) => a.span,
             Effect::Do(c) => c.span,
+            Effect::Send(m) | Effect::Emit(m) => m.span,
         }
     }
+}
+
+/// The event of a `send` or `emit`: `upload.Pause`, `Progress { percent: p }`.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Message {
+    /// The receiver of a `send`; `None` for an `emit`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub to: Option<Ident>,
+    pub event: Ident,
+    /// The fields of the record body, in the order written. Empty without a body.
+    pub fields: Vec<FieldValue>,
+    /// From the event's name to the end of the body: the event value.
+    #[serde(skip)]
+    pub value_span: Span,
+    /// After `send` or `emit`, to the end.
+    #[serde(skip)]
+    pub span: Span,
 }
 
 /// `var = expr`
@@ -545,6 +585,9 @@ pub struct Call {
 pub struct Invoke {
     pub callee: Ident,
     pub args: Vec<Expr>,
+    /// `as name`: the name the state uses to talk to the invoked machine.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alias: Option<Ident>,
     /// `done` and `fail` transitions, in source order.
     pub outcomes: Vec<Transition>,
     #[serde(skip)]

@@ -1,8 +1,9 @@
 {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "packages/viewer/test/charts/edges.road"
+      "path": "packages/viewer/test/charts/edges.road",
+      "package": null
     }
   ],
   "types": {},
@@ -74,6 +75,7 @@
           }
         }
       },
+      "emits": {},
       "root": {
         "id": "OnlyRoot",
         "name": "OnlyRoot",
@@ -192,7 +194,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:139c56791c9e9e8ec396e3629575681565057d2076fbc4024af676af2addc84e"
+      "hash": "sha256:5d921e35768548ccd8bc90fa1b926b61c59842db5f229a406805a3a880018d8e"
     },
     "Note": {
       "doc": "States Mermaid would read as keywords.",
@@ -220,6 +222,7 @@
           }
         }
       },
+      "emits": {},
       "root": {
         "id": "Note",
         "name": "Note",
@@ -731,7 +734,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:e751f940b400007b507399c94bb381a57d0499ae00874b33377270e609aa0367"
+      "hash": "sha256:8c034c6541160c3e8e0033968ddb0b8bc9731f3d760a7b1b7ee72b7d2f8b3ede"
     },
     "Same": {
       "doc": "A state named like its machine, which has transitions of its own.",
@@ -759,6 +762,7 @@
           }
         }
       },
+      "emits": {},
       "root": {
         "id": "Same",
         "name": "Same",
@@ -859,7 +863,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:34eff9a1b5d852cb922dc2d9fe5e623e9fc83451f71fdeb080c217e0fba07c5c"
+      "hash": "sha256:833720a5b68648e8db2b9544d5fd67fb20d416b63d48da6f9fe7f6124133974a"
     },
     "Rows": {
       "doc": "Containers with an invoke, entry, exit and internal transitions, and labels with syntax.",
@@ -917,6 +921,7 @@
           }
         }
       },
+      "emits": {},
       "root": {
         "id": "Rows",
         "name": "Rows",
@@ -1091,6 +1096,7 @@
             "invoke": {
               "kind": "task",
               "src": "work",
+              "as": null,
               "args": [
                 {
                   "kind": "ref",
@@ -1189,7 +1195,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:f24511b741ad6342d300baf25e337a89b13d4a02e93185e654c71af3246f4bc2"
+      "hash": "sha256:5c270bc52d22586036fcf246f2ee8ae16b443d8f13f47c90510d3442ef7bc811"
     }
   }
 }

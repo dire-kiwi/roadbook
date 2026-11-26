@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0304]: `event Reserved` has no field `qty`
+ --> RB0304-messaging-fields.road:6:38
+  |
+6 |     on Reserve -> A  emit Reserved { qty: 1 }
+  |                                      ^^^
+  |
+  = help: `event Reserved` has no fields
+
+error[RB0304]: `event Peer.Reserve` has no field `sku`
+  --> RB0304-messaging-fields.road:13:39
+   |
+13 |     entry send peer.Reserve { qty: 1, sku: "x" }
+   |                                       ^^^
+   |
+   = help: its fields are qty
