@@ -1305,13 +1305,11 @@ impl Parser<'_> {
         }
     }
 
-    /// `spawn` and `stop` are not reserved: they start an effect only as `spawn name[` and
-    /// `stop name[`, where no expression or name can continue.
+    /// `spawn` and `stop` are not reserved: they start an effect only where an effect can
+    /// start, followed by a name (`spawn name[`, `stop name[`). No expression or other item
+    /// can go on with a lower-case name there, so a missing `[` is reported as such.
     fn at_contextual(&self, word: &str) -> bool {
-        self.at(T::Lower)
-            && self.text(self.tok()) == word
-            && self.nth(1) == T::Lower
-            && self.nth(2) == T::Punct(P::LBracket)
+        self.at(T::Lower) && self.text(self.tok()) == word && self.nth(1) == T::Lower
     }
 
     /// `[expr]`: the key of a spawned child.
