@@ -222,6 +222,22 @@ fn always_cycles(tree: &Tree<'_>, info: &MachineInfo, diags: &mut Vec<Diagnostic
                     );
                 }
             }
+            Some(to) if id == tree.root => {
+                // The machine itself is never left, so its `always` is taken again after every
+                // step, unless the machine has finished.
+                let ends = tree.parent.get(to) == Some(&tree.root)
+                    && tree.states.get(to).is_some_and(|t| t.kind == StateKind::Final);
+                if !ends && let Some(span) = trigger_span(id, i) {
+                    diags.push(
+                        Diagnostic::error(
+                            codes::ALWAYS_CYCLE,
+                            span,
+                            format!("`always` with no guard in the body of `{id}` is taken again and again: the machine is never left, so it never settles"),
+                        )
+                        .with_help("give it a guard that its own effects make false, or move it into a state"),
+                    );
+                }
+            }
             Some(to) => {
                 if let Some((&to, _)) = tree.states.get_key_value(to) {
                     nodes.push(id);
