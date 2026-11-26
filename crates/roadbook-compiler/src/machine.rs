@@ -576,7 +576,14 @@ impl<'p> Cx<'_, 'p> {
                 "add `initial {first_child}` to say which child is entered first"
             ));
             if let Some(item) = body.items.first() {
-                let at = item.span().shrink_to_start();
+                // Before the item's doc comment, which must stay with the item.
+                let doc = match item {
+                    Item::State(s) => s.doc.as_ref(),
+                    Item::Var(v) => v.doc.as_ref(),
+                    Item::Event(e) => e.doc.as_ref(),
+                    _ => None,
+                };
+                let at = doc.map_or(item.span(), |d| d.span).shrink_to_start();
                 let indent = " ".repeat(at.start.col.saturating_sub(1) as usize);
                 d = d.with_fix(
                     format!("add `initial {first_child}`"),

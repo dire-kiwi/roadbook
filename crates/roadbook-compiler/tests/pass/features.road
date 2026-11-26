@@ -88,6 +88,7 @@ machine Features(id: UserId, level: Level, ratio: float) -> string ! Broken | Go
     }
     state Paying {
       entry do charge(money(attempts * 100))
+      on Add do log(describe(event))
       invoke Job(id) {
         done        -> Saving  set score = result
         fail Broken -> Collecting
