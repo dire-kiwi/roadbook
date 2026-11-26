@@ -1,0 +1,14 @@
+// An `as` name of an invoke whose machine is unknown is in scope, but nothing is checked
+// against it: no RB0116 or RB0117 on top of RB0102.
+machine Kid() { event Poke  emits Hi  initial A  state A { on Poke -> A  emit Hi } }
+machine M() {
+  event Go
+  initial A
+  state A {
+    invoke Kd() as k { done -> A }
+    on Go send k.Poke
+    on k.Hi -> A
+  }
+}
+
+// expect: RB0102 at 8:12

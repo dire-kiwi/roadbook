@@ -1197,3 +1197,159 @@ fn gen_rejects_an_error_field_its_class_cannot_have() {
     assert!(!dir.join("w.road.ts").exists());
     assert!(dir.join("ok.road.ts").exists());
 }
+
+/// The modules `roadbook gen` writes import other packages' modules where they are: through
+/// `exports` and from an absolute directory for `[packages]`, by the specifier `exports` maps
+/// to the module for `node_modules`, and between two packages that import each other. They
+/// typecheck with `tsc` (skipped, with a note, if `pnpm install` has not been run).
+#[cfg(unix)]
+#[test]
+fn gen_imports_other_packages_modules_where_they_are() {
+    let order = "\
+import { Inv } from \"@shop/inv/inv.road\"
+import { Item } from \"@shop/inv/types.road\"
+import { Stock } from \"stock/stock.road\"
+import { Far } from \"far/far.road\"
+import { A } from \"a/a.road\"
+
+machine Order(item: Item, i: ref Inv, s: ref Stock, f: ref Far, a: ref A) {
+  initial Done
+  final state Done {}
+}
+";
+    let peer = |name: &str, other: &str| {
+        format!(
+            "import {{ {other} }} from \"{}/{}.road\"\n\nmachine {name}(peer: ref {other}) {{\n  \
+             event Poke\n  emits Poked\n\n  initial X\n  state X {{\n    on Poke -> X  emit Poked\n    \
+             on peer.Poked -> X\n  }}\n}}\n",
+            other.to_lowercase(),
+            other.to_lowercase()
+        )
+    };
+    let leaf = |name: &str| format!("machine {name}() {{\n  initial X\n  final state X {{}}\n}}\n");
+    let (a, b, inv, stock, far) = (
+        peer("A", "B"),
+        peer("B", "A"),
+        format!("import {{ Item }} from \"./types.road\"\n\n{}", leaf("Inv")),
+        leaf("Stock"),
+        leaf("Far"),
+    );
+    let dir = project(
+        "gen-packages",
+        &[
+            ("app/order.road", order),
+            ("a/a.road", &a),
+            ("b/b.road", &b),
+            ("pkgs/inv/charts/inv.road", &inv),
+            ("pkgs/inv/charts/types.road", "type Item { sku: string }\n"),
+            (
+                "pkgs/inv/package.json",
+                r#"{ "name": "@shop/inv", "type": "module", "exports": { ".": "./index.js", "./*.road": "./charts/*.road", "./*.road.js": "./charts/*.road.js" } }"#,
+            ),
+            ("libs/stock/src/stock.road", &stock),
+            (
+                "libs/stock/package.json",
+                r#"{ "name": "stock", "type": "module", "exports": { "./*.road": "./src/*.road" } }"#,
+            ),
+            ("package.json", r#"{ "type": "module" }"#),
+        ],
+    );
+    let outside = dir.with_file_name(format!(
+        "{}-outside",
+        dir.file_name().unwrap().to_string_lossy()
+    ));
+    let _ = std::fs::remove_dir_all(&outside);
+    std::fs::create_dir_all(outside.join("far")).unwrap();
+    std::fs::write(outside.join("roadbook.toml"), "").unwrap();
+    std::fs::write(outside.join("package.json"), r#"{ "type": "module" }"#).unwrap();
+    std::fs::write(outside.join("far/far.road"), far).unwrap();
+    std::fs::create_dir_all(dir.join("node_modules/@shop")).unwrap();
+    std::os::unix::fs::symlink("../../pkgs/inv", dir.join("node_modules/@shop/inv")).unwrap();
+    std::fs::write(
+        dir.join("roadbook.toml"),
+        format!(
+            "[packages]\nstock = \"libs/stock\"\nfar = \"{}\"\na = \"a\"\nb = \"b\"\n",
+            outside.join("far").display()
+        ),
+    )
+    .unwrap();
+
+    let out = roadbook(&outside, &["gen"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let out = roadbook(&dir, &["gen"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let module = |path: &str| std::fs::read_to_string(dir.join(path)).unwrap();
+    let imports = |code: String| -> Vec<String> {
+        code.lines()
+            .filter(|l| l.starts_with("import ") && l.contains(".road.js"))
+            .map(str::to_owned)
+            .collect()
+    };
+    let outside_name = outside.file_name().unwrap().to_string_lossy().into_owned();
+    assert_eq!(
+        imports(module("app/order.road.ts")),
+        [
+            "import { type InvDef } from \"@shop/inv/inv.road.js\"".to_owned(),
+            "import { Item } from \"@shop/inv/types.road.js\"".to_owned(),
+            "import { type StockDef } from \"../libs/stock/src/stock.road.js\"".to_owned(),
+            format!("import {{ type FarDef }} from \"../../{outside_name}/far/far.road.js\""),
+            "import { type ADef } from \"../a/a.road.js\"".to_owned(),
+        ]
+    );
+    assert_eq!(
+        imports(module("a/a.road.ts")),
+        ["import { type BDef } from \"../b/b.road.js\""]
+    );
+    assert_eq!(
+        imports(module("b/b.road.ts")),
+        ["import { type ADef } from \"../a/a.road.js\""]
+    );
+
+    let tsc = repo().join("packages/effect/node_modules/.bin/tsc");
+    if tsc.exists() {
+        std::fs::write(
+            dir.join("tsconfig.json"),
+            format!(
+                r#"{{ "extends": "{}", "compilerOptions": {{ "types": [] }}, "include": ["app/*.road.ts", "a/*.road.ts", "b/*.road.ts"] }}"#,
+                repo().join("packages/effect/tsconfig.json").display()
+            ),
+        )
+        .unwrap();
+        let out = Command::new(&tsc)
+            .args(["-p", "tsconfig.json", "--noEmit"])
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "tsc:\n{}{}",
+            text(&out.stdout),
+            text(&out.stderr)
+        );
+    } else {
+        eprintln!(
+            "note: {} is missing (run `pnpm install`); not typechecked",
+            tsc.display()
+        );
+    }
+
+    // A package in `node_modules` that does not export the generated modules is an error:
+    // the import could not be resolved.
+    std::fs::write(
+        dir.join("pkgs/inv/package.json"),
+        r#"{ "name": "@shop/inv", "exports": { "./*.road": "./charts/*.road" } }"#,
+    )
+    .unwrap();
+    let out = roadbook(&dir, &["gen", "--check", "app"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        text(&out.stderr).contains(
+            "cannot import the generated module of `@shop/inv/inv.road`: its `package.json` \
+             `exports` maps no subpath to `./charts/inv.road.js`"
+        ),
+        "{}",
+        text(&out.stderr)
+    );
+    let _ = std::fs::remove_dir_all(&outside);
+    let _ = std::fs::remove_dir_all(&dir);
+}

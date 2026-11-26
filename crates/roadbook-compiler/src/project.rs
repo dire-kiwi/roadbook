@@ -2,6 +2,7 @@
 //! already compiled IR stands for (see [`Loaded::Compiled`]).
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use indexmap::IndexMap;
 use roadbook_ir as ir;
@@ -54,7 +55,10 @@ pub(crate) struct Project {
     /// For each compiled IR loaded, the indices of the files its sources are, in order. The
     /// names declared in any of them are in scope in each of them.
     pub groups: Vec<Vec<usize>>,
+    /// Each file by every name it has been reached by.
     by_path: HashMap<FileRef, usize>,
+    /// Each file by its [`Loader::location`], if the loader gives one.
+    by_location: HashMap<PathBuf, usize>,
 }
 
 /// A root file that could not be read.
@@ -85,11 +89,12 @@ impl Project {
             diagnostics: Vec::new(),
             groups: Vec::new(),
             by_path: HashMap::new(),
+            by_location: HashMap::new(),
         };
         for root in roots {
             let file = FileRef::project(root);
-            let index = match p.by_path.get(&file) {
-                Some(&i) => i,
+            let index = match p.known(loader, &file) {
+                Some(i) => i,
                 None => {
                     let loaded = loader.load(&file).map_err(|reason| LoadError {
                         path: file.path.clone(),
@@ -127,7 +132,7 @@ impl Project {
             .imports()
             .map(|i| (i.path.value.clone(), i.path.span))
             .collect();
-        self.by_path.insert(file.clone(), index);
+        self.register(loader, &file, index);
         self.files.push(SourceFile {
             path: display(loader, &file),
             file: file.clone(),
@@ -181,13 +186,13 @@ impl Project {
                     path: normalize(&join(&file.path, &format!("./{rel}"))),
                 }
             };
-            if let Some(&idx) = self.by_path.get(&fref) {
+            if let Some(idx) = self.known(loader, &fref) {
                 map.push(idx);
                 new.push(false);
                 continue;
             }
             let idx = self.files.len();
-            self.by_path.insert(fref.clone(), idx);
+            self.register(loader, &fref, idx);
             self.files.push(SourceFile {
                 path: display(loader, &fref),
                 file: fref,
@@ -340,7 +345,7 @@ impl Project {
                 return None;
             }
         };
-        if let Some(&i) = self.by_path.get(&file) {
+        if let Some(i) = self.known(loader, &file) {
             return Some(i);
         }
         let shown = display(loader, &file);
@@ -370,6 +375,26 @@ impl Project {
                 self.diagnostics.push(failed(reason));
                 None
             }
+        }
+    }
+
+    /// The index of `file` if it is loaded already, under this name or another one for the same
+    /// location. A file keeps the name it was first reached by, in load order (the roots in
+    /// order, each followed depth first by what it imports): that is how the IR's `sources`
+    /// and diagnostics name it, and its own imports are resolved from it.
+    fn known(&mut self, loader: &dyn Loader, file: &FileRef) -> Option<usize> {
+        if let Some(&i) = self.by_path.get(file) {
+            return Some(i);
+        }
+        let i = *self.by_location.get(&loader.location(file)?)?;
+        self.by_path.insert(file.clone(), i);
+        Some(i)
+    }
+
+    fn register(&mut self, loader: &dyn Loader, file: &FileRef, index: usize) {
+        self.by_path.insert(file.clone(), index);
+        if let Some(location) = loader.location(file) {
+            self.by_location.entry(location).or_insert(index);
         }
     }
 
