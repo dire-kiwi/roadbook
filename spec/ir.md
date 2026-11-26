@@ -200,7 +200,7 @@ The outcomes written inside `invoke { … }` are transitions of the state, with 
 | --- | --- | --- |
 | `event` | `on Name` | `event`: the event's name, a key of the machine's `events`. |
 | `any` | `on *` | none. Matches any event for which the state has no `on`. |
-| `after` | `after delay` | `delay`: a `duration` expression, evaluated when the state is entered. |
+| `after` | `after delay` | `delay`: a `duration` expression, evaluated when the state's work starts, after the step that entered it has settled ([execution](execution.md#starting-work)). |
 | `always` | `always` | none. |
 | `done` | `done` in a state | none. The compound state reached a final child, or every region of the parallel state did. |
 | `invoke.done` | `done` inside `invoke { }` | none. The invoked task or machine succeeded. `result` is in scope. |
