@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.2) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.3) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -162,4 +162,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.2'
+export const IR_VERSION = '0.3'

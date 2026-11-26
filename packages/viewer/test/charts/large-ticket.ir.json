@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -76,21 +76,25 @@
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "customerId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "subject",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "priority",
           "type": "Priority",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -109,21 +113,25 @@
         {
           "name": "category",
           "type": "Category",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "priority",
           "type": "Priority",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "spamScore",
           "type": "float",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "duplicateOf",
           "type": "string?",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -142,11 +150,13 @@
         {
           "name": "answered",
           "type": "bool",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "score",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -165,21 +175,25 @@
         {
           "name": "ticketId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "reason",
           "type": "CloseReason",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "reopens",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "rating",
           "type": "int?",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -222,6 +236,7 @@
         {
           "name": "retryAfter",
           "type": "duration",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -265,6 +280,7 @@
         {
           "name": "c",
           "type": "Classification",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -283,6 +299,7 @@
         {
           "name": "c",
           "type": "Classification",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -301,6 +318,7 @@
         {
           "name": "attempt",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -319,6 +337,7 @@
         {
           "name": "p",
           "type": "Priority",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -337,6 +356,7 @@
         {
           "name": "p",
           "type": "Priority",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -355,16 +375,19 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "reason",
           "type": "CloseReason",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "reopens",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -383,16 +406,19 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "reopens",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "survey",
           "type": "SurveyResult",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -413,11 +439,13 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "template",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -435,16 +463,19 @@
         {
           "name": "agentId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "template",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -462,11 +493,13 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "tier",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -484,11 +517,13 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "body",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -506,11 +541,13 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "text",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -530,6 +567,7 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -551,11 +589,13 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "category",
           "type": "Category",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -577,6 +617,7 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -598,6 +639,7 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -617,6 +659,7 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -636,6 +679,7 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -657,6 +701,7 @@
         {
           "name": "surveyId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -688,6 +733,7 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -697,6 +743,7 @@
         {
           "name": "classification",
           "type": "Classification",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -710,6 +757,7 @@
         {
           "name": "priority",
           "type": "Priority",
+          "sensitive": false,
           "init": {
             "kind": "enum",
             "variant": "Normal",
@@ -728,6 +776,7 @@
         {
           "name": "category",
           "type": "Category",
+          "sensitive": false,
           "init": {
             "kind": "enum",
             "variant": "Other",
@@ -746,6 +795,7 @@
         {
           "name": "agentId",
           "type": "string",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -759,6 +809,7 @@
         {
           "name": "classifyAttempts",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -777,6 +828,7 @@
         {
           "name": "bugAttempts",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -795,6 +847,7 @@
         {
           "name": "retryWait",
           "type": "duration",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 60000,
@@ -813,6 +866,7 @@
         {
           "name": "bugId",
           "type": "string",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": "",
@@ -831,6 +885,7 @@
         {
           "name": "reopens",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -849,6 +904,7 @@
         {
           "name": "resolution",
           "type": "string",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -862,6 +918,7 @@
         {
           "name": "survey",
           "type": "SurveyResult",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -879,6 +936,7 @@
             {
               "name": "agentId",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -896,6 +954,7 @@
             {
               "name": "body",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -913,6 +972,7 @@
             {
               "name": "body",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -930,6 +990,7 @@
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1068,6 +1129,7 @@
             {
               "name": "ticketId",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -4164,6 +4226,7 @@
         {
           "name": "ticket",
           "type": "Ticket",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -4173,6 +4236,7 @@
         {
           "name": "surveyId",
           "type": "string",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -4186,6 +4250,7 @@
         {
           "name": "polls",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -4204,6 +4269,7 @@
         {
           "name": "score",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,

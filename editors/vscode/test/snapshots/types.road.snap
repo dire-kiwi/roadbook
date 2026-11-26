@@ -123,19 +123,20 @@
 >// Tasks: effectful, fallible, cancellable. Implemented in Rust / TypeScript.
 #^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook
 #  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.double-slash.roadbook
->task authenticate(token: string)          -> User    ! Unauthenticated
+>task authenticate(sensitive token: string) -> User    ! Unauthenticated
 #^^^^ meta.declaration.function.roadbook storage.type.task.roadbook
 #     ^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
 #                 ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
-#                  ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
-#                       ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
-#                         ^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
-#                               ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
-#                                          ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
-#                                             ^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
-#                                                     ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
-#                                                       ^^^^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
->task validateOrder(draft: OrderDraft)     -> Order   ! ValidationFailed
+#                  ^^^^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook storage.modifier.sensitive.roadbook
+#                            ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                 ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                   ^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                                         ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                           ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                              ^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+#                                                      ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
+#                                                        ^^^^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+>task validateOrder(draft: OrderDraft)      -> Order   ! ValidationFailed
 #^^^^ meta.declaration.function.roadbook storage.type.task.roadbook
 #     ^^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
 #                  ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
@@ -143,11 +144,11 @@
 #                        ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
 #                          ^^^^^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
 #                                    ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
-#                                          ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
-#                                             ^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
-#                                                     ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
-#                                                       ^^^^^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
->task priceOrder(order: Order, user: User) -> Order
+#                                           ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                              ^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+#                                                      ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
+#                                                        ^^^^^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+>task priceOrder(order: Order, user: User)  -> Order
 #^^^^ meta.declaration.function.roadbook storage.type.task.roadbook
 #     ^^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
 #               ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
@@ -159,9 +160,9 @@
 #                                  ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
 #                                    ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
 #                                        ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
-#                                          ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
-#                                             ^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
->task chargeCard(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUnavailable
+#                                           ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                              ^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+>task chargeCard(order: Order, user: User)  -> Receipt ! CardDeclined | GatewayUnavailable
 #^^^^ meta.declaration.function.roadbook storage.type.task.roadbook
 #     ^^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
 #               ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
@@ -173,12 +174,12 @@
 #                                  ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
 #                                    ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
 #                                        ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
-#                                          ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
-#                                             ^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
-#                                                     ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
-#                                                       ^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
-#                                                                    ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
-#                                                                      ^^^^^^^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+#                                           ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                              ^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+#                                                      ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
+#                                                        ^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+#                                                                     ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
+#                                                                       ^^^^^^^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
 >
 >// Actions: effectful, cannot fail, awaited in order.
 #^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook

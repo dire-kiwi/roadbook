@@ -48,12 +48,14 @@
 
 mod eval;
 mod program;
+mod redact;
 mod run;
 mod saved;
 mod types;
 
 pub use eval::Fns;
 pub use program::{Program, ProgramError};
+pub use redact::REDACTED;
 pub use run::{StepResult, UnknownMachine};
 pub use saved::{Migration, RUN_ID_PATTERN, Refusal, RestoreError, is_run_id};
 pub use types::{

@@ -207,7 +207,10 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         self.idx.by_id[id]
     }
 
-    fn trace(&mut self, record: Record) {
+    /// Emits a trace record, redacted (`spec/trace.md#redaction`). An `event`, `dropped` or
+    /// `stale` record holds an input [`Ctx::take`] has already redacted.
+    fn trace(&mut self, mut record: Record) {
+        self.program.redactor().record(self.m, &mut record);
         self.cmds.push(Command::Trace { record });
     }
 
@@ -330,6 +333,14 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     // ---- step ----------------------------------------------------------------------------
 
     fn take(&mut self, input: Input) -> R {
+        // The input as its record shows it, redacted while the invoke it may be the outcome
+        // of is still in the snapshot. `None` when the IR marks nothing sensitive.
+        let redactor = self.program.redactor();
+        let shown = redactor.active().then(|| {
+            let mut shown = input.clone();
+            redactor.input(self.m, &self.snap.invokes, &mut shown);
+            shown
+        });
         let chosen: Vec<Tr>;
         let bound: Option<(&'static str, Value)>;
         match &input {
@@ -338,7 +349,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             | Input::InvokeFail { invoke, .. }
             | Input::InvokeDefect { invoke, .. } => {
                 let Some(pos) = self.snap.invokes.iter().position(|i| i.id == *invoke) else {
-                    self.trace(Record::Stale { event: input });
+                    self.trace(Record::Stale {
+                        event: shown.unwrap_or(input),
+                    });
                     return Ok(());
                 };
                 let inv = self.snap.invokes.remove(pos);
@@ -346,7 +359,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 match &input {
                     Input::InvokeDefect { defect, .. } => {
                         let defect = defect.clone();
-                        self.trace(Record::Event { event: input });
+                        self.trace(Record::Event {
+                            event: shown.unwrap_or(input),
+                        });
                         self.fail_with_defect(defect);
                         return Ok(());
                     }
@@ -391,7 +406,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             }
             Input::After { timer } => {
                 let Some(pos) = self.snap.timers.iter().position(|t| t.id == *timer) else {
-                    self.trace(Record::Stale { event: input });
+                    self.trace(Record::Stale {
+                        event: shown.unwrap_or(input),
+                    });
                     return Ok(());
                 };
                 let tm = self.snap.timers.remove(pos);
@@ -420,7 +437,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             } => {
                 if let Some(i) = invoke {
                     if !self.snap.invokes.iter().any(|e| e.id == *i) {
-                        self.trace(Record::Stale { event: input });
+                        self.trace(Record::Stale {
+                            event: shown.unwrap_or(input),
+                        });
                         return Ok(());
                     }
                 }
@@ -430,10 +449,14 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             Input::Defect { .. } => unreachable!("handled by step"),
         }
         if chosen.is_empty() {
-            self.trace(Record::Dropped { event: input });
+            self.trace(Record::Dropped {
+                event: shown.unwrap_or(input),
+            });
             return Ok(());
         }
-        self.trace(Record::Event { event: input });
+        self.trace(Record::Event {
+            event: shown.unwrap_or(input),
+        });
         self.microstep(&chosen, bound.as_ref().map(|(n, v)| (*n, v)))?;
         self.settle()?;
         if self.snap.status == Status::Running {
@@ -835,6 +858,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 }
                 Effect::Send { to, value, .. } => {
                     let message = self.next_message();
+                    let receiver = to.machine.as_str();
                     let (to, invoke, value) = match to.kind {
                         AddressKind::Child => {
                             let inv = self
@@ -845,6 +869,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                                 .map(|i| i.id);
                             let value = self.eval(value, implicit)?;
                             let Some(inv) = inv else {
+                                let mut value = value;
+                                self.program.redactor().sent(receiver, &mut value);
                                 self.trace(Record::Undelivered {
                                     message,
                                     to: None,
@@ -860,10 +886,12 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                             (to, None, self.eval(value, implicit)?)
                         }
                     };
+                    let mut shown = value.clone();
+                    self.program.redactor().sent(receiver, &mut shown);
                     self.trace(Record::Sent {
                         message,
                         to: to.clone(),
-                        value: value.clone(),
+                        value: shown,
                     });
                     self.cmds.push(Command::Send {
                         to,

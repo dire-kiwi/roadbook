@@ -46,7 +46,9 @@ impl Sensitive {
         for d in decls {
             let name = d.name.name.as_str();
             match &d.kind {
-                DeclKind::Record { fields: fs } | DeclKind::Error { fields: fs } => fields(&mut s, name, fs),
+                DeclKind::Record { fields: fs } | DeclKind::Error { fields: fs } => {
+                    fields(&mut s, name, fs)
+                }
                 DeclKind::Fn { params, .. }
                 | DeclKind::Action { params }
                 | DeclKind::Task { params, .. } => fields(&mut s, name, params),
@@ -122,8 +124,9 @@ impl Checker<'_> {
                 };
                 let fields = iface.events.get(e).or_else(|| iface.emits.get(e));
                 fields.is_some_and(|fs| {
-                    fs.iter()
-                        .any(|(f, ft)| self.sensitive.is(&key, f) || self.carries(ft, machine, seen))
+                    fs.iter().any(|(f, ft)| {
+                        self.sensitive.is(&key, f) || self.carries(ft, machine, seen)
+                    })
                 })
             }
             _ => false,
