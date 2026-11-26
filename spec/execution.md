@@ -512,7 +512,9 @@ A **call** asks a peer for an answer that only the caller receives ([asking a pe
 - **The callee's side is an input.** The call reaches the callee's queue as `{"kind": "call", …}` and is selected like an event, among the `on c` transitions ([candidates](#candidates)). A call that enables a transition is **pending**: it is in `snap.calls` until a `reply` answers it, and `call` names it in the transition's guard and effects; a variable of type `call c` can keep it for a later step. A call that enables no transition is dropped, and the core answers it at once with `Unanswered`.
 - **Replying.** `reply x done v` or `reply x fail e` removes the call from `snap.calls`, writes a `replied` record and gives the driver a `reply` command ([effects](#exiting-and-entering-a-state)). Each call is answered once: a `reply` through a value whose call is no longer pending is the runtime error `answered`. A pending-call value never leaves the run: it is no argument, field, event or result.
 - **The answer is the caller's outcome.** The callee's driver pushes `invoke.done` or `invoke.fail` for the caller's invoke onto the caller's queue, unless the caller has closed or cancelled that invoke ([carrying out calls](#carrying-out-calls)). When a callee ends with calls pending or queued, its driver answers them `Unanswered`.
-- **Saving.** A run with pending calls is not idle, so suspend waits until it has answered them, and a saved snapshot that has them is not restored (`calls`): their callers are gone. A caller holds a `ref`, so it is never restored either ([restoring](#restoring-a-snapshot)).
+- **Ending.** `finish`, `cancelRun` and `failWithDefect` leave `snap.calls` as it is, so the snapshot of a run that ended with calls pending still lists them: they are the calls its driver answers `Unanswered` as it ends. Saving such a run gives them, and restoring it is refused as `ended` first.
+- **Saving.** A run with pending calls is not idle,
+ so suspend waits until it has answered them, and a saved snapshot that has them is not restored (`calls`): their callers are gone. A caller holds a `ref`, so it is never restored either ([restoring](#restoring-a-snapshot)).
 - **Messages are unchanged.** A call is not a message: `on *` never takes one, and a machine's `events` and `calls` are separate. A request and a reply made of a `send` and an `emit` still work as before.
 
 ## Defects
@@ -784,10 +786,10 @@ restore(ir, saved, run, now, migrated, fns):
   emit trace { kind: "restored", machine: saved.machine, ir: m.hash, migrated, snapshot: saved }
   for s in snap.active, in document order:
     if snap.invokes has an entry inv with state s.id:
-      args = the parameter names of s.invoke.src zipped with eval of s.invoke.args, left to right
+      to, params and args as in startWork (never a call: a caller holds a ref, so is refused)
       emit trace { kind: "invoke.started", invoke: inv.id, state: s.id, src: inv.src, args }
-      emit invoke.start { invoke: inv.id, state: s.id, src: inv.src, srcKind: s.invoke.kind,
-                          as: s.invoke.as, args }
+      emit invoke.start { invoke: inv.id, state: s.id, src: s.invoke.src, srcKind: s.invoke.kind,
+                          to, as: s.invoke.as, args }
     for each entry tm of saved.timers with state s.id, by ascending id, if tm.due > now:
       emit trace { kind: "timer.started", timer: tm.id, state: s.id, index: tm.index, delay: tm.due - now }
       emit timer.start { timer: tm.id, delay: tm.due - now }
