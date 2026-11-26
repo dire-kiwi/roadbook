@@ -232,7 +232,7 @@ describe('simulate', () => {
       [1, 'sessions', 'a', 'Session', 'int'],
       [2, 'sessions', 'b', 'Session', 'int'],
     ])
-    expect(spawned[0]!.errors).toEqual([{ name: 'Lost', fields: [{ name: 'reason', type: 'string', doc: '' }] }])
+    expect(spawned[0]!.errors).toEqual([{ name: 'Lost', fields: [{ name: 'reason', type: 'string', doc: '', sensitive: false }] }])
     expect(spawned[0]!.emits.map((e) => e.name)).toEqual(['Said'])
     // A message to a child is a record only.
     expect(sim.send({ _tag: 'Tell', id: 'a', text: 'hi' })).toEqual({ kind: 'ok' })
