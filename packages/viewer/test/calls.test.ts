@@ -116,6 +116,8 @@ describe('the details panel', () => {
     expect(html).toContain('Inventory · Reserving: done → Ready')
     expect(html).toContain('Inventory · Reserving: on reserve → (stays)')
     expect(html).toContain('Order · Reserving (invoke)')
+    // Two replies in one transition are one place.
+    expect(html.split('Inventory · Reserving: on Twice → (stays)').length).toBe(2)
     // `count` is taken by the machine body, and called by the Counter.
     const count = panelHtml(ctx(calls, 'Inventory'), { type: 'event', name: 'count' })
     expect(count).toContain('Counter · Asking (invoke)')

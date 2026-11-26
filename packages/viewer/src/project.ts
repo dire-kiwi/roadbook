@@ -358,7 +358,7 @@ export function renderIndexLegend(): string {
     item('invoke', 'A → B', 'A invokes B (solid)') +
     item('ref', 'ref name', 'A holds a ref to B in name (dashed)') +
     item('send', 'sends E', 'A sends B the events E') +
-    item('call', 'calls c', "A calls B's calls c and waits for each answer") +
+    item('call', 'calls c', 'A calls c on B and waits for each answer') +
     item('emit', 'emits E', 'B emits the events E and A handles them (dotted)') +
     `</ul>`
   )

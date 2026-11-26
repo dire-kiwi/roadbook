@@ -433,6 +433,11 @@ function sitesOf(ir: Ir, ref: EventRef): [string, MessageSite][] {
   return sites
 }
 
+/** The sites of one direction, each transition or entry or exit once (two replies in one transition are one place). */
+function siteLinks(ir: Ir, sites: [string, MessageSite][], dir: MessageSite['dir']): string {
+  return list([...new Set(sites.filter(([, s]) => s.dir === dir).map(([other, s]) => siteLink(ir, other, s)))])
+}
+
 /** A call the machine answers: its declaration, where it is taken and answered, and who calls it. */
 export function callPanel(ctx: PanelContext, name: string): string {
   const { ir } = ctx
@@ -440,7 +445,7 @@ export function callPanel(ctx: PanelContext, name: string): string {
   const c = own(m.calls, name)
   if (!c) return machinePanel(ctx)
   const sites = sitesOf(ir, { machine: ctx.machine, event: name })
-  const links = (dir: MessageSite['dir']) => list(sites.filter(([, s]) => s.dir === dir).map(([other, s]) => siteLink(ir, other, s)))
+  const links = (dir: MessageSite['dir']) => siteLinks(ir, sites, dir)
   const taken: string[] = []
   walkStates(m.root, (s) => {
     s.transitions.forEach((t, i) => {
@@ -474,7 +479,7 @@ export function eventPanel(ctx: PanelContext, name: string): string {
   const { decl, emitted } = found
   // Every site in the IR that names this event of this machine.
   const sites = sitesOf(ir, { machine: ctx.machine, event: name })
-  const links = (dir: MessageSite['dir']) => list(sites.filter(([, s]) => s.dir === dir).map(([other, s]) => siteLink(ir, other, s)))
+  const links = (dir: MessageSite['dir']) => siteLinks(ir, sites, dir)
   let body = ''
   if (emitted) {
     body +=
