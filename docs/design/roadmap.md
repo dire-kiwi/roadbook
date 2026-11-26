@@ -55,13 +55,15 @@ Each milestone ends with something usable, and the order puts the riskiest assum
 
 **M4. Rust runtime.** `waymark-core`, the macro, the driver. The same example serves requests from axum and passes the same conformance cases.
 
-**M5. Depth.** Definite assignment analysis. Parallel states. Simulate and replay modes in the viewer, which need the TypeScript core and the trace.
+**M5. Messaging.** `send` and `emit` with an invoked child, `ref` parameters for peers, and imports across crates and packages, as specified in [actors and messaging](actors.md). The viewer draws message edges and the project index draws which machines can talk to which. Before M4 commits to a build setup, prototype how the Rust macro finds a chart in a dependency crate.
 
-**M6. Review tooling.** Diff mode and coverage mode in the viewer. A CI recipe that attaches the diff viewer to a pull request.
+**M6. Depth.** Definite assignment analysis. Parallel states. Simulate and replay modes in the viewer, which need the TypeScript core and the trace.
 
-**M7. Editors.** Tree-sitter grammar, language server (diagnostics, go to definition, rename), VS Code extension with live preview.
+**M7. Review tooling.** Diff mode and coverage mode in the viewer. A CI recipe that attaches the diff viewer to a pull request.
 
-**Later.** History states, `send` and `emit` between machines, `spawn`, retry sugar, a durable driver, generated Rust state machines for hot paths.
+**M8. Editors.** Tree-sitter grammar, language server (diagnostics, go to definition, rename), VS Code extension with live preview.
+
+**Later.** History states, keyed `spawn`, retry sugar, a durable driver, generated Rust state machines for hot paths.
 
 M3 and M4 are independent once M1 is done and can run in parallel. M2 depends only on M1.
 
@@ -73,7 +75,7 @@ M3 and M4 are independent once M1 is done and can run in parallel. M2 depends on
 | The two runtimes diverge. | The conformance suite is the specification, and both run it in CI from M4 on. |
 | Agents write the syntax badly. | Small grammar, canonical formatter, machine-readable diagnostics with fixes, and a bundled instructions file for agents. Measure it in M1 by having an agent write charts from prose. |
 | Large charts are unreadable as diagrams. | Collapse compound states by default beyond a size, and push structure into child machines, which the language makes cheap. The spike should be tried on a 40-state chart during M2. |
-| Definite assignment is too strict or too slow. | It is M5, after real charts exist to tune it against. Until then, unassigned reads are a runtime error. |
+| Definite assignment is too strict or too slow. | It is M6, after real charts exist to tune it against. Until then, unassigned reads are a runtime error. |
 | No editor support at first. | `waymark viz --watch` gives live feedback from M2. Highlighting needs only the tree-sitter grammar, which can be pulled forward. |
 
 ## Open questions
@@ -85,4 +87,5 @@ These do not block starting. Each has a default the design assumes.
 3. **Strict events.** Unhandled events are dropped and traced by default. They could instead be an error by default, with an explicit `on * ` to opt out.
 4. **Exit actions on cancellation.** When a machine is cancelled from outside, should the `exit` effects of its active states run? The default is yes, since they are the natural place for cleanup, but they then run during interruption and must be quick.
 5. **Equality on records.** `==` is defined for scalars and enums. Comparing records and lists is left out until something needs it.
-6. **Generated files in git.** The default is to commit `.way.ts` files. Ignoring them and generating in a build step is the alternative.
+6. **Messaging details.** Asking a peer for a reply, bounded queues and supervision of peers are open. They are listed on the [actors and messaging](actors.md#open-questions) page.
+7. **Generated files in git.** The default is to commit `.way.ts` files. Ignoring them and generating in a build step is the alternative.

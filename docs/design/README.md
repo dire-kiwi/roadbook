@@ -98,6 +98,7 @@ These are the choices that shape the rest. Each has a recommendation, which the 
 | Semantics | SCXML's, as xstate uses, with work strictly tied to states | Something simpler and flat | [Semantics](semantics.md#execution-model) |
 | Compiler implementation | Once, in Rust, shipped natively and as WebAssembly on npm | In TypeScript | [Alternatives](alternatives.md#where-the-compiler-lives) |
 | Runtime implementation | A pure core written natively in each language, held together by a shared conformance suite | One Rust core compiled to WebAssembly | [Semantics](semantics.md#a-pure-core-and-a-driver) |
+| Machines talking to each other | Declared and typed: `send`, `emit` and `ref` parameters in the chart. No global actor registry. | xstate's model, where any actor can hold a reference to any other | [Actors and messaging](actors.md) |
 | Typed host code | Generated: a committed `.way.ts` file for TypeScript, a macro for Rust | Type inference from code-first definitions | [TypeScript](typescript.md), [Rust](rust.md) |
 | Diagram layout | ELK in the browser, with the same drawing code producing static SVG | Mermaid or Graphviz only | [Visualization](visualization.md#layout) |
 | Build order | Language, then viewer, then TypeScript runtime, then Rust runtime | Rust runtime first | [Roadmap](roadmap.md#milestones) |
@@ -115,7 +116,7 @@ This is a design, with three pieces built to test its riskiest claims.
 | The TypeScript API's types work with Effect v4: exact inferred error and requirement types, and compile errors for missing, extra or wrongly typed implementations. | A type-level sketch that passes `tsc` against `effect@4.1.5`. | [`spike/api-ts`](../../spike/api-ts) |
 | The Rust API's shapes compile, including `Send` futures and one struct implementing several charts' handlers. | A hand-expanded sketch that passes `cargo check`. | [`spike/api-rust`](../../spike/api-rust) |
 
-No runtime exists yet. The semantics and the trace format are specified on paper only.
+No runtime exists yet. The semantics, the trace format and everything on the actors and messaging page are specified on paper only.
 
 ## Pages
 
@@ -123,6 +124,7 @@ No runtime exists yet. The semantics and the trace format are specified on paper
 - [Semantics, the IR and the trace](semantics.md): how machines execute, and how two runtimes are kept identical.
 - [TypeScript runtime](typescript.md): the Effect v4 API.
 - [Rust runtime](rust.md): the Rust API.
+- [Actors and messaging](actors.md): machines talking to each other, including across crates.
 - [Visualization](visualization.md): the viewer and its modes.
 - [Alternatives considered](alternatives.md): formats, existing libraries, and what was rejected.
 - [Roadmap](roadmap.md): repository layout, milestones, risks and open questions.

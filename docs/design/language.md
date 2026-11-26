@@ -267,8 +267,7 @@ Most of these rules, the split between `machineItem` and `stateItem`, and the re
 
 Each of these has a planned shape, and the grammar leaves room for it.
 
+- **Messages between running machines.** `send`, `emit`, `ref` parameters and keyed `spawn`. These are specified on the [actors and messaging](actors.md) page and come right after the two runtimes. The first version gives a child its arguments and gets back its result.
 - **History states.** `history` and `deep history` pseudo-states, as in SCXML.
-- **Talking to a running child.** `send` to an invoked machine and `emit` from it. The first version gives a child its arguments and gets back its result.
-- **Many children at once.** `spawn` for a dynamic number of child machines. `invoke` covers exactly one per state.
 - **Generic types and maps.** `map<string, T>` and user-defined generics.
 - **Retry sugar.** `invoke chargeCard(order) retry 3` as shorthand for the `Backoff` pattern above. The explicit states stay available and are what the diagram shows either way.

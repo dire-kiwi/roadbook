@@ -88,6 +88,8 @@ This is where Waymark is stricter than xstate, and it is the part that matters m
 
 `invoke Checkout(order, user)` starts a child instance with those arguments. Its `output` arrives as `done` and its `fail` as the matching `fail` branch. Leaving the invoking state cancels the child and everything the child started. From the parent's side a child machine and a task are indistinguishable, which is what lets a test replace an entire sub-machine with a single function.
 
+Machines that exchange messages while they run, rather than only arguments and a result, are covered on the [actors and messaging](actors.md) page.
+
 ## A pure core and a driver
 
 Each runtime is split in two.
