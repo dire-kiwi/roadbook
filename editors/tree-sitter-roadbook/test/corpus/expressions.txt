@@ -1,0 +1,254 @@
+================================================================================
+Literals
+================================================================================
+
+machine M() {
+  var a: int = 3
+  var b: float = 1.5
+  var c: string = "time\tout \"quoted\" \\ \n"
+  var d: bool = true
+  var e: bool = false
+  var f: duration = 30s
+  var g: string = "// not a comment"
+  var h: string = ""
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (integer))
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (float))
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (string
+          (string_content)
+          (escape_sequence)
+          (string_content)
+          (escape_sequence)
+          (string_content)
+          (escape_sequence)
+          (string_content)
+          (escape_sequence)
+          (string_content)
+          (escape_sequence)))
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (boolean))
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (boolean))
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (duration))
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (string
+          (string_content)))
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (string)))))
+
+================================================================================
+Names, fields, calls, records and enums
+================================================================================
+
+machine M() {
+  initial A
+  state A {
+    on X set a = error.issues, b = event.sku, c = result.id.value
+    on Y set a = retryDelay(attempts), b = f(), c = Role.Admin, d = GatewayUnavailable
+    on Z set a = CardDeclined { reason: "expired", code: 3, }, b = Cfg {}
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (set
+              (assignment
+                (identifier)
+                (field_expression
+                  (implicit_name)
+                  (identifier)))
+              (assignment
+                (identifier)
+                (field_expression
+                  (implicit_name)
+                  (identifier)))
+              (assignment
+                (identifier)
+                (field_expression
+                  (field_expression
+                    (implicit_name)
+                    (identifier))
+                  (identifier)))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (set
+              (assignment
+                (identifier)
+                (call
+                  (identifier)
+                  (arguments
+                    (identifier))))
+              (assignment
+                (identifier)
+                (call
+                  (identifier)
+                  (arguments)))
+              (assignment
+                (identifier)
+                (enum_value
+                  (type_identifier)
+                  (type_identifier)))
+              (assignment
+                (identifier)
+                (record_value
+                  (type_identifier)))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (set
+              (assignment
+                (identifier)
+                (record_value
+                  (type_identifier)
+                  (record_body
+                    (field_value
+                      (identifier)
+                      (string
+                        (string_content)))
+                    (field_value
+                      (identifier)
+                      (integer)))))
+              (assignment
+                (identifier)
+                (record_value
+                  (type_identifier)
+                  (record_body))))))))))
+
+================================================================================
+Precedence: or, and, not, comparison, addition, multiplication, negation
+================================================================================
+
+machine M() {
+  initial A
+  state A {
+    always if a or b and not c > d + e * -f.g -> B
+    always if (a or b) and c -> B
+    always if not (a == b) -> B
+    always if a - b - c == (d - e) * 2 -> B
+    always if x != y and x <= y or x >= y -> B
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (always_transition
+            (guard
+              (binary_expression
+                (identifier)
+                (binary_expression
+                  (identifier)
+                  (not_expression
+                    (binary_expression
+                      (identifier)
+                      (binary_expression
+                        (identifier)
+                        (binary_expression
+                          (identifier)
+                          (negation
+                            (field_expression
+                              (identifier)
+                              (identifier))))))))))
+            (target
+              (type_identifier)))
+          (always_transition
+            (guard
+              (binary_expression
+                (parenthesized_expression
+                  (binary_expression
+                    (identifier)
+                    (identifier)))
+                (identifier)))
+            (target
+              (type_identifier)))
+          (always_transition
+            (guard
+              (not_expression
+                (parenthesized_expression
+                  (binary_expression
+                    (identifier)
+                    (identifier)))))
+            (target
+              (type_identifier)))
+          (always_transition
+            (guard
+              (binary_expression
+                (binary_expression
+                  (binary_expression
+                    (identifier)
+                    (identifier))
+                  (identifier))
+                (binary_expression
+                  (parenthesized_expression
+                    (binary_expression
+                      (identifier)
+                      (identifier)))
+                  (integer))))
+            (target
+              (type_identifier)))
+          (always_transition
+            (guard
+              (binary_expression
+                (binary_expression
+                  (binary_expression
+                    (identifier)
+                    (identifier))
+                  (binary_expression
+                    (identifier)
+                    (identifier)))
+                (binary_expression
+                  (identifier)
+                  (identifier))))
+            (target
+              (type_identifier))))))))

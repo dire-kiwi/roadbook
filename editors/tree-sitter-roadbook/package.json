@@ -1,0 +1,23 @@
+{
+  "name": "tree-sitter-roadbook",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for Roadbook, a statechart language (.road files)",
+  "private": true,
+  "license": "MIT OR Apache-2.0",
+  "type": "commonjs",
+  "main": "grammar.js",
+  "keywords": ["tree-sitter", "parser", "roadbook"],
+  "files": ["grammar.js", "tree-sitter.json", "queries/*", "src/**"],
+  "scripts": {
+    "generate": "tree-sitter generate",
+    "test": "./check.sh"
+  },
+  "tree-sitter": [
+    {
+      "scope": "source.roadbook",
+      "file-types": ["road"],
+      "highlights": "queries/highlights.scm",
+      "locals": "queries/locals.scm"
+    }
+  ]
+}

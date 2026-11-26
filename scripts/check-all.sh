@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Runs every check the repository has, in the order CI runs them, and stops at the
-# first failure. Needs Rust (stable), Node and pnpm.
+# first failure. Needs Rust (stable), Node and pnpm, and the tree-sitter CLI for the grammar's
+# checks, which are skipped without it.
 #
 #   scripts/check-all.sh
 set -euo pipefail
@@ -83,5 +84,12 @@ rm -rf "$out"
 
 step "Viewer: the bundle the CLI embeds is current"
 node packages/viewer/build.mjs --check
+
+step "Editors: the tree-sitter grammar (generated parser, corpus, every chart, queries)"
+if command -v tree-sitter >/dev/null; then
+  editors/tree-sitter-roadbook/check.sh
+else
+  echo "skipped: the tree-sitter CLI is not installed (npm install -g tree-sitter-cli@0.26)"
+fi
 
 printf '\nAll checks passed.\n'

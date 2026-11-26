@@ -1,0 +1,195 @@
+================================================================================
+Invoking a task
+================================================================================
+
+machine M() {
+  initial Charging
+  state Charging {
+    invoke chargeCard(order, user) {
+      done                    -> Charged   set receipt = result
+      fail CardDeclined       -> Declined  set declined = error
+      fail GatewayUnavailable {
+        if attempts < 3       -> Backoff
+        else                  -> GaveUp
+      }
+      fail *                  -> Failed
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (invoke
+            (identifier)
+            (arguments
+              (identifier)
+              (identifier))
+            (done_transition
+              (target
+                (type_identifier))
+              (set
+                (assignment
+                  (identifier)
+                  (implicit_name))))
+            (fail_transition
+              (type_identifier)
+              (target
+                (type_identifier))
+              (set
+                (assignment
+                  (identifier)
+                  (implicit_name))))
+            (fail_transition
+              (type_identifier)
+              (branches
+                (branch
+                  (guard
+                    (binary_expression
+                      (identifier)
+                      (integer)))
+                  (target
+                    (type_identifier)))
+                (else_branch
+                  (target
+                    (type_identifier)))))
+            (fail_transition
+              (wildcard)
+              (target
+                (type_identifier)))))))))
+
+================================================================================
+Invoking a machine as a name
+================================================================================
+
+machine M() {
+  initial Uploading
+  state Uploading {
+    invoke Upload(draft.file) as upload {
+      done              -> Publishing  set url = result
+      fail UploadFailed -> Failed      set failure = error
+    }
+    on PauseClicked    send upload.Pause
+    on upload.Progress set percent = event.percent
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (invoke
+            (type_identifier)
+            (arguments
+              (field_expression
+                (identifier)
+                (identifier)))
+            (identifier)
+            (done_transition
+              (target
+                (type_identifier))
+              (set
+                (assignment
+                  (identifier)
+                  (implicit_name))))
+            (fail_transition
+              (type_identifier)
+              (target
+                (type_identifier))
+              (set
+                (assignment
+                  (identifier)
+                  (implicit_name)))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (send
+              (identifier)
+              (type_identifier)))
+          (on_transition
+            (received_event
+              (identifier)
+              (type_identifier))
+            (set
+              (assignment
+                (identifier)
+                (field_expression
+                  (implicit_name)
+                  (identifier))))))))))
+
+================================================================================
+Output and fail in final states
+================================================================================
+
+machine M() -> Receipt ! CardDeclined {
+  initial A
+  final state A { output receipt }
+  final state B { fail declined }
+  final state C { fail CardDeclined { reason: "expired" } }
+  final state D { output Receipt { id: "r1", total: 3 } }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (type_identifier)
+    (errors
+      (type_identifier))
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (output
+            (identifier))))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (fail
+            (identifier))))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (fail
+            (record_value
+              (type_identifier)
+              (record_body
+                (field_value
+                  (identifier)
+                  (string
+                    (string_content))))))))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (output
+            (record_value
+              (type_identifier)
+              (record_body
+                (field_value
+                  (identifier)
+                  (string
+                    (string_content)))
+                (field_value
+                  (identifier)
+                  (integer))))))))))
