@@ -28,10 +28,13 @@ pub struct Foreign {
 }
 
 /// The name of the error enum of every fallible task (`false`) and machine (`true`) of `ir`,
-/// as an expansion of `ir` alone names them.
-pub fn error_enum_names(ir: &Ir) -> Result<HashMap<(bool, String), String>, String> {
-    let none = Foreign::default();
-    let g = Gen::new(ir, &none)?;
+/// as its expansion with `foreign` names them: what the crate hands over to importers, which
+/// cannot work the names out from `ir` alone, since they depend on the names `foreign` took.
+pub fn error_enum_names(
+    ir: &Ir,
+    foreign: &Foreign,
+) -> Result<HashMap<(bool, String), String>, String> {
+    let g = Gen::new(ir, foreign)?;
     Ok(g.error_enums
         .into_iter()
         .map(|((m, n), id)| ((m, n.to_owned()), plain(&id)))

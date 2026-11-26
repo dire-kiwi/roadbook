@@ -1,0 +1,18 @@
+// A fixture of roadbook's tests: the last chart of a chain of crates, which names the error
+// enums `errchain1` chose, not the ones `errchain1`'s chart alone would give.
+import { Charge } from "errchain1/charge.road"
+
+/// Pays by running a Charge.
+machine Pay() -> bool {
+  initial Paying
+
+  state Paying {
+    invoke Charge() {
+      done   -> Paid
+      fail * -> Refused
+    }
+  }
+
+  final state Paid    { output true }
+  final state Refused { output false }
+}

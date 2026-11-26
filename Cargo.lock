@@ -375,6 +375,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00d174d5400e5e8fd687ad1049e2f578285fa914201b1af7e8b112a4546bd826"
 
 [[package]]
+name = "errchain0"
+version = "0.1.0"
+dependencies = [
+ "roadbook",
+]
+
+[[package]]
+name = "errchain1"
+version = "0.1.0"
+dependencies = [
+ "errchain0",
+ "roadbook",
+]
+
+[[package]]
+name = "errchain2"
+version = "0.1.0"
+dependencies = [
+ "errchain1",
+ "roadbook",
+]
+
+[[package]]
 name = "errno"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1136,6 +1159,9 @@ dependencies = [
  "chain0",
  "chain1",
  "chain2",
+ "errchain0",
+ "errchain1",
+ "errchain2",
  "inventory",
  "left",
  "nested-owner",

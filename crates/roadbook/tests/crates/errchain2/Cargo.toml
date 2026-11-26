@@ -1,0 +1,15 @@
+[package]
+name = "errchain2"
+description = "A fixture of roadbook's tests: the last crate of a chain whose error enums collide in the middle (errchain2 imports errchain1 imports errchain0)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+roadbook = { path = "../../.." }
+errchain1 = { path = "../errchain1" }
+
+[lints]
+workspace = true

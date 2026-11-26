@@ -71,13 +71,14 @@ mod names;
 /// `import { Inventory } from "inventory/inventory.road"`, is answered by the crate of that
 /// name (`-` read as `_`): it must be a dependency whose own `roadbook::include!` includes
 /// that file (`roadbook::include!("inventory.road")` in package `inventory`), at its crate
-/// root. An `include!` exports a hidden macro that hands its chart's IR and `$crate` to an
-/// importing crate's `include!`, so the importer reads no file of the dependency, always
-/// gets the version that is compiled, and is rebuilt when it changes. The importer generates
-/// nothing for the declarations from the other package: it re-exports the owning crate's
-/// (`pub use ::inventory::Item;`, `pub use ::inventory::inventory;`), so there is one Rust
-/// type for each. Imports chain (a crate can import a chart that imports another crate's)
-/// and can form diamonds.
+/// root. An `include!` exports a hidden macro that hands its chart's IR, `$crate` and the
+/// names it gave the error enums to an importing crate's `include!`, so the importer reads no
+/// file of the dependency, always gets the version that is compiled, and is rebuilt when it
+/// changes. The importer generates nothing for the declarations from the other package: it
+/// re-exports the owning crate's (`pub use ::inventory::Item;`,
+/// `pub use ::inventory::inventory;`, and the error enums under the owner's names), so there
+/// is one Rust type for each. Imports chain (a crate can import a chart that imports another
+/// crate's) and can form diamonds.
 ///
 /// - A dependency renamed in `Cargo.toml` is named with `crates(package = name)`, the
 ///   package's name as the import writes it, bare (`crates(my-stock = stock)`) or quoted
@@ -109,6 +110,10 @@ struct Dep {
     /// The owning crate, as a path: the `$crate` of its hidden macro.
     krate: Tokens,
     ir: roadbook_ir::Ir,
+    /// The names the owning crate gave the error enums of the chart's fallible tasks
+    /// (`false`) and machines (`true`). They depend on the names the owner took from the
+    /// crates it imports from, so the IR alone does not tell them.
+    errors: HashMap<(bool, String), String>,
 }
 
 /// The macro's arguments.
@@ -242,15 +247,17 @@ fn parse_args(input: Tokens) -> Result<Args, String> {
     Ok(args)
 }
 
-/// `package = "…", path = "…", krate = $crate, ir = "…"`, as the hidden macros write it.
+/// `package = "…", path = "…", krate = $crate, ir = "…", errors = "…"`, as the hidden macros
+/// write it.
 fn parse_dep(input: Tokens) -> Result<Dep, String> {
-    let (mut package, mut path, mut krate, mut ir) = (None, None, None, None);
+    let malformed = || "roadbook::include!: a malformed hand-over from another crate".to_owned();
+    let (mut package, mut path, mut krate, mut ir, mut errors) = (None, None, None, None, None);
     for field in split(input) {
         let [TokenTree::Ident(key), TokenTree::Punct(eq), value @ ..] = &field[..] else {
-            return Err("roadbook::include!: a malformed hand-over from another crate".into());
+            return Err(malformed());
         };
         if eq.as_char() != '=' {
-            return Err("roadbook::include!: a malformed hand-over from another crate".into());
+            return Err(malformed());
         }
         let text = || match value {
             [t] => string(t),
@@ -260,13 +267,17 @@ fn parse_dep(input: Tokens) -> Result<Dep, String> {
             "package" => package = text(),
             "path" => path = text(),
             "ir" => ir = text(),
+            "errors" => errors = text(),
             "krate" => krate = Some(value.iter().cloned().collect::<Tokens>()),
             _ => {}
         }
     }
-    let (Some(package), Some(path), Some(krate), Some(ir)) = (package, path, krate, ir) else {
-        return Err("roadbook::include!: a malformed hand-over from another crate".into());
+    let (Some(package), Some(path), Some(krate), Some(ir), Some(errors)) =
+        (package, path, krate, ir, errors)
+    else {
+        return Err(malformed());
     };
+    let errors = decode_errors(&errors).ok_or_else(malformed)?;
     let ir = roadbook_ir::Ir::from_json(&ir).map_err(|e| {
         format!(
             "roadbook::include!: the IR of `{package}/{path}` that crate `{package}` handed over \
@@ -278,7 +289,33 @@ fn parse_dep(input: Tokens) -> Result<Dep, String> {
         path,
         krate,
         ir,
+        errors,
     })
+}
+
+/// The error enums' names as a hand-over carries them: a line per fallible task or machine,
+/// `task <name> <enum>` or `machine <name> <enum>`. Chart names and Rust identifiers have no
+/// spaces or line breaks.
+fn encode_errors(errors: &HashMap<(bool, String), String>) -> String {
+    let mut lines: Vec<String> = errors
+        .iter()
+        .map(|((machine, name), e)| {
+            let kind = if *machine { "machine" } else { "task" };
+            format!("{kind} {name} {e}")
+        })
+        .collect();
+    lines.sort();
+    lines.join("\n")
+}
+
+fn decode_errors(text: &str) -> Option<HashMap<(bool, String), String>> {
+    text.lines()
+        .map(|line| match line.split(' ').collect::<Vec<_>>()[..] {
+            ["task", name, e] => Some(((false, name.to_owned()), e.to_owned())),
+            ["machine", name, e] => Some(((true, name.to_owned()), e.to_owned())),
+            _ => None,
+        })
+        .collect()
 }
 
 /// Reads project files from disk, and answers each import of another package's file with
@@ -459,10 +496,12 @@ fn expand(input: Tokens) -> Tokens {
         }
     };
     let package_path = relative(&manifest_dir, &entry);
-    match codegen::generate(&ir, &foreign, &encode_path(&package_path)) {
-        Ok(items) => {
+    let generated = codegen::generate(&ir, &foreign, &encode_path(&package_path))
+        .and_then(|items| Ok((items, codegen::error_enum_names(&ir, &foreign)?)));
+    match generated {
+        Ok((items, errors)) => {
             let export = if exports(&package_path, args.span) {
-                export_macro(&ir, &package_path, args.span)
+                export_macro(&ir, &errors, &package_path, args.span)
             } else {
                 Tokens::new()
             };
@@ -500,7 +539,6 @@ fn foreign(ir: &roadbook_ir::Ir, deps: &[Dep]) -> Result<codegen::Foreign, Strin
         .chain(ir.actions.iter().map(|(n, d)| (n, d.span)))
         .chain(ir.tasks.iter().map(|(n, d)| (n, d.span)))
         .chain(ir.machines.iter().map(|(n, d)| (n, d.span)));
-    let mut names: HashMap<usize, HashMap<(bool, String), String>> = HashMap::new();
     for (name, span) in spans {
         let Some(package) = package_of(&span) else {
             continue;
@@ -516,15 +554,9 @@ fn foreign(ir: &roadbook_ir::Ir, deps: &[Dep]) -> Result<codegen::Foreign, Strin
             ));
         };
         out.krate.insert(name.clone(), deps[i].krate.clone());
-        let owned = match names.entry(i) {
-            std::collections::hash_map::Entry::Occupied(e) => e.into_mut(),
-            std::collections::hash_map::Entry::Vacant(e) => {
-                e.insert(codegen::error_enum_names(&deps[i].ir)?)
-            }
-        };
         for machine in [false, true] {
             let key = (machine, name.clone());
-            if let Some(e) = owned.get(&key) {
+            if let Some(e) = deps[i].errors.get(&key) {
                 out.error_enums.insert(key, e.clone());
             }
         }
@@ -534,7 +566,8 @@ fn foreign(ir: &roadbook_ir::Ir, deps: &[Dep]) -> Result<codegen::Foreign, Strin
 
 /// The hidden `#[macro_export] macro_rules!` through which this chart is handed to the
 /// `include!` of a crate whose chart imports it: called with the importer's continuation and
-/// what it asked for, it calls the continuation back with this chart's IR and `$crate`.
+/// what it asked for, it calls the continuation back with this chart's IR and `$crate`, and
+/// the names this crate gave the chart's error enums (`errors`).
 ///
 /// `$crate` gets `span`, the span of the path literal of this crate's `include!`, so that it
 /// always names this crate. With the macro's call site it would name the crate whose hidden
@@ -543,9 +576,15 @@ fn foreign(ir: &roadbook_ir::Ir, deps: &[Dep]) -> Result<codegen::Foreign, Strin
 /// Importers name this chart's items at the crate root (`$crate::Item`), so the macro first
 /// checks that one: its `__ROADBOOK_IR_…` is found by a glob import of the crate root,
 /// which shadows the empty one beside it only if it is there.
-fn export_macro(ir: &roadbook_ir::Ir, package_path: &str, span: Span) -> Tokens {
+fn export_macro(
+    ir: &roadbook_ir::Ir,
+    errors: &HashMap<(bool, String), String>,
+    package_path: &str,
+    span: Span,
+) -> Tokens {
     let name = chart_macro(package_path);
     let json = ir.to_json();
+    let errors = encode_errors(errors);
     let dollar_crate = quote::quote_spanned!(span=> $crate);
     let marker = codegen::ir_const(&encode_path(package_path));
     let package = std::env::var("CARGO_PKG_NAME").unwrap_or_default();
@@ -568,7 +607,7 @@ fn export_macro(ir: &roadbook_ir::Ir, package_path: &str, span: Span) -> Tokens 
                         ::core::assert!(!#marker.is_empty(), #message);
                     }
                 };
-                $cb! { $($args)* , __dep { $($dep)* krate = #dollar_crate, ir = #json } }
+                $cb! { $($args)* , __dep { $($dep)* krate = #dollar_crate, ir = #json, errors = #errors } }
             };
         }
     }
@@ -629,6 +668,17 @@ mod tests {
         assert_ne!(encode_path("a/b.road"), encode_path("a\u{2fb}.road"));
         assert_ne!(encode_path("a_b"), encode_path("a\u{b}"));
         assert_eq!(encode_path("_"), "_5f_");
+    }
+
+    #[test]
+    fn the_error_enums_names_survive_a_hand_over() {
+        let errors = HashMap::from([
+            ((false, "charge".to_owned()), "ChargeError".to_owned()),
+            ((true, "Charge".to_owned()), "ChargeMachineError".to_owned()),
+        ]);
+        assert_eq!(decode_errors(&encode_errors(&errors)), Some(errors));
+        assert_eq!(decode_errors(""), Some(HashMap::new()));
+        assert_eq!(decode_errors("task charge"), None);
     }
 
     fn tokens(s: &str) -> Vec<TokenTree> {

@@ -1,0 +1,8 @@
+// A fixture of roadbook's tests: the first chart of a chain of crates whose error enums
+// collide one crate along.
+
+/// The card was declined.
+error Declined
+
+/// Charge the card.
+task charge() ! Declined

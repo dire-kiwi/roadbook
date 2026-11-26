@@ -1,0 +1,18 @@
+// A fixture of roadbook's tests: the middle chart of a chain of crates. `charge`'s error enum
+// is `errchain0`'s `ChargeError`, so `Charge`'s is `ChargeMachineError`.
+import { charge, Declined } from "errchain0/charge.road"
+
+/// Charges the card, failing as the charge does.
+machine Charge() ! Declined {
+  initial Charging
+
+  state Charging {
+    invoke charge() {
+      done          -> Charged
+      fail Declined -> Refused
+    }
+  }
+
+  final state Charged {}
+  final state Refused { fail Declined }
+}
