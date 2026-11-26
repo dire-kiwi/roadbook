@@ -182,3 +182,5 @@ The conformance runner (`crates/roadbook/tests/conformance.rs`) runs every case 
 ## Interpreter first, generated code later
 
 The first version interprets the embedded IR, like the TypeScript runtime. That keeps the two cores line-for-line comparable and puts all the effort into one set of semantics. If a hot machine ever needs it, the macro can instead generate a `match`-based state machine with no interpretation overhead. The conformance suite would hold that generated code to the same traces.
+
+[`crates/roadbook-bench`](../../crates/roadbook-bench) measures where a run's time goes on the example charts (`cargo bench -p roadbook-bench`): the core alone replaying a recorded run, what building each step's snapshot and records costs by itself, the driver's per-step work (publishing the saved snapshot, writing the trace), and whole runs through the generated handlers. Its tests check that the core replay and the whole run write the same records.
