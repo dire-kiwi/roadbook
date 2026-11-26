@@ -116,9 +116,7 @@ fn as_bool(v: &Value) -> bool {
 fn int(v: &Value) -> Option<i64> {
     v.as_i64().or_else(|| {
         let f = v.as_f64()?;
-        (f.fract() == 0.0
-            && (-9.223_372_036_854_775_808e18..9.223_372_036_854_775_808e18).contains(&f))
-        .then_some(f as i64)
+        (f.fract() == 0.0 && (i64::MIN as f64..-(i64::MIN as f64)).contains(&f)).then_some(f as i64)
     })
 }
 

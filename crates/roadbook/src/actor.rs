@@ -5,7 +5,7 @@ use std::future::poll_fn;
 use std::sync::Arc;
 use std::task::Poll;
 
-use roadbook_core::{Input, Program};
+use roadbook_core::{Defect, Input, Object, Program};
 use serde_json::Value;
 
 use crate::driver::{Driver, RunEnd};
@@ -37,7 +37,7 @@ impl<E: fmt::Debug + fmt::Display> std::error::Error for Stopped<E> {}
 /// generated `spawn` supplies.
 #[doc(hidden)]
 pub struct Codec<Event, State, Output, Error> {
-    pub event: fn(&Event) -> Value,
+    pub event: fn(&Event) -> Result<Value, Defect>,
     pub state: fn(&str) -> Option<State>,
     pub output: fn(Value) -> Output,
     pub error: fn(Value) -> Error,
@@ -46,8 +46,9 @@ pub struct Codec<Event, State, Output, Error> {
 /// A running machine instance that takes events, made by a generated `spawn`.
 ///
 /// It runs on its own Tokio task. Dropping the actor stops it at once, like dropping the
-/// future of `run`: no exit effects run and the trace has no final record. [`Actor::cancel`]
-/// stops it gracefully instead.
+/// future of `run`: no exit effects run and the trace has no final record. So does dropping
+/// the future of [`Actor::result`] before it is ready, since it owns the actor.
+/// [`Actor::cancel`] stops it gracefully instead.
 pub struct Actor<Event, State, Output, Error> {
     shared: Arc<Shared>,
     #[cfg(feature = "tokio")]
@@ -65,11 +66,14 @@ impl<Event, State, Output, Error> fmt::Debug for Actor<Event, State, Output, Err
 
 impl<Event, State: Clone, Output, Error> Actor<Event, State, Output, Error> {
     /// Queues an event. Events are taken one at a time, in the order sent. An event sent
-    /// after the run ended is ignored.
+    /// after the run ended is ignored. An event that cannot be encoded (one holding a
+    /// non-finite `float`) is a host defect, which ends the run when it is taken.
     pub async fn send(&self, event: Event) {
-        self.shared.push([Input::Event {
-            value: (self.codec.event)(&event),
-        }]);
+        let input = match (self.codec.event)(&event) {
+            Ok(value) => Input::Event { value },
+            Err(defect) => Input::Defect { defect },
+        };
+        self.shared.push([input]);
     }
 
     /// The state the run is in: its innermost active state, or the final state it ended in.
@@ -108,7 +112,9 @@ impl<Event, State: Clone, Output, Error> Actor<Event, State, Output, Error> {
     }
 
     /// Waits for the run to end. A run that ended with a defect resumes unwinding with its
-    /// [`crate::Defect`] here.
+    /// [`crate::Defect`] here, and so does a result that does not decode as `Output` or
+    /// `Error` (a host defect). The future owns the actor: dropping it before it is ready
+    /// stops the run, as dropping the actor does.
     pub async fn result(mut self) -> Result<Output, Stopped<Error>> {
         let end = self.join().await;
         match end {
@@ -119,14 +125,20 @@ impl<Event, State: Clone, Output, Error> Actor<Event, State, Output, Error> {
         }
     }
 
+    /// Waits for the run's task. The handle stays in the actor until the task has ended, so
+    /// that dropping this future aborts the task.
     #[cfg(feature = "tokio")]
     async fn join(&mut self) -> RunEnd {
-        let task = self.task.take().expect("result is called once");
-        match task.await {
+        let task = self.task.as_mut().expect("result is called once");
+        let joined = task.await;
+        self.task = None;
+        match joined {
             Ok(end) => end,
             Err(e) => match e.try_into_panic() {
                 Ok(p) => std::panic::resume_unwind(p),
-                Err(e) => panic!("the machine's task was stopped: {e}"),
+                Err(e) => std::panic::resume_unwind(Box::new(Defect::host(format!(
+                    "the machine's task was stopped: {e}"
+                )))),
             },
         }
     }
@@ -156,14 +168,15 @@ fn initial_leaf(program: &Program, machine: &str) -> Option<String> {
     Some(s.id.clone())
 }
 
-/// Starts `machine` as a root run on a new Tokio task and gives its actor.
+/// Starts `machine` as a root run on a new Tokio task and gives its actor. An input that
+/// could not be encoded gives an actor whose run ended with that defect before it started.
 #[doc(hidden)]
 #[cfg_attr(not(feature = "tokio"), allow(unused_variables))]
 pub fn spawn<Event, State, Output, Error>(
     config: Config,
     program: &'static Program,
     machine: &'static str,
-    input: serde_json::Map<String, Value>,
+    input: Result<Object, Defect>,
     host: Box<dyn Host + 'static>,
     codec: Codec<Event, State, Output, Error>,
 ) -> Actor<Event, State, Output, Error> {
@@ -176,12 +189,18 @@ pub fn spawn<Event, State, Output, Error>(
     #[cfg(feature = "tokio")]
     {
         let run_shared = shared.clone();
-        let task = tokio::spawn(async move {
-            let host = host;
-            Driver::root(program, machine, input, &*host, &config, run_shared)
-                .drive()
-                .await
-        });
+        let task = match input {
+            Ok(input) => tokio::spawn(async move {
+                let host = host;
+                Driver::root(program, machine, input, &*host, &config, run_shared)
+                    .drive()
+                    .await
+            }),
+            Err(defect) => {
+                run_shared.finish(crate::shared::Finished::Ok);
+                tokio::spawn(async move { RunEnd::Defect(defect) })
+            }
+        };
         Actor {
             shared,
             task: Some(task),
