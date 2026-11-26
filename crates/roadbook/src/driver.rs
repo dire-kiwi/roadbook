@@ -636,6 +636,13 @@ impl<'a> Driver<'a> {
     async fn carry_out(&mut self, commands: Vec<Command>) {
         for c in commands {
             if let Err(defect) = self.carry(c).await {
+                // A run that has already ended with a defect is not changed by another: this
+                // is a child's cancel step failing while `failWithDefect`'s cancels are carried
+                // out. It is ignored, and the rest of the commands (more cancels, the `defect`
+                // record) are carried out.
+                if self.snap.status == Status::Defect {
+                    continue;
+                }
                 let host = self.host;
                 let peers = self.peers.clone();
                 let (snap, rest) =

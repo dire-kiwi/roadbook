@@ -498,7 +498,7 @@ failWithDefect(d):
   emit trace { kind: "defect", defect: d }
 ```
 
-Cancelling a child run here is an ordinary [cancellation](#cancelling-from-outside) of the child, which runs the child's exit effects, and the driver waits for it as for any `invoke.cancel`. A defect in that cancel step is written to the child's trace and changes nothing in the parent, which has already ended. A driver ignores an `invoke.cancel` or `timer.cancel` for an id that has already ended, or whose start it never carried out (because a step was cut short by an action's defect). After writing the record the driver raises the defect to whoever ran the run, as the host language does: `Effect.die` with a `Defect` value holding the defect object in TypeScript, and `std::panic::resume_unwind` with a `roadbook::Defect` payload in Rust.
+Cancelling a child run here is an ordinary [cancellation](#cancelling-from-outside) of the child, which runs the child's exit effects, and the driver waits for it as for any `invoke.cancel`. A defect in that cancel step is written to the child's trace and changes nothing in the parent, which has already ended: the parent's driver ignores it and goes on with the remaining cancels and the `defect` record ([the driver](#the-driver)). A driver ignores an `invoke.cancel` or `timer.cancel` for an id that has already ended, or whose start it never carried out (because a step was cut short by an action's defect). After writing the record the driver raises the defect to whoever ran the run, as the host language does: `Effect.die` with a `Defect` value holding the defect object in TypeScript, and `std::panic::resume_unwind` with a `roadbook::Defect` payload in Rust.
 
 ### Catching host defects
 
@@ -575,6 +575,8 @@ carryOut(snap, commands):
   for c in commands, in order:
     carry out c                     # an action or an invoke.cancel is waited for
     if that met a defect d:         # a host defect in an action, or a defect in a child's cancel step
+      if snap.status == "defect":   # already ended with a defect (failWithDefect's cancels): d changes nothing
+        continue
       (snap, rest) = core.step(ir, snap, { kind: "defect", defect: d }, fns)
       carry out rest                # cancels and the defect record; a defect met here is ignored
       return snap
@@ -582,7 +584,7 @@ carryOut(snap, commands):
 ```
 
 - **Commands are carried out in order, one at a time.** An action is awaited before the next command, and so is an `invoke.cancel` ([child runs](#child-runs)). Starting an invoke or a timer only registers it; its outcome comes back later through the queue.
-- **A defect stops the commands.** The commands after the one that met a defect are not carried out and their records are not written; the core's answer to the `defect` input is carried out instead. That answer is the same whether or not the step had already ended the run.
+- **A defect stops the commands.** The commands after the one that met a defect are not carried out and their records are not written; the core's answer to the `defect` input is carried out instead. That answer is the same whether or not the step had already ended the run. The one exception is a run whose snapshot has already ended with a defect: the core would not take the input ([taking an input](#taking-an-input)), so the driver does not give it, ignores the defect and carries out the remaining commands. That happens when a child's cancel step has a defect while the driver carries out the cancels of `failWithDefect`, and the commands after it are that function's other cancels and the run's own `defect` record ([defects](#defects)).
 - **Outcomes of a task.** Success gives `invoke.done` with the value. A failure with a tagged error gives `invoke.fail` with it (the core checks that it is one the task declares, and makes any other an `undeclared` defect). A defect gives `invoke.defect` ([catching host defects](#catching-host-defects)).
 - **Run ids.** The driver names each top-level run; a conformance runner names them `r1`, `r2`, … in the order the case starts them. A child run's id is its parent's id, a dot, and the id of the invoke that started it: `r1.4` is the run started by invoke 4 of run `r1`. A `ref` is a run id, so the ids of top-level runs that can reach one another must differ: the default names (`r1`, `r2`, … in the order runs start in the process) do, and a driver given a fixed id (Rust `Config::run_id`, a `RootRunId` of one's own) must not be given the same one twice.
 

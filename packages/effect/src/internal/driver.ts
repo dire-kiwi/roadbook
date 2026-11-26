@@ -452,6 +452,11 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           for (const command of stepped.commands) {
             const defect = yield* carry(command)
             if (defect === undefined) continue
+            // A run that has already ended with a defect is not changed by another: this is a
+            // child's cancel step failing while `failWithDefect`'s cancels are carried out. It
+            // is ignored, and the rest of the commands (more cancels, the `defect` record) are
+            // carried out.
+            if (snapshot.status === "defect") continue
             // A host defect in an action, or in a child's cancel step: the rest of the step's
             // commands are dropped and the core's answer to the defect is carried out instead.
             const answer = Core.step(ir, snapshot, { kind: "defect", defect }, fns)

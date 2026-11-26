@@ -1,0 +1,425 @@
+{
+  "irVersion": "0.2",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/crash.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {
+    "crash": {
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 13
+      }
+    }
+  },
+  "machines": {
+    "Crash": {
+      "doc": "Runs two children and a task, one in each region.",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 32,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {},
+      "emits": {},
+      "root": {
+        "id": "Crash",
+        "name": "Crash",
+        "kind": "compound",
+        "doc": "Runs two children and a task, one in each region.",
+        "span": {
+          "file": 0,
+          "line": 8,
+          "col": 1,
+          "endLine": 32,
+          "endCol": 2
+        },
+        "initial": "Crash.Busy",
+        "states": [
+          {
+            "id": "Crash.Busy",
+            "name": "Busy",
+            "kind": "parallel",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 11,
+              "col": 3,
+              "endLine": 29,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [
+              {
+                "id": "Crash.Busy.A",
+                "name": "A",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 12,
+                  "col": 5,
+                  "endLine": 16,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "machine",
+                  "src": "Child",
+                  "as": null,
+                  "args": [
+                    {
+                      "kind": "lit",
+                      "value": "A",
+                      "type": "string",
+                      "text": "\"A\""
+                    }
+                  ],
+                  "span": {
+                    "file": 0,
+                    "line": 13,
+                    "col": 7,
+                    "endLine": 15,
+                    "endCol": 8
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Crash.Over",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 14,
+                      "col": 9,
+                      "endLine": 14,
+                      "endCol": 21
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Crash.Busy.B",
+                "name": "B",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "machine",
+                  "src": "Child",
+                  "as": null,
+                  "args": [
+                    {
+                      "kind": "lit",
+                      "value": "B",
+                      "type": "string",
+                      "text": "\"B\""
+                    }
+                  ],
+                  "span": {
+                    "file": 0,
+                    "line": 19,
+                    "col": 7,
+                    "endLine": 21,
+                    "endCol": 8
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Crash.Over",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 20,
+                      "col": 9,
+                      "endLine": 20,
+                      "endCol": 21
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Crash.Busy.C",
+                "name": "C",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 24,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "task",
+                  "src": "crash",
+                  "as": null,
+                  "args": [],
+                  "span": {
+                    "file": 0,
+                    "line": 25,
+                    "col": 7,
+                    "endLine": 27,
+                    "endCol": 8
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Crash.Over",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 26,
+                      "col": 9,
+                      "endLine": 26,
+                      "endCol": 21
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Crash.Over",
+            "name": "Over",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 31,
+              "col": 3,
+              "endLine": 31,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:cc06b1198cd0e16680f1447e14355ff9679581bf725284f80af1d002db61b32d"
+    },
+    "Child": {
+      "doc": "Waits for Stop, which never comes, logging its exit.",
+      "span": {
+        "file": 0,
+        "line": 35,
+        "col": 1,
+        "endLine": 47,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 36,
+            "col": 3,
+            "endLine": 36,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "root": {
+        "id": "Child",
+        "name": "Child",
+        "kind": "compound",
+        "doc": "Waits for Stop, which never comes, logging its exit.",
+        "span": {
+          "file": 0,
+          "line": 35,
+          "col": 1,
+          "endLine": 47,
+          "endCol": 2
+        },
+        "initial": "Child.Waiting",
+        "states": [
+          {
+            "id": "Child.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 40,
+              "col": 3,
+              "endLine": 44,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "name"
+                    ],
+                    "type": "string",
+                    "text": "name"
+                  }
+                ]
+              }
+            ],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Child.Stopped",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 43,
+                  "col": 5,
+                  "endLine": 43,
+                  "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Child.Stopped",
+            "name": "Stopped",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 46,
+              "col": 3,
+              "endLine": 46,
+              "endCol": 25
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:15b778f27b21412cfb7482423212d528973b52fc295512a99f859a752bb9a33e"
+    }
+  }
+}
