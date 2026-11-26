@@ -21,6 +21,13 @@ export TREE_SITTER_DIR="$work"
 export TREE_SITTER_LIBDIR="$work/lib"
 mkdir -p "$work/lib"
 
+# Other versions generate a different src/ (array.h, for one), which would read as stale.
+version="$(tree-sitter --version)"
+case "$version" in
+  "tree-sitter 0.26."*) ;;
+  *) echo "the grammar is generated with the tree-sitter CLI 0.26, not $version ($(command -v tree-sitter))" >&2; exit 1 ;;
+esac
+
 step "the committed parser is what grammar.js generates"
 tree-sitter generate --output "$work/src"
 if ! diff -r -q src "$work/src"; then

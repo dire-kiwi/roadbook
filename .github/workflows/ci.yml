@@ -18,6 +18,11 @@ jobs:
         with:
           node-version: 26
           cache: pnpm
-      # The tree-sitter grammar's check (editors/tree-sitter-roadbook/check.sh) needs the CLI.
-      - run: npm install -g tree-sitter-cli@0.26
+      # The tree-sitter grammar's check (editors/tree-sitter-roadbook/check.sh) needs the 0.26 CLI.
+      # Put npm's global bin first on PATH, so a tree-sitter that comes with the runner image
+      # doesn't shadow it.
+      - run: |
+          npm install -g tree-sitter-cli@0.26
+          echo "$(npm prefix -g)/bin" >> "$GITHUB_PATH"
+      - run: which -a tree-sitter; tree-sitter --version
       - run: scripts/check-all.sh
