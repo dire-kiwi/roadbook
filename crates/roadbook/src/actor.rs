@@ -2,6 +2,7 @@
 
 use std::fmt;
 use std::future::poll_fn;
+use std::panic::resume_unwind;
 use std::sync::Arc;
 use std::task::Poll;
 
@@ -53,6 +54,8 @@ pub struct Codec<Event, State, Output, Error> {
 pub struct Actor<Event, State, Output, Error> {
     shared: Arc<Shared>,
     id: String,
+    program: &'static Program,
+    machine: &'static str,
     #[cfg(feature = "tokio")]
     task: Option<tokio::task::JoinHandle<RunEnd>>,
     codec: Codec<Event, State, Output, Error>,
@@ -71,7 +74,13 @@ impl<Event, State, Output, Error> Actor<Event, State, Output, Error> {
     /// chart's `ref Machine` argument. It can be cloned and outlives the actor; once the run
     /// has ended, what is sent through it is ignored (or, from a machine, `undelivered`).
     pub fn handle(&self) -> Ref<Event> {
-        Ref::new(RunHandle::new(self.shared.clone(), &self.id))
+        Ref::new(RunHandle::new(
+            self.shared.clone(),
+            &self.id,
+            self.program,
+            self.machine,
+            false,
+        ))
     }
 
     /// The run's id.
@@ -82,14 +91,15 @@ impl<Event, State, Output, Error> Actor<Event, State, Output, Error> {
 
 impl<Event, State: Clone, Output, Error> Actor<Event, State, Output, Error> {
     /// Queues an event. Events are taken one at a time, in the order sent. An event sent
-    /// after the run ended is ignored. An event that cannot be encoded (one holding a
-    /// non-finite `float`) is a host defect, which ends the run when it is taken.
+    /// after the run ended is ignored.
+    ///
+    /// An event that cannot be encoded (one holding a non-finite `float`) is the sender's
+    /// host defect, not the run's: nothing is queued, and `send` panics with the
+    /// [`crate::Defect`] as its payload (`std::panic::resume_unwind`). Inside a `Handlers`
+    /// method that ends the run calling it, as any panic there does.
     pub async fn send(&self, event: Event) {
-        let input = match (self.codec.event)(&event) {
-            Ok(value) => Input::Event { value },
-            Err(defect) => Input::Defect { defect },
-        };
-        self.shared.push([input]);
+        let value = (self.codec.event)(&event).unwrap_or_else(|d| resume_unwind(Box::new(d)));
+        self.shared.push([Input::Event { value }]);
     }
 
     /// The state the run is in: its innermost active state, or the final state it ended in.
@@ -174,6 +184,18 @@ impl<Event, State, Output, Error> Drop for Actor<Event, State, Output, Error> {
     }
 }
 
+/// Closes and finishes a run when dropped (idempotent).
+#[cfg(feature = "tokio")]
+struct Closer(Arc<Shared>);
+
+#[cfg(feature = "tokio")]
+impl Drop for Closer {
+    fn drop(&mut self) {
+        self.0.close();
+        self.0.finish(crate::shared::Finished::Ok);
+    }
+}
+
 /// The ids of the states entered when `machine` starts, down to its first leaf.
 fn initial_leaf(program: &Program, machine: &str) -> Option<String> {
     let m = program.ir().machines.get(machine)?;
@@ -186,7 +208,9 @@ fn initial_leaf(program: &Program, machine: &str) -> Option<String> {
 
 /// Starts `machine` as a root run on a new Tokio task and gives its actor. An input that
 /// could not be encoded gives an actor whose run ended with that defect before it started.
-/// `refs` are the handles of the runs the input's `ref`s name.
+/// `refs` are the handles of the runs the input's `ref`s name. The run is open, and
+/// subscribed to what those runs emit, before this returns, so an event a peer emits after
+/// it reaches the run even if its task has not started yet.
 #[doc(hidden)]
 #[cfg_attr(not(feature = "tokio"), allow(unused_variables))]
 pub fn spawn<Event, State, Output, Error>(
@@ -210,14 +234,20 @@ pub fn spawn<Event, State, Output, Error>(
         let run_shared = shared.clone();
         let run_id = id.clone();
         let task = match input {
-            Ok(input) => tokio::spawn(async move {
-                let host = host;
-                Driver::root(
-                    program, machine, input, refs, &*host, &config, run_id, run_shared,
-                )
-                .drive()
-                .await
-            }),
+            Ok(input) => {
+                let peers = crate::driver::open(program, machine, &input, &refs, &run_shared);
+                // Closes the run if the task is stopped before its driver exists.
+                let guard = Closer(run_shared.clone());
+                tokio::spawn(async move {
+                    let _guard = guard;
+                    let host = host;
+                    Driver::opened(
+                        program, machine, input, peers, &*host, &config, run_id, run_shared,
+                    )
+                    .drive()
+                    .await
+                })
+            }
             Err(defect) => {
                 run_shared.close();
                 run_shared.finish(crate::shared::Finished::Ok);
@@ -227,6 +257,8 @@ pub fn spawn<Event, State, Output, Error>(
         Actor {
             shared,
             id,
+            program,
+            machine,
             task: Some(task),
             codec,
             initial,

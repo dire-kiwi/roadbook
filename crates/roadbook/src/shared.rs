@@ -7,7 +7,7 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::task::Waker;
 
-use roadbook_core::{Defect, Input};
+use roadbook_core::{Defect, Input, Program};
 use serde_json::Value;
 
 use crate::env::Config;
@@ -118,9 +118,28 @@ impl Shared {
         self.lock().subscribers.retain(|s| !Arc::ptr_eq(s, run));
     }
 
-    /// The runs subscribed to what this run emits.
+    /// The runs subscribed to what this run emits. Runs that have closed without
+    /// unsubscribing (one stopped before its driver was first polled) are forgotten here.
     pub fn subscribers(&self) -> Vec<Arc<Shared>> {
-        self.lock().subscribers.clone()
+        // Not holding this run's lock while taking theirs.
+        let (open, gone): (Vec<_>, Vec<_>) = self
+            .lock()
+            .subscribers
+            .clone()
+            .into_iter()
+            .partition(|s| s.is_open());
+        if !gone.is_empty() {
+            self.lock()
+                .subscribers
+                .retain(|s| !gone.iter().any(|g| Arc::ptr_eq(g, s)));
+        }
+        open
+    }
+
+    /// Neither closed nor finished.
+    fn is_open(&self) -> bool {
+        let g = self.lock();
+        !g.closed && g.finished.is_none()
     }
 
     pub fn request_cancel(&self) {
@@ -214,10 +233,20 @@ fn remember(wakers: &mut Vec<Waker>, waker: &Waker) {
 /// through it, and it is what a `ref` to the run is in the erased interface
 /// ([`crate::dynamic`]): a run's id in a value, and this handle beside it. The typed handle,
 /// a machine's `Ref`, wraps one ([`crate::Ref`]).
+///
+/// A handle knows the machine its run runs, so a run given it as a `ref M` checks that it
+/// is a run of `M` (by name and machine hash). The handle of a child run, which only
+/// [`crate::Config::on_run`] hands out, cannot be passed as a `ref` at all: a child run is
+/// reached only through its invoke (`spec/execution.md#refs-and-handles`).
 #[derive(Clone)]
 pub struct RunHandle {
     pub(crate) shared: Arc<Shared>,
     pub(crate) id: Arc<str>,
+    pub(crate) machine: Arc<str>,
+    /// The machine's hash in the program the run runs.
+    pub(crate) hash: Arc<str>,
+    /// Whether this is a child run's handle.
+    pub(crate) child: bool,
 }
 
 impl std::fmt::Debug for RunHandle {
@@ -236,16 +265,41 @@ impl PartialEq for RunHandle {
 impl Eq for RunHandle {}
 
 impl RunHandle {
-    pub(crate) fn new(shared: Arc<Shared>, id: &str) -> RunHandle {
+    pub(crate) fn new(
+        shared: Arc<Shared>,
+        id: &str,
+        program: &Program,
+        machine: &str,
+        child: bool,
+    ) -> RunHandle {
+        let hash = program
+            .ir()
+            .machines
+            .get(machine)
+            .map_or("", |m| m.hash.as_str());
         RunHandle {
             shared,
             id: Arc::from(id),
+            machine: Arc::from(machine),
+            hash: Arc::from(hash),
+            child,
         }
     }
 
     /// The run's id: what a `ref` to it is in snapshots and traces.
     pub fn id(&self) -> &str {
         &self.id
+    }
+
+    /// The name of the machine the run runs.
+    pub fn machine(&self) -> &str {
+        &self.machine
+    }
+
+    /// Whether this is the handle of a child run (from [`crate::Config::on_run`]), which can
+    /// be sent inputs but not passed to another run as a `ref`.
+    pub fn is_child(&self) -> bool {
+        self.child
     }
 
     /// Queues an external event, a tagged record.
@@ -264,7 +318,8 @@ impl RunHandle {
         self.shared.request_cancel();
     }
 
-    /// Whether the run has ended.
+    /// Whether the run has ended: it finished, was cancelled, or its future was dropped (a
+    /// hard stop).
     pub fn is_finished(&self) -> bool {
         self.shared.finished().is_some()
     }

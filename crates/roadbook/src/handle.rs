@@ -116,14 +116,16 @@ impl<E> Ref<E> {
 impl<E: Serialize> Ref<E> {
     /// Queues an event for the run, as [`crate::Actor::send`] does: an ordinary event with no
     /// sender, taken in order after what is queued. An event sent after the run closed is
-    /// ignored. One that cannot be encoded (a non-finite `float`) is a host defect, which
-    /// ends the run when it is taken.
+    /// ignored.
+    ///
+    /// An event that cannot be encoded (a non-finite `float`) is the sender's host defect,
+    /// not the receiver's: nothing is queued, and `send` panics with the [`crate::Defect`] as
+    /// its payload (`std::panic::resume_unwind`). Inside an action or a task that ends the run
+    /// carrying it out with that host defect, as any panic there does.
     pub async fn send(&self, event: E) {
-        let input = match crate::__private::encode(&event) {
-            Ok(value) => Input::Event { value },
-            Err(defect) => Input::Defect { defect },
-        };
-        self.handle.shared.push([input]);
+        let value = crate::__private::encode(&event)
+            .unwrap_or_else(|d| std::panic::resume_unwind(Box::new(d)));
+        self.handle.shared.push([Input::Event { value }]);
     }
 }
 
