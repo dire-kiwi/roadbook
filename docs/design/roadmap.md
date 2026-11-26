@@ -101,7 +101,7 @@ Progress is recorded on each milestone below as it finishes.
 
 *Done.* The tree-sitter grammar (`editors/tree-sitter-roadbook`) parses every chart in the repository, with highlight, locals, fold and indent queries for Neovim, Helix and Zed; `scripts/check-all.sh` checks it. The language server (`roadbook lsp`, `crates/roadbook-lsp`, on a symbol index added to the compiler without changing its output) gives diagnostics with the compiler's fixes as quick fixes, go to definition, references, hover, rename that refuses to capture or clash, formatting and an outline, across files and packages and for unsaved and untitled documents. The VS Code extension (`editors/vscode`) adds the language, highlighting, the server and a live preview that compiles through the server, so it sees every unsaved buffer; its integration test passed in a real VS Code (headless). An independent review found edge cases with packages under `node_modules`, the preview's compilation, rename scoping and workspace trust; all are fixed.
 
-**Next.** Decided but not built ([decided questions](#decided-questions)): the `@dire-kiwi` npm scope, `strict` machines, emitted events delivered only to machines that handle them, and `call` declarations.
+**Next.** Decided but not built ([decided questions](#decided-questions)): the `@dire-kiwi` npm scope, emitted events delivered only to machines that handle them, and `call` declarations. `strict` machines are built.
 
 **Later.** History states, keyed `spawn` (designed together with a trigger for a peer or child that has ended), retry sugar, a durable driver, generated Rust state machines for hot paths, a Vite plugin that generates `.road.ts` files on the fly, bounded queues if load ever calls for them, `==` on records and lists, and a hard stop for a TypeScript run that skips its exit effects.
 
@@ -120,13 +120,13 @@ M3 and M4 are independent once M1 is done and can run in parallel. M2 depends on
 
 ## Decided questions
 
-The first draft left seven questions open, each with a default the design assumed. They were decided on 27 November 2026 and moved into the pages they belong to. Four of the decisions need code, which is not written yet; until it is, the pages say what is decided and what is built.
+The first draft left seven questions open, each with a default the design assumed. They were decided on 27 November 2026 and moved into the pages they belong to. Four of the decisions need code; `strict` machines are built, and until the rest are, the pages say what is decided and what is built.
 
 | Question | Decision | Built | Where |
 | --- | --- | --- | --- |
 | The name | Roadbook, published under the `@dire-kiwi` npm scope | No: the packages still say `@roadbook` | [Below](#the-name) |
 | Parameter style in TypeScript | One object, as now | Yes | [TypeScript](typescript.md#implementing-a-machine) |
-| Strict events | An opt-in `strict` modifier on a machine | No | [Language](language.md#strict-machines) |
+| Strict events | An opt-in `strict` modifier on a machine, with `on Event ignore` to ignore an event on purpose; an undelivered send is not a defect | Yes, in IR 0.3 | [Language](language.md#strict-machines) |
 | Exit actions on cancellation | They run, as now, and must be quick | Yes | [Semantics](semantics.md#cancelling-from-outside) |
 | Equality on records | Scalars and enums only, as now; the future design is written down | Yes | [Language](language.md#equality) |
 | Messaging details | `call` declarations; unbounded queues; emitted events only to machines that handle them; no supervision yet | Unbounded queues and no supervision are what exists; `call` and the filter are not built | [Actors and messaging](actors.md#decided-after-the-milestones) |

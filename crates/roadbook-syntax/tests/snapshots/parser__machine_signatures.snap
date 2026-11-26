@@ -7,6 +7,7 @@ items:
       name: A
       kind:
         machine:
+          strict: false
           params: []
           returns: ~
           errors: []
@@ -15,6 +16,7 @@ items:
       name: B
       kind:
         machine:
+          strict: false
           params:
             - name: x
               ty:
@@ -32,6 +34,7 @@ items:
       name: C
       kind:
         machine:
+          strict: false
           params: []
           returns: ~
           errors:

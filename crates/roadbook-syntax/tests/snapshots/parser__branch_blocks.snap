@@ -7,6 +7,7 @@ items:
       name: M
       kind:
         machine:
+          strict: false
           params: []
           returns: ~
           errors: []
@@ -27,6 +28,7 @@ items:
                               target:
                                 - A
                               effects: []
+                              ignore: false
                             - guard:
                                 var: b
                               target:
@@ -36,12 +38,14 @@ items:
                                     var: x
                                     value:
                                       int: 1
+                              ignore: false
                             - guard: ~
                               target: ~
                               effects:
                                 - do:
                                     name: f
                                     args: []
+                              ignore: false
                   - transition:
                       trigger: always
                       branches:
@@ -52,4 +56,5 @@ items:
                               target:
                                 - Done
                               effects: []
+                              ignore: false
 comments: []

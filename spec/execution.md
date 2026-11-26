@@ -140,6 +140,7 @@ So starting enters the root, then its initial child, and so on down, outermost f
 
 ```
 step(ir, snap, input, fns):
+  m = ir.machines[snap.machine]
   if input.kind == "defect":
     if snap.status != "defect": failWithDefect(input.defect)
     return (snap, commands)
@@ -168,6 +169,8 @@ step(ir, snap, input, fns):
         emit trace { kind: "stale", event: input }; return
       T = selectEmitted(input)
   if T is empty:
+    if m.strict and input.kind in ("event", "message"):
+      runtime error { kind: "unhandled", event: input }
     emit trace { kind: "dropped", event: input }
     return
   emit trace { kind: "event", event: input }
@@ -180,6 +183,7 @@ step(ir, snap, input, fns):
 - An outcome or expiry whose id is not in the snapshot is **stale**: its state was left (and the invoke or timer cancelled) after the driver had already queued it. It is traced as `stale` and changes nothing.
 - An emitted event from a child run whose invoke is no longer in the snapshot is **stale** too: its invoke was cancelled after the child had emitted it, as a child cancelled by its parent does when its exit effects `emit`. Taking an emitted event does not consume the invoke. An emitted event from a peer (`invoke` `null`) and a message are never stale.
 - An input that enables no transition is **dropped**: traced as `dropped`, and nothing else happens. Settling is skipped, since nothing changed. A consumed invoke or timer stays consumed.
+- **In a strict machine** (`strict` in the IR), an external event or a message that enables no transition is instead a runtime error, `unhandled`, whose `event` is the input ([defects](#defects)). Every other input that enables no transition is dropped as in any machine: an emitted event, an invoke's outcome whose guarded branches all fail, and a timer's expiry whose guarded branches all fail. They arrive when another run or the clock decides, so failing on them would make an ordinary race fatal. A transition with no target and no effects (`ignore`) is an enabled transition like any other, so an input it takes is traced as `event`, with a `transition` record whose `to` is `null`, and is never `unhandled`. A `send` from a strict machine that reaches no run is `undelivered`, as from any machine ([delivery](#delivering-messages)): strictness is about what a machine receives.
 - A `dropped` or `stale` record replaces the `event` record; an input is traced by exactly one of the three.
 - **A defect in the step that ended the run.** The core finishes the run (or cancels it) inside the step, so the snapshot a step returns can already be `done`, `failed` or `cancelled` while the driver is still carrying out that step's commands, every action of the step among them: say the effects of the transition into a top-level final state, the exit effects `finish` runs (the root's among them), or the exit effects of `cancelRun`. If any of those actions has a host defect, the driver stops at it as for any action ([defects](#defects)), so the `done`, `failed` or `cancelled` record after it is never written, and gives the core the `defect` input. That is why a `defect` input is taken in any status but `defect`: the run's status becomes `defect`, its result the defect, and the `defect` record is its last. `failWithDefect` finds no invokes or timers left to cancel, and `active` stays `[]`. A second `defect` input, for a run that already ended with one, changes nothing and writes nothing.
 
@@ -482,8 +486,9 @@ A defect ends the run at once. It is never routed to a `fail` branch, and no exi
 | `{"kind": "overflow", "expr": "attempts + 1"}` | Integer arithmetic left the `int` range, or float arithmetic produced a value that is not finite. `expr` is the `text` of the operator's IR node. |
 | `{"kind": "undeclared", "error": "Oops"}` | A task or child machine failed with an error it does not declare. |
 | `{"kind": "limit"}` | Settling took more than 1000 microsteps. |
+| `{"kind": "unhandled", "event": {"kind": "event", "value": {"_tag": "Knock", …}}}` | A strict machine was given an external event or a message that enabled no transition ([taking an input](#taking-an-input)). `event` is the input, an `event` or a `message`, exactly as an `event` record would have it, so a message keeps its sender and message id. |
 
-**Inside the core.** Runtime errors (`unassigned`, `overflow`, `undeclared`, `limit`) and a `host` defect returned by `fns` while evaluating an expression happen inside `start` or `step`. The call is then **atomic**: every command it had produced is discarded, and it returns `failWithDefect(d)` applied to the snapshot it was given, so even an invoke the failed step had consumed is cancelled again (a driver ignores that). There is no `event` record for the input.
+**Inside the core.** Runtime errors (`unassigned`, `overflow`, `undeclared`, `limit`, `unhandled`) and a `host` defect returned by `fns` while evaluating an expression happen inside `start` or `step`. The call is then **atomic**: every command it had produced is discarded, and it returns `failWithDefect(d)` applied to the snapshot it was given, so even an invoke the failed step had consumed is cancelled again (a driver ignores that). There is no `event` record for the input.
 
 **A defect in `start`** works the same way, applied to the initial snapshot (`active` `[]`, `vars` `{}`, no invokes or timers): `start` still returns a snapshot, with status `defect`, and two commands, the `started` record and the `defect` record. The `started` record is kept so the trace still says what the run was. The driver then ends the run like any other that ends with a defect: a root run raises the defect to whoever called `run`, a child run reports it to its parent as `invoke.defect`. A host defect in an action of `start`'s commands (a root `entry` effect, say) is an ordinary action defect, below.
 
@@ -764,6 +769,5 @@ The formats leave room for these; their rules will be added here.
 - **Restoring a run that holds `ref`s.** Its `input` names peers by the run ids of the process that saved it. Restoring it needs host code to give a handle for each of those ids, and the binding layer to rewrite them in `input` and `vars` by their types; until then such a snapshot is refused (`ref`).
 - **Saving a child run**, or a parent together with the state of its children, which is durable execution.
 - **Keyed `spawn`** ([actors and messaging](../docs/design/actors.md#many-children)), and host code receiving a run's emitted events through a handle.
-- **`strict`**, which will turn a dropped event of the machine's own into a failure, is decided but not in the grammar yet ([strict machines](../docs/design/language.md#strict-machines)).
 - **`call` declarations**, decided but not in the grammar yet ([asking a peer](../docs/design/actors.md#asking-a-peer)).
 - **Emitted events only to runs that handle them**, decided but not built ([who receives emitted events](../docs/design/actors.md#who-receives-emitted-events)): a run whose machine has no `on` for an emitted event will not be sent it, and writes no `dropped` record for it.

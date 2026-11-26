@@ -7,6 +7,7 @@ items:
       name: M
       kind:
         machine:
+          strict: false
           params: []
           returns: ~
           errors: []
@@ -32,6 +33,7 @@ items:
                                     var: r
                                     value:
                                       var: result
+                              ignore: false
                         - trigger:
                             fail:
                               name: CardDeclined
@@ -45,6 +47,7 @@ items:
                                     var: d
                                     value:
                                       var: error
+                              ignore: false
                         - trigger:
                             fail:
                               any: {}
@@ -54,6 +57,7 @@ items:
                               target:
                                 - D
                               effects: []
+                              ignore: false
                         - trigger:
                             fail:
                               name: Gateway
@@ -68,10 +72,12 @@ items:
                                   target:
                                     - Backoff
                                   effects: []
+                                  ignore: false
                                 - guard: ~
                                   target:
                                     - GaveUp
                                   effects: []
+                                  ignore: false
             - state:
                 kind: normal
                 name: B
@@ -87,4 +93,5 @@ items:
                               target:
                                 - A
                               effects: []
+                              ignore: false
 comments: []

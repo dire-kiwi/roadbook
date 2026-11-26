@@ -7,6 +7,7 @@ items:
       name: M
       kind:
         machine:
+          strict: false
           params: []
           returns: ~
           errors: []
@@ -25,6 +26,7 @@ items:
                           target:
                             - B
                           effects: []
+                          ignore: false
             - state:
                 kind: final
                 name: B

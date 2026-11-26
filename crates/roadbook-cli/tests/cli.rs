@@ -507,9 +507,18 @@ fn viz_trace_is_embedded_and_opens_in_replay() {
     let other = dir.join("other.jsonl");
     std::fs::write(
         &other,
+        // PlaceOrder's `started` record, with the first digits of its hash zeroed.
         std::fs::read_to_string(repo().join(trace))
             .unwrap()
-            .replace("\"ir\":\"sha256:e944", "\"ir\":\"sha256:0000"),
+            .lines()
+            .map(|l| match l.find("\"ir\":\"sha256:") {
+                Some(i) if l.contains("\"kind\":\"started\",\"machine\":\"PlaceOrder\"") => {
+                    let at = i + "\"ir\":\"sha256:".len();
+                    format!("{}0000{}\n", &l[..at], &l[at + 4..])
+                }
+                _ => format!("{l}\n"),
+            })
+            .collect::<String>(),
     )
     .unwrap();
     let res = roadbook(

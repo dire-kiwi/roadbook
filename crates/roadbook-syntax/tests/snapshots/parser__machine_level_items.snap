@@ -7,6 +7,7 @@ items:
       name: M
       kind:
         machine:
+          strict: false
           params: []
           returns: ~
           errors: []
@@ -29,6 +30,7 @@ items:
                     target:
                       - Cancelled
                     effects: []
+                    ignore: false
             - transition:
                 trigger:
                   after:
@@ -41,6 +43,7 @@ items:
                     target:
                       - TimedOut
                     effects: []
+                    ignore: false
             - transition:
                 trigger: always
                 branches:
@@ -50,6 +53,7 @@ items:
                     target:
                       - Cancelled
                     effects: []
+                    ignore: false
             - state:
                 kind: final
                 name: Cancelled
