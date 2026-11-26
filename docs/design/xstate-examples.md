@@ -500,7 +500,7 @@ machine Counter() {
 invoke: { src: 'upload', onSnapshot: { actions: assign({ percent: ({ event }) => event.snapshot.context.percent }) } },
 ```
 
-**Roadbook** has the child emit what the parent needs, received as `on upload.Progress`. That uses the [messages between machines](language.md#messages-between-machines) the language already has. The parent then depends only on the child's declared `emits`, not on its variables or states.
+**Roadbook** has the child emit what the parent needs, received as `on upload.Progress`. That uses the [messages between machines](https://github.com/dire-kiwi/roadbook/blob/main/docs/design/language.md#messages-between-machines) the language already has. The parent then depends only on the child's declared `emits`, not on its variables or states.
 
 ## Learning that a peer ended
 
