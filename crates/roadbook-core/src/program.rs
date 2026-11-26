@@ -50,7 +50,8 @@ impl fmt::Display for ProgramError {
 impl std::error::Error for ProgramError {}
 
 impl Program {
-    /// Indexes `ir`.
+    /// Indexes `ir`. An IR whose transition targets or initial states name states their
+    /// machine does not have is refused.
     pub fn new(ir: Ir) -> Result<Program, ProgramError> {
         let mut machines = HashMap::new();
         for (name, m) in &ir.machines {
@@ -63,15 +64,32 @@ impl Program {
                 initial: Vec::new(),
             };
             walk(&m.root, None, &mut Vec::new(), &mut idx);
-            let index = |id: &String| idx.by_id.get(id).copied();
+            // A target or initial state the machine does not have: refused here, since the
+            // interpreter would have nothing to enter.
+            let index = |id: &String, what: &str, of: &str| {
+                idx.by_id.get(id).copied().ok_or_else(|| {
+                    ProgramError::Read(format!(
+                        "{what} `{id}` of state `{of}` is not a state of machine `{name}`"
+                    ))
+                })
+            };
             for i in 0..idx.paths.len() {
                 let s = idx.state(m, i);
                 let targets = s
                     .transitions
                     .iter()
-                    .map(|t| t.target.as_ref().and_then(index))
-                    .collect();
-                let initial = s.initial.as_ref().and_then(index);
+                    .map(|t| {
+                        t.target
+                            .as_ref()
+                            .map(|id| index(id, "the target", &s.id))
+                            .transpose()
+                    })
+                    .collect::<Result<_, _>>()?;
+                let initial = s
+                    .initial
+                    .as_ref()
+                    .map(|id| index(id, "the initial state", &s.id))
+                    .transpose()?;
                 idx.targets.push(targets);
                 idx.initial.push(initial);
             }

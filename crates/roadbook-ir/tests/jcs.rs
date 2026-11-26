@@ -335,3 +335,66 @@ fn direct_writer_refuses_what_to_value_refuses() {
     assert!(serde_json::to_value(&bad).is_err());
     assert!(to_canonical(&bad).is_err());
 }
+
+#[test]
+fn direct_writer_keeps_the_last_of_a_repeated_member() {
+    #[derive(serde::Serialize)]
+    struct Inner {
+        a: u8,
+        b: u8,
+    }
+    #[derive(serde::Serialize)]
+    struct Outer {
+        b: &'static str,
+        #[serde(flatten)]
+        inner: Inner,
+        c: u8,
+    }
+    let x = Outer {
+        b: "first",
+        inner: Inner { a: 1, b: 2 },
+        c: 3,
+    };
+    same_as_value_path(&x);
+    assert_eq!(to_canonical(&x).unwrap(), r#"{"a":1,"b":2,"c":3}"#);
+}
+
+/// What serde_json's `Number` serialises as with its `arbitrary_precision` feature, which
+/// this workspace does not enable but a host may: written as the number it holds.
+#[test]
+fn direct_writer_reads_serde_json_private_numbers() {
+    use serde::ser::SerializeStruct;
+    struct Precise(&'static str);
+    impl serde::Serialize for Precise {
+        fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+            let mut st = s.serialize_struct("$serde_json::private::Number", 1)?;
+            st.serialize_field("$serde_json::private::Number", self.0)?;
+            st.end()
+        }
+    }
+    assert_eq!(
+        to_canonical(&json!({ "n": [1] })).unwrap(),
+        to_canonical(&std::collections::BTreeMap::from([("n", [Precise("1")])])).unwrap()
+    );
+    assert_eq!(to_canonical(&Precise("2.50")).unwrap(), "2.5");
+    assert_eq!(to_canonical(&Precise("1e21")).unwrap(), "1e+21");
+}
+
+/// What serde_json's `RawValue` serialises as (its `raw_value` feature, enabled in some
+/// builds of this workspace): written as the JSON it holds, canonically.
+#[test]
+fn direct_writer_reads_raw_values() {
+    use serde::ser::SerializeStruct;
+    struct Raw(&'static str);
+    impl serde::Serialize for Raw {
+        fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+            let mut st = s.serialize_struct("$serde_json::private::RawValue", 1)?;
+            st.serialize_field("$serde_json::private::RawValue", self.0)?;
+            st.end()
+        }
+    }
+    assert_eq!(
+        to_canonical(&[Raw(r#"{ "b": 1.0, "a": "x\u0041" }"#)]).unwrap(),
+        r#"[{"a":"xA","b":1}]"#
+    );
+}

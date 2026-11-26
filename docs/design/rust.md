@@ -145,8 +145,8 @@ order::resume_with(&config, &*app, saved, None).await?;
 | A task's declared errors | The generated error enum, matched to the `fail` branch |
 | A defect | A panic, caught with `catch_unwind` around functions, actions and invoke futures; a run that ends with one resumes unwinding with a `roadbook::Defect` payload |
 | Host code | The erased `roadbook::dynamic::Host` (called by name with JSON values), which the generated `Handlers` are adapted to |
-| Trace output | A `TraceSink` trait object, with a no-op default, `JsonLines` and `MemorySink` |
-| A saved snapshot | `roadbook::Saved`, which the driver publishes beside the run's inbox after each step's commands, with each timer's due time (when it carried out `timer.start`, plus the delay) |
+| Trace output | A `TraceSink` trait object, with a no-op default, `JsonLines` and `MemorySink`. A sink whose `enabled()` is `false` (the no-op one) is given no records, and the driver builds none |
+| A saved snapshot | `roadbook::Saved`, which the driver publishes beside the run's inbox after each step's commands, with each timer's due time (when it carried out `timer.start`, plus the delay). It publishes the core's snapshot and the due times, and the `Saved` is built when something first reads it |
 | Suspending | A flag beside the inbox: the loop checks it before each take, and stops the run once its queue is empty and no invoke runs |
 | Tracing | `tracing` spans per machine and per state: not built yet |
 
@@ -182,5 +182,7 @@ The conformance runner (`crates/roadbook/tests/conformance.rs`) runs every case 
 ## Interpreter first, generated code later
 
 The first version interprets the embedded IR, like the TypeScript runtime. That keeps the two cores line-for-line comparable and puts all the effort into one set of semantics. If a hot machine ever needs it, the macro can instead generate a `match`-based state machine with no interpretation overhead. The conformance suite would hold that generated code to the same traces.
+
+Measured on the example charts, interpretation is not where a run's time goes. Choosing transitions, finding states and evaluating expressions take about a fifth of a core step, and about a tenth of a whole run with no trace. The rest is moving JSON values: cloning the snapshot each step, the trace records, writing canonical JSON. A generated step function that keeps the same snapshot and records would keep all of that, so the cheaper changes went first: the canonical JSON trace written straight from the records, the saved snapshot built only when read, no records built for a sink that wants none, and transition targets as indices. The next step would be a core that does not clone the whole snapshot each step, which needs either its unchanging parts shared (`input` behind an `Arc`) or a step that takes the snapshot by value and undoes its `set`s when a defect rolls it back.
 
 [`crates/roadbook-bench`](../../crates/roadbook-bench) measures where a run's time goes on the example charts (`cargo bench -p roadbook-bench`): the core alone replaying a recorded run, what building each step's snapshot and records costs by itself, the driver's per-step work (publishing the saved snapshot, writing the trace), and whole runs through the generated handlers. Its tests check that the core replay and the whole run write the same records.

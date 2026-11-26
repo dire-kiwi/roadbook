@@ -1,10 +1,12 @@
 //! The two levels the benchmarks measure run the same runs: a whole run through the driver
-//! writes, for its root run, exactly the records the core writes replaying its script.
+//! writes, for its root run, exactly the records the core writes replaying its script. The
+//! orders run, many runs messaging a peer, has no single script to compare with: it is
+//! checked to go as intended.
 
 use std::sync::Arc;
 
 use roadbook::{MemorySink, Record};
-use roadbook_bench::{AtOnce, Never, Script, config, large, runtime, shop};
+use roadbook_bench::{AtOnce, Never, Script, config, large, orders, runtime, shop};
 use roadbook_core::Command;
 
 fn core_records(script: &Script) -> Vec<Record> {
@@ -62,4 +64,23 @@ fn ticket() {
             .any(|r| matches!(r, Record::Dropped { .. } | Record::Stale { .. }))
     );
     assert_eq!(records, core_records(&large::script()));
+}
+
+#[test]
+fn orders() {
+    let sink = Arc::new(MemorySink::new());
+    runtime().block_on(orders::run(&config(Never, sink.clone())));
+    let records = sink.records();
+    assert!(!records.iter().any(|r| matches!(
+        r.record,
+        Record::Dropped { .. } | Record::Stale { .. } | Record::Undelivered { .. }
+    )));
+    let done = |state: &str| {
+        records
+            .iter()
+            .filter(|r| matches!(&r.record, Record::Done { state: s, .. } if s == state))
+            .count()
+    };
+    assert_eq!(done("Order.Paid"), orders::ORDERS);
+    assert_eq!(done("Inventory.Closed"), 1);
 }

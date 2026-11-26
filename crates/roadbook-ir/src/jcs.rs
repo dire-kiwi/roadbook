@@ -43,9 +43,12 @@ pub fn to_canonical_vec(value: &Value) -> Vec<u8> {
 /// `value`'s `Serialize` with no `Value` in between.
 ///
 /// Fails where `serde_json::to_value` does, for example on a map with
-/// non-string keys. As there, a non-finite float is `null`. An object that
-/// gets the same key twice (a `#[serde(flatten)]` that repeats one) keeps both
-/// members, where `to_value` would keep the last.
+/// non-string keys, and also on a map with floating-point keys, which
+/// `to_value` writes as strings. As there, a non-finite float is `null`, an
+/// object that gets the same key twice (a `#[serde(flatten)]` that repeats one)
+/// keeps the last, and serde_json's own numbers and raw values (with its
+/// `arbitrary_precision` and `raw_value` features) are written as the JSON
+/// they hold.
 pub fn to_canonical<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {
     let mut out = String::new();
     write_canonical(&mut out, value)?;
@@ -219,6 +222,27 @@ struct Obj<'a> {
     members: Vec<Member>,
     /// For a struct variant, `{"Variant":{…}}`: the brace to close.
     close: bool,
+    /// For serde_json's private structs, which carry a number's or a raw
+    /// value's JSON text as their one field: what to write in their place.
+    private: Option<Private>,
+}
+
+/// A serde_json private struct: the struct's name and field name, and how its
+/// text is written.
+#[derive(Clone, Copy)]
+enum Private {
+    Number,
+    RawValue,
+}
+
+impl Private {
+    fn of(name: &str) -> Option<Private> {
+        match name {
+            "$serde_json::private::Number" => Some(Private::Number),
+            "$serde_json::private::RawValue" => Some(Private::RawValue),
+            _ => None,
+        }
+    }
 }
 
 impl<'a> Canon<'a> {
@@ -238,6 +262,7 @@ impl<'a> Canon<'a> {
             out: self.out,
             members: Vec::with_capacity(len.unwrap_or(0)),
             close,
+            private: None,
         }
     }
 
@@ -385,8 +410,10 @@ impl<'a> ser::Serializer for Canon<'a> {
     fn serialize_map(self, len: Option<usize>) -> Result<Obj<'a>, Self::Error> {
         Ok(self.obj(len, false))
     }
-    fn serialize_struct(self, _: &'static str, len: usize) -> Result<Obj<'a>, Self::Error> {
-        Ok(self.obj(Some(len), false))
+    fn serialize_struct(self, name: &'static str, len: usize) -> Result<Obj<'a>, Self::Error> {
+        let mut obj = self.obj(Some(len), false);
+        obj.private = Private::of(name);
+        Ok(obj)
     }
     fn serialize_struct_variant(
         mut self,
@@ -528,22 +555,52 @@ impl Obj<'_> {
             start,
             mut members,
             close,
+            private,
         } = self;
-        let sorted = members.is_sorted_by(|a, b| {
-            key_cmp(Self::name(out, 0, &a.name), Self::name(out, 0, &b.name)) != Ordering::Greater
+        if let Some(private) = private {
+            // `{"$serde_json::private::…":"<JSON text>"}`: the text, as `to_value` reads it.
+            let written = out.split_off(start - 1);
+            let text = match members.first() {
+                Some(m) => &written[m.text.start - start + 1..m.text.end - start + 1],
+                None => return Err(serde_json::Error::custom("an empty serde_json value")),
+            };
+            let colon = text
+                .find("\":")
+                .ok_or_else(|| serde_json::Error::custom("a serde_json value without its text"))?;
+            let json: String = serde_json::from_str(&text[colon + 2..])?;
+            match private {
+                Private::Number => {
+                    let n: serde_json::Number = serde_json::from_str(&json)?;
+                    write_f64(out, n.as_f64().unwrap_or(f64::NAN));
+                }
+                Private::RawValue => write_value(out, &serde_json::from_str::<Value>(&json)?),
+            }
+            return Ok(());
+        }
+        let in_order = members.is_sorted_by(|a, b| {
+            key_cmp(Self::name(out, 0, &a.name), Self::name(out, 0, &b.name)) == Ordering::Less
         });
-        if !sorted {
+        if !in_order {
             let written = out.split_off(start);
+            // Stable: of members with the same name, the last one written is kept, as
+            // `to_value` keeps it.
             members.sort_by(|a, b| {
                 key_cmp(
                     Self::name(&written, start, &a.name),
                     Self::name(&written, start, &b.name),
                 )
             });
+            let mut first = true;
             for (i, m) in members.iter().enumerate() {
-                if i > 0 {
+                if members.get(i + 1).is_some_and(|n| {
+                    Self::name(&written, start, &n.name) == Self::name(&written, start, &m.name)
+                }) {
+                    continue;
+                }
+                if !first {
                     out.push(',');
                 }
+                first = false;
                 out.push_str(&written[m.text.start - start..m.text.end - start]);
             }
         }
