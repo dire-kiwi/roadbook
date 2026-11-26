@@ -91,6 +91,8 @@ A machine has the signature of a task, so a larger machine invokes `Checkout` ex
 
 These are the choices that shape the rest. Each has a recommendation, which the rest of the design assumes.
 
+**Status, 26 November 2026:** the recommendations are accepted. Machines are written in the custom `.road` language, and messaging between machines stays at milestone 5, after the two runtimes.
+
 | Decision | Recommendation | Main alternative | Discussed in |
 | --- | --- | --- | --- |
 | How machines are written | A custom language compiled to a JSON IR | YAML with a schema, producing the same IR | [Alternatives](alternatives.md#how-machines-are-written) |
