@@ -1257,6 +1257,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "roadbook-wasm"
+version = "0.1.0"
+dependencies = [
+ "roadbook-compiler",
+ "roadbook-gen-ts",
+ "roadbook-ir",
+ "roadbook-syntax",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "roxmltree"
 version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

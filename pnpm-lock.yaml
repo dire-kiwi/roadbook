@@ -247,6 +247,18 @@ importers:
         specifier: ^5.1.1
         version: 5.1.1(@types/node@26.6.7)(vite@8.3.8(@types/node@26.6.7)(esbuild@0.28.2)(tsx@4.23.15))
 
+  packages/cli:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.7
+        version: 26.6.7
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.1.1
+        version: 5.1.1(@types/node@26.6.7)(vite@8.3.8(@types/node@26.6.7)(esbuild@0.28.2)(tsx@4.23.15))
+
   packages/core:
     devDependencies:
       '@types/node':

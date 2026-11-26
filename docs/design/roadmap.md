@@ -18,12 +18,12 @@ crates/
   roadbook-macros           the include! macro and Rust code generation
   roadbook                  driver, Actor, tracing; re-exports the macro
   roadbook-cli              check, fmt, gen, viz, export, paths
-  roadbook-wasm             the compiler as WebAssembly
+  roadbook-wasm             the compiler as WebAssembly, for packages/cli
 packages/
   core                     @roadbook/core: pure interpreter, no dependencies
   effect                   @roadbook/effect: Effect v4 driver and API
   viewer                   the viewer, built to one script the CLI embeds
-  cli                      the npm distribution of the CLI
+  cli                      @roadbook/cli: the npm distribution of the CLI, on the WebAssembly compiler
 examples/
   shop/                    the example used throughout these documents
 editors/
@@ -45,6 +45,8 @@ editors/
 | `roadbook export mermaid\|scxml\|ir <file> [--machine Name] [-o out]` | Other formats. Mermaid renders inline on GitHub; SCXML is one W3C document per machine; `ir` (no `--machine`) is the compiled IR. |
 | `roadbook paths <Machine> [file] [--json] [--max N]` | List the paths through a machine, from its initial state to each final state, each state with no way out and each point where going on would repeat a transition, each loop taken at most once, for test generation and coverage. |
 | `roadbook lsp` | The language server, on standard input and output, for editors: diagnostics, go to definition, references, rename, hover, formatting, outline, and the `roadbook/ir` request the VS Code preview compiles charts with. |
+
+The npm package [`@roadbook/cli`](../../packages/cli) runs `check`, `fmt`, `gen` and `export ir` on the compiler built as WebAssembly, printing what the native command does byte for byte, with no Rust toolchain; it also has an API for build tools.
 
 ## Milestones
 
