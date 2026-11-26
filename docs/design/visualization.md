@@ -143,7 +143,7 @@ The index puts the summary first: the two revisions, the counts of machines, sta
 }
 ```
 
-**Coverage.** Load the traces of many runs, from a test run or from production, and see how often each transition was taken and each state entered, across every run of the machine, child runs included. `roadbook viz --coverage traces/` (files, or directories searched for `*.jsonl`) puts into each page the traces with a run of one of its machines, and the pages open in coverage mode; any page can also load traces with the file picker in the coverage panel or by dropping them on the page while in coverage mode. Nothing is uploaded.
+**Coverage.** Load the traces of many runs, from a test run or from production, and see how often each transition was taken and each state entered, across every run of the machine, child runs included. `roadbook viz --coverage traces/` (a file, or a directory searched for `*.jsonl`; repeat the flag for more, as in `roadbook viz --coverage a.jsonl --coverage traces/ examples/shop`, so the chart paths that follow are never read as traces) puts into each page the traces with a run of one of its machines, and the pages open in coverage mode; a line that is not a trace record, such as the truncated last line a production trace often has, is skipped, and the CLI warns with the number of lines skipped per file while the panel lists them; any page can also load traces with the file picker in the coverage panel or by dropping them on the page while in coverage mode. Nothing is uploaded.
 
 | What | Drawn as |
 | --- | --- |

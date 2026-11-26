@@ -1583,4 +1583,45 @@ fn viz_coverage_embeds_the_traces_of_each_page() {
     );
     assert_eq!(res.status.code(), Some(2));
     assert!(text(&res.stderr).contains("none of the traces"));
+
+    // `--coverage` takes one value: the paths after it are charts, not traces. A truncated
+    // last line, usual in a production trace, is skipped with a warning.
+    let traces = out_dir("coverage-traces");
+    std::fs::create_dir_all(&traces).unwrap();
+    let mut cut = std::fs::read_to_string(
+        repo().join("spec/conformance/cases/checkout-charged/trace.jsonl"),
+    )
+    .unwrap();
+    cut.push_str("{\"kind\":\"entered\",\"run\":\"r1\",\"sta");
+    let cut_path = traces.join("cut.jsonl");
+    std::fs::write(&cut_path, &cut).unwrap();
+    let retry = repo().join("spec/conformance/cases/checkout-retry/trace.jsonl");
+    let out = out_dir("coverage-one-value");
+    let o = out.to_str().unwrap();
+    let res = roadbook(
+        &repo(),
+        &[
+            "viz",
+            "--coverage",
+            cut_path.to_str().unwrap(),
+            "--coverage",
+            retry.to_str().unwrap(),
+            "examples/shop/checkout.road",
+            "-o",
+            o,
+        ],
+    );
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    let err = text(&res.stderr);
+    assert!(err.contains("cut.jsonl`: 1 line is not a trace record (line "), "{err}");
+    assert!(err.contains("2 trace files"), "{err}");
+    let mut files: Vec<String> = std::fs::read_dir(&out)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    files.sort();
+    assert_eq!(files, ["checkout.html", "index.html", "roadbook-viewer.js"]);
+    let data = page_data(&std::fs::read_to_string(out.join("checkout.html")).unwrap());
+    assert_eq!(data["coverage"].as_array().unwrap().len(), 2);
+    let _ = std::fs::remove_dir_all(&traces);
 }
