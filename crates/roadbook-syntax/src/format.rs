@@ -172,25 +172,23 @@ impl Formatter<'_> {
         self.trailing();
     }
 
-    /// The comments after the closing bracket `close` of a multi-line list, when the row that
-    /// starts with the bracket also holds what follows it (`) {`, `} from "…"`). Those
-    /// comments are inside that row, and would move before it, into the list, and be indented
-    /// as list lines by the next run. So a comment on the bracket's line is kept for the end
-    /// of the row, and those on the lines after it go before the bracket now, at `indent`.
-    fn comments_after_close(&mut self, close: Token, indent: usize) {
+    /// The comments after the closing bracket `close` of a multi-line list and before `end`,
+    /// the end of the row that starts with the bracket, when that row also holds what follows
+    /// it (`) {`, `) ! A | B`, `} from "…"`). Those comments are inside that row, and would
+    /// move before it, into the list, and be indented as list lines by the next run. So a
+    /// comment on the bracket's line is kept for the end of the row, and those on the lines
+    /// after it go before the bracket now, at `indent`. Comments after `end` belong to what
+    /// follows the row and are left alone.
+    fn comments_after_close(&mut self, close: Token, end: u32, indent: usize) {
         if let Some(c) = self.comments.get(self.next)
             && c.span.start.offset >= close.span.end.offset
+            && c.span.start.offset < end
             && c.span.start.line == close.span.end.line
         {
             self.carried = Some(c.text.clone());
             self.next += 1;
         }
-        let i = self
-            .tokens
-            .partition_point(|t| t.span.start.offset <= close.span.start.offset);
-        if let Some(t) = self.tokens.get(i) {
-            self.comments_before(t.span.start.offset, indent, false);
-        }
+        self.comments_before(end, indent, false);
     }
 
     fn trailing(&mut self) {
@@ -295,7 +293,7 @@ impl Formatter<'_> {
         let items: Vec<_> = i.names.iter().map(|n| (n.span, n.name.clone())).collect();
         self.list_lines(INDENT, &items);
         self.comments_before(close.span.start.offset, INDENT, true);
-        self.comments_after_close(close, INDENT);
+        self.comments_after_close(close, i.span.end.offset, INDENT);
         self.close_block(
             (close.span.start.offset, i.span.end.offset),
             0,
@@ -379,13 +377,13 @@ impl Formatter<'_> {
 
     /// The parameter list after `name`: `(a: T, …)` on one line, or a multi-line header. In the
     /// multi-line case the lines up to and including the `(` line are emitted and the returned
-    /// head is `)`.
+    /// head is `)`, for the caller's row from `start` to `end`.
     fn params(
         &mut self,
         name: &Ident,
         params: &[Field],
         head: String,
-        start: u32,
+        (start, end): (u32, u32),
         indent: usize,
     ) -> String {
         let open = self.find(name.span.end.offset, Punct::LParen);
@@ -415,7 +413,7 @@ impl Formatter<'_> {
             Punct::RParen,
         );
         self.comments_before(close.span.start.offset, indent + INDENT, true);
-        self.comments_after_close(close, indent + INDENT);
+        self.comments_after_close(close, end, indent + INDENT);
         // The caller emits the line starting with `)`; it must not get a blank line before it.
         self.at_block_start = true;
         self.cursor = self.cursor.max(close.span.start.offset);
@@ -465,11 +463,11 @@ impl Formatter<'_> {
                 Some(Group::Data),
             ),
             DeclKind::Fn { params, returns } => {
-                let head = self.params(&d.name, params, head, start, 0);
+                let head = self.params(&d.name, params, head, whole, 0);
                 self.decl_row(whole, vec![head, format!("-> {}", ty(returns))]);
             }
             DeclKind::Action { params } => {
-                let head = self.params(&d.name, params, head, start, 0);
+                let head = self.params(&d.name, params, head, whole, 0);
                 self.decl_row(whole, vec![head]);
             }
             DeclKind::Task {
@@ -477,21 +475,22 @@ impl Formatter<'_> {
                 returns,
                 errors,
             } => {
-                let head = self.params(&d.name, params, head, start, 0);
+                let head = self.params(&d.name, params, head, whole, 0);
                 let returns = returns
                     .as_ref()
                     .map_or(String::new(), |t| format!("-> {}", ty(t)));
                 self.decl_row(whole, vec![head, returns, error_list(errors)]);
             }
             DeclKind::Machine(m) => {
-                let mut head = self.params(&d.name, &m.params, head, start, 0);
+                let header = (start, m.body.span.start.offset + 1);
+                let mut head = self.params(&d.name, &m.params, head, header, 0);
                 if let Some(t) = &m.returns {
                     head += &format!(" -> {}", ty(t));
                 }
                 if !m.errors.is_empty() {
                     head += &format!(" {}", error_list(&m.errors));
                 }
-                self.body(&m.body, (start, m.body.span.start.offset + 1), head, 0);
+                self.body(&m.body, header, head, 0);
             }
         }
     }

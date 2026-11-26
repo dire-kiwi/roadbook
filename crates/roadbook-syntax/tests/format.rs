@@ -116,6 +116,37 @@ const COMMENTS: &[(&str, &str)] = &[
         "action a(\n  n: int\n) // c\n",
         "action a(\n  n: int\n) // c\n",
     ),
+    // Comments after the row that starts with a list's closer belong to what follows: the
+    // next declaration keeps its doc comment, and nothing moves into the list.
+    (
+        "action log(\n  what: string\n)\n\n/// Doc.\nmachine M() {}\n",
+        "action log(\n  what: string\n)\n\n/// Doc.\nmachine M() {}\n",
+    ),
+    (
+        "fn f(\n  a: int\n) -> int\n// c\n/// Doc.\naction g(\n  b: int\n) // d\n/// Doc.\ntask t()\n",
+        "fn f(\n  a: int\n) -> int\n// c\n/// Doc.\naction g(\n  b: int\n) // d\n/// Doc.\ntask t()\n",
+    ),
+    (
+        "machine M(\n  a: int\n) {}\n\n/// Doc.\nmachine N() {}\n",
+        "machine M(\n  a: int\n) {}\n\n/// Doc.\nmachine N() {}\n",
+    ),
+    (
+        "import {\n  A\n} from \"x\"\n\n/// Doc.\ntype T {\n  a: int\n}\n/// Doc.\nenum E {\n  X\n}\n// c\n/// Doc.\nmachine M() {}\n",
+        "import {\n  A\n} from \"x\"\n\n/// Doc.\ntype T {\n  a: int\n}\n/// Doc.\nenum E {\n  X\n}\n// c\n/// Doc.\nmachine M() {}\n",
+    ),
+    (
+        "machine M() {\n  event E {\n    a: int\n  }\n  /// Doc.\n  state A {}\n}\n",
+        "machine M() {\n  event E {\n    a: int\n  }\n  /// Doc.\n  state A {}\n}\n",
+    ),
+    // Comments inside the closer's row, on the lines after the closer, go into the list.
+    (
+        "task t(\n  a: int\n) ! A\n// c\n| B\n",
+        "task t(\n  a: int\n  // c\n) ! A | B\n",
+    ),
+    (
+        "machine M(\n  a: int\n) -> int\n// c\n! E { // d\n  initial A\n  final state A { output 1 }\n}\n",
+        "machine M(\n  a: int\n  // c\n) -> int ! E { // d\n  initial A\n  final state A { output 1 }\n}\n",
+    ),
     ("// only a comment\n", "// only a comment\n"),
     ("", ""),
 ];
@@ -200,6 +231,9 @@ fn comments_after_a_list_closer_are_stable() {
         "machine M(\n  n: int\n) // c\n// d\n{ // e\n  initial A\n  final state A {}\n}\n",
         "import {\n  A, B\n} // c\n// d\nfrom \"./x.road\" // e\n",
         "fn f(\n  n: int\n) // c\n-> int\n",
+        "task t(\n  a: int\n) ! A\n// c\n| B\n",
+        "task t(\n  a: int\n) ! A // c\n// d\n| B // e\n// f\n",
+        "action log(\n  what: string\n)\n\n/// Doc.\nmachine M() {}\n",
     ] {
         let once = format(src).unwrap();
         assert_eq!(format(&once).unwrap(), once, "not idempotent:\n{src}");
@@ -254,4 +288,42 @@ fn round_trips_under_any_whitespace() {
             check_stable(&variant);
         }
     }
+}
+
+/// A comment inserted before any token, on the same line, on a line of its own, or between
+/// blank lines: the output is stable and keeps every comment and doc comment.
+#[test]
+fn stable_with_a_comment_anywhere() {
+    let inputs = common::CASES
+        .iter()
+        .map(|c| c.1)
+        .chain(LAYOUTS.iter().map(|c| c.0))
+        .chain(COMMENTS.iter().map(|c| c.0));
+    for src in inputs {
+        let tokens = roadbook_syntax::lexer::lex(FileId(0), src).tokens;
+        for t in &tokens {
+            for comment in [" // z\n", "\n// z\n", "\n\n// z\n\n"] {
+                let at = t.span.range().start;
+                let variant = format!("{}{comment}{}", &src[..at], &src[at..]);
+                let Ok(once) = format(&variant) else {
+                    continue;
+                };
+                assert_eq!(format(&once).unwrap(), once, "not idempotent:\n{variant}");
+                assert_eq!(
+                    unordered_comments(structure(&once)),
+                    unordered_comments(structure(&variant)),
+                    "the tree or the comments changed:\n{variant}\n---\n{once}"
+                );
+            }
+        }
+    }
+}
+
+/// The tree with its comments sorted: a comment after a list's closer may move ahead of one
+/// on the closer's line.
+fn unordered_comments(mut v: serde_json::Value) -> serde_json::Value {
+    if let Some(c) = v.get_mut("comments").and_then(|c| c.as_array_mut()) {
+        c.sort_by_key(|x| x.to_string());
+    }
+    v
 }
