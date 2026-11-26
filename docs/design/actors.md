@@ -123,25 +123,40 @@ import { Inventory } from "inventory/inventory.road"
 
 A path that does not start with `./`, `../` or `/` names a file in another package: its first segment is the package (its first two for `@scope/name`), the rest the file in it. The command line finds the package in the `[packages]` table of `roadbook.toml` or, as Node does, in `node_modules` ([projects](language.md#projects)); [`examples/orders`](../../examples/orders) imports [`examples/inventory`](../../examples/inventory) through the root `roadbook.toml`. The compiled IR stays self-contained: the imported machine and everything it uses are in it, each file of the other package named in `sources` by its package and its path in the package, which is also what marks its declarations as the other package's ([`spec/ir.md`](../../spec/ir.md#sources)).
 
-**Types.** The importing crate does not generate its own copy of `Inventory`'s types. Its generated code refers to the owning crate's: `inventory::Event`, `inventory::Ref`. There is one definition of each type, so the Rust compiler checks every cross-crate send.
+**Types.** The importing crate does not generate its own copy of `Inventory`'s types. Its generated code refers to the owning crate's: for every declaration from the other package it re-exports the owning crate's item instead of generating one (`pub use ::inventory::Item;`, and `pub use ::inventory::inventory;` for the machine's module, with its `Event`, `Emitted` and `Ref`). There is one definition of each type, so the Rust compiler checks every cross-crate send: `order::run`'s `inventory: ref Inventory` is an `inventory::inventory::Ref`, which is `roadbook::Ref<inventory::inventory::Event>`, and a handle to any other machine, or an event `Inventory` does not accept, does not compile ([`examples/orders/tests/ui`](../../examples/orders/tests/ui)).
 
 **Delivery.** A `Ref` is a cloneable, `Send` handle around the target's queue.
 
 ```rust
-// crate `inventory`
-roadbook::include!("inventory.road");      // exports inventory::{Event, Emitted, Ref, Handlers, spawn}
+// crate `inventory`, at its root
+roadbook::include!("inventory.road");      // generates inventory::inventory::{Event, Emitted, Ref, Handlers, spawn, …}
+pub use self::inventory::{Emitted, Event, Handlers, Ref, spawn, spawn_with};   // optional: inventory::Event
 
 // crate `orders`, whose chart imports Inventory
-let stock = inventory::spawn(warehouse);
+roadbook::include!("orders.road");
+let stock = inventory::spawn(warehouse, "w1".into());
 let order = order::spawn(app, id, draft, stock.handle());   // the chart's `inventory: ref Inventory`
 
 // host code in any crate can send too
 stock.handle().send(inventory::Event::Restock { sku, qty }).await;
 ```
 
+Host code cannot receive what a run emits through its handle: which of a run's emitted events host code would see, and how, is not specified yet.
+
 TypeScript works the same way with packages: the chart imports `"@shop/inventory/inventory.road"`, and the generated file imports types from that package's generated file.
 
-The Rust macro does not look for the dependency's `.road` file at all. The compiler's loader takes an import satisfied by an already compiled IR (`Loaded::Compiled`), whose declarations enter the importing chart's scope as a parsed file's would and are copied into its IR unchanged, so their hashes are the dependency's. [`spike/cross-crate`](../../spike/cross-crate) tried four mechanisms against path, git, vendored and registry dependencies, and against a crate that is itself a dependency. Each crate's `roadbook::include!` embeds the IR and also exports a hidden `macro_rules!` for each chart. An importing chart's macro expands to a call into that macro, which calls back with the IR and `$crate`. This works for every kind of dependency, always sees the version that is actually compiled, needs no build script or configuration, and Cargo's normal dependency tracking rebuilds the importer when the chart changes.
+The Rust macro does not look for the dependency's `.road` file at all. The compiler's loader takes an import satisfied by an already compiled IR (`Loaded::Compiled`), whose declarations enter the importing chart's scope as a parsed file's would and are copied into its IR unchanged, so their hashes are the dependency's. A spike (`spike/cross-crate`, now deleted) tried four mechanisms against path, git, vendored and registry dependencies, and against a crate that is itself a dependency, and `roadbook::include!` is built on the one that worked everywhere:
+
+1. Each `include!` embeds its chart's IR and also exports a hidden `#[macro_export] macro_rules!`, named after the chart's path in its package (`__roadbook_chart_inventory_2eroad` for `inventory.road`).
+2. When the importing chart's `include!` compiles and its loader is asked for `inventory/inventory.road`, which no crate has handed over yet, it expands instead to a call of `::inventory::__roadbook_chart_inventory_2eroad!`, passing its own arguments and a continuation, the hidden proc macro `roadbook::__private::include_continue`.
+3. That macro calls the continuation back with the arguments, the IR and `$crate`. The continuation compiles the chart again, its loader now answering the import with `Loaded::Compiled(ir)`, and generates code that names the dependency's items through `$crate`. A chart importing from several packages goes round once per package.
+
+This works for every kind of dependency, always sees the version that is actually compiled, needs no build script or configuration, and Cargo's normal dependency tracking rebuilds the importer when the chart changes: editing `examples/inventory/inventory.road` rebuilds `inventory`, then `orders`, whose embedded `Inventory` has the new hash. The limits, as built:
+
+- The package's name is the crate's name (`-` read as `_`), so a scoped npm-style package cannot be imported this way.
+- Only a file that the owning crate itself `include!`s can be imported, by its path relative to the crate's directory, since only those have a hidden macro.
+- The owning crate's `include!` must be at its crate root (or its generated items re-exported there), since the importer names them as `$crate::Name`.
+- A declaration that the importer gets through a chain of packages (`a` imports from `b`, and the importer from `a`) is re-exported from `a`, which re-exports it from `b`.
 
 The other three mechanisms were rejected:
 
@@ -149,7 +164,7 @@ The other three mechanisms were rejected:
 - Passing the path through build scripts works, but it needs `links` and a `build.rs` in every crate on both sides, and `links` forbids two semver-incompatible versions of the owning crate in one graph.
 - A `roadbook.toml` mapping works only for path dependencies.
 
-The caveat is renamed dependencies. The macro calls the owning crate by its package name, so `inv = { package = "inventory" }` needs an alias in the call: `roadbook::include!("orders.road", crates(inventory = inv))`.
+The caveat is renamed dependencies. The macro calls the owning crate by its package name, so `inv = { package = "inventory" }` needs an alias in the call: `roadbook::include!("orders.road", crates(inventory = inv))` ([`crates/roadbook/tests/include_renamed.rs`](../../crates/roadbook/tests/include_renamed.rs)). Without it the error is that no crate `inventory` can be found.
 
 ### Across processes and languages
 

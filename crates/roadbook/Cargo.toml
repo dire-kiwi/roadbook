@@ -21,9 +21,11 @@ serde_json = { workspace = true }
 tokio = { version = "1", optional = true, features = ["rt", "time"] }
 
 [dev-dependencies]
+# The examples' crate that owns `inventory.road`, under another name, for `include_renamed.rs`.
+inv = { package = "inventory", path = "../../examples/inventory" }
 roadbook-compiler = { path = "../roadbook-compiler" }
 roadbook-conformance = { path = "../roadbook-conformance" }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "test-util"] }
 trybuild = "1"
 
 [lints]

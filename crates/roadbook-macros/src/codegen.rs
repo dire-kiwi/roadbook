@@ -15,8 +15,32 @@ use roadbook_ir::{
 
 use crate::names::{camel, ident, plain, snake};
 
-/// The items for a chart, or why it cannot be expanded.
-pub fn generate(ir: &Ir) -> Result<TokenStream, String> {
+/// What another crate generated: the declarations of a chart's IR that come from another
+/// package, which the expansion refers to instead of generating them again.
+#[derive(Default)]
+pub struct Foreign {
+    /// For each such declaration, the crate whose `roadbook::include!` generated (or
+    /// re-exported) it, as a path: the `$crate` of that crate's hidden macro.
+    pub krate: HashMap<String, TokenStream>,
+    /// The names those crates gave the error enums of their fallible tasks (`false`) and
+    /// machines (`true`).
+    pub error_enums: HashMap<(bool, String), String>,
+}
+
+/// The name of the error enum of every fallible task (`false`) and machine (`true`) of `ir`,
+/// as an expansion of `ir` alone names them.
+pub fn error_enum_names(ir: &Ir) -> Result<HashMap<(bool, String), String>, String> {
+    let none = Foreign::default();
+    let g = Gen::new(ir, &none)?;
+    Ok(g.error_enums
+        .into_iter()
+        .map(|((m, n), id)| ((m, n.to_owned()), plain(&id)))
+        .collect())
+}
+
+/// The items for a chart, or why it cannot be expanded. Declarations in `foreign` are
+/// re-exported from the crate that generated them.
+pub fn generate(ir: &Ir, foreign: &Foreign) -> Result<TokenStream, String> {
     for (name, m) in &ir.machines {
         if let Some(id) = find_parallel(&m.root) {
             return Err(format!(
@@ -25,10 +49,16 @@ pub fn generate(ir: &Ir) -> Result<TokenStream, String> {
             ));
         }
     }
-    let g = Gen::new(ir)?;
+    let g = Gen::new(ir, foreign)?;
     let mut items = Vec::new();
     for (name, decl) in &ir.types {
-        items.push(g.type_decl(name, &decl.def, &decl.doc)?);
+        match foreign.krate.get(name) {
+            Some(krate) => {
+                let id = ident(name);
+                items.push(quote!(pub use #krate::#id;));
+            }
+            None => items.push(g.type_decl(name, &decl.def, &decl.doc)?),
+        }
     }
     items.extend(g.error_enums());
     let mut modules: HashMap<String, String> = HashMap::new();
@@ -39,7 +69,13 @@ pub fn generate(ir: &Ir) -> Result<TokenStream, String> {
                 "machines `{other}` and `{name}` would both be the Rust module `{module}`"
             ));
         }
-        items.push(g.machine(name, m)?);
+        match foreign.krate.get(name) {
+            Some(krate) => {
+                let id = ident(&snake(name));
+                items.push(quote!(pub use #krate::#id;));
+            }
+            None => items.push(g.machine(name, m)?),
+        }
     }
     let json = ir.to_json();
     Ok(quote! {
@@ -129,10 +165,12 @@ struct Gen<'a> {
     ir: &'a Ir,
     /// The error enum of each fallible task (`false`) and machine (`true`).
     error_enums: HashMap<(bool, &'a str), Ident>,
+    /// The crate each declaration from another package is re-exported from.
+    foreign: &'a HashMap<String, TokenStream>,
 }
 
 impl<'a> Gen<'a> {
-    fn new(ir: &'a Ir) -> Result<Gen<'a>, String> {
+    fn new(ir: &'a Ir, foreign: &'a Foreign) -> Result<Gen<'a>, String> {
         let fallible: Vec<(bool, &str)> = ir
             .tasks
             .iter()
@@ -152,7 +190,17 @@ impl<'a> Gen<'a> {
         }
         let mut taken: HashSet<String> = ir.types.keys().cloned().collect();
         let mut error_enums = HashMap::new();
+        // Another crate's names first: they are fixed.
+        for &(machine, n) in &fallible {
+            if let Some(name) = foreign.error_enums.get(&(machine, n.to_owned())) {
+                taken.insert(name.clone());
+                error_enums.insert((machine, n), ident(name));
+            }
+        }
         for (machine, n) in fallible {
+            if error_enums.contains_key(&(machine, n)) {
+                continue;
+            }
             let mut name = short(n);
             if count[&name] > 1 || taken.contains(&name) {
                 let kind = if machine { "Machine" } else { "Task" };
@@ -165,7 +213,11 @@ impl<'a> Gen<'a> {
             }
             error_enums.insert((machine, n), ident(&name));
         }
-        Ok(Gen { ir, error_enums })
+        Ok(Gen {
+            ir,
+            error_enums,
+            foreign: &foreign.krate,
+        })
     }
 
     // ---- types --------------------------------------------------------------------------
@@ -512,7 +564,10 @@ impl<'a> Gen<'a> {
             .chain(machines)
             .filter_map(|(machine, n, errors, what)| {
                 let id = self.error_enums.get(&(machine, n.as_str()))?;
-                Some(self.error_enum(id, &format!("{what} `{n}`"), errors))
+                Some(match self.foreign.get(n) {
+                    Some(krate) => quote!(pub use #krate::#id;),
+                    None => self.error_enum(id, &format!("{what} `{n}`"), errors),
+                })
             })
             .collect()
     }

@@ -16,6 +16,7 @@ pub use crate::actor::{Codec, spawn};
 pub use crate::dynamic::{Host, Invocation, Outcome, run, run_with};
 pub use crate::env::{BoxFuture, Config};
 pub use crate::shared::RunHandle;
+pub use roadbook_macros::__include_continue as include_continue;
 
 /// Reads the IR a macro embedded. It was produced by the compiler in the same build, so a
 /// failure is a bug.

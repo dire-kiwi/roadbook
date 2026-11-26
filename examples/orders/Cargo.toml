@@ -1,0 +1,19 @@
+[package]
+name = "orders"
+description = "The orders example: a chart that imports a machine from another crate (examples/inventory) and talks to it"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+inventory = { path = "../inventory" }
+roadbook = { path = "../../crates/roadbook" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros", "time", "test-util"] }
+trybuild = "1"
+
+[lints]
+workspace = true

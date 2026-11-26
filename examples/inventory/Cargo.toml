@@ -1,0 +1,14 @@
+[package]
+name = "inventory"
+description = "The inventory example: a crate that owns a chart other crates import (examples/inventory/inventory.road)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+roadbook = { path = "../../crates/roadbook" }
+
+[lints]
+workspace = true

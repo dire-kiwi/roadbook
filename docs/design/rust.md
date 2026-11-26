@@ -2,7 +2,7 @@
 
 The Rust side mirrors the TypeScript side: `roadbook-core` is the pure interpreter, and `roadbook` is the driver, the macro and the public API.
 
-The API on this page is implemented by [`crates/roadbook-core`](../../crates/roadbook-core) (the interpreter), [`crates/roadbook-macros`](../../crates/roadbook-macros) (`include!`) and [`crates/roadbook`](../../crates/roadbook) (the driver, re-exporting the macro). The runtime passes every conformance case byte for byte, and [`examples/shop/axum`](../../examples/shop/axum) serves the shop example with it.
+The API on this page is implemented by [`crates/roadbook-core`](../../crates/roadbook-core) (the interpreter), [`crates/roadbook-macros`](../../crates/roadbook-macros) (`include!`) and [`crates/roadbook`](../../crates/roadbook) (the driver, re-exporting the macro). The runtime passes every conformance case byte for byte, and [`examples/shop/axum`](../../examples/shop/axum) serves the shop example with it. [`examples/inventory`](../../examples/inventory) and [`examples/orders`](../../examples/orders) are two crates whose machines message each other.
 
 ## What gets generated
 
@@ -18,13 +18,14 @@ The path is relative to the package's directory (`CARGO_MANIFEST_DIR`); the char
 - Numbers follow the value encoding, not serde's defaults. A JSON number's form does not matter, so an `int` (and a `duration`) accepts any integral number, `2.0` and `2e0` as well as `2`, and refuses `2.5`. A non-finite `float`, which `serde_json` would write as `null`, does not encode: from host code (a function's or task's result, a machine argument, an event) it is a `host` defect. An extern type's JSON is its own `Serialize`'s, so a non-finite float inside one is not caught.
 - For every fallible task and machine, an error `enum` of exactly the errors it declared, with `From` impls so `?` converts into it. Rust has no anonymous unions, so `! CardDeclined | GatewayUnavailable` becomes `ChargeCardError`. If the name is taken, a task's is `<Name>TaskError` and a machine's `<Name>MachineError`.
 - A `Handlers` trait: one method per function, action, task and child machine the chart uses.
-- `State` and `Event` enums. Compound states carry their active child: `State::Processing(Processing::Paying)`. A child enum whose name is taken is prefixed with the names of the states above it.
+- `State`, `Event` and `Emitted` enums: the states, the events the machine accepts and the events it `emits`. Compound states carry their active child: `State::Processing(Processing::Paying)`. A child enum whose name is taken is prefixed with the names of the states above it.
+- `Ref`, a handle to a run of the machine (`roadbook::Ref<Event>`): the Rust type of `ref Machine`, in `run` and `spawn` parameters and in `Handlers` methods that take one (by reference, `&inventory::Ref`).
 - `run` and `spawn` functions, and `run_with` and `spawn_with`, which take a `roadbook::Config` (trace sink, timer, root run id).
 - The IR, embedded as a constant.
 
 A chart error is a Rust compile error, reported at the macro call with the chart's file and line. Cargo rebuilds when any of the chart's files changes, or the `roadbook.toml` that made the project root: the expansion `include_bytes!`es each of them. Stable Rust has no way for a macro to track a file that does not exist, so creating one is not seen: a new `roadbook.toml` between the chart and its project root (or above a chart that has none), which would move the root, takes effect at the next rebuild for another reason (touch the chart). A missing import is a compile error, and Cargo retries a crate that failed on every build, so creating the imported file is seen. A `build.rs` route to the same generator is not built yet.
 
-A chart that imports from another crate gets that crate's chart from the crate itself. Each `include!` also exports a hidden macro that hands its IR to the importer's macro, so nothing has to find files in Cargo's caches ([cross-crate probe](../../spike/cross-crate)). A build script cannot call macros, so the `build.rs` route covers charts without cross-crate imports. Supporting them there would need `links` metadata from the owning crate's build script.
+A chart that imports from another crate gets that crate's chart from the crate itself. Each `include!` also exports a hidden macro that hands its IR and `$crate` to the importer's macro, so nothing has to find files in Cargo's caches, and the importer re-exports the owning crate's types and machine modules instead of generating its own ([across crates](actors.md#across-crates-and-packages)). A renamed dependency is named in the call: `roadbook::include!("orders.road", crates(inventory = inv))`. [`examples/inventory`](../../examples/inventory) and [`examples/orders`](../../examples/orders) are two crates that work this way. A build script cannot call macros, so the `build.rs` route covers charts without cross-crate imports. Supporting them there would need `links` metadata from the owning crate's build script.
 
 ## Implementing a machine
 
@@ -78,6 +79,12 @@ let response = actor.result().await;       // Result<ApiResponse, roadbook::Stop
 let actor = place_order::spawn(app.clone(), token.clone(), draft.clone());
 actor.cancel().await;
 assert_eq!(actor.result().await, Err(roadbook::Stopped::Cancelled));
+
+// Peers: pass a spawned run's handle as the chart's `ref` argument. Host code can send through
+// a handle too.
+let stock = inventory::spawn(app.clone(), "w1".into());
+let order = order::spawn(app.clone(), id, draft, stock.handle());
+stock.handle().send(inventory::Event::Restock { sku, qty: 5 }).await;
 
 // With a trace and a timer of your own (a test's virtual clock, say).
 let config = roadbook::Config::new().sink(Arc::new(roadbook::JsonLines::new(std::io::stderr()))).timer(timer);

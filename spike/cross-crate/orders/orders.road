@@ -1,7 +1,0 @@
-import { Inventory } from "inventory/inventory.road"
-
-machine Order(stock: ref Inventory) {
-  initial state Placing {
-    entry { send stock.Reserve { sku: "A1", qty: 1 } }
-  }
-}
