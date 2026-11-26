@@ -1,9 +1,9 @@
-// The project index page: the graph of which machine invokes which, and a table of machines.
+// The project index page: the graph of which machine invokes and talks to which, and a table of machines.
 
 import type { ElkLike } from '../layout.ts'
 import type { Measure } from '../model.ts'
 import type { ProjectIndex } from '../project.ts'
-import { layoutIndex, localHref, renderIndexSvg, renderIndexTable } from '../project.ts'
+import { layoutIndex, localHref, renderIndexLegend, renderIndexSvg, renderIndexTable } from '../project.ts'
 import { esc } from '../render.ts'
 import { $, setupTheme } from './dom.ts'
 
@@ -18,7 +18,7 @@ export async function mountIndex(index: ProjectIndex, elk: ElkLike, measure: Mea
   <div class="rb-tools"><button class="rb-btn" id="rb-theme" type="button"></button></div>
 </header>
 <main class="rb-index-main">
-  <section><h2>Which machine invokes which</h2><div class="rb-graph" id="rb-graph"><p class="rb-empty">Laying out…</p></div></section>
+  <section><h2>Which machine invokes and talks to which</h2><div class="rb-graph" id="rb-graph"><p class="rb-empty">Laying out…</p></div>${renderIndexLegend()}</section>
   <section><h2>Machines</h2>${renderIndexTable(index)}</section>
 </main>`
   setupTheme($(document.body, '#rb-theme'))

@@ -1,6 +1,6 @@
 // Search by state, event, task, machine, error or action name, across every machine of an IR. Pure.
 
-import type { Ir } from './ir.ts'
+import type { Effect, Ir } from './ir.ts'
 import { own } from './ir.ts'
 import { effectText, invokeText, triggerText, walkStates } from './model.ts'
 
@@ -14,15 +14,23 @@ export interface SearchEntry {
   label: string
   /** The machine to open. */
   machine: string
-  /** What to select there: a state, a transition, or nothing (the machine itself). */
-  target: { type: 'state'; id: string } | { type: 'transition'; state: string; index: number } | null
+  /** What to select there: a state, a transition, an event, or nothing (the machine itself). */
+  target: { type: 'state'; id: string } | { type: 'transition'; state: string; index: number } | { type: 'event'; name: string } | null
 }
 
 export function buildSearchIndex(ir: Ir): SearchEntry[] {
   const out: SearchEntry[] = []
   for (const [machine, m] of Object.entries(ir.machines)) {
     out.push({ kind: 'machine', name: machine, label: `machine ${machine}`, machine, target: null })
+    for (const name of Object.keys(m.events)) out.push({ kind: 'event', name, label: `event ${name} of ${machine}`, machine, target: { type: 'event', name } })
+    for (const name of Object.keys(m.emits)) out.push({ kind: 'event', name, label: `emits ${name} of ${machine}`, machine, target: { type: 'event', name } })
     const short = (id: string) => id.slice(machine.length + 1) || id
+    const effects = (list: Effect[], where: string, target: SearchEntry['target']) => {
+      for (const e of list) {
+        if (e.kind === 'do') out.push({ kind: 'action', name: e.action, label: `${effectText(e)}: ${where}`, machine, target })
+        if (e.kind === 'send' || e.kind === 'emit') out.push({ kind: 'event', name: e.event, label: `${effectText(e)}: ${where}`, machine, target })
+      }
+    }
     walkStates(m.root, (s, _parent, depth) => {
       if (depth > 0) out.push({ kind: 'state', name: s.name, label: `${machine}.${short(s.id)}`, machine, target: { type: 'state', id: s.id } })
       if (s.invoke) {
@@ -37,14 +45,15 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
       if (s.fail && own(ir.types, s.fail.type)?.kind === 'error') {
         out.push({ kind: 'error', name: s.fail.type, label: `fail ${s.fail.text} in ${machine}.${short(s.id)}`, machine, target: { type: 'state', id: s.id } })
       }
+      const state = { type: 'state' as const, id: s.id }
+      effects(s.entry, `entry of ${machine}.${short(s.id)}`, state)
+      effects(s.exit, `exit of ${machine}.${short(s.id)}`, state)
       s.transitions.forEach((t, index) => {
         const where = `${machine}.${short(s.id)} → ${t.target ? short(t.target) : '(stays)'}`
         const target = { type: 'transition' as const, state: s.id, index }
-        if (t.trigger.kind === 'event') out.push({ kind: 'event', name: t.trigger.event, label: `${t.trigger.event}: ${where}`, machine, target })
+        if (t.trigger.kind === 'event' || t.trigger.kind === 'emitted') out.push({ kind: 'event', name: t.trigger.event, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
         if (t.trigger.kind === 'invoke.fail') out.push({ kind: 'error', name: t.trigger.error, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
-        for (const e of t.effects) {
-          if (e.kind === 'do') out.push({ kind: 'action', name: e.action, label: `${effectText(e)}: ${where}`, machine, target })
-        }
+        effects(t.effects, where, target)
       })
     })
   }

@@ -1,12 +1,13 @@
-// The project index: every machine of the charts given to `roadbook viz`, and which machine
-// invokes which. `roadbook viz` writes the data (it compiles each entry chart and keeps one
-// entry per machine); this module lays it out and draws it. Pure and DOM-free.
+// The project index: every machine of the charts given to `roadbook viz`, which machine invokes
+// which, and which talk to which: refs held, events sent, emitted events handled. `roadbook viz`
+// writes the data (it compiles each entry chart and keeps one entry per machine); this module
+// lays it out and draws it. Pure and DOM-free.
 
 import type { ElkNode, ElkExtendedEdge } from 'elkjs/lib/elk-api.js'
 import type { Ir } from './ir.ts'
 import { own } from './ir.ts'
 import type { ElkLike, Box, Point } from './layout.ts'
-import { METRICS, descendantCount, estimateWidth, invokedMachines, signatureText, sourceText, wrapCode } from './model.ts'
+import { METRICS, descendantCount, estimateWidth, invokedMachines, signatureText, sourcePath, sourceText, talks, wrapCode } from './model.ts'
 import type { Measure } from './model.ts'
 import { esc } from './render.ts'
 
@@ -60,6 +61,12 @@ export interface IndexMachine {
   page: number
   /** Indices in `machines` of the machines it invokes. */
   invokes: number[]
+  /** The machines it holds a `ref` to, with the parameters and variables that hold one. */
+  refs: { to: number; names: string[] }[]
+  /** The events it sends, by receiving machine. */
+  sends: { to: number; events: string[] }[]
+  /** The events of other machines' `emits` it handles (`on name.Event`), by sending machine. */
+  receives: { from: number; events: string[] }[]
 }
 
 /**
@@ -70,32 +77,95 @@ export interface IndexMachine {
 export function projectIndex(title: string, pages: { href: string; entry: string; ir: Ir }[]): ProjectIndex {
   const machines: IndexMachine[] = []
   const keys = new Map<string, number>()
-  const key = (ir: Ir, name: string) => `${ir.sources[own(ir.machines, name)!.span.file]?.path}\u0000${name}`
+  const key = (ir: Ir, name: string) => `${sourcePath(ir.sources[own(ir.machines, name)!.span.file])}\u0000${name}`
   pages.forEach((p, page) => {
     for (const [name, m] of Object.entries(p.ir.machines)) {
       const k = key(p.ir, name)
       if (keys.has(k)) continue
       keys.set(k, machines.length)
-      machines.push({ name, source: sourceText(p.ir, m.span), doc: m.doc, signature: signatureText('machine', name, m), states: descendantCount(m.root), page, invokes: [] })
+      machines.push({
+        name,
+        source: sourceText(p.ir, m.span),
+        doc: m.doc,
+        signature: signatureText('machine', name, m),
+        states: descendantCount(m.root),
+        page,
+        invokes: [],
+        refs: [],
+        sends: [],
+        receives: [],
+      })
     }
   })
-  for (const p of pages) {
+  pages.forEach((p, page) => {
     for (const name of Object.keys(p.ir.machines)) {
       const from = machines[keys.get(key(p.ir, name))!]!
       for (const child of invokedMachines(own(p.ir.machines, name)!)) {
         const to = keys.get(key(p.ir, child))
         if (to !== undefined && !from.invokes.includes(to)) from.invokes.push(to)
       }
+      // Each machine is listed once, from the first page that has it: its relations too.
+      if (from.page !== page) continue
+      const t = talks(p.ir, name)
+      const at = (machine: string) => (own(p.ir.machines, machine) ? keys.get(key(p.ir, machine)) : undefined)
+      for (const r of t.refs) {
+        const to = at(r.machine)
+        if (to !== undefined) from.refs.push({ to, names: r.names })
+      }
+      for (const r of t.sends) {
+        const to = at(r.machine)
+        if (to !== undefined) from.sends.push({ to, events: r.events })
+      }
+      for (const r of t.receives) {
+        const sender = at(r.machine)
+        if (sender !== undefined) from.receives.push({ from: sender, events: r.events })
+      }
     }
-  }
+  })
   return { title, pages: pages.map(({ href, entry }) => ({ href, entry })), machines }
+}
+
+/**
+ * The kinds of edge the index draws. `invoke`: A invokes B. `ref`: A holds a `ref B`. `send`:
+ * A sends B events. `emit`: B emits events A handles, drawn from B to A.
+ */
+export type IndexEdgeKind = 'invoke' | 'ref' | 'send' | 'emit'
+
+export interface IndexEdge {
+  kind: IndexEdgeKind
+  /** Indices in `machines`: the edge runs from `from` to `to`. */
+  from: number
+  to: number
+  /** The label's lines, the first starting with its keyword (`sends`, `emits`, `ref`); none for an invoke. */
+  lines: string[]
+}
+
+/** Wraps `kw items, …` at `,` so labels stay narrow. */
+function labelLines(kw: string, items: string[]): string[] {
+  return wrapCode(`${kw} ${items.join(', ')}`, 28)
+}
+
+/** Every edge of the index: invokes and refs first, then sends, then emitted events. */
+export function indexEdges(index: ProjectIndex): IndexEdge[] {
+  const out: IndexEdge[] = []
+  index.machines.forEach((m, i) => {
+    for (const j of m.invokes) out.push({ kind: 'invoke', from: i, to: j, lines: [] })
+    for (const r of m.refs) out.push({ kind: 'ref', from: i, to: r.to, lines: labelLines('ref', r.names) })
+  })
+  index.machines.forEach((m, i) => {
+    for (const r of m.sends) out.push({ kind: 'send', from: i, to: r.to, lines: labelLines('sends', r.events) })
+  })
+  index.machines.forEach((m, i) => {
+    for (const r of m.receives) out.push({ kind: 'emit', from: r.from, to: i, lines: labelLines('emits', r.events) })
+  })
+  return out
 }
 
 export interface IndexLayout {
   width: number
   height: number
   nodes: Box[]
-  edges: { from: number; to: number; points: Point[] }[]
+  edges: (IndexEdge & { points: Point[]; label: Box | null })[]
 }
 
 function nodeLines(m: IndexMachine): string[] {
@@ -115,10 +185,27 @@ function nodeSize(m: IndexMachine, measure: Measure, topLevel: boolean): { width
   return { width: Math.ceil(w + 2 * METRICS.padX), height: METRICS.titleH + lines.length * LINE + LINE + 12 }
 }
 
-export async function layoutIndex(index: ProjectIndex, elk: ElkLike, measure: Measure = estimateWidth): Promise<IndexLayout> {
-  const edges: ElkExtendedEdge[] = []
+function labelSize(lines: string[], measure: Measure): { width: number; height: number } {
+  const M = METRICS
+  const w = Math.max(...lines.map((l) => measure(l, M.fontEffect, false)))
+  return { width: Math.ceil(w + 2 * M.labelPadX), height: Math.ceil(lines.length * M.effectLineH + 2 * M.labelPadY) }
+}
+
+/** A machine is top level when no machine invokes it: a peer held by `ref` is started by host code, so it is one. */
+function topLevel(index: ProjectIndex): Set<number> {
   const invoked = new Set(index.machines.flatMap((m) => m.invokes))
-  index.machines.forEach((m, i) => m.invokes.forEach((j) => edges.push({ id: `${i}->${j}`, sources: [`m${i}`], targets: [`m${j}`] })))
+  return new Set(index.machines.map((_m, i) => i).filter((i) => !invoked.has(i)))
+}
+
+export async function layoutIndex(index: ProjectIndex, elk: ElkLike, measure: Measure = estimateWidth): Promise<IndexLayout> {
+  const all = indexEdges(index)
+  const top = topLevel(index)
+  const edges: ElkExtendedEdge[] = all.map((e, k) => ({
+    id: `e${k}`,
+    sources: [`m${e.from}`],
+    targets: [`m${e.to}`],
+    ...(e.lines.length ? { labels: [{ id: `e${k}/label`, text: e.lines[0]!, ...labelSize(e.lines, measure), layoutOptions: { 'elk.edgeLabels.inline': 'true', 'elk.edgeLabels.placement': 'CENTER' } }] } : {}),
+  }))
   const graph: ElkNode = {
     id: 'root',
     layoutOptions: {
@@ -126,11 +213,18 @@ export async function layoutIndex(index: ProjectIndex, elk: ElkLike, measure: Me
       'elk.direction': 'DOWN',
       'elk.edgeRouting': 'ORTHOGONAL',
       'elk.spacing.nodeNode': '30',
+      'elk.spacing.edgeNode': '24',
+      'elk.spacing.edgeEdge': '16',
+      'elk.spacing.edgeLabel': '6',
+      'elk.spacing.labelLabel': '8',
       'elk.layered.spacing.nodeNodeBetweenLayers': '44',
+      'elk.layered.spacing.edgeNodeBetweenLayers': '18',
+      'elk.layered.spacing.edgeEdgeBetweenLayers': '14',
+      'elk.layered.mergeEdges': 'false',
       'elk.padding': '[top=16,left=16,bottom=16,right=16]',
       'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
     },
-    children: index.machines.map((m, i) => ({ id: `m${i}`, ...nodeSize(m, measure, !invoked.has(i)) })),
+    children: index.machines.map((m, i) => ({ id: `m${i}`, ...nodeSize(m, measure, top.has(i)) })),
     edges,
   }
   let out: ElkNode
@@ -142,18 +236,36 @@ export async function layoutIndex(index: ProjectIndex, elk: ElkLike, measure: Me
   }
   const nodes = (out.children ?? []).map((c) => ({ x: c.x ?? 0, y: c.y ?? 0, width: c.width ?? 0, height: c.height ?? 0 }))
   const routes = (out.edges ?? []).map((e) => {
-    const [from, to] = e.id.split('->').map(Number) as [number, number]
+    const edge = all[Number(e.id.slice(1))]!
     const points: Point[] = []
     for (const s of e.sections ?? []) points.push(s.startPoint, ...(s.bendPoints ?? []), s.endPoint)
-    return { from, to, points }
+    const l = e.labels?.[0]
+    return { ...edge, points, label: l ? { x: l.x ?? 0, y: l.y ?? 0, width: l.width ?? 0, height: l.height ?? 0 } : null }
   })
   return { width: Math.ceil(out.width ?? 0), height: Math.ceil(out.height ?? 0), nodes, edges: routes }
 }
 
-/** The machine graph: a box per machine (a link to its page), an arrow per invoke. */
+const ARROWS: Record<IndexEdgeKind, string> = {
+  invoke: '<path d="M0.5,1 L9.5,5 L0.5,9 z"/>',
+  ref: '<path d="M0.5,1 L9.5,5 L0.5,9 z"/>',
+  // Messages: an open arrowhead.
+  send: '<path d="M1,1 L9.5,5 L1,9"/>',
+  emit: '<path d="M1,1 L9.5,5 L1,9"/>',
+}
+
+function indexMarkers(): string {
+  return (Object.keys(ARROWS) as IndexEdgeKind[])
+    .map(
+      (k) =>
+        `<marker id="rbi-arrow-${k}" class="rb-arrow rb-i-${k}" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto">${ARROWS[k]}</marker>`,
+    )
+    .join('')
+}
+
+/** The machine graph: a box per machine (a link to its page), an arrow per invoke, ref, and kind of message. */
 export function renderIndexSvg(index: ProjectIndex, layout: IndexLayout): string {
   const n = (v: number) => Math.round(v * 10) / 10
-  const invoked = new Set(index.machines.flatMap((m) => m.invokes))
+  const top = topLevel(index)
   let nodes = ''
   index.machines.forEach((m, i) => {
     const b = layout.nodes[i]
@@ -165,23 +277,65 @@ export function renderIndexSvg(index: ProjectIndex, layout: IndexLayout): string
     lines.forEach((l, k) => {
       t += `<text class="rb-row" x="${METRICS.padX}" y="${METRICS.titleH + 12 + k * LINE}" xml:space="preserve">${esc(l)}</text>`
     })
-    t += `<text class="rb-row rb-entry-mark" x="${METRICS.padX}" y="${METRICS.titleH + 12 + lines.length * LINE}">${esc(metaLine(m, !invoked.has(i)))}</text>`
+    t += `<text class="rb-row rb-entry-mark" x="${METRICS.padX}" y="${METRICS.titleH + 12 + lines.length * LINE}">${esc(metaLine(m, top.has(i)))}</text>`
     nodes +=
       `<a class="rb-mnode" href="${esc(href)}" data-machine="${i}"><g class="rb-state rb-kind-atomic" transform="translate(${n(b.x)},${n(b.y)})">` +
       `<title>Open ${esc(m.name)}</title><rect class="rb-box" width="${n(b.width)}" height="${n(b.height)}" rx="8"/>` +
       `<line class="rb-sep" x1="0" x2="${n(b.width)}" y1="${METRICS.titleH}" y2="${METRICS.titleH}"/>${t}</g></a>`
   })
   let edges = ''
+  let labels = ''
+  const M = METRICS
   for (const e of layout.edges) {
     if (e.points.length < 2) continue
     const d = e.points.map((p, k) => `${k ? 'L' : 'M'}${n(p.x)},${n(p.y)}`).join(' ')
-    edges += `<g class="rb-edge rb-k-event"><path class="rb-edge-line" d="${d}" marker-end="url(#rbi-arrow)"/></g>`
+    const a = index.machines[e.from]?.name ?? '?'
+    const b = index.machines[e.to]?.name ?? '?'
+    const what = e.kind === 'invoke' ? `${a} invokes ${b}` : e.kind === 'ref' ? `${a} holds a ref to ${b}` : e.kind === 'send' ? `${a} sends ${b} events` : `${a} emits events ${b} handles`
+    edges += `<g class="rb-edge rb-iedge rb-i-${e.kind}"><title>${esc(what)}</title><path class="rb-edge-line" d="${d}" marker-end="url(#rbi-arrow-${e.kind})"/></g>`
+    if (!e.label) continue
+    const l = e.label
+    let s = `<g class="rb-label rb-ilabel rb-i-${e.kind}"><rect class="rb-label-bg" x="${n(l.x)}" y="${n(l.y)}" width="${n(l.width)}" height="${n(l.height)}" rx="5"/>`
+    e.lines.forEach((line, k) => {
+      const y = n(l.y + M.labelPadY + k * M.effectLineH + M.effectLineH / 2 + M.fontEffect * 0.34)
+      const sp = line.indexOf(' ')
+      const body = k === 0 && sp > 0 ? `<tspan class="rb-ikw">${esc(line.slice(0, sp))}</tspan>${esc(line.slice(sp))}` : esc(line)
+      s += `<text class="rb-ilabel-text" x="${n(l.x + l.width / 2)}" y="${y}" text-anchor="middle" xml:space="preserve">${body}</text>`
+    })
+    labels += s + '</g>'
   }
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" class="rb-svg" viewBox="0 0 ${layout.width} ${layout.height}" width="${layout.width}" height="${layout.height}" role="img" aria-label="Which machine invokes which">` +
-    `<defs><marker id="rbi-arrow" class="rb-arrow rb-k-event" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker></defs>` +
-    `<g class="rb-layer-edges">${edges}</g><g class="rb-layer-states">${nodes}</g></svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" class="rb-svg" viewBox="0 0 ${layout.width} ${layout.height}" width="${layout.width}" height="${layout.height}" role="img" aria-label="Which machine invokes and talks to which">` +
+    `<defs>${indexMarkers()}</defs>` +
+    `<g class="rb-layer-edges">${edges}</g><g class="rb-layer-states">${nodes}</g><g class="rb-layer-labels">${labels}</g></svg>`
   )
+}
+
+/** The legend of the index's edges. HTML. */
+export function renderIndexLegend(): string {
+  const line = (kind: IndexEdgeKind) =>
+    `<svg class="rb-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true">` +
+    `<g class="rb-edge rb-iedge rb-i-${kind}"><path class="rb-edge-line" d="M1,7 L37,7"/></g>` +
+    `<g class="rb-arrow rb-i-${kind}">${kind === 'send' || kind === 'emit' ? '<path d="M37,3 L45,7 L37,11"/>' : '<path d="M36,3 L45,7 L36,11 z"/>'}</g></svg>`
+  const item = (kind: IndexEdgeKind, label: string, text: string) => `<li>${line(kind)}<span><code>${esc(label)}</code> ${esc(text)}</span></li>`
+  return (
+    `<ul class="rb-legend-list rb-index-legend">` +
+    item('invoke', 'A → B', 'A invokes B (solid)') +
+    item('ref', 'ref name', 'A holds a ref to B in name (dashed)') +
+    item('send', 'sends E', 'A sends B the events E') +
+    item('emit', 'emits E', 'B emits the events E and A handles them (dotted)') +
+    `</ul>`
+  )
+}
+
+/** `ref Inventory (inventory)`, `sends Reserve, Release to Inventory`, `handles Reserved from Inventory`, one per line. */
+function talksText(index: ProjectIndex, m: IndexMachine): string[] {
+  const name = (i: number) => index.machines[i]?.name ?? '?'
+  return [
+    ...m.refs.map((r) => `ref ${name(r.to)} (${r.names.join(', ')})`),
+    ...m.sends.map((r) => `sends ${r.events.join(', ')} to ${name(r.to)}`),
+    ...m.receives.map((r) => `handles ${r.events.join(', ')} from ${name(r.from)}`),
+  ]
 }
 
 /** The table under the graph: every machine with its signature, doc and page. HTML. */
@@ -190,12 +344,14 @@ export function renderIndexTable(index: ProjectIndex): string {
     const page = index.pages[m.page]
     const href = page ? machineHref(page.href, m.name) : '#'
     const invokes = m.invokes.map((j) => index.machines[j]?.name ?? '?').join(', ')
+    const talk = talksText(index, m)
     return (
       `<tr><td><a href="${esc(href)}">${esc(m.name)}</a></td>` +
       `<td><code>${esc(m.signature)}</code>${m.doc ? `<p class="rb-doc">${esc(m.doc).replace(/\n/g, '<br>')}</p>` : ''}</td>` +
       `<td>${m.states}</td><td>${invokes ? `<code>${esc(invokes)}</code>` : ''}</td>` +
+      `<td>${talk.map((t) => `<code>${esc(t)}</code>`).join('<br>')}</td>` +
       `<td><code>${esc(m.source)}</code><br><span class="rb-doc">${esc(page ? page.entry : '')}</span></td></tr>`
     )
   })
-  return `<table class="rb-table"><thead><tr><th>Machine</th><th>Signature</th><th>States</th><th>Invokes</th><th>Source, page</th></tr></thead><tbody>${rows.join('')}</tbody></table>`
+  return `<table class="rb-table"><thead><tr><th>Machine</th><th>Signature</th><th>States</th><th>Invokes</th><th>Talks to</th><th>Source, page</th></tr></thead><tbody>${rows.join('')}</tbody></table>`
 }

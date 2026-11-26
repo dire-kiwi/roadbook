@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use roadbook_compiler::Ir;
-use roadbook_ir::{InvokeKind, Machine, State};
+use roadbook_ir::{Effect, InvokeKind, Machine, Source, State, Trigger, TypeDef, TypeRef};
 use serde_json::{Value, json};
 
 /// The project index's file name.
@@ -134,15 +134,25 @@ pub fn file_names(entries: &[&str]) -> Vec<String> {
         .collect()
 }
 
+/// A source's path; a file of another package as imports write it: `inventory/inventory.road`.
+fn source_path(src: Option<&Source>) -> String {
+    match src {
+        None => "?".into(),
+        Some(Source {
+            path,
+            package: Some(p),
+        }) => format!("{p}/{path}"),
+        Some(s) => s.path.clone(),
+    }
+}
+
 /// The data of the project index (`ProjectIndex` in `packages/viewer/src/project.ts`, which
 /// builds the same from IRs): every machine once, identified by its name and source file,
-/// with the first page that draws it, and which machines it invokes.
+/// with the first page that draws it, which machines it invokes, and which it talks to: the
+/// machines it holds a `ref` to, the events it sends, and the emitted events it handles.
 pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> Value {
     let key = |ir: &Ir, name: &str, m: &Machine| {
-        let file = ir
-            .sources
-            .get(m.span.file as usize)
-            .map_or("", |s| s.path.as_str());
+        let file = source_path(ir.sources.get(m.span.file as usize));
         format!("{file}\u{0}{name}")
     };
     let mut keys: HashMap<String, usize> = HashMap::new();
@@ -154,10 +164,7 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
                 continue;
             }
             keys.insert(k, machines.len());
-            let source = ir
-                .sources
-                .get(m.span.file as usize)
-                .map_or("?", |s| s.path.as_str());
+            let source = source_path(ir.sources.get(m.span.file as usize));
             machines.push(json!({
                 "name": name,
                 "source": format!("{source}:{}", m.span.line),
@@ -166,10 +173,13 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
                 "states": count(&m.root),
                 "page": page,
                 "invokes": [],
+                "refs": [],
+                "sends": [],
+                "receives": [],
             }));
         }
     }
-    for (_, ir) in charts {
+    for (page, (_, ir)) in charts.iter().enumerate() {
         for (name, m) in &ir.machines {
             let from = keys[&key(ir, name, m)];
             let mut invoked = Vec::new();
@@ -185,6 +195,35 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
                     && !list.contains(&json!(to))
                 {
                     list.push(json!(to));
+                }
+            }
+            // Each machine is listed once, from the first page that has it: its relations too.
+            if machines[from]["page"] != json!(page) {
+                continue;
+            }
+            let at = |machine: &str| {
+                let other = ir.machines.get(machine)?;
+                keys.get(&key(ir, machine, other)).copied()
+            };
+            let t = talks(ir, m);
+            let entry = &mut machines[from];
+            for (machine, names) in t.refs {
+                if let Some(to) = at(&machine) {
+                    push(entry, "refs", json!({ "to": to, "names": names }));
+                }
+            }
+            for (machine, events) in t.sends {
+                if let Some(to) = at(&machine) {
+                    push(entry, "sends", json!({ "to": to, "events": events }));
+                }
+            }
+            for (machine, events) in t.receives {
+                if let Some(sender) = at(&machine) {
+                    push(
+                        entry,
+                        "receives",
+                        json!({ "from": sender, "events": events }),
+                    );
                 }
             }
         }
@@ -212,6 +251,98 @@ pub fn signature(name: &str, m: &Machine) -> String {
         s.push_str(&format!(" ! {}", m.errors.join(" | ")));
     }
     s
+}
+
+fn push(entry: &mut Value, list: &str, item: Value) {
+    if let Some(list) = entry[list].as_array_mut() {
+        list.push(item);
+    }
+}
+
+/// Values grouped by machine, in first-seen order, each list without repeats.
+type Grouped = Vec<(String, Vec<String>)>;
+
+fn group(list: &mut Grouped, machine: &str, value: &str) {
+    let at = match list.iter().position(|(m, _)| m == machine) {
+        Some(at) => at,
+        None => {
+            list.push((machine.to_string(), Vec::new()));
+            list.len() - 1
+        }
+    };
+    let values = &mut list[at].1;
+    if !values.iter().any(|v| v == value) {
+        values.push(value.to_string());
+    }
+}
+
+/// Which machines a machine talks to (`talks` in `packages/viewer/src/model.ts`).
+struct Talks {
+    /// Machines it holds a `ref` to, with the parameters and variables holding one.
+    refs: Grouped,
+    /// Events it sends, by receiving machine.
+    sends: Grouped,
+    /// Events of other machines' `emits` it handles, by sending machine.
+    receives: Grouped,
+}
+
+fn talks(ir: &Ir, m: &Machine) -> Talks {
+    let mut t = Talks {
+        refs: Vec::new(),
+        sends: Vec::new(),
+        receives: Vec::new(),
+    };
+    for (name, ty) in m
+        .params
+        .iter()
+        .map(|p| (&p.name, &p.ty))
+        .chain(m.vars.iter().map(|v| (&v.name, &v.ty)))
+    {
+        if let Some(to) = ref_machine(ir, ty) {
+            group(&mut t.refs, &to, name);
+        }
+    }
+    messages(&m.root, &mut t);
+    t
+}
+
+/// The machine a type is a handle to: `ref M`, with any suffixes, or an alias of one.
+fn ref_machine(ir: &Ir, ty: &TypeRef) -> Option<String> {
+    let mut ty = ty;
+    for _ in 0..32 {
+        match ty.base() {
+            TypeRef::Ref(m) => return Some(m.clone()),
+            TypeRef::Named(n) => match ir.types.get(n).map(|d| &d.def) {
+                Some(TypeDef::Alias { ty: next }) => ty = next,
+                _ => return None,
+            },
+            _ => return None,
+        }
+    }
+    None
+}
+
+/// The sends and handled emitted events of `s` and the states inside it, in document order:
+/// each state's `entry`, `exit`, then each transition's trigger and effects.
+fn messages(s: &State, t: &mut Talks) {
+    fn effects(list: &[Effect], t: &mut Talks) {
+        for e in list {
+            if let Effect::Send { to, event, .. } = e {
+                group(&mut t.sends, &to.machine, event);
+            }
+        }
+    }
+    effects(&s.entry, t);
+    effects(&s.exit, t);
+    for tr in &s.transitions {
+        if let Trigger::Emitted { from, event } = &tr.trigger {
+            group(&mut t.receives, &from.machine, event);
+        }
+        effects(&tr.effects, t);
+    }
+    for c in &s.states {
+        messages(c, t);
+    }
 }
 
 fn count(s: &State) -> usize {

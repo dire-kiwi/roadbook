@@ -29,19 +29,23 @@ function unescaped(html: string): string[] {
 
 async function everything(): Promise<string[]> {
   const out: string[] = []
-  const m = ir.machines[machine]!
-  const collapsed = new Set<string>()
-  const layout = await layoutMachine(ir, machine, newElk(), { collapsed })
-  out.push(renderSvg(ir, machine, layout, { collapsed, interactive: true }))
-  out.push(renderMachineHeader(ir, machine))
-  const ctx = { ir, machine, collapsed }
-  out.push(panelHtml(ctx, null))
-  for (const d of machineView(m).states) {
-    out.push(panelHtml(ctx, { type: 'state', id: d.state.id }))
-    d.state.transitions.forEach((_t, index) => out.push(panelHtml(ctx, { type: 'transition', state: d.state.id, index })))
+  // Escape, and EscapePeer, which it holds a ref to, invokes as a child, sends to and hears from.
+  for (const machine of Object.keys(ir.machines)) {
+    const m = ir.machines[machine]!
+    const collapsed = new Set<string>()
+    const layout = await layoutMachine(ir, machine, newElk(), { collapsed })
+    out.push(renderSvg(ir, machine, layout, { collapsed, interactive: true }))
+    out.push(renderMachineHeader(ir, machine))
+    const ctx = { ir, machine, collapsed }
+    out.push(panelHtml(ctx, null))
+    for (const d of machineView(m).states) {
+      out.push(panelHtml(ctx, { type: 'state', id: d.state.id }))
+      d.state.transitions.forEach((_t, index) => out.push(panelHtml(ctx, { type: 'transition', state: d.state.id, index })))
+    }
+    out.push(panelHtml(ctx, { type: 'state', id: m.root.id }))
+    m.root.transitions.forEach((_t, index) => out.push(panelHtml(ctx, { type: 'transition', state: m.root.id, index })))
+    for (const name of [...Object.keys(m.events), ...Object.keys(m.emits)]) out.push(panelHtml(ctx, { type: 'event', name }))
   }
-  out.push(panelHtml(ctx, { type: 'state', id: m.root.id }))
-  m.root.transitions.forEach((_t, index) => out.push(panelHtml(ctx, { type: 'transition', state: m.root.id, index })))
   const index = projectIndex('<b>project</b> & "q"', [{ href: 'javascript:void(0)"<x>.html', entry: '</script><img src=x onerror=alert(9)>.road', ir }])
   out.push(renderIndexTable(index))
   out.push(renderIndexSvg(index, await layoutIndex(index, newElk())))
@@ -62,6 +66,17 @@ describe('IR text in HTML and SVG', () => {
       'set t = &quot;a\\&quot;b&amp;c&lt;d&gt;&quot;',
       'do note(&quot;root &amp; exit&quot;)',
       '&lt;/script&gt;&lt;img src=x onerror=alert(9)&gt;.road',
+      // Messaging: record values of sends and emits, guards of emitted triggers, docs of events.
+      'peer.Ping { text: &quot;&lt;img src=x onerror=alert(10)&gt; &amp; \\&quot;q\\&quot;&quot; }',
+      'event.text == &quot;&lt;/script&gt;&lt;img src=x onerror=alert(11)&gt;&quot;',
+      'EscapePeer(&quot;&lt;img src=x onerror=alert(12)&gt;&quot;, peer) as kid',
+      'kid.Ping { text: &quot;&lt;/script&gt;&lt;svg onload=alert(13)&gt;&quot; }',
+      'Peer doc &lt;img src=x onerror=alert(14)&gt; &amp; &quot;q&quot;',
+      'ping doc &lt;img src=x onerror=alert(15)&gt;',
+      'pong doc &lt;/script&gt;',
+      'Pong { text: &quot;&lt;/script&gt;&lt;img src=x onerror=alert(16)&gt;&quot; }',
+      'peer.Ping { text: &quot;#;: &lt;/script&gt;&quot; }',
+      'data-event="EscapePeer.Pong"',
     ])
       expect(text).toContain(shown)
   })

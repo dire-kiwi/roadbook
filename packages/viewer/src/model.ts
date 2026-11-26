@@ -2,7 +2,7 @@
 // Pure and DOM-free. Layout (to size boxes) and render (to draw them) both call it, so the
 // two always agree on what goes where.
 
-import type { Effect, Field, Invoke, Ir, Machine, Span, State, Transition, Trigger, TypeDecl } from './ir.ts'
+import type { Address, Effect, EventDecl, Field, Invoke, Ir, Machine, Span, State, Transition, Trigger, TypeDecl } from './ir.ts'
 import { own } from './ir.ts'
 
 export const METRICS = {
@@ -74,22 +74,73 @@ function breakable(code: string): number[] {
   return out
 }
 
+/** `set a = 1`, `do f(x)`, `send upload.Pause`, `send inventory.Reserve { orderId: id }`, `emit Progress { percent: p }` */
 export function effectText(e: Effect): string {
-  return e.kind === 'set' ? `set ${e.var} = ${e.value.text}` : `do ${e.action}(${e.args.map((a) => a.text).join(', ')})`
+  switch (e.kind) {
+    case 'set':
+      return `set ${e.var} = ${e.value.text}`
+    case 'do':
+      return `do ${e.action}(${e.args.map((a) => a.text).join(', ')})`
+    case 'send':
+      // A send's or emit's value text is the event as written after `send name.` or `emit`.
+      return `send ${e.to.name}.${e.value.text}`
+    case 'emit':
+      return `emit ${e.value.text}`
+  }
 }
 
+/** An event of a machine, as the viewer links to it: `Upload.Progress`. */
+export interface EventRef {
+  machine: string
+  event: string
+}
+
+export const eventKey = (r: EventRef): string => `${r.machine}.${r.event}`
+
+/** `Upload.Progress` back to its parts; null for anything else. */
+export function parseEventKey(key: string): EventRef | null {
+  const m = /^([A-Z][A-Za-z0-9]*)\.([A-Z][A-Za-z0-9]*)$/.exec(key)
+  return m ? { machine: m[1]!, event: m[2]! } : null
+}
+
+/** The machine a state id belongs to: its first segment. */
+export function machineOf(stateId: string): string {
+  return stateId.split('.')[0]!
+}
+
+/**
+ * The event a messaging effect carries, in the machine that declares it: the receiver's for
+ * a `send`, the machine's own (`machine`) for an `emit`. Null for `set` and `do`.
+ */
+export function effectEvent(machine: string, e: Effect): EventRef | null {
+  if (e.kind === 'send') return { machine: e.to.machine, event: e.event }
+  if (e.kind === 'emit') return { machine, event: e.event }
+  return null
+}
+
+/** The event an `on name.Event` trigger takes, in the sender's machine. Null for other triggers. */
+export function triggerEvent(t: Trigger): EventRef | null {
+  return t.kind === 'emitted' ? { machine: t.from.machine, event: t.event } : null
+}
+
+/** `Upload(draft.file)`, `Upload(draft.file) as upload` */
 export function invokeText(inv: Invoke): string {
-  return `${inv.src}(${inv.args.map((a) => a.text).join(', ')})`
+  return `${inv.src}(${inv.args.map((a) => a.text).join(', ')})${inv.as ? ` as ${inv.as}` : ''}`
 }
 
-/** How the diagram encodes a trigger: line style, colour and wording all follow it. */
-export type EdgeKind = 'event' | 'done' | 'fail' | 'after' | 'always' | 'initial'
+/**
+ * How the diagram encodes a trigger: line style, colour and wording all follow it. `message`
+ * is an event another machine emitted (`on upload.Progress`), labelled through its sender.
+ */
+export type EdgeKind = 'event' | 'message' | 'done' | 'fail' | 'after' | 'always' | 'initial'
 
 export function triggerKind(trigger: Trigger): EdgeKind {
   switch (trigger.kind) {
     case 'event':
     case 'any':
       return 'event'
+    case 'emitted':
+      return 'message'
     case 'after':
       return 'after'
     case 'always':
@@ -102,11 +153,13 @@ export function triggerKind(trigger: Trigger): EdgeKind {
   }
 }
 
-/** The trigger as the diagram labels it: `Cancel`, `on *`, `after 30s`, `always`, `done`, `fail CardDeclined`. */
+/** The trigger as the diagram labels it: `Cancel`, `upload.Progress`, `on *`, `after 30s`, `always`, `done`, `fail CardDeclined`. */
 export function triggerText(trigger: Trigger): string {
   switch (trigger.kind) {
     case 'event':
       return trigger.event
+    case 'emitted':
+      return `${trigger.from.name}.${trigger.event}`
     case 'any':
       return 'on *'
     case 'after':
@@ -121,9 +174,9 @@ export function triggerText(trigger: Trigger): string {
   }
 }
 
-/** The trigger as written in source: `on Cancel`, `on *`, `after 30s`, `done`, `fail E`. */
+/** The trigger as written in source: `on Cancel`, `on upload.Progress`, `on *`, `after 30s`, `done`, `fail E`. */
 export function triggerSource(trigger: Trigger): string {
-  return trigger.kind === 'event' ? `on ${trigger.event}` : triggerText(trigger)
+  return trigger.kind === 'event' || trigger.kind === 'emitted' ? `on ${triggerText(trigger)}` : triggerText(trigger)
 }
 
 /** `[guard]` for a guarded branch, `[else]` for the unguarded last branch of a block, `""` otherwise. */
@@ -139,6 +192,11 @@ export interface LabelLine {
   cls: 'trigger' | 'effect'
   text: string
   guard: string
+  /**
+   * The line names another machine's event: the trigger of `on upload.Progress`, or a `send`
+   * or `emit` effect. Clicking it opens that event.
+   */
+  event?: EventRef
 }
 
 /**
@@ -156,13 +214,19 @@ export function transitionLines(state: State, index: number): LabelLine[] {
     return g !== '' && (head + ' ' + g).length > METRICS.labelWrapAt
   })
   const lines: LabelLine[] = []
+  const from = triggerEvent(t.trigger)
+  const trig = (text: string, g: string): LabelLine => (from && text ? { cls: 'trigger', text, guard: g, event: from } : { cls: 'trigger', text, guard: g })
   if (guard && split) {
-    lines.push({ cls: 'trigger', text: head, guard: '' })
+    lines.push(trig(head, ''))
     for (const l of wrapCode(guard, METRICS.labelWrapAt + 8)) lines.push({ cls: 'trigger', text: '', guard: l })
   } else {
-    lines.push({ cls: 'trigger', text: head, guard })
+    lines.push(trig(head, guard))
   }
-  for (const e of t.effects) for (const l of wrapCode(effectText(e), METRICS.labelWrapAt + 8)) lines.push({ cls: 'effect', text: l, guard: '' })
+  const machine = machineOf(state.id)
+  for (const e of t.effects) {
+    const event = effectEvent(machine, e)
+    for (const l of wrapCode(effectText(e), METRICS.labelWrapAt + 8)) lines.push(event ? { cls: 'effect', text: l, guard: '', event } : { cls: 'effect', text: l, guard: '' })
+  }
   return lines
 }
 
@@ -175,8 +239,14 @@ export interface Row {
   cls?: EdgeKind | 'collapsed'
   /** The row is a machine invoke: clicking it opens this machine. */
   machine?: string
+  /** The `as` name of that invoke, at the end of `text`. */
+  alias?: string
   /** The row is an internal transition: its index in the state's `transitions`. */
   transition?: number
+  /** `kw` ends with another machine's event (`on upload.Progress`): clicking it opens the event. */
+  kwEvent?: EventRef
+  /** `text` is (part of) a `send` or `emit` effect: clicking it opens the event. */
+  event?: EventRef
 }
 
 /** Number of states nested inside `state`, at any depth. */
@@ -188,22 +258,51 @@ export function descendantCount(state: State): number {
 export function stateRows(state: State, collapsed = false): Row[] {
   const rows: Row[] = []
   const wrap = state.kind === 'final' ? METRICS.finalWrapAt : METRICS.wrapAt
-  const add = (kw: string, text: string, extra: Partial<Row> = {}) => {
+  const machine = machineOf(state.id)
+  // `kw text`, wrapped. With `first` false the text continues the row above: no keyword, and
+  // aligned under that row's text. Wrapped lines are indented two more.
+  const add = (kw: string, text: string, extra: Partial<Row> = {}, first = true) => {
+    const pad = ' '.repeat(kw.length + 1)
     wrapCode(text, Math.max(wrap - kw.length - 1, 16)).forEach((l, i) => {
-      rows.push({ kw: i === 0 ? kw : '', text: i === 0 ? l : ' '.repeat(kw.length + 1) + l.trimStart(), cont: i > 0, ...extra })
+      const head = first && i === 0
+      const row: Row = { ...extra, kw: head ? kw : '', text: head ? l : pad + (i > 0 ? '  ' : '') + l.trimStart(), cont: !head }
+      if (!head) delete row.kwEvent
+      rows.push(row)
     })
   }
-  if (state.invoke) {
-    if (state.invoke.kind === 'machine') add('invoke', `machine ${invokeText(state.invoke)}`, { machine: state.invoke.src })
-    else add('invoke', invokeText(state.invoke))
+  const effectExtra = (e: Effect): Partial<Row> => {
+    const event = effectEvent(machine, e)
+    return event ? { event } : {}
   }
-  for (const e of state.entry) add('entry', effectText(e))
-  for (const e of state.exit) add('exit', effectText(e))
+  if (state.invoke) {
+    const inv = state.invoke
+    if (inv.kind === 'machine') {
+      const text = `machine ${invokeText(inv)}`
+      // A machine invoke is a pill on its first line; its `as` name ends it when it fits there.
+      const lines = wrapCode(text, Math.max(wrap - 'invoke'.length - 1, 16))
+      add('invoke', text, {})
+      const first = rows[rows.length - lines.length]!
+      first.machine = inv.src
+      if (inv.as && lines.length === 1) first.alias = inv.as
+    } else add('invoke', invokeText(inv))
+  }
+  for (const e of state.entry) add('entry', effectText(e), effectExtra(e))
+  for (const e of state.exit) add('exit', effectText(e), effectExtra(e))
   state.transitions.forEach((t, index) => {
     if (t.target !== null) return
+    // The trigger, then the guard and each effect: one effect per line, so a `send` or `emit`
+    // is a line of its own that can be clicked.
+    const kw = triggerSource(t.trigger)
+    const from = triggerEvent(t.trigger)
+    const base: Partial<Row> = { transition: index, cls: triggerKind(t.trigger) }
     const guard = guardText(state, index)
-    const body = [guard, t.effects.map(effectText).join(', ')].filter(Boolean).join(' ')
-    add(triggerSource(t.trigger), body, { transition: index, cls: triggerKind(t.trigger) })
+    const items: [string, Partial<Row>][] = []
+    if (guard) items.push([guard, {}])
+    for (const e of t.effects) items.push([effectText(e), effectExtra(e)])
+    if (!items.length) items.push(['', {}])
+    items.forEach(([text, extra], i) => {
+      add(kw, text, { ...base, ...extra, ...(i === 0 && from ? { kwEvent: from } : {}) }, i === 0)
+    })
   })
   if (state.output) add('output', state.output.text)
   if (state.fail) add('fail', state.fail.text, { cls: 'fail' })
@@ -259,10 +358,15 @@ export function signatureText(kind: string, name: string, decl: { params: Field[
   return s
 }
 
+/** A source's path; a file of another package as imports write it: `inventory/inventory.road`. */
+export function sourcePath(src: { path: string; package: string | null } | undefined): string {
+  if (!src) return '?'
+  return src.package ? `${src.package}/${src.path}` : src.path
+}
+
 /** `examples/shop/checkout.road:12` */
 export function sourceText(ir: Ir, span: Span): string {
-  const src = ir.sources[span.file]
-  return `${src ? src.path : '?'}:${span.line}`
+  return `${sourcePath(ir.sources[span.file])}:${span.line}`
 }
 
 /** A type declaration in source form, on one line. */
@@ -314,4 +418,119 @@ export function openingMachine(ir: Ir, wanted: string): string | undefined {
   if (own(ir.machines, wanted)) return wanted
   const names = Object.keys(ir.machines)
   return names.find((m) => own(ir.machines, m)!.span.file === 0) ?? names[0]
+}
+
+// ───────────── messaging: who talks to whom ─────────────
+
+/**
+ * The machine a type is a handle to: `ref Inventory`, `ref Inventory[]?`, or an alias of one.
+ * Null for any other type.
+ */
+export function refMachine(ir: Ir, type: string): string | null {
+  let t = type
+  for (let depth = 0; depth < 32; depth++) {
+    const base = baseType(t)
+    if (base.startsWith('ref ')) return base.slice(4)
+    const decl = own(ir.types, base)
+    if (!decl || decl.kind !== 'alias') return null
+    t = decl.type
+  }
+  return null
+}
+
+/** Where a `send`, an `emit` or an `on name.Event` is written. */
+export interface MessageSite {
+  dir: 'send' | 'emit' | 'receive'
+  /** The state it is written in. */
+  state: string
+  /** The index of its transition in the state's `transitions`, or the state's `entry` or `exit`. */
+  at: number | 'entry' | 'exit'
+  /** The receiver of a send, the sender of a receive; null for an emit. */
+  address: Address | null
+  /** The event, in the machine that declares it: the receiver's, the sender's, or the machine's own. */
+  event: EventRef
+}
+
+/**
+ * Every message a machine sends, emits and receives, in document order: state by state
+ * (outermost first), its `entry`, its `exit`, then each transition's trigger and effects.
+ */
+export function messageSites(machineName: string, machine: Machine): MessageSite[] {
+  const out: MessageSite[] = []
+  const effects = (state: string, at: MessageSite['at'], list: Effect[]) => {
+    for (const e of list) {
+      if (e.kind === 'send') out.push({ dir: 'send', state, at, address: e.to, event: { machine: e.to.machine, event: e.event } })
+      else if (e.kind === 'emit') out.push({ dir: 'emit', state, at, address: null, event: { machine: machineName, event: e.event } })
+    }
+  }
+  walkStates(machine.root, (s) => {
+    effects(s.id, 'entry', s.entry)
+    effects(s.id, 'exit', s.exit)
+    s.transitions.forEach((t, i) => {
+      if (t.trigger.kind === 'emitted') out.push({ dir: 'receive', state: s.id, at: i, address: t.trigger.from, event: { machine: t.trigger.from.machine, event: t.trigger.event } })
+      effects(s.id, i, t.effects)
+    })
+  })
+  return out
+}
+
+/** Which machines a machine talks to, from its chart alone. Each list in first-written order. */
+export interface Talks {
+  /** Machines invoked, with the `as` name if any. */
+  invokes: { machine: string; as: string | null; state: string }[]
+  /** Machines it holds a `ref` to, with the parameters and variables that hold it. */
+  refs: { machine: string; names: string[] }[]
+  /** Events it sends, by receiving machine. */
+  sends: { machine: string; events: string[] }[]
+  /** Events of other machines' `emits` it handles, by sending machine. */
+  receives: { machine: string; events: string[] }[]
+}
+
+/** Adds `value` to the list of `machine` in `list`, keeping first-seen order and no repeats. */
+function group(list: { machine: string; values: string[] }[], machine: string, value: string) {
+  let entry = list.find((e) => e.machine === machine)
+  if (!entry) list.push((entry = { machine, values: [] }))
+  if (!entry.values.includes(value)) entry.values.push(value)
+}
+
+export function talks(ir: Ir, machineName: string): Talks {
+  const m = own(ir.machines, machineName)
+  const invokes: Talks['invokes'] = []
+  const refs: { machine: string; values: string[] }[] = []
+  const sends: { machine: string; values: string[] }[] = []
+  const receives: { machine: string; values: string[] }[] = []
+  if (m) {
+    walkStates(m.root, (s) => {
+      if (s.invoke && s.invoke.kind === 'machine') invokes.push({ machine: s.invoke.src, as: s.invoke.as, state: s.id })
+    })
+    for (const v of [...m.params, ...m.vars]) {
+      const to = refMachine(ir, v.type)
+      if (to) group(refs, to, v.name)
+    }
+    for (const site of messageSites(machineName, m)) {
+      if (site.dir === 'send') group(sends, site.event.machine, site.event.event)
+      else if (site.dir === 'receive') group(receives, site.event.machine, site.event.event)
+    }
+  }
+  return {
+    invokes,
+    refs: refs.map((r) => ({ machine: r.machine, names: r.values })),
+    sends: sends.map((r) => ({ machine: r.machine, events: r.values })),
+    receives: receives.map((r) => ({ machine: r.machine, events: r.values })),
+  }
+}
+
+/** A machine's event, accepted (`event`) or emitted (`emits`), with which it is. */
+export function eventDecl(ir: Ir, ref: EventRef): { decl: EventDecl; emitted: boolean } | null {
+  const m = own(ir.machines, ref.machine)
+  if (!m) return null
+  const accepted = own(m.events, ref.event)
+  if (accepted) return { decl: accepted, emitted: false }
+  const emitted = own(m.emits, ref.event)
+  return emitted ? { decl: emitted, emitted: true } : null
+}
+
+/** `event Reserve { orderId: string, items: Item[] }`, `emits Progress { percent: int }` */
+export function eventDeclText(name: string, decl: { fields: Field[] }, emitted: boolean): string {
+  return `${emitted ? 'emits' : 'event'} ${name}${decl.fields.length ? ` { ${paramsText(decl.fields)} }` : ''}`
 }

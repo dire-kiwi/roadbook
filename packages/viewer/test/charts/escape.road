@@ -9,7 +9,7 @@ error Worse
 
 /// Doc </script><script>alert('doc')</script> <img src=x onerror=alert(2)> & "quotes" 'single'
 /// second line <!-- comment
-machine Escape(s: string) -> string ! Bad {
+machine Escape(s: string, peer: ref EscapePeer) -> string ! Bad {
   /// var doc <b>bold</b> </script>
   var t: string = "</script><img src=x onerror=alert(3)>"
   /// event doc <img src=x onerror=alert(4)>
@@ -24,14 +24,24 @@ machine Escape(s: string) -> string ! Bad {
   initial A
   /// state doc <img src=x onerror=alert(5)> "q"
   state A {
-    entry set t = "a\"b&c<d>"
+    entry set t = "a\"b&c<d>"  send peer.Ping { text: "<img src=x onerror=alert(10)> & \"q\"" }
     exit do note("x: {y} \"z\" #1; ;")
     on Go {
       if event.who == "</script><svg onload=alert(6)>" -> B  do note("{curly}: colon")
       else -> A
     }
     on *  do note("ignored # ; :")
-    always if t == "x" -> B
+    always {
+      if t == "x" -> B
+      if t == "k" -> K
+    }
+    on peer.Pong if event.text == "</script><img src=x onerror=alert(11)>" -> B  send peer.Ping { text: "#;: </script>" }
+  }
+  state K {
+    invoke EscapePeer("<img src=x onerror=alert(12)>", peer) as kid {
+      done -> Done
+    }
+    on kid.Pong send kid.Ping { text: "</script><svg onload=alert(13)>" }
   }
   state B {
     invoke work("<img src=x onerror=alert(7)>") {
@@ -47,4 +57,18 @@ machine Escape(s: string) -> string ! Bad {
   }
   final state Done { output t }
   final state Failed { fail Bad }
+}
+
+/// Peer doc <img src=x onerror=alert(14)> & "q"
+machine EscapePeer(s: string, other: ref EscapePeer) {
+  /// ping doc <img src=x onerror=alert(15)>
+  event Ping { text: string }
+  /// pong doc </script>
+  emits Pong { text: string }
+
+  initial P
+  state P {
+    on Ping -> End  emit Pong { text: "</script><img src=x onerror=alert(16)>" }
+  }
+  final state End {}
 }

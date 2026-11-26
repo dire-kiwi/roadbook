@@ -27,7 +27,7 @@ stateDiagram-v2
 
 ## Inventory
 
-`inventory.road:19`
+`inventory/inventory.road:19`
 
 ```text
 The stock of one warehouse, shared by every order. An order asks it to reserve items, and

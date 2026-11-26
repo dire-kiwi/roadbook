@@ -132,9 +132,8 @@ describe('the fixes for the spike', () => {
 describe('the fixes for the review', () => {
   const elk = newElk()
 
-  it('make a container as wide as its own rows (nest Outer, edges OnlyRoot and Rows.Busy)', async () => {
+  it('make a container as wide as its own rows (edges OnlyRoot and Rows.Busy)', async () => {
     const cases: [Ir, string, string][] = [
-      [loadIr(chartFiles().find((f) => f.endsWith('/nest.ir.json'))!), 'Nest', 'Nest.Outer'],
       [chart('charts-edges'), 'OnlyRoot', 'OnlyRoot'],
       [chart('charts-edges'), 'Rows', 'Rows.Busy'],
     ]

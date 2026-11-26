@@ -14,6 +14,8 @@ for chart in \
   examples/password-reset/confirm.road \
   examples/webhook/webhook.road \
   examples/import-job/import.road \
+  examples/upload/publish.road \
+  examples/orders/orders.road \
   packages/viewer/test/charts/stress.road \
   packages/viewer/test/charts/edges.road \
   packages/viewer/test/charts/escape.road

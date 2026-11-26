@@ -83,13 +83,18 @@
         "file": 0,
         "line": 12,
         "col": 1,
-        "endLine": 50,
+        "endLine": 60,
         "endCol": 2
       },
       "params": [
         {
           "name": "s",
           "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "peer",
+          "type": "ref EscapePeer",
           "doc": ""
         }
       ],
@@ -157,7 +162,7 @@
           "file": 0,
           "line": 12,
           "col": 1,
-          "endLine": 50,
+          "endLine": 60,
           "endCol": 2
         },
         "initial": "Escape.A",
@@ -171,7 +176,7 @@
               "file": 0,
               "line": 26,
               "col": 3,
-              "endLine": 35,
+              "endLine": 39,
               "endCol": 4
             },
             "initial": null,
@@ -185,6 +190,32 @@
                   "value": "a\"b&c<d>",
                   "type": "string",
                   "text": "\"a\\\"b&c<d>\""
+                }
+              },
+              {
+                "kind": "send",
+                "to": {
+                  "kind": "ref",
+                  "name": "peer",
+                  "machine": "EscapePeer",
+                  "state": null
+                },
+                "event": "Ping",
+                "value": {
+                  "kind": "record",
+                  "fields": [
+                    {
+                      "name": "text",
+                      "value": {
+                        "kind": "lit",
+                        "value": "<img src=x onerror=alert(10)> & \"q\"",
+                        "type": "string",
+                        "text": "\"<img src=x onerror=alert(10)> & \\\"q\\\"\""
+                      }
+                    }
+                  ],
+                  "type": "EscapePeer.Ping",
+                  "text": "Ping { text: \"<img src=x onerror=alert(10)> & \\\"q\\\"\" }"
                 }
               }
             ],
@@ -333,10 +364,234 @@
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 34,
+                  "line": 35,
+                  "col": 7,
+                  "endLine": 35,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 2,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "t"
+                      ],
+                      "type": "string",
+                      "text": "t"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": "k",
+                      "type": "string",
+                      "text": "\"k\""
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "t == \"k\""
+                },
+                "target": "Escape.K",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 36,
+                  "col": 7,
+                  "endLine": 36,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "ref",
+                    "name": "peer",
+                    "machine": "EscapePeer",
+                    "state": null
+                  },
+                  "event": "Pong"
+                },
+                "group": 3,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "text"
+                      ],
+                      "type": "string",
+                      "text": "event.text"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": "</script><img src=x onerror=alert(11)>",
+                      "type": "string",
+                      "text": "\"</script><img src=x onerror=alert(11)>\""
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.text == \"</script><img src=x onerror=alert(11)>\""
+                },
+                "target": "Escape.B",
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "ref",
+                      "name": "peer",
+                      "machine": "EscapePeer",
+                      "state": null
+                    },
+                    "event": "Ping",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "text",
+                          "value": {
+                            "kind": "lit",
+                            "value": "#;: </script>",
+                            "type": "string",
+                            "text": "\"#;: </script>\""
+                          }
+                        }
+                      ],
+                      "type": "EscapePeer.Ping",
+                      "text": "Ping { text: \"#;: </script>\" }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 38,
                   "col": 5,
-                  "endLine": 34,
-                  "endCol": 28
+                  "endLine": 38,
+                  "endCol": 122
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Escape.K",
+            "name": "K",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 40,
+              "col": 3,
+              "endLine": 45,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "machine",
+              "src": "EscapePeer",
+              "as": "kid",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": "<img src=x onerror=alert(12)>",
+                  "type": "string",
+                  "text": "\"<img src=x onerror=alert(12)>\""
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "peer"
+                  ],
+                  "type": "ref EscapePeer",
+                  "text": "peer"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 41,
+                "col": 5,
+                "endLine": 43,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Escape.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 42,
+                  "col": 7,
+                  "endLine": 42,
+                  "endCol": 19
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "child",
+                    "name": "kid",
+                    "machine": "EscapePeer",
+                    "state": "Escape.K"
+                  },
+                  "event": "Pong"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "child",
+                      "name": "kid",
+                      "machine": "EscapePeer",
+                      "state": "Escape.K"
+                    },
+                    "event": "Ping",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "text",
+                          "value": {
+                            "kind": "lit",
+                            "value": "</script><svg onload=alert(13)>",
+                            "type": "string",
+                            "text": "\"</script><svg onload=alert(13)>\""
+                          }
+                        }
+                      ],
+                      "type": "EscapePeer.Ping",
+                      "text": "Ping { text: \"</script><svg onload=alert(13)>\" }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 44,
+                  "endCol": 74
                 }
               }
             ],
@@ -350,9 +605,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 36,
+              "line": 46,
               "col": 3,
-              "endLine": 42,
+              "endLine": 52,
               "endCol": 4
             },
             "initial": null,
@@ -373,9 +628,9 @@
               ],
               "span": {
                 "file": 0,
-                "line": 37,
+                "line": 47,
                 "col": 5,
-                "endLine": 41,
+                "endLine": 51,
                 "endCol": 6
               }
             },
@@ -403,9 +658,9 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 38,
+                  "line": 48,
                   "col": 7,
-                  "endLine": 38,
+                  "endLine": 48,
                   "endCol": 32
                 }
               },
@@ -420,9 +675,9 @@
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 39,
+                  "line": 49,
                   "col": 7,
-                  "endLine": 39,
+                  "endLine": 49,
                   "endCol": 25
                 }
               },
@@ -437,9 +692,9 @@
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 40,
+                  "line": 50,
                   "col": 7,
-                  "endLine": 40,
+                  "endLine": 50,
                   "endCol": 23
                 }
               }
@@ -454,9 +709,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 43,
+              "line": 53,
               "col": 3,
-              "endLine": 47,
+              "endLine": 57,
               "endCol": 4
             },
             "initial": null,
@@ -468,9 +723,9 @@
                 "doc": "",
                 "span": {
                   "file": 0,
-                  "line": 45,
+                  "line": 55,
                   "col": 5,
-                  "endLine": 45,
+                  "endLine": 55,
                   "endCol": 72
                 },
                 "initial": "Escape.P.R1.X",
@@ -482,9 +737,9 @@
                     "doc": "",
                     "span": {
                       "file": 0,
-                      "line": 45,
+                      "line": 55,
                       "col": 27,
-                      "endLine": 45,
+                      "endLine": 55,
                       "endCol": 51
                     },
                     "initial": null,
@@ -503,9 +758,9 @@
                         "effects": [],
                         "span": {
                           "file": 0,
-                          "line": 45,
+                          "line": 55,
                           "col": 37,
-                          "endLine": 45,
+                          "endLine": 55,
                           "endCol": 49
                         }
                       }
@@ -520,9 +775,9 @@
                     "doc": "",
                     "span": {
                       "file": 0,
-                      "line": 45,
+                      "line": 55,
                       "col": 53,
-                      "endLine": 45,
+                      "endLine": 55,
                       "endCol": 70
                     },
                     "initial": null,
@@ -549,9 +804,9 @@
                 "doc": "",
                 "span": {
                   "file": 0,
-                  "line": 46,
+                  "line": 56,
                   "col": 5,
-                  "endLine": 46,
+                  "endLine": 56,
                   "endCol": 71
                 },
                 "initial": "Escape.P.R2.Y",
@@ -563,9 +818,9 @@
                     "doc": "",
                     "span": {
                       "file": 0,
-                      "line": 46,
+                      "line": 56,
                       "col": 27,
-                      "endLine": 46,
+                      "endLine": 56,
                       "endCol": 50
                     },
                     "initial": null,
@@ -585,9 +840,9 @@
                         "effects": [],
                         "span": {
                           "file": 0,
-                          "line": 46,
+                          "line": 56,
                           "col": 37,
-                          "endLine": 46,
+                          "endLine": 56,
                           "endCol": 48
                         }
                       }
@@ -602,9 +857,9 @@
                     "doc": "",
                     "span": {
                       "file": 0,
-                      "line": 46,
+                      "line": 56,
                       "col": 52,
-                      "endLine": 46,
+                      "endLine": 56,
                       "endCol": 69
                     },
                     "initial": null,
@@ -639,9 +894,9 @@
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 44,
+                  "line": 54,
                   "col": 5,
-                  "endLine": 44,
+                  "endLine": 54,
                   "endCol": 17
                 }
               }
@@ -656,9 +911,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 48,
+              "line": 58,
               "col": 3,
-              "endLine": 48,
+              "endLine": 58,
               "endCol": 32
             },
             "initial": null,
@@ -684,9 +939,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 49,
+              "line": 59,
               "col": 3,
-              "endLine": 49,
+              "endLine": 59,
               "endCol": 34
             },
             "initial": null,
@@ -777,7 +1032,174 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:63da6309a2a92232c86f5681d01cabef81bf03abf361bfdab73e056b680b4486"
+      "hash": "sha256:747934a57e4e69d8124e98baeb62236ecf017396dc59ade1f3ed4481e6ed7977"
+    },
+    "EscapePeer": {
+      "doc": "Peer doc <img src=x onerror=alert(14)> & \"q\"",
+      "span": {
+        "file": 0,
+        "line": 63,
+        "col": 1,
+        "endLine": 74,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "s",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "other",
+          "type": "ref EscapePeer",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Ping": {
+          "fields": [
+            {
+              "name": "text",
+              "type": "string",
+              "doc": ""
+            }
+          ],
+          "doc": "ping doc <img src=x onerror=alert(15)>",
+          "span": {
+            "file": 0,
+            "line": 65,
+            "col": 3,
+            "endLine": 65,
+            "endCol": 30
+          }
+        }
+      },
+      "emits": {
+        "Pong": {
+          "fields": [
+            {
+              "name": "text",
+              "type": "string",
+              "doc": ""
+            }
+          ],
+          "doc": "pong doc </script>",
+          "span": {
+            "file": 0,
+            "line": 67,
+            "col": 3,
+            "endLine": 67,
+            "endCol": 30
+          }
+        }
+      },
+      "root": {
+        "id": "EscapePeer",
+        "name": "EscapePeer",
+        "kind": "compound",
+        "doc": "Peer doc <img src=x onerror=alert(14)> & \"q\"",
+        "span": {
+          "file": 0,
+          "line": 63,
+          "col": 1,
+          "endLine": 74,
+          "endCol": 2
+        },
+        "initial": "EscapePeer.P",
+        "states": [
+          {
+            "id": "EscapePeer.P",
+            "name": "P",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 70,
+              "col": 3,
+              "endLine": 72,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Ping"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "EscapePeer.End",
+                "effects": [
+                  {
+                    "kind": "emit",
+                    "event": "Pong",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "text",
+                          "value": {
+                            "kind": "lit",
+                            "value": "</script><img src=x onerror=alert(16)>",
+                            "type": "string",
+                            "text": "\"</script><img src=x onerror=alert(16)>\""
+                          }
+                        }
+                      ],
+                      "type": "Pong",
+                      "text": "Pong { text: \"</script><img src=x onerror=alert(16)>\" }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 71,
+                  "col": 5,
+                  "endLine": 71,
+                  "endCol": 81
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "EscapePeer.End",
+            "name": "End",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 73,
+              "col": 3,
+              "endLine": 73,
+              "endCol": 21
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:0cd7369e3874ae06c8fff12fbe81239b992447c0a39bff76d03d0dd53a5ea400"
     }
   }
 }

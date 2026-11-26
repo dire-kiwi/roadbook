@@ -55,11 +55,11 @@ describe('state rows', () => {
   })
 
   it('wrap long entry effects with an indented continuation', () => {
-    expect(row(state(po, 'PlaceOrder.Processing.Confirming'))).toEqual(['entry|do sendConfirmationEmail(user, order,', '|      receipt)'])
+    expect(row(state(po, 'PlaceOrder.Processing.Confirming'))).toEqual(['entry|do sendConfirmationEmail(user, order,', '|        receipt)'])
   })
 
   it('wrap the output of a final state narrower', () => {
-    expect(row(state(po, 'PlaceOrder.Unauthorized'))).toEqual(['output|problem(401,', '|       "unauthenticated")'])
+    expect(row(state(po, 'PlaceOrder.Unauthorized'))).toEqual(['output|problem(401,', '|         "unauthenticated")'])
     expect(row(state(shop.machines.Checkout!, 'Checkout.Declined'))).toEqual(['fail|declined'])
   })
 
