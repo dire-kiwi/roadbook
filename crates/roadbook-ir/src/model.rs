@@ -73,6 +73,8 @@ pub struct Field {
     /// Its type.
     #[serde(rename = "type")]
     pub ty: TypeRef,
+    /// Written `sensitive`: its value is redacted in trace records.
+    pub sensitive: bool,
     /// Doc comment, `""` if none.
     pub doc: String,
 }
@@ -282,7 +284,7 @@ pub struct Machine {
     pub hash: String,
 }
 
-/// `var name: T [= expr]`.
+/// `[sensitive] var name: T [= expr]`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Var {
@@ -291,6 +293,8 @@ pub struct Var {
     /// Its type.
     #[serde(rename = "type")]
     pub ty: TypeRef,
+    /// Written `sensitive var`: its value is redacted in trace records.
+    pub sensitive: bool,
     /// Initial value, `null` if the variable starts unassigned.
     pub init: Option<Expr>,
     /// Doc comment, `""` if none.

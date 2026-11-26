@@ -371,7 +371,10 @@ impl Formatter<'_> {
     fn fields(fields: &[Field]) -> Vec<(Span, String)> {
         fields
             .iter()
-            .map(|f| (f.span, format!("{}: {}", f.name.name, ty(&f.ty))))
+            .map(|f| {
+                let sensitive = if f.sensitive { "sensitive " } else { "" };
+                (f.span, format!("{sensitive}{}: {}", f.name.name, ty(&f.ty)))
+            })
             .collect()
     }
 
@@ -529,7 +532,14 @@ impl Formatter<'_> {
                 self.row(
                     whole,
                     indent,
-                    vec![format!("var {}:", v.name.name), t],
+                    vec![
+                        format!(
+                            "{}var {}:",
+                            if v.sensitive { "sensitive " } else { "" },
+                            v.name.name
+                        ),
+                        t,
+                    ],
                     "",
                     Some(Group::Var),
                 );

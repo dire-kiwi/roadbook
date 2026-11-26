@@ -31,6 +31,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  var a: int = 1\n  var b: string?\n  var c: Order[]\n  event Go\n  event Change { value: int, note: string }\n  initial S\n  state S {}\n}\n",
     ),
     (
+        "sensitive",
+        "type Login { user: string, sensitive password: string, sensitive: bool }\nerror Denied { sensitive token: string }\ntask check(sensitive password: string) -> bool\nmachine M(sensitive key: string) {\n  /// The session.\n  sensitive var token: string?\n  var sensitive: int = 0\n  event Submit { sensitive sensitive: string }\n  emits Done { sensitive code: int }\n  initial S\n  state S {}\n}\n",
+    ),
+    (
         "states",
         "machine M() {\n  initial A\n  state A {\n    initial Inner\n    state Inner { on Go -> Done }\n    final state Done {}\n  }\n  parallel state P {\n    state R1 {}\n    state R2 {}\n  }\n  final state Z {}\n}\n",
     ),

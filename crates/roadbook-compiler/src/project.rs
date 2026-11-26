@@ -468,6 +468,7 @@ fn ast_fields(fields: &[ir::Field], span: ir::Span) -> Vec<ast::Field> {
     fields
         .iter()
         .map(|f| ast::Field {
+            sensitive: f.sensitive,
             name: ident(&f.name, span),
             ty: ast_type(&f.ty, span),
             span: ast_span(span),

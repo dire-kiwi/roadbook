@@ -94,6 +94,9 @@ pub(crate) struct Driver<'a> {
     /// Whether a suspend request stops the run: a top-level run's does, unless it was
     /// started to run to its end (`run`, `run_with`). A child run ignores it.
     suspendable: bool,
+    /// The message and value of the last `sent` record: the core writes it, redacted, right
+    /// before the `send` command, and an `undelivered` record repeats it.
+    last_sent: Option<(u64, Value)>,
 }
 
 /// Calls a host function with no invoke context and the run's handles in scope, catching a
@@ -405,6 +408,7 @@ impl<'a> Driver<'a> {
             cancel_requested: false,
             cancel_taken: false,
             suspendable: true,
+            last_sent: None,
         }
     }
 
@@ -676,6 +680,9 @@ impl<'a> Driver<'a> {
     async fn carry(&mut self, c: Command) -> Result<(), Defect> {
         match c {
             Command::Trace { record } => {
+                if let Record::Sent { message, value, .. } = &record {
+                    self.last_sent = Some((*message, value.clone()));
+                }
                 self.write(record);
                 Ok(())
             }
@@ -783,6 +790,12 @@ impl<'a> Driver<'a> {
                     None => self.peers.get(&to).is_some_and(|p| p.shared.deliver(input)),
                 };
                 if !delivered {
+                    // The value as the `sent` record showed it, redacted. The core always
+                    // writes that record first; were it missing, only the event's tag is shown.
+                    let value = match self.last_sent.take() {
+                        Some((m, shown)) if m == message => shown,
+                        _ => serde_json::json!({ "_tag": value.get("_tag") }),
+                    };
                     self.write(Record::Undelivered {
                         message,
                         to: Some(to),

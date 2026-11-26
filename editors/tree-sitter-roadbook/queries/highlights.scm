@@ -57,6 +57,8 @@
   "parallel"
 ] @keyword.modifier
 
+(sensitive) @keyword.modifier
+
 [
   "if"
   "else"

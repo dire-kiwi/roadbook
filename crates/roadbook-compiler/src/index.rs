@@ -288,7 +288,12 @@ impl SymbolIndex {
 
 /// `name: T`, as in a parameter list or a record.
 pub(crate) fn field_text(f: &Field) -> String {
-    field_text_of(&f.name, &f.ty)
+    let text = field_text_of(&f.name, &f.ty);
+    if f.sensitive {
+        format!("sensitive {text}")
+    } else {
+        text
+    }
 }
 
 pub(crate) fn field_text_of(name: &Ident, ty: &TypeRef) -> String {

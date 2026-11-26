@@ -5,6 +5,8 @@ use std::fmt;
 
 use roadbook_ir::{Ir, Machine, State, TypeDef, TypeRef};
 
+use crate::redact::{Marks, Redactor};
+
 /// An IR document, checked and indexed for the interpreter.
 ///
 /// Build one with [`Program::new`] (or [`Program::from_json`]) and keep it for as long as runs
@@ -13,6 +15,7 @@ use roadbook_ir::{Ir, Machine, State, TypeDef, TypeRef};
 pub struct Program {
     ir: Ir,
     machines: HashMap<String, MachineIndex>,
+    marks: Marks,
 }
 
 /// The states of one machine, in document order: a state's index is its position in a
@@ -95,7 +98,12 @@ impl Program {
             }
             machines.insert(name.clone(), idx);
         }
-        Ok(Program { ir, machines })
+        let marks = Marks::new(&ir);
+        Ok(Program {
+            ir,
+            machines,
+            marks,
+        })
     }
 
     /// Reads an IR document ([`Ir::from_json`]) and indexes it.
@@ -107,6 +115,13 @@ impl Program {
     /// The IR.
     pub fn ir(&self) -> &Ir {
         &self.ir
+    }
+
+    pub(crate) fn redactor(&self) -> Redactor<'_> {
+        Redactor {
+            ir: &self.ir,
+            marks: &self.marks,
+        }
     }
 
     /// `t` with aliases expanded at the top, transitively: `Money` for `type Money = int` is

@@ -5,11 +5,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { canonicalJson } from '@roadbook/core'
+import { canonicalJson, REDACTED } from '@roadbook/core'
 import type { Json, Tagged } from '@roadbook/core'
 import { describe, expect, it } from 'vitest'
 import type { Ir } from '../src/ir.ts'
 import { Replay, parseTrace } from '../src/replay.ts'
+import { variablesHtml } from '../src/app/modes.ts'
 import { Simulation, refusal } from '../src/sim.ts'
 import type { Outcome } from '../src/sim.ts'
 import { checkFields, checkValue, sampleFields, sampleValue } from '../src/values.ts'
@@ -259,6 +260,23 @@ describe('replay', () => {
       if (run.id === 'r1') expect(view.status).toBe(c.status)
       if (view.status === 'done' || view.status === 'failed' || view.status === 'cancelled') expect(view.active).toEqual([])
     }
+  })
+
+  it('shows what a trace redacted as redacted, and the rest of a value as it was', () => {
+    const c = readCase('redact-snapshot')
+    const replay = new Replay(caseIr(c), readTrace('redact-snapshot'))
+    expect(replay.problems).toEqual([])
+    // The restored run goes on from the snapshot as the `restored` record shows it.
+    const at = replay.records.findIndex((r) => r.kind === 'restored')
+    const view = replay.viewAt(at, 'r2')
+    expect(view.input.pin).toBe(REDACTED)
+    expect(view.vars.current).toBe(REDACTED)
+    expect(view.vars.session).toEqual({ id: 's1', token: REDACTED, expires: 60 })
+    const html = variablesHtml(caseIr(c).machines.Vault!, view.input, view.vars, true)
+    expect(html).toContain('<dt>pin</dt><dd><span class="rb-redacted"')
+    expect(html).toContain('sensitive param')
+    expect(html).toContain('&quot;token&quot;:&quot;&lt;redacted&gt;&quot;')
+    expect(html).not.toContain('tok-s1')
   })
 
   it('follows a child run and lights up what each record names', () => {

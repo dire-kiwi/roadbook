@@ -60,21 +60,22 @@
 >/// Every final state is one HTTP response.
 #^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
 #   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
->machine PlaceOrder(token: string, draft: OrderDraft) -> ApiResponse {
+>machine PlaceOrder(sensitive token: string, draft: OrderDraft) -> ApiResponse {
 #^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
 #        ^^^^^^^^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
 #                  ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
-#                   ^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
-#                        ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
-#                          ^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook support.type.primitive.roadbook
-#                                ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
-#                                  ^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
-#                                       ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
-#                                         ^^^^^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook entity.name.type.roadbook
-#                                                   ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
-#                                                     ^^ meta.declaration.machine.roadbook keyword.operator.arrow.roadbook
-#                                                        ^^^^^^^^^^^ meta.declaration.machine.roadbook entity.name.type.roadbook
-#                                                                    ^ punctuation.section.braces.roadbook
+#                   ^^^^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook storage.modifier.sensitive.roadbook
+#                             ^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                  ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                    ^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                                          ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                                            ^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                                 ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                                   ^^^^^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                                             ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                                               ^^ meta.declaration.machine.roadbook keyword.operator.arrow.roadbook
+#                                                                  ^^^^^^^^^^^ meta.declaration.machine.roadbook entity.name.type.roadbook
+#                                                                              ^ punctuation.section.braces.roadbook
 >  var user:    User
 #  ^^^ storage.type.var.roadbook
 #      ^^^^ variable.other.definition.roadbook

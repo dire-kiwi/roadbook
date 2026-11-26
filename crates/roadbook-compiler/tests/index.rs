@@ -229,3 +229,18 @@ fn a_compilation_with_errors_still_indexes_what_resolves() {
             .is_none()
     );
 }
+
+#[test]
+fn signatures_show_sensitive_marks() {
+    let src = "type Login { user: string, sensitive password: string }\n\
+               machine M(sensitive pin: int) {\n  sensitive var token: string = \"\"\n  initial A\n  final state A {}\n}\n";
+    let out = compile_source("s.road", src, &Options::default());
+    let sig = |needle: &str| out.index.symbol(at(&out, 0, needle)).signature.clone();
+    assert_eq!(
+        sig("Login {"),
+        "type Login { user: string, sensitive password: string }"
+    );
+    assert_eq!(sig("password"), "sensitive password: string");
+    assert_eq!(sig("M("), "machine M(sensitive pin: int)");
+    assert_eq!(sig("token"), "sensitive var token: string = \"\"");
+}

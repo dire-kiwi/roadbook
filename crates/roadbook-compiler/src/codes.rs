@@ -124,6 +124,16 @@ pub const NOT_A_REF: Code = Code(315);
 /// returns.
 pub const REF_NOT_ALLOWED: Code = Code(316);
 
+/// A value read from a sensitive field, parameter or variable (or computed from one by an
+/// operator) going where a trace shows it:
+/// to a variable, parameter or field that is not sensitive, or to an `output`, a `fail` or an
+/// `after` delay.
+pub const SENSITIVE_VALUE: Code = Code(317);
+
+/// A value whose type has sensitive fields going where `json` is expected, in a place a trace
+/// shows.
+pub const SENSITIVE_INTO_JSON: Code = Code(318);
+
 // ───────────── analyses ─────────────
 
 /// A cycle of unguarded `always` transitions, or an unguarded `always` with no target.
@@ -202,6 +212,8 @@ pub const ALL: &[Code] = &[
     DOUBLE_OPTIONAL,
     NOT_A_REF,
     REF_NOT_ALLOWED,
+    SENSITIVE_VALUE,
+    SENSITIVE_INTO_JSON,
     ALWAYS_CYCLE,
     UNBOUNDED_RECURSION,
     UNASSIGNED_READ,

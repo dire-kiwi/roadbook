@@ -84,7 +84,7 @@ export interface PaymentWebhookDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "examples/webhook/webhook.road",
@@ -118,26 +118,31 @@ const ir: unknown = {
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "kind",
           "type": "PaymentEventKind",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "customerId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "amountCents",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -156,11 +161,13 @@ const ir: unknown = {
         {
           "name": "status",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "body",
           "type": "json",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -179,6 +186,7 @@ const ir: unknown = {
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -210,16 +218,19 @@ const ir: unknown = {
         {
           "name": "body",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "signature",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "secret",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -238,6 +249,7 @@ const ir: unknown = {
         {
           "name": "attempt",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -268,11 +280,13 @@ const ir: unknown = {
         {
           "name": "status",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "code",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -293,11 +307,13 @@ const ir: unknown = {
         {
           "name": "customerId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -315,16 +331,19 @@ const ir: unknown = {
         {
           "name": "customerId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "amountCents",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -344,6 +363,7 @@ const ir: unknown = {
         {
           "name": "body",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -365,6 +385,7 @@ const ir: unknown = {
         {
           "name": "eventId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -384,11 +405,13 @@ const ir: unknown = {
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "amountCents",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -410,11 +433,13 @@ const ir: unknown = {
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "amountCents",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -434,6 +459,7 @@ const ir: unknown = {
         {
           "name": "eventId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -463,16 +489,19 @@ const ir: unknown = {
         {
           "name": "body",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "signature",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "secret",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -482,6 +511,7 @@ const ir: unknown = {
         {
           "name": "payment",
           "type": "PaymentEvent",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -495,6 +525,7 @@ const ir: unknown = {
         {
           "name": "attempts",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
