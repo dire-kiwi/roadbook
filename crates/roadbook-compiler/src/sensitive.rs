@@ -135,13 +135,13 @@ impl Checker<'_> {
 
     /// Whether using a `got` where a `want` is expected puts a value that carries sensitive
     /// fields where `json` is expected, at any depth of `[]` and `?`.
-    fn into_json(&self, got: &Ty, want: &Ty, machine: &str) -> bool {
+    fn leaks_into_json(&self, got: &Ty, want: &Ty, machine: &str) -> bool {
         match (self.env.expand(got), self.env.expand(want)) {
             (_, Ty::Builtin(Builtin::Json)) => self.carries_sensitive(got, machine),
             (Ty::List(g), Ty::List(w)) | (Ty::Optional(g), Ty::Optional(w)) => {
-                self.into_json(&g, &w, machine)
+                self.leaks_into_json(&g, &w, machine)
             }
-            (g, Ty::Optional(w)) => self.into_json(&g, &w, machine),
+            (g, Ty::Optional(w)) => self.leaks_into_json(&g, &w, machine),
             _ => false,
         }
     }
@@ -197,7 +197,7 @@ impl Cx<'_, '_> {
                 .with_label("a trace would show this value")
                 .with_help(help),
             );
-        } else if self.ck.into_json(&got, want, &self.machine) {
+        } else if self.ck.leaks_into_json(&got, want, &self.machine) {
             self.ck.diags.push(
                 Diagnostic::error(
                     codes::SENSITIVE_INTO_JSON,

@@ -906,7 +906,7 @@ fn guard_text(s: &State, i: usize) -> String {
 fn fields_text(fields: &[roadbook_ir::Field]) -> String {
     fields
         .iter()
-        .map(|f| format!("{}: {}", f.name, f.ty))
+        .map(page::field_text)
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -944,7 +944,8 @@ fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
             .as_ref()
             .map(|e| format!(" = {}", e.text))
             .unwrap_or_default();
-        format!("var {}: {}{init}", v.name, v.ty)
+        let sensitive = if v.sensitive { "sensitive " } else { "" };
+        format!("{sensitive}var {}: {}{init}", v.name, v.ty)
     };
     keyed(
         &mut out,
@@ -1349,6 +1350,37 @@ machine M(n: int) -> int ! Declined {
         assert_eq!(c.initial.as_deref(), Some("M.C.C1"));
         assert_eq!(c.states.len(), 2);
         assert_eq!(whats(status_of(&d, "M.C").unwrap()), ["kind", "initial"]);
+    }
+
+    #[test]
+    fn a_sensitive_mark_added_or_removed_is_a_change() {
+        // The machine hash leaves marks out, so the diff must find them itself.
+        let after = BASE
+            .replace("task charge(n: int)", "task charge(sensitive n: int)")
+            .replace("machine M(n: int)", "machine M(sensitive n: int)")
+            .replace("  var tries: int = 0", "  sensitive var tries: int = 0")
+            .replace("set tries = tries + 1", "set tries = 1")
+            .replace("output tries", "output 0");
+        let before = BASE
+            .replace("set tries = tries + 1", "set tries = 1")
+            .replace("output tries", "output 0");
+        let (b, a) = (ir(&before), ir(&after));
+        assert_eq!(b.machines["M"].hash, a.machines["M"].hash);
+        let d = diff(Some(&b), Some(&a), "main");
+        assert_eq!(d.machines[0].1.status, Status::Changed);
+        let whats: Vec<&str> = d.machines[0]
+            .1
+            .changes
+            .iter()
+            .map(|c| c.what.as_str())
+            .collect();
+        assert_eq!(whats, ["signature", "var tries"]);
+        let names: Vec<(&str, Status)> = d
+            .decls
+            .iter()
+            .map(|(n, e)| (n.as_str(), e.status))
+            .collect();
+        assert_eq!(names, [("charge", Status::Changed)]);
     }
 
     #[test]

@@ -668,10 +668,14 @@ fn sensitive_marks_cross_packages() {
         .unwrap()
         .ir
         .unwrap();
-    for loaded in [Loaded::Source(VAULT.into()), Loaded::Compiled(Box::new(compiled))] {
-        let mut l = MemoryLoader::new()
-            .with("safe.road", SAFE)
-            .with_package("vault", "vault.road", loaded);
+    for loaded in [
+        Loaded::Source(VAULT.into()),
+        Loaded::Compiled(Box::new(compiled)),
+    ] {
+        let mut l =
+            MemoryLoader::new()
+                .with("safe.road", SAFE)
+                .with_package("vault", "vault.road", loaded);
         let out = compile(&mut l, "safe.road", &Options::default()).unwrap();
         let found: Vec<(String, u32, u32)> = out
             .diagnostics
@@ -689,11 +693,19 @@ fn sensitive_marks_cross_packages() {
             out.render()
         );
         let ok = SAFE
-            .replace("leaked = result.value, blob = result", "blob = result.label")
-            .replace("on locker.Opened set leaked = event.code", "on locker.Opened set label = \"opened\"");
-        let mut l = MemoryLoader::new()
-            .with("safe.road", ok)
-            .with_package("vault", "vault.road", Loaded::Source(VAULT.into()));
+            .replace(
+                "leaked = result.value, blob = result",
+                "blob = result.label",
+            )
+            .replace(
+                "on locker.Opened set leaked = event.code",
+                "on locker.Opened set label = \"opened\"",
+            );
+        let mut l = MemoryLoader::new().with("safe.road", ok).with_package(
+            "vault",
+            "vault.road",
+            Loaded::Source(VAULT.into()),
+        );
         let out = compile(&mut l, "safe.road", &Options::default()).unwrap();
         assert!(out.diagnostics.is_empty(), "{}", out.render());
         let ir = out.ir.unwrap();
@@ -715,6 +727,9 @@ fn sensitive_marks_cross_packages() {
 fn check_schema_ir(ir: &Ir) {
     let value: serde_json::Value = serde_json::from_str(&ir.to_json()).unwrap();
     let validator = common::validator();
-    let errors: Vec<String> = validator.iter_errors(&value).map(|e| e.to_string()).collect();
+    let errors: Vec<String> = validator
+        .iter_errors(&value)
+        .map(|e| e.to_string())
+        .collect();
     assert!(errors.is_empty(), "{errors:#?}");
 }
