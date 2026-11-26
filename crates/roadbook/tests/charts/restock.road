@@ -1,0 +1,13 @@
+// Imports a machine from another crate's chart: `include_renamed.rs` names that crate `inv`.
+import { Inventory } from "inventory/inventory.road"
+
+/// Asks an inventory for more stock when told to.
+machine Restocker(stock: ref Inventory) {
+  event Go
+
+  initial Idle
+
+  state Idle { on Go -> Done  send stock.Restock { sku: "s1", qty: 3 } }
+
+  final state Done {}
+}

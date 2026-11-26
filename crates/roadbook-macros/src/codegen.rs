@@ -15,8 +15,32 @@ use roadbook_ir::{
 
 use crate::names::{camel, ident, plain, snake};
 
-/// The items for a chart, or why it cannot be expanded.
-pub fn generate(ir: &Ir) -> Result<TokenStream, String> {
+/// What another crate generated: the declarations of a chart's IR that come from another
+/// package, which the expansion refers to instead of generating them again.
+#[derive(Default)]
+pub struct Foreign {
+    /// For each such declaration, the crate whose `roadbook::include!` generated (or
+    /// re-exported) it, as a path: the `$crate` of that crate's hidden macro.
+    pub krate: HashMap<String, TokenStream>,
+    /// The names those crates gave the error enums of their fallible tasks (`false`) and
+    /// machines (`true`).
+    pub error_enums: HashMap<(bool, String), String>,
+}
+
+/// The name of the error enum of every fallible task (`false`) and machine (`true`) of `ir`,
+/// as an expansion of `ir` alone names them.
+pub fn error_enum_names(ir: &Ir) -> Result<HashMap<(bool, String), String>, String> {
+    let none = Foreign::default();
+    let g = Gen::new(ir, &none)?;
+    Ok(g.error_enums
+        .into_iter()
+        .map(|((m, n), id)| ((m, n.to_owned()), plain(&id)))
+        .collect())
+}
+
+/// The items for a chart, or why it cannot be expanded. Declarations in `foreign` are
+/// re-exported from the crate that generated them.
+pub fn generate(ir: &Ir, foreign: &Foreign) -> Result<TokenStream, String> {
     for (name, m) in &ir.machines {
         if let Some(id) = find_parallel(&m.root) {
             return Err(format!(
@@ -25,10 +49,16 @@ pub fn generate(ir: &Ir) -> Result<TokenStream, String> {
             ));
         }
     }
-    let g = Gen::new(ir)?;
+    let g = Gen::new(ir, foreign)?;
     let mut items = Vec::new();
     for (name, decl) in &ir.types {
-        items.push(g.type_decl(name, &decl.def, &decl.doc)?);
+        match foreign.krate.get(name) {
+            Some(krate) => {
+                let id = ident(name);
+                items.push(quote!(pub use #krate::#id;));
+            }
+            None => items.push(g.type_decl(name, &decl.def, &decl.doc)?),
+        }
     }
     items.extend(g.error_enums());
     let mut modules: HashMap<String, String> = HashMap::new();
@@ -39,7 +69,13 @@ pub fn generate(ir: &Ir) -> Result<TokenStream, String> {
                 "machines `{other}` and `{name}` would both be the Rust module `{module}`"
             ));
         }
-        items.push(g.machine(name, m)?);
+        match foreign.krate.get(name) {
+            Some(krate) => {
+                let id = ident(&snake(name));
+                items.push(quote!(pub use #krate::#id;));
+            }
+            None => items.push(g.machine(name, m)?),
+        }
     }
     let json = ir.to_json();
     Ok(quote! {
@@ -129,10 +165,12 @@ struct Gen<'a> {
     ir: &'a Ir,
     /// The error enum of each fallible task (`false`) and machine (`true`).
     error_enums: HashMap<(bool, &'a str), Ident>,
+    /// The crate each declaration from another package is re-exported from.
+    foreign: &'a HashMap<String, TokenStream>,
 }
 
 impl<'a> Gen<'a> {
-    fn new(ir: &'a Ir) -> Result<Gen<'a>, String> {
+    fn new(ir: &'a Ir, foreign: &'a Foreign) -> Result<Gen<'a>, String> {
         let fallible: Vec<(bool, &str)> = ir
             .tasks
             .iter()
@@ -152,7 +190,17 @@ impl<'a> Gen<'a> {
         }
         let mut taken: HashSet<String> = ir.types.keys().cloned().collect();
         let mut error_enums = HashMap::new();
+        // Another crate's names first: they are fixed.
+        for &(machine, n) in &fallible {
+            if let Some(name) = foreign.error_enums.get(&(machine, n.to_owned())) {
+                taken.insert(name.clone());
+                error_enums.insert((machine, n), ident(name));
+            }
+        }
         for (machine, n) in fallible {
+            if error_enums.contains_key(&(machine, n)) {
+                continue;
+            }
             let mut name = short(n);
             if count[&name] > 1 || taken.contains(&name) {
                 let kind = if machine { "Machine" } else { "Task" };
@@ -165,7 +213,11 @@ impl<'a> Gen<'a> {
             }
             error_enums.insert((machine, n), ident(&name));
         }
-        Ok(Gen { ir, error_enums })
+        Ok(Gen {
+            ir,
+            error_enums,
+            foreign: &foreign.krate,
+        })
     }
 
     // ---- types --------------------------------------------------------------------------
@@ -197,10 +249,13 @@ impl<'a> Gen<'a> {
                 let e = self.ty(e, sup);
                 quote!(::core::option::Option<#e>)
             }
-            TypeRef::Ref(_) => {
-                quote!(::core::compile_error!(
-                    "`ref` types are not supported by roadbook::include! yet"
-                ))
+            TypeRef::Ref(m) => {
+                let module = ident(&snake(m));
+                if sup {
+                    quote!(super::#module::Ref)
+                } else {
+                    quote!(#module::Ref)
+                }
             }
         }
     }
@@ -509,7 +564,10 @@ impl<'a> Gen<'a> {
             .chain(machines)
             .filter_map(|(machine, n, errors, what)| {
                 let id = self.error_enums.get(&(machine, n.as_str()))?;
-                Some(self.error_enum(id, &format!("{what} `{n}`"), errors))
+                Some(match self.foreign.get(n) {
+                    Some(krate) => quote!(pub use #krate::#id;),
+                    None => self.error_enum(id, &format!("{what} `{n}`"), errors),
+                })
             })
             .collect()
     }
@@ -936,7 +994,7 @@ impl<'a> Gen<'a> {
 
     /// `State` with its nested enums, and `__from_state_id`.
     fn states(&self, machine: &str, m: &Machine) -> Result<(TokenStream, TokenStream), String> {
-        let mut taken: HashSet<String> = ["State", "Event", "Handlers", "Bind"]
+        let mut taken: HashSet<String> = ["State", "Event", "Emitted", "Ref", "Handlers", "Bind"]
             .into_iter()
             .map(str::to_owned)
             .chain(self.ir.types.keys().cloned())
@@ -1027,33 +1085,66 @@ impl<'a> Gen<'a> {
         Ok(())
     }
 
-    fn events(&self, machine: &str, m: &Machine) -> Result<TokenStream, String> {
+    /// A tagged enum of `events`, `Event` or `Emitted`.
+    fn event_enum(
+        &self,
+        id: &Ident,
+        text: &str,
+        events: &indexmap::IndexMap<String, roadbook_ir::EventDecl>,
+    ) -> Result<TokenStream, String> {
         let mut variants = Vec::new();
-        for (name, e) in &m.events {
-            let id = ident(name);
-            let rename = rename(name, &id);
+        for (name, e) in events {
+            let vid = ident(name);
+            let rename = rename(name, &vid);
             let doc = doc(&e.doc);
             if e.fields.is_empty() {
-                variants.push(quote!(#doc #rename #id));
+                variants.push(quote!(#doc #rename #vid));
             } else {
                 let fields = self.fields(name, &e.fields, false)?;
-                variants.push(quote!(#doc #rename #id { #fields }));
+                variants.push(quote!(#doc #rename #vid { #fields }));
             }
         }
-        let text = if m.events.is_empty() {
-            format!("Machine `{machine}` accepts no events.")
-        } else {
-            format!(
-                "The events machine `{machine}` accepts. In JSON an event is an object with \
-                 `\"_tag\": \"Name\"` and its fields."
-            )
-        };
         let derives = serde_derives();
         Ok(quote! {
             #[doc = #text]
             #[derive(::core::fmt::Debug, ::core::clone::Clone, ::core::cmp::PartialEq, #derives)]
             #[serde(crate = "::roadbook::__private::serde", tag = "_tag")]
-            pub enum Event { #(#variants),* }
+            pub enum #id { #(#variants),* }
+        })
+    }
+
+    /// `Event`, `Emitted` and `Ref`.
+    fn events(&self, machine: &str, m: &Machine) -> Result<TokenStream, String> {
+        let text = if m.events.is_empty() {
+            format!("Machine `{machine}` accepts no events.")
+        } else {
+            format!(
+                "The events machine `{machine}` accepts, from host code (`Actor::send`, \
+                 `Ref::send`) and from other machines (`send`). In JSON an event is an object \
+                 with `\"_tag\": \"Name\"` and its fields."
+            )
+        };
+        let event = self.event_enum(&format_ident!("Event"), &text, &m.events)?;
+        let text = if m.emits.is_empty() {
+            format!("Machine `{machine}` emits no events.")
+        } else {
+            format!(
+                "The events machine `{machine}` emits (`emits`), which its invoker (if it \
+                 named it with `as`) and every machine holding a `ref` to it receive. In JSON \
+                 an event is an object with `\"_tag\": \"Name\"` and its fields."
+            )
+        };
+        let emitted = self.event_enum(&format_ident!("Emitted"), &text, &m.emits)?;
+        let text = format!(
+            "A handle to a running `{machine}`: the chart's `ref {machine}`. Get one from a \
+             spawned run's `Actor::handle`, pass it as a machine argument, or send it an \
+             `Event`."
+        );
+        Ok(quote! {
+            #event
+            #emitted
+            #[doc = #text]
+            pub type Ref = ::roadbook::Ref<Event>;
         })
     }
 
@@ -1208,7 +1299,8 @@ impl<'a> Gen<'a> {
             #[allow(clippy::unit_arg)]
             pub async fn run<H: Handlers + ?::core::marker::Sized>(handlers: &H, #(#decl),*) #ret {
                 let __host = Bind(handlers);
-                let __end = ::roadbook::__private::run(#program, #name, ::roadbook::__private::input(__input(#(#names),*)), &__host).await;
+                let (__in, __refs) = ::roadbook::__private::collect(|| __input(#(#names),*));
+                let __end = ::roadbook::__private::run(#program, #name, ::roadbook::__private::input(__in), &__refs, &__host).await;
                 #finish
             }
 
@@ -1220,7 +1312,8 @@ impl<'a> Gen<'a> {
                 #(#decl),*
             ) #ret {
                 let __host = Bind(handlers);
-                let __end = ::roadbook::__private::run_with(config, #program, #name, ::roadbook::__private::input(__input(#(#names),*)), &__host).await;
+                let (__in, __refs) = ::roadbook::__private::collect(|| __input(#(#names),*));
+                let __end = ::roadbook::__private::run_with(config, #program, #name, ::roadbook::__private::input(__in), &__refs, &__host).await;
                 #finish
             }
 
@@ -1238,11 +1331,13 @@ impl<'a> Gen<'a> {
                 handlers: ::std::sync::Arc<H>,
                 #(#decl),*
             ) -> ::roadbook::Actor<Event, State, #output, #error> {
+                let (__in, __refs) = ::roadbook::__private::collect(|| __input(#(#names),*));
                 ::roadbook::__private::spawn(
                     config,
                     #program,
                     #name,
-                    __input(#(#names),*),
+                    __in,
+                    __refs,
                     ::std::boxed::Box::new(Bind(handlers)),
                     ::roadbook::__private::Codec {
                         event: __event,

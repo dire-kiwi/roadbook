@@ -1,7 +1,0 @@
-# Throwaway probe: how a proc macro in `orders` finds a `.road` file shipped by its
-# dependency `inventory`. See README.md. `run.sh` copies these crates into `work/`
-# and builds them against path, git, vendored and registry dependencies.
-[workspace]
-resolver = "3"
-members = ["road-probe-macro", "inventory", "orders", "app"]
-exclude = ["work"]

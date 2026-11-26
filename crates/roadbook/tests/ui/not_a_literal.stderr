@@ -1,4 +1,4 @@
-error: roadbook::include! takes one string literal: the path of a `.road` file, relative to the package directory
+error: roadbook::include! takes one string literal, the path of a `.road` file relative to the package directory, and optionally `crates(package = name, …)` naming the crates of renamed dependencies: `roadbook::include!("orders.road", crates(inventory = inv))`
  --> tests/ui/not_a_literal.rs:5:1
   |
 5 | roadbook::include!(PATH);

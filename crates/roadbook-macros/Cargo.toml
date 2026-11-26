@@ -17,6 +17,7 @@ proc-macro2 = "1"
 quote = "1"
 syn = { version = "2", default-features = false, features = ["parsing", "proc-macro", "printing"] }
 heck = "0.5"
+indexmap = { workspace = true }
 
 [lints]
 workspace = true

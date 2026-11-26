@@ -17,7 +17,11 @@
 //! - Panics in host code become defects; a run that ends with a defect resumes unwinding
 //!   with a [`Defect`] payload.
 //! - [`Actor`] (from a generated `spawn`) takes events, shows its state, and can be
-//!   cancelled gracefully.
+//!   cancelled gracefully. Its [`Actor::handle`], a [`Ref`], is how host code and other
+//!   machines reach the run: a `ref` argument, and a way to send it events.
+//! - Messages between runs go through the runs' queues: a run is open until its core gives a
+//!   snapshot that is not `running`, a `send` to a closed run is `undelivered`, and a run is
+//!   subscribed to what its peers emit while it is open.
 //! - [`dynamic`] is the erased interface the generated code adapts to, for hosts that call
 //!   host code by name.
 
@@ -26,6 +30,7 @@ mod defect;
 mod driver;
 pub mod dynamic;
 mod env;
+mod handle;
 mod shared;
 
 #[doc(hidden)]
@@ -39,6 +44,7 @@ pub use env::TokioTimer;
 pub use env::{
     BoxFuture, Config, JsonLines, MemorySink, NoTrace, RunObserver, Timer, TraceRecord, TraceSink,
 };
+pub use handle::Ref;
 pub use roadbook_core::{Defect, Input, Program, Record};
 pub use roadbook_macros::include;
 pub use shared::RunHandle;
@@ -81,7 +87,7 @@ mod send_check {
             machines: Default::default(),
         };
         let program = Program::new(ir).unwrap();
-        let f = dynamic::run(&program, "X", Default::default(), &Nothing);
+        let f = dynamic::run(&program, "X", Default::default(), &[], &Nothing);
         assert_send(&f);
     }
 }

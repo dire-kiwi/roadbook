@@ -1,8 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "examples/shop/axum"]
-# The spike is a throwaway prototype with its own manifests.
-exclude = ["spike"]
+members = ["crates/*", "examples/inventory", "examples/orders", "examples/shop/axum"]
 
 [workspace.package]
 version = "0.1.0"

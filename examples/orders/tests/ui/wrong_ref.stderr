@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+ --> tests/ui/wrong_ref.rs:5:5
+  |
+4 | fn inventory_of(order: roadbook::Ref<orders::order::Event>) -> inventory::Ref {
+  |                                                                -------------- expected `roadbook::Ref<inventory::Event>` because of return type
+5 |     order
+  |     ^^^^^ expected `inventory::Event`, found `orders::order::Event`
+  |
+  = note: `orders::order::Event` and `inventory::Event` have similar names, but are actually distinct types
+note: `orders::order::Event` is defined in crate `orders`
+ --> $WORKSPACE/examples/inventory/src/lib.rs
+  |
+  | roadbook::include!("inventory.road");
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+ ::: src/lib.rs
+  |
+  | roadbook::include!("orders.road");
+  | --------------------------------- in this macro invocation
+note: `inventory::Event` is defined in crate `inventory`
+ --> $WORKSPACE/examples/inventory/src/lib.rs
+  |
+  | roadbook::include!("inventory.road");
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: this error originates in the macro `::roadbook::__private::include_continue` which comes from the expansion of the macro `roadbook::include` (in Nightly builds, run with -Z macro-backtrace for more info)

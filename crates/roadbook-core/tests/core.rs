@@ -35,7 +35,7 @@ fn integer_arithmetic_overflows_at_i64() {
         "machine M(n: int) -> int {\n  var x: int = 0\n  event Go\n  initial A\n  state A { on Go -> B  set x = n * 2 }\n  final state B { output x }\n}\n",
     );
     let input = |n: i64| json!({ "n": n }).as_object().unwrap().clone();
-    let (s, _) = p.start("M", input(1 << 62), &mut no_fns).unwrap();
+    let (s, _) = p.start("M", "r1", input(1 << 62), &mut no_fns).unwrap();
     let (s, cmds) = p.step(&s, go(), &mut no_fns);
     assert_eq!(s.status, Status::Defect);
     assert_eq!(
@@ -50,7 +50,7 @@ fn integer_arithmetic_overflows_at_i64() {
     assert_eq!(s.active, ["M", "M.A"]);
     assert_eq!(s.vars["x"], json!(0));
     // Beyond 2^53 but within i64 is fine in Rust.
-    let (s, _) = p.start("M", input(1 << 61), &mut no_fns).unwrap();
+    let (s, _) = p.start("M", "r1", input(1 << 61), &mut no_fns).unwrap();
     let (s, _) = p.step(&s, go(), &mut no_fns);
     assert_eq!(s.status, Status::Done);
     assert_eq!(
@@ -64,7 +64,7 @@ fn a_guarded_always_loop_hits_the_limit() {
     let p = program(
         "machine M() {\n  var n: int = 0\n  event Go\n  initial A\n  state A { on Go -> B }\n  state B { always { if n >= 0 -> C  set n = n + 1 } }\n  state C { always { if n >= 0 -> B } }\n  final state D {}\n}\n",
     );
-    let (s, _) = p.start("M", Map::new(), &mut no_fns).unwrap();
+    let (s, _) = p.start("M", "r1", Map::new(), &mut no_fns).unwrap();
     let (s, cmds) = p.step(&s, go(), &mut no_fns);
     assert_eq!(s.status, Status::Defect);
     assert_eq!(
@@ -81,7 +81,7 @@ fn a_defect_in_start_keeps_the_started_record() {
         "fn f() -> int\nmachine M() {\n  var x: int = f()\n  initial A\n  final state A {}\n}\n",
     );
     let mut fns = |_: &str, _: Vec<Value>| Err(Defect::host("nope"));
-    let (s, cmds) = p.start("M", Map::new(), &mut fns).unwrap();
+    let (s, cmds) = p.start("M", "r1", Map::new(), &mut fns).unwrap();
     assert_eq!(s.status, Status::Defect);
     assert_eq!(s.active, Vec::<String>::new());
     let r = records(&cmds);
@@ -98,7 +98,7 @@ fn a_defect_in_start_keeps_the_started_record() {
 #[test]
 fn a_defect_input_is_taken_after_the_run_ended_but_only_once() {
     let p = program("machine M() {\n  initial A\n  final state A {}\n}\n");
-    let (s, _) = p.start("M", Map::new(), &mut no_fns).unwrap();
+    let (s, _) = p.start("M", "r1", Map::new(), &mut no_fns).unwrap();
     assert_eq!(s.status, Status::Done);
     let d = Defect::host("late");
     let (s, cmds) = p.step(&s, Input::Defect { defect: d.clone() }, &mut no_fns);
@@ -117,7 +117,7 @@ fn snapshots_have_the_spec_shape() {
     let p = program(
         "task t() -> int\nmachine M() {\n  initial A\n  state A { invoke t() { done -> B }  after 1s -> B }\n  final state B {}\n}\n",
     );
-    let (s, _) = p.start("M", Map::new(), &mut no_fns).unwrap();
+    let (s, _) = p.start("M", "r1", Map::new(), &mut no_fns).unwrap();
     let v = serde_json::to_value(&s).unwrap();
     assert_eq!(v["invokes"], json!([{"id": 1, "state": "M.A", "src": "t"}]));
     assert_eq!(
@@ -125,6 +125,8 @@ fn snapshots_have_the_spec_shape() {
         json!([{"id": 1, "state": "M.A", "index": 1, "delay": 1000}])
     );
     assert_eq!(v["nextInvoke"], 2);
+    assert_eq!(v["nextMessage"], 1);
+    assert_eq!(v["run"], "r1");
     assert_eq!(v["result"], Value::Null);
     let (s, _) = p.step(
         &s,
@@ -155,17 +157,35 @@ fn parallel_states_are_refused() {
 }
 
 #[test]
-fn messaging_is_refused() {
-    let c = roadbook_compiler::compile_source(
-        "t.road",
-        "machine M() {\n  emits Ping\n  initial A\n  state A { entry emit Ping }\n}\n",
-        &Default::default(),
-    );
-    let ir = c.ir.expect("the compiler accepts messaging");
-    assert!(matches!(
-        Program::new(ir),
-        Err(ProgramError::Messaging { machine, .. }) if machine == "M"
-    ));
+fn emit_and_send_take_message_ids() {
+    const SRC: &str = "machine P(peer: ref M) {\n  initial A\n  state A { entry send peer.Go }\n}\n\n\
+        machine M() {\n  event Go\n  emits Ping { n: int? }\n  initial A\n  state A {\n    entry emit Ping { n: 1 }\n    on Go emit Ping { n: 2 }\n  }\n}\n";
+    let p = program(SRC);
+    let (s, cmds) = p.start("M", "r1", Map::new(), &mut no_fns).unwrap();
+    assert!(cmds.contains(&Command::Emit {
+        message: 1,
+        value: json!({"_tag": "Ping", "n": 1}),
+    }));
+    let go = Input::Message {
+        from: "r2".into(),
+        message: 1,
+        value: json!({"_tag": "Go"}),
+    };
+    let (s, cmds) = p.step(&s, go, &mut no_fns);
+    assert_eq!(s.next_message, 3);
+    assert!(cmds.contains(&Command::Emit {
+        message: 2,
+        value: json!({"_tag": "Ping", "n": 2}),
+    }));
+    let mut input = Map::new();
+    input.insert("peer".into(), json!("r1"));
+    let (_, cmds) = p.start("P", "r2", input, &mut no_fns).unwrap();
+    assert!(cmds.contains(&Command::Send {
+        to: "r1".into(),
+        invoke: None,
+        message: 1,
+        value: json!({"_tag": "Go"}),
+    }));
 }
 
 #[test]
@@ -200,7 +220,7 @@ fn operators_see_through_aliases() {
              state A {{ on Go {{ if {g} -> B }} }}\n  final state B {{}}\n}}\n"
         );
         let p = program(&src);
-        let (s, _) = p.start("M", Map::new(), &mut no_fns).unwrap();
+        let (s, _) = p.start("M", "r1", Map::new(), &mut no_fns).unwrap();
         let (s, _) = p.step(&s, go(), &mut no_fns);
         assert_eq!(s.status, Status::Done, "`{g}` should hold");
     }
@@ -211,6 +231,6 @@ fn an_optional_alias_var_starts_as_null() {
     let p = program(
         "type S = string?\nmachine M() {\n  var s: S\n  event Go\n  initial A\n  state A { on Go -> B }\n  final state B {}\n}\n",
     );
-    let (s, _) = p.start("M", Map::new(), &mut no_fns).unwrap();
+    let (s, _) = p.start("M", "r1", Map::new(), &mut no_fns).unwrap();
     assert_eq!(s.vars.get("s"), Some(&Value::Null));
 }

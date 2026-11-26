@@ -639,6 +639,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "inventory"
+version = "0.1.0"
+dependencies = [
+ "roadbook",
+]
+
+[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -840,6 +847,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
+name = "orders"
+version = "0.1.0"
+dependencies = [
+ "inventory",
+ "roadbook",
+ "tokio",
+ "trybuild",
+]
+
+[[package]]
 name = "outref"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -989,6 +1006,7 @@ checksum = "d902046e6a28a1e4c3cab97258a0ce11e994903f01c2d97a9447a0b3df85f4f6"
 name = "roadbook"
 version = "0.1.0"
 dependencies = [
+ "inventory",
  "roadbook-compiler",
  "roadbook-conformance",
  "roadbook-core",
@@ -1074,6 +1092,7 @@ name = "roadbook-macros"
 version = "0.1.0"
 dependencies = [
  "heck",
+ "indexmap",
  "proc-macro2",
  "quote",
  "roadbook-compiler",
