@@ -238,6 +238,12 @@ impl Program {
                     return Err(format!("`{}` is active but its parent is not", st.id));
                 }
             }
+            if st.kind.is_history() {
+                return Err(format!(
+                    "`active` names `{}`, which is a history state",
+                    st.id
+                ));
+            }
             let on = idx.children[i].iter().filter(|&&c| is_active(c)).count();
             match st.kind {
                 StateKind::Compound if on != 1 => {

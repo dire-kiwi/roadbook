@@ -138,6 +138,35 @@ impl<'a> Tree<'a> {
         out
     }
 
+    /// Every state history state `h` could restore: each child of its parent with its
+    /// default entry for a shallow one, every state below the parent for a deep one. A loop
+    /// through a history state goes back into what it recorded, so the cycle check counts
+    /// all of these, not only the parent's default entry.
+    fn could_restore(&self, h: &'a str) -> Vec<&'a str> {
+        let parent = self.states[self.parent[h]];
+        let mut out = Vec::new();
+        for c in parent.states.iter().filter(|c| !c.kind.is_history()) {
+            if self.states[h].kind == StateKind::DeepHistory {
+                self.below(&c.id, &mut out);
+            } else {
+                self.enter_down(&c.id, &mut out);
+            }
+        }
+        out
+    }
+
+    /// `id` and every state below it, history states left out.
+    fn below(&self, id: &'a str, out: &mut Vec<&'a str>) {
+        out.push(id);
+        for c in self.states[id]
+            .states
+            .iter()
+            .filter(|c| !c.kind.is_history())
+        {
+            self.below(&c.id, out);
+        }
+    }
+
     /// The states that can become active, starting from the initial configuration and
     /// following the transitions `follow` accepts.
     fn reachable(&self, follow: impl Fn(&ir::Transition) -> bool) -> HashSet<&'a str> {
@@ -272,7 +301,11 @@ fn always_cycles(tree: &Tree<'_>, info: &MachineInfo, diags: &mut Vec<Diagnostic
             Some(to) => {
                 if let Some((&to, _)) = tree.states.get_key_value(to) {
                     nodes.push(id);
-                    edges.insert(id, tree.entry_set(id, to));
+                    let mut entered = tree.entry_set(id, to);
+                    if tree.states[to].kind.is_history() {
+                        entered.extend(tree.could_restore(to));
+                    }
+                    edges.insert(id, entered);
                 }
             }
         }
