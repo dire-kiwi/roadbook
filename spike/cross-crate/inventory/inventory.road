@@ -1,0 +1,8 @@
+// copy: path
+// rev: 1
+machine Inventory {
+  on Restock { sku: string, qty: int }
+  on Reserve { sku: string, qty: int }
+  initial state Open
+  state Open {}
+}

@@ -1,0 +1,16 @@
+[package]
+name = "orders"
+version = "0.1.0"
+edition = "2024"
+publish = false
+build = "build.rs"
+
+[features]
+metadata = []
+env = []
+toml = []
+callback = []
+
+[dependencies]
+road-probe-macro = { version = "0.1", path = "../road-probe-macro" }
+inventory = { version = "0.1", path = "../inventory" }

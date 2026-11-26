@@ -55,7 +55,7 @@ Each milestone ends with something usable, and the order puts the riskiest assum
 
 **M4. Rust runtime.** `roadbook-core`, the macro, the driver. The same example serves requests from axum and passes the same conformance cases.
 
-**M5. Messaging.** `send` and `emit` with an invoked child, `ref` parameters for peers, and imports across crates and packages, as specified in [actors and messaging](actors.md). The viewer draws message edges and the project index draws which machines can talk to which. Before M4 commits to a build setup, prototype how the Rust macro finds a chart in a dependency crate.
+**M5. Messaging.** `send` and `emit` with an invoked child, `ref` parameters for peers, and imports across crates and packages, as specified in [actors and messaging](actors.md). The viewer draws message edges and the project index draws which machines can talk to which. How the Rust macro finds a chart in a dependency crate has been prototyped in [`spike/cross-crate`](../../spike/cross-crate).
 
 **M6. Depth.** Definite assignment analysis. Parallel states. Saving and restoring snapshots (`resume`), with the IR hash check. Simulate and replay modes in the viewer, which need the TypeScript core and the trace.
 

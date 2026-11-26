@@ -133,7 +133,15 @@ stock.handle().send(inventory::Event::Restock { sku, qty }).await;
 
 TypeScript works the same way with packages: the chart imports `"@shop/inventory/inventory.road"`, and the generated file imports types from that package's generated file.
 
-One part is not yet proven: how the Rust macro locates a dependency's `.road` file at build time. Cargo can pass a path from a dependency's build script to a dependent's, and failing that a mapping in `roadbook.toml` works. This needs a prototype before the Rust runtime milestone commits to it.
+The Rust macro does not look for the dependency's `.road` file at all. [`spike/cross-crate`](../../spike/cross-crate) tried four mechanisms against path, git, vendored and registry dependencies, and against a crate that is itself a dependency. Each crate's `roadbook::include!` embeds the IR and also exports a hidden `macro_rules!` for each chart. An importing chart's macro expands to a call into that macro, which calls back with the IR and `$crate`. This works for every kind of dependency, always sees the version that is actually compiled, needs no build script or configuration, and Cargo's normal dependency tracking rebuilds the importer when the chart changes.
+
+The other three mechanisms were rejected:
+
+- Running `cargo metadata` from the macro misses the project's Cargo configuration when the importing crate is itself a dependency. It can then reach the network, write a `Cargo.lock` into Cargo's caches, or read a different version from the one being compiled.
+- Passing the path through build scripts works, but it needs `links` and a `build.rs` in every crate on both sides, and `links` forbids two semver-incompatible versions of the owning crate in one graph.
+- A `roadbook.toml` mapping works only for path dependencies.
+
+The caveat is renamed dependencies. The macro calls the owning crate by its package name, so `inv = { package = "inventory" }` needs an alias in the call: `roadbook::include!("orders.road", crates(inventory = inv))`.
 
 ### Across processes and languages
 
