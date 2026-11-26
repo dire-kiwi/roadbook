@@ -2,10 +2,12 @@
 // (Controller), and the HTML of their common parts: variables, records, active states.
 
 import type { Ir, Machine } from '../ir.ts'
+import type { Selection } from '../panel.ts'
 import { jsonText, recordText, stateName } from '../replay.ts'
 import { esc } from '../render.ts'
+import type { Annotations } from '../render.ts'
 
-export type Mode = 'explore' | 'simulate' | 'replay'
+export type Mode = 'explore' | 'simulate' | 'replay' | 'diff' | 'coverage'
 
 /** What a mode lights up on the machine drawn. */
 export interface Highlight {
@@ -28,6 +30,10 @@ export interface Host {
   refresh(): void
   /** Switches mode. */
   setMode(mode: Mode): void
+  /** Draws the diagram again, keeping the view, after the mode's marks changed. */
+  redraw(): void
+  /** Selects a state or transition of the machine drawn, expanding what hides it. */
+  select(sel: Selection): void
 }
 
 export interface Controller {
@@ -41,6 +47,10 @@ export interface Controller {
   back(): void
   first?(): void
   last?(): void
+  /** What the mode marks on `machine`'s states and transitions (diff, coverage), drawn into the SVG. */
+  annotate?(machine: string, collapsed: ReadonlySet<string>): Annotations | null
+  /** HTML put above the details of what is selected. */
+  details?(machine: string, selection: Selection): string
 }
 
 export const pretty = (v: unknown) => JSON.stringify(v, null, 2) ?? 'null'

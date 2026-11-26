@@ -1,0 +1,1187 @@
+//! The diff model of `roadbook viz --diff`: two versions of an entry chart's IR, drawn as one.
+//!
+//! [`diff`] takes the IR of a chart before and after (either may be missing: the chart was added
+//! or removed) and gives one merged IR, which the viewer draws as any other, and what changed in
+//! it: each machine, state and transition is added, removed, changed or unchanged, and a changed
+//! one lists its changes with the text before and after.
+//!
+//! **Matching.** Machines are matched by name, states by id (the path of names from the
+//! machine: `Checkout.Charging`), so a state renamed or moved to another parent is a removed
+//! state and an added one. A transition is matched by its source state and its trigger (the
+//! event, the sender and event of an emitted one, the error of a `fail`; `after` by the keyword
+//! alone, so a changed delay is a change of the trigger), the n-th block with that trigger in
+//! the state, and then, among the branches of a guarded block, first by the guard's text and
+//! then by position. Everything else is compared by its canonical text (as the formatter writes
+//! it), so formatting, comments and source positions never count as changes.
+//!
+//! **The merged IR.** It is the after version with what was removed put back: a removed state
+//! (with everything inside it) goes where it was among its siblings, a removed transition after
+//! the state's other transitions, and declarations and machines only the before version has are
+//! added. Spans of what comes from the before version point into copies of its source files
+//! named `path @ <revision>`, appended to `sources`, so the details panel names the line in the
+//! version it is from.
+
+use std::collections::{HashMap, HashSet};
+
+use roadbook_compiler::Ir;
+use roadbook_ir::{
+    Effect, Invoke, InvokeKind, Machine, Source, State, StateKind, Transition, Trigger, TypeDef,
+};
+use serde_json::{Map, Value, json};
+
+use super::page;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Status {
+    Added,
+    Removed,
+    Changed,
+    Unchanged,
+}
+
+impl Status {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Status::Added => "added",
+            Status::Removed => "removed",
+            Status::Changed => "changed",
+            Status::Unchanged => "unchanged",
+        }
+    }
+}
+
+/// One difference: what it is about (`guard`, `target`, `var attempts`), and its text before and
+/// after (`None`: there was none).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Change {
+    pub what: String,
+    pub before: Option<String>,
+    pub after: Option<String>,
+}
+
+/// A state, transition or declaration that is not unchanged.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Element {
+    pub status: Status,
+    /// For a changed one, what changed.
+    pub changes: Vec<Change>,
+}
+
+/// Added, removed and changed, of one kind of thing.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Counts {
+    pub added: usize,
+    pub removed: usize,
+    pub changed: usize,
+}
+
+impl Counts {
+    fn count(&mut self, s: Status) {
+        match s {
+            Status::Added => self.added += 1,
+            Status::Removed => self.removed += 1,
+            Status::Changed => self.changed += 1,
+            Status::Unchanged => {}
+        }
+    }
+
+    pub fn add(&mut self, o: Counts) {
+        self.added += o.added;
+        self.removed += o.removed;
+        self.changed += o.changed;
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.added + self.removed + self.changed == 0
+    }
+
+    pub fn to_json(self) -> Value {
+        json!({ "added": self.added, "removed": self.removed, "changed": self.changed })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct MachineDiff {
+    pub status: Status,
+    /// Changes to the machine itself: its signature, doc comment, variables and events.
+    pub changes: Vec<Change>,
+    /// The states that are not unchanged, by id, in document order of the merged machine.
+    pub states: Vec<(String, Element)>,
+    /// The transitions that are not unchanged, by source state id and index in the merged
+    /// state's `transitions`, in document order.
+    pub transitions: Vec<((String, usize), Element)>,
+}
+
+impl MachineDiff {
+    pub fn state_counts(&self) -> Counts {
+        let mut c = Counts::default();
+        for (_, e) in &self.states {
+            c.count(e.status);
+        }
+        c
+    }
+
+    pub fn transition_counts(&self) -> Counts {
+        let mut c = Counts::default();
+        for (_, e) in &self.transitions {
+            c.count(e.status);
+        }
+        c
+    }
+}
+
+pub struct ChartDiff {
+    /// The merged IR.
+    pub ir: Ir,
+    /// Every machine of the merged IR, in its order.
+    pub machines: Vec<(String, MachineDiff)>,
+    /// The declarations (types, functions, actions, tasks) that are not unchanged.
+    pub decls: Vec<(String, Element)>,
+}
+
+impl ChartDiff {
+    /// Whether anything differs.
+    pub fn changed(&self) -> bool {
+        !self.decls.is_empty()
+            || self
+                .machines
+                .iter()
+                .any(|(_, m)| m.status != Status::Unchanged)
+    }
+
+    /// Machines, states and transitions added, removed and changed.
+    #[cfg(test)]
+    pub fn counts(&self) -> (Counts, Counts, Counts) {
+        let (mut m, mut s, mut t) = (Counts::default(), Counts::default(), Counts::default());
+        for (_, d) in &self.machines {
+            m.count(d.status);
+            s.add(d.state_counts());
+            t.add(d.transition_counts());
+        }
+        (m, s, t)
+    }
+
+    /// The `diff` member of the page data (`ChartDiff` in `packages/viewer/src/diff.ts`), less
+    /// the members the caller adds: `from`, `to`, `status` and `errors`.
+    pub fn to_json(&self) -> Map<String, Value> {
+        let element = |e: &Element| {
+            json!({
+                "status": e.status.as_str(),
+                "changes": e.changes.iter().map(change_json).collect::<Vec<_>>(),
+            })
+        };
+        let mut machines = Map::new();
+        for (name, d) in &self.machines {
+            let mut states = Map::new();
+            for (id, e) in &d.states {
+                states.insert(id.clone(), element(e));
+            }
+            let mut transitions = Map::new();
+            for ((id, i), e) in &d.transitions {
+                transitions.insert(format!("{id}#{i}"), element(e));
+            }
+            machines.insert(
+                name.clone(),
+                json!({
+                    "status": d.status.as_str(),
+                    "changes": d.changes.iter().map(change_json).collect::<Vec<_>>(),
+                    "states": states,
+                    "transitions": transitions,
+                    "counts": {
+                        "states": d.state_counts().to_json(),
+                        "transitions": d.transition_counts().to_json(),
+                    },
+                }),
+            );
+        }
+        let mut out = Map::new();
+        out.insert(
+            "decls".into(),
+            Value::Array(
+                self.decls
+                    .iter()
+                    .map(|(n, e)| {
+                        let mut v = element(e);
+                        v["name"] = Value::from(n.as_str());
+                        v
+                    })
+                    .collect(),
+            ),
+        );
+        out.insert("machines".into(), Value::Object(machines));
+        out
+    }
+}
+
+fn change_json(c: &Change) -> Value {
+    json!({ "what": c.what, "before": c.before, "after": c.after })
+}
+
+/// The diff of two versions of a chart. `before_label` names the before version in the source
+/// paths of what only it has (`examples/shop/checkout.road @ main`).
+pub fn diff(before: Option<&Ir>, after: Option<&Ir>, before_label: &str) -> ChartDiff {
+    let empty = empty_ir();
+    let b_ir = before.unwrap_or(&empty);
+    let a_ir = after.unwrap_or(&empty);
+    let mut ir = a_ir.clone();
+    // What comes from the before version points into copies of its sources.
+    let offset = ir.sources.len() as u32;
+    for s in &b_ir.sources {
+        ir.sources.push(Source {
+            path: format!("{} @ {before_label}", s.path),
+            package: s.package.clone(),
+        });
+    }
+    let shift = |span: &mut roadbook_ir::Span| span.file += offset;
+
+    let mut decls = Vec::new();
+    macro_rules! decls {
+        ($map:ident, $text:expr) => {
+            for (name, a) in &a_ir.$map {
+                match b_ir.$map.get(name) {
+                    None => decls.push((name.clone(), added())),
+                    Some(b) => {
+                        let (tb, ta) = ($text(name, b), $text(name, a));
+                        let mut changes = Vec::new();
+                        if tb != ta {
+                            changes.push(change("declaration", tb, ta));
+                        }
+                        if b.doc != a.doc {
+                            changes.push(change("doc", b.doc.clone(), a.doc.clone()));
+                        }
+                        if !changes.is_empty() {
+                            decls.push((name.clone(), changed(changes)));
+                        }
+                    }
+                }
+            }
+            for (name, b) in &b_ir.$map {
+                if !a_ir.$map.contains_key(name) {
+                    let mut b = b.clone();
+                    shift(&mut b.span);
+                    ir.$map.insert(name.clone(), b);
+                    decls.push((name.clone(), removed()));
+                }
+            }
+        };
+    }
+    decls!(types, type_text);
+    decls!(functions, |n: &str, f: &roadbook_ir::FunctionDecl| format!(
+        "fn {n}({}) -> {}",
+        fields_text(&f.params),
+        f.returns
+    ));
+    decls!(actions, |n: &str, f: &roadbook_ir::ActionDecl| format!(
+        "action {n}({})",
+        fields_text(&f.params)
+    ));
+    decls!(tasks, |n: &str, t: &roadbook_ir::TaskDecl| {
+        let mut s = format!("task {n}({})", fields_text(&t.params));
+        if let Some(r) = &t.returns {
+            s.push_str(&format!(" -> {r}"));
+        }
+        if !t.errors.is_empty() {
+            s.push_str(&format!(" ! {}", t.errors.join(" | ")));
+        }
+        s
+    });
+
+    let mut machines = Vec::new();
+    let names: Vec<String> = a_ir.machines.keys().cloned().collect();
+    for name in &names {
+        let a = &a_ir.machines[name];
+        let mut d = MachineDiff {
+            status: Status::Unchanged,
+            changes: Vec::new(),
+            states: Vec::new(),
+            transitions: Vec::new(),
+        };
+        let merged = match b_ir.machines.get(name) {
+            None => {
+                d.status = Status::Added;
+                mark_all(&a.root, Status::Added, &mut d);
+                d.states.retain(|(id, _)| id != name); // the machine, not one of its states
+                a.root.clone()
+            }
+            Some(b) => {
+                d.changes = machine_changes(name, b, a);
+                let mut m = Merge { d: &mut d, offset };
+                let root = m.state(&a.root, Some(&b.root));
+                if !d.changes.is_empty() || !d.states.is_empty() || !d.transitions.is_empty() {
+                    d.status = Status::Changed;
+                }
+                root
+            }
+        };
+        if let Some(m) = ir.machines.get_mut(name) {
+            m.root = merged;
+        }
+        machines.push((name.clone(), d));
+    }
+    for (name, b) in &b_ir.machines {
+        if a_ir.machines.contains_key(name) {
+            continue;
+        }
+        let mut d = MachineDiff {
+            status: Status::Removed,
+            changes: Vec::new(),
+            states: Vec::new(),
+            transitions: Vec::new(),
+        };
+        mark_all(&b.root, Status::Removed, &mut d);
+        d.states.retain(|(id, _)| id != name);
+        let mut m = b.clone();
+        shift(&mut m.span);
+        for v in &mut m.vars {
+            shift(&mut v.span);
+        }
+        for e in m.events.values_mut().chain(m.emits.values_mut()) {
+            shift(&mut e.span);
+        }
+        shift_state(&mut m.root, offset);
+        ir.machines.insert(name.clone(), m);
+        machines.push((name.clone(), d));
+    }
+    // Every element in document order of the merged machine.
+    for (name, d) in &mut machines {
+        let order = document_order(&ir.machines[name.as_str()].root);
+        d.states
+            .sort_by_key(|(id, _)| order.get(id.as_str()).copied());
+        d.transitions
+            .sort_by_key(|((id, i), _)| (order.get(id.as_str()).copied(), *i));
+    }
+    ChartDiff {
+        ir,
+        machines,
+        decls,
+    }
+}
+
+fn document_order(root: &State) -> HashMap<&str, usize> {
+    fn go<'a>(s: &'a State, out: &mut HashMap<&'a str, usize>) {
+        let n = out.len();
+        out.insert(&s.id, n);
+        for c in &s.states {
+            go(c, out);
+        }
+    }
+    let mut out = HashMap::new();
+    go(root, &mut out);
+    out
+}
+
+fn empty_ir() -> Ir {
+    Ir {
+        ir_version: roadbook_ir::IR_VERSION.to_string(),
+        sources: Vec::new(),
+        types: Default::default(),
+        functions: Default::default(),
+        actions: Default::default(),
+        tasks: Default::default(),
+        machines: Default::default(),
+    }
+}
+
+fn added() -> Element {
+    Element {
+        status: Status::Added,
+        changes: Vec::new(),
+    }
+}
+
+fn removed() -> Element {
+    Element {
+        status: Status::Removed,
+        changes: Vec::new(),
+    }
+}
+
+fn changed(changes: Vec<Change>) -> Element {
+    Element {
+        status: Status::Changed,
+        changes,
+    }
+}
+
+fn change(
+    what: &str,
+    before: impl Into<Option<String>>,
+    after: impl Into<Option<String>>,
+) -> Change {
+    Change {
+        what: what.to_string(),
+        before: before.into(),
+        after: after.into(),
+    }
+}
+
+/// Every state and transition of `s` and inside it, with status `status`.
+fn mark_all(s: &State, status: Status, d: &mut MachineDiff) {
+    d.states.push((
+        s.id.clone(),
+        Element {
+            status,
+            changes: Vec::new(),
+        },
+    ));
+    for i in 0..s.transitions.len() {
+        d.transitions.push((
+            (s.id.clone(), i),
+            Element {
+                status,
+                changes: Vec::new(),
+            },
+        ));
+    }
+    for c in &s.states {
+        mark_all(c, status, d);
+    }
+}
+
+fn shift_state(s: &mut State, offset: u32) {
+    s.span.file += offset;
+    if let Some(inv) = &mut s.invoke {
+        inv.span.file += offset;
+    }
+    for t in &mut s.transitions {
+        t.span.file += offset;
+    }
+    for c in &mut s.states {
+        shift_state(c, offset);
+    }
+}
+
+struct Merge<'a> {
+    d: &'a mut MachineDiff,
+    offset: u32,
+}
+
+impl Merge<'_> {
+    /// The merged state of `a` (after) and `b` (before, with the same id), recording what differs.
+    fn state(&mut self, a: &State, b: Option<&State>) -> State {
+        let Some(b) = b else {
+            mark_all(a, Status::Added, self.d);
+            return a.clone();
+        };
+        let changes = state_changes(a, b);
+        if !changes.is_empty() {
+            self.d.states.push((a.id.clone(), changed(changes)));
+        }
+        let mut out = a.clone();
+        // Children: the after version's, merged, with the removed ones put back where they were.
+        let mut states: Vec<State> = a
+            .states
+            .iter()
+            .map(|c| self.state(c, b.states.iter().find(|x| x.id == c.id)))
+            .collect();
+        let mut previous: Option<&str> = None;
+        for bc in &b.states {
+            if a.states.iter().any(|x| x.id == bc.id) {
+                previous = Some(&bc.id);
+                continue;
+            }
+            mark_all(bc, Status::Removed, self.d);
+            let mut r = bc.clone();
+            shift_state(&mut r, self.offset);
+            let at = previous
+                .and_then(|p| states.iter().position(|s| s.id == p))
+                .map_or(0, |i| i + 1);
+            previous = Some(&bc.id);
+            states.insert(at, r);
+        }
+        if !states.is_empty() && out.states.is_empty() {
+            // Every child was removed: draw it as the container it was.
+            if matches!(out.kind, StateKind::Atomic | StateKind::Final) {
+                out.kind = b.kind;
+            }
+            if out.initial.is_none() {
+                out.initial = b.initial.clone();
+            }
+        }
+        out.states = states;
+        out.transitions = self.transitions(a, b);
+        out
+    }
+
+    /// The merged transitions of a state: the after version's, then the removed ones.
+    fn transitions(&mut self, a: &State, b: &State) -> Vec<Transition> {
+        let ab = blocks(&a.transitions);
+        let bb = blocks(&b.transitions);
+        let mut pairs: Vec<(usize, usize)> = Vec::new(); // (after index, before index)
+        let mut block_of_before: HashMap<usize, u32> = HashMap::new(); // before index -> after group
+        let mut used_blocks: HashSet<usize> = HashSet::new();
+        for blk in &ab {
+            let Some((bi, bblk)) = bb
+                .iter()
+                .enumerate()
+                .find(|(i, x)| !used_blocks.contains(i) && x.key == blk.key && x.nth == blk.nth)
+            else {
+                continue;
+            };
+            used_blocks.insert(bi);
+            let group = a.transitions[blk.members[0]].group;
+            for &m in &bblk.members {
+                block_of_before.insert(m, group);
+            }
+            // Branches: by guard text first, then by position.
+            let guard = |t: &Transition| t.guard.as_ref().map(|g| g.text.clone());
+            let mut free_a: Vec<usize> = blk.members.clone();
+            let mut free_b: Vec<usize> = bblk.members.clone();
+            free_a.retain(|&ai| {
+                let g = guard(&a.transitions[ai]);
+                match free_b.iter().position(|&bi| guard(&b.transitions[bi]) == g) {
+                    Some(p) => {
+                        pairs.push((ai, free_b.remove(p)));
+                        false
+                    }
+                    None => true,
+                }
+            });
+            for (ai, bi) in free_a.into_iter().zip(free_b) {
+                pairs.push((ai, bi));
+            }
+        }
+        let mut out = a.transitions.clone();
+        for i in 0..a.transitions.len() {
+            match pairs.iter().find(|(ai, _)| *ai == i) {
+                None => self.d.transitions.push(((a.id.clone(), i), added())),
+                Some(&(_, bi)) => {
+                    let changes = transition_changes(a, i, b, bi);
+                    if !changes.is_empty() {
+                        self.d
+                            .transitions
+                            .push(((a.id.clone(), i), changed(changes)));
+                    }
+                }
+            }
+        }
+        // Removed transitions: in a matched block they join its group, else a group of their own.
+        let mut next_group = a.transitions.iter().map(|t| t.group + 1).max().unwrap_or(0);
+        let mut fresh: HashMap<u32, u32> = HashMap::new();
+        for (bi, t) in b.transitions.iter().enumerate() {
+            if pairs.iter().any(|(_, x)| *x == bi) {
+                continue;
+            }
+            let mut r = t.clone();
+            r.span.file += self.offset;
+            r.group = match block_of_before.get(&bi) {
+                Some(&g) => g,
+                None => *fresh.entry(t.group).or_insert_with(|| {
+                    next_group += 1;
+                    next_group - 1
+                }),
+            };
+            self.d
+                .transitions
+                .push(((a.id.clone(), out.len()), removed()));
+            out.push(r);
+        }
+        out
+    }
+}
+
+/// A block of transitions (the branches of one trigger), and which of its kind it is in the state.
+struct Block {
+    key: String,
+    nth: usize,
+    members: Vec<usize>,
+}
+
+fn blocks(ts: &[Transition]) -> Vec<Block> {
+    let mut out: Vec<Block> = Vec::new();
+    let mut groups: HashMap<u32, usize> = HashMap::new();
+    for (i, t) in ts.iter().enumerate() {
+        if let Some(&b) = groups.get(&t.group) {
+            out[b].members.push(i);
+            continue;
+        }
+        let key = trigger_key(&t.trigger);
+        let nth = out.iter().filter(|b| b.key == key).count();
+        groups.insert(t.group, out.len());
+        out.push(Block {
+            key,
+            nth,
+            members: vec![i],
+        });
+    }
+    out
+}
+
+/// What identifies a trigger for matching: `after` without its delay.
+fn trigger_key(t: &Trigger) -> String {
+    match t {
+        Trigger::After { .. } => "after".into(),
+        other => trigger_text(other),
+    }
+}
+
+/// The trigger as the viewer labels it (`triggerText` in `packages/viewer/src/model.ts`).
+pub fn trigger_text(t: &Trigger) -> String {
+    match t {
+        Trigger::Event { event } => event.clone(),
+        Trigger::Emitted { from, event } => format!("{}.{event}", from.name),
+        Trigger::Any => "on *".into(),
+        Trigger::After { delay } => format!("after {}", delay.text),
+        Trigger::Always => "always".into(),
+        Trigger::InvokeFail { error } => format!("fail {error}"),
+        Trigger::Done | Trigger::InvokeDone => "done".into(),
+    }
+}
+
+/// `effectText` in `packages/viewer/src/model.ts`.
+pub fn effect_text(e: &Effect) -> String {
+    match e {
+        Effect::Set { var, value } => format!("set {var} = {}", value.text),
+        Effect::Do { action, args } => format!(
+            "do {action}({})",
+            args.iter()
+                .map(|a| a.text.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Effect::Send { to, value, .. } => format!("send {}.{}", to.name, value.text),
+        Effect::Emit { value, .. } => format!("emit {}", value.text),
+    }
+}
+
+fn effects_text(list: &[Effect]) -> Option<String> {
+    (!list.is_empty()).then(|| list.iter().map(effect_text).collect::<Vec<_>>().join("\n"))
+}
+
+fn invoke_text(inv: &Invoke) -> String {
+    let args: Vec<&str> = inv.args.iter().map(|a| a.text.as_str()).collect();
+    format!(
+        "{}{}({}){}",
+        if inv.kind == InvokeKind::Machine {
+            "machine "
+        } else {
+            ""
+        },
+        inv.src,
+        args.join(", "),
+        inv.alias
+            .as_ref()
+            .map(|a| format!(" as {a}"))
+            .unwrap_or_default()
+    )
+}
+
+fn kind_text(k: StateKind) -> String {
+    match k {
+        StateKind::Atomic => "atomic",
+        StateKind::Compound => "compound",
+        StateKind::Parallel => "parallel",
+        StateKind::Final => "final",
+    }
+    .into()
+}
+
+/// A state id relative to its machine: `Processing.Paying`.
+fn short(id: &str) -> String {
+    id.split_once('.').map_or(id, |(_, rest)| rest).to_string()
+}
+
+fn doc(s: &str) -> Option<String> {
+    (!s.is_empty()).then(|| s.to_string())
+}
+
+/// What differs in a state itself, not counting the states inside it or its transitions.
+fn state_changes(a: &State, b: &State) -> Vec<Change> {
+    let mut out = Vec::new();
+    let mut cmp = |what: &str, before: Option<String>, after: Option<String>| {
+        if before != after {
+            out.push(change(what, before, after));
+        }
+    };
+    cmp("kind", Some(kind_text(b.kind)), Some(kind_text(a.kind)));
+    cmp("doc", doc(&b.doc), doc(&a.doc));
+    cmp(
+        "initial",
+        b.initial.as_deref().map(short),
+        a.initial.as_deref().map(short),
+    );
+    cmp(
+        "invoke",
+        b.invoke.as_ref().map(invoke_text),
+        a.invoke.as_ref().map(invoke_text),
+    );
+    cmp("entry", effects_text(&b.entry), effects_text(&a.entry));
+    cmp("exit", effects_text(&b.exit), effects_text(&a.exit));
+    cmp(
+        "output",
+        b.output.as_ref().map(|e| e.text.clone()),
+        a.output.as_ref().map(|e| e.text.clone()),
+    );
+    cmp(
+        "fail",
+        b.fail.as_ref().map(|e| e.text.clone()),
+        a.fail.as_ref().map(|e| e.text.clone()),
+    );
+    out
+}
+
+fn target_text(t: &Transition) -> String {
+    t.target
+        .as_deref()
+        .map_or_else(|| "(internal: no target)".to_string(), short)
+}
+
+fn transition_changes(a: &State, ai: usize, b: &State, bi: usize) -> Vec<Change> {
+    let (ta, tb) = (&a.transitions[ai], &b.transitions[bi]);
+    let mut out = Vec::new();
+    let mut cmp = |what: &str, before: Option<String>, after: Option<String>| {
+        if before != after {
+            out.push(change(what, before, after));
+        }
+    };
+    cmp(
+        "trigger",
+        Some(trigger_text(&tb.trigger)),
+        Some(trigger_text(&ta.trigger)),
+    );
+    cmp(
+        "guard",
+        Some(guard_text(b, bi)).filter(|g| !g.is_empty()),
+        Some(guard_text(a, ai)).filter(|g| !g.is_empty()),
+    );
+    cmp("target", Some(target_text(tb)), Some(target_text(ta)));
+    cmp(
+        "effects",
+        effects_text(&tb.effects),
+        effects_text(&ta.effects),
+    );
+    out
+}
+
+/// `[guard]`, `[else]` for the unguarded last branch of a block, `""` otherwise (`guardText` in
+/// `packages/viewer/src/model.ts`).
+fn guard_text(s: &State, i: usize) -> String {
+    let t = &s.transitions[i];
+    if let Some(g) = &t.guard {
+        return format!("[{}]", g.text);
+    }
+    let first = s.transitions.iter().position(|o| o.group == t.group);
+    if first != Some(i) {
+        "[else]".into()
+    } else {
+        String::new()
+    }
+}
+
+fn fields_text(fields: &[roadbook_ir::Field]) -> String {
+    fields
+        .iter()
+        .map(|f| format!("{}: {}", f.name, f.ty))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn type_text(name: &str, t: &roadbook_ir::TypeDecl) -> String {
+    let fields = |fs: &[roadbook_ir::Field]| {
+        if fs.is_empty() {
+            String::new()
+        } else {
+            format!(" {{ {} }}", fields_text(fs))
+        }
+    };
+    match &t.def {
+        TypeDef::Record { fields: fs } => format!("type {name}{}", fields(fs)),
+        TypeDef::Error { fields: fs } => format!("error {name}{}", fields(fs)),
+        TypeDef::Enum { variants } => format!("enum {name} {{ {} }}", variants.join(", ")),
+        TypeDef::Alias { ty } => format!("type {name} = {ty}"),
+        TypeDef::Extern => format!("extern type {name}"),
+    }
+}
+
+/// Changes to a machine itself: signature, doc comment, variables, events and emitted events.
+fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
+    let mut out = Vec::new();
+    let (sb, sa) = (page::signature(name, b), page::signature(name, a));
+    if sb != sa {
+        out.push(change("signature", sb, sa));
+    }
+    if b.doc != a.doc {
+        out.push(change("doc", doc(&b.doc), doc(&a.doc)));
+    }
+    let var = |v: &roadbook_ir::Var| {
+        let init = v
+            .init
+            .as_ref()
+            .map(|e| format!(" = {}", e.text))
+            .unwrap_or_default();
+        format!("var {}: {}{init}", v.name, v.ty)
+    };
+    keyed(
+        &mut out,
+        "var",
+        b.vars.iter().map(|v| (v.name.clone(), var(v))),
+        a.vars.iter().map(|v| (v.name.clone(), var(v))),
+    );
+    let event = |kw: &str, n: &str, e: &roadbook_ir::EventDecl| {
+        let f = fields_text(&e.fields);
+        if f.is_empty() {
+            format!("{kw} {n}")
+        } else {
+            format!("{kw} {n} {{ {f} }}")
+        }
+    };
+    keyed(
+        &mut out,
+        "event",
+        b.events
+            .iter()
+            .map(|(n, e)| (n.clone(), event("event", n, e))),
+        a.events
+            .iter()
+            .map(|(n, e)| (n.clone(), event("event", n, e))),
+    );
+    keyed(
+        &mut out,
+        "emits",
+        b.emits
+            .iter()
+            .map(|(n, e)| (n.clone(), event("emits", n, e))),
+        a.emits
+            .iter()
+            .map(|(n, e)| (n.clone(), event("emits", n, e))),
+    );
+    out
+}
+
+/// Changes between two lists of named texts: `var attempts`, before and after.
+fn keyed(
+    out: &mut Vec<Change>,
+    what: &str,
+    before: impl Iterator<Item = (String, String)>,
+    after: impl Iterator<Item = (String, String)>,
+) {
+    let before: Vec<(String, String)> = before.collect();
+    let after: Vec<(String, String)> = after.collect();
+    for (n, ta) in &after {
+        let tb = before.iter().find(|(m, _)| m == n).map(|(_, t)| t.clone());
+        if tb.as_ref() != Some(ta) {
+            out.push(change(&format!("{what} {n}"), tb, Some(ta.clone())));
+        }
+    }
+    for (n, tb) in &before {
+        if !after.iter().any(|(m, _)| m == n) {
+            out.push(change(&format!("{what} {n}"), Some(tb.clone()), None));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ir(src: &str) -> Ir {
+        let c = roadbook_compiler::compile_source("chart.road", src, &Default::default());
+        assert!(!c.has_errors(), "{}", c.render());
+        c.ir.unwrap()
+    }
+
+    const BASE: &str = r#"
+task charge(n: int) -> int ! Declined
+error Declined
+action log(n: int)
+
+machine M(n: int) -> int ! Declined {
+  var tries: int = 0
+  event Go
+  event Stop
+
+  initial A
+
+  /// Waits.
+  state A {
+    on Go {
+      if n > 1 -> B  set tries = tries + 1
+      else     -> C
+    }
+    on Stop -> Out
+  }
+
+  state B {
+    invoke charge(n) {
+      done -> Out
+      fail Declined -> Bad
+    }
+  }
+
+  state C {
+    initial C1
+    state C1 { after 1s -> C2 }
+    state C2 { on Go -> Out }
+  }
+
+  final state Out { output tries }
+  final state Bad { fail Declined }
+}
+"#;
+
+    fn status_of<'a>(d: &'a ChartDiff, id: &str) -> Option<&'a Element> {
+        d.machines[0]
+            .1
+            .states
+            .iter()
+            .find(|(s, _)| s == id)
+            .map(|(_, e)| e)
+    }
+
+    fn transition_of<'a>(d: &'a ChartDiff, id: &str, i: usize) -> Option<&'a Element> {
+        d.machines[0]
+            .1
+            .transitions
+            .iter()
+            .find(|((s, j), _)| s == id && *j == i)
+            .map(|(_, e)| e)
+    }
+
+    fn whats(e: &Element) -> Vec<&str> {
+        e.changes.iter().map(|c| c.what.as_str()).collect()
+    }
+
+    #[test]
+    fn identical_charts_have_no_changes_whatever_the_formatting() {
+        let a = ir(BASE);
+        let b = ir(&BASE.replace("  on Stop -> Out", "  // a comment\n  on Stop  ->  Out"));
+        let d = diff(Some(&a), Some(&b), "main");
+        assert!(!d.changed());
+        assert_eq!(d.machines[0].1.status, Status::Unchanged);
+        assert_eq!(d.ir.machines["M"].root, b.machines["M"].root);
+    }
+
+    #[test]
+    fn an_added_state_and_its_transition() {
+        let after = BASE
+            .replace(
+                "    on Stop -> Out\n",
+                "    on Stop -> Out\n    after 5s -> Late\n",
+            )
+            .replace(
+                "  final state Out",
+                "  state Late { on Go -> Out }\n\n  final state Out",
+            );
+        let d = diff(Some(&ir(BASE)), Some(&ir(&after)), "main");
+        assert_eq!(d.machines[0].1.status, Status::Changed);
+        assert_eq!(status_of(&d, "M.Late").unwrap().status, Status::Added);
+        // The new `after` arrow on A (index 3) and Late's own `on Go`.
+        assert_eq!(transition_of(&d, "M.A", 3).unwrap().status, Status::Added);
+        assert_eq!(
+            transition_of(&d, "M.Late", 0).unwrap().status,
+            Status::Added
+        );
+        let (m, s, t) = d.counts();
+        assert_eq!((m.changed, s.added, t.added), (1, 1, 2));
+        assert_eq!((s.removed, s.changed, t.removed, t.changed), (0, 0, 0, 0));
+    }
+
+    #[test]
+    fn a_removed_state_is_put_back_where_it_was() {
+        let after = BASE
+            .replace("    on Stop -> Out\n", "")
+            .replace("  final state Bad { fail Declined }\n", "")
+            .replace("      fail Declined -> Bad\n", "      fail * -> Out\n");
+        let d = diff(Some(&ir(BASE)), Some(&ir(&after)), "main");
+        assert_eq!(status_of(&d, "M.Bad").unwrap().status, Status::Removed);
+        let root = &d.ir.machines["M"].root;
+        let names: Vec<&str> = root.states.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, ["A", "B", "C", "Out", "Bad"]);
+        // Removed transitions follow the state's others, and point into the before sources.
+        let a = &root.states[0];
+        assert_eq!(a.transitions.len(), 3);
+        assert_eq!(a.transitions[2].target.as_deref(), Some("M.Out"));
+        assert_eq!(transition_of(&d, "M.A", 2).unwrap().status, Status::Removed);
+        assert_eq!(transition_of(&d, "M.B", 1).unwrap().status, Status::Added);
+        assert_eq!(transition_of(&d, "M.B", 2).unwrap().status, Status::Removed);
+        let src = a.transitions[2].span.file as usize;
+        assert_eq!(d.ir.sources[src].path, "chart.road @ main");
+        let bad = &root.states[4];
+        assert_eq!(
+            d.ir.sources[bad.span.file as usize].path,
+            "chart.road @ main"
+        );
+        // A removed branch keeps a group of its own, not another block's.
+        let groups: Vec<u32> = a.transitions.iter().map(|t| t.group).collect();
+        assert_eq!(groups[0], groups[1]);
+        assert_ne!(groups[2], groups[0]);
+    }
+
+    #[test]
+    fn a_nested_removed_state_goes_back_between_its_siblings() {
+        let before = BASE.replace(
+            "    state C2 { on Go -> Out }",
+            "    state Mid {}\n    state C2 { on Go -> Out }",
+        );
+        let d = diff(Some(&ir(&before)), Some(&ir(BASE)), "main");
+        let c = &d.ir.machines["M"].root.states[2];
+        let names: Vec<&str> = c.states.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, ["C1", "Mid", "C2"]);
+        assert_eq!(status_of(&d, "M.C.Mid").unwrap().status, Status::Removed);
+    }
+
+    #[test]
+    fn changed_guard_effect_target_and_trigger() {
+        let after = BASE
+            .replace(
+                "if n > 1 -> B  set tries = tries + 1",
+                "if n > 2 -> B  set tries = tries + 2",
+            )
+            .replace("    on Stop -> Out", "    on Stop -> Bad")
+            .replace("after 1s -> C2", "after 2s -> C2");
+        let d = diff(Some(&ir(BASE)), Some(&ir(&after)), "main");
+        let go = transition_of(&d, "M.A", 0).unwrap();
+        assert_eq!(go.status, Status::Changed);
+        assert_eq!(whats(go), ["guard", "effects"]);
+        assert_eq!(go.changes[0].before.as_deref(), Some("[n > 1]"));
+        assert_eq!(go.changes[0].after.as_deref(), Some("[n > 2]"));
+        assert_eq!(
+            go.changes[1].after.as_deref(),
+            Some("set tries = tries + 2")
+        );
+        // The else branch is unchanged.
+        assert!(transition_of(&d, "M.A", 1).is_none());
+        let stop = transition_of(&d, "M.A", 2).unwrap();
+        assert_eq!(whats(stop), ["target"]);
+        assert_eq!(stop.changes[0].before.as_deref(), Some("Out"));
+        assert_eq!(stop.changes[0].after.as_deref(), Some("Bad"));
+        let after1 = transition_of(&d, "M.C.C1", 0).unwrap();
+        assert_eq!(whats(after1), ["trigger"]);
+        assert_eq!(after1.changes[0].after.as_deref(), Some("after 2s"));
+        // No state changed, only transitions.
+        assert!(d.machines[0].1.states.is_empty());
+        let (_, s, t) = d.counts();
+        assert_eq!((s.changed, t.changed, t.added, t.removed), (0, 3, 0, 0));
+    }
+
+    #[test]
+    fn a_new_branch_matches_the_others_by_guard() {
+        let after = BASE.replace(
+            "      if n > 1 -> B  set tries = tries + 1\n",
+            "      if n > 1 -> B  set tries = tries + 1\n      if n > 0 -> Out\n",
+        );
+        let d = diff(Some(&ir(BASE)), Some(&ir(&after)), "main");
+        assert!(transition_of(&d, "M.A", 0).is_none());
+        assert_eq!(transition_of(&d, "M.A", 1).unwrap().status, Status::Added);
+        assert!(
+            transition_of(&d, "M.A", 2).is_none(),
+            "the else branch is the same"
+        );
+    }
+
+    #[test]
+    fn changed_invoke_entry_doc_and_output() {
+        let after = BASE
+            .replace("invoke charge(n)", "invoke charge(n + 1)")
+            .replace(
+                "  /// Waits.\n  state A {",
+                "  /// Waits for Go.\n  state A {\n    entry do log(n)",
+            )
+            .replace("output tries", "output tries + 1");
+        let d = diff(Some(&ir(BASE)), Some(&ir(&after)), "main");
+        let a = status_of(&d, "M.A").unwrap();
+        assert_eq!(whats(a), ["doc", "entry"]);
+        assert_eq!(a.changes[1].before, None);
+        assert_eq!(a.changes[1].after.as_deref(), Some("do log(n)"));
+        let b = status_of(&d, "M.B").unwrap();
+        assert_eq!(whats(b), ["invoke"]);
+        assert_eq!(b.changes[0].before.as_deref(), Some("charge(n)"));
+        assert_eq!(b.changes[0].after.as_deref(), Some("charge(n + 1)"));
+        assert_eq!(whats(status_of(&d, "M.Out").unwrap()), ["output"]);
+    }
+
+    #[test]
+    fn machine_level_changes() {
+        let after = BASE
+            .replace(
+                "var tries: int = 0",
+                "var tries: int = 1\n  var extra: bool = false",
+            )
+            .replace("  event Stop\n", "  event Stop\n  event Pause\n");
+        let d = diff(Some(&ir(BASE)), Some(&ir(&after)), "main");
+        let m = &d.machines[0].1;
+        assert_eq!(m.status, Status::Changed);
+        let whats: Vec<&str> = m.changes.iter().map(|c| c.what.as_str()).collect();
+        assert_eq!(whats, ["var tries", "var extra", "event Pause"]);
+        assert_eq!(m.changes[0].after.as_deref(), Some("var tries: int = 1"));
+    }
+
+    #[test]
+    fn machines_added_and_removed() {
+        let other = "machine N() {\n  initial X\n  state X { on Go -> Y }\n  event Go\n  final state Y {}\n}\n";
+        let both = format!("{BASE}\n{other}");
+        let d = diff(Some(&ir(BASE)), Some(&ir(&both)), "main");
+        let (_, n) = &d.machines[1];
+        assert_eq!(n.status, Status::Added);
+        assert!(n.states.iter().all(|(_, e)| e.status == Status::Added));
+        assert_eq!(n.state_counts().added, 2);
+        assert_eq!(n.transition_counts().added, 1);
+        assert_eq!(d.machines[0].1.status, Status::Unchanged);
+
+        let d = diff(Some(&ir(&both)), Some(&ir(BASE)), "main");
+        assert_eq!(d.machines[1].0, "N");
+        assert_eq!(d.machines[1].1.status, Status::Removed);
+        assert!(d.ir.machines.contains_key("N"));
+        let n = &d.ir.machines["N"];
+        assert_eq!(d.ir.sources[n.span.file as usize].path, "chart.road @ main");
+        assert_eq!(
+            d.ir.sources[n.root.states[0].span.file as usize].path,
+            "chart.road @ main"
+        );
+
+        // A chart added or removed: everything in it is.
+        let d = diff(None, Some(&ir(BASE)), "main");
+        assert_eq!(d.machines[0].1.status, Status::Added);
+        let d = diff(Some(&ir(BASE)), None, "main");
+        assert_eq!(d.machines[0].1.status, Status::Removed);
+        assert!(d.decls.iter().all(|(_, e)| e.status == Status::Removed));
+        assert_eq!(d.ir.machines.len(), 1);
+    }
+
+    #[test]
+    fn a_renamed_state_is_removed_and_added() {
+        let after = BASE
+            .replace("state B {", "state Paying {")
+            .replace("-> B ", "-> Paying ");
+        let d = diff(Some(&ir(BASE)), Some(&ir(&after)), "main");
+        assert_eq!(status_of(&d, "M.B").unwrap().status, Status::Removed);
+        assert_eq!(status_of(&d, "M.Paying").unwrap().status, Status::Added);
+        let go = transition_of(&d, "M.A", 0).unwrap();
+        assert_eq!(whats(go), ["target"]);
+    }
+
+    #[test]
+    fn all_children_removed_keeps_the_container() {
+        let after = BASE
+            .replace(
+                "  state C {\n    initial C1\n    state C1 { after 1s -> C2 }\n    state C2 { on Go -> Out }\n  }",
+                "  state C { on Go -> Out }",
+            );
+        let d = diff(Some(&ir(BASE)), Some(&ir(&after)), "main");
+        let c = &d.ir.machines["M"].root.states[2];
+        assert_eq!(c.kind, StateKind::Compound);
+        assert_eq!(c.initial.as_deref(), Some("M.C.C1"));
+        assert_eq!(c.states.len(), 2);
+        assert_eq!(whats(status_of(&d, "M.C").unwrap()), ["kind", "initial"]);
+    }
+
+    #[test]
+    fn declarations() {
+        let after = BASE
+            .replace("action log(n: int)", "action log(n: int, m: int)")
+            .replace(
+                "error Declined\n",
+                "error Declined { code: int }\ntype Extra { a: int }\n",
+            )
+            .replace("fail Declined }", "fail Declined { code: 1 } }");
+        let d = diff(Some(&ir(BASE)), Some(&ir(&after)), "main");
+        let names: Vec<(&str, Status)> = d
+            .decls
+            .iter()
+            .map(|(n, e)| (n.as_str(), e.status))
+            .collect();
+        assert!(names.contains(&("Declined", Status::Changed)), "{names:?}");
+        assert!(names.contains(&("Extra", Status::Added)), "{names:?}");
+        assert!(names.contains(&("log", Status::Changed)), "{names:?}");
+    }
+}

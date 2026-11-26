@@ -1,0 +1,74 @@
+# An example GitHub Actions workflow: on every pull request, draw what changed in the charts
+# and post a summary with a link to the pages. Copy it to `.github/workflows/` of a repository
+# that has Roadbook charts. See docs/design/visualization.md, "Reviewing chart changes in pull
+# requests". It is kept here, not in this repository's `.github/workflows/`, so that this
+# repository's CI does not run it.
+
+name: Chart changes
+
+on:
+  pull_request:
+    paths:
+      - "**/*.road"
+      - "roadbook.toml"
+
+permissions:
+  contents: read
+  pull-requests: write # to post the comment
+
+concurrency:
+  group: chart-changes-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the base branch's history, which the diff reads with git
+
+      # Install the `roadbook` command. In the Roadbook repository itself this builds it from
+      # source; elsewhere, install a released binary instead.
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install roadbook
+        run: cargo install --locked --path crates/roadbook-cli
+
+      # `origin/<base>...HEAD`: what the pull request changes since it forked from the base,
+      # whatever has landed on the base since.
+      - name: Draw the changes
+        env:
+          BASE: ${{ github.base_ref }}
+        run: roadbook viz --diff "origin/${BASE}...HEAD" -o roadbook-diff
+
+      - name: Upload the pages
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: roadbook-diff
+          path: roadbook-diff
+          retention-days: 14
+
+      - name: Post or update the comment
+        # A pull request from a fork gets a read-only token: no comment there.
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        with:
+          script: |
+            const fs = require('node:fs')
+            const marker = '<!-- roadbook-diff -->'
+            const summary = fs.readFileSync('roadbook-diff/summary.md', 'utf8')
+            const body = [
+              marker,
+              summary,
+              `[Download the pages](${process.env.ARTIFACT_URL}): a zip; unpack it and open \`index.html\`.`,
+            ].join('\n')
+            const { owner, repo } = context.repo
+            const issue_number = context.issue.number
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number })
+            const mine = comments.find((c) => c.user.type === 'Bot' && c.body.includes(marker))
+            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body })
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body })

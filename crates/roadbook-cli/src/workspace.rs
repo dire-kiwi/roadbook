@@ -174,6 +174,12 @@ impl Workspace {
         Ok(out)
     }
 
+    /// Whether a walk of the project skips this project path: it is excluded, or under a
+    /// directory never searched (`target`, `node_modules`, `.git`).
+    pub fn skips(&self, project_path: &str) -> bool {
+        project_path.split('/').any(|s| SKIPPED.contains(&s)) || self.excluded(project_path, &[])
+    }
+
     /// The path of a project file on disk.
     pub fn disk_path(&self, project_path: &str) -> PathBuf {
         self.root.join(project_path)

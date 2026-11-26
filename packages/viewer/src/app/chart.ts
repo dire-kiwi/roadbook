@@ -5,7 +5,10 @@
 // Explore is the default mode. Simulate (app/simulate.ts) and replay (app/replay-mode.ts) reuse
 // the page: each has its own section of the panel, and decorates the drawn SVG with classes on
 // the `data-state` and `data-transition` elements (rb-active, rb-taken, rb-named) and a ring
-// around the active states. Diff and coverage (M7) will do the same.
+// around the active states. Diff (app/diff-mode.ts) and coverage (app/coverage-mode.ts) mark
+// states and transitions in the SVG itself (renderSvg's `annotate`), and add to the details of
+// what is selected. A diff page (`roadbook viz --diff`) draws the merged chart and offers diff
+// mode only.
 
 import type { Ir } from '../ir.ts'
 import { own } from '../ir.ts'
@@ -18,10 +21,13 @@ import type { Selection } from '../panel.ts'
 import type { PageData } from '../project.ts'
 import { localHref } from '../project.ts'
 import { esc, renderLegend, renderMachineHeader, renderSvg } from '../render.ts'
+import { expandForDiff } from '../diff.ts'
 import { buildSearchIndex, search } from '../search.ts'
 import type { SearchEntry } from '../search.ts'
 import { $, setupTheme } from './dom.ts'
 import type { Controller, Highlight, Host, Mode } from './modes.ts'
+import { coverageMode } from './coverage-mode.ts'
+import { diffErrorsHtml, diffMode } from './diff-mode.ts'
 import { replayMode } from './replay-mode.ts'
 import { simulateMode } from './simulate.ts'
 import { Viewport } from './viewport.ts'
@@ -40,6 +46,8 @@ const SHELL = `
     <button class="rb-mode-btn" type="button" data-mode="explore" title="The chart as written">Explore</button>
     <button class="rb-mode-btn" type="button" data-mode="simulate" title="Run the machine by hand, in the page">Simulate</button>
     <button class="rb-mode-btn" type="button" data-mode="replay" title="Step through a recorded trace">Replay</button>
+    <button class="rb-mode-btn" type="button" data-mode="coverage" title="How often each transition was taken, across many traces">Coverage</button>
+    <button class="rb-mode-btn" type="button" data-mode="diff" title="What changed between two revisions">Diff</button>
   </div>
   <div class="rb-tools">
     <button class="rb-btn" id="rb-zoom-out" type="button" title="Zoom out (-)" aria-label="Zoom out">−</button>
@@ -67,15 +75,32 @@ const SHELL = `
   <aside class="rb-panel" id="rb-aside">
     <section class="rb-mode-panel" id="rb-mode-simulate" aria-label="Simulate" hidden></section>
     <section class="rb-mode-panel" id="rb-mode-replay" aria-label="Replay" hidden></section>
+    <section class="rb-mode-panel" id="rb-mode-coverage" aria-label="Coverage" hidden></section>
+    <section class="rb-mode-panel" id="rb-mode-diff" aria-label="Diff" hidden></section>
     <div id="rb-panel" aria-live="polite"></div>
   </aside>
 </main>`
 
+const MODES: Mode[] = ['simulate', 'replay', 'coverage', 'diff']
+
 export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   const ir: Ir = data.ir
+  const diff = data.mode === 'diff' ? (data.diff ?? null) : null
   document.body.className = 'rb-app'
+  if (diff?.errors.length) {
+    // A chart that does not compile at one of the revisions: its diagnostics instead.
+    document.body.className = 'rb-index'
+    document.title = `${data.entry} · Roadbook`
+    document.body.innerHTML =
+      `<header class="rb-top"><a class="rb-brand"${data.index ? ` href="${esc(localHref(data.index))}"` : ''}>Roadbook<small>${esc(data.entry)}</small></a><div class="rb-tools"><button class="rb-btn" id="rb-theme" type="button"></button></div></header>` +
+      diffErrorsHtml(data.entry, diff)
+    setupTheme($(document.body, '#rb-theme'))
+    return
+  }
   document.body.innerHTML = SHELL
   const root = document.body
+  // A diff page draws the merged chart, which is neither version: only diff mode makes sense.
+  for (const b of root.querySelectorAll<HTMLElement>('[data-mode]')) b.hidden = diff ? b.dataset.mode !== 'diff' : b.dataset.mode === 'diff'
   const canvas = $(root, '#rb-canvas')
   const aside = $(root, '#rb-aside')
   const panel = $(root, '#rb-panel')
@@ -103,6 +128,8 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     let set = collapsedBy.get(name)
     if (!set) {
       const d = defaultCollapsed(own(ir.machines, name)!)
+      // A diff opens with what changed in view.
+      if (diff) expandForDiff(diff, name, d)
       defaults.set(name, d)
       set = new Set(d)
       collapsedBy.set(name, set)
@@ -144,7 +171,8 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     layout = l
     canvas.querySelector('.rb-error')?.remove()
     svg?.remove()
-    canvas.insertAdjacentHTML('afterbegin', renderSvg(ir, name, l, { measure, collapsed: collapsedOf(name), interactive: true }))
+    const annotate = controller()?.annotate?.(name, collapsedOf(name)) ?? undefined
+    canvas.insertAdjacentHTML('afterbegin', renderSvg(ir, name, l, { measure, collapsed: collapsedOf(name), interactive: true, annotate }))
     svg = canvas.querySelector<SVGSVGElement>('svg.rb-svg')
     if (svg) viewport.attach(svg, l.width, l.height, opts.keepView)
     applyClasses()
@@ -325,7 +353,8 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     const details = mode === 'explore' || selection !== null
     panel.hidden = !details
     panel.classList.toggle('rb-details-below', mode !== 'explore')
-    panel.innerHTML = details ? panelHtml({ ir, machine: current, collapsed: collapsedOf(current) }, selection) : ''
+    const extra = details ? (controller()?.details?.(current, selection) ?? '') : ''
+    panel.innerHTML = details ? extra + panelHtml({ ir, machine: current, collapsed: collapsedOf(current) }, selection) : ''
     if (mode === 'explore') aside.scrollTop = 0
   }
 
@@ -350,6 +379,8 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
       if (id && layout && id !== own(ir.machines, current)?.root.id) viewport.reveal(layout.nodes[visibleId(id)])
     },
     setMode: (m) => setMode(m),
+    redraw: () => void draw({ keepView: true }),
+    select: (sel) => void goTo(current, sel),
   }
   const controllers: Partial<Record<Mode, Controller>> = {}
   const controller = (): Controller | undefined => (mode === 'explore' ? undefined : controllers[mode])
@@ -358,22 +389,33 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     let c = controllers[m]
     if (!c) {
       const el = $(root, `#rb-mode-${m}`)
-      c = m === 'simulate' ? simulateMode(host, el) : replayMode(host, el, data.trace ?? null)
+      c =
+        m === 'simulate'
+          ? simulateMode(host, el)
+          : m === 'replay'
+            ? replayMode(host, el, data.trace ?? null)
+            : m === 'coverage'
+              ? coverageMode(host, el, data.coverage ?? [])
+              : diffMode(host, el, diff ?? { from: '', to: '', status: 'unchanged', errors: [], decls: [], machines: {} })
       controllers[m] = c
     }
     return c
   }
   function setMode(m: Mode) {
     const changed = m !== mode
+    // The marks of diff and coverage are drawn into the SVG: draw again when they come or go.
+    const marked = (x: Mode) => x === 'diff' || x === 'coverage'
+    const redraw = changed && (marked(m) || marked(mode))
     mode = m
     for (const b of root.querySelectorAll<HTMLElement>('[data-mode]')) b.setAttribute('aria-pressed', String(b.dataset.mode === m))
-    for (const x of ['simulate', 'replay'] as const) $(root, `#rb-mode-${x}`).hidden = x !== m
+    for (const x of MODES) $(root, `#rb-mode-${x}`).hidden = x !== m
     document.body.dataset.mode = m
     if (changed) selection = null
     const c = makeController(m)
     renderPanel()
     c?.render()
-    applyClasses()
+    if (redraw && current) void draw({ keepView: true })
+    else applyClasses()
   }
 
   /** Marks what the mode lights up: rings around active and named states, heavy taken transitions. */
@@ -582,7 +624,9 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     return
   }
   trail = [{ name: first, via: '' }]
-  void show(first).then(() => setMode(data.mode === 'simulate' || data.mode === 'replay' ? data.mode : 'explore'))
+  // The page's mode, before the first drawing, so it is drawn with the mode's marks.
+  if (data.mode !== 'explore') setMode(MODES.includes(data.mode) ? data.mode : 'explore')
+  void show(first).then(() => setMode(MODES.includes(data.mode) ? data.mode : 'explore'))
   window.addEventListener('hashchange', () => {
     const name = fromHash()
     if (own(ir.machines, name) && name !== current) void openMachine(name, 'tab')

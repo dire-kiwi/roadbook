@@ -1,4 +1,4 @@
-//! `roadbook viz [paths…] [-o dir] [--self-contained] [--trace run.jsonl] [--watch [--port N]]`
+//! `roadbook viz [paths…] [-o dir] [--self-contained] [--trace run.jsonl | --coverage traces… | --diff range] [--watch [--port N]]`
 //!
 //! Writes one HTML page per entry chart, plus `index.html`, the project index. An entry chart
 //! is a `.road` file given (or found under a directory given, or in the project if none is)
@@ -7,11 +7,16 @@
 //! `roadbook-viewer.js`, written once next to the pages, so a directory of pages shares one copy
 //! and still opens from `file://`. `--self-contained` inlines the script in every page instead.
 //! `--trace` puts a trace (spec/trace.md) in the pages that have its top-level run's machine,
-//! which then open in replay mode.
+//! which then open in replay mode. `--coverage` puts many traces in the pages that have a
+//! machine of theirs, which then open in coverage mode. `--diff` draws what changed between two
+//! git revisions instead (`changes.rs`, `diff.rs`, `git.rs`).
 //!
 //! The viewer script is `packages/viewer` built by its `build.mjs` into `assets/`, and is
 //! included here at compile time, so building the CLI needs no Node.
 
+mod changes;
+mod diff;
+mod git;
 mod page;
 mod serve;
 
@@ -51,14 +56,26 @@ pub struct Args {
     port: u16,
     /// A trace (JSON Lines, as a run writes it) to replay: it goes into the page of every chart
     /// that has the machine of its first top-level run, and those pages open in replay mode.
-    #[arg(long, value_name = "FILE")]
+    #[arg(long, value_name = "FILE", conflicts_with = "coverage")]
     trace: Option<PathBuf>,
+    /// Draw what changed between two git revisions: `main..HEAD`, `main...HEAD` (since HEAD
+    /// forked from main), or one revision, against the working tree. Writes `summary.md` and
+    /// `summary.json` next to the pages.
+    #[arg(long, value_name = "RANGE", conflicts_with_all = ["watch", "trace", "coverage"])]
+    diff: Option<String>,
+    /// Traces (JSON Lines files, or directories searched for `*.jsonl`) to shade the charts
+    /// with: how often each transition was taken and each state entered. The pages open in
+    /// coverage mode.
+    #[arg(long, value_name = "TRACES", num_args = 1..)]
+    coverage: Vec<PathBuf>,
 }
 
 /// How `build` writes the pages: with the viewer script inline or shared, and with a trace.
 pub struct BuildOptions<'a> {
     pub self_contained: bool,
     pub trace: Option<&'a Path>,
+    /// `--coverage`: trace files and directories of them.
+    pub coverage: &'a [PathBuf],
 }
 
 /// What one build wrote, and the files it read (for `--watch`).
@@ -72,9 +89,13 @@ pub fn run(args: Args) -> Exit {
         Ok(ws) => ws,
         Err(e) => return report::fatal(e),
     };
+    if let Some(range) = &args.diff {
+        return changes::run(&ws, &args.paths, &args.out, range, args.self_contained);
+    }
     let options = BuildOptions {
         self_contained: args.self_contained,
         trace: args.trace.as_deref(),
+        coverage: &args.coverage,
     };
     let (exit, built) = build(&ws, &args.paths, &args.out, &options);
     if !args.watch {
@@ -99,41 +120,25 @@ pub fn build(
         Ok(t) => t,
         Err(e) => return (report::fatal(e), built),
     };
+    let coverage = match read_coverage(options.coverage) {
+        Ok(c) => c,
+        Err(e) => return (report::fatal(e), built),
+    };
     let files = match ws.inputs(paths) {
         Ok(f) => f,
         Err(e) => return (report::fatal(e), built),
     };
-    let mut units: Vec<(String, Compilation)> = Vec::new();
-    let options = ws.options();
-    for f in &files {
-        match roadbook_compiler::compile(&mut ws.loader(), f, &options) {
-            Ok(c) => units.push((f.clone(), c)),
-            Err(e) => return (report::fatal(e), built),
-        }
-    }
-    let mut read: Vec<String> = units
+    let entries = match compile_entries(&mut ws.loader(), &files, &ws.options()) {
+        Ok(e) => e,
+        Err(e) => return (report::fatal(e), built),
+    };
+    let mut read: Vec<String> = entries
         .iter()
         .flat_map(|(_, c)| c.files.iter().map(|(p, _)| p.clone()))
         .collect();
     read.sort();
     read.dedup();
     built.inputs = read.iter().map(|p| ws.disk_path(p)).collect();
-
-    // Entries: the files no other file given imports.
-    let imported: HashSet<&str> = units
-        .iter()
-        .flat_map(|(f, c)| {
-            c.files
-                .iter()
-                .skip(1)
-                .map(|(p, _)| p.as_str())
-                .filter(move |p| p != f)
-        })
-        .collect();
-    let entries: Vec<&(String, Compilation)> = units
-        .iter()
-        .filter(|(f, _)| !imported.contains(f.as_str()))
-        .collect();
 
     let mut exit = Exit::Ok;
     for (_, c) in &entries {
@@ -180,6 +185,15 @@ pub fn build(
         }
     }
 
+    if !options.coverage.is_empty() && !coverage_warnings(&coverage, &charts) {
+        return (
+            report::fatal(
+                "--coverage: none of the traces has a run of a machine of the charts given",
+            ),
+            built,
+        );
+    }
+
     let names = page::file_names(&charts.iter().map(|(f, _)| *f).collect::<Vec<_>>());
     let title = ws
         .root
@@ -194,11 +208,24 @@ pub fn build(
     let mut writes: Vec<(PathBuf, String)> = Vec::new();
     let index_href = page::href(page::INDEX);
     for ((entry, ir), name) in charts.iter().zip(&names) {
-        let trace = trace
+        let extra = if let Some(t) = trace
             .as_ref()
             .filter(|t| ir.machines.contains_key(&t.machine))
-            .map(|t| (t.name.as_str(), t.text.as_str()));
-        let html = page::chart_page(entry, ir, Some(&index_href), trace, &script);
+        {
+            page::Extra::Trace(&t.name, &t.text)
+        } else if !options.coverage.is_empty() {
+            // Each page gets the traces with a run of one of its machines.
+            page::Extra::Coverage(
+                coverage
+                    .iter()
+                    .filter(|c| c.runs.iter().any(|r| ir.machines.contains_key(&r.machine)))
+                    .map(|c| (c.name.as_str(), c.text.as_str()))
+                    .collect(),
+            )
+        } else {
+            page::Extra::None
+        };
+        let html = page::chart_page(entry, ir, Some(&index_href), &extra, &script);
         writes.push((out.join(name), html));
     }
     let index = page::project_index(&title, &charts, &names);
@@ -241,6 +268,152 @@ pub fn build(
         out.display()
     );
     (exit, built)
+}
+
+/// Compiles each file and keeps the entries: the files no other of them imports.
+pub fn compile_entries(
+    loader: &mut dyn roadbook_compiler::Loader,
+    files: &[String],
+    options: &roadbook_compiler::Options,
+) -> Result<Vec<(String, Compilation)>, String> {
+    let mut units: Vec<(String, Compilation)> = Vec::new();
+    for f in files {
+        let c = roadbook_compiler::compile(loader, f, options).map_err(|e| e.to_string())?;
+        units.push((f.clone(), c));
+    }
+    let imported: HashSet<String> = units
+        .iter()
+        .flat_map(|(f, c)| {
+            c.files
+                .iter()
+                .skip(1)
+                .map(|(p, _)| p.clone())
+                .filter(move |p| p != f)
+        })
+        .collect();
+    units.retain(|(f, _)| !imported.contains(f));
+    Ok(units)
+}
+
+/// A trace file given with `--coverage`: its name (the path as given), text and runs.
+struct CoverageTrace {
+    name: String,
+    text: String,
+    runs: Vec<RunHead>,
+}
+
+/// A run, from its `started` or `restored` record.
+struct RunHead {
+    machine: String,
+    hash: String,
+    records: usize,
+}
+
+/// The files of `--coverage`: each file given, and every `*.jsonl` under each directory given,
+/// sorted. Each must be a trace: JSON Lines of records with a `kind` and a `run`.
+fn read_coverage(paths: &[PathBuf]) -> Result<Vec<CoverageTrace>, String> {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
+        let entries = std::fs::read_dir(dir)
+            .map_err(|e| format!("cannot read the directory `{}`: {e}", dir.display()))?;
+        let mut entries: Vec<PathBuf> = entries.filter_map(|e| Some(e.ok()?.path())).collect();
+        entries.sort();
+        for p in entries {
+            if p.is_dir() {
+                walk(&p, out)?;
+            } else if p.extension().is_some_and(|e| e == "jsonl") {
+                out.push(p);
+            }
+        }
+        Ok(())
+    }
+    let mut files = Vec::new();
+    for p in paths {
+        if p.is_dir() {
+            walk(p, &mut files)?;
+        } else {
+            files.push(p.clone());
+        }
+    }
+    if !paths.is_empty() && files.is_empty() {
+        return Err("--coverage: no `.jsonl` files in the directories given".into());
+    }
+    let mut out = Vec::new();
+    for path in files {
+        let text = std::fs::read_to_string(&path)
+            .map_err(|e| format!("cannot read the trace `{}`: {e}", path.display()))?;
+        let mut runs: Vec<(String, RunHead)> = Vec::new();
+        for (i, line) in text.lines().enumerate() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            let record: serde_json::Value = serde_json::from_str(line).map_err(|e| {
+                format!(
+                    "`{}`, line {}: not a JSON record: {e}",
+                    path.display(),
+                    i + 1
+                )
+            })?;
+            let member = |m: &str| record.get(m).and_then(|v| v.as_str());
+            let (Some(kind), Some(run)) = (member("kind"), member("run")) else {
+                return Err(format!(
+                    "`{}`, line {}: not a trace record (it needs `kind` and `run`)",
+                    path.display(),
+                    i + 1
+                ));
+            };
+            if let Some((_, r)) = runs.iter_mut().find(|(id, _)| id == run) {
+                r.records += 1;
+            } else if kind == "started" || kind == "restored" {
+                runs.push((
+                    run.to_string(),
+                    RunHead {
+                        machine: member("machine").unwrap_or_default().to_string(),
+                        hash: member("ir").unwrap_or_default().to_string(),
+                        records: 1,
+                    },
+                ));
+            }
+        }
+        out.push(CoverageTrace {
+            name: path.display().to_string(),
+            text,
+            runs: runs.into_iter().map(|(_, r)| r).collect(),
+        });
+    }
+    Ok(out)
+}
+
+/// Warns about the runs of `--coverage` recorded from another version of their machine, which
+/// the viewer leaves out. False if no run is of a machine of the charts.
+fn coverage_warnings(traces: &[CoverageTrace], charts: &[(&str, &Ir)]) -> bool {
+    let (mut matched, mut stale, mut stale_records) = (0, 0, 0);
+    for r in traces.iter().flat_map(|t| &t.runs) {
+        let machines: Vec<&roadbook_ir::Machine> = charts
+            .iter()
+            .filter_map(|(_, ir)| ir.machines.get(&r.machine))
+            .collect();
+        if machines.is_empty() {
+            continue;
+        }
+        matched += 1;
+        if machines.iter().all(|m| m.hash != r.hash) {
+            stale += 1;
+            stale_records += r.records;
+        }
+    }
+    if stale > 0 {
+        eprintln!(
+            "warning: {stale} run{} ({stale_records} records) of the traces were recorded from another version of their machine; coverage leaves them out",
+            if stale == 1 { "" } else { "s" }
+        );
+    }
+    let runs: usize = traces.iter().map(|t| t.runs.len()).sum();
+    eprintln!(
+        "coverage: {} trace file{}, {matched} of {runs} runs of machines these charts have",
+        traces.len(),
+        if traces.len() == 1 { "" } else { "s" },
+    );
+    matched > 0
 }
 
 /// A trace given with `--trace`: its text, and its first top-level run.

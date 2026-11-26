@@ -34,36 +34,109 @@ pub fn href(name: &str) -> String {
     out
 }
 
+/// What a chart page holds besides its IR.
+pub enum Extra<'a> {
+    None,
+    /// A trace's file name and text, which the page opens in replay mode.
+    Trace(&'a str, &'a str),
+    /// Traces (file name and text) whose coverage the page opens with.
+    Coverage(Vec<(&'a str, &'a str)>),
+}
+
 /// The page of one entry chart: every machine of its IR. `index`: the href of the project
-/// index. `trace`: a trace's file name and text, which the page opens in replay mode.
+/// index.
 pub fn chart_page(
     entry: &str,
     ir: &Ir,
     index: Option<&str>,
-    trace: Option<(&str, &str)>,
+    extra: &Extra,
     script: &Script,
 ) -> String {
-    // The entry file's first machine, not one it imports.
-    let title = ir
+    let (mode, extra) = match extra {
+        Extra::Trace(name, text) => (
+            "replay",
+            format!(",\"trace\":{}", json!({ "name": name, "text": text })),
+        ),
+        Extra::Coverage(traces) => (
+            "coverage",
+            format!(
+                ",\"trace\":null,\"coverage\":{}",
+                Value::Array(
+                    traces
+                        .iter()
+                        .map(|(name, text)| json!({ "name": name, "text": text }))
+                        .collect()
+                )
+            ),
+        ),
+        Extra::None => ("explore", ",\"trace\":null".to_string()),
+    };
+    page(
+        &page_title(entry, ir),
+        mode,
+        entry,
+        ir,
+        index,
+        &extra,
+        script,
+    )
+}
+
+/// The page of one entry chart of `roadbook viz --diff`: the merged IR (see `diff.rs`) and what
+/// changed, `diff` (`ChartDiff` in `packages/viewer/src/diff.ts`).
+pub fn diff_page(
+    entry: &str,
+    ir: &Ir,
+    diff: &Value,
+    index: Option<&str>,
+    script: &Script,
+) -> String {
+    let title = if ir.machines.is_empty() {
+        entry.to_string()
+    } else {
+        page_title(entry, ir)
+    };
+    let extra = format!(",\"trace\":null,\"diff\":{diff}");
+    page(
+        &format!("Changes · {title}"),
+        "diff",
+        entry,
+        ir,
+        index,
+        &extra,
+        script,
+    )
+}
+
+/// `Checkout · examples/shop/checkout.road`: the entry file's first machine, not one it imports.
+fn page_title(entry: &str, ir: &Ir) -> String {
+    let name = ir
         .machines
         .iter()
         .find(|(_, m)| m.span.file == 0)
         .or_else(|| ir.machines.iter().next())
         .map_or("Roadbook", |(name, _)| name.as_str());
+    format!("{name} · {entry}")
+}
+
+fn page(
+    title: &str,
+    mode: &str,
+    entry: &str,
+    ir: &Ir,
+    index: Option<&str>,
+    extra: &str,
+    script: &Script,
+) -> String {
     // Written by hand rather than through `serde_json::Value`, whose maps would sort the IR's
     // members: the viewer shows machines, events and declarations in source order.
-    let (mode, trace) = match trace {
-        Some((name, text)) => ("replay", json!({ "name": name, "text": text })),
-        None => ("explore", Value::Null),
-    };
     let data = format!(
-        "{{\"kind\":\"chart\",\"mode\":\"{mode}\",\"entry\":{},\"index\":{},\"trace\":{},\"ir\":{}}}",
+        "{{\"kind\":\"chart\",\"mode\":\"{mode}\",\"entry\":{},\"index\":{}{extra},\"ir\":{}}}",
         Value::from(entry),
         index.map_or(Value::Null, Value::from),
-        trace,
         serde_json::to_string(ir).unwrap_or_default()
     );
-    shell(&format!("{title} · {entry}"), &data, script)
+    shell(title, &data, script)
 }
 
 /// The project index page.
