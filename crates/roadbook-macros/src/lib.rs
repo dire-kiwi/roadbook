@@ -49,7 +49,9 @@ mod names;
 ///   or another such enum), it is prefixed with the names of the states above it.
 /// - Types map as `string` to `String`, `int` to `i64`, `float` to `f64`, `bool` to `bool`,
 ///   `duration` to `std::time::Duration` (whole milliseconds in JSON), `json` to
-///   `serde_json::Value`, `T[]` to `Vec<T>` and `T?` to `Option<T>`. `Handlers` methods take
+///   `serde_json::Value`, `T[]` to `Vec<T>` and `T?` to `Option<T>`. An `int` or `duration`
+///   reads any integral JSON number (`2.0` as well as `2`), and a non-finite `float` does not
+///   encode: from host code it is a host defect, not `null`. `Handlers` methods take
 ///   strings, lists, records, errors, extern types, `json` and aliases of those by
 ///   reference (`&str`, `&[T]`, `&T`), and numbers, `bool`, `duration` and enums by value.
 ///
