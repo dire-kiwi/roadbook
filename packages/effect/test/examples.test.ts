@@ -133,10 +133,10 @@ describe("examples/upload", () => {
       yield* settle
       yield* actor.send({ _tag: "Close" })
       assert.strictEqual(yield* actor.result, 2)
-      const spawned = records.filter((r) => r.run === "batch" && r.kind === "spawn.started")
-      assert.deepStrictEqual(spawned.map((r) => [r.spawn, r.key]), [[1, "a.jpg"], [2, "b.jpg"], [3, "bad"], [4, "c.jpg"]])
-      const stopped = records.filter((r) => r.run === "batch" && r.kind === "spawn.stopped")
-      assert.deepStrictEqual(stopped.map((r) => r.key), ["c.jpg"])
+      const spawned = records.flatMap((r) => r.run === "batch" && r.kind === "spawn.started" ? [[r.spawn, r.key]] : [])
+      assert.deepStrictEqual(spawned, [[1, "a.jpg"], [2, "b.jpg"], [3, "bad"], [4, "c.jpg"]])
+      const stopped = records.flatMap((r) => r.run === "batch" && r.kind === "spawn.stopped" ? [r.key] : [])
+      assert.deepStrictEqual(stopped, ["c.jpg"])
       assert.isTrue(records.some((r) => r.run === "batch.4" && r.kind === "cancelled"))
     }).pipe(Effect.scoped))
 
