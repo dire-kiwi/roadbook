@@ -1,0 +1,13 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0218]: `Busy`, `Gone` are retried, but `fail *` also handles `Lost`, which is not
+  --> RB0218-retry-shared-outcome.road:9:19
+   |
+ 9 |     invoke ping() retry 2 on Busy | Gone {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+...
+11 |       fail * -> B
+   |       ------ handled together here
+   |
+   = help: give each retried error an outcome of its own: `fail Busy -> …`

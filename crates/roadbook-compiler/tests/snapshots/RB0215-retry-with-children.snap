@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0215]: `M.A` has child states, so its invoke cannot `retry`
+ --> RB0215-retry-with-children.road:7:19
+  |
+7 |     invoke ping() retry 2 {
+  |                   ^^^^^^^
+  |
+  = help: `retry` gives the state the children `Attempt` and `Backoff`; move the invoke into a state of its own, or write the retry out as explicit states
+
+error[RB0215]: `M.P` has child states, so its invoke cannot `retry`
+  --> RB0215-retry-with-children.road:15:19
+   |
+15 |     invoke ping() retry 1 {
+   |                   ^^^^^^^
+   |
+   = help: `retry` gives the state the children `Attempt` and `Backoff`; move the invoke into a state of its own, or write the retry out as explicit states

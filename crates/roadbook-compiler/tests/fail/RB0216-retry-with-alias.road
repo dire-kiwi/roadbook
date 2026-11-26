@@ -1,0 +1,19 @@
+error Busy
+
+machine Child() ! Busy {
+  initial Run
+  final state Run { fail Busy }
+}
+
+machine M() {
+  initial A
+  state A {
+    invoke Child() as child retry 2 {
+      done      -> B
+      fail Busy -> B
+    }
+  }
+  final state B {}
+}
+
+// expect: RB0216 at 11:29

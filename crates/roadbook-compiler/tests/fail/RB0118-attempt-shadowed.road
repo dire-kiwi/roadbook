@@ -1,0 +1,16 @@
+error Busy
+fn backoff(attempt: int) -> duration
+task ping() ! Busy
+
+machine M(attempt: int) {
+  initial A
+  state A {
+    invoke ping() retry 2 after backoff(attempt) {
+      done      -> B
+      fail Busy -> B
+    }
+  }
+  final state B {}
+}
+
+// expect: RB0118 at 8:41

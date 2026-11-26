@@ -18,6 +18,8 @@ use crate::index::{SymbolId, SymbolKind};
 use crate::names::{Found, is_type, kind_phrase, suggest};
 use crate::types::{BOOL, DURATION, Ty, ir_type};
 
+mod retry;
+
 /// The machine variables (not parameters) an expression or effect reads, each with the span
 /// of the read, in the order written. Kept for definite assignment, which runs on the IR.
 pub(crate) type Reads = Vec<(String, Span)>;
@@ -169,6 +171,8 @@ pub(crate) struct Cx<'c, 'p> {
     pub reads: Reads,
     /// What the transitions lowered since this was last taken read, in IR order.
     transition_reads: Vec<TransitionReads>,
+    /// The counters of the `retry`s written out so far, in the order of their states.
+    retry_vars: Vec<(ir::Var, VarInfo)>,
 }
 
 /// Checks machine `m` declared in `file` and lowers it. Its hash is left empty.
@@ -205,6 +209,7 @@ pub(crate) fn lower<'p>(
         },
         reads: Vec::new(),
         transition_reads: Vec::new(),
+        retry_vars: Vec::new(),
     };
 
     // Parameters and variables share one namespace.
@@ -369,6 +374,10 @@ pub(crate) fn lower<'p>(
     let mut root = cx.lower_state(0);
     root.doc = doc(&d.doc);
     root.span = ir_span(d.span);
+    for (v, info) in std::mem::take(&mut cx.retry_vars) {
+        vars.push(v);
+        cx.info.vars.push(info);
+    }
 
     let info = cx.info;
     ck.machines.push(info);
@@ -930,6 +939,7 @@ impl<'p> Cx<'_, 'p> {
         self.transition_reads.clear();
         let mut group = 0u32;
         let top_final = kind == ir::StateKind::Final && self.nodes[idx].depth == 1;
+        let mut retry: Option<retry::Plan<'p>> = None;
 
         for item in &body.items {
             self.reads.clear();
@@ -994,8 +1004,19 @@ impl<'p> Cx<'_, 'p> {
                     group += 1;
                 }
                 Item::Invoke(inv) => {
-                    let (lowered, reads) =
+                    let first = transitions.len();
+                    let (lowered, reads, declared) =
                         self.invoke(idx, inv, &mut group, &mut transitions, &mut triggers);
+                    if invoke.is_none()
+                        && let Some(r) = &inv.retry
+                    {
+                        retry = Some(retry::Plan {
+                            inv,
+                            retry: r,
+                            outcomes: first..transitions.len(),
+                            declared,
+                        });
+                    }
                     if invoke.is_some() {
                         self.ck.diags.push(
                             Diagnostic::error(
@@ -1086,9 +1107,10 @@ impl<'p> Cx<'_, 'p> {
             info.result_reads = result_reads;
             info.transition_reads = transition_reads;
         }
+        let retry = retry.and_then(|plan| self.check_retry(idx, kind, plan));
         let children = self.nodes[idx].children.clone();
         let states = children.into_iter().map(|c| self.lower_state(c)).collect();
-        ir::State {
+        let mut lowered = ir::State {
             name: self.nodes[idx].name.clone(),
             id,
             kind,
@@ -1104,7 +1126,11 @@ impl<'p> Cx<'_, 'p> {
             transitions,
             output,
             fail,
+        };
+        if let Some(r) = retry {
+            self.write_out_retry(&mut lowered, r);
         }
+        lowered
     }
 
     fn initial(&mut self, idx: usize, kind: ir::StateKind) -> Option<String> {
@@ -1630,7 +1656,9 @@ impl<'p> Cx<'_, 'p> {
             .map(|(k, _)| k.as_str())
             .collect();
         candidates.sort_unstable();
-        if let Some(s) = suggest(&n.name, candidates.into_iter()) {
+        if n.name == "attempt" {
+            d = d.with_help("`attempt` counts failed attempts only in a retry's delay: `invoke f() retry 3 after backoff(attempt) { … }`");
+        } else if let Some(s) = suggest(&n.name, candidates.into_iter()) {
             d = d.with_help(format!("did you mean `{s}`?")).with_fix(
                 format!("replace with `{s}`"),
                 n.span,
@@ -1744,7 +1772,7 @@ impl<'p> Cx<'_, 'p> {
         group: &mut u32,
         transitions: &mut Vec<ir::Transition>,
         triggers: &mut Vec<Span>,
-    ) -> (ir::Invoke, Reads) {
+    ) -> (ir::Invoke, Reads, Option<Vec<String>>) {
         let is_machine = inv.is_machine();
         let sig = self.callee(
             &inv.callee,
@@ -1929,7 +1957,7 @@ impl<'p> Cx<'_, 'p> {
             args,
             span: ir_span(inv.span),
         };
-        (lowered, arg_reads)
+        (lowered, arg_reads, sig.map(|s| s.errors))
     }
 
     fn output(&mut self, e: &ast::Expr) -> ir::Expr {
