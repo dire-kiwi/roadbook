@@ -103,11 +103,11 @@ The precise rules are in [`spec/execution.md`](../../spec/execution.md#messages-
 
 - **Sending is queuing.** `send` puts the event in the receiver's queue and continues. The receiver handles it later, by the ordinary one-event-at-a-time rule. A sender never runs the receiver's transitions and never waits for them. A sent event is one of the receiver's own events, so `on Pause` takes it exactly as it would take `Pause` from host code.
 - **Order is preserved per pair.** Two events sent from A to B arrive in the order sent, and so does everything else A queues for B: A's emitted events, and a child's outcome, which comes after everything the child emitted. Nothing orders what two different machines send to a third.
-- **Emitted events arrive as events.** They are queued for the invoker, if it named the child with `as`, and for every machine holding a reference, and are handled by `on name.Event`. An invoker without `as` has no name to handle them under, and is not sent them. With no matching transition they are dropped and traced like any unhandled event.
+- **Emitted events arrive as events.** They are queued for the invoker, if it named the child with `as`, and for every machine holding a reference, and are handled by `on name.Event`. An invoker without `as` has no name to handle them under, and is not sent them. With no matching transition they are dropped and traced like any unhandled event. It is decided, but not built, that a machine with no `on` for an event will not be sent it at all ([who receives emitted events](#who-receives-emitted-events)).
 - **Holding a reference** means having it among the machine's arguments, from start to end: a machine gets a `ref` only as an argument, so the machines it can hear from are fixed when it starts. `on inventory.Reserved` is taken for an event from whichever machine the parameter or variable `inventory` holds.
 - **A child's emitted events belong to its invoke.** One that arrives after the invoking state was left, or re-entered with a new child, is stale, like an outcome that arrives late: a child cancelled by its parent can still emit from its exit effects, and its parent ignores what it said.
-- **Sending to a machine that is not running** is dropped and traced as `undelivered`: a peer that has ended, or a child that has not started yet or has already finished. The compiler rules out the plain cases for invoked children (a send from the invoking state's own `entry`, `exit` or outcomes, or from a transition that leaves it); what it cannot see, a send from a state inside the invoking state in the step that enters it, before the child starts, or after the child's outcome was taken by a transition that stays, is undelivered at run time. A `strict` machine would make this a failure, once `strict` exists.
-- **Endings are not messages.** A machine that ends, or is cancelled, does not tell those that hold a reference to it ([supervision](#open-questions)). What is still queued for it is discarded, and its exit effects can still send and emit like any effects.
+- **Sending to a machine that is not running** is dropped and traced as `undelivered`: a peer that has ended, or a child that has not started yet or has already finished. The compiler rules out the plain cases for invoked children (a send from the invoking state's own `entry`, `exit` or outcomes, or from a transition that leaves it); what it cannot see, a send from a state inside the invoking state in the step that enters it, before the child starts, or after the child's outcome was taken by a transition that stays, is undelivered at run time. Whether a [`strict` machine](language.md#strict-machines), which is decided but not built, also fails on an undelivered send is left to its implementation.
+- **Endings are not messages.** A machine that ends, or is cancelled, does not tell those that hold a reference to it ([supervision](#supervision)). What is still queued for it is discarded, and its exit effects can still send and emit like any effects.
 - **References are run ids.** In snapshots, traces and conformance scripts a `ref` is the id of the run it refers to, such as `"r2"`; host code holds a typed handle instead. References are not compared: `==` is not defined on them.
 - **Everything is in the trace.** A `sent` record carries the receiver's run id, an `emitted` record the event, and the receiver's record of the input carries the sender's run id and the sender's message id, so the viewer can draw a sequence view across machines as well as each machine's own path. A send that reaches no machine is an `undelivered` record.
 
@@ -219,9 +219,73 @@ recordBody  = "{" [ lower ":" expr { "," lower ":" expr } ] "}" ;
 - **Warnings.** An `emits` its machine never emits, an `on name.E` for an event the sender never emits, and an `emits` nothing in the checked charts receives (host code holding a handle may still).
 - **Hash.** A machine that holds a `ref Inventory` includes only `Inventory`'s interface, its `events` and `emits`, in its hash: a change to how the peer works inside does not invalidate the snapshots of the machines that talk to it.
 
-## Open questions
+## Decided after the milestones
 
-1. **Asking a peer.** A request to a peer with a reply is written above as a `send`, an `on` with a guard that matches an id, and a timeout. That is explicit but verbose. The alternative is to let a long-lived machine declare calls (`call reserve(items) -> Reservation ! OutOfStock`) that others `invoke` like a task, with the reply routed back automatically.
-2. **Full queues.** Queues are unbounded in this draft. A bound would need a choice between making the sender wait, which leaks the receiver's speed into the sender's flow, and dropping.
-3. **Who receives emitted events.** Every holder of a reference receives every emitted event and filters with guards. A subscription limited to the events a chart has an `on` for is an optimisation the compiler can make without changing the language.
-4. **Supervision.** A child's failure reaches its parent as a `fail` branch on the invoke. A peer has no parent in the chart. If a peer dies, holders of its reference currently learn of it only through their own timeouts.
+The first draft left four questions about messaging open. They were decided on 27 November 2026, after milestone 5 had built the rest of this page. Two of the decisions are what already exists; two need code that is not written yet.
+
+### Asking a peer
+
+**Decided: `call` declarations. Not built.** Until they are, a request with a reply is written as in [talking to a peer](#talking-to-a-peer): a `send`, an `on` whose guard matches an id, and an `after`. Besides being verbose, that pattern has a cost: the reply is an emitted event, so it reaches every machine holding a reference to the peer. With N orders in flight, each reply is delivered N times and N − 1 orders drop it, which the [filter on emitted events](#who-receives-emitted-events) does not prevent, since every order has an `on` for it.
+
+A long-lived machine declares the calls it answers, and a holder of a reference invokes one like a task:
+
+```
+machine Inventory(warehouse: string) {
+  call reserve(items: Item[]) -> Reservation ! OutOfStock
+  // … takes the call, and replies to it now or in a later step
+}
+
+machine Order(id: string, draft: OrderDraft, inventory: ref Inventory) -> Receipt ! OutOfStock {
+  state Reserving {
+    invoke inventory.reserve(draft.items) {
+      done            -> Paying       set reservation = result
+      fail OutOfStock -> Unavailable
+    }
+    after 5s -> Unavailable
+  }
+}
+```
+
+What is decided:
+
+- **The caller's side is an invoke.** Its `done` and `fail` branches are checked against the call's declaration as a task's are, and it is tied to its state: leaving the state abandons the call, and a reply that arrives later is stale, like a late outcome. A timeout is an ordinary `after`.
+- **Replies are directed.** Only the caller receives the reply, so there is no fan-out and no guard on an id.
+- **The callee takes a call as an input** from its queue, one at a time like any other, so order per pair still holds. It must be able to reply in a later step (Inventory replies once its own work is done), so it keeps the pending call as a value until it replies. That is a new kind of value, and like a `ref` it cannot leave the machine: not in a record, an event or a result.
+- **A peer that has ended fails the call.** A call to a peer that is not running, and a call still pending when the callee ends, fail on the caller's side. This is the one place where a peer's end reaches another machine before [supervision](#supervision) is designed.
+- **The existing pattern keeps working.** Moving to `call` is optional; [`examples/orders`](../../examples/orders) should be its first user.
+
+Left to the implementation: the syntax by which the callee takes a call and replies to it, the type of the pending-call value, and the error the caller sees when the callee has ended.
+
+What it changes: the language (the `call` item, the addressed invoke, the callee's trigger and reply effect, the pending-call value, and their checks, formatter, tree-sitter grammar and language server), the IR and its version, so every hash changes; new inputs and commands in both cores and both drivers; new trace records; a callee's snapshot, which holds its pending calls; new conformance cases; and in the viewer, a call edge in the project index and a call that simulate mode treats like a task. Holding a reply address is close to what keyed `spawn` needs to hold its children, so whichever is built second should reuse the first's design.
+
+### Full queues
+
+**Decided: queues are unbounded.** This is what both runtimes do, and [`spec/execution.md`](../../spec/execution.md#one-queue-per-run) states it as a rule. There is no evidence of load that needs a bound. If one is added later, the principle is settled now:
+
+- **It is a setting of the driver, not chart syntax.** No chart changes.
+- **It covers messages and emitted events only**, and perhaps events from host code. Losing a task's outcome or a timer's expiry would leave a state waiting forever.
+- **A run that sends to a full queue does not wait: the message is dropped** and written as `undelivered`, with a reason (`full`, beside today's ended receiver). A send from one run to another that waited could deadlock. A parent cancelling a child waits for the child's cancel step, and that step may emit into the parent's full queue; two peers sending into each other's full queues wait for each other; and a conformance runner cannot tell such a wait from being idle.
+- **Host code that sends to a full queue waits.** Its `send` is already asynchronous in both runtimes.
+
+Making an overflow a failure was rejected: one full queue would end a long-lived peer.
+
+### Who receives emitted events
+
+**Decided: only machines that handle them. Not built.** A run receives an emitted event `E` from a run of machine `M` only if its own machine has an `on x.E` where `x` is an `as` name, parameter or variable of machine `M`. Until this is built, every holder of a reference receives every emitted event and writes `dropped` when it has no enabled transition ([`spec/execution.md`](../../spec/execution.md#messages-between-runs)).
+
+The first draft called this an optimisation the compiler could make without changing the language. The language does not change, but traces do, so it is a rule of the semantics: a holder with no `on` for an event no longer writes a `dropped` record for it. A holder that has one and cannot take it (its guard fails, or it is in a state with no such transition) still writes `dropped`.
+
+- **The filter is by machine, not by name.** One run can be held under two names, as a parameter and a variable, and an `on` under either name is enough.
+- **It is decided statically**, from the chart, when the run subscribes. Filtering by the transitions enabled in the current state was rejected: the state when an event is queued is not the state when it is taken, so events would be lost depending on timing.
+- **It extends an existing rule.** An invoker without `as` is already not sent its child's emitted events, since it cannot have an `on` for them.
+- **Nothing in the language, the IR, the hashes or snapshots changes**, and no chart needs editing. The compiler already works out which machines receive which emitted events, for a warning.
+
+What it changes: the rule in [`spec/execution.md`](../../spec/execution.md#messages-between-runs); in each runtime, the set of events kept with each subscription and a check before delivering; and the conformance cases, where `child-undelivered` loses its `dropped` record and a new case covers a holder that only sends. `peer-two-holders` stays as it is, since its holder has an `on` and fails on the guard. The viewer already draws emitted events from `on` triggers.
+
+### Supervision
+
+**Decided: none yet.** A child's failure reaches its parent as a `fail` branch on the invoke. A peer has no parent in the chart, and when it ends, holders of its reference are not told: they learn of it through their own timeouts, which they need anyway for a peer that is slow. Rust host code can ask a handle whether its run has closed (`Ref::is_closed`); no chart can. A pending [`call`](#asking-a-peer) is the exception, since it fails when the callee ends.
+
+The intended shape is a trigger, `on inventory.ended`, possibly with the status the peer ended with. The lower case after the dot keeps it apart from `on name.Event`, and with the [filter on emitted events](#who-receives-emitted-events) writing it is the subscription, so no `monitor` declaration is needed. It is to be designed with keyed `spawn`, whose children need the same "a member has ended" event, so that one design covers both.
+
+Erlang-style links, where a peer's end ends the machines linked to it, were rejected. `Inventory` outlives every `Order`, and one machine's failure would end another without that showing in either chart.

@@ -146,7 +146,7 @@ Expressions are deliberately small. There are no loops, lambdas or string operat
 Every expression has a type, and the compiler checks it wherever a value goes: arguments of functions, actions, tasks and machines (as many as the declaration has parameters, in order), `set` (only to the machine's `var`s, never its parameters), guards (`bool`), `after` delays (`duration`), `var` initial values, the fields of record and error values (every field, and no others), `output` (the machine's return type) and `fail` (one of the machine's declared errors).
 
 - There are no implicit conversions. `int` and `float` are distinct and do not mix: `ratio * 2` is an error when `ratio` is a `float`; write `ratio * 2.0`.
-- `+`, `-`, `*` and unary `-` take two `int`s or two `float`s and give the same type. `<`, `<=`, `>` and `>=` compare two `int`s, two `float`s or two `duration`s. `==` and `!=` compare two values of the same scalar type (`string`, `int`, `float`, `bool`, `duration`) or the same enum; records, lists, optionals and `json` cannot be compared (see open question 5 on the [roadmap](roadmap.md#open-questions)). `and`, `or` and `not` take `bool`s.
+- `+`, `-`, `*` and unary `-` take two `int`s or two `float`s and give the same type. `<`, `<=`, `>` and `>=` compare two `int`s, two `float`s or two `duration`s. `==` and `!=` compare two values of the same scalar type (`string`, `int`, `float`, `bool`, `duration`) or the same enum; records, lists, optionals and `json` cannot be compared ([equality](#equality)). `and`, `or` and `not` take `bool`s.
 - A `T` can be used where a `T?` is expected, but not the reverse, and a field cannot be read from a `T?`: an optional value goes to a `fn` that handles the absent case. A `T[]` can be used where a `U[]` is expected if a `T` can be used as a `U`.
 - Any value can be used where `json` is expected.
 - An alias is the type it names: `type UserId = string` makes `UserId` and `string` interchangeable. An alias cannot refer to itself, even through `[]` or `?`. A type is optional at most once, aliases expanded: `string??` is an error, and so is `S?` after `type S = string?`.
@@ -163,6 +163,14 @@ Outside those transitions the three names are not in scope.
 A `ref Machine` is a handle, not data. It can be a parameter of a machine, function, action or task and a `var`, and be passed as an argument to an invoked machine and to host functions, actions and tasks. It cannot be a field of a record, error or event, or what a function, task or machine returns (`RB0316`): a machine gets a handle only from its own signature or from `invoke … as`, so the charts' signatures show who can talk to whom. It has no JSON form, so it cannot be passed where `json` is expected, and `==` and `!=` are not defined on it. `ref A` and `ref B` are different types for different machines; a `ref A` can be used where a `ref A?` is expected, as for any `T`.
 
 There are no generics, no built-in functions and no list literals, so anything a chart asks of a list goes through a host `fn`. A `json[]` parameter accepts a list of any element type, so one function serves every list: `fn isEmpty(items: json[]) -> bool`, used as `always if isEmpty(problems) -> Accept`. Optionals work the same way: there is no `none` literal and no narrowing, so a chart cannot test for presence and then use the value. When absence changes the flow, make it a declared error of the task that looks the value up (`task findToken(id: string) -> Token ! TokenNotFound`), and build a record whose optional field may be absent in a `fn`.
+
+### Equality
+
+`==` and `!=` stay limited to scalars and enums. No chart in the repository compares records or lists, or works around not being able to: correlating by an id field (`event.orderId == id`) is the idiom. It was decided on 27 November 2026 to leave it so until a chart needs more, and what a later version adds is written down here so that both runtimes add the same thing.
+
+- **Equality is structural and directed by the type.** Records, errors, events, lists and optionals compare part by part, recursively, as long as every part can be compared. `json`, `extern type` and `ref` stay excluded. A `float` is always finite, so `NaN` raises no question.
+- **The runtimes compare by the type, not by their host form.** Relaxing only the check would make them disagree: the TypeScript core compares with `===`, which compares objects by identity, and the Rust core compares JSON values. Each needs a comparison that walks the type, so that, for example, an `int` field compares as a number whatever its JSON spelling.
+- **What it changes:** `RB0303` and the check behind it, both cores, the rule in [`spec/execution.md`](../../spec/execution.md), and a conformance case. Not the IR, the hashes, the viewer or any chart.
 
 ## Messages between machines
 
@@ -593,3 +601,19 @@ Each of these has a planned shape, and the grammar leaves room for it.
 - **History states.** `history` and `deep history` pseudo-states, as in SCXML.
 - **Generic types and maps.** `map<string, T>` and user-defined generics.
 - **Retry sugar.** `invoke chargeCard(order) retry 3` as shorthand for the `Backoff` pattern above. The explicit states stay available and are what the diagram shows either way.
+- **Strict machines** and **`call` declarations**, both decided on 27 November 2026: below, and on the [actors and messaging](actors.md#asking-a-peer) page.
+
+### Strict machines
+
+Decided on 27 November 2026, not built. By default an input that enables no transition is dropped and written as `dropped` in the trace, and that stays the default: the events real charts get race with their state (a `Cancel` while an order authenticates, a `Pause` while an import validates), every example machine that accepts events has states where some event is not handled, and a holder of a reference keeps only its own replies by a guard. A machine can opt into failing instead:
+
+```
+strict machine Checkout(order: Order, user: User) -> Receipt ! PaymentDeclined {
+  // …
+}
+```
+
+- **What is strict.** In a `strict` machine, one of its own events (from host code, or a `send` from another machine) that enables no transition fails the run with a defect instead of being dropped.
+- **What is not.** Emitted events from other machines, invoke outcomes whose guarded branches all fail, and guarded `after` expiries are still dropped and traced. They arrive when another machine or the clock decides, so failing on them would make an ordinary race fatal.
+- **Ignoring an event on purpose.** A strict machine needs a way to accept an event in a state and do nothing, which `RB0017` (a transition must do something) forbids today. The form is left to the implementation, as is whether a strict machine also fails on a `send` that is [undelivered](actors.md#semantics).
+- **What it changes:** a reserved word, the grammar, the formatter, the tree-sitter grammar and the language server; a `strict` member in the IR, with a new IR version, so every machine's hash changes, traces are written with new hashes and saved snapshots need a migration; a new kind of defect in both runtimes, [`spec/execution.md`](../../spec/execution.md) and both schemas; new conformance cases; and the viewer's wording in simulate mode, which marks an event that would be dropped. No existing chart changes, since it is opt-in.
