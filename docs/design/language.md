@@ -465,6 +465,8 @@ The compiler's codes:
 | `RB0314` | A type made optional twice. | `note: string??` |
 | `RB0315` | A `send` or `on name.E` through a value that is not a `ref`, or a `ref` that is optional or a list. | `send count.Ping` for `count: int` |
 | `RB0316` | A `ref` in a field of a record, error or event, or in what a function, task or machine returns. | `type Holder { peer: ref Peer }` |
+| `RB0317` | A value read from a sensitive field, parameter or variable, going where a trace shows it: a variable, a parameter of an action, task or machine, or a field that is not `sensitive`, or an `output`, a `fail` or an `after` delay. | `set note = event.password` for `var note: string` |
+| `RB0318` | A value whose type has `sensitive` fields, going where `json` is expected in a place a trace shows. | `do log(creds)` for `action log(what: json)` |
 | `RB0401` | An unguarded cycle of `always` transitions. | `A { always -> B }`, `B { always -> A }` |
 | `RB0402` | A machine that invokes itself without waiting. | `state A { invoke M() { … } }` as `M`'s initial state |
 | `RB0403` | A read of a variable that might not be assigned yet. | `entry do log(n)` in the initial state, for `var n: int` |

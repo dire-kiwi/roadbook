@@ -133,7 +133,11 @@ impl Parser<'_> {
     }
 
     fn nth(&self, n: usize) -> T {
-        self.tokens[(self.pos + n).min(self.tokens.len() - 1)].kind
+        self.nth_tok(n).kind
+    }
+
+    fn nth_tok(&self, n: usize) -> Token {
+        self.tokens[(self.pos + n).min(self.tokens.len() - 1)]
     }
 
     fn bump(&mut self) -> Token {
@@ -334,6 +338,12 @@ impl Parser<'_> {
     }
 
     /// A variable or parameter name: lower-case, and not the implicit name `result`.
+    /// Whether the current token is the word `sensitive` used as a modifier: followed by
+    /// `next` (a field or parameter name, or `var`).
+    fn at_sensitive(&self, next: T) -> bool {
+        self.at(T::Lower) && self.text(self.tok()) == "sensitive" && self.nth(1) == next
+    }
+
     fn binding(&mut self, what: &str) -> PResult<Ident> {
         let id = self.lower(what)?;
         if id.name == "result" {
@@ -679,6 +689,11 @@ impl Parser<'_> {
     }
 
     fn field(&mut self, param: bool) -> PResult<Field> {
+        let start = self.tok().span;
+        let sensitive = self.at_sensitive(T::Lower);
+        if sensitive {
+            self.bump();
+        }
         let name = if param {
             self.binding("a parameter name")?
         } else {
@@ -687,7 +702,8 @@ impl Parser<'_> {
         self.expect_p(P::Colon, &format!(" and a type after `{}`", name.name))?;
         let ty = self.type_ref()?;
         Ok(Field {
-            span: name.span.to(ty.span),
+            span: start.to(ty.span),
+            sensitive,
             name,
             ty,
         })
@@ -793,7 +809,11 @@ impl Parser<'_> {
     /// One body item. `Ok(None)` is a well-formed item in the wrong kind of body, reported and
     /// left out of the tree.
     fn item(&mut self, kind: BodyKind) -> PResult<Option<Item>> {
-        let t = self.tok();
+        let mut t = self.tok();
+        // `sensitive var`: `sensitive` is not reserved, so it is a modifier only here.
+        if self.at_sensitive(T::Keyword(K::Var)) {
+            t = self.nth_tok(1);
+        }
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
@@ -931,7 +951,12 @@ impl Parser<'_> {
 
     fn var(&mut self) -> PResult<Var> {
         let doc = self.take_doc();
-        let start = self.bump().span;
+        let start = self.tok().span;
+        let sensitive = self.at_sensitive(T::Keyword(K::Var));
+        if sensitive {
+            self.bump();
+        }
+        self.bump();
         let name = self.binding("a variable name")?;
         self.expect_p(P::Colon, &format!(" and a type after `var {}`", name.name))?;
         let ty = self.type_ref()?;
@@ -942,6 +967,7 @@ impl Parser<'_> {
         };
         Ok(Var {
             doc,
+            sensitive,
             name,
             ty,
             init,

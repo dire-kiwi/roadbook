@@ -13,6 +13,7 @@ use crate::index::{self, Symbol, SymbolId, SymbolIndex, SymbolKind};
 use crate::machine::MachineInfo;
 use crate::names::{Found, Names, is_type};
 use crate::project::Project;
+use crate::sensitive::Sensitive;
 use crate::types::{Ty, TypeDef, TypeEnv, builtin, ir_type};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -61,6 +62,8 @@ pub(crate) struct Checker<'p> {
     pub sigs: HashMap<String, Sig>,
     /// Every machine's interface, by name.
     pub interfaces: HashMap<String, Interface>,
+    /// What is marked `sensitive`.
+    pub sensitive: Sensitive,
     /// `(machine, event)` for every `on name.Event` of the compilation.
     pub received: HashSet<(String, String)>,
     pub diags: Vec<Diagnostic>,
@@ -108,6 +111,7 @@ fn ir_fields(fields: &[Field]) -> Vec<ir::Field> {
         .map(|f| ir::Field {
             name: f.name.name.clone(),
             ty: ir_type(&f.ty),
+            sensitive: f.sensitive,
             doc: String::new(),
         })
         .collect()
@@ -122,6 +126,7 @@ impl<'p> Checker<'p> {
             env: TypeEnv::default(),
             sigs: HashMap::new(),
             interfaces: HashMap::new(),
+            sensitive: Sensitive::default(),
             received: HashSet::new(),
             diags,
             used: HashSet::new(),
@@ -132,6 +137,7 @@ impl<'p> Checker<'p> {
             decl_symbols: Vec::new(),
             members: HashMap::new(),
         };
+        c.sensitive = Sensitive::build(c.decls().into_iter().map(|(_, d)| d));
         c.index_declarations();
         c.resolve_types();
         c.types_resolved = true;

@@ -1,0 +1,82 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0317]: `key` is sensitive, and the initial value of `leaked` is not
+  --> RB0317-sensitive-value.road:25:24
+   |
+25 |   var leaked: string = key
+   |                        ^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark `leaked` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0317]: `event.password` is sensitive, and the value assigned to `leaked` is not
+  --> RB0317-sensitive-value.road:34:20
+   |
+34 |       set leaked = event.password, kept = event.password, note = Note { text: creds.password }
+   |                    ^^^^^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark `leaked` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0317]: `creds.password` is sensitive, and field `text` of `Note` is not
+  --> RB0317-sensitive-value.road:34:79
+   |
+34 |       set leaked = event.password, kept = event.password, note = Note { text: creds.password }
+   |                                                                               ^^^^^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark field `text` of `Note` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0317]: `event.password` is sensitive, and argument `what` of `log` is not
+  --> RB0317-sensitive-value.road:35:14
+   |
+35 |       do log(event.password), keep(event.password), log(creds.user)
+   |              ^^^^^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark parameter `what` of `log` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0317]: `event.password` is sensitive, and field `plain` of `Hello` is not
+  --> RB0317-sensitive-value.road:36:55
+   |
+36 |       send peer.Hello { token: event.password, plain: event.password }
+   |                                                       ^^^^^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark field `plain` of `Hello` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0317]: `event.password` is sensitive, and field `user` of `Seen` is not
+  --> RB0317-sensitive-value.road:37:51
+   |
+37 |       emit Seen { password: event.password, user: event.password }
+   |                                                   ^^^^^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark field `user` of `Seen` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0317]: `copy.ttl` is sensitive, and an `after` delay is not
+  --> RB0317-sensitive-value.road:39:11
+   |
+39 |     after copy.ttl -> B
+   |           ^^^^^^^^ a trace would show this value
+   |
+   = help: traces show an `after` delay as it is: carry the value in a field marked `sensitive`, or derive what may be shown with a `fn`
+
+error[RB0317]: `key` is sensitive, and argument `shown` of `Child` is not
+  --> RB0317-sensitive-value.road:50:23
+   |
+50 |     invoke Child(key, key) { done -> E }
+   |                       ^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark parameter `shown` of `Child` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0317]: `kept` is sensitive, and the output of `M` is not
+  --> RB0317-sensitive-value.road:54:26
+   |
+54 |   final state E { output kept }
+   |                          ^^^^ a trace would show this value
+   |
+   = help: traces show the output of `M` as it is: carry the value in a field marked `sensitive`, or derive what may be shown with a `fn`
+
+error[RB0317]: `hidden` is sensitive, and the failure of `M` is not
+  --> RB0317-sensitive-value.road:55:24
+   |
+55 |   final state F { fail hidden }
+   |                        ^^^^^^ a trace would show this value
+   |
+   = help: traces show a machine's failure as it is, redacting only the error's sensitive fields; fail with an error built with the value in a `sensitive` field
