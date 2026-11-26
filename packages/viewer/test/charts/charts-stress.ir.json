@@ -1,8 +1,9 @@
 {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "packages/viewer/test/charts/stress.road"
+      "path": "packages/viewer/test/charts/stress.road",
+      "package": null
     }
   ],
   "types": {
@@ -96,6 +97,7 @@
       "errors": [],
       "vars": [],
       "events": {},
+      "emits": {},
       "root": {
         "id": "Ticker",
         "name": "Ticker",
@@ -263,7 +265,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:070b7651c9545a297f86e759f4fdb2cdae831051d40044cc0683fa46028bb38c"
+      "hash": "sha256:ccfa6c01d67b8dd56c6540d3ae885967bb768d13c2f7dbe0b6155cdf759d0b48"
     },
     "Stress": {
       "doc": "Every shape the viewer has to lay out, at once.",
@@ -343,6 +345,7 @@
           }
         }
       },
+      "emits": {},
       "root": {
         "id": "Stress",
         "name": "Stress",
@@ -607,6 +610,7 @@
                     "invoke": {
                       "kind": "task",
                       "src": "step",
+                      "as": null,
                       "args": [
                         {
                           "kind": "ref",
@@ -1055,6 +1059,7 @@
                     "invoke": {
                       "kind": "machine",
                       "src": "Ticker",
+                      "as": null,
                       "args": [
                         {
                           "kind": "ref",
@@ -1614,7 +1619,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:11e662e121de80371994703b488b6cf5f5579690d56defbbdfab2d46be872641"
+      "hash": "sha256:fdaf80b2e10dec11869b477097c9e1b4e3877f8dc865e01c2c37ab0a76802634"
     }
   }
 }

@@ -1,8 +1,9 @@
 {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "spec/conformance/charts/select.road"
+      "path": "spec/conformance/charts/select.road",
+      "package": null
     }
   ],
   "types": {
@@ -174,6 +175,7 @@
           }
         }
       },
+      "emits": {},
       "root": {
         "id": "Select",
         "name": "Select",
@@ -327,6 +329,7 @@
             "invoke": {
               "kind": "task",
               "src": "load",
+              "as": null,
               "args": [],
               "span": {
                 "file": 0,
@@ -649,6 +652,7 @@
             "invoke": {
               "kind": "task",
               "src": "idle",
+              "as": null,
               "args": [],
               "span": {
                 "file": 0,
@@ -790,7 +794,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:5d2c3b9a0d0204514c172f89cec9b7944064ff43d415b0b2fdfbe8e5be5a2f0a"
+      "hash": "sha256:bdc3ad2702c0eac707e70b1a0441797a80725877e985300e09f00674a8f4c72d"
     }
   }
 }

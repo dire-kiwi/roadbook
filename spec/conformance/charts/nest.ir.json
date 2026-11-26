@@ -1,8 +1,9 @@
 {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "spec/conformance/charts/nest.road"
+      "path": "spec/conformance/charts/nest.road",
+      "package": null
     }
   ],
   "types": {},
@@ -131,6 +132,7 @@
           }
         }
       },
+      "emits": {},
       "root": {
         "id": "Nest",
         "name": "Nest",
@@ -234,6 +236,7 @@
                     "invoke": {
                       "kind": "task",
                       "src": "work",
+                      "as": null,
                       "args": [
                         {
                           "kind": "ref",
@@ -753,7 +756,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ee5339ec777615cb8f8de97f82e00aad45369f150a9238352e3a479b7591d91a"
+      "hash": "sha256:896123d9ccd388fd1f9d1e8a6744bba7312bb0aa41bce7611745b0894187e9f5"
     }
   }
 }

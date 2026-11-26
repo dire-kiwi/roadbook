@@ -83,13 +83,15 @@ export interface PaymentWebhookDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "examples/webhook/webhook.road"
+      "path": "examples/webhook/webhook.road",
+      "package": null
     },
     {
-      "path": "examples/webhook/types.road"
+      "path": "examples/webhook/types.road",
+      "package": null
     }
   ],
   "types": {
@@ -509,6 +511,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "emits": {},
       "root": {
         "id": "PaymentWebhook",
         "name": "PaymentWebhook",
@@ -627,6 +630,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "parsePayload",
+              "as": null,
               "args": [
                 {
                   "kind": "ref",
@@ -715,6 +719,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "alreadyProcessed",
+              "as": null,
               "args": [
                 {
                   "kind": "ref",
@@ -925,6 +930,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "markOrderPaid",
+                  "as": null,
                   "args": [
                     {
                       "kind": "ref",
@@ -1192,6 +1198,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "recordRefund",
+                  "as": null,
                   "args": [
                     {
                       "kind": "ref",
@@ -1340,6 +1347,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "markProcessed",
+              "as": null,
               "args": [
                 {
                   "kind": "ref",
@@ -1535,7 +1543,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d2b796c14884f614182f34199de5abda2093627bc79d9a77916eb1bc8ac465ed"
+      "hash": "sha256:18529eddddb4764970b483be2a6a44de41df28a3c85abe57f6832ac430983e36"
     }
   }
 }

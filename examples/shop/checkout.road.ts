@@ -45,13 +45,15 @@ export interface CheckoutDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "examples/shop/checkout.road"
+      "path": "examples/shop/checkout.road",
+      "package": null
     },
     {
-      "path": "examples/shop/types.road"
+      "path": "examples/shop/types.road",
+      "package": null
     }
   ],
   "types": {
@@ -578,6 +580,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "emits": {},
       "root": {
         "id": "Checkout",
         "name": "Checkout",
@@ -611,6 +614,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "chargeCard",
+              "as": null,
               "args": [
                 {
                   "kind": "ref",
@@ -927,7 +931,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:fa1a99b9fbb423ce5c2877e31db717c7b10b84cfa2bf52721cbd2162fc18f55e"
+      "hash": "sha256:4549a2211c30e8dcc753fc13a57e8f7cfae5f89b018c94545bcbafdc7e6b3aa6"
     }
   }
 }

@@ -1,8 +1,9 @@
 {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "packages/viewer/test/charts/escape.road"
+      "path": "packages/viewer/test/charts/escape.road",
+      "package": null
     }
   ],
   "types": {
@@ -146,6 +147,7 @@
           }
         }
       },
+      "emits": {},
       "root": {
         "id": "Escape",
         "name": "Escape",
@@ -360,6 +362,7 @@
             "invoke": {
               "kind": "task",
               "src": "work",
+              "as": null,
               "args": [
                 {
                   "kind": "lit",
@@ -774,7 +777,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:3a504ec46c8b3a7f00c662be813ed48ecfb9f6f86fd3b8c57519e8f660f4cbb2"
+      "hash": "sha256:63da6309a2a92232c86f5681d01cabef81bf03abf361bfdab73e056b680b4486"
     }
   }
 }

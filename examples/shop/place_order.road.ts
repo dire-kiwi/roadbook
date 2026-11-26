@@ -89,16 +89,19 @@ export interface PlaceOrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.1",
+  "irVersion": "0.2",
   "sources": [
     {
-      "path": "examples/shop/place_order.road"
+      "path": "examples/shop/place_order.road",
+      "package": null
     },
     {
-      "path": "examples/shop/types.road"
+      "path": "examples/shop/types.road",
+      "package": null
     },
     {
-      "path": "examples/shop/checkout.road"
+      "path": "examples/shop/checkout.road",
+      "package": null
     }
   ],
   "types": {
@@ -642,6 +645,7 @@ const ir: unknown = {
           }
         }
       },
+      "emits": {},
       "root": {
         "id": "PlaceOrder",
         "name": "PlaceOrder",
@@ -675,6 +679,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "authenticate",
+              "as": null,
               "args": [
                 {
                   "kind": "ref",
@@ -777,6 +782,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "validateOrder",
+                  "as": null,
                   "args": [
                     {
                       "kind": "ref",
@@ -879,6 +885,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "priceOrder",
+                  "as": null,
                   "args": [
                     {
                       "kind": "ref",
@@ -958,6 +965,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "machine",
                   "src": "Checkout",
+                  "as": null,
                   "args": [
                     {
                       "kind": "ref",
@@ -1459,7 +1467,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:2481a0fe71e51da67ba5ab10df6d9f53a587888e2a42e73ed56f4df59c724d4b"
+      "hash": "sha256:e9442abf4d05e2cb7cb47b28121e0405c98d6c34249d674ae595af3b32ce701b"
     },
     "Checkout": {
       "doc": "Charge the customer's card, retrying while the payment gateway is down.",
@@ -1534,6 +1542,7 @@ const ir: unknown = {
         }
       ],
       "events": {},
+      "emits": {},
       "root": {
         "id": "Checkout",
         "name": "Checkout",
@@ -1567,6 +1576,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "chargeCard",
+              "as": null,
               "args": [
                 {
                   "kind": "ref",
@@ -1883,7 +1893,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:fa1a99b9fbb423ce5c2877e31db717c7b10b84cfa2bf52721cbd2162fc18f55e"
+      "hash": "sha256:4549a2211c30e8dcc753fc13a57e8f7cfae5f89b018c94545bcbafdc7e6b3aa6"
     }
   }
 }
