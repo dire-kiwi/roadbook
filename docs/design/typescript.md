@@ -26,7 +26,7 @@ An error's class extends JavaScript's `Error`, so a few field names are taken. A
 
 Declarations of an imported file are not repeated: the module imports them from that file's generated module (`import { Order, User } from "./types.road.js"`). An `extern type` is `unknown` (and `Schema.Unknown`); binding one to a host type in `roadbook.toml` is not implemented yet. The generator is the library crate [`roadbook-gen-ts`](../../crates/roadbook-gen-ts), so other tools can reuse it.
 
-The generated file is committed. Reviewers see type changes in the diff, consumers need no build step, and `roadbook gen --check` in CI fails if it is stale. A Vite plugin that generates on the fly is a later convenience.
+The generated file is committed. Reviewers see type changes in the diff, consumers need no build step, and `roadbook gen --check` in CI fails if one is stale or missing, or left behind by a deleted chart (the project's `gen-exclude` names charts that need none; see [projects](language.md#projects)). A Vite plugin that generates on the fly is a later convenience.
 
 ## Implementing a machine
 

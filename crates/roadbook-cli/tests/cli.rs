@@ -869,6 +869,71 @@ fn gen_writes_a_module_next_to_each_chart() {
 }
 
 #[test]
+fn gen_skips_gen_exclude_and_reports_orphaned_modules() {
+    let dir = project(
+        "gen-orphans",
+        &[
+            ("a.road", OK),
+            ("fixtures/f.road", OK),
+            ("lib/gone.road", OK),
+            ("lib/hand.road.ts", "// written by hand, not generated\n"),
+        ],
+    );
+    std::fs::write(
+        dir.join("roadbook.toml"),
+        "gen-exclude = [\"fixtures\"] # read as IR\n",
+    )
+    .unwrap();
+    let out = roadbook(&dir, &["gen"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(dir.join("a.road.ts").exists());
+    assert!(!dir.join("fixtures/f.road.ts").exists());
+    // gen-exclude is for `gen` only, and a file named on the command line is generated.
+    let out = roadbook(&dir, &["check"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let out = roadbook(&dir, &["gen", "fixtures/f.road"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(dir.join("fixtures/f.road.ts").exists());
+    std::fs::remove_file(dir.join("fixtures/f.road.ts")).unwrap();
+
+    // Deleting a chart leaves its module behind: --check lists it, gen warns.
+    std::fs::remove_file(dir.join("lib/gone.road")).unwrap();
+    let out = roadbook(&dir, &["gen", "--check"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(text(&out.stdout), "lib/gone.road.ts\n");
+    assert_eq!(
+        text(&out.stderr),
+        "error: `lib/gone.road.ts` was generated from `lib/gone.road`, which no longer exists; \
+         delete it\n"
+    );
+    let out = roadbook(&dir, &["gen", "--check", "lib"]);
+    assert_eq!(text(&out.stdout), "lib/gone.road.ts\n");
+    let out = roadbook(&dir, &["gen", "--check", "a.road"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stdout));
+    let out = roadbook(&dir, &["gen"]);
+    assert_eq!(out.status.code(), Some(0));
+    assert!(text(&out.stderr).starts_with("warning: `lib/gone.road.ts` was generated"));
+    assert!(dir.join("lib/gone.road.ts").exists());
+    std::fs::remove_file(dir.join("lib/gone.road.ts")).unwrap();
+    let out = roadbook(&dir, &["gen", "--check"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stdout));
+}
+
+/// The repository's own project: every chart that is not `gen-exclude`d has a fresh module,
+/// and no module is left over.
+#[test]
+fn the_repository_generated_code_is_fresh() {
+    let out = roadbook(&repo(), &["gen", "--check"]);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "regenerate with `cargo run -p roadbook-cli -- gen`:\n{}{}",
+        text(&out.stdout),
+        text(&out.stderr)
+    );
+}
+
+#[test]
 fn gen_rejects_an_error_field_its_class_cannot_have() {
     let src = "// An error whose class would be `never`.\nerror Weird {\n  why: string,\n  name: bool,\n}\n";
     let dir = project("gen-error-field", &[("w.road", src), ("ok.road", OK)]);
@@ -885,17 +950,4 @@ fn gen_rejects_an_error_field_its_class_cannot_have() {
     );
     assert!(!dir.join("w.road.ts").exists());
     assert!(dir.join("ok.road.ts").exists());
-}
-
-/// The generated TypeScript committed next to the examples is what `roadbook gen` writes now.
-#[test]
-fn the_examples_generated_code_is_fresh() {
-    let out = roadbook(&repo(), &["gen", "--check", "examples"]);
-    assert_eq!(
-        out.status.code(),
-        Some(0),
-        "stale, regenerate with `cargo run -p roadbook-cli -- gen examples`:\n{}{}",
-        text(&out.stdout),
-        text(&out.stderr)
-    );
 }
