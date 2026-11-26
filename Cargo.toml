@@ -15,7 +15,7 @@ rust-version = "1.85"
 serde = { version = "1", features = ["derive"] }
 # float_roundtrip: parse every float exactly, as JavaScript does, so canonical
 # JSON matches the TypeScript runtime byte for byte.
-serde_json = { version = "1", features = ["float_roundtrip"] }
+serde_json = { version = "1", features = ["float_roundtrip", "unbounded_depth"] }
 indexmap = { version = "2", features = ["serde"] }
 ryu-js = "1"
 sha2 = "0.10"

@@ -101,6 +101,47 @@ pub fn check_version(found: &str) -> Result<(), VersionError> {
     if ok { Ok(()) } else { Err(err()) }
 }
 
+/// The deepest nesting of JSON arrays and objects [`Ir::from_json`] reads. The compiler nests
+/// states and expressions at most 64 levels deep, each two JSON levels, below a handful of
+/// levels of document structure.
+pub const MAX_JSON_DEPTH: usize = 256;
+
+/// `json` read as a `T`, without serde_json's own nesting limit, 128, which is below what the
+/// compiler can produce. The caller has checked the depth against [`MAX_JSON_DEPTH`].
+fn read<'a, T: Deserialize<'a>>(json: &'a str) -> Result<T, serde_json::Error> {
+    let mut de = serde_json::Deserializer::from_str(json);
+    de.disable_recursion_limit();
+    let value = T::deserialize(&mut de)?;
+    de.end()?;
+    Ok(value)
+}
+
+/// The deepest nesting of arrays and objects in a JSON text, found without recursing.
+fn json_depth(json: &str) -> usize {
+    let (mut depth, mut max, mut in_string, mut escaped) = (0usize, 0usize, false, false);
+    for b in json.bytes() {
+        if in_string {
+            match b {
+                _ if escaped => escaped = false,
+                b'\\' => escaped = true,
+                b'"' => in_string = false,
+                _ => {}
+            }
+            continue;
+        }
+        match b {
+            b'"' => in_string = true,
+            b'[' | b'{' => {
+                depth += 1;
+                max = max.max(depth);
+            }
+            b']' | b'}' => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+    }
+    max
+}
+
 /// Why an IR document could not be read.
 #[derive(Debug)]
 pub enum ReadError {
@@ -138,12 +179,18 @@ impl Ir {
             #[serde(rename = "irVersion")]
             ir_version: Option<serde_json::Value>,
         }
-        let probe: Probe = serde_json::from_str(json).map_err(ReadError::Json)?;
+        if json_depth(json) > MAX_JSON_DEPTH {
+            let e = <serde_json::Error as serde::de::Error>::custom(format!(
+                "nested more than {MAX_JSON_DEPTH} levels deep"
+            ));
+            return Err(ReadError::Json(e));
+        }
+        let probe: Probe = read(json).map_err(ReadError::Json)?;
         match probe.ir_version {
             Some(serde_json::Value::String(v)) => check_version(&v).map_err(ReadError::Version)?,
             _ => return Err(ReadError::Version(VersionError { found: None })),
         }
-        serde_json::from_str(json).map_err(ReadError::Json)
+        read(json).map_err(ReadError::Json)
     }
 
     /// Writes the IR in its file form: JSON indented by two spaces, members
@@ -182,5 +229,17 @@ mod tests {
             Ir::from_json(r#"{"irVersion":"0.1"}"#),
             Err(ReadError::Json(_))
         ));
+    }
+
+    #[test]
+    fn depth_is_bounded_without_recursing() {
+        assert_eq!(json_depth(r#"{"a": "[[{", "b": [[1], {"c": "\"]"}]}"#), 3);
+        let deep = format!(
+            r#"{{"irVersion":"0.1","x":{}{}}}"#,
+            "[".repeat(MAX_JSON_DEPTH),
+            "]".repeat(MAX_JSON_DEPTH)
+        );
+        let e = Ir::from_json(&deep).unwrap_err().to_string();
+        assert!(e.contains("nested more than"), "{e}");
     }
 }

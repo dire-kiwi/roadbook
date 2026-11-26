@@ -63,6 +63,14 @@ fn each_syntax_error_has_its_code() {
         (s("    always if a < b < c -> S"), "RB0022"),
         (s("    /// Documents nothing.\n    on Go -> S"), "RB0023"),
         ("type A { x: integer }".into(), "RB0024"),
+        (m(&format!("  var x: int = {}1{}", "(".repeat(70), ")".repeat(70))), "RB0025"),
+        (m(&format!("  var x: int{}", "[]".repeat(70))), "RB0025"),
+        (m(&format!("  var x: bool = {}", vec!["a"; 70].join(" and "))), "RB0025"),
+        (m(&format!("  var x: int = a{}", ".b".repeat(70))), "RB0025"),
+        (
+            m(&format!("{}{}", "state S {\n".repeat(70), "}\n".repeat(70))),
+            "RB0025",
+        ),
     ];
     for (src, code) in cases {
         let got = codes(&src);

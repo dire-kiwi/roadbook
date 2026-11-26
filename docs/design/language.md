@@ -268,6 +268,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0022` | Chained comparisons. | `if a < b < c` |
 | `RB0023` | A `///` comment that documents nothing. | `/// note` above a transition |
 | `RB0024` | A lower-case type name that is not a built-in type. | `x: integer` |
+| `RB0025` | Nesting more than 64 levels deep. | 65 nested states, or `((((…))))` |
 
 The compiler's codes:
 
@@ -408,6 +409,7 @@ Rules the grammar does not express:
 - In a final state, `fail expr` is the machine's failure. Inside `invoke { }`, `fail Upper` is an outcome. The two never appear in the same position.
 - Two `after` transitions in one state are the same trigger only if their delays are the same expression, written the same way once formatted: `after 1s` and `after 1000ms` are different triggers.
 - A type is optional at most once: `T??` is an error.
+- Nesting is at most 64 levels deep, counting states, parentheses, operators (each `+` in `a + b + c` is a level), field reads and type suffixes (`[]`, `?`), so every tool that walks the tree stays within its stack.
 - A final state holds only `entry`, `exit`, `output` and `fail`.
 - Declaration names are unique across a project, because the IR is keyed by name. A file can use only what it declares or imports.
 

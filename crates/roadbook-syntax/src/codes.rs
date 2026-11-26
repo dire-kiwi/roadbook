@@ -46,6 +46,8 @@ pub const CHAINED_COMPARISON: Code = Code(22);
 pub const DOC_COMMENT_DOCUMENTS_NOTHING: Code = Code(23);
 /// A lower-case name in a type position that is not a built-in type.
 pub const UNKNOWN_BUILTIN_TYPE: Code = Code(24);
+/// States, expressions or types nested more than [`crate::MAX_DEPTH`] levels deep.
+pub const NESTED_TOO_DEEPLY: Code = Code(25);
 
 #[cfg(test)]
 mod tests {
