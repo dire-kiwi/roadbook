@@ -1180,7 +1180,7 @@ impl Parser<'_> {
         let effects = self.effects()?;
         if target.is_none() && effects.is_empty() {
             let msg = format!(
-                "a transition must do something: expected `-> Target`, `set`, `do`, `send` or `emit`, found {}",
+                "a transition must do something: expected `-> Target`, `set`, `do`, `send`, `emit`, `spawn` or `stop`, found {}",
                 self.found()
             );
             let d = Diagnostic::error(codes::TRANSITION_DOES_NOTHING, self.tok().span, msg)

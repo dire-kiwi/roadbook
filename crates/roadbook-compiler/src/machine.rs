@@ -1496,6 +1496,10 @@ impl<'p> Cx<'_, 'p> {
         let trigger = match t {
             Trigger::Receive { from, event } => {
                 scope.event = Implicit::Has(Ty::Unknown);
+                if self.collections.contains_key(&from.name) {
+                    // Also when its machine is unknown (reported): `key` is still in scope.
+                    scope.key = Implicit::Has(Ty::Unknown);
+                }
                 let Some((address, _)) = self.address(idx, from) else {
                     // Reported; the trigger is not lowered further.
                     return (

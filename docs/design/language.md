@@ -226,7 +226,7 @@ machine Hub() {
 - **`send name[key].Event { fields }`** sends to one child. It is `undelivered` if no child has that key, including one spawned in the same step, which has not started yet. **`send name.*.Event { fields }`** sends to every running child of the collection.
 - **`on name.Event`** is taken for an event any child of the collection emits; `key` is that child's key. **`on name.done`** is taken when a child ends with an output (`result`, `key`), **`on name.fail E`** or **`on name.fail *`** when it fails (`error`, `key`). An outcome nothing takes is dropped: unlike an invoke's, a spawned child's errors need not all be handled.
 - **A child's defect** (a host failure, not a declared error) ends the parent with the same defect, as for an invoke.
-- **When the machine ends**, finished or cancelled, its remaining children are stopped, after its own `exit` effects, which can still send to them.
+- **When the machine ends**, finished or cancelled, its remaining children are stopped, after its own `exit` effects. A message those effects send a child is likely never taken, since a stop goes ahead of what the child has queued: to let children finish cleanly, tell them before the machine's last step and wait for their `on name.done`.
 - There are no expressions over a collection: a chart cannot count its children or list their keys. Keep a count in a variable, or have the children emit what the parent needs.
 - **Names.** A collection's name shares the machine's namespace with its parameters, variables and `as` names. `key` is an implicit name, like `event`, so it cannot name a parameter, variable, `as` name or collection.
 
