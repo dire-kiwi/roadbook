@@ -1,0 +1,57 @@
+// Charts for the driver's tests (test/driver.test.ts): the defects the core raises and the
+// conformance cases leave out, and work left over when a step is cut short.
+
+action log(what: string)
+task work()              -> int
+
+/// `int` overflows the TypeScript runtime's range ±(2^53 - 1) in its output.
+machine Overflow() -> int {
+  var n: int = 9007199254740991
+
+  initial Over
+
+  final state Over { output n + 1 }
+}
+
+/// Settles forever: every microstep takes the `always` again.
+machine Settle() {
+  var n: int = 0
+
+  initial Spin
+
+  state Spin {
+    always {
+      if n >= 0 -> Spin  set n = n + 1
+    }
+  }
+}
+
+/// Reads `a` before it has a value, in `b`'s initial value.
+machine Early() -> int {
+  var a: int
+  var b: int = a + 1
+
+  initial Over
+
+  final state Over { output b }
+}
+
+/// Outer's work is cancelled after Inner's exit effect, so a defect there leaves it running.
+machine Leftover() {
+  event Go
+
+  initial Outer
+
+  state Outer {
+    invoke work() {
+      done -> Over
+    }
+    on Go -> Over
+
+    initial Inner
+
+    state Inner { exit do log("exit Inner") }
+  }
+
+  final state Over {}
+}

@@ -1,9 +1,9 @@
 /**
  * The driver: execution.md's "The driver", on Effect. One run is one fiber running the loop
  * below in its own `Scope`, with one `Queue` that events, invoke fibers and timer fibers all
- * offer to. Invokes and timers are fibers in `FiberMap`s keyed by their ids. Each step runs
- * uninterruptibly; interrupting the run is a graceful cancel, whose step runs in
- * `Effect.onInterrupt`.
+ * offer to. Invokes are detached fibers in a map keyed by invoke id, timers fibers in a
+ * `FiberMap` keyed by timer id. Each step runs uninterruptibly; interrupting the run is a
+ * graceful cancel, whose step runs in `Effect.onInterrupt`.
  */
 import * as Core from "@roadbook/core"
 import { Cause, Context, Deferred, Effect, Exit, Fiber, FiberMap, Predicate, Queue, Stream, SubscriptionRef } from "effect"
@@ -17,7 +17,8 @@ import type { Codec } from "./codec.ts"
 /**
  * The token a machine invoke's fiber carries. A machine's `run` that finds it unclaimed claims
  * it and becomes the child run; the parent sets `cancelled` before it interrupts the fiber
- * (after which the fiber queues nothing), and reads `cancelDefect` after the fiber has ended.
+ * (after which the fiber queues nothing). It waits for the fiber to end only if the token was
+ * claimed, and then reads `cancelDefect`.
  */
 export interface CancelToken {
   claimed: boolean
@@ -197,7 +198,8 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
     }
 
     const loop = Effect.gen(function*() {
-      const invokes = yield* FiberMap.make<number>()
+      // Detached, so that dropping a task never waits for it (see `stopInvokes`).
+      const invokes = new Map<number, Fiber.Fiber<void>>()
       const timers = yield* FiberMap.make<number>()
       const tokens = new Map<number, CancelToken>()
 
@@ -233,18 +235,39 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
           Effect.provideService(CurrentInvoke, context),
           Effect.annotateLogs("roadbook.invoke", command.invoke)
         )
-        return Effect.as(FiberMap.run(invokes, command.invoke, fiber), undefined)
+        return Effect.map(Effect.forkDetach(fiber, { startImmediately: true }), (forked) => {
+          invokes.set(command.invoke, forked)
+          return undefined
+        })
       }
 
-      /** Interrupt an invoke's fiber and wait for it; a claimed child reports its cancel step. */
-      const stopInvoke = (id: number) =>
-        Effect.suspend(() => {
-          const token = tokens.get(id)
-          if (token === undefined) return Effect.succeed(undefined)
-          tokens.delete(id)
-          token.cancelled = true
-          return Effect.map(FiberMap.remove(invokes, id), () => (token.claimed ? token.cancelDefect : undefined))
+      /**
+       * Drop invokes. A task or stub (an unclaimed token) is interrupted at once and not waited
+       * for: whatever it does while being interrupted is ignored. A child run (a claimed token)
+       * is interrupted and waited for, since its cancel step runs its exit effects; a defect in
+       * that step is the result. Several children are interrupted together.
+       */
+      const stopInvokes = (ids: Iterable<number>) =>
+        Effect.withFiber((self) => {
+          const children: Array<{ fiber: Fiber.Fiber<void>; token: CancelToken }> = []
+          for (const id of ids) {
+            const token = tokens.get(id)
+            const fiber = invokes.get(id)
+            tokens.delete(id)
+            invokes.delete(id)
+            if (token === undefined || fiber === undefined) continue
+            token.cancelled = true
+            if (token.claimed) children.push({ fiber, token })
+            else fiber.interruptUnsafe(self.id)
+          }
+          if (children.length === 0) return Effect.succeed(undefined)
+          return Effect.map(
+            Fiber.interruptAll(children.map((child) => child.fiber)),
+            () => children.find((child) => child.token.cancelDefect !== undefined)?.token.cancelDefect
+          )
         })
+
+      const stopInvoke = (id: number) => stopInvokes([id])
 
       const carry = (command: Core.Command): Effect.Effect<Core.Defect | undefined> => {
         switch (command.kind) {
@@ -315,12 +338,12 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
         })
       })
 
-      // Ending a run: anything still queued is discarded, and every invoke and timer it still
-      // holds is dropped when the scope closes (a child run is cancelled first).
-      const end = Effect.sync(() => {
+      // Ending a run: anything still queued is discarded, and every invoke it still holds is
+      // dropped as on `invoke.cancel` (a child run is cancelled and its cancel step waited for;
+      // a defect there changes nothing). Its timers are dropped when the scope closes.
+      const end = Effect.suspend(() => {
         Queue.shutdownUnsafe(queue)
-        for (const token of tokens.values()) token.cancelled = true
-        tokens.clear()
+        return Effect.asVoid(stopInvokes([...tokens.keys()]))
       })
 
       yield* steps.pipe(Effect.onInterrupt(() => cancel), Effect.ensuring(end))
@@ -404,7 +427,11 @@ export const spawn = <D extends MachineDef>(program: Program, input: unknown) =>
           return Effect.asVoid(Queue.offer(instance.queue, { kind: "event", value }))
         }),
       snapshot: Effect.map(SubscriptionRef.get(instance.ref), toSnapshot<D>),
-      changes: Stream.map(SubscriptionRef.changes(instance.ref), toSnapshot<D>),
+      // Every step sets the snapshot, the last one included, so the stream ends with it.
+      changes: SubscriptionRef.changes(instance.ref).pipe(
+        Stream.takeUntil((snapshot) => snapshot.status !== "running"),
+        Stream.map(toSnapshot<D>)
+      ),
       result: Fiber.join(fiber) as Effect.Effect<D["output"], D["error"]>,
       cancel: Fiber.interrupt(fiber)
     }

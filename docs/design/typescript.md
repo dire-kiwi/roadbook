@@ -106,7 +106,7 @@ With Effect's own `HttpApi`, the machine run is the body of the endpoint's handl
 const actor = yield* PlaceOrderLive.spawn(input)      // Effect<Actor, never, R | Scope>, once the run has started
 yield* actor.send({ _tag: "Cancel" })
 const snapshot = yield* actor.snapshot                // status, active states, matches(state), core
-actor.changes                                         // Stream<Snapshot>
+actor.changes                                         // Stream<Snapshot>, ends after the final one
 const response = yield* actor.result                  // Effect<Output, Errors>
 yield* actor.cancel                                   // cancel gracefully and wait
 ```
@@ -122,7 +122,7 @@ A machine with a parallel state cannot run yet (milestone 6): `implement` throws
 | A machine instance | A fiber running the event loop inside a `Scope` |
 | The event queue | One `Queue` per run, which events, invoke fibers and timer fibers all offer to. The run takes one input at a time. |
 | The current snapshot | `SubscriptionRef`, set after each step's commands are carried out, whose `changes` is the stream above |
-| A state's `invoke` | A fiber in a `FiberMap` keyed by invoke id. Removing the key interrupts it and waits for it to end. |
+| A state's `invoke` | A detached fiber in a map keyed by invoke id. Cancelling a task or stub interrupts its fiber without waiting for it to end; cancelling a child run interrupts its fiber and waits for its cancel step ([below](#child-runs-and-cancellation)). |
 | `after` timers | Fibers that sleep through the driver's `Timer` service, in a map keyed by timer id. The default `Timer` sleeps on Effect's `Clock`. |
 | A child machine run from its chart | The invoke's fiber, given an invoke context (a `Context.Reference`) that the child's `run` claims |
 | Cancelling a run | Interruption. Each step runs uninterruptibly and the cancel step (exit effects, the `cancelled` record) in `Effect.onInterrupt`. |
@@ -142,7 +142,8 @@ Effect's structured concurrency is the reason this fits so well. "Leaving a stat
 The rules are in [execution.md](../../spec/execution.md#child-runs); in Effect they come out like this.
 
 - **The invoke context.** The driver runs a machine invoke's implementation in a fiber that has an invoke context (`CurrentInvoke`): a `Context.Reference` holding the trace sink, the timer, the run observer, the parent's run id, the invoke id and a cancel token. `CheckoutLive.run(…)` finds it, claims the token and runs as child run `r1.4`, writing to the parent's sink. A stub such as `() => Effect.fail(…)` never claims it and is treated as a task. Functions, actions and tasks run with no context, and so does everything a child run does, except its own machine invokes.
-- **Cancelling a child.** Leaving the state marks the token cancelled and removes the invoke from the `FiberMap`, which interrupts the fiber and waits for it. The child's `run` finishes its current step, runs its cancel step in `onInterrupt`, and only then lets the interruption complete, so leaving the state waits for the child's exit effects, like an action. A fiber whose token is cancelled queues nothing, whatever its exit.
+- **Cancelling a task or stub.** Leaving the state marks the token cancelled and interrupts the invoke's fiber, without waiting for it to end: whatever it does while being interrupted (its finalizers, an uninterruptible region) runs on detached and is ignored. The same holds for work a run still holds when it ends.
+- **Cancelling a child.** If the token was claimed, leaving the state marks it cancelled, interrupts the fiber and waits for it. The child's `run` finishes its current step, runs its cancel step in `onInterrupt`, and only then lets the interruption complete, so leaving the state waits for the child's exit effects, like an action. A fiber whose token is cancelled queues nothing, whatever its exit.
 - **Defects.** A thrown `Error` becomes a host defect with its `message`, any other value one with `String(value)`; so does a failure in an action, or a task's failure with a value that has no `_tag`. A run that ends with a defect dies with a `Defect` (an `Error` whose `defect` member is the defect object), which the parent's driver passes on unchanged, so a child's defect reaches the root as it was. A defect in a child's cancel step is written into the token by the child, and the parent reads it once the interrupted fiber has ended and ends with that defect; the child's fiber also dies with it.
 - **Cancelling from outside.** Interrupting the fiber of a root `run`, or closing the scope of a `spawn`ed actor, cancels it the same way: exit effects run and the trace ends with `cancelled` before the interruption completes.
 

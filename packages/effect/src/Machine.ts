@@ -94,7 +94,7 @@ export interface Actor<D extends MachineDef> {
   /** Queue an event. Does nothing once the run has ended. */
   readonly send: (event: D["event"]) => Effect.Effect<void>
   readonly snapshot: Effect.Effect<Snapshot<D>>
-  /** The current snapshot, then one after every step. */
+  /** The current snapshot, then one after every step. Ends after the run's final snapshot. */
   readonly changes: Stream.Stream<Snapshot<D>>
   /**
    * Completes when the run ends: with the output on `done`, the error on `failed`; it dies with
