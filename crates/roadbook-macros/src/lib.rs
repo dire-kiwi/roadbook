@@ -52,9 +52,12 @@ mod names;
 ///   a `Handlers` trait (one method per function, action, task and child machine the machine
 ///   uses directly), `State`, `Event` (what it accepts) and `Emitted` (what it `emits`) enums,
 ///   `Ref` (`roadbook::Ref<Event>`, a handle to a run of it, the chart's `ref Machine`), and
-///   `run`, `run_with`, `spawn` and `spawn_with`. A compound state's variant carries its active child as an enum named after
-///   the state; if that name is taken (by `State`, `Event`, `Handlers`, a type of the chart
-///   or another such enum), it is prefixed with the names of the states above it.
+///   `run`, `run_with`, `spawn` and `spawn_with`, and for saved snapshots `restore`,
+///   `restore_with`, `resume` and `resume_with`. A compound state's variant carries its
+///   active child as an enum named after the state; if that name is taken (by `State`,
+///   `Event`, `Handlers`, a type of the chart or another such enum), it is prefixed with the
+///   names of the states above it. A parallel state's variant carries nothing: a run in it is
+///   in all its regions at once, and `State` names the parallel state.
 /// - Types map as `string` to `String`, `int` to `i64`, `float` to `f64`, `bool` to `bool`,
 ///   `duration` to `std::time::Duration` (whole milliseconds in JSON), `json` to
 ///   `serde_json::Value`, `T[]` to `Vec<T>` and `T?` to `Option<T>`. An `int` or `duration`
@@ -83,8 +86,6 @@ mod names;
 ///   its own). Only the first `include!` of it exports the hidden macro, and importers find
 ///   the chart's items at the crate root, so one of them must be there. If none is, an
 ///   importer's build fails with an error saying so.
-///
-/// Parallel states are not supported until milestone 6.
 #[proc_macro]
 pub fn include(input: TokenStream) -> TokenStream {
     expand(input.into()).into()

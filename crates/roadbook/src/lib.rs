@@ -50,7 +50,10 @@ pub use env::{
     TraceSink,
 };
 pub use handle::Ref;
-pub use roadbook_core::{Defect, Input, Program, Record, Refusal, RestoreError, Saved, SavedTimer};
+pub use roadbook_core::{
+    Defect, Input, InvokeEntry, Program, Record, Refusal, RestoreError, RunResult, Saved,
+    SavedTimer, Status,
+};
 pub use roadbook_macros::include;
 pub use shared::RunHandle;
 

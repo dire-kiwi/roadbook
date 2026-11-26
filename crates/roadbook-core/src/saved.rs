@@ -9,8 +9,8 @@ use std::fmt;
 use roadbook_ir::{Builtin, Field, StateKind, Trigger, TypeDef, TypeRef};
 use serde_json::{Map, Value};
 
-use crate::program::Program;
 use crate::Saved;
+use crate::program::Program;
 
 /// Why a saved snapshot was refused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

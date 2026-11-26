@@ -14,7 +14,12 @@
 //! in the `Config`. Each snapshot is compared byte for byte, in canonical JSON, with its file.
 //!
 //! With `ROADBOOK_CONFORMANCE_OUT=<dir>`, each case's actual trace is also written to
-//! `<dir>/<case>.jsonl`.
+//! `<dir>/<case>.jsonl`, and each snapshot it saves to `<dir>/<case>/<name>.snapshot.json`.
+//!
+//! A second test restores every committed snapshot file of the cases (the canonical form both
+//! runtimes write) and lets the run go on. With `ROADBOOK_RESTORE_FROM=<dir>` it restores the
+//! files `<dir>/<case>/<name>.snapshot.json` instead: snapshots another runtime saved, such as
+//! the TypeScript runner's output.
 //!
 //! A case that `requires` a feature not in [`SUPPORTED`] is skipped, not failed.
 
@@ -426,6 +431,12 @@ fn compare_snapshot(c: &LoadedCase, name: &str, saved: &Saved) -> Result<(), Str
         .get(name)
         .ok_or_else(|| format!("no {name}.snapshot.json"))?;
     let actual = snapshot_text(&saved.to_value());
+    if let Some(dir) = std::env::var_os("ROADBOOK_CONFORMANCE_OUT") {
+        let dir = std::path::Path::new(&dir).join(&c.name);
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        std::fs::write(dir.join(format!("{name}.snapshot.json")), &actual)
+            .map_err(|e| e.to_string())?;
+    }
     if actual != *expected {
         return Err(format!(
             "snapshot {name}:\n  expected {}  actual   {actual}",
@@ -452,6 +463,21 @@ fn object(v: &Value) -> Result<Object, String> {
         Value::Object(m) => Ok(m.clone()),
         _ => Err("an `input` is not an object".into()),
     }
+}
+
+/// Advances virtual time by `d`, firing the timers due on the way one at a time, earliest
+/// first, and letting the runs settle after each.
+fn advance(timer: &VirtualTimer, runner: &mut Runner<'_>, d: u64) -> Result<(), String> {
+    let end = timer.now.load(Ordering::SeqCst) + d;
+    while let Some((run, id, due)) = timer.due_by(end).into_iter().next() {
+        timer.now.store(due, Ordering::SeqCst);
+        if let Some(fire) = timer.take(&run, id) {
+            fire.fire();
+        }
+        runner.settle()?;
+    }
+    timer.now.store(end, Ordering::SeqCst);
+    Ok(())
 }
 
 /// Runs one case and gives its trace in the compared form.
@@ -515,17 +541,7 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
             ));
         }
         match step {
-            Step::Advance(d) => {
-                let end = timer.now.load(Ordering::SeqCst) + d;
-                while let Some((run, id, due)) = timer.due_by(end).into_iter().next() {
-                    timer.now.store(due, Ordering::SeqCst);
-                    if let Some(fire) = timer.take(&run, id) {
-                        fire.fire();
-                    }
-                    runner.settle().map_err(at)?;
-                }
-                timer.now.store(end, Ordering::SeqCst);
-            }
+            Step::Advance(d) => advance(&timer, &mut runner, *d).map_err(at)?,
             Step::Event(e) => {
                 runner.awake(e.run()).map_err(at)?.send(e.event.clone());
                 runner.settle().map_err(at)?;
@@ -793,4 +809,259 @@ fn every_case_passes_byte_for_byte() {
         run,
         failures.join("\n\n")
     );
+}
+
+/// Restores saved snapshot `name` of case `c` (the file's `text`) as run `x1`, at virtual
+/// time 0, with the case's chart and a scripted host. Gives `false` if it is refused for the
+/// reason it must be (`ended` for a run that ended, `ir` for one saved with another hash), and
+/// `true` once the restored run has gone on: right after restoring it saves the same snapshot
+/// under its new id, its invokes have started again, and each of its timers fires at its saved
+/// deadline and is taken.
+fn restore_and_go_on(c: &LoadedCase, text: &str) -> Result<bool, String> {
+    let value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+    let errors =
+        roadbook_conformance::schema_errors(&roadbook_conformance::snapshot_validator(), &value);
+    if !errors.is_empty() {
+        return Err(format!("not a saved snapshot: {}", errors.join("; ")));
+    }
+    if snapshot_text(&value) != text {
+        return Err("not in canonical form".into());
+    }
+    let saved = Saved::from_json(text).map_err(|e| e.to_string())?;
+    let ir = c.ir.clone().ok_or("no IR")?;
+    let program = Program::new(ir).map_err(|e| e.to_string())?;
+    let hash = program
+        .ir()
+        .machines
+        .get(&saved.machine)
+        .map(|m| m.hash.clone())
+        .ok_or_else(|| format!("the IR has no machine {}", saved.machine))?;
+    let must_refuse = if saved.status != roadbook::Status::Running {
+        Some("ended")
+    } else if saved.ir != hash {
+        Some("ir")
+    } else {
+        None
+    };
+    let registry = Arc::new(Registry::default());
+    let host = CaseHost {
+        case: c,
+        program: &program,
+        registry,
+        problems: Mutex::new(Vec::new()),
+    };
+    let timer = Arc::new(VirtualTimer::default());
+    let sink = Arc::new(MemorySink::new());
+    let config = Config::new()
+        .sink(sink.clone())
+        .timer(Arc::new(TimerHandle(timer.clone())))
+        .run_id("x1");
+    let (fut, handle) = match (
+        dynamic::restore(&config, &program, None, &saved, &host),
+        must_refuse,
+    ) {
+        (Err(e), Some(reason)) if e.reason() == reason => return Ok(false),
+        (Err(e), _) => return Err(e.to_string()),
+        (Ok(_), Some(reason)) => return Err(format!("not refused ({reason})")),
+        (Ok(restored), None) => restored,
+    };
+    let mut runner = Runner {
+        runs: vec![Top {
+            id: "x1".into(),
+            fut: Some(fut),
+            end: None,
+            handle: handle.clone(),
+            expected: Status::Running,
+            suspending: None,
+        }],
+        flag: Arc::new(Flag::default()),
+    };
+    runner.settle()?;
+    let mut expected = saved.clone();
+    expected.run = "x1".into();
+    let again = handle.save().ok_or("no saved snapshot after restoring")?;
+    if again.to_canonical() != expected.to_canonical() {
+        return Err(format!(
+            "saved right after restoring:\n  expected {}\n  actual   {}",
+            expected.to_canonical(),
+            again.to_canonical()
+        ));
+    }
+    let last = saved.timers.iter().map(|t| t.due).max().unwrap_or(0);
+    advance(&timer, &mut runner, last)?;
+    let records: Vec<Value> = sink
+        .records()
+        .iter()
+        .filter(|r| r.run == "x1")
+        .map(|r| r.to_json())
+        .collect();
+    for inv in &saved.invokes {
+        let started = records
+            .iter()
+            .any(|r| r["kind"] == "invoke.started" && r["invoke"] == inv.id);
+        if !started {
+            return Err(format!("invoke {} was not started again", inv.id));
+        }
+    }
+    for tm in &saved.timers {
+        let taken = records.iter().any(|r| {
+            r["kind"] == "event"
+                && r["event"]["kind"] == "after"
+                && r["event"]["timer"] == tm.id
+                && r["t"] == tm.due
+        });
+        if !taken {
+            return Err(format!("timer {} did not expire at {}", tm.id, tm.due));
+        }
+    }
+    let problems = host.problems.lock().unwrap().clone();
+    if !problems.is_empty() {
+        return Err(problems.join("; "));
+    }
+    Ok(true)
+}
+
+/// The cross-runtime check: every saved snapshot file of the cases is what both runtimes
+/// write, so restoring each one here restores what the other runtime saved.
+#[test]
+fn every_saved_snapshot_restores_and_goes_on() {
+    let cases = load_all(&conformance_dir()).expect("every case loads");
+    let from = std::env::var_os("ROADBOOK_RESTORE_FROM").map(std::path::PathBuf::from);
+    let (mut restored, mut refused, mut failures) = (0, 0, Vec::new());
+    for c in &cases {
+        let files: Vec<(String, String)> = match &from {
+            None => c.snapshots.clone().into_iter().collect(),
+            Some(dir) => match std::fs::read_dir(dir.join(&c.name)) {
+                Err(_) => Vec::new(),
+                Ok(entries) => {
+                    let mut files: Vec<(String, String)> = entries
+                        .filter_map(Result::ok)
+                        .filter_map(|e| {
+                            let file = e.file_name().to_string_lossy().into_owned();
+                            let name = file.strip_suffix(".snapshot.json")?.to_owned();
+                            Some((name, std::fs::read_to_string(e.path()).ok()?))
+                        })
+                        .collect();
+                    files.sort();
+                    files
+                }
+            },
+        };
+        for (name, text) in files {
+            match restore_and_go_on(c, &text) {
+                Ok(true) => restored += 1,
+                Ok(false) => refused += 1,
+                Err(e) => failures.push(format!("{}/{name}: {e}", c.name)),
+            }
+        }
+    }
+    println!("saved snapshots: {restored} restored and gone on, {refused} refused as they must be");
+    assert!(restored > 0, "no snapshot was restored");
+    assert!(
+        failures.is_empty(),
+        "{} snapshots failed:\n\n{}",
+        failures.len(),
+        failures.join("\n\n")
+    );
+}
+
+/// `Saved::from_value` checks `spec/snapshot.schema.json` by hand: it agrees with the schema
+/// on every committed snapshot and on each of them broken in many ways.
+#[test]
+fn the_saved_snapshot_check_agrees_with_the_schema() {
+    let validator = roadbook_conformance::snapshot_validator();
+    let cases = load_all(&conformance_dir()).expect("every case loads");
+    let breaks: Vec<(&str, Value)> = vec![
+        ("snapshotVersion", serde_json::json!(2)),
+        ("snapshotVersion", serde_json::json!("1")),
+        ("machine", serde_json::json!("order")),
+        ("machine", serde_json::json!("Or-der")),
+        ("run", serde_json::json!("")),
+        ("run", serde_json::json!("r1.0")),
+        ("run", serde_json::json!("r 1")),
+        ("ir", serde_json::json!("sha256:abc")),
+        (
+            "ir",
+            serde_json::json!(format!("sha256:{}", "A".repeat(64))),
+        ),
+        ("status", serde_json::json!("paused")),
+        ("active", serde_json::json!(["Order", "Order"])),
+        ("active", serde_json::json!(["order"])),
+        ("active", serde_json::json!("Order")),
+        ("input", serde_json::json!({"Id": 1})),
+        ("input", serde_json::json!([])),
+        ("vars", serde_json::json!({"a_b": 1})),
+        (
+            "invokes",
+            serde_json::json!([{"id": 0, "state": "A", "src": "x"}]),
+        ),
+        (
+            "invokes",
+            serde_json::json!([{"id": 1, "state": "A", "src": "x", "y": 1}]),
+        ),
+        (
+            "invokes",
+            serde_json::json!([{"id": 1, "state": "A", "src": "x_y"}]),
+        ),
+        ("invokes", serde_json::json!([{"id": 1, "state": "A"}])),
+        (
+            "timers",
+            serde_json::json!([{"id": 1, "state": "A", "index": 0, "delay": 1}]),
+        ),
+        (
+            "timers",
+            serde_json::json!([{"id": 1, "state": "A", "index": -1, "delay": 1, "due": 1}]),
+        ),
+        (
+            "timers",
+            serde_json::json!([{"id": 1, "state": "A", "index": 0, "delay": 1.5, "due": 1}]),
+        ),
+        (
+            "timers",
+            serde_json::json!([{"id": 1, "state": "A", "index": 0, "delay": 1, "due": 9007199254740992u64}]),
+        ),
+        ("nextInvoke", serde_json::json!(0)),
+        ("nextMessage", serde_json::json!(null)),
+        (
+            "result",
+            serde_json::json!({"output": 1, "error": {"_tag": "E"}}),
+        ),
+        ("result", serde_json::json!({"error": {"tag": "E"}})),
+        ("result", serde_json::json!({"error": {"_tag": "e"}})),
+        ("result", serde_json::json!({"defect": {"message": "m"}})),
+        ("result", serde_json::json!({"defect": {"kind": "limit"}})),
+        ("result", serde_json::json!({"output": null})),
+        ("result", serde_json::json!(1)),
+        (
+            "timers",
+            serde_json::json!([{"id": 1, "state": "A.B", "index": 0, "delay": 0, "due": 0}]),
+        ),
+    ];
+    let mut checked = 0;
+    for c in &cases {
+        for text in c.snapshots.values() {
+            let base: Value = serde_json::from_str(text).unwrap();
+            let mut docs = vec![base.clone()];
+            for key in base.as_object().unwrap().keys() {
+                let mut d = base.clone();
+                d.as_object_mut().unwrap().remove(key);
+                docs.push(d);
+            }
+            let mut d = base.clone();
+            d["extra"] = Value::Null;
+            docs.push(d);
+            for (key, value) in &breaks {
+                let mut d = base.clone();
+                d[*key] = value.clone();
+                docs.push(d);
+            }
+            for d in docs {
+                let schema = validator.is_valid(&d);
+                let ours = Saved::from_value(d.clone()).is_ok();
+                assert_eq!(schema, ours, "the schema says {schema} for {d}");
+                checked += 1;
+            }
+        }
+    }
+    assert!(checked > 100);
 }

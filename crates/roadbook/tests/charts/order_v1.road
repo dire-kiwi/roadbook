@@ -1,0 +1,35 @@
+// An earlier version of `Order` in spec/conformance/charts/saved.road, for
+// tests/include_saved.rs: its tracking number was the variable `trackingNo`,
+// since renamed `tracking`. A snapshot saved with this version restores in the
+// current one only through a migration.
+
+action refund(order: string, amount: int)
+task ship(order: string) -> string
+
+machine Order(id: string) {
+  var paid:       int = 0
+  var trackingNo: string = ""
+
+  event PaymentReceived { amount: int }
+  event Delivered
+
+  initial AwaitingPayment
+
+  state AwaitingPayment {
+    after 72h -> Expired
+
+    on PaymentReceived -> Shipping  set paid = event.amount
+  }
+
+  state Shipping {
+    invoke ship(id) {
+      done -> AwaitingDelivery  set trackingNo = result
+    }
+  }
+
+  state AwaitingDelivery { on Delivered -> Complete }
+
+  state Expired { on PaymentReceived do refund(id, event.amount) }
+
+  final state Complete {}
+}
