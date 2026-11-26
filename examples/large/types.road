@@ -1,0 +1,43 @@
+// Shared data shapes, errors and host functions for the support ticket example.
+
+enum Priority    { Low, Normal, High, Urgent }
+enum Category    { Billing, Technical, Account, Other }
+enum CloseReason { Resolved, AutoClosed, Spam, Duplicate, Withdrawn, OutOfScope, Merged, Unresolvable }
+
+type Ticket         { id: string, customerId: string, subject: string, priority: Priority }
+type Classification { category: Category, priority: Priority, spamScore: float, duplicateOf: string? }
+type SurveyResult   { answered: bool, score: int }
+
+/// The machine's output: how the ticket ended.
+type Closure { ticketId: string, reason: CloseReason, reopens: int, rating: int? }
+
+error ClassifierUnavailable
+error NoAgentAvailable
+error TrackerUnavailable    { retryAfter: duration }
+error MailBounced
+error NotAnsweredYet
+
+// Tasks: effectful, fallible, cancellable.
+task classify(ticket: Ticket)                        -> Classification ! ClassifierUnavailable
+task routeTicket(ticket: Ticket, category: Category) -> string         ! NoAgentAvailable
+task fileBug(ticket: Ticket)                         -> string         ! TrackerUnavailable
+task verifyFix(ticket: Ticket)                       -> bool
+task draftResolution(ticket: Ticket)                 -> string
+task sendSurvey(ticket: Ticket)                      -> string         ! MailBounced
+task pollSurvey(surveyId: string)                    -> int            ! NotAnsweredYet
+
+// Actions: effectful, cannot fail.
+action notifyCustomer(ticket: Ticket, template: string)
+action notifyAgent(agentId: string, ticket: Ticket, template: string)
+action pageOnCall(ticket: Ticket, tier: int)
+action sendMessage(ticket: Ticket, body: string)
+action addNote(ticket: Ticket, text: string)
+
+// Functions: pure and synchronous.
+fn isSpam(c: Classification)                                        -> bool
+fn isDuplicate(c: Classification)                                   -> bool
+fn backoff(attempt: int)                                            -> duration
+fn triageSla(p: Priority)                                           -> duration
+fn resolutionSla(p: Priority)                                       -> duration
+fn closure(ticket: Ticket, reason: CloseReason, reopens: int)       -> Closure
+fn ratedClosure(ticket: Ticket, reopens: int, survey: SurveyResult) -> Closure

@@ -1,0 +1,26 @@
+// Shared data shapes, errors and host functions for the CSV import example.
+
+/// The uploaded file, as stored by the upload endpoint.
+type Upload { jobId: string, path: string }
+
+/// What validation learned about the file.
+type ImportPlan { totalRows: int, batchSize: int }
+
+type RowError { row: int, message: string }
+
+/// The machine's output.
+type ImportSummary { jobId: string, totalRows: int, batches: int, retries: int }
+
+/// The file did not validate; nothing was imported.
+error InvalidFile { rowErrors: RowError[] }
+/// A batch kept failing after its retries.
+error BatchFailed { batch: int, reason: string }
+/// The operator cancelled the job.
+error ImportCancelled { batchesDone: int }
+
+/// A batch hit something worth retrying, such as a lock timeout.
+error TransientBatchError { reason: string }
+
+task validateUpload(upload: Upload) -> ImportPlan ! InvalidFile
+/// Import one batch. Returns how many rows remain after it.
+task processBatch(upload: Upload, plan: ImportPlan, batch: int) -> int ! TransientBatchError
