@@ -1,0 +1,192 @@
+//! Formatter tests: expected layouts, comment preservation, idempotence, and the round trip
+//! `parse(format(x)) == parse(x)` ignoring spans.
+
+mod common;
+
+use roadbook_syntax::{FileId, format, parse_file};
+
+/// `(input, canonical output)`
+const LAYOUTS: &[(&str, &str)] = &[
+    // Spacing is normalised; trailing commas and redundant parentheses go.
+    (
+        "machine   M ( a :int , ) -> R!E{initial A state A{on Go->A set x=(1+2)*3,y=(a)}}",
+        "machine M(a: int) -> R ! E {\n  initial A\n  state A { on Go -> A  set x = (1 + 2) * 3, y = a }\n}\n",
+    ),
+    // `not` gets parentheses around a comparison; precedence keeps the ones it needs.
+    (
+        "machine M() {\n  var a: bool = not a > b\n  var b: int = a - (b - c) - -(-d)\n  var c: bool = (not a) and not (b or c)\n}\n",
+        "machine M() {\n  var a: bool = not (a > b)\n  var b: int = a - (b - c) - -(-d)\n  var c: bool = not a and not (b or c)\n}\n",
+    ),
+    // Blank lines are kept, at most one, never at the start or end of a block.
+    (
+        "\n\nmachine M() {\n\n\n  initial A\n\n\n\n  state A {}\n\n}\n\n\n",
+        "machine M() {\n  initial A\n\n  state A {}\n}\n",
+    ),
+    // A state with one simple item is one line; anything else is expanded.
+    (
+        "machine M() {\n  state A {\n    on Go -> B\n  }\n  state B { entry do f() always -> A }\n  state C {\n  }\n}\n",
+        "machine M() {\n  state A { on Go -> B }\n  state B {\n    entry do f()\n    always -> A\n  }\n  state C {}\n}\n",
+    ),
+    // `error E {}` is `error E`; a record value with no fields is the bare name.
+    ("error E {}\n\nfn f() -> E\n", "error E\n\nfn f() -> E\n"),
+    (
+        "machine M() {\n  final state A { fail E {} }\n}\n",
+        "machine M() {\n  final state A { fail E }\n}\n",
+    ),
+    // Consecutive effects of one kind share a clause.
+    (
+        "machine M() {\n  entry set a = 1 set b = 2 do f() do g() set c = 3\n}\n",
+        "machine M() {\n  entry set a = 1, b = 2  do f(), g()  set c = 3\n}\n",
+    ),
+    // A record value as an `after` delay keeps its parentheses.
+    (
+        "machine M() {\n  after (Cfg { ms: 1 }) -> A\n  after (d) -> A\n}\n",
+        "machine M() {\n  after (Cfg { ms: 1 }) -> A\n  after d               -> A\n}\n",
+    ),
+    // Alignment: transition arrows and effects across a block, nested branches included.
+    (
+        "machine M() {\n  state A {\n    on Go -> B set x = 1\n    on LongerName -> Somewhere\n    on Pick {\n      if x > 1 -> B do f()\n      else -> C\n    }\n    on After -> B\n\n    on Alone -> B set y = 2\n  }\n}\n",
+        "machine M() {\n  state A {\n    on Go         -> B          set x = 1\n    on LongerName -> Somewhere\n    on Pick {\n      if x > 1    -> B          do f()\n      else        -> C\n    }\n    on After      -> B\n\n    on Alone -> B  set y = 2\n  }\n}\n",
+    ),
+    // Alignment: variable types and events.
+    (
+        "machine M() {\n  var a: int = 1\n  var longer: string\n  event Go\n  event Change { x: int }\n}\n",
+        "machine M() {\n  var a:      int = 1\n  var longer: string\n  event Go\n  event Change { x: int }\n}\n",
+    ),
+    // Alignment: one-line declarations, data and callables apart, broken by a comment line.
+    (
+        "type A { x: int }\ntype Longer = int\n// comment\nerror E\nerror Longer { y: int }\ntask t() -> int ! E\ntask longer(a: int) ! E\n",
+        "type A      { x: int }\ntype Longer = int\n// comment\nerror E\nerror Longer { y: int }\ntask t()            -> int ! E\ntask longer(a: int)        ! E\n",
+    ),
+    // Multi-line lists keep the author's line breaks; the last element has no comma.
+    (
+        "import {\n  A, B,\n  C,\n} from \"x\"\ntype T {\n  a: int, b: int,\n  c: int,\n}\nenum E {\n  X,\n  Y\n}\naction act(\n  a: int,\n  b: int\n)\n",
+        "import {\n  A, B,\n  C\n} from \"x\"\ntype T {\n  a: int, b: int,\n  c: int\n}\nenum E {\n  X,\n  Y\n}\naction act(\n  a: int,\n  b: int\n)\n",
+    ),
+    // A list broken somewhere other than after the opener is joined.
+    (
+        "import { A,\n  B } from \"x\"\n",
+        "import { A, B } from \"x\"\n",
+    ),
+];
+
+/// Inputs with comments in awkward places; every comment must survive.
+const COMMENTS: &[(&str, &str)] = &[
+    (
+        "// head\n\n/// doc\nmachine M() { // after brace\n  // own line\n  on Go -> A // trailing\n  /// state doc\n  state A {\n    // only a comment\n  }\n  // before close\n} // after close\n// tail\n",
+        "// head\n\n/// doc\nmachine M() { // after brace\n  // own line\n  on Go -> A // trailing\n  /// state doc\n  state A {\n    // only a comment\n  }\n  // before close\n} // after close\n// tail\n",
+    ),
+    // A comment inside something printed on one line moves before it.
+    (
+        "machine M() {\n  on Go // why\n    -> A\n  var x: int = 1 + // one\n    2\n}\n",
+        "machine M() {\n  // why\n  on Go -> A\n  // one\n  var x: int = 1 + 2\n}\n",
+    ),
+    // Comments in multi-line lists.
+    (
+        "import {\n  // types\n  A, B, // trailing\n  c\n  // last\n} from \"x\"\n",
+        "import {\n  // types\n  A, B, // trailing\n  c\n  // last\n} from \"x\"\n",
+    ),
+    // A comment in a one-line state keeps it expanded.
+    (
+        "machine M() {\n  final state A {\n    output 1 // the answer\n  }\n}\n",
+        "machine M() {\n  final state A {\n    output 1 // the answer\n  }\n}\n",
+    ),
+    // Two transitions on one line: the comment stays with the second.
+    (
+        "machine M() {\n  on A -> X on B -> Y // b\n}\n",
+        "machine M() {\n  on A -> X\n  on B -> Y // b\n}\n",
+    ),
+    ("// only a comment\n", "// only a comment\n"),
+    ("", ""),
+];
+
+fn structure(src: &str) -> serde_json::Value {
+    let (file, diags) = parse_file(FileId(0), src);
+    assert!(diags.is_empty(), "{src}\n{diags:#?}");
+    serde_json::to_value(&file).unwrap()
+}
+
+fn check_stable(src: &str) {
+    let once = format(src).unwrap_or_else(|d| panic!("{src}\n{d:#?}"));
+    assert_eq!(format(&once).unwrap(), once, "not idempotent:\n{src}");
+    assert_eq!(
+        structure(&once),
+        structure(src),
+        "the tree changed:\n{src}\n---\n{once}"
+    );
+}
+
+#[test]
+fn layouts() {
+    for (input, expected) in LAYOUTS {
+        assert_eq!(format(input).unwrap(), *expected, "{input}");
+    }
+}
+
+#[test]
+fn comments_are_preserved() {
+    for (input, expected) in COMMENTS {
+        let out = format(input).unwrap();
+        assert_eq!(out, *expected, "{input}");
+        let texts = |s: &str| {
+            parse_file(FileId(0), s)
+                .0
+                .comments
+                .into_iter()
+                .map(|c| c.text)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(texts(&out), texts(input));
+    }
+}
+
+#[test]
+fn idempotent_and_round_trips() {
+    let inputs = common::CASES
+        .iter()
+        .map(|c| c.1)
+        .chain(LAYOUTS.iter().map(|c| c.0))
+        .chain(COMMENTS.iter().map(|c| c.0));
+    for src in inputs {
+        check_stable(src);
+    }
+}
+
+#[test]
+fn refuses_files_with_syntax_errors() {
+    let err = format("machine M() {\n  on Go\n}\n").unwrap_err();
+    assert_eq!(err[0].code.to_string(), "RB0017");
+}
+
+/// The same tokens with different whitespace: a cheap generator of layouts the formatter must
+/// normalise without changing the tree.
+fn respaced(src: &str, seed: u64) -> String {
+    let lexed = roadbook_syntax::lexer::lex(FileId(0), src);
+    let mut state = seed
+        .wrapping_mul(6364136223846793005)
+        .wrapping_add(1442695040888963407);
+    let mut out = String::new();
+    for t in &lexed.tokens {
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        out.push_str(["", " ", "  ", "\n", "\n\n", " \n    "][(state >> 33) as usize % 6]);
+        if out.is_empty() || out.ends_with(|c: char| !c.is_whitespace()) {
+            out.push(' ');
+        }
+        out.push_str(&src[t.span.range()]);
+    }
+    out
+}
+
+#[test]
+fn round_trips_under_any_whitespace() {
+    for (name, src) in common::CASES.iter().filter(|c| !c.1.contains("//")) {
+        let expected = structure(src);
+        for seed in 0..25 {
+            let variant = respaced(src, seed);
+            assert_eq!(structure(&variant), expected, "{name} {seed}:\n{variant}");
+            check_stable(&variant);
+        }
+    }
+}

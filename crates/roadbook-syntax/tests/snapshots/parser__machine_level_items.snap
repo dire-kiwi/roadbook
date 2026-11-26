@@ -1,0 +1,61 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - entry:
+                - do:
+                    name: start
+                    args: []
+            - exit:
+                - do:
+                    name: stop
+                    args: []
+            - transition:
+                trigger:
+                  "on":
+                    name: Cancel
+                branches:
+                  single:
+                    guard: ~
+                    target:
+                      - Cancelled
+                    effects: []
+            - transition:
+                trigger:
+                  after:
+                    duration:
+                      value: 1
+                      unit: h
+                branches:
+                  single:
+                    guard: ~
+                    target:
+                      - TimedOut
+                    effects: []
+            - transition:
+                trigger: always
+                branches:
+                  single:
+                    guard:
+                      var: broken
+                    target:
+                      - Cancelled
+                    effects: []
+            - state:
+                kind: final
+                name: Cancelled
+                body: []
+            - state:
+                kind: final
+                name: TimedOut
+                body: []
+comments: []

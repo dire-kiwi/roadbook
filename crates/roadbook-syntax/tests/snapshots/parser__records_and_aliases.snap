@@ -1,0 +1,42 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: A
+      kind:
+        record:
+          fields:
+            - name: x
+              ty:
+                builtin: int
+            - name: y
+              ty:
+                optional:
+                  list:
+                    builtin: string
+            - name: z
+              ty:
+                optional:
+                  named: B
+  - decl:
+      name: Id
+      kind:
+        alias:
+          target:
+            builtin: string
+  - decl:
+      name: Empty
+      kind:
+        record:
+          fields: []
+  - decl:
+      name: Lists
+      kind:
+        alias:
+          target:
+            list:
+              list:
+                builtin: int
+comments: []

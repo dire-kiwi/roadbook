@@ -20,6 +20,7 @@ indexmap = { version = "2", features = ["serde"] }
 ryu-js = "1"
 sha2 = "0.10"
 jsonschema = { version = "0.33", default-features = false }
+insta = { version = "1", features = ["yaml"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

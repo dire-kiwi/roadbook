@@ -151,9 +151,9 @@ Diagnostics carry a code, a source span and, where possible, a fix. `roadbook ch
 
 ```
 error[RB0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
-  --> examples/shop/checkout.road:14:5
+  --> examples/shop/checkout.road:13:5
    |
-14 |     invoke chargeCard(order, user) {
+13 |     invoke chargeCard(order, user) {
    |     ^^^^^^^^^^^^^^^^^ declared as `-> Receipt ! CardDeclined | GatewayUnavailable`
    |
    = help: add `fail GatewayUnavailable -> <State>` or `fail * -> <State>`
@@ -170,6 +170,53 @@ This is what lets host functions take plain non-optional arguments. In xstate th
 ## Formatting
 
 `roadbook fmt` is canonical: one accepted layout, no options. Agents and humans produce the same text, so diffs show only real changes.
+
+The layout, as implemented in `roadbook-syntax`. The example files and the charts on these pages are written in it.
+
+- **Lines.** Two-space indentation, one item per line, and no line wrapping. A file with syntax errors is not formatted.
+- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses. In a transition the target and each `set` or `do` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Consecutive clauses of one kind are merged (`set a = 1, b = 2`).
+- **Blank lines** between items are kept, at most one. There are none at the start or end of a block or file.
+- **Lists.** No trailing commas. A list in a declaration (import names, fields, enum variants, parameters) with a line break right after its opening bracket stays multi-line: its elements are indented one level, keep the author's line breaks between them, and the closing bracket goes on its own line. Every other list is printed on one line.
+- **One-line states.** A state whose body is empty, or is a single item other than a state, an `invoke` or a block of branches, and contains no comment, is written on one line: `final state Charged { output receipt }`. Every other state is written as a block.
+- **Expressions** have only the parentheses precedence needs, plus `not (…)` around a comparison or arithmetic operand, and parentheses around a record value used as an `after` delay. Numbers are written as parsed (`007` becomes `7`, `1.50` becomes `1.5`). `error E {}` is written `error E`, and a record value with no fields `E {}` is written `E`.
+- **Comments** are kept as written, trailing spaces removed. A comment on its own line stays on its own line, indented like the code that follows it. A comment after code stays at the end of that line. A comment inside something printed on one line moves to its own line before it.
+- **Alignment.** An alignment group is a run of consecutive lines of one kind with no blank line or comment line between them. The kinds and what they align:
+  - one-line `type`, `enum`, `error` and `extern type` declarations: what follows the name (`{` or `=`);
+  - one-line `fn`, `action` and `task` declarations: `->` and `!`;
+  - `var` lines: the type;
+  - `event` lines: the field list;
+  - one-line states: the `{`;
+  - transitions and invoke outcomes, together with the header, branches and closing `}` of a block of branches among them: `->` and the first `set` or `do`, at the same column for nested branches as for the lines around them.
+
+  Each aligned column starts one space after the widest text of the column before it, measured from the start of the line, over every line of the group (closing `}` lines excepted), including lines that end before that column. In transitions the effects column starts two spaces after the widest target. Lines are not padded at the end.
+
+## Diagnostic codes
+
+Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` names, `RB02xx` structure, `RB03xx` types, `RB04xx` analyses and `RB09xx` warnings. The syntax codes:
+
+| Code | Meaning | Example |
+| --- | --- | --- |
+| `RB0001` | A character that cannot start a token. | `on Go # comment` |
+| `RB0002` | A string with no closing quote on its line. | `"timeout` |
+| `RB0003` | An escape other than `\"`, `\\`, `\n` and `\t`. | `"a\qb"` |
+| `RB0004` | A number followed by letters that are not a duration unit. | `after 5min`, `after 1.5s` |
+| `RB0005` | An integer that does not fit in an `int`. | `99999999999999999999` |
+| `RB0006` | A name containing `_`. | `type Line_item` |
+| `RB0010` | An unexpected token. | `type A { x int }` |
+| `RB0011` | A `{` or `(` that is never closed. | `state A {` at the end of the file |
+| `RB0012` | A name of the wrong case. | `type order`, `state idle` |
+| `RB0013` | A keyword, or `result`, used as a name. | `var on: int`, `var result: int` |
+| `RB0014` | `done`, `invoke`, `output` or `fail` directly in a machine body. | `machine M() { done -> A }` |
+| `RB0015` | `var` or `event` inside a state. | `state A { var x: int }` |
+| `RB0016` | A machine item at the top level of a file. | `state A {}` outside a machine |
+| `RB0017` | A transition with no target, `set` or `do`. | `on Go` |
+| `RB0018` | A record value as an `after` delay without parentheses. | `after Cfg { ms: 5 } -> A` |
+| `RB0019` | An invoke outcome outside `invoke { }`. | `fail CardDeclined -> Declined` in a state |
+| `RB0020` | Something other than an outcome inside `invoke { }`. | `fail declined`, `on Go -> A` in an invoke |
+| `RB0021` | A block of branches that does not start with `if`, or has a branch after `else`. | `on Go { else -> A }` |
+| `RB0022` | Chained comparisons. | `if a < b < c` |
+| `RB0023` | A `///` comment that documents nothing. | `/// note` above a transition |
+| `RB0024` | A lower-case type name that is not a built-in type. | `x: integer` |
 
 ## Grammar
 
@@ -254,8 +301,8 @@ comment     = "//" … end of line ;        doc comment = "///" … end of line 
 Rules the grammar does not express:
 
 - Every comma-separated list accepts a trailing comma.
-- All keywords are reserved. `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters.
-- A `///` comment documents the declaration, machine, state, event or variable that follows it.
+- All keywords are reserved: `import type enum error extern fn action task machine var event initial state final parallel entry exit on after always done invoke output fail if else set do and or not true false`. `from` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear. `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters.
+- A `///` comment documents the declaration, machine, state, event or variable that follows it. A `///` anywhere else is an error: use `//`.
 - A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust.
 - In a final state, `fail expr` is the machine's failure. Inside `invoke { }`, `fail Upper` is an outcome. The two never appear in the same position.
 - Two `after` transitions in one state are the same trigger only if their delays are the same expression.

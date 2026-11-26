@@ -1,0 +1,162 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - var:
+                name: a
+                ty:
+                  builtin: bool
+                init:
+                  binary:
+                    - or
+                    - binary:
+                        - and
+                        - unary:
+                            - not
+                            - binary:
+                                - ">"
+                                - var: x
+                                - int: 1
+                        - var: y
+                    - var: z
+            - var:
+                name: b
+                ty:
+                  builtin: int
+                init:
+                  binary:
+                    - "-"
+                    - binary:
+                        - "*"
+                        - unary:
+                            - neg
+                            - binary:
+                                - +
+                                - int: 1
+                                - int: 2
+                        - int: 3
+                    - binary:
+                        - "-"
+                        - int: 4
+                        - int: 5
+            - var:
+                name: c
+                ty:
+                  builtin: float
+                init:
+                  float: 1.5
+            - var:
+                name: d
+                ty:
+                  builtin: duration
+                init:
+                  duration:
+                    value: 200
+                    unit: ms
+            - var:
+                name: e
+                ty:
+                  builtin: string
+                init:
+                  string: "tab\tnew\nline"
+            - var:
+                name: f
+                ty:
+                  builtin: bool
+                init:
+                  binary:
+                    - "=="
+                    - bool: true
+                    - bool: false
+            - var:
+                name: g
+                ty:
+                  named: Role
+                init:
+                  enum:
+                    - Role
+                    - Admin
+            - var:
+                name: h
+                ty:
+                  builtin: int
+                init:
+                  field:
+                    - field:
+                        - var: event
+                        - sku
+                    - length
+            - var:
+                name: i
+                ty:
+                  named: R
+                init:
+                  record:
+                    ty: R
+                    fields:
+                      - name: a
+                        value:
+                          call:
+                            name: f
+                            args:
+                              - int: 1
+                              - string: x
+                      - name: b
+                        value:
+                          record:
+                            ty: S
+                            fields:
+                              - name: c
+                                value:
+                                  field:
+                                    - var: error
+                                    - issues
+            - var:
+                name: j
+                ty:
+                  builtin: int
+                init:
+                  unary:
+                    - neg
+                    - field:
+                        - var: x
+                        - y
+            - var:
+                name: k
+                ty:
+                  builtin: bool
+                init:
+                  binary:
+                    - "=="
+                    - unary:
+                        - not
+                        - var: a
+                    - var: b
+            - var:
+                name: l
+                ty:
+                  builtin: duration
+                init:
+                  binary:
+                    - +
+                    - binary:
+                        - +
+                        - duration:
+                            value: 5
+                            unit: m
+                        - duration:
+                            value: 1
+                            unit: h
+                    - duration:
+                        value: 30
+                        unit: s
+comments: []

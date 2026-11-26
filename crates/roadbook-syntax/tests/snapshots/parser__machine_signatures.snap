@@ -1,0 +1,40 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: A
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors: []
+          body: []
+  - decl:
+      name: B
+      kind:
+        machine:
+          params:
+            - name: x
+              ty:
+                builtin: int
+            - name: y
+              ty:
+                named: User
+          returns:
+            named: Out
+          errors:
+            - E
+            - F
+          body: []
+  - decl:
+      name: C
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors:
+            - E
+          body: []
+comments: []
