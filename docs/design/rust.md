@@ -93,6 +93,31 @@ place_order::run_with(&config, &*app, token, draft).await;
 
 A machine that declares no errors returns its output directly from `run`. One that does returns `Result<Output, MachineError>`. `spawn` runs the machine on a Tokio task (the default `tokio` feature); dropping the actor stops it like dropping `run`'s future. An actor's `result()` returns `Result<Output, roadbook::Stopped<MachineError>>`, where `Stopped` is `Failed(error)` or `Cancelled`. It takes the actor, so dropping its future before it is ready drops the actor and stops the run too: `tokio::time::timeout(d, actor.result())` that times out leaves nothing running. A run that ended with a defect resumes unwinding with its `roadbook::Defect` there, and so does an output or error that its Rust type refuses to decode (an extern type's `Deserialize`, say), as a `host` defect.
 
+## Saving and restoring
+
+Specified in [execution.md](../../spec/execution.md#saving-and-restoring) (milestone 6); not implemented yet. A saved snapshot is a `roadbook::Saved`, a `serde` type of [`snapshot.schema.json`](../../spec/snapshot.schema.json), the same JSON the TypeScript runtime saves.
+
+```rust
+// The request handler: restore, one event, run until idle, save.
+let next: roadbook::Saved = order::resume(&*app, saved, Some(order::Event::PaymentReceived { amount: 42 })).await?;
+
+// The first request: spawn, then suspend once idle.
+let created = order::spawn(app.clone(), id).suspend().await;
+
+// Long-lived: restore as an actor, and save one without stopping it.
+let actor = order::restore(app.clone(), saved)?;            // Result<Actor, roadbook::RestoreError>
+let now = actor.save();                                     // the run carries on
+let last = actor.suspend().await;                           // waits until idle, then stops the run
+
+// A chart that changed: the migration is called only when the hashes differ.
+let config = roadbook::Config::new().migrate(|old: serde_json::Value| -> Result<serde_json::Value, String> { … });
+order::resume_with(&config, &*app, saved, None).await?;
+```
+
+- **`resume`** (and `resume_with`) is `restore`, `send` and `suspend`. It returns `Ok(Saved)` whatever the run's status, `done`, `failed` and `cancelled` included, and resumes unwinding with the `roadbook::Defect` if the run ended with one, as `run` does. Dropping its future stops the run hard, as dropping `run`'s does.
+- **`restore`** (and `restore_with`) spawns the restored run like `spawn`, and returns `Err(RestoreError)` before starting anything when the snapshot is refused; `RestoreError::reason()` is `invalid`, `machine`, `ir`, `migration`, `ended` or `ref`.
+- **`actor.save()`** gives the saved snapshot as of the last step; **`actor.suspend()`** takes the actor, waits until the run is idle (or has ended), stops it without exit effects, writes `suspended` to the trace and returns the snapshot.
+
 ## How the driver maps onto Rust
 
 | Statechart concept | Rust |

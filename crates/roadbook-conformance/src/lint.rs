@@ -112,7 +112,9 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
 
         if !runs.contains_key(&id) {
             if kind != "started" && kind != "restored" {
-                bad(format!("run {id} does not begin with `started` or `restored`"));
+                bad(format!(
+                    "run {id} does not begin with `started` or `restored`"
+                ));
             }
             let machine = str_of(r, "machine").to_owned();
             let parent = r.get("parent").and_then(Value::as_str).map(str::to_owned);
@@ -158,7 +160,12 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 if snap["status"] != "running" {
                     bad("restored a snapshot that is not running".to_owned());
                 }
-                let list = |k: &str| snap.get(k).and_then(Value::as_array).cloned().unwrap_or_default();
+                let list = |k: &str| {
+                    snap.get(k)
+                        .and_then(Value::as_array)
+                        .cloned()
+                        .unwrap_or_default()
+                };
                 run.stack = list("active")
                     .iter()
                     .filter_map(|s| s.as_str().map(str::to_owned))
@@ -168,8 +175,13 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 }
                 for inv in list("invokes") {
                     let n = u64_of(&inv, "id");
-                    run.invokes
-                        .insert(n, (str_of(&inv, "state").to_owned(), str_of(&inv, "src").to_owned()));
+                    run.invokes.insert(
+                        n,
+                        (
+                            str_of(&inv, "state").to_owned(),
+                            str_of(&inv, "src").to_owned(),
+                        ),
+                    );
                     run.restarts.push(("invoke", n));
                 }
                 for tm in list("timers") {
@@ -220,8 +232,7 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                             let compound = find_state(&m.root, p)
                                 .is_some_and(|ps| ps.kind == roadbook_ir::StateKind::Compound);
                             !run.stack.iter().any(|a| a == s)
-                                && !(compound
-                                    && run.stack.iter().any(|a| parent_of(a) == Some(p)))
+                                && !(compound && run.stack.iter().any(|a| parent_of(a) == Some(p)))
                         }
                         _ => false,
                     },

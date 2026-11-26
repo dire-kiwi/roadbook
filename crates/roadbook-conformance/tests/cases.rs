@@ -8,8 +8,7 @@
 use std::collections::BTreeSet;
 
 use roadbook_conformance::{
-    FEATURES, LoadedCase, ROOT_RUN, SNAPSHOT_SUFFIX, Status, Step, case_validator,
-    conformance_dir,
+    FEATURES, LoadedCase, ROOT_RUN, SNAPSHOT_SUFFIX, Status, Step, case_validator, conformance_dir,
     lint::{lint, lint_runs},
     load_all, restamp_hashes, restamp_snapshot, schema_errors, snapshot_text, snapshot_validator,
     to_lines, trace_validator,
@@ -92,11 +91,24 @@ fn snapshots_are_canonical_and_valid() {
         }
         for r in c.records.iter().filter(|r| r["kind"] == "restored") {
             let errors = schema_errors(&v, &r["snapshot"]);
-            assert!(errors.is_empty(), "{}: restored snapshot: {errors:#?}", c.name);
+            assert!(
+                errors.is_empty(),
+                "{}: restored snapshot: {errors:#?}",
+                c.name
+            );
         }
-        let named: BTreeSet<String> = c.case.snapshot_names().into_iter().map(|(n, _)| n).collect();
+        let named: BTreeSet<String> = c
+            .case
+            .snapshot_names()
+            .into_iter()
+            .map(|(n, _)| n)
+            .collect();
         let files: BTreeSet<String> = c.snapshots.keys().cloned().collect();
-        assert_eq!(named, files, "{}: the snapshot files are not those the script names", c.name);
+        assert_eq!(
+            named, files,
+            "{}: the snapshot files are not those the script names",
+            c.name
+        );
     }
 }
 
@@ -169,11 +181,7 @@ fn top_level_runs_are_started_in_order() {
             "{}: `requires` must list `snapshots` exactly when the script saves or restores",
             c.name
         );
-        let starts = c
-            .case
-            .script
-            .iter()
-            .any(|s| matches!(s, Step::Start(_)));
+        let starts = c.case.script.iter().any(|s| matches!(s, Step::Start(_)));
         if starts {
             assert!(
                 messaging,
@@ -260,7 +268,9 @@ fn ir_when_present() {
             let text = to_lines(&restamp_hashes(&c.records, ir));
             std::fs::write(c.dir.join("trace.jsonl"), text).unwrap();
             for (name, current) in c.case.snapshot_names() {
-                let Some(text) = c.snapshots.get(&name) else { continue };
+                let Some(text) = c.snapshots.get(&name) else {
+                    continue;
+                };
                 if !current {
                     continue;
                 }
@@ -510,4 +520,57 @@ fn shop_cases_agree_with_the_ir_fixture() {
         checked += 1;
     }
     assert!(checked >= 4);
+}
+
+#[test]
+fn lint_catches_parallel_and_snapshot_mistakes() {
+    let find = |name: &str| cases().into_iter().find(|c| c.name == name).unwrap();
+    let c = find("parallel-two-regions");
+    let (st, ir) = (statuses(&c), c.ir.as_ref());
+    assert!(lint_runs(&c.records, &st, ir).is_empty());
+    let at = |recs: &[Value], kind: &str, state: &str| {
+        recs.iter()
+            .position(|r| r["kind"] == kind && r["state"] == state)
+            .unwrap()
+    };
+    // A second active child of a compound region.
+    let mut two = c.records.clone();
+    let i = at(&two, "entered", "Fork.P.A.A2");
+    let mut extra = two[i].clone();
+    extra["state"] = json!("Fork.P.A.A3");
+    two.insert(i + 1, extra);
+    assert!(!lint_runs(&two, &st, ir).is_empty());
+    // A state that is never exited, so its region enters a second child.
+    let mut stuck = c.records.clone();
+    let i = at(&stuck, "exited", "Fork.P.B.B1");
+    stuck.remove(i);
+    assert!(!lint_runs(&stuck, &st, ir).is_empty());
+    // A parallel state exited before its regions.
+    let c = find("parallel-entry-exit");
+    let (st, ir) = (statuses(&c), c.ir.as_ref());
+    assert!(lint_runs(&c.records, &st, ir).is_empty());
+    let mut early = c.records.clone();
+    let i = at(&early, "exited", "Regions.Both");
+    let r = early.remove(i);
+    early.insert(at(&early, "exited", "Regions.Both.Lone"), r);
+    assert!(!lint_runs(&early, &st, ir).is_empty());
+
+    let c = find("snapshot-timer");
+    let (st, ir) = (statuses(&c), c.ir.as_ref());
+    assert!(lint_runs(&c.records, &st, ir).is_empty());
+    // A restarted timer with an id the snapshot does not have.
+    let mut renamed = c.records.clone();
+    let i = renamed
+        .iter()
+        .position(|r| r["run"] == "r2" && r["kind"] == "timer.started")
+        .unwrap();
+    renamed[i]["timer"] = json!(5);
+    assert!(!lint_runs(&renamed, &st, ir).is_empty());
+    // A record after `suspended`.
+    let mut after = c.records.clone();
+    let i = after.iter().position(|r| r["kind"] == "suspended").unwrap();
+    let mut extra = after[i].clone();
+    extra["kind"] = json!("cancelled");
+    after.insert(i + 1, extra);
+    assert!(!lint_runs(&after, &st, ir).is_empty());
 }

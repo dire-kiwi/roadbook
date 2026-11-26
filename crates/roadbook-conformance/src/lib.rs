@@ -397,9 +397,7 @@ fn step_from_value(v: Value) -> Result<Step, String> {
         if refused.is_some() != (run.is_none() && status.is_none())
             || run.is_some() != status.is_some()
         {
-            return Err(
-                "a restore step has `run` and `status`, or `refused` and neither".into(),
-            );
+            return Err("a restore step has `run` and `status`, or `refused` and neither".into());
         }
         return Ok(Step::Restore(RestoreStep {
             name,
@@ -743,7 +741,11 @@ pub fn restamp_hashes(records: &[Value], ir: &Ir) -> Vec<Value> {
         .iter()
         .map(|r| {
             let mut r = r.clone();
-            let kind = r.get("kind").and_then(Value::as_str).unwrap_or("").to_owned();
+            let kind = r
+                .get("kind")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_owned();
             if kind == "started" || kind == "restored" {
                 let machine = r.get("machine").and_then(Value::as_str).unwrap_or("");
                 if let Some(m) = ir.machines.get(machine) {
@@ -841,6 +843,31 @@ mod tests {
             })
         );
         assert!(matches!(&s[4], Step::Together(v) if v.len() == 2));
+        let saved: Vec<Step> = serde_json::from_value(json!([
+            {"snapshot": "s1"},
+            {"suspend": "s2", "run": "r2"},
+            {"restore": "s1", "run": "r3", "status": "running", "migrate": "s3"},
+            {"restore": "s1", "refused": "ir"}
+        ]))
+        .unwrap();
+        assert_eq!(
+            saved[1],
+            Step::Suspend(SnapshotStep {
+                name: "s2".into(),
+                run: Some("r2".into())
+            })
+        );
+        assert_eq!(
+            saved[2],
+            Step::Restore(RestoreStep {
+                name: "s1".into(),
+                run: Some("r3".into()),
+                status: Some(Status::Running),
+                migrate: Some("s3".into()),
+                refused: None
+            })
+        );
+        assert!(matches!(&saved[3], Step::Restore(r) if r.refused.as_deref() == Some("ir")));
         for bad in [
             json!({"task": "t"}),
             json!({"task": "t", "done": 1, "fail": {"_tag": "E"}}),
@@ -852,6 +879,11 @@ mod tests {
             json!({"start": "Order", "input": {}, "status": "done"}),
             json!({"start": "Order", "run": "r2", "input": {}, "status": "over"}),
             json!({"together": [{"advance": 1}, {"start": "A", "run": "r2", "input": {}, "status": "done"}]}),
+            json!({"restore": "s1"}),
+            json!({"restore": "s1", "run": "r2"}),
+            json!({"restore": "s1", "run": "r2", "status": "done", "refused": "ir"}),
+            json!({"snapshot": 1}),
+            json!({"suspend": "s1", "status": "done"}),
         ] {
             assert!(
                 serde_json::from_value::<Step>(bad.clone()).is_err(),

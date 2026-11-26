@@ -68,9 +68,9 @@ A snapshot is plain JSON, so both runtimes have the same shape and a snapshot ca
 | `timers` | `[{"id", "state", "index", "delay"}]`: the `after` timers that are running, in the order they were started. `index` is the position in the state's `transitions` of the first transition of the timer's `after` block, and `delay` the evaluated delay in milliseconds. |
 | `nextInvoke`, `nextTimer` | The id the next invoke or timer will get. Both start at 1. Ids are never reused within a run, which is what lets the core recognise a stale outcome. |
 | `nextMessage` | The id the next `send` or `emit` effect will get, from 1. A message is named in traces by its sender's run id and this id. |
+| `result` | `null` while running and when cancelled. `{"output": value}` when done (`value` is `null` for a machine that returns nothing), `{"error": value}` when failed, `{"defect": defect}` when the run ended with a [defect](#defects). |
 
 A **saved snapshot**, the form host code stores, is this snapshot with a format version and each timer's due time added ([saving and restoring](#saving-and-restoring)).
-| `result` | `null` while running and when cancelled. `{"output": value}` when done (`value` is `null` for a machine that returns nothing), `{"error": value}` when failed, `{"defect": defect}` when the run ended with a [defect](#defects). |
 
 Within a macrostep the core also keeps two transient values that are not part of the snapshot: the set of states **entered during this macrostep**, and the **completion queue** of compound states that reached a final child and have not been exited since.
 
@@ -203,7 +203,7 @@ selectByWalks(candidates):
   return removeConflicts(enabled)
 ```
 
-Without parallel states there is one active leaf and one walk: the active states, innermost first, and the first enabled transition is taken, as before. With parallel states each region's leaves walk outward on their own, so one input can be taken in several regions. Walks that reach the same state search it again; its guards give the same result, since they are pure and nothing changes during selection, and a state that offered a transition offers the same one, which `enabled` holds once, at the position of the first walk that found it. (An implementation may remember what a state offered; the host functions called are the same either way.)
+Without parallel states there is one active leaf and one walk: the active states, innermost first, and the first enabled transition is taken, as before. With parallel states each region's leaves walk outward on their own, so one input can be taken in several regions. Walks that reach the same state search it again; its guards give the same result, since they are pure and nothing changes during selection, and a state that offered a transition offers the same one, which `enabled` holds once, at the position of the first walk that found it. (An implementation may remember what a state offered: searching again calls the same host functions with the same arguments, so the distinct calls made are the same either way, which is all a conformance case's `fns` table can tell.)
 
 **Conflicts.** The **exit set** of a transition with a target is the active states that are proper descendants of its [domain](#a-microstep); a transition with no target has an empty one. Two transitions **conflict** when their exit sets share a state: taking both would exit it twice.
 
@@ -704,9 +704,9 @@ Restoring checks the saved snapshot against the IR the runtime was given, refuse
 | `invalid` | It does not match `snapshot.schema.json`, or its `snapshotVersion` is not `1`. |
 | `machine` | The IR has no machine named `machine`, or it is not the machine restore was asked to restore (TypeScript `OrderLive.restore` restores only `Order`). |
 | `ir` | Its `ir` is not the machine's hash in the IR and no migration was given, or the migration's result has another hash too. |
-| `migration` | The migration failed (it threw, panicked or returned an error), or its result is `invalid` or of another `machine`. |
+| `migration` | The migration failed: it threw, panicked or returned an error. (Its result is checked from the top, so a result that is not a snapshot is `invalid`, one of another machine `machine`, and one that still has another hash `ir`.) |
 | `ended` | Its `status` is not `running`. |
-| `ref` | The machine has a parameter whose type is, or contains, a `ref` ([not yet specified](#not-yet-specified)). |
+| `ref` | The machine has a parameter of type `ref M`, `ref M?` or `ref M[]`, or an alias of one ([not yet specified](#not-yet-specified)). |
 | `invalid` | It does not fit the machine: `active` is not a configuration in document order (the root first, each other state's parent active, one active child for each active compound state, every child for each active parallel state); an `invokes` entry's state is not active, has no invoke of `src`, or has two entries; a `timers` entry's state is not active, or its `index` is not the first transition of an `after` block of that state, or two entries have the same state and index; an id is repeated or not below `nextInvoke` or `nextTimer`; `input` does not have exactly the machine's parameters, or `vars` has a name that is not one of its variables, or lacks an optional variable; or a value does not decode as its declared type, as a machine's arguments must. |
 
 **Migration.** When the hashes differ, the host may give a **migration**: a function from the old saved snapshot to a new one, both plain JSON (TypeScript `(saved: Json) => Json`, Rust `Fn(serde_json::Value) -> Result<serde_json::Value, String>`). It is called once, and only when the hashes differ. Its result is checked from the top as if it had been given instead, except that a second migration is never applied. It is how a deployment that changed a chart (renamed a variable, added a state) keeps its saved runs: the migration rewrites `ir`, the names, and whatever else must change. It needs no IR of the old chart; it sees only the data.
@@ -732,7 +732,7 @@ restore(ir, saved, run, now, migrated, fns):
   return (snap, commands)
 ```
 
-`now` is the driver's clock, `run` the new run's id, and `migrated` the hash the snapshot had before a migration, or `null` when there was none. `snapshot` in the `restored` record is the saved snapshot as restored, after any migration.
+`now` is the driver's clock, `run` the new run's id, and `migrated` the hash the snapshot had before a migration, or `null` when there was none. Each timer of the core snapshot keeps the `delay` it was saved with, the delay its `after` evaluated to, though a restarted timer's `timer.started` record and command give the time that remains. `snapshot` in the `restored` record is the saved snapshot as restored, after any migration.
 
 - **The work that was running restarts.** Each invoke in `invokes` is started again, with the same id and with its arguments evaluated now, from the snapshot's variables (a function in them is called again). A task runs again from the start, so a machine meant to be saved should wait in states with no `invoke`, or use tasks that are safe to repeat ([semantics](../docs/design/semantics.md#saving-and-restoring)). A child machine runs again from its `start`, as a new child run `<new run id>.<invoke id>`: its own progress, and the messages its parent had sent it, were not saved. An invoke whose outcome had already been taken is not in `invokes` and is not restarted, though its state is active.
 - **Timers keep their deadlines.** A timer not yet due is started again, with the same id, for the time that remains, so it expires at its saved `due`. A timer already due is not started: `timer.fire` queues its expiry at once, before anything else can reach the run's queue, the earliest due first. Its deadline passed while the run was saved, so it is taken before any event given after restoring: an order restored after its payment deadline expires before it sees the payment. Since ids are kept, `nextInvoke` and `nextTimer` do not change; they cannot collide with anything, since the run id is new.
@@ -742,7 +742,7 @@ restore(ir, saved, run, now, migrated, fns):
 
 ### Suspending and resume
 
-A run is **idle** when it is between steps, its queue is empty, and it has no running invoke (`snap.invokes` is empty): it waits only for events, messages and timers, and nothing it started is in flight.
+A run is **idle** when it is between steps, its queue is empty, no cancel request is waiting, and it has no running invoke (`snap.invokes` is empty): it waits only for events, messages and timers, and nothing it started is in flight.
 
 **suspend** waits until the run is idle or has ended, taking inputs meanwhile as always: the outcomes of its invokes and the expiries of its timers, which keep running, so a chart's own `after` bounds how long it waits for a task. The driver checks when suspend is called, and after each step's commands (or `start`'s, or `restore`'s) have been carried out. Then:
 

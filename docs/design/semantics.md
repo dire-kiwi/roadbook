@@ -91,7 +91,7 @@ Roadbook machines are statecharts with the semantics of SCXML, the W3C standard 
 2. **A step.** Find the active states that have a transition for the event, innermost first. Evaluate guards in document order and take the first that holds. Exit states from the innermost outward, run the transition's effects, enter states from the outermost inward. Within each: `set` assignments first, then `do` actions, in the order written. A transition with a target always leaves its source state and enters its target, even when the target is the source itself or one of its children (an external transition, in SCXML's terms), so the states it re-enters restart their work. The one exception is a transition written in the machine body, which does not leave the machine itself. A transition with no target is internal: nothing is left, entered or restarted.
 3. **Settling.** After a step, `always` transitions and `done` transitions are taken until none applies, an enabled `always` before any `done`. The machine is then stable and takes the next event.
 4. **Unhandled events are dropped and recorded.** An event with no enabled transition changes nothing. It appears in the trace as dropped, so it is visible. A machine can opt into `strict`, which turns a dropped event into a failure.
-5. **Parallel states** are active in all regions at once. Each region may take a transition for the same event. If two would exit the same state, the one in the earlier region wins.
+5. **Parallel states** are active in all regions at once. Entering one enters every region, in the order they are written; leaving it exits them all, the last region first. Each region looks for a transition for the event on its own, from its innermost state outward, and the transitions found are taken together, in one step: all their exits, then all their effects in region order, then all their entries. If two would exit the same state, the one in the earlier region wins, unless the other belongs to a state inside the first one's, which wins as the inner state always does. A transition from one region into another leaves the parallel state and enters it again. `always` transitions in several regions are likewise taken together, and the parallel state is done (its `done` is enabled) when every region is in a final state.
 6. **Final.** Reaching a final child completes the parent, which enables the parent's `done` transition. Reaching a top-level final state ends the machine with its `output` or `fail`, evaluated on entering it; then every active state is exited, so the machine's own `exit` effects run last.
 
 ### Work is tied to states
@@ -141,14 +141,20 @@ Which lifetime an instance has depends on what it models:
 For the third row, an instance does not have to stay in memory. A snapshot is plain data with a schema, and the core's `step` function is pure, so a request handler can load the snapshot for an id, apply one event, wait for the machine to settle, save the new snapshot and reply:
 
 ```ts
-const snapshot = yield* store.load(orderId)                       // decoded with the generated schema
+const snapshot = yield* store.load(orderId)                       // a Roadbook.Saved, plain JSON
 const next = yield* OrderLive.resume(snapshot, { _tag: "PaymentReceived", amount })
 yield* store.save(orderId, next)
 ```
 
+`resume` restores the run from the snapshot, gives it the event, and runs it until it is **idle**: its queue is empty and none of the tasks or child machines it started is still running. Then it stops the run, without running any exit effect, and returns the new snapshot. So the request waits for the work the event started (the shipping task a payment starts, say), but not for timers: those are saved with their deadlines, and a timer whose deadline passed while the run was saved fires as soon as it is restored, before the event. The first request of an entity spawns it and suspends it the same way (`actor.suspend`); a run that reaches a final state is returned with that status and its result. The precise rules, and the JSON Schema of the saved form, are in [`spec/execution.md`](../../spec/execution.md#saving-and-restoring).
+
 xstate offers the same pattern, with `actor.getPersistedSnapshot()` and `createActor(machine, { snapshot })`, and with the pure `transition(machine, snapshot, event)` for servers that keep no actors at all.
 
-Two rules make this safe. A snapshot records the IR hash it was taken with, and restoring it into a changed chart is refused unless a migration is supplied. And a snapshot taken while a task is running restarts that task on restore, so a machine meant to be saved should wait in states that have no `invoke`, or use tasks that are safe to repeat. Surviving a crash in the middle of a task without repeating it is durable execution, which is a later driver and not part of this.
+Three rules make this safe.
+
+- **A snapshot records the IR hash it was taken with**, and restoring it into a changed chart is refused unless a migration is supplied: a host function from the old snapshot to the new one, as plain data. Snapshots are the same JSON in both runtimes, so one saved by a TypeScript service restores in a Rust one.
+- **A snapshot taken while a task is running restarts that task on restore**, with its arguments evaluated again, and a child machine running then starts again from the beginning. So a machine meant to be saved should wait in states that have no `invoke`, or use tasks that are safe to repeat; `resume` itself never saves a running task, since it waits for them. Surviving a crash in the middle of a task without repeating it is durable execution, which is a later driver and not part of this.
+- **A restored run is a new run.** It gets a new run id, and what was queued for the old one is not in the snapshot. A machine that holds a `ref` to a peer cannot be restored yet, since the peer's id belongs to the process that saved it.
 
 ## A pure core and a driver
 
