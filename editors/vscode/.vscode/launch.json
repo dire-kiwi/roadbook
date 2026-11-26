@@ -1,0 +1,15 @@
+{
+  // F5 with this folder (editors/vscode) open: a VS Code window with the extension loaded from
+  // source, on the repository's examples.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run the Roadbook extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}", "${workspaceFolder}/../../examples"],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "preLaunchTask": "build"
+    }
+  ]
+}

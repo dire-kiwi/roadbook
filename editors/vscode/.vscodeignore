@@ -1,0 +1,10 @@
+# Everything the packaged extension does not need: it runs from dist/ (esbuild bundles the
+# language client) with the grammar, the language configuration and the README.
+**
+!dist/extension.js
+!dist/bridge.js
+!dist/roadbook-viewer.js
+!syntaxes/**
+!language-configuration.json
+!package.json
+!README.md

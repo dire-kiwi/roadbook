@@ -1,0 +1,266 @@
+>// Shared data shapes, errors and host functions for the shop example.
+#^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.double-slash.roadbook
+>
+>type LineItem   { sku: string, qty: int }
+#^^^^ storage.type.type.roadbook
+#     ^^^^^^^^ entity.name.type.roadbook
+#                ^ punctuation.section.braces.roadbook
+#                  ^^^ variable.other.property.roadbook
+#                     ^ punctuation.separator.colon.roadbook
+#                       ^^^^^^ support.type.primitive.roadbook
+#                             ^ punctuation.separator.comma.roadbook
+#                               ^^^ variable.other.property.roadbook
+#                                  ^ punctuation.separator.colon.roadbook
+#                                    ^^^ support.type.primitive.roadbook
+#                                        ^ punctuation.section.braces.roadbook
+>type OrderDraft { items: LineItem[], coupon: string? }
+#^^^^ storage.type.type.roadbook
+#     ^^^^^^^^^^ entity.name.type.roadbook
+#                ^ punctuation.section.braces.roadbook
+#                  ^^^^^ variable.other.property.roadbook
+#                       ^ punctuation.separator.colon.roadbook
+#                         ^^^^^^^^ entity.name.type.roadbook
+#                                 ^^ keyword.operator.type.list.roadbook
+#                                   ^ punctuation.separator.comma.roadbook
+#                                     ^^^^^^ variable.other.property.roadbook
+#                                           ^ punctuation.separator.colon.roadbook
+#                                             ^^^^^^ support.type.primitive.roadbook
+#                                                   ^ keyword.operator.type.optional.roadbook
+#                                                     ^ punctuation.section.braces.roadbook
+>type Order      { id: string, items: LineItem[], totalCents: int }
+#^^^^ storage.type.type.roadbook
+#     ^^^^^ entity.name.type.roadbook
+#                ^ punctuation.section.braces.roadbook
+#                  ^^ variable.other.property.roadbook
+#                    ^ punctuation.separator.colon.roadbook
+#                      ^^^^^^ support.type.primitive.roadbook
+#                            ^ punctuation.separator.comma.roadbook
+#                              ^^^^^ variable.other.property.roadbook
+#                                   ^ punctuation.separator.colon.roadbook
+#                                     ^^^^^^^^ entity.name.type.roadbook
+#                                             ^^ keyword.operator.type.list.roadbook
+#                                               ^ punctuation.separator.comma.roadbook
+#                                                 ^^^^^^^^^^ variable.other.property.roadbook
+#                                                           ^ punctuation.separator.colon.roadbook
+#                                                             ^^^ support.type.primitive.roadbook
+#                                                                 ^ punctuation.section.braces.roadbook
+>type Receipt    { chargeId: string, amountCents: int }
+#^^^^ storage.type.type.roadbook
+#     ^^^^^^^ entity.name.type.roadbook
+#                ^ punctuation.section.braces.roadbook
+#                  ^^^^^^^^ variable.other.property.roadbook
+#                          ^ punctuation.separator.colon.roadbook
+#                            ^^^^^^ support.type.primitive.roadbook
+#                                  ^ punctuation.separator.comma.roadbook
+#                                    ^^^^^^^^^^^ variable.other.property.roadbook
+#                                               ^ punctuation.separator.colon.roadbook
+#                                                 ^^^ support.type.primitive.roadbook
+#                                                     ^ punctuation.section.braces.roadbook
+>type User       { id: string, role: Role }
+#^^^^ storage.type.type.roadbook
+#     ^^^^ entity.name.type.roadbook
+#                ^ punctuation.section.braces.roadbook
+#                  ^^ variable.other.property.roadbook
+#                    ^ punctuation.separator.colon.roadbook
+#                      ^^^^^^ support.type.primitive.roadbook
+#                            ^ punctuation.separator.comma.roadbook
+#                              ^^^^ variable.other.property.roadbook
+#                                  ^ punctuation.separator.colon.roadbook
+#                                    ^^^^ entity.name.type.roadbook
+#                                         ^ punctuation.section.braces.roadbook
+>enum Role       { Customer, Admin }
+#^^^^ storage.type.enum.roadbook
+#     ^^^^ entity.name.type.enum.roadbook
+#                ^ punctuation.section.braces.roadbook
+#                  ^^^^^^^^ entity.name.type.roadbook
+#                          ^ punctuation.separator.comma.roadbook
+#                            ^^^^^ entity.name.type.roadbook
+#                                  ^ punctuation.section.braces.roadbook
+>
+>/// What the HTTP layer sends back. `body` is any JSON value.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+#                                    ^^^^^^ comment.line.documentation.roadbook markup.inline.raw.roadbook
+#                                          ^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>type ApiResponse { status: int, body: json }
+#^^^^ storage.type.type.roadbook
+#     ^^^^^^^^^^^ entity.name.type.roadbook
+#                 ^ punctuation.section.braces.roadbook
+#                   ^^^^^^ variable.other.property.roadbook
+#                         ^ punctuation.separator.colon.roadbook
+#                           ^^^ support.type.primitive.roadbook
+#                              ^ punctuation.separator.comma.roadbook
+#                                ^^^^ variable.other.property.roadbook
+#                                    ^ punctuation.separator.colon.roadbook
+#                                      ^^^^ support.type.primitive.roadbook
+#                                           ^ punctuation.section.braces.roadbook
+>
+>error Unauthenticated
+#^^^^^ storage.type.error.roadbook
+#      ^^^^^^^^^^^^^^^ entity.name.type.error.roadbook
+>error ValidationFailed   { issues: string[] }
+#^^^^^ storage.type.error.roadbook
+#      ^^^^^^^^^^^^^^^^ entity.name.type.error.roadbook
+#                         ^ punctuation.section.braces.roadbook
+#                           ^^^^^^ variable.other.property.roadbook
+#                                 ^ punctuation.separator.colon.roadbook
+#                                   ^^^^^^ support.type.primitive.roadbook
+#                                         ^^ keyword.operator.type.list.roadbook
+#                                            ^ punctuation.section.braces.roadbook
+>error CardDeclined       { reason: string }
+#^^^^^ storage.type.error.roadbook
+#      ^^^^^^^^^^^^ entity.name.type.error.roadbook
+#                         ^ punctuation.section.braces.roadbook
+#                           ^^^^^^ variable.other.property.roadbook
+#                                 ^ punctuation.separator.colon.roadbook
+#                                   ^^^^^^ support.type.primitive.roadbook
+#                                          ^ punctuation.section.braces.roadbook
+>error GatewayUnavailable
+#^^^^^ storage.type.error.roadbook
+#      ^^^^^^^^^^^^^^^^^^ entity.name.type.error.roadbook
+>
+>// Tasks: effectful, fallible, cancellable. Implemented in Rust / TypeScript.
+#^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.double-slash.roadbook
+>task authenticate(token: string)          -> User    ! Unauthenticated
+#^^^^ meta.declaration.function.roadbook storage.type.task.roadbook
+#     ^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#                 ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#                  ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                       ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                         ^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                               ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                          ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                             ^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+#                                                     ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
+#                                                       ^^^^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+>task validateOrder(draft: OrderDraft)     -> Order   ! ValidationFailed
+#^^^^ meta.declaration.function.roadbook storage.type.task.roadbook
+#     ^^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#                  ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#                   ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                        ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                          ^^^^^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                    ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                          ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                             ^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+#                                                     ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
+#                                                       ^^^^^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+>task priceOrder(order: Order, user: User) -> Order
+#^^^^ meta.declaration.function.roadbook storage.type.task.roadbook
+#     ^^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#               ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#                ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                     ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                       ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                            ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                              ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                  ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                    ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                        ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                          ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                             ^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+>task chargeCard(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUnavailable
+#^^^^ meta.declaration.function.roadbook storage.type.task.roadbook
+#     ^^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#               ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#                ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                     ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                       ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                            ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                              ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                  ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                    ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                        ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                          ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                             ^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+#                                                     ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
+#                                                       ^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+#                                                                    ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
+#                                                                      ^^^^^^^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+>
+>// Actions: effectful, cannot fail, awaited in order.
+#^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.double-slash.roadbook
+>action sendConfirmationEmail(user: User, order: Order, receipt: Receipt)
+#^^^^^^ meta.declaration.function.roadbook storage.type.action.roadbook
+#       ^^^^^^^^^^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#                            ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#                             ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                 ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                   ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                       ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                                         ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                              ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                                ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                                     ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                                                       ^^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                                              ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                                                ^^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                                                       ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+>action audit(what: string, order: Order)
+#^^^^^^ meta.declaration.function.roadbook storage.type.action.roadbook
+#       ^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#            ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#             ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                 ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                   ^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                         ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                           ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                  ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                       ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+>
+>// Functions: pure and synchronous.
+#^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.double-slash.roadbook
+>fn retryDelay(attempt: int)                     -> duration
+#^^ meta.declaration.function.roadbook storage.type.fn.roadbook
+#   ^^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#             ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#              ^^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                     ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                       ^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                          ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                                ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                                   ^^^^^^^^ meta.declaration.function.roadbook support.type.primitive.roadbook
+>fn confirmation(order: Order, receipt: Receipt) -> ApiResponse
+#^^ meta.declaration.function.roadbook storage.type.fn.roadbook
+#   ^^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#               ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#                ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                     ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                       ^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                            ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                              ^^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                     ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                       ^^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                              ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                                ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                                   ^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+>fn invalid(issues: string[])                    -> ApiResponse
+#^^ meta.declaration.function.roadbook storage.type.fn.roadbook
+#   ^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#          ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#           ^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                 ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                   ^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                         ^^ meta.declaration.function.roadbook meta.parameters.roadbook keyword.operator.type.list.roadbook
+#                           ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                                ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                                   ^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+>fn problem(status: int, code: string)           -> ApiResponse
+#^^ meta.declaration.function.roadbook storage.type.fn.roadbook
+#   ^^^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#          ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#           ^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                 ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                   ^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                      ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                        ^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                            ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                              ^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                                    ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                                ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#                                                   ^^^^^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook

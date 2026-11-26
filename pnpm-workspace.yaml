@@ -1,6 +1,7 @@
 packages:
   - "packages/*"
   - "examples/*"
+  - "editors/vscode"
 allowBuilds:
   esbuild: true
 minimumReleaseAgeExclude:

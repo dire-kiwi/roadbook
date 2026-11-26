@@ -1,0 +1,134 @@
+{
+  "name": "roadbook-vscode",
+  "displayName": "Roadbook",
+  "description": "Roadbook statecharts (.road): highlighting, diagnostics, navigation and formatting from `roadbook lsp`, and a live diagram preview",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "roadbook",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Formatters",
+    "Visualization"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onWebviewPanel:roadbook.preview"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "roadbook",
+        "aliases": [
+          "Roadbook",
+          "roadbook"
+        ],
+        "extensions": [
+          ".road"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "roadbook",
+        "scopeName": "source.roadbook",
+        "path": "./syntaxes/roadbook.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "roadbook.showPreviewToSide",
+        "title": "Open Preview to the Side",
+        "category": "Roadbook",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "roadbook.restartServer",
+        "title": "Restart Language Server",
+        "category": "Roadbook"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "roadbook.showPreviewToSide",
+          "when": "editorLangId == roadbook",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "roadbook.showPreviewToSide",
+          "when": "editorLangId == roadbook"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "roadbook.showPreviewToSide",
+        "key": "ctrl+k v",
+        "mac": "cmd+k v",
+        "when": "editorLangId == roadbook"
+      }
+    ],
+    "configuration": {
+      "title": "Roadbook",
+      "properties": {
+        "roadbook.path": {
+          "type": "string",
+          "default": "roadbook",
+          "scope": "machine-overridable",
+          "markdownDescription": "The `roadbook` command line. A bare name is looked up on `PATH`; a relative path is taken from the first workspace folder. `${workspaceFolder}` and a leading `~` are expanded."
+        },
+        "roadbook.preview.updateOnChange": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Update the preview as you type (debounced), not only on save. Unsaved text is compiled from a hidden temporary file next to the chart, so its imports resolve."
+        },
+        "roadbook.preview.debounce": {
+          "type": "number",
+          "default": 300,
+          "minimum": 0,
+          "markdownDescription": "Milliseconds to wait after the last change before updating the preview."
+        },
+        "roadbook.preview.revealSource": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Clicking a state or a transition in the preview reveals its line in the editor."
+        },
+        "roadbook.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "markdownDescription": "Log the messages between VS Code and `roadbook lsp` in the Roadbook output channel."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run && node test/integration/run.mjs"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^11.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.7",
+    "@types/vscode": "~1.100.0",
+    "@vscode/test-electron": "^3.1.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
+  }
+}

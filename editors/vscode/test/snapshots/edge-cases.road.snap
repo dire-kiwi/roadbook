@@ -1,0 +1,265 @@
+>// Constructs the examples do not show. Not a `.road` file, so `roadbook check` leaves it alone.
+#^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.double-slash.roadbook
+>//// four slashes is an ordinary comment
+#^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.double-slash.roadbook
+>/// A doc comment with `code` in it.
+#^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#   ^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+#                       ^^^^^^ comment.line.documentation.roadbook markup.inline.raw.roadbook
+#                             ^^^^^^^ comment.line.documentation.roadbook
+>extern type Clock
+#^^^^^^ storage.modifier.extern.roadbook
+#       ^^^^ storage.type.type.roadbook
+#            ^^^^^ entity.name.type.roadbook
+>enum Level { Low, High }
+#^^^^ storage.type.enum.roadbook
+#     ^^^^^ entity.name.type.enum.roadbook
+#           ^ punctuation.section.braces.roadbook
+#             ^^^ entity.name.type.roadbook
+#                ^ punctuation.separator.comma.roadbook
+#                  ^^^^ entity.name.type.roadbook
+#                       ^ punctuation.section.braces.roadbook
+>type Settings { label: string?, ids: int[]?, peer: ref Worker, ratio: float }
+#^^^^ storage.type.type.roadbook
+#     ^^^^^^^^ entity.name.type.roadbook
+#              ^ punctuation.section.braces.roadbook
+#                ^^^^^ variable.other.property.roadbook
+#                     ^ punctuation.separator.colon.roadbook
+#                       ^^^^^^ support.type.primitive.roadbook
+#                             ^ keyword.operator.type.optional.roadbook
+#                              ^ punctuation.separator.comma.roadbook
+#                                ^^^ variable.other.property.roadbook
+#                                   ^ punctuation.separator.colon.roadbook
+#                                     ^^^ support.type.primitive.roadbook
+#                                        ^^ keyword.operator.type.list.roadbook
+#                                          ^ keyword.operator.type.optional.roadbook
+#                                           ^ punctuation.separator.comma.roadbook
+#                                             ^^^^ variable.other.property.roadbook
+#                                                 ^ punctuation.separator.colon.roadbook
+#                                                   ^^^ storage.modifier.ref.roadbook
+#                                                       ^^^^^^ entity.name.type.roadbook
+#                                                             ^ punctuation.separator.comma.roadbook
+#                                                               ^^^^^ variable.other.property.roadbook
+#                                                                    ^ punctuation.separator.colon.roadbook
+#                                                                      ^^^^^ support.type.primitive.roadbook
+#                                                                            ^ punctuation.section.braces.roadbook
+>
+>task fetch(
+#^^^^ meta.declaration.function.roadbook storage.type.task.roadbook
+#     ^^^^^ meta.declaration.function.roadbook entity.name.function.roadbook
+#          ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+>  url: string,
+#  ^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#     ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#       ^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#             ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+>  retries: int,
+#  ^^^^^^^ meta.declaration.function.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#         ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#           ^^^ meta.declaration.function.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#              ^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+>) -> json ! Timeout | Refused
+#^ meta.declaration.function.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#  ^^ meta.declaration.function.roadbook keyword.operator.arrow.roadbook
+#     ^^^^ meta.declaration.function.roadbook support.type.primitive.roadbook
+#          ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
+#            ^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+#                    ^ meta.declaration.function.roadbook keyword.operator.error.roadbook
+#                      ^^^^^^^ meta.declaration.function.roadbook entity.name.type.roadbook
+>
+>machine Worker(settings: Settings, peer: ref Worker) {
+#^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
+#        ^^^^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
+#              ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#               ^^^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                       ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                         ^^^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                 ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                                   ^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                       ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                         ^^^ meta.declaration.machine.roadbook meta.parameters.roadbook storage.modifier.ref.roadbook
+#                                             ^^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                                   ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                                     ^ punctuation.section.braces.roadbook
+>  var ratio: float = 0.5
+#  ^^^ storage.type.var.roadbook
+#      ^^^^^ variable.other.definition.roadbook
+#           ^ punctuation.separator.colon.roadbook
+#             ^^^^^ support.type.primitive.roadbook
+#                   ^ keyword.operator.assignment.roadbook
+#                     ^^^ constant.numeric.float.roadbook
+>  var text: string = "tab\t quote\" backslash\\ newline\n bad\q"
+#  ^^^ storage.type.var.roadbook
+#      ^^^^ variable.other.definition.roadbook
+#          ^ punctuation.separator.colon.roadbook
+#            ^^^^^^ support.type.primitive.roadbook
+#                   ^ keyword.operator.assignment.roadbook
+#                     ^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#                      ^^^ string.quoted.double.roadbook
+#                         ^^ string.quoted.double.roadbook constant.character.escape.roadbook
+#                           ^^^^^^ string.quoted.double.roadbook
+#                                 ^^ string.quoted.double.roadbook constant.character.escape.roadbook
+#                                   ^^^^^^^^^^ string.quoted.double.roadbook
+#                                             ^^ string.quoted.double.roadbook constant.character.escape.roadbook
+#                                               ^^^^^^^^ string.quoted.double.roadbook
+#                                                       ^^ string.quoted.double.roadbook constant.character.escape.roadbook
+#                                                         ^^^^ string.quoted.double.roadbook
+#                                                             ^^ string.quoted.double.roadbook invalid.illegal.unknown-escape.roadbook
+#                                                               ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+>  emits Ready { level: Level }
+#  ^^^^^ storage.type.emits.roadbook
+#        ^^^^^ entity.name.type.event.roadbook
+#              ^ punctuation.section.braces.roadbook
+#                ^^^^^ variable.other.property.roadbook
+#                     ^ punctuation.separator.colon.roadbook
+#                       ^^^^^ entity.name.type.roadbook
+#                             ^ punctuation.section.braces.roadbook
+>
+>  parallel state Running {
+#  ^^^^^^^^ storage.modifier.parallel.roadbook
+#           ^^^^^ storage.type.state.roadbook
+#                 ^^^^^^^ entity.name.type.state.roadbook
+#                         ^ punctuation.section.braces.roadbook
+>    state A {
+#    ^^^^^ storage.type.state.roadbook
+#          ^ entity.name.type.state.roadbook
+#            ^ punctuation.section.braces.roadbook
+>      on * -> Running.B
+#      ^^ keyword.control.trigger.roadbook
+#         ^ keyword.operator.wildcard.roadbook
+#           ^^ keyword.operator.arrow.roadbook
+#              ^^^^^^^^^ entity.name.type.state.roadbook
+>      always if not (ratio >= 1.25 and ratio != -2.0) or true -> B set ratio = ratio * 2.0
+#      ^^^^^^ keyword.control.always.roadbook
+#             ^^ keyword.control.if.roadbook
+#                ^^^ keyword.operator.logical.roadbook
+#                    ^ punctuation.section.parens.roadbook
+#                     ^^^^^ variable.other.roadbook
+#                           ^^ keyword.operator.comparison.roadbook
+#                              ^^^^ constant.numeric.float.roadbook
+#                                   ^^^ keyword.operator.logical.roadbook
+#                                       ^^^^^ variable.other.roadbook
+#                                             ^^ keyword.operator.comparison.roadbook
+#                                                ^ keyword.operator.arithmetic.roadbook
+#                                                 ^^^ constant.numeric.float.roadbook
+#                                                    ^ punctuation.section.parens.roadbook
+#                                                      ^^ keyword.operator.logical.roadbook
+#                                                         ^^^^ constant.language.boolean.roadbook
+#                                                              ^^ keyword.operator.arrow.roadbook
+#                                                                 ^ entity.name.type.state.roadbook
+#                                                                   ^^^ keyword.other.effect.roadbook
+#                                                                       ^^^^^ variable.other.roadbook
+#                                                                             ^ keyword.operator.assignment.roadbook
+#                                                                               ^^^^^ variable.other.roadbook
+#                                                                                     ^ keyword.operator.arithmetic.roadbook
+#                                                                                       ^^^ constant.numeric.float.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>    state B {
+#    ^^^^^ storage.type.state.roadbook
+#          ^ entity.name.type.state.roadbook
+#            ^ punctuation.section.braces.roadbook
+>      entry do audit("b"), log(ratio)
+#      ^^^^^ keyword.control.entry.roadbook
+#            ^^ keyword.other.effect.roadbook
+#               ^^^^^ entity.name.function.call.roadbook
+#                    ^ punctuation.section.parens.roadbook
+#                     ^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#                      ^ string.quoted.double.roadbook
+#                       ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+#                        ^ punctuation.section.parens.roadbook
+#                         ^ punctuation.separator.comma.roadbook
+#                           ^^^ entity.name.function.call.roadbook
+#                              ^ punctuation.section.parens.roadbook
+#                               ^^^^^ variable.other.roadbook
+#                                    ^ punctuation.section.parens.roadbook
+>      after 250ms -> A
+#      ^^^^^ keyword.control.after.roadbook
+#            ^^^ constant.numeric.duration.roadbook
+#               ^^ constant.numeric.duration.roadbook keyword.other.unit.roadbook
+#                  ^^ keyword.operator.arrow.roadbook
+#                     ^ entity.name.type.state.roadbook
+>      after 2h { if ratio < 1.0 -> A else -> B }
+#      ^^^^^ keyword.control.after.roadbook
+#            ^ constant.numeric.duration.roadbook
+#             ^ constant.numeric.duration.roadbook keyword.other.unit.roadbook
+#               ^ punctuation.section.braces.roadbook
+#                 ^^ keyword.control.if.roadbook
+#                    ^^^^^ variable.other.roadbook
+#                          ^ keyword.operator.comparison.roadbook
+#                            ^^^ constant.numeric.float.roadbook
+#                                ^^ keyword.operator.arrow.roadbook
+#                                   ^ entity.name.type.state.roadbook
+#                                     ^^^^ keyword.control.else.roadbook
+#                                          ^^ keyword.operator.arrow.roadbook
+#                                             ^ entity.name.type.state.roadbook
+#                                               ^ punctuation.section.braces.roadbook
+>      on peer.Ready if event.level == Level.High -> A emit Ready { level: Level.Low }
+#      ^^ keyword.control.trigger.roadbook
+#         ^^^^ variable.other.roadbook
+#             ^ punctuation.accessor.roadbook
+#              ^^^^^ entity.name.type.event.roadbook
+#                    ^^ keyword.control.if.roadbook
+#                       ^^^^^ variable.language.roadbook
+#                            ^ punctuation.accessor.roadbook
+#                             ^^^^^ variable.other.property.roadbook
+#                                   ^^ keyword.operator.comparison.roadbook
+#                                      ^^^^^ entity.name.type.roadbook
+#                                           ^ punctuation.accessor.roadbook
+#                                            ^^^^ variable.other.enummember.roadbook
+#                                                 ^^ keyword.operator.arrow.roadbook
+#                                                    ^ entity.name.type.state.roadbook
+#                                                      ^^^^ keyword.other.effect.roadbook
+#                                                           ^^^^^ entity.name.type.event.roadbook
+#                                                                 ^ punctuation.section.braces.roadbook
+#                                                                   ^^^^^ variable.other.property.roadbook
+#                                                                        ^ punctuation.separator.colon.roadbook
+#                                                                          ^^^^^ entity.name.type.roadbook
+#                                                                               ^ punctuation.accessor.roadbook
+#                                                                                ^^^ variable.other.enummember.roadbook
+#                                                                                    ^ punctuation.section.braces.roadbook
+>      invoke Child(settings) as child {
+#      ^^^^^^ keyword.control.invoke.roadbook
+#             ^^^^^ entity.name.type.machine.roadbook
+#                  ^ punctuation.section.parens.roadbook
+#                   ^^^^^^^^ variable.other.roadbook
+#                           ^ punctuation.section.parens.roadbook
+#                             ^^ keyword.control.as.roadbook
+#                                ^^^^^ variable.other.definition.roadbook
+#                                      ^ punctuation.section.braces.roadbook
+>        done -> A send peer.Ping {}
+#        ^^^^ keyword.control.done.roadbook
+#             ^^ keyword.operator.arrow.roadbook
+#                ^ entity.name.type.state.roadbook
+#                  ^^^^ keyword.other.effect.roadbook
+#                       ^^^^ variable.other.roadbook
+#                           ^ punctuation.accessor.roadbook
+#                            ^^^^ entity.name.type.event.roadbook
+#                                 ^ punctuation.section.braces.roadbook
+#                                  ^ punctuation.section.braces.roadbook
+>        fail * -> B
+#        ^^^^ keyword.control.fail.roadbook
+#             ^ keyword.operator.wildcard.roadbook
+#               ^^ keyword.operator.arrow.roadbook
+#                  ^ entity.name.type.state.roadbook
+>      }
+#      ^ punctuation.section.braces.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>  final state Broken { fail error }
+#  ^^^^^ storage.modifier.final.roadbook
+#        ^^^^^ storage.type.state.roadbook
+#              ^^^^^^ entity.name.type.state.roadbook
+#                     ^ punctuation.section.braces.roadbook
+#                       ^^^^ keyword.control.fail.roadbook
+#                            ^^^^^ variable.language.roadbook
+#                                  ^ punctuation.section.braces.roadbook
+>}
+#^ punctuation.section.braces.roadbook
+>"unterminated
+#^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+# ^^^^^^^^^^^^ string.quoted.double.roadbook
