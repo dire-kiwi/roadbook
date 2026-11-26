@@ -23,10 +23,16 @@ fn charts(n: usize) -> Vec<(&'static str, String)> {
     let leaf = "  final state S {}\n";
     let init = |e: String| machine(&format!("int = {e}"), leaf);
     vec![
-        ("parentheses", init(format!("{}1{}", "(".repeat(n - 1), ")".repeat(n - 1)))),
+        (
+            "parentheses",
+            init(format!("{}1{}", "(".repeat(n - 1), ")".repeat(n - 1))),
+        ),
         ("operators", init(vec!["1"; n].join(" + "))),
         ("states", nested_states(n)),
-        ("type suffixes", machine(&format!("int{}", "[]".repeat(n)), leaf)),
+        (
+            "type suffixes",
+            machine(&format!("int{}", "[]".repeat(n)), leaf),
+        ),
     ]
 }
 

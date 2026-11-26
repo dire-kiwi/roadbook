@@ -28,6 +28,7 @@ pub fn format(src: &str) -> Result<String, Vec<Diagnostic>> {
         cursor: 0,
         at_block_start: true,
         lines: Vec::new(),
+        carried: None,
     };
     f.file(&file);
     Ok(render(&f.lines))
@@ -78,6 +79,9 @@ struct Formatter<'a> {
     cursor: u32,
     at_block_start: bool,
     lines: Vec<Line>,
+    /// A comment that ends the source line of a closing bracket, to put at the end of the next
+    /// row: the row that starts with that bracket.
+    carried: Option<String>,
 }
 
 fn off(s: Span) -> (u32, u32) {
@@ -161,8 +165,32 @@ impl Formatter<'_> {
         self.gap(start);
         self.comments_before(end, indent, false);
         self.push(indent, cells, suffix, group, measured);
+        if let (Some(c), Some(Line::Row(row))) = (self.carried.take(), self.lines.last_mut()) {
+            row.comment = Some(c);
+        }
         self.cursor = self.cursor.max(end);
         self.trailing();
+    }
+
+    /// The comments after the closing bracket `close` of a multi-line list, when the row that
+    /// starts with the bracket also holds what follows it (`) {`, `} from "…"`). Those
+    /// comments are inside that row, and would move before it, into the list, and be indented
+    /// as list lines by the next run. So a comment on the bracket's line is kept for the end
+    /// of the row, and those on the lines after it go before the bracket now, at `indent`.
+    fn comments_after_close(&mut self, close: Token, indent: usize) {
+        if let Some(c) = self.comments.get(self.next)
+            && c.span.start.offset >= close.span.end.offset
+            && c.span.start.line == close.span.end.line
+        {
+            self.carried = Some(c.text.clone());
+            self.next += 1;
+        }
+        let i = self
+            .tokens
+            .partition_point(|t| t.span.start.offset <= close.span.start.offset);
+        if let Some(t) = self.tokens.get(i) {
+            self.comments_before(t.span.start.offset, indent, false);
+        }
     }
 
     fn trailing(&mut self) {
@@ -170,7 +198,9 @@ impl Formatter<'_> {
             return;
         };
         let start = c.span.start.offset;
-        if start < self.cursor {
+        if start < self.cursor
+            || matches!(self.lines.last(), Some(Line::Row(r)) if r.comment.is_some())
+        {
             return;
         }
         let between = &self.src[self.cursor as usize..start as usize];
@@ -264,6 +294,8 @@ impl Formatter<'_> {
         );
         let items: Vec<_> = i.names.iter().map(|n| (n.span, n.name.clone())).collect();
         self.list_lines(INDENT, &items);
+        self.comments_before(close.span.start.offset, INDENT, true);
+        self.comments_after_close(close, INDENT);
         self.close_block(
             (close.span.start.offset, i.span.end.offset),
             0,
@@ -383,6 +415,7 @@ impl Formatter<'_> {
             Punct::RParen,
         );
         self.comments_before(close.span.start.offset, indent + INDENT, true);
+        self.comments_after_close(close, indent + INDENT);
         // The caller emits the line starting with `)`; it must not get a blank line before it.
         self.at_block_start = true;
         self.cursor = self.cursor.max(close.span.start.offset);
