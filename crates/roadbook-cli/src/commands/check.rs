@@ -37,6 +37,7 @@ pub fn run(args: Args) -> Exit {
     };
     let options = Options {
         warn_invoke_timeout: args.warn.contains(&Warning::InvokeTimeout),
+        ..ws.options()
     };
     match roadbook_compiler::check(&mut ws.loader(), &files, &options) {
         Ok(out) => report::diagnostics(&out, args.json),

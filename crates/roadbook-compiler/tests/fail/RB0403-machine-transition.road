@@ -1,0 +1,24 @@
+action log(n: int)
+
+// A transition written in the machine body can be taken in any state, also before `Started`
+// assigns `id`; so can the machine's `exit`, when the run is cancelled.
+machine Body() {
+  var id: int
+
+  event Go
+  event Cancel
+
+  exit do log(id)
+  on Cancel -> Cancelled  do log(id)
+
+  initial Idle
+
+  state Idle { on Go -> Started  set id = 1 }
+
+  state Started { on Go -> Cancelled }
+
+  final state Cancelled {}
+}
+
+// expect: RB0403 at 11:15
+// expect: RB0403 at 12:34

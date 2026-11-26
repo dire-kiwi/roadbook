@@ -1,0 +1,34 @@
+action log(n: int)
+
+// `on Skip -> Work.Report` enters `Report` directly, so `Gather`'s `entry` never runs.
+machine Bypass() {
+  var total: int
+
+  event Go
+  event Skip
+
+  initial Idle
+
+  state Idle {
+    on Go   -> Work
+    on Skip -> Work.Report
+  }
+
+  state Work {
+    initial Gather
+
+    state Gather {
+      entry set total = 1
+      on Go -> Report
+    }
+
+    state Report {
+      entry do log(total)
+      on Go -> Done
+    }
+  }
+
+  final state Done {}
+}
+
+// expect: RB0403 at 26:20

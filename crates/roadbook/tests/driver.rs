@@ -46,7 +46,12 @@ machine Child(n: int) -> int {
 "#;
 
 fn program() -> Program {
-    let c = roadbook_compiler::compile_source("main.road", CHART, &Default::default());
+    // `Child` reads `unset` before anything assigns it, to test the `unassigned` defect.
+    let options = roadbook_compiler::Options {
+        allow_unassigned: vec!["main.road".into()],
+        ..Default::default()
+    };
+    let c = roadbook_compiler::compile_source("main.road", CHART, &options);
     assert!(!c.has_errors(), "{}", c.render());
     Program::new(c.ir.unwrap()).unwrap()
 }

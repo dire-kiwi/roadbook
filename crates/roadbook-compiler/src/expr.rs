@@ -112,7 +112,12 @@ impl Cx<'_, '_> {
                         Ty::Unknown
                     }
                     None => match self.vars.get(&n.name) {
-                        Some(v) => v.ty.clone(),
+                        Some(v) => {
+                            if !v.param {
+                                self.reads.push((n.name.clone(), n.span));
+                            }
+                            v.ty.clone()
+                        }
                         None => {
                             let d = self.unknown_variable(n, true);
                             self.ck.diags.push(d);

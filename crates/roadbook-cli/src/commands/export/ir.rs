@@ -2,8 +2,6 @@
 
 use std::path::PathBuf;
 
-use roadbook_compiler::Options;
-
 use crate::workspace::Workspace;
 use crate::{Exit, report};
 
@@ -25,7 +23,7 @@ pub fn run(args: Args) -> Exit {
         Err(e) => return report::fatal(e),
     };
     let entry = ws.project_path(&args.file);
-    let out = match roadbook_compiler::compile(&mut ws.loader(), &entry, &Options::default()) {
+    let out = match roadbook_compiler::compile(&mut ws.loader(), &entry, &ws.options()) {
         Ok(out) => out,
         Err(e) => return report::fatal(e),
     };

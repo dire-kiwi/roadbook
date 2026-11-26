@@ -1,0 +1,13 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0403]: `n` might not be assigned yet when this is evaluated
+  --> RB0403-parallel-region.road:23:30
+   |
+21 |       initial C
+   |               - `Regions.Both.Right.C` is entered when `Regions` starts, and nothing before it assigns `n`
+...
+23 |         on Show       do log(n)
+   |                              ^
+   |
+   = help: assign `n` on every way into `Regions.Both.Right.C`, give it an initial value, or make its type optional; inside a parallel state, an assignment another region makes after this one was entered does not count

@@ -1,0 +1,20 @@
+action log(n: int)
+
+// An `exit` runs before the effects of the transition that leaves, and on cancelling the
+// run, so `Working`'s `exit` cannot see the `set` of its own `on Stop`.
+machine Leaving() {
+  var last: int
+
+  event Stop
+
+  initial Working
+
+  state Working {
+    exit do log(last)
+    on Stop -> Stopped  set last = 1
+  }
+
+  final state Stopped {}
+}
+
+// expect: RB0403 at 13:17

@@ -16,7 +16,7 @@ mod serve;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use roadbook_compiler::{Compilation, Ir, Options};
+use roadbook_compiler::{Compilation, Ir};
 
 use crate::workspace::Workspace;
 use crate::{Exit, report};
@@ -78,8 +78,9 @@ pub fn build(ws: &Workspace, paths: &[PathBuf], out: &Path, self_contained: bool
         Err(e) => return (report::fatal(e), built),
     };
     let mut units: Vec<(String, Compilation)> = Vec::new();
+    let options = ws.options();
     for f in &files {
-        match roadbook_compiler::compile(&mut ws.loader(), f, &Options::default()) {
+        match roadbook_compiler::compile(&mut ws.loader(), f, &options) {
             Ok(c) => units.push((f.clone(), c)),
             Err(e) => return (report::fatal(e), built),
         }

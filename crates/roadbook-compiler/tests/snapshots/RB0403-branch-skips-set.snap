@@ -1,0 +1,13 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0403]: `n` might not be assigned yet when this is evaluated
+  --> RB0403-branch-skips-set.road:20:18
+   |
+15 |       else    -> Next
+   |       --------------- this enters `Branches.Next` without assigning `n`
+...
+20 |     entry do log(n)
+   |                  ^
+   |
+   = help: assign `n` on every way into `Branches.Next` (a `set` in the transition, or in an `entry` that runs first), give it an initial value, or make its type optional

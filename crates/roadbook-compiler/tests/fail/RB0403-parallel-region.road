@@ -1,0 +1,35 @@
+action log(n: int)
+
+// `Left` assigns `n` on a transition of its own; `Right` cannot rely on it, since the regions
+// take transitions independently.
+machine Regions() {
+  var n: int
+
+  event Go
+  event Show
+
+  initial Both
+
+  parallel state Both {
+    state Left {
+      initial A
+      state A       { on Go -> B  set n = 1 }
+      final state B {}
+    }
+
+    state Right {
+      initial C
+      state C {
+        on Show       do log(n)
+        on Go   -> D
+      }
+      final state D {}
+    }
+
+    done -> Over
+  }
+
+  final state Over {}
+}
+
+// expect: RB0403 at 23:30

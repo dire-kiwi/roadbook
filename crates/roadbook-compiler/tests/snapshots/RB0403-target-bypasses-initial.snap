@@ -1,0 +1,13 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0403]: `total` might not be assigned yet when this is evaluated
+  --> RB0403-target-bypasses-initial.road:26:20
+   |
+14 |     on Skip -> Work.Report
+   |     ---------------------- this enters `Bypass.Work.Report` without assigning `total`
+...
+26 |       entry do log(total)
+   |                    ^^^^^
+   |
+   = help: assign `total` on every way into `Bypass.Work.Report` (a `set` in the transition, or in an `entry` that runs first), give it an initial value, or make its type optional

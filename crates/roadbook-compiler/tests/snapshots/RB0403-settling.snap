@@ -1,0 +1,24 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0403]: `value` might not be assigned yet when this is evaluated
+  --> RB0403-settling.road:31:28
+   |
+17 |         if ready() -> Skipped
+   |         --------------------- this enters `Settle.Job.Skipped` without assigning `value`
+...
+31 |     done -> Report  do log(value)
+   |                            ^^^^^
+   |
+   = help: assign `value` on every way into `Settle.Job.Skipped`, give it an initial value, or make its type optional
+
+error[RB0403]: `value` might not be assigned yet when this is evaluated
+  --> RB0403-settling.road:34:31
+   |
+31 |     done -> Report  do log(value)
+   |     ----------------------------- this enters `Settle.Report` without assigning `value`
+...
+34 |   final state Report { output value }
+   |                               ^^^^^
+   |
+   = help: assign `value` on every way into `Settle.Report`, give it an initial value, or make its type optional

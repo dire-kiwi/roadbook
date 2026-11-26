@@ -1,0 +1,24 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0403]: `count` might not be assigned yet when this is evaluated
+  --> RB0403-entry-before-assignment.road:12:18
+   |
+ 9 |   initial Idle
+   |           ---- `Counter.Idle` is entered when `Counter` starts, and nothing before it assigns `count`
+...
+12 |     entry do log(count)
+   |                  ^^^^^
+   |
+   = help: assign `count` on every way into `Counter.Idle` (a `set` in the transition, or in an `entry` that runs first), give it an initial value, or make its type optional
+
+error[RB0403]: `a` might not be assigned yet when this is evaluated
+  --> RB0403-entry-before-assignment.road:26:36
+   |
+24 |   initial Idle
+   |           ---- `Order.Idle` is entered when `Order` starts, and nothing before it assigns `a`
+...
+26 |   final state Idle { entry set b = a + 1, a = 1 }
+   |                                    ^
+   |
+   = help: assign `a` on every way into `Order.Idle` (a `set` in the transition, or in an `entry` that runs first), give it an initial value, or make its type optional

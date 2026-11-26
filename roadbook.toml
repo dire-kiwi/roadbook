@@ -17,6 +17,13 @@ gen-exclude = [
   "spec/conformance/charts",
 ]
 
+# Runtime fixtures for the `unassigned` defect: their machines read a variable before it is
+# assigned on purpose, so they are compiled without the definite assignment check (RB0403).
+allow-unassigned = [
+  "packages/effect/test/charts/runtime.road",
+  "spec/conformance/charts/defects.road",
+]
+
 # Other packages a chart can import from, by name, and their directories. `examples/orders`
 # imports `Inventory` from the package `inventory` as `"inventory/inventory.road"`.
 [packages]
