@@ -84,24 +84,25 @@ The hash is SHA-256 over the [canonical JSON](../../spec/ir.md#canonical-json) (
 
 ## Execution model
 
-Roadbook machines are statecharts with the semantics of SCXML, the W3C standard that xstate also follows. Anyone who knows xstate will find no surprises. The rules, briefly:
+Roadbook machines are statecharts with the semantics of SCXML, the W3C standard that xstate also follows. Anyone who knows xstate will find no surprises. The rules, briefly (the precise algorithm is [`spec/execution.md`](../../spec/execution.md)):
 
 1. **One event at a time.** A machine has a queue. It takes one event, does everything that event causes, and only then takes the next (run to completion).
-2. **A step.** Find the active states that have a transition for the event, innermost first. Evaluate guards in document order and take the first that holds. Exit states from the innermost outward, run the transition's effects, enter states from the outermost inward. Within each: `set` assignments first, then `do` actions, in the order written.
-3. **Settling.** After a step, `always` transitions and `done` transitions are taken until none applies. The machine is then stable and takes the next event.
+2. **A step.** Find the active states that have a transition for the event, innermost first. Evaluate guards in document order and take the first that holds. Exit states from the innermost outward, run the transition's effects, enter states from the outermost inward. Within each: `set` assignments first, then `do` actions, in the order written. A transition with a target always leaves its source state and enters its target, even when the target is the source itself or one of its children (an external transition, in SCXML's terms), so the states it re-enters restart their work. The one exception is a transition written in the machine body, which does not leave the machine itself. A transition with no target is internal: nothing is left, entered or restarted.
+3. **Settling.** After a step, `always` transitions and `done` transitions are taken until none applies, an enabled `always` before any `done`. The machine is then stable and takes the next event.
 4. **Unhandled events are dropped and recorded.** An event with no enabled transition changes nothing. It appears in the trace as dropped, so it is visible. A machine can opt into `strict`, which turns a dropped event into a failure.
 5. **Parallel states** are active in all regions at once. Each region may take a transition for the same event. If two would exit the same state, the one in the earlier region wins.
-6. **Final.** Reaching a final child completes the parent, which enables the parent's `done` transition. Reaching a top-level final state ends the machine with its `output` or `fail`.
+6. **Final.** Reaching a final child completes the parent, which enables the parent's `done` transition. Reaching a top-level final state ends the machine with its `output` or `fail`, evaluated on entering it; then every active state is exited, so the machine's own `exit` effects run last.
 
 ### Work is tied to states
 
 This is where Roadbook is stricter than xstate, and it is the part that matters most for program flow.
 
-- **An `invoke` lives exactly as long as its state.** Entering the state starts the task. Leaving the state for any reason (its own outcome, an event on a parent, a timeout) cancels it. Nothing started by a state can outlive it.
-- **A task's outcome is an event like any other.** It is queued and handled by rule 1. Errors route by tag to the matching `fail` branch. Because every declared error must be handled, an invoke cannot fail silently.
-- **Timers belong to states.** `after 30s` starts when the state is entered and is cancelled when it is left.
+- **An `invoke` lives exactly as long as its state.** Entering the state starts the task. Leaving the state for any reason (its own outcome, an event on a parent, a timeout) cancels it. Nothing started by a state can outlive it. Work starts once the step has settled, and only for states still active then, so a state that an `always` leaves at once never starts its task (SCXML's rule for invokes). Its arguments see every entry effect of the step.
+- **A task's outcome is an event like any other.** It is queued and handled by rule 1. Errors route by tag to the matching `fail` branch. Because every declared error must be handled, an invoke cannot fail silently. An outcome that was already queued when its state was left is stale: it is recorded in the trace and ignored.
+- **Timers belong to states.** `after 30s` starts when the state is entered and is cancelled when it is left. Its delay is evaluated when it starts, after the entry effects.
+- **Cancelling a machine from outside exits its states.** Each state's work is cancelled and its `exit` effects run, innermost first, as on any exit. A parent leaving an invoking state cancels a child machine this way.
 - **Actions are awaited.** Each `do` action finishes before the next thing happens, and actions cannot fail. Long or fallible work belongs in a task, where its failure has a visible branch.
-- **Defects are not flow.** A bug in host code (a thrown exception, a panic) is not one of the declared errors. It fails the whole machine run, cancels everything it started, and propagates to whoever ran it: the parent machine's invoke, or the HTTP adapter.
+- **Defects are not flow.** A bug in host code (a thrown exception, a panic) is not one of the declared errors. It fails the whole machine run, cancels everything it started, and propagates to whoever ran it: the parent machine's invoke, or the HTTP adapter. No `exit` effect runs. Runtime errors in the chart's own expressions (integer overflow, and until definite assignment exists, reading an unassigned variable) are defects too.
 
 ### Child machines
 
@@ -151,7 +152,7 @@ The **core** is a pure, synchronous function. It does no I/O and has no clock:
 step(ir, snapshot, event, fns) -> (snapshot', commands[])
 ```
 
-`snapshot` is the set of active states plus the variables. `commands` is a list of things for the outside world to do: run an action, start or cancel a task, start or cancel a timer, record a trace entry. `fns` gives the core the host's pure functions, which guards and expressions may call.
+`snapshot` is the set of active states plus the variables, and the ids of the invokes and timers that are running, so that a stale outcome can be recognised. `commands` is a list of things for the outside world to do: run an action, start or cancel a task, start or cancel a timer, record a trace entry. `fns` gives the core the host's pure functions, which guards and expressions may call. A `start` function creates the first snapshot, and cancelling from outside is one more input to `step`. Both are specified, with the snapshot's JSON form, in [`spec/execution.md`](../../spec/execution.md).
 
 The **driver** owns the queue and carries out the commands using the host's concurrency: Effect fibers and scopes in TypeScript, futures in Rust. It feeds task outcomes and timer expiries back into the core as events.
 
@@ -159,21 +160,30 @@ This split pays for itself three ways. The core is small enough to implement twi
 
 ## The trace
 
-Every runtime can emit a trace: an ordered stream of JSON records describing what a machine instance did. One format serves debugging, the viewer's replay and coverage modes, and conformance testing.
+Every runtime can emit a trace: an ordered stream of JSON records describing what a machine instance did. One format serves debugging, the viewer's replay and coverage modes, and conformance testing. The record kinds are listed in [`spec/trace.md`](../../spec/trace.md) and checked by [`spec/trace.schema.json`](../../spec/trace.schema.json). An excerpt of a `PlaceOrder` run that times out while its `Checkout` child waits to retry:
 
 ```jsonl
-{"t":0,"run":"r1","machine":"PlaceOrder","ir":"sha256:9f2c…","kind":"started","input":{"token":"…"}}
-{"t":0,"run":"r1","kind":"entered","state":"PlaceOrder.Authenticating"}
-{"t":0,"run":"r1","kind":"invoke.started","state":"PlaceOrder.Authenticating","src":"authenticate"}
-{"t":12,"run":"r1","kind":"event","event":{"kind":"invoke.done","src":"authenticate"}}
-{"t":12,"run":"r1","kind":"transition","from":"PlaceOrder.Authenticating","to":"PlaceOrder.Processing","index":0,"set":{"user":{"id":"u1","role":"Customer"}}}
-{"t":12,"run":"r1","kind":"entered","state":"PlaceOrder.Processing"}
-{"t":30012,"run":"r1","kind":"event","event":{"kind":"after","state":"PlaceOrder.Processing"}}
-{"t":30012,"run":"r1","kind":"invoke.cancelled","state":"PlaceOrder.Processing.Paying","src":"Checkout","child":"r2"}
-{"t":30012,"run":"r1","kind":"done","state":"PlaceOrder.TimedOut","output":{"status":504,"body":{"code":"timeout"}}}
+{"input":{"draft":{…},"token":"tok-1"},"ir":"sha256:2481…","kind":"started","machine":"PlaceOrder","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"PlaceOrder","t":0}
+{"kind":"entered","run":"r1","state":"PlaceOrder.Authenticating","t":0}
+{"args":{"token":"tok-1"},"invoke":1,"kind":"invoke.started","run":"r1","src":"authenticate","state":"PlaceOrder.Authenticating","t":0}
+{"event":{"invoke":1,"kind":"invoke.done","value":{"id":"u1","role":"Customer"}},"kind":"event","run":"r1","t":10}
+{"from":"PlaceOrder.Authenticating","index":0,"kind":"transition","run":"r1","t":10,"to":"PlaceOrder.Processing"}
+{"kind":"exited","run":"r1","state":"PlaceOrder.Authenticating","t":10}
+{"kind":"set","run":"r1","t":10,"value":{"id":"u1","role":"Customer"},"var":"user"}
+{"kind":"entered","run":"r1","state":"PlaceOrder.Processing","t":10}
+…
+{"event":{"kind":"after","timer":1},"kind":"event","run":"r1","t":30010}
+{"from":"PlaceOrder.Processing","index":1,"kind":"transition","run":"r1","t":30010,"to":"PlaceOrder.TimedOut"}
+{"invoke":4,"kind":"invoke.cancelled","run":"r1","src":"Checkout","state":"PlaceOrder.Processing.Paying","t":30010}
+…
+{"kind":"done","output":{"body":{"code":"timeout"},"status":504},"run":"r1","state":"PlaceOrder.TimedOut","t":30010}
+{"input":{"order":{…},"user":{…}},"ir":"sha256:fa1a…","kind":"started","machine":"Checkout","parent":"r1","run":"r1.4","t":30}
+…
+{"kind":"cancelled","parent":"r1","run":"r1.4","t":30010}
 ```
 
-Records name states and transitions by the ids in the IR, so the viewer can light up exactly what ran. A child machine's records carry their own `run` id and the parent's, so a trace of a whole request nests the way the charts do.
+Records name states and transitions by the ids in the IR, so the viewer can light up exactly what ran. A child machine's records carry their own `run` id and the parent's: the child started by invoke 4 of run `r1` is `r1.4`, so a trace of a whole request nests the way the charts do. Within one run, records are in the order things happened. Across runs, the interleaving depends on how the host schedules fibers or futures, so traces are compared with each run's records grouped together, in run order.
 
 Values in a trace go through the generated schemas. Fields can be marked `sensitive` in the chart to be redacted. Trace output is off by default and goes wherever the application points it: a file, stdout, an OpenTelemetry exporter (each state becomes a span, each transition a span event), or a live connection to the viewer.
 
@@ -183,17 +193,21 @@ The two cores are kept identical by a shared test suite rather than by hope. A c
 
 ```jsonc
 {
-  "chart": "retry.road",
+  "description": "Two gateway failures with growing backoff, then a successful charge.",
+  "chart": "charts/shop/checkout.road",
   "machine": "Checkout",
   "input": { "order": { /* … */ }, "user": { /* … */ } },
-  "fns": { "retryDelay": [{ "args": [1], "returns": 200 }] },
+  "stub": [],
+  "fns": { "retryDelay": [{ "args": [1], "returns": 200 }, { "args": [2], "returns": 400 }] },
   "script": [
     { "task": "chargeCard", "fail": { "_tag": "GatewayUnavailable" } },
     { "advance": 200 },
+    { "task": "chargeCard", "fail": { "_tag": "GatewayUnavailable" } },
+    { "advance": 400 },
     { "task": "chargeCard", "done": { "chargeId": "c1", "amountCents": 4200 } }
   ],
-  "expect": "retry.trace.jsonl"
+  "status": "done"
 }
 ```
 
-Both runtimes run every case with scripted task outcomes and virtual time, and must produce the same trace byte for byte. The suite lives in `spec/conformance/` and is the definition of correct behaviour. A semantic change is a change to these files, reviewed like any other.
+Both runtimes run every case with scripted task outcomes and virtual time, and must produce the same trace (`trace.jsonl` next to the case, one canonical JSON record per line) byte for byte. A machine listed in `stub` is scripted like a task, which is how a test replaces a whole sub-machine; any other invoked machine runs from its chart. The suite lives in [`spec/conformance/`](../../spec/conformance/) and is the definition of correct behaviour. A semantic change is a change to these files, reviewed like any other.
