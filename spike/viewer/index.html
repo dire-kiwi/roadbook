@@ -8,31 +8,31 @@
 /*@CSS@*/
 </style>
 </head>
-<body class="wm-app" data-initial-machine="<!--@INITIAL@-->">
-<header class="wm-top">
-  <div class="wm-brand">Waymark<small id="wm-source"></small></div>
-  <nav class="wm-tabs" id="wm-tabs" role="tablist" aria-label="Machines"></nav>
-  <div class="wm-tools">
-    <button class="wm-btn" id="wm-zoom-out" type="button" title="Zoom out" aria-label="Zoom out">−</button>
-    <button class="wm-btn" id="wm-zoom-in" type="button" title="Zoom in" aria-label="Zoom in">+</button>
-    <button class="wm-btn" id="wm-fit" type="button" title="Fit the diagram to the view (F)">Fit</button>
-    <button class="wm-btn" id="wm-theme" type="button" title="Colour scheme: follow the system, light or dark">Theme: auto</button>
+<body class="rb-app" data-initial-machine="<!--@INITIAL@-->">
+<header class="rb-top">
+  <div class="rb-brand">Roadbook<small id="rb-source"></small></div>
+  <nav class="rb-tabs" id="rb-tabs" role="tablist" aria-label="Machines"></nav>
+  <div class="rb-tools">
+    <button class="rb-btn" id="rb-zoom-out" type="button" title="Zoom out" aria-label="Zoom out">−</button>
+    <button class="rb-btn" id="rb-zoom-in" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+    <button class="rb-btn" id="rb-fit" type="button" title="Fit the diagram to the view (F)">Fit</button>
+    <button class="rb-btn" id="rb-theme" type="button" title="Colour scheme: follow the system, light or dark">Theme: auto</button>
   </div>
 </header>
-<div class="wm-machine-head">
-  <button class="wm-btn wm-back" id="wm-back" type="button" hidden></button>
-  <div id="wm-machine-head"></div>
+<div class="rb-machine-head">
+  <button class="rb-btn rb-back" id="rb-back" type="button" hidden></button>
+  <div id="rb-machine-head"></div>
 </div>
-<main class="wm-main">
-  <div class="wm-stage">
-    <div class="wm-canvas" id="wm-canvas">
-      <div class="wm-hint">drag to pan · scroll to zoom · click a state or an arrow</div>
+<main class="rb-main">
+  <div class="rb-stage">
+    <div class="rb-canvas" id="rb-canvas">
+      <div class="rb-hint">drag to pan · scroll to zoom · click a state or an arrow</div>
     </div>
-    <div class="wm-legend" id="wm-legend" aria-label="Legend"></div>
+    <div class="rb-legend" id="rb-legend" aria-label="Legend"></div>
   </div>
-  <aside class="wm-panel" id="wm-panel" aria-live="polite"></aside>
+  <aside class="rb-panel" id="rb-panel" aria-live="polite"></aside>
 </main>
-<script type="application/json" id="wm-ir"><!--@IR@--></script>
+<script type="application/json" id="rb-ir"><!--@IR@--></script>
 <script>
 /*@ELK@*/
 </script>

@@ -1,14 +1,14 @@
-# Waymark: a statechart language with Rust and Effect runtimes
+# Roadbook: a statechart language with Rust and Effect runtimes
 
-Waymark (a working name) is a proposal for a state machine library in the spirit of xstate, built so that a program's flow lives in a file a person can read, check and see as a diagram, while the code an agent writes is confined to small typed functions that the flow calls.
+Roadbook is a proposal for a state machine library in the spirit of xstate, built so that a program's flow lives in a file a person can read, check and see as a diagram, while the code an agent writes is confined to small typed functions that the flow calls.
 
 ## The proposal
 
-Program flow is written in a small language, in `.way` files. A compiler checks it and produces one JSON document, the IR. Everything else reads the IR:
+Program flow is written in a small language, in `.road` files. A compiler checks it and produces one JSON document, the IR. Everything else reads the IR:
 
 ```
                          ┌─▶ TypeScript code generator ─▶ typed handle for Effect v4
- *.way ─▶ compiler ─▶ IR ├─▶ Rust macro                ─▶ types and a trait to implement
+ *.road ─▶ compiler ─▶ IR ├─▶ Rust macro                ─▶ types and a trait to implement
           (checks)       ├─▶ viewer                    ─▶ self-contained HTML diagram
                          └─▶ both runtimes interpret it
 ```
@@ -22,7 +22,7 @@ Four properties follow from this shape.
 
 ## What it looks like
 
-A chart, from [`examples/shop/checkout.way`](../../examples/shop/checkout.way):
+A chart, from [`examples/shop/checkout.road`](../../examples/shop/checkout.road):
 
 ```
 /// Charge the customer's card, retrying while the payment gateway is down.
@@ -85,7 +85,7 @@ impl checkout::Handlers for App {
 checkout::run(&app, order, user).await   // Result<Receipt, CheckoutError>
 ```
 
-A machine has the signature of a task, so a larger machine invokes `Checkout` exactly as it would invoke a single function. [`place_order.way`](../../examples/shop/place_order.way) does this to handle an HTTP request end to end, and is the Express example from the task description.
+A machine has the signature of a task, so a larger machine invokes `Checkout` exactly as it would invoke a single function. [`place_order.road`](../../examples/shop/place_order.road) does this to handle an HTTP request end to end, and is the Express example from the task description.
 
 ## Decisions
 
@@ -99,7 +99,7 @@ These are the choices that shape the rest. Each has a recommendation, which the 
 | Compiler implementation | Once, in Rust, shipped natively and as WebAssembly on npm | In TypeScript | [Alternatives](alternatives.md#where-the-compiler-lives) |
 | Runtime implementation | A pure core written natively in each language, held together by a shared conformance suite | One Rust core compiled to WebAssembly | [Semantics](semantics.md#a-pure-core-and-a-driver) |
 | Machines talking to each other | Declared and typed: `send`, `emit` and `ref` parameters in the chart. No global actor registry. | xstate's model, where any actor can hold a reference to any other | [Actors and messaging](actors.md) |
-| Typed host code | Generated: a committed `.way.ts` file for TypeScript, a macro for Rust | Type inference from code-first definitions | [TypeScript](typescript.md), [Rust](rust.md) |
+| Typed host code | Generated: a committed `.road.ts` file for TypeScript, a macro for Rust | Type inference from code-first definitions | [TypeScript](typescript.md), [Rust](rust.md) |
 | Diagram layout | ELK in the browser, with the same drawing code producing static SVG | Mermaid or Graphviz only | [Visualization](visualization.md#layout) |
 | Build order | Language, then viewer, then TypeScript runtime, then Rust runtime | Rust runtime first | [Roadmap](roadmap.md#milestones) |
 

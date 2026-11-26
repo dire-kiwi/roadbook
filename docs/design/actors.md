@@ -1,16 +1,16 @@
 # Actors and messaging
 
-Two questions came up in review of the first draft. Does Waymark need xstate's actors? And can a machine send messages to a machine defined in another crate? This page answers both and specifies the design.
+Two questions came up in review of the first draft. Does Roadbook need xstate's actors? And can a machine send messages to a machine defined in another crate? This page answers both and specifies the design.
 
 ## Short answers
 
-**Actors.** A running Waymark machine already is an actor: it has private state, a queue, and handles one event at a time. What the first draft lacked is machines talking to each other while they run. That is needed, and this page adds it. What Waymark should not copy is xstate's free-form version, where any actor can hold a reference to any other and send it anything. That makes "who talks to whom" a fact about a running program, which is exactly the kind of thing this project exists to make visible in a file. Waymark's version is declared and typed, so the conversation between machines is part of the chart and part of the diagram.
+**Actors.** A running Roadbook machine already is an actor: it has private state, a queue, and handles one event at a time. What the first draft lacked is machines talking to each other while they run. That is needed, and this page adds it. What Roadbook should not copy is xstate's free-form version, where any actor can hold a reference to any other and send it anything. That makes "who talks to whom" a fact about a running program, which is exactly the kind of thing this project exists to make visible in a file. Roadbook's version is declared and typed, so the conversation between machines is part of the chart and part of the diagram.
 
 **Other crates.** Not in the first draft. With the additions here, yes: a machine's events are a typed interface declared in its chart, another crate's chart imports that interface, and sending is a queue operation on a typed handle. The same design covers npm packages, and because events have schemas it extends to other processes.
 
 ## What xstate's actor model contains
 
-| xstate | Waymark | Status |
+| xstate | Roadbook | Status |
 | --- | --- | --- |
 | Machine actors with a mailbox, one event at a time | Every running machine | In the first draft |
 | `invoke`: a child tied to a state | `invoke` | In the first draft |
@@ -109,10 +109,10 @@ This is a sketch. It is planned after the first two forms have been used in real
 
 Three things have to hold for a machine in one crate to message a machine in another: the charts have to see each other, the generated types have to be the same types, and delivery has to work at run time.
 
-**Charts.** The crate that owns a machine ships its `.way` file. Another crate's chart imports from it by package name:
+**Charts.** The crate that owns a machine ships its `.road` file. Another crate's chart imports from it by package name:
 
 ```
-import { Inventory } from "inventory/inventory.way"
+import { Inventory } from "inventory/inventory.road"
 ```
 
 **Types.** The importing crate does not generate its own copy of `Inventory`'s types. Its generated code refers to the owning crate's: `inventory::Event`, `inventory::Ref`. There is one definition of each type, so the Rust compiler checks every cross-crate send.
@@ -121,7 +121,7 @@ import { Inventory } from "inventory/inventory.way"
 
 ```rust
 // crate `inventory`
-waymark::include!("inventory.way");      // exports inventory::{Event, Emitted, Ref, Handlers, spawn}
+roadbook::include!("inventory.road");      // exports inventory::{Event, Emitted, Ref, Handlers, spawn}
 
 // crate `orders`, whose chart imports Inventory
 let stock = inventory::spawn(warehouse);
@@ -131,9 +131,9 @@ let order = order::spawn(app, id, draft, stock.handle());   // the chart's `inve
 stock.handle().send(inventory::Event::Restock { sku, qty }).await;
 ```
 
-TypeScript works the same way with packages: the chart imports `"@shop/inventory/inventory.way"`, and the generated file imports types from that package's generated file.
+TypeScript works the same way with packages: the chart imports `"@shop/inventory/inventory.road"`, and the generated file imports types from that package's generated file.
 
-One part is not yet proven: how the Rust macro locates a dependency's `.way` file at build time. Cargo can pass a path from a dependency's build script to a dependent's, and failing that a mapping in `waymark.toml` works. This needs a prototype before the Rust runtime milestone commits to it.
+One part is not yet proven: how the Rust macro locates a dependency's `.road` file at build time. Cargo can pass a path from a dependency's build script to a dependent's, and failing that a mapping in `roadbook.toml` works. This needs a prototype before the Rust runtime milestone commits to it.
 
 ### Across processes and languages
 
@@ -143,7 +143,7 @@ Every event has a generated schema and one JSON encoding, identical in both runt
 
 [rustate](https://crates.io/crates/rustate) is an xstate-inspired Rust crate that lists cross-crate integration and actors as features. Its latest release is 0.3.0, from April 2025.
 
-| | rustate 0.3.0 | Waymark |
+| | rustate 0.3.0 | Roadbook |
 | --- | --- | --- |
 | How machines are defined | A Rust builder API. Events and states are strings. | A chart, with generated enums |
 | Cross-crate mechanism | Shared memory: the machine in an `Arc<Mutex<…>>`, or a shared `serde_json::Value` context in an `Arc<RwLock<…>>` | A typed handle around the receiver's queue |

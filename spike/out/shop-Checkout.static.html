@@ -3,243 +3,243 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Checkout · Waymark</title>
+<title>Checkout · Roadbook</title>
 <style>
-/* Waymark viewer. One stylesheet for the interactive viewer and the static page.
+/* Roadbook viewer. One stylesheet for the interactive viewer and the static page.
    Every colour is a custom property on :root; dark values follow the OS setting,
    and <html data-theme="light|dark"> overrides it. */
 
 :root {
   color-scheme: light dark;
-  --wm-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", sans-serif;
-  --wm-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
+  --rb-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", sans-serif;
+  --rb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
 
-  --wm-bg: #f3f4f6;            /* page chrome */
-  --wm-canvas: #fafbfc;        /* behind the diagram */
-  --wm-surface: #ffffff;       /* state boxes, panel */
-  --wm-container: rgba(30, 41, 59, 0.045); /* compound states; stacks when nested */
-  --wm-fg: #181b20;
-  --wm-muted: #5a6370;
-  --wm-border: #cfd4db;        /* chrome hairlines */
-  --wm-box: #6a7381;           /* state outlines */
-  --wm-edge: #3b424d;          /* event, after, always, initial */
-  --wm-ok: #0b7a22;            /* done */
-  --wm-err: #c22a2b;           /* fail */
-  --wm-accent: #1f62c9;        /* machine links, selection */
-  --wm-accent-bg: #e4edfb;
-  --wm-label-bg: #ffffff;
-  --wm-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --rb-bg: #f3f4f6;            /* page chrome */
+  --rb-canvas: #fafbfc;        /* behind the diagram */
+  --rb-surface: #ffffff;       /* state boxes, panel */
+  --rb-container: rgba(30, 41, 59, 0.045); /* compound states; stacks when nested */
+  --rb-fg: #181b20;
+  --rb-muted: #5a6370;
+  --rb-border: #cfd4db;        /* chrome hairlines */
+  --rb-box: #6a7381;           /* state outlines */
+  --rb-edge: #3b424d;          /* event, after, always, initial */
+  --rb-ok: #0b7a22;            /* done */
+  --rb-err: #c22a2b;           /* fail */
+  --rb-accent: #1f62c9;        /* machine links, selection */
+  --rb-accent-bg: #e4edfb;
+  --rb-label-bg: #ffffff;
+  --rb-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --wm-bg: #111317;
-    --wm-canvas: #15181c;
-    --wm-surface: #20242b;
-    --wm-container: rgba(255, 255, 255, 0.04);
-    --wm-fg: #eceef2;
-    --wm-muted: #a2aab6;
-    --wm-border: #353b45;
-    --wm-box: #8b95a3;
-    --wm-edge: #c3c9d2;
-    --wm-ok: #4ccb62;
-    --wm-err: #ff8482;
-    --wm-accent: #75adf7;
-    --wm-accent-bg: #1c2b45;
-    --wm-label-bg: #15181c;
-    --wm-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --rb-bg: #111317;
+    --rb-canvas: #15181c;
+    --rb-surface: #20242b;
+    --rb-container: rgba(255, 255, 255, 0.04);
+    --rb-fg: #eceef2;
+    --rb-muted: #a2aab6;
+    --rb-border: #353b45;
+    --rb-box: #8b95a3;
+    --rb-edge: #c3c9d2;
+    --rb-ok: #4ccb62;
+    --rb-err: #ff8482;
+    --rb-accent: #75adf7;
+    --rb-accent-bg: #1c2b45;
+    --rb-label-bg: #15181c;
+    --rb-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --wm-bg: #111317;
-  --wm-canvas: #15181c;
-  --wm-surface: #20242b;
-  --wm-container: rgba(255, 255, 255, 0.04);
-  --wm-fg: #eceef2;
-  --wm-muted: #a2aab6;
-  --wm-border: #353b45;
-  --wm-box: #8b95a3;
-  --wm-edge: #c3c9d2;
-  --wm-ok: #4ccb62;
-  --wm-err: #ff8482;
-  --wm-accent: #75adf7;
-  --wm-accent-bg: #1c2b45;
-  --wm-label-bg: #15181c;
-  --wm-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --rb-bg: #111317;
+  --rb-canvas: #15181c;
+  --rb-surface: #20242b;
+  --rb-container: rgba(255, 255, 255, 0.04);
+  --rb-fg: #eceef2;
+  --rb-muted: #a2aab6;
+  --rb-border: #353b45;
+  --rb-box: #8b95a3;
+  --rb-edge: #c3c9d2;
+  --rb-ok: #4ccb62;
+  --rb-err: #ff8482;
+  --rb-accent: #75adf7;
+  --rb-accent-bg: #1c2b45;
+  --rb-label-bg: #15181c;
+  --rb-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 :root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {
-  font: 14px/1.45 var(--wm-sans);
-  color: var(--wm-fg);
-  background: var(--wm-bg);
+  font: 14px/1.45 var(--rb-sans);
+  color: var(--rb-fg);
+  background: var(--rb-bg);
 }
-code, .wm-mono { font-family: var(--wm-mono); font-size: 0.92em; }
+code, .rb-mono { font-family: var(--rb-mono); font-size: 0.92em; }
 
 /* ───────────── the diagram (SVG) ───────────── */
-.wm-svg { font-family: var(--wm-mono); }
-.wm-svg text { fill: var(--wm-fg); }
+.rb-svg { font-family: var(--rb-mono); }
+.rb-svg text { fill: var(--rb-fg); }
 
-.wm-box { fill: var(--wm-surface); stroke: var(--wm-box); stroke-width: 1.4; }
-.wm-container > .wm-box { fill: var(--wm-container); stroke-width: 1.2; }
-.wm-region > .wm-box { stroke-dasharray: 5 4; }
-.wm-box-inner { fill: none; stroke: var(--wm-box); stroke-width: 1.1; }
-.wm-kind-final > .wm-box { stroke-width: 1.6; }
-.wm-sep { stroke: var(--wm-border); stroke-width: 1; }
+.rb-box { fill: var(--rb-surface); stroke: var(--rb-box); stroke-width: 1.4; }
+.rb-container > .rb-box { fill: var(--rb-container); stroke-width: 1.2; }
+.rb-region > .rb-box { stroke-dasharray: 5 4; }
+.rb-box-inner { fill: none; stroke: var(--rb-box); stroke-width: 1.1; }
+.rb-kind-final > .rb-box { stroke-width: 1.6; }
+.rb-sep { stroke: var(--rb-border); stroke-width: 1; }
 
-.wm-title { font-size: 13px; font-weight: 650; }
-.wm-tag { font-size: 11px; fill: var(--wm-muted) !important; }
-.wm-row { font-size: 11.5px; }
-.wm-kw { fill: var(--wm-muted); }
-.wm-row.wm-k-fail, .wm-row.wm-k-fail .wm-kw { fill: var(--wm-err); }
-.wm-row.wm-k-done .wm-kw { fill: var(--wm-ok); }
+.rb-title { font-size: 13px; font-weight: 650; }
+.rb-tag { font-size: 11px; fill: var(--rb-muted) !important; }
+.rb-row { font-size: 11.5px; }
+.rb-kw { fill: var(--rb-muted); }
+.rb-row.rb-k-fail, .rb-row.rb-k-fail .rb-kw { fill: var(--rb-err); }
+.rb-row.rb-k-done .rb-kw { fill: var(--rb-ok); }
 
-.wm-pill { fill: var(--wm-accent-bg); stroke: var(--wm-accent); stroke-width: 1; }
-.wm-pill-text, .wm-pill-text .wm-kw { fill: var(--wm-accent) !important; }
-.wm-pill-text .wm-kw { font-weight: 650; }
-.wm-pill-chevron { fill: none; stroke: var(--wm-accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.rb-pill { fill: var(--rb-accent-bg); stroke: var(--rb-accent); stroke-width: 1; }
+.rb-pill-text, .rb-pill-text .rb-kw { fill: var(--rb-accent) !important; }
+.rb-pill-text .rb-kw { font-weight: 650; }
+.rb-pill-chevron { fill: none; stroke: var(--rb-accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
-.wm-edge-line { fill: none; stroke: var(--wm-edge); stroke-width: 1.5; stroke-linejoin: round; }
-.wm-edge-hit { fill: none; stroke: transparent; stroke-width: 14; }
-.wm-arrow path { fill: var(--wm-edge); stroke: none; }
-.wm-k-done .wm-edge-line { stroke: var(--wm-ok); }
-.wm-k-done.wm-arrow path { fill: var(--wm-ok); }
-.wm-k-fail .wm-edge-line { stroke: var(--wm-err); }
-.wm-k-fail.wm-arrow path { fill: var(--wm-err); }
-.wm-k-after .wm-edge-line { stroke-dasharray: 7 4; }
-.wm-k-always .wm-edge-line { stroke-dasharray: 0.1 4.5; stroke-linecap: round; stroke-width: 2; }
-.wm-initial { fill: var(--wm-edge); }
-.wm-port { fill: var(--wm-canvas); stroke: var(--wm-edge); stroke-width: 1.5; }
-.wm-k-done .wm-port { stroke: var(--wm-ok); }
-.wm-k-fail .wm-port { stroke: var(--wm-err); }
+.rb-edge-line { fill: none; stroke: var(--rb-edge); stroke-width: 1.5; stroke-linejoin: round; }
+.rb-edge-hit { fill: none; stroke: transparent; stroke-width: 14; }
+.rb-arrow path { fill: var(--rb-edge); stroke: none; }
+.rb-k-done .rb-edge-line { stroke: var(--rb-ok); }
+.rb-k-done.rb-arrow path { fill: var(--rb-ok); }
+.rb-k-fail .rb-edge-line { stroke: var(--rb-err); }
+.rb-k-fail.rb-arrow path { fill: var(--rb-err); }
+.rb-k-after .rb-edge-line { stroke-dasharray: 7 4; }
+.rb-k-always .rb-edge-line { stroke-dasharray: 0.1 4.5; stroke-linecap: round; stroke-width: 2; }
+.rb-initial { fill: var(--rb-edge); }
+.rb-port { fill: var(--rb-canvas); stroke: var(--rb-edge); stroke-width: 1.5; }
+.rb-k-done .rb-port { stroke: var(--rb-ok); }
+.rb-k-fail .rb-port { stroke: var(--rb-err); }
 
-.wm-label-bg { fill: var(--wm-label-bg); stroke: var(--wm-border); stroke-width: 1; }
-.wm-label-trigger { font-size: 12px; font-weight: 600; }
-.wm-label-effect { font-size: 11px; fill: var(--wm-muted) !important; }
-.wm-guard { font-weight: 400; }
-.wm-label.wm-k-done .wm-label-trigger { fill: var(--wm-ok); }
-.wm-label.wm-k-fail .wm-label-trigger { fill: var(--wm-err); }
-.wm-label .wm-guard { fill: var(--wm-fg); }
+.rb-label-bg { fill: var(--rb-label-bg); stroke: var(--rb-border); stroke-width: 1; }
+.rb-label-trigger { font-size: 12px; font-weight: 600; }
+.rb-label-effect { font-size: 11px; fill: var(--rb-muted) !important; }
+.rb-guard { font-weight: 400; }
+.rb-label.rb-k-done .rb-label-trigger { fill: var(--rb-ok); }
+.rb-label.rb-k-fail .rb-label-trigger { fill: var(--rb-err); }
+.rb-label .rb-guard { fill: var(--rb-fg); }
 
 /* ───────────── shared pieces of chrome ───────────── */
-.wm-signature { display: block; font-size: 13px; overflow-wrap: anywhere; }
-.wm-doc { margin: 4px 0 0; color: var(--wm-muted); max-width: 80ch; }
-.wm-t-done { color: var(--wm-ok); }
-.wm-t-fail { color: var(--wm-err); }
+.rb-signature { display: block; font-size: 13px; overflow-wrap: anywhere; }
+.rb-doc { margin: 4px 0 0; color: var(--rb-muted); max-width: 80ch; }
+.rb-t-done { color: var(--rb-ok); }
+.rb-t-fail { color: var(--rb-err); }
 
-.wm-legend-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 12.5px; }
-.wm-legend-list li { display: flex; align-items: center; gap: 9px; color: var(--wm-muted); }
-.wm-legend-list code { color: var(--wm-fg); font-weight: 600; }
-.wm-legend-list code.wm-t-done { color: var(--wm-ok); }
-.wm-legend-list code.wm-t-fail { color: var(--wm-err); }
-.wm-legend-swatch { flex: none; font-family: var(--wm-mono); }
-.wm-legend-swatch .wm-legend-guard { font-size: 9.5px; }
+.rb-legend-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 12.5px; }
+.rb-legend-list li { display: flex; align-items: center; gap: 9px; color: var(--rb-muted); }
+.rb-legend-list code { color: var(--rb-fg); font-weight: 600; }
+.rb-legend-list code.rb-t-done { color: var(--rb-ok); }
+.rb-legend-list code.rb-t-fail { color: var(--rb-err); }
+.rb-legend-swatch { flex: none; font-family: var(--rb-mono); }
+.rb-legend-swatch .rb-legend-guard { font-size: 9.5px; }
 
 /* ───────────── interactive viewer ───────────── */
-body.wm-app { height: 100vh; display: grid; grid-template-rows: auto auto minmax(0, 1fr); overflow: hidden; }
+body.rb-app { height: 100vh; display: grid; grid-template-rows: auto auto minmax(0, 1fr); overflow: hidden; }
 
-.wm-top { display: flex; align-items: center; gap: 14px; padding: 8px 14px; background: var(--wm-surface); border-bottom: 1px solid var(--wm-border); }
-.wm-brand { font-weight: 650; letter-spacing: 0.01em; white-space: nowrap; }
-.wm-brand small { font-weight: 400; color: var(--wm-muted); margin-left: 6px; font-family: var(--wm-mono); font-size: 12px; }
-.wm-tabs { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
-.wm-tabs-label { color: var(--wm-muted); font-size: 12.5px; align-self: center; margin-right: 4px; }
-.wm-btn, .wm-tab {
-  font: inherit; color: var(--wm-fg); background: transparent; border: 1px solid var(--wm-border);
+.rb-top { display: flex; align-items: center; gap: 14px; padding: 8px 14px; background: var(--rb-surface); border-bottom: 1px solid var(--rb-border); }
+.rb-brand { font-weight: 650; letter-spacing: 0.01em; white-space: nowrap; }
+.rb-brand small { font-weight: 400; color: var(--rb-muted); margin-left: 6px; font-family: var(--rb-mono); font-size: 12px; }
+.rb-tabs { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+.rb-tabs-label { color: var(--rb-muted); font-size: 12.5px; align-self: center; margin-right: 4px; }
+.rb-btn, .rb-tab {
+  font: inherit; color: var(--rb-fg); background: transparent; border: 1px solid var(--rb-border);
   border-radius: 6px; padding: 3px 10px; cursor: pointer; white-space: nowrap;
 }
-.wm-tab { font-family: var(--wm-mono); font-size: 13px; }
-.wm-btn:hover, .wm-tab:hover { border-color: var(--wm-box); }
-.wm-tab[aria-selected="true"] { background: var(--wm-accent-bg); border-color: var(--wm-accent); color: var(--wm-accent); font-weight: 650; }
-.wm-btn:focus-visible, .wm-tab:focus-visible, .wm-link:focus-visible { outline: 2px solid var(--wm-accent); outline-offset: 1px; }
-.wm-tools { display: flex; gap: 4px; }
+.rb-tab { font-family: var(--rb-mono); font-size: 13px; }
+.rb-btn:hover, .rb-tab:hover { border-color: var(--rb-box); }
+.rb-tab[aria-selected="true"] { background: var(--rb-accent-bg); border-color: var(--rb-accent); color: var(--rb-accent); font-weight: 650; }
+.rb-btn:focus-visible, .rb-tab:focus-visible, .rb-link:focus-visible { outline: 2px solid var(--rb-accent); outline-offset: 1px; }
+.rb-tools { display: flex; gap: 4px; }
 
-.wm-machine-head { display: flex; align-items: flex-start; gap: 12px; padding: 9px 14px 10px; background: var(--wm-surface); border-bottom: 1px solid var(--wm-border); }
-.wm-machine-head .wm-back { flex: none; }
-.wm-machine-head .wm-back[hidden] { display: none; }
+.rb-machine-head { display: flex; align-items: flex-start; gap: 12px; padding: 9px 14px 10px; background: var(--rb-surface); border-bottom: 1px solid var(--rb-border); }
+.rb-machine-head .rb-back { flex: none; }
+.rb-machine-head .rb-back[hidden] { display: none; }
 
-.wm-main { display: grid; grid-template-columns: minmax(0, 1fr) 372px; min-height: 0; }
-.wm-canvas { position: relative; overflow: hidden; background: var(--wm-canvas); cursor: grab; touch-action: none; user-select: none; }
-.wm-canvas.wm-dragging { cursor: grabbing; }
-.wm-canvas > .wm-svg { display: block; width: 100%; height: 100%; }
-.wm-canvas .wm-state, .wm-canvas .wm-edge, .wm-canvas .wm-label, .wm-canvas .wm-machine-link, .wm-canvas .wm-row[data-transition] { cursor: pointer; }
-.wm-canvas .wm-state:hover > .wm-box { stroke: var(--wm-fg); }
-.wm-canvas .wm-machine-link:hover .wm-pill { stroke-width: 2; }
-.wm-canvas .wm-edge:hover .wm-edge-line, .wm-canvas .wm-edge.wm-hover .wm-edge-line { stroke-width: 2.6; }
-.wm-canvas .wm-label:hover .wm-label-bg, .wm-canvas .wm-label.wm-hover .wm-label-bg { stroke: var(--wm-box); }
+.rb-main { display: grid; grid-template-columns: minmax(0, 1fr) 372px; min-height: 0; }
+.rb-canvas { position: relative; overflow: hidden; background: var(--rb-canvas); cursor: grab; touch-action: none; user-select: none; }
+.rb-canvas.rb-dragging { cursor: grabbing; }
+.rb-canvas > .rb-svg { display: block; width: 100%; height: 100%; }
+.rb-canvas .rb-state, .rb-canvas .rb-edge, .rb-canvas .rb-label, .rb-canvas .rb-machine-link, .rb-canvas .rb-row[data-transition] { cursor: pointer; }
+.rb-canvas .rb-state:hover > .rb-box { stroke: var(--rb-fg); }
+.rb-canvas .rb-machine-link:hover .rb-pill { stroke-width: 2; }
+.rb-canvas .rb-edge:hover .rb-edge-line, .rb-canvas .rb-edge.rb-hover .rb-edge-line { stroke-width: 2.6; }
+.rb-canvas .rb-label:hover .rb-label-bg, .rb-canvas .rb-label.rb-hover .rb-label-bg { stroke: var(--rb-box); }
 
-.wm-selected > .wm-box { stroke: var(--wm-accent) !important; stroke-width: 2.6; }
-.wm-selected > .wm-box-inner { stroke: var(--wm-accent); }
-.wm-edge.wm-selected .wm-edge-line { stroke-width: 3; }
-.wm-canvas .wm-label.wm-selected .wm-label-bg { stroke: var(--wm-accent); stroke-width: 2; }
-.wm-row.wm-selected { text-decoration: underline; }
+.rb-selected > .rb-box { stroke: var(--rb-accent) !important; stroke-width: 2.6; }
+.rb-selected > .rb-box-inner { stroke: var(--rb-accent); }
+.rb-edge.rb-selected .rb-edge-line { stroke-width: 3; }
+.rb-canvas .rb-label.rb-selected .rb-label-bg { stroke: var(--rb-accent); stroke-width: 2; }
+.rb-row.rb-selected { text-decoration: underline; }
 
-.wm-stage { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
-.wm-legend { background: var(--wm-surface); border-top: 1px solid var(--wm-border); padding: 7px 14px; }
-.wm-legend .wm-legend-list { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 12px; }
-.wm-legend .wm-legend-list li { gap: 6px; }
-.wm-hint { position: absolute; right: 12px; bottom: 8px; font-size: 12px; color: var(--wm-muted); pointer-events: none; }
+.rb-stage { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
+.rb-legend { background: var(--rb-surface); border-top: 1px solid var(--rb-border); padding: 7px 14px; }
+.rb-legend .rb-legend-list { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 12px; }
+.rb-legend .rb-legend-list li { gap: 6px; }
+.rb-hint { position: absolute; right: 12px; bottom: 8px; font-size: 12px; color: var(--rb-muted); pointer-events: none; }
 
-.wm-panel { background: var(--wm-surface); border-left: 1px solid var(--wm-border); overflow: auto; padding: 14px 16px 28px; }
-.wm-panel h2 { font: 650 16px/1.3 var(--wm-mono); margin: 0; overflow-wrap: anywhere; }
-.wm-panel h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--wm-muted); margin: 18px 0 6px; font-weight: 600; }
-.wm-panel-head { display: flex; align-items: flex-start; gap: 8px; }
-.wm-panel-head h2 { flex: 1; }
-.wm-chip { display: inline-block; font-size: 11.5px; border: 1px solid var(--wm-border); border-radius: 999px; padding: 0 8px; color: var(--wm-muted); white-space: nowrap; }
-.wm-path { font-family: var(--wm-mono); font-size: 12px; color: var(--wm-muted); margin: 2px 0 0; overflow-wrap: anywhere; }
-.wm-panel .wm-doc { margin: 10px 0 0; color: var(--wm-fg); }
-.wm-code { font-family: var(--wm-mono); font-size: 12.5px; background: var(--wm-bg); border: 1px solid var(--wm-border); border-radius: 6px; padding: 7px 9px; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.wm-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin: 0; font-size: 13px; }
-.wm-kv dt { color: var(--wm-muted); }
-.wm-kv dd { margin: 0; font-family: var(--wm-mono); font-size: 12.5px; overflow-wrap: anywhere; }
-.wm-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.wm-list li { font-family: var(--wm-mono); font-size: 12.5px; overflow-wrap: anywhere; }
-.wm-list .wm-sub { display: block; color: var(--wm-muted); padding-left: 14px; }
-.wm-list .wm-note { font-family: var(--wm-sans); color: var(--wm-muted); }
-.wm-link { font: inherit; color: var(--wm-accent); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: transparent; }
-.wm-link:hover { text-decoration-color: currentColor; }
-.wm-link.wm-mono { font-family: var(--wm-mono); font-size: 12.5px; }
-.wm-tlink { display: block; width: 100%; font-family: var(--wm-mono); font-size: 12.5px; color: var(--wm-fg); background: none; border: 1px solid var(--wm-border); border-radius: 6px; padding: 5px 8px; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
-.wm-tlink:hover { border-color: var(--wm-accent); }
-.wm-tlink .wm-arrow-text { color: var(--wm-muted); }
-.wm-tlink .wm-sub { display: block; color: var(--wm-muted); font-size: 12px; }
-.wm-empty { color: var(--wm-muted); font-size: 13px; margin: 0; }
-.wm-code + .wm-empty, .wm-code + .wm-kv, .wm-code + .wm-path, .wm-code + .wm-code, .wm-path + .wm-code, .wm-empty + .wm-tlink, .wm-tlink + .wm-empty { margin-top: 7px; }
-.wm-tlink + .wm-tlink { margin-top: 5px; }
-.wm-tree { list-style: none; margin: 0; padding: 0; }
-.wm-tree ul { list-style: none; margin: 0; padding-left: 14px; border-left: 1px solid var(--wm-border); margin-left: 4px; }
-.wm-tree li { font-family: var(--wm-mono); font-size: 12.5px; padding: 1px 0; }
+.rb-panel { background: var(--rb-surface); border-left: 1px solid var(--rb-border); overflow: auto; padding: 14px 16px 28px; }
+.rb-panel h2 { font: 650 16px/1.3 var(--rb-mono); margin: 0; overflow-wrap: anywhere; }
+.rb-panel h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--rb-muted); margin: 18px 0 6px; font-weight: 600; }
+.rb-panel-head { display: flex; align-items: flex-start; gap: 8px; }
+.rb-panel-head h2 { flex: 1; }
+.rb-chip { display: inline-block; font-size: 11.5px; border: 1px solid var(--rb-border); border-radius: 999px; padding: 0 8px; color: var(--rb-muted); white-space: nowrap; }
+.rb-path { font-family: var(--rb-mono); font-size: 12px; color: var(--rb-muted); margin: 2px 0 0; overflow-wrap: anywhere; }
+.rb-panel .rb-doc { margin: 10px 0 0; color: var(--rb-fg); }
+.rb-code { font-family: var(--rb-mono); font-size: 12.5px; background: var(--rb-bg); border: 1px solid var(--rb-border); border-radius: 6px; padding: 7px 9px; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rb-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin: 0; font-size: 13px; }
+.rb-kv dt { color: var(--rb-muted); }
+.rb-kv dd { margin: 0; font-family: var(--rb-mono); font-size: 12.5px; overflow-wrap: anywhere; }
+.rb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.rb-list li { font-family: var(--rb-mono); font-size: 12.5px; overflow-wrap: anywhere; }
+.rb-list .rb-sub { display: block; color: var(--rb-muted); padding-left: 14px; }
+.rb-list .rb-note { font-family: var(--rb-sans); color: var(--rb-muted); }
+.rb-link { font: inherit; color: var(--rb-accent); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: transparent; }
+.rb-link:hover { text-decoration-color: currentColor; }
+.rb-link.rb-mono { font-family: var(--rb-mono); font-size: 12.5px; }
+.rb-tlink { display: block; width: 100%; font-family: var(--rb-mono); font-size: 12.5px; color: var(--rb-fg); background: none; border: 1px solid var(--rb-border); border-radius: 6px; padding: 5px 8px; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.rb-tlink:hover { border-color: var(--rb-accent); }
+.rb-tlink .rb-arrow-text { color: var(--rb-muted); }
+.rb-tlink .rb-sub { display: block; color: var(--rb-muted); font-size: 12px; }
+.rb-empty { color: var(--rb-muted); font-size: 13px; margin: 0; }
+.rb-code + .rb-empty, .rb-code + .rb-kv, .rb-code + .rb-path, .rb-code + .rb-code, .rb-path + .rb-code, .rb-empty + .rb-tlink, .rb-tlink + .rb-empty { margin-top: 7px; }
+.rb-tlink + .rb-tlink { margin-top: 5px; }
+.rb-tree { list-style: none; margin: 0; padding: 0; }
+.rb-tree ul { list-style: none; margin: 0; padding-left: 14px; border-left: 1px solid var(--rb-border); margin-left: 4px; }
+.rb-tree li { font-family: var(--rb-mono); font-size: 12.5px; padding: 1px 0; }
 
 @media (max-width: 860px) {
-  .wm-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 3fr) minmax(0, 2fr); }
-  .wm-panel { border-left: 0; border-top: 1px solid var(--wm-border); }
+  .rb-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 3fr) minmax(0, 2fr); }
+  .rb-panel { border-left: 0; border-top: 1px solid var(--rb-border); }
 }
 
 /* ───────────── static page ───────────── */
-body.wm-static { background: var(--wm-canvas); padding: 24px 28px 40px; }
-.wm-static h1 { font: 650 20px/1.3 var(--wm-sans); margin: 0 0 8px; }
-.wm-static h1 small { font: 400 12.5px var(--wm-mono); color: var(--wm-muted); margin-left: 8px; }
-.wm-static figure { margin: 22px 0; overflow-x: auto; }
-.wm-static figure .wm-svg { display: block; max-width: 100%; height: auto; }
-.wm-static section h2 { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--wm-muted); margin: 0 0 8px; font-weight: 600; }
-.wm-static .wm-legend-list { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); max-width: 1100px; }
-.wm-static footer { margin-top: 22px; font-size: 12px; color: var(--wm-muted); }
+body.rb-static { background: var(--rb-canvas); padding: 24px 28px 40px; }
+.rb-static h1 { font: 650 20px/1.3 var(--rb-sans); margin: 0 0 8px; }
+.rb-static h1 small { font: 400 12.5px var(--rb-mono); color: var(--rb-muted); margin-left: 8px; }
+.rb-static figure { margin: 22px 0; overflow-x: auto; }
+.rb-static figure .rb-svg { display: block; max-width: 100%; height: auto; }
+.rb-static section h2 { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--rb-muted); margin: 0 0 8px; font-weight: 600; }
+.rb-static .rb-legend-list { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); max-width: 1100px; }
+.rb-static footer { margin-top: 22px; font-size: 12px; color: var(--rb-muted); }
 </style>
 </head>
-<body class="wm-static">
+<body class="rb-static">
 <header>
-<h1>Checkout<small>examples/shop/checkout.way:4</small></h1>
-<code class="wm-signature">machine Checkout(order: Order, user: User) -&gt; Receipt ! CardDeclined | GatewayUnavailable</code><p class="wm-doc">Charge the customer's card, retrying while the payment gateway is down.</p>
+<h1>Checkout<small>examples/shop/checkout.road:4</small></h1>
+<code class="rb-signature">machine Checkout(order: Order, user: User) -&gt; Receipt ! CardDeclined | GatewayUnavailable</code><p class="rb-doc">Charge the customer's card, retrying while the payment gateway is down.</p>
 </header>
 <figure>
-<svg xmlns="http://www.w3.org/2000/svg" class="wm-svg" viewBox="0 0 993 355" width="993" height="355" role="img" aria-label="State diagram of machine Checkout"><defs><marker id="wm-arrow-event" class="wm-arrow wm-k-event" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker><marker id="wm-arrow-done" class="wm-arrow wm-k-done" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker><marker id="wm-arrow-fail" class="wm-arrow wm-k-fail" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker><marker id="wm-arrow-after" class="wm-arrow wm-k-after" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker><marker id="wm-arrow-always" class="wm-arrow wm-k-always" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker><marker id="wm-arrow-initial" class="wm-arrow wm-k-initial" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker></defs><g class="wm-layer-containers"></g><g class="wm-layer-edges"><g class="wm-edge wm-k-initial"><path class="wm-edge-hit" d="M390,27 L390,63"/><path class="wm-edge-line" d="M390,27 L390,63" marker-end="url(#wm-arrow-initial)"/></g><g class="wm-edge wm-k-done" data-state="Checkout.Charging" data-transition="0"><path class="wm-edge-hit" d="M359,124 L359,135 Q359,142 352,142 L99,142 Q92,142 92,149 L92,252"/><path class="wm-edge-line" d="M359,124 L359,135 Q359,142 352,142 L99,142 Q92,142 92,149 L92,252" marker-end="url(#wm-arrow-done)"/></g><g class="wm-edge wm-k-fail" data-state="Checkout.Charging" data-transition="1"><path class="wm-edge-hit" d="M406,124 L406,151 Q406,158 399,158 L275,158 Q268,158 268,165 L268,228.5 Q268,234 262.5,234 L262.5,234 Q257,234 257,239.5 L257,252"/><path class="wm-edge-line" d="M406,124 L406,151 Q406,158 399,158 L275,158 Q268,158 268,165 L268,228.5 Q268,234 262.5,234 L262.5,234 Q257,234 257,239.5 L257,252" marker-end="url(#wm-arrow-fail)"/></g><g class="wm-edge wm-k-fail" data-state="Checkout.Charging" data-transition="2"><path class="wm-edge-hit" d="M454,124 L454,227 Q454,234 461,234 L478,234 Q485,234 485,241 L485,252"/><path class="wm-edge-line" d="M454,124 L454,227 Q454,234 461,234 L478,234 Q485,234 485,241 L485,252" marker-end="url(#wm-arrow-fail)"/></g><g class="wm-edge wm-k-fail" data-state="Checkout.Charging" data-transition="3"><path class="wm-edge-hit" d="M501,124 L501,135 Q501,142 508,142 L651,142 Q658,142 658,149 L658,227 Q658,234 665,234 L742,234 Q749,234 749,241 L749,252"/><path class="wm-edge-line" d="M501,124 L501,135 Q501,142 508,142 L651,142 Q658,142 658,149 L658,227 Q658,234 665,234 L742,234 Q749,234 749,241 L749,252" marker-end="url(#wm-arrow-fail)"/></g><g class="wm-edge wm-k-after" data-state="Checkout.Backoff" data-transition="0"><path class="wm-edge-hit" d="M485,313 L485,332 Q485,339 492,339 L866,339 Q873,339 873,332 L873,52 Q873,45 866,45 L477,45 Q470,45 470,52 L470,63"/><path class="wm-edge-line" d="M485,313 L485,332 Q485,339 492,339 L866,339 Q873,339 873,332 L873,52 Q873,45 866,45 L477,45 Q470,45 470,52 L470,63" marker-end="url(#wm-arrow-after)"/></g></g><g class="wm-layer-states"><g class="wm-state wm-kind-atomic wm-leaf" data-state="Checkout.Charging" transform="translate(311,63)"><title>Checkout.Charging — One attempt against the payment gateway.</title><rect class="wm-box" width="238" height="61" rx="8"/><text class="wm-title" x="119" y="19.4" text-anchor="middle">Charging</text><line class="wm-sep" x1="0" x2="238" y1="30" y2="30"/><text class="wm-row" x="12" y="49.4" xml:space="preserve"><tspan class="wm-kw">invoke</tspan> chargeCard(order, user)</text></g><g class="wm-state wm-kind-atomic wm-leaf" data-state="Checkout.Backoff" transform="translate(355,252)"><title>Checkout.Backoff — Wait before the next attempt. The delay grows with each attempt.</title><rect class="wm-box" width="260" height="61" rx="8"/><text class="wm-title" x="130" y="19.4" text-anchor="middle">Backoff</text><line class="wm-sep" x1="0" x2="260" y1="30" y2="30"/><text class="wm-row" x="12" y="49.4" xml:space="preserve"><tspan class="wm-kw">entry</tspan> set attempts = attempts + 1</text></g><g class="wm-state wm-kind-final wm-leaf" data-state="Checkout.Charged" transform="translate(26,252)"><title>Checkout.Charged</title><rect class="wm-box" width="132" height="69" rx="8"/><rect class="wm-box-inner" x="4" y="4" width="124" height="61" rx="5"/><text class="wm-title" x="66" y="23.4" text-anchor="middle">Charged</text><line class="wm-sep" x1="4" x2="128" y1="34" y2="34"/><text class="wm-row" x="16" y="53.4" xml:space="preserve"><tspan class="wm-kw">output</tspan> receipt</text></g><g class="wm-state wm-kind-final wm-leaf" data-state="Checkout.Declined" transform="translate(194,252)"><title>Checkout.Declined</title><rect class="wm-box" width="125" height="69" rx="8"/><rect class="wm-box-inner" x="4" y="4" width="117" height="61" rx="5"/><text class="wm-title" x="62.5" y="23.4" text-anchor="middle">Declined</text><line class="wm-sep" x1="4" x2="121" y1="34" y2="34"/><text class="wm-row wm-k-fail" x="16" y="53.4" xml:space="preserve"><tspan class="wm-kw">fail</tspan> declined</text></g><g class="wm-state wm-kind-final wm-leaf" data-state="Checkout.GaveUp" transform="translate(651,252)"><title>Checkout.GaveUp</title><rect class="wm-box" width="196" height="69" rx="8"/><rect class="wm-box-inner" x="4" y="4" width="188" height="61" rx="5"/><text class="wm-title" x="98" y="23.4" text-anchor="middle">GaveUp</text><line class="wm-sep" x1="4" x2="192" y1="34" y2="34"/><text class="wm-row wm-k-fail" x="16" y="53.4" xml:space="preserve"><tspan class="wm-kw">fail</tspan> GatewayUnavailable</text></g><circle class="wm-initial" cx="389.5" cy="21.5" r="5.5"><title>initial state of Checkout</title></circle></g><g class="wm-layer-labels"><g class="wm-label wm-k-done" data-state="Checkout.Charging" data-transition="0"><rect class="wm-label-bg" x="16" y="176.5" width="151" height="39" rx="5"/><text class="wm-label-trigger" x="91.5" y="192.6" text-anchor="middle" xml:space="preserve">done</text><text class="wm-label-effect" x="91.5" y="207.7" text-anchor="middle" xml:space="preserve">set receipt = result</text></g><g class="wm-label wm-k-fail" data-state="Checkout.Charging" data-transition="1"><rect class="wm-label-bg" x="192" y="176.5" width="151" height="39" rx="5"/><text class="wm-label-trigger" x="267.5" y="192.6" text-anchor="middle" xml:space="preserve">fail CardDeclined</text><text class="wm-label-effect" x="267.5" y="207.7" text-anchor="middle" xml:space="preserve">set declined = error</text></g><g class="wm-label wm-k-fail" data-state="Checkout.Charging" data-transition="2"><rect class="wm-label-bg" x="361" y="176" width="186" height="40" rx="5"/><text class="wm-label-trigger" x="454" y="192.1" text-anchor="middle" xml:space="preserve">fail GatewayUnavailable</text><text class="wm-label-trigger" x="454" y="208.1" text-anchor="middle" xml:space="preserve"><tspan class="wm-guard">[attempts &lt; 3]</tspan></text></g><g class="wm-label wm-k-fail" data-state="Checkout.Charging" data-transition="3"><rect class="wm-label-bg" x="565" y="176" width="186" height="40" rx="5"/><text class="wm-label-trigger" x="658" y="192.1" text-anchor="middle" xml:space="preserve">fail GatewayUnavailable</text><text class="wm-label-trigger" x="658" y="208.1" text-anchor="middle" xml:space="preserve"><tspan class="wm-guard">[else]</tspan></text></g><g class="wm-label wm-k-after" data-state="Checkout.Backoff" data-transition="0"><rect class="wm-label-bg" x="769" y="184" width="208" height="24" rx="5"/><text class="wm-label-trigger" x="873" y="200.1" text-anchor="middle" xml:space="preserve">after retryDelay(attempts)</text></g></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" class="rb-svg" viewBox="0 0 993 355" width="993" height="355" role="img" aria-label="State diagram of machine Checkout"><defs><marker id="rb-arrow-event" class="rb-arrow rb-k-event" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker><marker id="rb-arrow-done" class="rb-arrow rb-k-done" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker><marker id="rb-arrow-fail" class="rb-arrow rb-k-fail" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker><marker id="rb-arrow-after" class="rb-arrow rb-k-after" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker><marker id="rb-arrow-always" class="rb-arrow rb-k-always" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker><marker id="rb-arrow-initial" class="rb-arrow rb-k-initial" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker></defs><g class="rb-layer-containers"></g><g class="rb-layer-edges"><g class="rb-edge rb-k-initial"><path class="rb-edge-hit" d="M390,27 L390,63"/><path class="rb-edge-line" d="M390,27 L390,63" marker-end="url(#rb-arrow-initial)"/></g><g class="rb-edge rb-k-done" data-state="Checkout.Charging" data-transition="0"><path class="rb-edge-hit" d="M359,124 L359,135 Q359,142 352,142 L99,142 Q92,142 92,149 L92,252"/><path class="rb-edge-line" d="M359,124 L359,135 Q359,142 352,142 L99,142 Q92,142 92,149 L92,252" marker-end="url(#rb-arrow-done)"/></g><g class="rb-edge rb-k-fail" data-state="Checkout.Charging" data-transition="1"><path class="rb-edge-hit" d="M406,124 L406,151 Q406,158 399,158 L275,158 Q268,158 268,165 L268,228.5 Q268,234 262.5,234 L262.5,234 Q257,234 257,239.5 L257,252"/><path class="rb-edge-line" d="M406,124 L406,151 Q406,158 399,158 L275,158 Q268,158 268,165 L268,228.5 Q268,234 262.5,234 L262.5,234 Q257,234 257,239.5 L257,252" marker-end="url(#rb-arrow-fail)"/></g><g class="rb-edge rb-k-fail" data-state="Checkout.Charging" data-transition="2"><path class="rb-edge-hit" d="M454,124 L454,227 Q454,234 461,234 L478,234 Q485,234 485,241 L485,252"/><path class="rb-edge-line" d="M454,124 L454,227 Q454,234 461,234 L478,234 Q485,234 485,241 L485,252" marker-end="url(#rb-arrow-fail)"/></g><g class="rb-edge rb-k-fail" data-state="Checkout.Charging" data-transition="3"><path class="rb-edge-hit" d="M501,124 L501,135 Q501,142 508,142 L651,142 Q658,142 658,149 L658,227 Q658,234 665,234 L742,234 Q749,234 749,241 L749,252"/><path class="rb-edge-line" d="M501,124 L501,135 Q501,142 508,142 L651,142 Q658,142 658,149 L658,227 Q658,234 665,234 L742,234 Q749,234 749,241 L749,252" marker-end="url(#rb-arrow-fail)"/></g><g class="rb-edge rb-k-after" data-state="Checkout.Backoff" data-transition="0"><path class="rb-edge-hit" d="M485,313 L485,332 Q485,339 492,339 L866,339 Q873,339 873,332 L873,52 Q873,45 866,45 L477,45 Q470,45 470,52 L470,63"/><path class="rb-edge-line" d="M485,313 L485,332 Q485,339 492,339 L866,339 Q873,339 873,332 L873,52 Q873,45 866,45 L477,45 Q470,45 470,52 L470,63" marker-end="url(#rb-arrow-after)"/></g></g><g class="rb-layer-states"><g class="rb-state rb-kind-atomic rb-leaf" data-state="Checkout.Charging" transform="translate(311,63)"><title>Checkout.Charging — One attempt against the payment gateway.</title><rect class="rb-box" width="238" height="61" rx="8"/><text class="rb-title" x="119" y="19.4" text-anchor="middle">Charging</text><line class="rb-sep" x1="0" x2="238" y1="30" y2="30"/><text class="rb-row" x="12" y="49.4" xml:space="preserve"><tspan class="rb-kw">invoke</tspan> chargeCard(order, user)</text></g><g class="rb-state rb-kind-atomic rb-leaf" data-state="Checkout.Backoff" transform="translate(355,252)"><title>Checkout.Backoff — Wait before the next attempt. The delay grows with each attempt.</title><rect class="rb-box" width="260" height="61" rx="8"/><text class="rb-title" x="130" y="19.4" text-anchor="middle">Backoff</text><line class="rb-sep" x1="0" x2="260" y1="30" y2="30"/><text class="rb-row" x="12" y="49.4" xml:space="preserve"><tspan class="rb-kw">entry</tspan> set attempts = attempts + 1</text></g><g class="rb-state rb-kind-final rb-leaf" data-state="Checkout.Charged" transform="translate(26,252)"><title>Checkout.Charged</title><rect class="rb-box" width="132" height="69" rx="8"/><rect class="rb-box-inner" x="4" y="4" width="124" height="61" rx="5"/><text class="rb-title" x="66" y="23.4" text-anchor="middle">Charged</text><line class="rb-sep" x1="4" x2="128" y1="34" y2="34"/><text class="rb-row" x="16" y="53.4" xml:space="preserve"><tspan class="rb-kw">output</tspan> receipt</text></g><g class="rb-state rb-kind-final rb-leaf" data-state="Checkout.Declined" transform="translate(194,252)"><title>Checkout.Declined</title><rect class="rb-box" width="125" height="69" rx="8"/><rect class="rb-box-inner" x="4" y="4" width="117" height="61" rx="5"/><text class="rb-title" x="62.5" y="23.4" text-anchor="middle">Declined</text><line class="rb-sep" x1="4" x2="121" y1="34" y2="34"/><text class="rb-row rb-k-fail" x="16" y="53.4" xml:space="preserve"><tspan class="rb-kw">fail</tspan> declined</text></g><g class="rb-state rb-kind-final rb-leaf" data-state="Checkout.GaveUp" transform="translate(651,252)"><title>Checkout.GaveUp</title><rect class="rb-box" width="196" height="69" rx="8"/><rect class="rb-box-inner" x="4" y="4" width="188" height="61" rx="5"/><text class="rb-title" x="98" y="23.4" text-anchor="middle">GaveUp</text><line class="rb-sep" x1="4" x2="192" y1="34" y2="34"/><text class="rb-row rb-k-fail" x="16" y="53.4" xml:space="preserve"><tspan class="rb-kw">fail</tspan> GatewayUnavailable</text></g><circle class="rb-initial" cx="389.5" cy="21.5" r="5.5"><title>initial state of Checkout</title></circle></g><g class="rb-layer-labels"><g class="rb-label rb-k-done" data-state="Checkout.Charging" data-transition="0"><rect class="rb-label-bg" x="16" y="176.5" width="151" height="39" rx="5"/><text class="rb-label-trigger" x="91.5" y="192.6" text-anchor="middle" xml:space="preserve">done</text><text class="rb-label-effect" x="91.5" y="207.7" text-anchor="middle" xml:space="preserve">set receipt = result</text></g><g class="rb-label rb-k-fail" data-state="Checkout.Charging" data-transition="1"><rect class="rb-label-bg" x="192" y="176.5" width="151" height="39" rx="5"/><text class="rb-label-trigger" x="267.5" y="192.6" text-anchor="middle" xml:space="preserve">fail CardDeclined</text><text class="rb-label-effect" x="267.5" y="207.7" text-anchor="middle" xml:space="preserve">set declined = error</text></g><g class="rb-label rb-k-fail" data-state="Checkout.Charging" data-transition="2"><rect class="rb-label-bg" x="361" y="176" width="186" height="40" rx="5"/><text class="rb-label-trigger" x="454" y="192.1" text-anchor="middle" xml:space="preserve">fail GatewayUnavailable</text><text class="rb-label-trigger" x="454" y="208.1" text-anchor="middle" xml:space="preserve"><tspan class="rb-guard">[attempts &lt; 3]</tspan></text></g><g class="rb-label rb-k-fail" data-state="Checkout.Charging" data-transition="3"><rect class="rb-label-bg" x="565" y="176" width="186" height="40" rx="5"/><text class="rb-label-trigger" x="658" y="192.1" text-anchor="middle" xml:space="preserve">fail GatewayUnavailable</text><text class="rb-label-trigger" x="658" y="208.1" text-anchor="middle" xml:space="preserve"><tspan class="rb-guard">[else]</tspan></text></g><g class="rb-label rb-k-after" data-state="Checkout.Backoff" data-transition="0"><rect class="rb-label-bg" x="769" y="184" width="208" height="24" rx="5"/><text class="rb-label-trigger" x="873" y="200.1" text-anchor="middle" xml:space="preserve">after retryDelay(attempts)</text></g></g></svg>
 </figure>
 <section>
 <h2>Legend</h2>
-<ul class="wm-legend-list"><li><svg class="wm-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true"><g class="wm-edge wm-k-event"><path class="wm-edge-line" d="M1,7 L37,7"/></g><g class="wm-arrow wm-k-event"><path d="M36,3 L45,7 L36,11 z"/></g></svg><span><code class="">Cancel</code> event</span></li><li><svg class="wm-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true"><g class="wm-edge wm-k-done"><path class="wm-edge-line" d="M1,7 L37,7"/></g><g class="wm-arrow wm-k-done"><path d="M36,3 L45,7 L36,11 z"/></g></svg><span><code class="wm-t-done">done</code> invoke or nested states finished</span></li><li><svg class="wm-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true"><g class="wm-edge wm-k-fail"><path class="wm-edge-line" d="M1,7 L37,7"/></g><g class="wm-arrow wm-k-fail"><path d="M36,3 L45,7 L36,11 z"/></g></svg><span><code class="wm-t-fail">fail X</code> invoke failed with error X</span></li><li><svg class="wm-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true"><g class="wm-edge wm-k-after"><path class="wm-edge-line" d="M1,7 L37,7"/></g><g class="wm-arrow wm-k-after"><path d="M36,3 L45,7 L36,11 z"/></g></svg><span><code class="">after 30s</code> time in the state (dashed)</span></li><li><svg class="wm-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true"><g class="wm-edge wm-k-always"><path class="wm-edge-line" d="M1,7 L37,7"/></g><g class="wm-arrow wm-k-always"><path d="M36,3 L45,7 L36,11 z"/></g></svg><span><code class="">always</code> no event needed (dotted)</span></li><li><svg class="wm-legend-swatch" viewBox="0 0 46 18" width="46" height="18" aria-hidden="true"><g class="wm-label"><rect class="wm-label-bg" x="5" y="2" width="36" height="14" rx="4"/><text class="wm-label-trigger wm-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="wm-guard">[x&lt;3]</tspan></text></g></svg><span><code class="">[guard]</code> condition; branches are tried in order</span></li><li><svg class="wm-legend-swatch" viewBox="0 0 46 18" width="46" height="18" aria-hidden="true"><g class="wm-edge wm-k-initial"><path class="wm-edge-line" d="M12,9 L37,9"/></g><g class="wm-arrow wm-k-initial"><path d="M36,5 L45,9 L36,13 z"/></g><circle class="wm-initial" cx="7" cy="9" r="5.5"/></svg><span><code class="">initial</code> state</span></li><li><svg class="wm-legend-swatch" viewBox="0 0 46 18" width="46" height="18" aria-hidden="true"><g class="wm-state wm-kind-final"><rect class="wm-box" x="4" y="1" width="38" height="16" rx="5"/><rect class="wm-box-inner" x="7" y="4" width="32" height="10" rx="2.5"/></g></svg><span><code class="">final</code> state (double border)</span></li><li><svg class="wm-legend-swatch" viewBox="0 0 46 18" width="46" height="18" aria-hidden="true"><g class="wm-machine-link"><rect class="wm-pill" x="2" y="2" width="42" height="14" rx="7"/><path class="wm-pill-chevron" d="M33,5.5 l3.5,3.5 l-3.5,3.5"/></g></svg><span><code class="">machine</code> invokes another machine</span></li></ul>
+<ul class="rb-legend-list"><li><svg class="rb-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true"><g class="rb-edge rb-k-event"><path class="rb-edge-line" d="M1,7 L37,7"/></g><g class="rb-arrow rb-k-event"><path d="M36,3 L45,7 L36,11 z"/></g></svg><span><code class="">Cancel</code> event</span></li><li><svg class="rb-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true"><g class="rb-edge rb-k-done"><path class="rb-edge-line" d="M1,7 L37,7"/></g><g class="rb-arrow rb-k-done"><path d="M36,3 L45,7 L36,11 z"/></g></svg><span><code class="rb-t-done">done</code> invoke or nested states finished</span></li><li><svg class="rb-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true"><g class="rb-edge rb-k-fail"><path class="rb-edge-line" d="M1,7 L37,7"/></g><g class="rb-arrow rb-k-fail"><path d="M36,3 L45,7 L36,11 z"/></g></svg><span><code class="rb-t-fail">fail X</code> invoke failed with error X</span></li><li><svg class="rb-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true"><g class="rb-edge rb-k-after"><path class="rb-edge-line" d="M1,7 L37,7"/></g><g class="rb-arrow rb-k-after"><path d="M36,3 L45,7 L36,11 z"/></g></svg><span><code class="">after 30s</code> time in the state (dashed)</span></li><li><svg class="rb-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true"><g class="rb-edge rb-k-always"><path class="rb-edge-line" d="M1,7 L37,7"/></g><g class="rb-arrow rb-k-always"><path d="M36,3 L45,7 L36,11 z"/></g></svg><span><code class="">always</code> no event needed (dotted)</span></li><li><svg class="rb-legend-swatch" viewBox="0 0 46 18" width="46" height="18" aria-hidden="true"><g class="rb-label"><rect class="rb-label-bg" x="5" y="2" width="36" height="14" rx="4"/><text class="rb-label-trigger rb-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="rb-guard">[x&lt;3]</tspan></text></g></svg><span><code class="">[guard]</code> condition; branches are tried in order</span></li><li><svg class="rb-legend-swatch" viewBox="0 0 46 18" width="46" height="18" aria-hidden="true"><g class="rb-edge rb-k-initial"><path class="rb-edge-line" d="M12,9 L37,9"/></g><g class="rb-arrow rb-k-initial"><path d="M36,5 L45,9 L36,13 z"/></g><circle class="rb-initial" cx="7" cy="9" r="5.5"/></svg><span><code class="">initial</code> state</span></li><li><svg class="rb-legend-swatch" viewBox="0 0 46 18" width="46" height="18" aria-hidden="true"><g class="rb-state rb-kind-final"><rect class="rb-box" x="4" y="1" width="38" height="16" rx="5"/><rect class="rb-box-inner" x="7" y="4" width="32" height="10" rx="2.5"/></g></svg><span><code class="">final</code> state (double border)</span></li><li><svg class="rb-legend-swatch" viewBox="0 0 46 18" width="46" height="18" aria-hidden="true"><g class="rb-machine-link"><rect class="rb-pill" x="2" y="2" width="42" height="14" rx="7"/><path class="rb-pill-chevron" d="M33,5.5 l3.5,3.5 l-3.5,3.5"/></g></svg><span><code class="">machine</code> invokes another machine</span></li></ul>
 </section>
-<footer>Static rendering of machine <code>Checkout</code> from <code>examples/shop/place_order.way</code>. No scripts; generated by the Waymark spike.</footer>
+<footer>Static rendering of machine <code>Checkout</code> from <code>examples/shop/place_order.road</code>. No scripts; generated by the Roadbook spike.</footer>
 </body>
 </html>

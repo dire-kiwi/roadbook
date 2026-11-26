@@ -1,6 +1,6 @@
 # Visualization
 
-`waymark viz` turns charts into HTML with no agent and no service involved. It is a deterministic function of the IR: the same chart always gives the same page.
+`roadbook viz` turns charts into HTML with no agent and no service involved. It is a deterministic function of the IR: the same chart always gives the same page.
 
 The spike in [`spike/`](../../spike) already does this for the shop example: [`spike/out/shop.html`](../../spike/out/shop.html) is the interactive viewer for both machines.
 
@@ -66,16 +66,16 @@ Explore is the first milestone. The others arrive as the runtime pieces they dep
 
 **Explore.** The static chart, as above.
 
-**Simulate.** Step through a chart by hand. The viewer shows the events and outcomes that are possible in the current state. The reader picks one (send `Cancel`, let `chargeCard` fail with `GatewayUnavailable`, let 30 seconds pass), and the viewer highlights the transition and the new state and shows the variables. Guards that call host functions ask the reader for the result. This runs `@waymark/core` in the page, so it behaves exactly as the real runtime would.
+**Simulate.** Step through a chart by hand. The viewer shows the events and outcomes that are possible in the current state. The reader picks one (send `Cancel`, let `chargeCard` fail with `GatewayUnavailable`, let 30 seconds pass), and the viewer highlights the transition and the new state and shows the variables. Guards that call host functions ask the reader for the result. This runs `@roadbook/core` in the page, so it behaves exactly as the real runtime would.
 
 **Replay.** Load a [trace](semantics.md#the-trace) recorded by either runtime. The viewer draws the path the run took, steps forward and back through it, and shows the variables at each point. A failed request becomes a picture of where it went. If the trace's IR hash differs from the chart on screen, the viewer says so.
 
-**Diff.** `waymark viz --diff main..HEAD` draws both versions as one chart with added, removed and changed states and transitions marked. This is the mode aimed most directly at the project's goal. When an agent changes a program, the reviewer sees the change in flow before reading any code.
+**Diff.** `roadbook viz --diff main..HEAD` draws both versions as one chart with added, removed and changed states and transitions marked. This is the mode aimed most directly at the project's goal. When an agent changes a program, the reviewer sees the change in flow before reading any code.
 
 **Coverage.** Load many traces, from a test run or from production, and shade each transition by how often it was taken. Transitions never taken stand out.
 
 ## Other outputs
 
-- **Mermaid.** `waymark export mermaid` writes a `stateDiagram-v2` block. GitHub renders it inline, so a chart can sit in a README or a pull request description. It loses the detail panel and the drill-down, and its layout is coarser.
+- **Mermaid.** `roadbook export mermaid` writes a `stateDiagram-v2` block. GitHub renders it inline, so a chart can sit in a README or a pull request description. It loses the detail panel and the drill-down, and its layout is coarser.
 - **Static SVG.** For documentation.
-- **Live.** `waymark viz --watch` serves the viewer and reloads as charts change. Later, a running application can stream its trace to the viewer for a live view of what it is doing.
+- **Live.** `roadbook viz --watch` serves the viewer and reloads as charts change. Later, a running application can stream its trace to the viewer for a live view of what it is doing.

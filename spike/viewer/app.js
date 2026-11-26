@@ -6,10 +6,10 @@ import { layoutMachine } from './layout.js'
 import { renderSvg, renderLegend, renderMachineHeader, esc } from './render.js'
 
 function startViewer() {
-  const ir = JSON.parse(document.getElementById('wm-ir').textContent)
+  const ir = JSON.parse(document.getElementById('rb-ir').textContent)
   const $ = (id) => document.getElementById(id)
-  const canvas = $('wm-canvas')
-  const panel = $('wm-panel')
+  const canvas = $('rb-canvas')
+  const panel = $('rb-panel')
   const machineNames = Object.keys(ir.machines)
   const elk = new ELK()
   const layouts = new Map()
@@ -23,7 +23,7 @@ function startViewer() {
 
   // Measure text with the real monospace font, so boxes fit their text exactly.
   const ctx = document.createElement('canvas').getContext('2d')
-  const mono = getComputedStyle(document.documentElement).getPropertyValue('--wm-mono').trim() || 'monospace'
+  const mono = getComputedStyle(document.documentElement).getPropertyValue('--rb-mono').trim() || 'monospace'
   const measure = (text, size, bold) => {
     ctx.font = `${bold ? '650' : '400'} ${size}px ${mono}`
     return ctx.measureText(text).width + 1
@@ -37,11 +37,11 @@ function startViewer() {
     if (current !== name) return
     if (svg) svg.remove()
     canvas.insertAdjacentHTML('afterbegin', renderSvg(ir, name, layouts.get(name), { measure }))
-    svg = canvas.querySelector('svg.wm-svg')
+    svg = canvas.querySelector('svg.rb-svg')
     svg.removeAttribute('width')
     svg.removeAttribute('height')
     try { history.replaceState(null, '', '#' + name) } catch { /* some file:// setups refuse; the hash is only a convenience */ }
-    document.title = `${name} · Waymark`
+    document.title = `${name} · Roadbook`
     fit()
     renderChrome()
     applySelection()
@@ -49,11 +49,11 @@ function startViewer() {
   }
 
   function renderChrome() {
-    $('wm-machine-head').innerHTML = renderMachineHeader(ir, current)
-    $('wm-tabs').innerHTML = `<span class="wm-tabs-label">${machineNames.length === 1 ? 'Machine' : 'Machines'}</span>`
+    $('rb-machine-head').innerHTML = renderMachineHeader(ir, current)
+    $('rb-tabs').innerHTML = `<span class="rb-tabs-label">${machineNames.length === 1 ? 'Machine' : 'Machines'}</span>`
       + machineNames.map((m) =>
-        `<button class="wm-tab" type="button" role="tab" aria-selected="${m === current}" data-machine="${esc(m)}">${esc(m)}</button>`).join('')
-    const back = $('wm-back')
+        `<button class="rb-tab" type="button" role="tab" aria-selected="${m === current}" data-machine="${esc(m)}">${esc(m)}</button>`).join('')
+    const back = $('rb-back')
     const prev = navStack[navStack.length - 1]
     back.hidden = !prev
     if (prev) back.textContent = `← Back to ${prev.machine}`
@@ -124,7 +124,7 @@ function startViewer() {
     const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y
     if (!drag.moved && Math.hypot(dx, dy) < 4) return
     drag.moved = true
-    canvas.classList.add('wm-dragging')
+    canvas.classList.add('rb-dragging')
     const k = view.w / size().w
     view.x = drag.vx - dx * k
     view.y = drag.vy - dy * k
@@ -137,7 +137,7 @@ function startViewer() {
       setTimeout(() => { suppressClick = false }, 0)
     }
     drag = null
-    canvas.classList.remove('wm-dragging')
+    canvas.classList.remove('rb-dragging')
   })
   new ResizeObserver(() => {
     if (!view) return
@@ -148,9 +148,9 @@ function startViewer() {
     applyView()
   }).observe(canvas)
 
-  $('wm-fit').addEventListener('click', fit)
-  $('wm-zoom-in').addEventListener('click', () => zoomBy(1.25, size().w / 2, size().h / 2))
-  $('wm-zoom-out').addEventListener('click', () => zoomBy(0.8, size().w / 2, size().h / 2))
+  $('rb-fit').addEventListener('click', fit)
+  $('rb-zoom-in').addEventListener('click', () => zoomBy(1.25, size().w / 2, size().h / 2))
+  $('rb-zoom-out').addEventListener('click', () => zoomBy(0.8, size().w / 2, size().h / 2))
   document.addEventListener('keydown', (ev) => {
     if (ev.target.closest('input, textarea, select') || ev.metaKey || ev.ctrlKey || ev.altKey) return
     if (ev.key === 'f') fit()
@@ -159,7 +159,7 @@ function startViewer() {
 
   // Colour scheme: follow the system, or force one (handy for checking both).
   const themes = ['auto', 'light', 'dark']
-  $('wm-theme').addEventListener('click', (ev) => {
+  $('rb-theme').addEventListener('click', (ev) => {
     const next = themes[(themes.indexOf(document.documentElement.dataset.theme || 'auto') + 1) % themes.length]
     if (next === 'auto') delete document.documentElement.dataset.theme
     else document.documentElement.dataset.theme = next
@@ -169,17 +169,17 @@ function startViewer() {
   // ───────────── selection ─────────────
   const q = (s) => s.replace(/["\\]/g, '\\$&')
   function transitionEls(stateId, index, root = svg) {
-    return root ? [...root.querySelectorAll(`[data-state="${q(stateId)}"][data-transition="${index}"], [data-state="${q(stateId)}"] .wm-row[data-transition="${index}"]`)] : []
+    return root ? [...root.querySelectorAll(`[data-state="${q(stateId)}"][data-transition="${index}"], [data-state="${q(stateId)}"] .rb-row[data-transition="${index}"]`)] : []
   }
   function applySelection() {
     if (!svg) return
-    svg.querySelectorAll('.wm-selected').forEach((el) => el.classList.remove('wm-selected'))
+    svg.querySelectorAll('.rb-selected').forEach((el) => el.classList.remove('rb-selected'))
     if (!selection) return
     if (selection.type === 'state') {
-      const el = svg.querySelector(`.wm-state[data-state="${q(selection.id)}"]`)
-      if (el) el.classList.add('wm-selected')
+      const el = svg.querySelector(`.rb-state[data-state="${q(selection.id)}"]`)
+      if (el) el.classList.add('rb-selected')
     } else {
-      transitionEls(selection.state, selection.index).forEach((el) => el.classList.add('wm-selected'))
+      transitionEls(selection.state, selection.index).forEach((el) => el.classList.add('rb-selected'))
     }
   }
   function select(sel, opts = {}) {
@@ -198,7 +198,7 @@ function startViewer() {
 
   canvas.addEventListener('click', (ev) => {
     if (suppressClick) return
-    const link = ev.target.closest('.wm-machine-link')
+    const link = ev.target.closest('.rb-machine-link')
     if (link) return openMachine(link.dataset.machine, true)
     const tr = ev.target.closest('[data-transition]')
     if (tr) {
@@ -210,17 +210,17 @@ function startViewer() {
   })
   // Hovering an arrow lights up its label and the other way round.
   const hover = (ev, on) => {
-    const el = ev.target.closest && ev.target.closest('.wm-edge[data-transition], .wm-label[data-transition]')
-    if (el) transitionEls(el.dataset.state, el.dataset.transition).forEach((e) => e.classList.toggle('wm-hover', on))
+    const el = ev.target.closest && ev.target.closest('.rb-edge[data-transition], .rb-label[data-transition]')
+    if (el) transitionEls(el.dataset.state, el.dataset.transition).forEach((e) => e.classList.toggle('rb-hover', on))
   }
   canvas.addEventListener('pointerover', (ev) => hover(ev, true))
   canvas.addEventListener('pointerout', (ev) => hover(ev, false))
 
-  $('wm-tabs').addEventListener('click', (ev) => {
+  $('rb-tabs').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-machine]')
     if (b && b.dataset.machine !== current) openMachine(b.dataset.machine, false)
   })
-  $('wm-back').addEventListener('click', () => {
+  $('rb-back').addEventListener('click', () => {
     const prev = navStack.pop()
     if (prev) show(prev.machine, prev.selection)
   })
@@ -236,15 +236,15 @@ function startViewer() {
   })
 
   // ───────────── side panel ─────────────
-  const code = (s) => `<pre class="wm-code">${esc(s)}</pre>`
+  const code = (s) => `<pre class="rb-code">${esc(s)}</pre>`
   const section = (title, body) => (body ? `<h3>${esc(title)}</h3>${body}` : '')
-  const list = (items) => (items.length ? `<ul class="wm-list">${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : '')
-  const stateLink = (id, label) => `<button class="wm-link wm-mono" type="button" data-select-state="${esc(id)}">${esc(label ?? shortId(id))}</button>`
+  const list = (items) => (items.length ? `<ul class="rb-list">${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : '')
+  const stateLink = (id, label) => `<button class="rb-link rb-mono" type="button" data-select-state="${esc(id)}">${esc(label ?? shortId(id))}</button>`
   const shortId = (id) => id.slice(current.length + 1) || id
-  const docHtml = (doc) => (doc ? `<p class="wm-doc">${esc(doc).replace(/\n/g, '<br>')}</p>` : '')
+  const docHtml = (doc) => (doc ? `<p class="rb-doc">${esc(doc).replace(/\n/g, '<br>')}</p>` : '')
   const head = (title, chip, onClose) =>
-    `<div class="wm-panel-head"><h2>${title}</h2><span class="wm-chip">${esc(chip)}</span>`
-    + (onClose ? `<button class="wm-btn" type="button" data-clear title="Back to the machine overview (Esc)" aria-label="Close">×</button>` : '') + `</div>`
+    `<div class="rb-panel-head"><h2>${title}</h2><span class="rb-chip">${esc(chip)}</span>`
+    + (onClose ? `<button class="rb-btn" type="button" data-clear title="Back to the machine overview (Esc)" aria-label="Close">×</button>` : '') + `</div>`
 
   function typeDecl(name) {
     const t = ir.types[name]
@@ -265,7 +265,7 @@ function startViewer() {
     const lines = [...new Set(names)].map(typeDecl).filter(Boolean)
     return lines.length ? code(lines.join('\n')) : ''
   }
-  const signatureKv = (decl) => `<dl class="wm-kv">`
+  const signatureKv = (decl) => `<dl class="rb-kv">`
     + `<dt>takes</dt><dd>${esc(paramsText(decl.params) || 'nothing')}</dd>`
     + (decl.returns !== undefined ? `<dt>returns</dt><dd>${esc(decl.returns ?? 'nothing')}</dd>` : '')
     + (decl.errors ? `<dt>fails with</dt><dd>${esc(decl.errors.join(' | ') || 'never fails')}</dd>` : '')
@@ -275,12 +275,12 @@ function startViewer() {
     const t = state.transitions[index]
     const g = guardText(state, index)
     const kind = triggerKind(t.trigger)
-    const cls = kind === 'done' ? 'wm-t-done' : kind === 'fail' ? 'wm-t-fail' : ''
+    const cls = kind === 'done' ? 'rb-t-done' : kind === 'fail' ? 'rb-t-fail' : ''
     const target = t.target ? shortId(t.target) : 'stays (internal)'
-    return `<button class="wm-tlink" type="button" data-select-transition="${esc(JSON.stringify([state.id, index]))}">`
-      + (withSource ? `<span class="wm-arrow-text">${esc(shortId(state.id))}: </span>` : '')
-      + `<b class="${cls}">${esc(triggerText(t.trigger))}</b>${g ? ' ' + esc(g) : ''} <span class="wm-arrow-text">→</span> ${esc(target)}`
-      + t.effects.map((e) => `<span class="wm-sub">${esc(effectText(e))}</span>`).join('')
+    return `<button class="rb-tlink" type="button" data-select-transition="${esc(JSON.stringify([state.id, index]))}">`
+      + (withSource ? `<span class="rb-arrow-text">${esc(shortId(state.id))}: </span>` : '')
+      + `<b class="${cls}">${esc(triggerText(t.trigger))}</b>${g ? ' ' + esc(g) : ''} <span class="rb-arrow-text">→</span> ${esc(target)}`
+      + t.effects.map((e) => `<span class="rb-sub">${esc(effectText(e))}</span>`).join('')
       + `</button>`
   }
 
@@ -290,34 +290,34 @@ function startViewer() {
     const decl = inv.kind === 'machine' ? ir.machines[inv.src] : ir.tasks[inv.src]
     let s = code(`invoke ${invokeText(inv)}`)
     if (!decl) return section('Invoke', s)
-    s += `<p class="wm-path">${inv.kind} declared at ${esc(sourceText(ir, decl.span))}</p>`
+    s += `<p class="rb-path">${inv.kind} declared at ${esc(sourceText(ir, decl.span))}</p>`
     s += code(signatureText(inv.kind, inv.src, decl)) + docHtml(decl.doc) + signatureKv(decl)
-    if (inv.kind === 'machine') s += `<p><button class="wm-btn" type="button" data-open-machine="${esc(inv.src)}">Open machine ${esc(inv.src)} →</button></p>`
+    if (inv.kind === 'machine') s += `<p><button class="rb-btn" type="button" data-open-machine="${esc(inv.src)}">Open machine ${esc(inv.src)} →</button></p>`
     return section(`Invokes ${inv.kind}`, s) + section('Types involved', typesOf(decl))
   }
 
   function machinePanel() {
     const m = ir.machines[current]
-    const tree = (s) => `<li>${stateLink(s.id, s.name)} <span class="wm-chip">${s.kind}</span>${s.states.length ? `<ul>${s.states.map(tree).join('')}</ul>` : ''}</li>`
+    const tree = (s) => `<li>${stateLink(s.id, s.name)} <span class="rb-chip">${s.kind}</span>${s.states.length ? `<ul>${s.states.map(tree).join('')}</ul>` : ''}</li>`
     const callers = []
     for (const [name, other] of Object.entries(ir.machines)) {
       walkStates(other.root, (s) => {
         if (s.invoke && s.invoke.kind === 'machine' && s.invoke.src === current) {
-          callers.push(`<button class="wm-link wm-mono" type="button" data-open-machine="${esc(name)}">${esc(s.id)}</button>`)
+          callers.push(`<button class="rb-link rb-mono" type="button" data-open-machine="${esc(name)}">${esc(s.id)}</button>`)
         }
       })
     }
     return head(esc(current), 'machine', false)
-      + `<p class="wm-path">${esc(sourceText(ir, m.span))}</p>`
+      + `<p class="rb-path">${esc(sourceText(ir, m.span))}</p>`
       + docHtml(m.doc)
       + section('Signature', code(signatureText('machine', current, m)) + signatureKv(m))
-      + section('Variables', list(m.vars.map((v) => `${esc(v.name)}: ${esc(v.type)}${v.init ? ` = ${esc(v.init.text)}` : ' <span class="wm-note">(assigned later)</span>'}`)))
+      + section('Variables', list(m.vars.map((v) => `${esc(v.name)}: ${esc(v.type)}${v.init ? ` = ${esc(v.init.text)}` : ' <span class="rb-note">(assigned later)</span>'}`)))
       + section('Events', list(Object.entries(m.events).map(([name, e]) =>
-        `${esc(name)}${e.fields.length ? ` { ${esc(paramsText(e.fields))} }` : ''}${e.doc ? `<span class="wm-sub wm-note">${esc(e.doc)}</span>` : ''}`)))
-      + section('States', `<ul class="wm-tree">${m.root.states.map(tree).join('')}</ul>`)
+        `${esc(name)}${e.fields.length ? ` { ${esc(paramsText(e.fields))} }` : ''}${e.doc ? `<span class="rb-sub rb-note">${esc(e.doc)}</span>` : ''}`)))
+      + section('States', `<ul class="rb-tree">${m.root.states.map(tree).join('')}</ul>`)
       + section('Invoked by', list(callers))
       + section('Types involved', typesOf(m))
-      + `<h3>Tip</h3><p class="wm-empty">Click a state or an arrow in the diagram for its details.</p>`
+      + `<h3>Tip</h3><p class="rb-empty">Click a state or an arrow in the diagram for its details.</p>`
   }
 
   function statePanel(state) {
@@ -334,21 +334,21 @@ function startViewer() {
     let inherited = ''
     for (const p of parents.slice().reverse()) {
       if (!p.transitions.length) continue
-      inherited += `<p class="wm-empty">from ${stateLink(p.id, p.id === m.root.id ? p.name : undefined)}</p>`
+      inherited += `<p class="rb-empty">from ${stateLink(p.id, p.id === m.root.id ? p.name : undefined)}</p>`
         + p.transitions.map((t, i) => transitionSummary(p, i, false)).join('')
     }
     const result = state.output ? code(`output ${state.output.text}`) : state.fail ? code(`fail ${state.fail.text}`) : ''
     return head(esc(state.name), `${state.kind} state${isInitial ? ' · initial' : ''}`, true)
-      + `<p class="wm-path">${esc(state.id)} · ${esc(sourceText(ir, state.span))}</p>`
+      + `<p class="rb-path">${esc(state.id)} · ${esc(sourceText(ir, state.span))}</p>`
       + docHtml(state.doc)
       + section(state.output ? 'Machine returns' : 'Machine fails with', result)
       + invokeSection(state)
       + section('Starts in', state.initial ? stateLink(state.initial) : '')
       + section('On entry', list(state.entry.map((e) => esc(effectText(e)))))
       + section('On exit', list(state.exit.map((e) => esc(effectText(e)))))
-      + section('Transitions out', out || (state.kind === 'final' ? '<p class="wm-empty">None: this state ends the machine.</p>' : '<p class="wm-empty">None.</p>'))
+      + section('Transitions out', out || (state.kind === 'final' ? '<p class="rb-empty">None: this state ends the machine.</p>' : '<p class="rb-empty">None.</p>'))
       + section('Also applies here', inherited)
-      + section('Transitions in', incoming || (isInitial ? '<p class="wm-empty">Entered first (initial state).</p>' : ''))
+      + section('Transitions in', incoming || (isInitial ? '<p class="rb-empty">Entered first (initial state).</p>' : ''))
   }
 
   function transitionPanel(state, index) {
@@ -382,15 +382,15 @@ function startViewer() {
     }
     const guard = t.guard ? code(t.guard.text) : group.length > 1 ? code('else') : ''
     const branchNote = group.length > 1
-      ? `<p class="wm-empty">Branch ${pos} of ${group.length} for <code>${esc(triggerText(t.trigger))}</code>; branches are tried in order.</p>` : ''
-    const title = `${esc(shortId(state.id))} <span class="wm-arrow-text">→</span> ${t.target ? esc(shortId(t.target)) : '(stays)'}`
+      ? `<p class="rb-empty">Branch ${pos} of ${group.length} for <code>${esc(triggerText(t.trigger))}</code>; branches are tried in order.</p>` : ''
+    const title = `${esc(shortId(state.id))} <span class="rb-arrow-text">→</span> ${t.target ? esc(shortId(t.target)) : '(stays)'}`
     return head(title, 'transition', true)
-      + `<p class="wm-path">${esc(sourceText(ir, t.span))}</p>`
-      + section('Trigger', code(`${kind === 'event' ? 'on ' : ''}${triggerText(t.trigger)}`) + `<p class="wm-empty">${esc(what)}</p>`)
+      + `<p class="rb-path">${esc(sourceText(ir, t.span))}</p>`
+      + section('Trigger', code(`${kind === 'event' ? 'on ' : ''}${triggerText(t.trigger)}`) + `<p class="rb-empty">${esc(what)}</p>`)
       + section('Guard', guard + branchNote)
-      + section('Effects', list(t.effects.map((e) => esc(effectText(e)))) || '<p class="wm-empty">None.</p>')
+      + section('Effects', list(t.effects.map((e) => esc(effectText(e)))) || '<p class="rb-empty">None.</p>')
       + section('From', stateLink(state.id))
-      + section('To', t.target ? stateLink(t.target) : '<p class="wm-empty">Internal: the state is not left and re-entered.</p>')
+      + section('To', t.target ? stateLink(t.target) : '<p class="rb-empty">Internal: the state is not left and re-entered.</p>')
       + extra
   }
 
@@ -404,8 +404,8 @@ function startViewer() {
   }
 
   // ───────────── start ─────────────
-  $('wm-source').textContent = ir.sources[0] ? ir.sources[0].path : ''
-  $('wm-legend').insertAdjacentHTML('beforeend', renderLegend({ interactive: true }))
+  $('rb-source').textContent = ir.sources[0] ? ir.sources[0].path : ''
+  $('rb-legend').insertAdjacentHTML('beforeend', renderLegend({ interactive: true }))
   const wanted = decodeURIComponent(location.hash.slice(1)) || document.body.dataset.initialMachine
   show(ir.machines[wanted] ? wanted : machineNames[0])
   window.addEventListener('hashchange', () => {

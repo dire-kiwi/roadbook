@@ -1,5 +1,5 @@
 {
-  "name": "waymark-api-sketch",
+  "name": "roadbook-api-sketch",
   "private": true,
   "type": "module",
   "scripts": { "check": "tsc -p ." },

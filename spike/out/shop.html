@@ -3,257 +3,257 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>place_order.way · Waymark</title>
+<title>place_order.road · Roadbook</title>
 <style>
-/* Waymark viewer. One stylesheet for the interactive viewer and the static page.
+/* Roadbook viewer. One stylesheet for the interactive viewer and the static page.
    Every colour is a custom property on :root; dark values follow the OS setting,
    and <html data-theme="light|dark"> overrides it. */
 
 :root {
   color-scheme: light dark;
-  --wm-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", sans-serif;
-  --wm-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
+  --rb-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", sans-serif;
+  --rb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
 
-  --wm-bg: #f3f4f6;            /* page chrome */
-  --wm-canvas: #fafbfc;        /* behind the diagram */
-  --wm-surface: #ffffff;       /* state boxes, panel */
-  --wm-container: rgba(30, 41, 59, 0.045); /* compound states; stacks when nested */
-  --wm-fg: #181b20;
-  --wm-muted: #5a6370;
-  --wm-border: #cfd4db;        /* chrome hairlines */
-  --wm-box: #6a7381;           /* state outlines */
-  --wm-edge: #3b424d;          /* event, after, always, initial */
-  --wm-ok: #0b7a22;            /* done */
-  --wm-err: #c22a2b;           /* fail */
-  --wm-accent: #1f62c9;        /* machine links, selection */
-  --wm-accent-bg: #e4edfb;
-  --wm-label-bg: #ffffff;
-  --wm-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --rb-bg: #f3f4f6;            /* page chrome */
+  --rb-canvas: #fafbfc;        /* behind the diagram */
+  --rb-surface: #ffffff;       /* state boxes, panel */
+  --rb-container: rgba(30, 41, 59, 0.045); /* compound states; stacks when nested */
+  --rb-fg: #181b20;
+  --rb-muted: #5a6370;
+  --rb-border: #cfd4db;        /* chrome hairlines */
+  --rb-box: #6a7381;           /* state outlines */
+  --rb-edge: #3b424d;          /* event, after, always, initial */
+  --rb-ok: #0b7a22;            /* done */
+  --rb-err: #c22a2b;           /* fail */
+  --rb-accent: #1f62c9;        /* machine links, selection */
+  --rb-accent-bg: #e4edfb;
+  --rb-label-bg: #ffffff;
+  --rb-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --wm-bg: #111317;
-    --wm-canvas: #15181c;
-    --wm-surface: #20242b;
-    --wm-container: rgba(255, 255, 255, 0.04);
-    --wm-fg: #eceef2;
-    --wm-muted: #a2aab6;
-    --wm-border: #353b45;
-    --wm-box: #8b95a3;
-    --wm-edge: #c3c9d2;
-    --wm-ok: #4ccb62;
-    --wm-err: #ff8482;
-    --wm-accent: #75adf7;
-    --wm-accent-bg: #1c2b45;
-    --wm-label-bg: #15181c;
-    --wm-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --rb-bg: #111317;
+    --rb-canvas: #15181c;
+    --rb-surface: #20242b;
+    --rb-container: rgba(255, 255, 255, 0.04);
+    --rb-fg: #eceef2;
+    --rb-muted: #a2aab6;
+    --rb-border: #353b45;
+    --rb-box: #8b95a3;
+    --rb-edge: #c3c9d2;
+    --rb-ok: #4ccb62;
+    --rb-err: #ff8482;
+    --rb-accent: #75adf7;
+    --rb-accent-bg: #1c2b45;
+    --rb-label-bg: #15181c;
+    --rb-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --wm-bg: #111317;
-  --wm-canvas: #15181c;
-  --wm-surface: #20242b;
-  --wm-container: rgba(255, 255, 255, 0.04);
-  --wm-fg: #eceef2;
-  --wm-muted: #a2aab6;
-  --wm-border: #353b45;
-  --wm-box: #8b95a3;
-  --wm-edge: #c3c9d2;
-  --wm-ok: #4ccb62;
-  --wm-err: #ff8482;
-  --wm-accent: #75adf7;
-  --wm-accent-bg: #1c2b45;
-  --wm-label-bg: #15181c;
-  --wm-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --rb-bg: #111317;
+  --rb-canvas: #15181c;
+  --rb-surface: #20242b;
+  --rb-container: rgba(255, 255, 255, 0.04);
+  --rb-fg: #eceef2;
+  --rb-muted: #a2aab6;
+  --rb-border: #353b45;
+  --rb-box: #8b95a3;
+  --rb-edge: #c3c9d2;
+  --rb-ok: #4ccb62;
+  --rb-err: #ff8482;
+  --rb-accent: #75adf7;
+  --rb-accent-bg: #1c2b45;
+  --rb-label-bg: #15181c;
+  --rb-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 :root[data-theme="light"] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {
-  font: 14px/1.45 var(--wm-sans);
-  color: var(--wm-fg);
-  background: var(--wm-bg);
+  font: 14px/1.45 var(--rb-sans);
+  color: var(--rb-fg);
+  background: var(--rb-bg);
 }
-code, .wm-mono { font-family: var(--wm-mono); font-size: 0.92em; }
+code, .rb-mono { font-family: var(--rb-mono); font-size: 0.92em; }
 
 /* ───────────── the diagram (SVG) ───────────── */
-.wm-svg { font-family: var(--wm-mono); }
-.wm-svg text { fill: var(--wm-fg); }
+.rb-svg { font-family: var(--rb-mono); }
+.rb-svg text { fill: var(--rb-fg); }
 
-.wm-box { fill: var(--wm-surface); stroke: var(--wm-box); stroke-width: 1.4; }
-.wm-container > .wm-box { fill: var(--wm-container); stroke-width: 1.2; }
-.wm-region > .wm-box { stroke-dasharray: 5 4; }
-.wm-box-inner { fill: none; stroke: var(--wm-box); stroke-width: 1.1; }
-.wm-kind-final > .wm-box { stroke-width: 1.6; }
-.wm-sep { stroke: var(--wm-border); stroke-width: 1; }
+.rb-box { fill: var(--rb-surface); stroke: var(--rb-box); stroke-width: 1.4; }
+.rb-container > .rb-box { fill: var(--rb-container); stroke-width: 1.2; }
+.rb-region > .rb-box { stroke-dasharray: 5 4; }
+.rb-box-inner { fill: none; stroke: var(--rb-box); stroke-width: 1.1; }
+.rb-kind-final > .rb-box { stroke-width: 1.6; }
+.rb-sep { stroke: var(--rb-border); stroke-width: 1; }
 
-.wm-title { font-size: 13px; font-weight: 650; }
-.wm-tag { font-size: 11px; fill: var(--wm-muted) !important; }
-.wm-row { font-size: 11.5px; }
-.wm-kw { fill: var(--wm-muted); }
-.wm-row.wm-k-fail, .wm-row.wm-k-fail .wm-kw { fill: var(--wm-err); }
-.wm-row.wm-k-done .wm-kw { fill: var(--wm-ok); }
+.rb-title { font-size: 13px; font-weight: 650; }
+.rb-tag { font-size: 11px; fill: var(--rb-muted) !important; }
+.rb-row { font-size: 11.5px; }
+.rb-kw { fill: var(--rb-muted); }
+.rb-row.rb-k-fail, .rb-row.rb-k-fail .rb-kw { fill: var(--rb-err); }
+.rb-row.rb-k-done .rb-kw { fill: var(--rb-ok); }
 
-.wm-pill { fill: var(--wm-accent-bg); stroke: var(--wm-accent); stroke-width: 1; }
-.wm-pill-text, .wm-pill-text .wm-kw { fill: var(--wm-accent) !important; }
-.wm-pill-text .wm-kw { font-weight: 650; }
-.wm-pill-chevron { fill: none; stroke: var(--wm-accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.rb-pill { fill: var(--rb-accent-bg); stroke: var(--rb-accent); stroke-width: 1; }
+.rb-pill-text, .rb-pill-text .rb-kw { fill: var(--rb-accent) !important; }
+.rb-pill-text .rb-kw { font-weight: 650; }
+.rb-pill-chevron { fill: none; stroke: var(--rb-accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
-.wm-edge-line { fill: none; stroke: var(--wm-edge); stroke-width: 1.5; stroke-linejoin: round; }
-.wm-edge-hit { fill: none; stroke: transparent; stroke-width: 14; }
-.wm-arrow path { fill: var(--wm-edge); stroke: none; }
-.wm-k-done .wm-edge-line { stroke: var(--wm-ok); }
-.wm-k-done.wm-arrow path { fill: var(--wm-ok); }
-.wm-k-fail .wm-edge-line { stroke: var(--wm-err); }
-.wm-k-fail.wm-arrow path { fill: var(--wm-err); }
-.wm-k-after .wm-edge-line { stroke-dasharray: 7 4; }
-.wm-k-always .wm-edge-line { stroke-dasharray: 0.1 4.5; stroke-linecap: round; stroke-width: 2; }
-.wm-initial { fill: var(--wm-edge); }
-.wm-port { fill: var(--wm-canvas); stroke: var(--wm-edge); stroke-width: 1.5; }
-.wm-k-done .wm-port { stroke: var(--wm-ok); }
-.wm-k-fail .wm-port { stroke: var(--wm-err); }
+.rb-edge-line { fill: none; stroke: var(--rb-edge); stroke-width: 1.5; stroke-linejoin: round; }
+.rb-edge-hit { fill: none; stroke: transparent; stroke-width: 14; }
+.rb-arrow path { fill: var(--rb-edge); stroke: none; }
+.rb-k-done .rb-edge-line { stroke: var(--rb-ok); }
+.rb-k-done.rb-arrow path { fill: var(--rb-ok); }
+.rb-k-fail .rb-edge-line { stroke: var(--rb-err); }
+.rb-k-fail.rb-arrow path { fill: var(--rb-err); }
+.rb-k-after .rb-edge-line { stroke-dasharray: 7 4; }
+.rb-k-always .rb-edge-line { stroke-dasharray: 0.1 4.5; stroke-linecap: round; stroke-width: 2; }
+.rb-initial { fill: var(--rb-edge); }
+.rb-port { fill: var(--rb-canvas); stroke: var(--rb-edge); stroke-width: 1.5; }
+.rb-k-done .rb-port { stroke: var(--rb-ok); }
+.rb-k-fail .rb-port { stroke: var(--rb-err); }
 
-.wm-label-bg { fill: var(--wm-label-bg); stroke: var(--wm-border); stroke-width: 1; }
-.wm-label-trigger { font-size: 12px; font-weight: 600; }
-.wm-label-effect { font-size: 11px; fill: var(--wm-muted) !important; }
-.wm-guard { font-weight: 400; }
-.wm-label.wm-k-done .wm-label-trigger { fill: var(--wm-ok); }
-.wm-label.wm-k-fail .wm-label-trigger { fill: var(--wm-err); }
-.wm-label .wm-guard { fill: var(--wm-fg); }
+.rb-label-bg { fill: var(--rb-label-bg); stroke: var(--rb-border); stroke-width: 1; }
+.rb-label-trigger { font-size: 12px; font-weight: 600; }
+.rb-label-effect { font-size: 11px; fill: var(--rb-muted) !important; }
+.rb-guard { font-weight: 400; }
+.rb-label.rb-k-done .rb-label-trigger { fill: var(--rb-ok); }
+.rb-label.rb-k-fail .rb-label-trigger { fill: var(--rb-err); }
+.rb-label .rb-guard { fill: var(--rb-fg); }
 
 /* ───────────── shared pieces of chrome ───────────── */
-.wm-signature { display: block; font-size: 13px; overflow-wrap: anywhere; }
-.wm-doc { margin: 4px 0 0; color: var(--wm-muted); max-width: 80ch; }
-.wm-t-done { color: var(--wm-ok); }
-.wm-t-fail { color: var(--wm-err); }
+.rb-signature { display: block; font-size: 13px; overflow-wrap: anywhere; }
+.rb-doc { margin: 4px 0 0; color: var(--rb-muted); max-width: 80ch; }
+.rb-t-done { color: var(--rb-ok); }
+.rb-t-fail { color: var(--rb-err); }
 
-.wm-legend-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 12.5px; }
-.wm-legend-list li { display: flex; align-items: center; gap: 9px; color: var(--wm-muted); }
-.wm-legend-list code { color: var(--wm-fg); font-weight: 600; }
-.wm-legend-list code.wm-t-done { color: var(--wm-ok); }
-.wm-legend-list code.wm-t-fail { color: var(--wm-err); }
-.wm-legend-swatch { flex: none; font-family: var(--wm-mono); }
-.wm-legend-swatch .wm-legend-guard { font-size: 9.5px; }
+.rb-legend-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 12.5px; }
+.rb-legend-list li { display: flex; align-items: center; gap: 9px; color: var(--rb-muted); }
+.rb-legend-list code { color: var(--rb-fg); font-weight: 600; }
+.rb-legend-list code.rb-t-done { color: var(--rb-ok); }
+.rb-legend-list code.rb-t-fail { color: var(--rb-err); }
+.rb-legend-swatch { flex: none; font-family: var(--rb-mono); }
+.rb-legend-swatch .rb-legend-guard { font-size: 9.5px; }
 
 /* ───────────── interactive viewer ───────────── */
-body.wm-app { height: 100vh; display: grid; grid-template-rows: auto auto minmax(0, 1fr); overflow: hidden; }
+body.rb-app { height: 100vh; display: grid; grid-template-rows: auto auto minmax(0, 1fr); overflow: hidden; }
 
-.wm-top { display: flex; align-items: center; gap: 14px; padding: 8px 14px; background: var(--wm-surface); border-bottom: 1px solid var(--wm-border); }
-.wm-brand { font-weight: 650; letter-spacing: 0.01em; white-space: nowrap; }
-.wm-brand small { font-weight: 400; color: var(--wm-muted); margin-left: 6px; font-family: var(--wm-mono); font-size: 12px; }
-.wm-tabs { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
-.wm-tabs-label { color: var(--wm-muted); font-size: 12.5px; align-self: center; margin-right: 4px; }
-.wm-btn, .wm-tab {
-  font: inherit; color: var(--wm-fg); background: transparent; border: 1px solid var(--wm-border);
+.rb-top { display: flex; align-items: center; gap: 14px; padding: 8px 14px; background: var(--rb-surface); border-bottom: 1px solid var(--rb-border); }
+.rb-brand { font-weight: 650; letter-spacing: 0.01em; white-space: nowrap; }
+.rb-brand small { font-weight: 400; color: var(--rb-muted); margin-left: 6px; font-family: var(--rb-mono); font-size: 12px; }
+.rb-tabs { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; }
+.rb-tabs-label { color: var(--rb-muted); font-size: 12.5px; align-self: center; margin-right: 4px; }
+.rb-btn, .rb-tab {
+  font: inherit; color: var(--rb-fg); background: transparent; border: 1px solid var(--rb-border);
   border-radius: 6px; padding: 3px 10px; cursor: pointer; white-space: nowrap;
 }
-.wm-tab { font-family: var(--wm-mono); font-size: 13px; }
-.wm-btn:hover, .wm-tab:hover { border-color: var(--wm-box); }
-.wm-tab[aria-selected="true"] { background: var(--wm-accent-bg); border-color: var(--wm-accent); color: var(--wm-accent); font-weight: 650; }
-.wm-btn:focus-visible, .wm-tab:focus-visible, .wm-link:focus-visible { outline: 2px solid var(--wm-accent); outline-offset: 1px; }
-.wm-tools { display: flex; gap: 4px; }
+.rb-tab { font-family: var(--rb-mono); font-size: 13px; }
+.rb-btn:hover, .rb-tab:hover { border-color: var(--rb-box); }
+.rb-tab[aria-selected="true"] { background: var(--rb-accent-bg); border-color: var(--rb-accent); color: var(--rb-accent); font-weight: 650; }
+.rb-btn:focus-visible, .rb-tab:focus-visible, .rb-link:focus-visible { outline: 2px solid var(--rb-accent); outline-offset: 1px; }
+.rb-tools { display: flex; gap: 4px; }
 
-.wm-machine-head { display: flex; align-items: flex-start; gap: 12px; padding: 9px 14px 10px; background: var(--wm-surface); border-bottom: 1px solid var(--wm-border); }
-.wm-machine-head .wm-back { flex: none; }
-.wm-machine-head .wm-back[hidden] { display: none; }
+.rb-machine-head { display: flex; align-items: flex-start; gap: 12px; padding: 9px 14px 10px; background: var(--rb-surface); border-bottom: 1px solid var(--rb-border); }
+.rb-machine-head .rb-back { flex: none; }
+.rb-machine-head .rb-back[hidden] { display: none; }
 
-.wm-main { display: grid; grid-template-columns: minmax(0, 1fr) 372px; min-height: 0; }
-.wm-canvas { position: relative; overflow: hidden; background: var(--wm-canvas); cursor: grab; touch-action: none; user-select: none; }
-.wm-canvas.wm-dragging { cursor: grabbing; }
-.wm-canvas > .wm-svg { display: block; width: 100%; height: 100%; }
-.wm-canvas .wm-state, .wm-canvas .wm-edge, .wm-canvas .wm-label, .wm-canvas .wm-machine-link, .wm-canvas .wm-row[data-transition] { cursor: pointer; }
-.wm-canvas .wm-state:hover > .wm-box { stroke: var(--wm-fg); }
-.wm-canvas .wm-machine-link:hover .wm-pill { stroke-width: 2; }
-.wm-canvas .wm-edge:hover .wm-edge-line, .wm-canvas .wm-edge.wm-hover .wm-edge-line { stroke-width: 2.6; }
-.wm-canvas .wm-label:hover .wm-label-bg, .wm-canvas .wm-label.wm-hover .wm-label-bg { stroke: var(--wm-box); }
+.rb-main { display: grid; grid-template-columns: minmax(0, 1fr) 372px; min-height: 0; }
+.rb-canvas { position: relative; overflow: hidden; background: var(--rb-canvas); cursor: grab; touch-action: none; user-select: none; }
+.rb-canvas.rb-dragging { cursor: grabbing; }
+.rb-canvas > .rb-svg { display: block; width: 100%; height: 100%; }
+.rb-canvas .rb-state, .rb-canvas .rb-edge, .rb-canvas .rb-label, .rb-canvas .rb-machine-link, .rb-canvas .rb-row[data-transition] { cursor: pointer; }
+.rb-canvas .rb-state:hover > .rb-box { stroke: var(--rb-fg); }
+.rb-canvas .rb-machine-link:hover .rb-pill { stroke-width: 2; }
+.rb-canvas .rb-edge:hover .rb-edge-line, .rb-canvas .rb-edge.rb-hover .rb-edge-line { stroke-width: 2.6; }
+.rb-canvas .rb-label:hover .rb-label-bg, .rb-canvas .rb-label.rb-hover .rb-label-bg { stroke: var(--rb-box); }
 
-.wm-selected > .wm-box { stroke: var(--wm-accent) !important; stroke-width: 2.6; }
-.wm-selected > .wm-box-inner { stroke: var(--wm-accent); }
-.wm-edge.wm-selected .wm-edge-line { stroke-width: 3; }
-.wm-canvas .wm-label.wm-selected .wm-label-bg { stroke: var(--wm-accent); stroke-width: 2; }
-.wm-row.wm-selected { text-decoration: underline; }
+.rb-selected > .rb-box { stroke: var(--rb-accent) !important; stroke-width: 2.6; }
+.rb-selected > .rb-box-inner { stroke: var(--rb-accent); }
+.rb-edge.rb-selected .rb-edge-line { stroke-width: 3; }
+.rb-canvas .rb-label.rb-selected .rb-label-bg { stroke: var(--rb-accent); stroke-width: 2; }
+.rb-row.rb-selected { text-decoration: underline; }
 
-.wm-stage { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
-.wm-legend { background: var(--wm-surface); border-top: 1px solid var(--wm-border); padding: 7px 14px; }
-.wm-legend .wm-legend-list { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 12px; }
-.wm-legend .wm-legend-list li { gap: 6px; }
-.wm-hint { position: absolute; right: 12px; bottom: 8px; font-size: 12px; color: var(--wm-muted); pointer-events: none; }
+.rb-stage { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
+.rb-legend { background: var(--rb-surface); border-top: 1px solid var(--rb-border); padding: 7px 14px; }
+.rb-legend .rb-legend-list { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 12px; }
+.rb-legend .rb-legend-list li { gap: 6px; }
+.rb-hint { position: absolute; right: 12px; bottom: 8px; font-size: 12px; color: var(--rb-muted); pointer-events: none; }
 
-.wm-panel { background: var(--wm-surface); border-left: 1px solid var(--wm-border); overflow: auto; padding: 14px 16px 28px; }
-.wm-panel h2 { font: 650 16px/1.3 var(--wm-mono); margin: 0; overflow-wrap: anywhere; }
-.wm-panel h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--wm-muted); margin: 18px 0 6px; font-weight: 600; }
-.wm-panel-head { display: flex; align-items: flex-start; gap: 8px; }
-.wm-panel-head h2 { flex: 1; }
-.wm-chip { display: inline-block; font-size: 11.5px; border: 1px solid var(--wm-border); border-radius: 999px; padding: 0 8px; color: var(--wm-muted); white-space: nowrap; }
-.wm-path { font-family: var(--wm-mono); font-size: 12px; color: var(--wm-muted); margin: 2px 0 0; overflow-wrap: anywhere; }
-.wm-panel .wm-doc { margin: 10px 0 0; color: var(--wm-fg); }
-.wm-code { font-family: var(--wm-mono); font-size: 12.5px; background: var(--wm-bg); border: 1px solid var(--wm-border); border-radius: 6px; padding: 7px 9px; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.wm-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin: 0; font-size: 13px; }
-.wm-kv dt { color: var(--wm-muted); }
-.wm-kv dd { margin: 0; font-family: var(--wm-mono); font-size: 12.5px; overflow-wrap: anywhere; }
-.wm-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.wm-list li { font-family: var(--wm-mono); font-size: 12.5px; overflow-wrap: anywhere; }
-.wm-list .wm-sub { display: block; color: var(--wm-muted); padding-left: 14px; }
-.wm-list .wm-note { font-family: var(--wm-sans); color: var(--wm-muted); }
-.wm-link { font: inherit; color: var(--wm-accent); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: transparent; }
-.wm-link:hover { text-decoration-color: currentColor; }
-.wm-link.wm-mono { font-family: var(--wm-mono); font-size: 12.5px; }
-.wm-tlink { display: block; width: 100%; font-family: var(--wm-mono); font-size: 12.5px; color: var(--wm-fg); background: none; border: 1px solid var(--wm-border); border-radius: 6px; padding: 5px 8px; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
-.wm-tlink:hover { border-color: var(--wm-accent); }
-.wm-tlink .wm-arrow-text { color: var(--wm-muted); }
-.wm-tlink .wm-sub { display: block; color: var(--wm-muted); font-size: 12px; }
-.wm-empty { color: var(--wm-muted); font-size: 13px; margin: 0; }
-.wm-code + .wm-empty, .wm-code + .wm-kv, .wm-code + .wm-path, .wm-code + .wm-code, .wm-path + .wm-code, .wm-empty + .wm-tlink, .wm-tlink + .wm-empty { margin-top: 7px; }
-.wm-tlink + .wm-tlink { margin-top: 5px; }
-.wm-tree { list-style: none; margin: 0; padding: 0; }
-.wm-tree ul { list-style: none; margin: 0; padding-left: 14px; border-left: 1px solid var(--wm-border); margin-left: 4px; }
-.wm-tree li { font-family: var(--wm-mono); font-size: 12.5px; padding: 1px 0; }
+.rb-panel { background: var(--rb-surface); border-left: 1px solid var(--rb-border); overflow: auto; padding: 14px 16px 28px; }
+.rb-panel h2 { font: 650 16px/1.3 var(--rb-mono); margin: 0; overflow-wrap: anywhere; }
+.rb-panel h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--rb-muted); margin: 18px 0 6px; font-weight: 600; }
+.rb-panel-head { display: flex; align-items: flex-start; gap: 8px; }
+.rb-panel-head h2 { flex: 1; }
+.rb-chip { display: inline-block; font-size: 11.5px; border: 1px solid var(--rb-border); border-radius: 999px; padding: 0 8px; color: var(--rb-muted); white-space: nowrap; }
+.rb-path { font-family: var(--rb-mono); font-size: 12px; color: var(--rb-muted); margin: 2px 0 0; overflow-wrap: anywhere; }
+.rb-panel .rb-doc { margin: 10px 0 0; color: var(--rb-fg); }
+.rb-code { font-family: var(--rb-mono); font-size: 12.5px; background: var(--rb-bg); border: 1px solid var(--rb-border); border-radius: 6px; padding: 7px 9px; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rb-kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; margin: 0; font-size: 13px; }
+.rb-kv dt { color: var(--rb-muted); }
+.rb-kv dd { margin: 0; font-family: var(--rb-mono); font-size: 12.5px; overflow-wrap: anywhere; }
+.rb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.rb-list li { font-family: var(--rb-mono); font-size: 12.5px; overflow-wrap: anywhere; }
+.rb-list .rb-sub { display: block; color: var(--rb-muted); padding-left: 14px; }
+.rb-list .rb-note { font-family: var(--rb-sans); color: var(--rb-muted); }
+.rb-link { font: inherit; color: var(--rb-accent); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: transparent; }
+.rb-link:hover { text-decoration-color: currentColor; }
+.rb-link.rb-mono { font-family: var(--rb-mono); font-size: 12.5px; }
+.rb-tlink { display: block; width: 100%; font-family: var(--rb-mono); font-size: 12.5px; color: var(--rb-fg); background: none; border: 1px solid var(--rb-border); border-radius: 6px; padding: 5px 8px; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.rb-tlink:hover { border-color: var(--rb-accent); }
+.rb-tlink .rb-arrow-text { color: var(--rb-muted); }
+.rb-tlink .rb-sub { display: block; color: var(--rb-muted); font-size: 12px; }
+.rb-empty { color: var(--rb-muted); font-size: 13px; margin: 0; }
+.rb-code + .rb-empty, .rb-code + .rb-kv, .rb-code + .rb-path, .rb-code + .rb-code, .rb-path + .rb-code, .rb-empty + .rb-tlink, .rb-tlink + .rb-empty { margin-top: 7px; }
+.rb-tlink + .rb-tlink { margin-top: 5px; }
+.rb-tree { list-style: none; margin: 0; padding: 0; }
+.rb-tree ul { list-style: none; margin: 0; padding-left: 14px; border-left: 1px solid var(--rb-border); margin-left: 4px; }
+.rb-tree li { font-family: var(--rb-mono); font-size: 12.5px; padding: 1px 0; }
 
 @media (max-width: 860px) {
-  .wm-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 3fr) minmax(0, 2fr); }
-  .wm-panel { border-left: 0; border-top: 1px solid var(--wm-border); }
+  .rb-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 3fr) minmax(0, 2fr); }
+  .rb-panel { border-left: 0; border-top: 1px solid var(--rb-border); }
 }
 
 /* ───────────── static page ───────────── */
-body.wm-static { background: var(--wm-canvas); padding: 24px 28px 40px; }
-.wm-static h1 { font: 650 20px/1.3 var(--wm-sans); margin: 0 0 8px; }
-.wm-static h1 small { font: 400 12.5px var(--wm-mono); color: var(--wm-muted); margin-left: 8px; }
-.wm-static figure { margin: 22px 0; overflow-x: auto; }
-.wm-static figure .wm-svg { display: block; max-width: 100%; height: auto; }
-.wm-static section h2 { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--wm-muted); margin: 0 0 8px; font-weight: 600; }
-.wm-static .wm-legend-list { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); max-width: 1100px; }
-.wm-static footer { margin-top: 22px; font-size: 12px; color: var(--wm-muted); }
+body.rb-static { background: var(--rb-canvas); padding: 24px 28px 40px; }
+.rb-static h1 { font: 650 20px/1.3 var(--rb-sans); margin: 0 0 8px; }
+.rb-static h1 small { font: 400 12.5px var(--rb-mono); color: var(--rb-muted); margin-left: 8px; }
+.rb-static figure { margin: 22px 0; overflow-x: auto; }
+.rb-static figure .rb-svg { display: block; max-width: 100%; height: auto; }
+.rb-static section h2 { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--rb-muted); margin: 0 0 8px; font-weight: 600; }
+.rb-static .rb-legend-list { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); max-width: 1100px; }
+.rb-static footer { margin-top: 22px; font-size: 12px; color: var(--rb-muted); }
 
 </style>
 </head>
-<body class="wm-app" data-initial-machine="">
-<header class="wm-top">
-  <div class="wm-brand">Waymark<small id="wm-source"></small></div>
-  <nav class="wm-tabs" id="wm-tabs" role="tablist" aria-label="Machines"></nav>
-  <div class="wm-tools">
-    <button class="wm-btn" id="wm-zoom-out" type="button" title="Zoom out" aria-label="Zoom out">−</button>
-    <button class="wm-btn" id="wm-zoom-in" type="button" title="Zoom in" aria-label="Zoom in">+</button>
-    <button class="wm-btn" id="wm-fit" type="button" title="Fit the diagram to the view (F)">Fit</button>
-    <button class="wm-btn" id="wm-theme" type="button" title="Colour scheme: follow the system, light or dark">Theme: auto</button>
+<body class="rb-app" data-initial-machine="">
+<header class="rb-top">
+  <div class="rb-brand">Roadbook<small id="rb-source"></small></div>
+  <nav class="rb-tabs" id="rb-tabs" role="tablist" aria-label="Machines"></nav>
+  <div class="rb-tools">
+    <button class="rb-btn" id="rb-zoom-out" type="button" title="Zoom out" aria-label="Zoom out">−</button>
+    <button class="rb-btn" id="rb-zoom-in" type="button" title="Zoom in" aria-label="Zoom in">+</button>
+    <button class="rb-btn" id="rb-fit" type="button" title="Fit the diagram to the view (F)">Fit</button>
+    <button class="rb-btn" id="rb-theme" type="button" title="Colour scheme: follow the system, light or dark">Theme: auto</button>
   </div>
 </header>
-<div class="wm-machine-head">
-  <button class="wm-btn wm-back" id="wm-back" type="button" hidden></button>
-  <div id="wm-machine-head"></div>
+<div class="rb-machine-head">
+  <button class="rb-btn rb-back" id="rb-back" type="button" hidden></button>
+  <div id="rb-machine-head"></div>
 </div>
-<main class="wm-main">
-  <div class="wm-stage">
-    <div class="wm-canvas" id="wm-canvas">
-      <div class="wm-hint">drag to pan · scroll to zoom · click a state or an arrow</div>
+<main class="rb-main">
+  <div class="rb-stage">
+    <div class="rb-canvas" id="rb-canvas">
+      <div class="rb-hint">drag to pan · scroll to zoom · click a state or an arrow</div>
     </div>
-    <div class="wm-legend" id="wm-legend" aria-label="Legend"></div>
+    <div class="rb-legend" id="rb-legend" aria-label="Legend"></div>
   </div>
-  <aside class="wm-panel" id="wm-panel" aria-live="polite"></aside>
+  <aside class="rb-panel" id="rb-panel" aria-live="polite"></aside>
 </main>
-<script type="application/json" id="wm-ir">{"irVersion":"0.1","sources":[{"path":"examples/shop/place_order.way"},{"path":"examples/shop/types.way"},{"path":"examples/shop/checkout.way"}],"types":{"LineItem":{"kind":"record","fields":[{"name":"sku","type":"string"},{"name":"qty","type":"int"}],"doc":"","span":{"file":1,"line":3,"col":1}},"OrderDraft":{"kind":"record","fields":[{"name":"items","type":"LineItem[]"},{"name":"coupon","type":"string?"}],"doc":"","span":{"file":1,"line":4,"col":1}},"Order":{"kind":"record","fields":[{"name":"id","type":"string"},{"name":"items","type":"LineItem[]"},{"name":"totalCents","type":"int"}],"doc":"","span":{"file":1,"line":5,"col":1}},"Receipt":{"kind":"record","fields":[{"name":"chargeId","type":"string"},{"name":"amountCents","type":"int"}],"doc":"","span":{"file":1,"line":6,"col":1}},"User":{"kind":"record","fields":[{"name":"id","type":"string"},{"name":"role","type":"Role"}],"doc":"","span":{"file":1,"line":7,"col":1}},"Role":{"kind":"enum","variants":["Customer","Admin"],"doc":"","span":{"file":1,"line":8,"col":1}},"ApiResponse":{"kind":"record","fields":[{"name":"status","type":"int"},{"name":"body","type":"json"}],"doc":"What the HTTP layer sends back. `body` is any JSON value.","span":{"file":1,"line":11,"col":1}},"Unauthenticated":{"kind":"error","fields":[],"doc":"","span":{"file":1,"line":13,"col":1}},"ValidationFailed":{"kind":"error","fields":[{"name":"issues","type":"string[]"}],"doc":"","span":{"file":1,"line":14,"col":1}},"CardDeclined":{"kind":"error","fields":[{"name":"reason","type":"string"}],"doc":"","span":{"file":1,"line":15,"col":1}},"GatewayUnavailable":{"kind":"error","fields":[],"doc":"","span":{"file":1,"line":16,"col":1}}},"functions":{"retryDelay":{"params":[{"name":"attempt","type":"int"}],"returns":"duration","doc":"","span":{"file":1,"line":29,"col":1}},"confirmation":{"params":[{"name":"order","type":"Order"},{"name":"receipt","type":"Receipt"}],"returns":"ApiResponse","doc":"","span":{"file":1,"line":30,"col":1}},"invalid":{"params":[{"name":"issues","type":"string[]"}],"returns":"ApiResponse","doc":"","span":{"file":1,"line":31,"col":1}},"problem":{"params":[{"name":"status","type":"int"},{"name":"code","type":"string"}],"returns":"ApiResponse","doc":"","span":{"file":1,"line":32,"col":1}}},"actions":{"sendConfirmationEmail":{"params":[{"name":"user","type":"User"},{"name":"order","type":"Order"},{"name":"receipt","type":"Receipt"}],"doc":"","span":{"file":1,"line":25,"col":1}},"audit":{"params":[{"name":"what","type":"string"},{"name":"order","type":"Order"}],"doc":"","span":{"file":1,"line":26,"col":1}}},"tasks":{"authenticate":{"params":[{"name":"token","type":"string"}],"returns":"User","errors":["Unauthenticated"],"doc":"","span":{"file":1,"line":19,"col":1}},"validateOrder":{"params":[{"name":"draft","type":"OrderDraft"}],"returns":"Order","errors":["ValidationFailed"],"doc":"","span":{"file":1,"line":20,"col":1}},"priceOrder":{"params":[{"name":"order","type":"Order"},{"name":"user","type":"User"}],"returns":"Order","errors":[],"doc":"","span":{"file":1,"line":21,"col":1}},"chargeCard":{"params":[{"name":"order","type":"Order"},{"name":"user","type":"User"}],"returns":"Receipt","errors":["CardDeclined","GatewayUnavailable"],"doc":"","span":{"file":1,"line":22,"col":1}}},"machines":{"PlaceOrder":{"doc":"POST /orders: authenticate, validate, price, take payment, confirm.\nEvery final state is one HTTP response.","span":{"file":0,"line":11,"col":1},"params":[{"name":"token","type":"string"},{"name":"draft","type":"OrderDraft"}],"returns":"ApiResponse","errors":[],"vars":[{"name":"user","type":"User","init":null},{"name":"order","type":"Order","init":null},{"name":"receipt","type":"Receipt","init":null},{"name":"issues","type":"string[]","init":null}],"events":{"Cancel":{"fields":[],"doc":"The client went away before we finished."}},"root":{"id":"PlaceOrder","name":"PlaceOrder","kind":"compound","doc":"POST /orders: authenticate, validate, price, take payment, confirm.\nEvery final state is one HTTP response.","span":{"file":0,"line":11,"col":1},"initial":"PlaceOrder.Authenticating","states":[{"id":"PlaceOrder.Authenticating","name":"Authenticating","kind":"atomic","doc":"Turn the bearer token into a user.","span":{"file":0,"line":23,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":{"kind":"task","src":"authenticate","args":[{"kind":"ref","path":["token"],"text":"token"}]},"transitions":[{"trigger":{"kind":"invoke.done"},"group":0,"guard":null,"target":"PlaceOrder.Processing","effects":[{"kind":"set","var":"user","value":{"kind":"ref","path":["result"],"text":"result"}}],"span":{"file":0,"line":25,"col":7}},{"trigger":{"kind":"invoke.fail","error":"Unauthenticated"},"group":1,"guard":null,"target":"PlaceOrder.Unauthorized","effects":[],"span":{"file":0,"line":26,"col":7}}],"output":null,"fail":null},{"id":"PlaceOrder.Processing","name":"Processing","kind":"compound","doc":"Everything that happens once we know who is asking.\nCancel and the 30 second budget apply to every step inside.","span":{"file":0,"line":32,"col":3},"initial":"PlaceOrder.Processing.Validating","states":[{"id":"PlaceOrder.Processing.Validating","name":"Validating","kind":"atomic","doc":"","span":{"file":0,"line":38,"col":5},"initial":null,"states":[],"entry":[],"exit":[],"invoke":{"kind":"task","src":"validateOrder","args":[{"kind":"ref","path":["draft"],"text":"draft"}]},"transitions":[{"trigger":{"kind":"invoke.done"},"group":0,"guard":null,"target":"PlaceOrder.Processing.Pricing","effects":[{"kind":"set","var":"order","value":{"kind":"ref","path":["result"],"text":"result"}}],"span":{"file":0,"line":40,"col":9}},{"trigger":{"kind":"invoke.fail","error":"ValidationFailed"},"group":1,"guard":null,"target":"PlaceOrder.Invalid","effects":[{"kind":"set","var":"issues","value":{"kind":"ref","path":["error","issues"],"text":"error.issues"}}],"span":{"file":0,"line":41,"col":9}}],"output":null,"fail":null},{"id":"PlaceOrder.Processing.Pricing","name":"Pricing","kind":"atomic","doc":"Apply the user's prices and discounts.","span":{"file":0,"line":46,"col":5},"initial":null,"states":[],"entry":[],"exit":[],"invoke":{"kind":"task","src":"priceOrder","args":[{"kind":"ref","path":["order"],"text":"order"},{"kind":"ref","path":["user"],"text":"user"}]},"transitions":[{"trigger":{"kind":"invoke.done"},"group":0,"guard":null,"target":"PlaceOrder.Processing.Paying","effects":[{"kind":"set","var":"order","value":{"kind":"ref","path":["result"],"text":"result"}}],"span":{"file":0,"line":48,"col":9}}],"output":null,"fail":null},{"id":"PlaceOrder.Processing.Paying","name":"Paying","kind":"atomic","doc":"Payment is its own machine: see checkout.way.","span":{"file":0,"line":53,"col":5},"initial":null,"states":[],"entry":[],"exit":[],"invoke":{"kind":"machine","src":"Checkout","args":[{"kind":"ref","path":["order"],"text":"order"},{"kind":"ref","path":["user"],"text":"user"}]},"transitions":[{"trigger":{"kind":"invoke.done"},"group":0,"guard":null,"target":"PlaceOrder.Processing.Confirming","effects":[{"kind":"set","var":"receipt","value":{"kind":"ref","path":["result"],"text":"result"}}],"span":{"file":0,"line":55,"col":9}},{"trigger":{"kind":"invoke.fail","error":"CardDeclined"},"group":1,"guard":null,"target":"PlaceOrder.PaymentFailed","effects":[{"kind":"do","action":"audit","args":[{"kind":"lit","type":"string","value":"card_declined","text":"\"card_declined\""},{"kind":"ref","path":["order"],"text":"order"}]}],"span":{"file":0,"line":56,"col":9}},{"trigger":{"kind":"invoke.fail","error":"GatewayUnavailable"},"group":2,"guard":null,"target":"PlaceOrder.PaymentFailed","effects":[{"kind":"do","action":"audit","args":[{"kind":"lit","type":"string","value":"gateway_down","text":"\"gateway_down\""},{"kind":"ref","path":["order"],"text":"order"}]}],"span":{"file":0,"line":57,"col":9}}],"output":null,"fail":null},{"id":"PlaceOrder.Processing.Confirming","name":"Confirming","kind":"atomic","doc":"","span":{"file":0,"line":61,"col":5},"initial":null,"states":[],"entry":[{"kind":"do","action":"sendConfirmationEmail","args":[{"kind":"ref","path":["user"],"text":"user"},{"kind":"ref","path":["order"],"text":"order"},{"kind":"ref","path":["receipt"],"text":"receipt"}]}],"exit":[],"invoke":null,"transitions":[{"trigger":{"kind":"always"},"group":0,"guard":null,"target":"PlaceOrder.Confirmed","effects":[],"span":{"file":0,"line":63,"col":7}}],"output":null,"fail":null}],"entry":[],"exit":[],"invoke":null,"transitions":[{"trigger":{"kind":"event","event":"Cancel"},"group":0,"guard":null,"target":"PlaceOrder.Cancelled","effects":[],"span":{"file":0,"line":35,"col":5}},{"trigger":{"kind":"after","delay":{"kind":"lit","type":"duration","value":30000,"text":"30s"}},"group":1,"guard":null,"target":"PlaceOrder.TimedOut","effects":[],"span":{"file":0,"line":36,"col":5}}],"output":null,"fail":null},{"id":"PlaceOrder.Confirmed","name":"Confirmed","kind":"final","doc":"","span":{"file":0,"line":67,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"call","fn":"confirmation","args":[{"kind":"ref","path":["order"],"text":"order"},{"kind":"ref","path":["receipt"],"text":"receipt"}],"text":"confirmation(order, receipt)"},"fail":null},{"id":"PlaceOrder.Unauthorized","name":"Unauthorized","kind":"final","doc":"","span":{"file":0,"line":68,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"call","fn":"problem","args":[{"kind":"lit","type":"int","value":401,"text":"401"},{"kind":"lit","type":"string","value":"unauthenticated","text":"\"unauthenticated\""}],"text":"problem(401, \"unauthenticated\")"},"fail":null},{"id":"PlaceOrder.Invalid","name":"Invalid","kind":"final","doc":"","span":{"file":0,"line":69,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"call","fn":"invalid","args":[{"kind":"ref","path":["issues"],"text":"issues"}],"text":"invalid(issues)"},"fail":null},{"id":"PlaceOrder.PaymentFailed","name":"PaymentFailed","kind":"final","doc":"","span":{"file":0,"line":70,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"call","fn":"problem","args":[{"kind":"lit","type":"int","value":402,"text":"402"},{"kind":"lit","type":"string","value":"payment_failed","text":"\"payment_failed\""}],"text":"problem(402, \"payment_failed\")"},"fail":null},{"id":"PlaceOrder.Cancelled","name":"Cancelled","kind":"final","doc":"","span":{"file":0,"line":71,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"call","fn":"problem","args":[{"kind":"lit","type":"int","value":499,"text":"499"},{"kind":"lit","type":"string","value":"cancelled","text":"\"cancelled\""}],"text":"problem(499, \"cancelled\")"},"fail":null},{"id":"PlaceOrder.TimedOut","name":"TimedOut","kind":"final","doc":"","span":{"file":0,"line":72,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"call","fn":"problem","args":[{"kind":"lit","type":"int","value":504,"text":"504"},{"kind":"lit","type":"string","value":"timeout","text":"\"timeout\""}],"text":"problem(504, \"timeout\")"},"fail":null}],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":null,"fail":null}},"Checkout":{"doc":"Charge the customer's card, retrying while the payment gateway is down.","span":{"file":2,"line":4,"col":1},"params":[{"name":"order","type":"Order"},{"name":"user","type":"User"}],"returns":"Receipt","errors":["CardDeclined","GatewayUnavailable"],"vars":[{"name":"attempts","type":"int","init":{"kind":"lit","type":"int","value":0,"text":"0"}},{"name":"receipt","type":"Receipt","init":null},{"name":"declined","type":"CardDeclined","init":null}],"events":{},"root":{"id":"Checkout","name":"Checkout","kind":"compound","doc":"Charge the customer's card, retrying while the payment gateway is down.","span":{"file":2,"line":4,"col":1},"initial":"Checkout.Charging","states":[{"id":"Checkout.Charging","name":"Charging","kind":"atomic","doc":"One attempt against the payment gateway.","span":{"file":2,"line":12,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":{"kind":"task","src":"chargeCard","args":[{"kind":"ref","path":["order"],"text":"order"},{"kind":"ref","path":["user"],"text":"user"}]},"transitions":[{"trigger":{"kind":"invoke.done"},"group":0,"guard":null,"target":"Checkout.Charged","effects":[{"kind":"set","var":"receipt","value":{"kind":"ref","path":["result"],"text":"result"}}],"span":{"file":2,"line":14,"col":7}},{"trigger":{"kind":"invoke.fail","error":"CardDeclined"},"group":1,"guard":null,"target":"Checkout.Declined","effects":[{"kind":"set","var":"declined","value":{"kind":"ref","path":["error"],"text":"error"}}],"span":{"file":2,"line":15,"col":7}},{"trigger":{"kind":"invoke.fail","error":"GatewayUnavailable"},"group":2,"guard":{"kind":"op","op":"\u003c","args":[{"kind":"ref","path":["attempts"],"text":"attempts"},{"kind":"lit","type":"int","value":3,"text":"3"}],"text":"attempts \u003c 3"},"target":"Checkout.Backoff","effects":[],"span":{"file":2,"line":17,"col":9}},{"trigger":{"kind":"invoke.fail","error":"GatewayUnavailable"},"group":2,"guard":null,"target":"Checkout.GaveUp","effects":[],"span":{"file":2,"line":18,"col":9}}],"output":null,"fail":null},{"id":"Checkout.Backoff","name":"Backoff","kind":"atomic","doc":"Wait before the next attempt. The delay grows with each attempt.","span":{"file":2,"line":24,"col":3},"initial":null,"states":[],"entry":[{"kind":"set","var":"attempts","value":{"kind":"op","op":"+","args":[{"kind":"ref","path":["attempts"],"text":"attempts"},{"kind":"lit","type":"int","value":1,"text":"1"}],"text":"attempts + 1"}}],"exit":[],"invoke":null,"transitions":[{"trigger":{"kind":"after","delay":{"kind":"call","fn":"retryDelay","args":[{"kind":"ref","path":["attempts"],"text":"attempts"}],"text":"retryDelay(attempts)"}},"group":0,"guard":null,"target":"Checkout.Charging","effects":[],"span":{"file":2,"line":26,"col":5}}],"output":null,"fail":null},{"id":"Checkout.Charged","name":"Charged","kind":"final","doc":"","span":{"file":2,"line":29,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"ref","path":["receipt"],"text":"receipt"},"fail":null},{"id":"Checkout.Declined","name":"Declined","kind":"final","doc":"","span":{"file":2,"line":30,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":null,"fail":{"kind":"ref","path":["declined"],"text":"declined"}},{"id":"Checkout.GaveUp","name":"GaveUp","kind":"final","doc":"","span":{"file":2,"line":31,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":null,"fail":{"kind":"record","type":"GatewayUnavailable","fields":{},"text":"GatewayUnavailable"}}],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":null,"fail":null}}}}</script>
+<script type="application/json" id="rb-ir">{"irVersion":"0.1","sources":[{"path":"examples/shop/place_order.road"},{"path":"examples/shop/types.road"},{"path":"examples/shop/checkout.road"}],"types":{"LineItem":{"kind":"record","fields":[{"name":"sku","type":"string"},{"name":"qty","type":"int"}],"doc":"","span":{"file":1,"line":3,"col":1}},"OrderDraft":{"kind":"record","fields":[{"name":"items","type":"LineItem[]"},{"name":"coupon","type":"string?"}],"doc":"","span":{"file":1,"line":4,"col":1}},"Order":{"kind":"record","fields":[{"name":"id","type":"string"},{"name":"items","type":"LineItem[]"},{"name":"totalCents","type":"int"}],"doc":"","span":{"file":1,"line":5,"col":1}},"Receipt":{"kind":"record","fields":[{"name":"chargeId","type":"string"},{"name":"amountCents","type":"int"}],"doc":"","span":{"file":1,"line":6,"col":1}},"User":{"kind":"record","fields":[{"name":"id","type":"string"},{"name":"role","type":"Role"}],"doc":"","span":{"file":1,"line":7,"col":1}},"Role":{"kind":"enum","variants":["Customer","Admin"],"doc":"","span":{"file":1,"line":8,"col":1}},"ApiResponse":{"kind":"record","fields":[{"name":"status","type":"int"},{"name":"body","type":"json"}],"doc":"What the HTTP layer sends back. `body` is any JSON value.","span":{"file":1,"line":11,"col":1}},"Unauthenticated":{"kind":"error","fields":[],"doc":"","span":{"file":1,"line":13,"col":1}},"ValidationFailed":{"kind":"error","fields":[{"name":"issues","type":"string[]"}],"doc":"","span":{"file":1,"line":14,"col":1}},"CardDeclined":{"kind":"error","fields":[{"name":"reason","type":"string"}],"doc":"","span":{"file":1,"line":15,"col":1}},"GatewayUnavailable":{"kind":"error","fields":[],"doc":"","span":{"file":1,"line":16,"col":1}}},"functions":{"retryDelay":{"params":[{"name":"attempt","type":"int"}],"returns":"duration","doc":"","span":{"file":1,"line":29,"col":1}},"confirmation":{"params":[{"name":"order","type":"Order"},{"name":"receipt","type":"Receipt"}],"returns":"ApiResponse","doc":"","span":{"file":1,"line":30,"col":1}},"invalid":{"params":[{"name":"issues","type":"string[]"}],"returns":"ApiResponse","doc":"","span":{"file":1,"line":31,"col":1}},"problem":{"params":[{"name":"status","type":"int"},{"name":"code","type":"string"}],"returns":"ApiResponse","doc":"","span":{"file":1,"line":32,"col":1}}},"actions":{"sendConfirmationEmail":{"params":[{"name":"user","type":"User"},{"name":"order","type":"Order"},{"name":"receipt","type":"Receipt"}],"doc":"","span":{"file":1,"line":25,"col":1}},"audit":{"params":[{"name":"what","type":"string"},{"name":"order","type":"Order"}],"doc":"","span":{"file":1,"line":26,"col":1}}},"tasks":{"authenticate":{"params":[{"name":"token","type":"string"}],"returns":"User","errors":["Unauthenticated"],"doc":"","span":{"file":1,"line":19,"col":1}},"validateOrder":{"params":[{"name":"draft","type":"OrderDraft"}],"returns":"Order","errors":["ValidationFailed"],"doc":"","span":{"file":1,"line":20,"col":1}},"priceOrder":{"params":[{"name":"order","type":"Order"},{"name":"user","type":"User"}],"returns":"Order","errors":[],"doc":"","span":{"file":1,"line":21,"col":1}},"chargeCard":{"params":[{"name":"order","type":"Order"},{"name":"user","type":"User"}],"returns":"Receipt","errors":["CardDeclined","GatewayUnavailable"],"doc":"","span":{"file":1,"line":22,"col":1}}},"machines":{"PlaceOrder":{"doc":"POST /orders: authenticate, validate, price, take payment, confirm.\nEvery final state is one HTTP response.","span":{"file":0,"line":11,"col":1},"params":[{"name":"token","type":"string"},{"name":"draft","type":"OrderDraft"}],"returns":"ApiResponse","errors":[],"vars":[{"name":"user","type":"User","init":null},{"name":"order","type":"Order","init":null},{"name":"receipt","type":"Receipt","init":null},{"name":"issues","type":"string[]","init":null}],"events":{"Cancel":{"fields":[],"doc":"The client went away before we finished."}},"root":{"id":"PlaceOrder","name":"PlaceOrder","kind":"compound","doc":"POST /orders: authenticate, validate, price, take payment, confirm.\nEvery final state is one HTTP response.","span":{"file":0,"line":11,"col":1},"initial":"PlaceOrder.Authenticating","states":[{"id":"PlaceOrder.Authenticating","name":"Authenticating","kind":"atomic","doc":"Turn the bearer token into a user.","span":{"file":0,"line":23,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":{"kind":"task","src":"authenticate","args":[{"kind":"ref","path":["token"],"text":"token"}]},"transitions":[{"trigger":{"kind":"invoke.done"},"group":0,"guard":null,"target":"PlaceOrder.Processing","effects":[{"kind":"set","var":"user","value":{"kind":"ref","path":["result"],"text":"result"}}],"span":{"file":0,"line":25,"col":7}},{"trigger":{"kind":"invoke.fail","error":"Unauthenticated"},"group":1,"guard":null,"target":"PlaceOrder.Unauthorized","effects":[],"span":{"file":0,"line":26,"col":7}}],"output":null,"fail":null},{"id":"PlaceOrder.Processing","name":"Processing","kind":"compound","doc":"Everything that happens once we know who is asking.\nCancel and the 30 second budget apply to every step inside.","span":{"file":0,"line":32,"col":3},"initial":"PlaceOrder.Processing.Validating","states":[{"id":"PlaceOrder.Processing.Validating","name":"Validating","kind":"atomic","doc":"","span":{"file":0,"line":38,"col":5},"initial":null,"states":[],"entry":[],"exit":[],"invoke":{"kind":"task","src":"validateOrder","args":[{"kind":"ref","path":["draft"],"text":"draft"}]},"transitions":[{"trigger":{"kind":"invoke.done"},"group":0,"guard":null,"target":"PlaceOrder.Processing.Pricing","effects":[{"kind":"set","var":"order","value":{"kind":"ref","path":["result"],"text":"result"}}],"span":{"file":0,"line":40,"col":9}},{"trigger":{"kind":"invoke.fail","error":"ValidationFailed"},"group":1,"guard":null,"target":"PlaceOrder.Invalid","effects":[{"kind":"set","var":"issues","value":{"kind":"ref","path":["error","issues"],"text":"error.issues"}}],"span":{"file":0,"line":41,"col":9}}],"output":null,"fail":null},{"id":"PlaceOrder.Processing.Pricing","name":"Pricing","kind":"atomic","doc":"Apply the user's prices and discounts.","span":{"file":0,"line":46,"col":5},"initial":null,"states":[],"entry":[],"exit":[],"invoke":{"kind":"task","src":"priceOrder","args":[{"kind":"ref","path":["order"],"text":"order"},{"kind":"ref","path":["user"],"text":"user"}]},"transitions":[{"trigger":{"kind":"invoke.done"},"group":0,"guard":null,"target":"PlaceOrder.Processing.Paying","effects":[{"kind":"set","var":"order","value":{"kind":"ref","path":["result"],"text":"result"}}],"span":{"file":0,"line":48,"col":9}}],"output":null,"fail":null},{"id":"PlaceOrder.Processing.Paying","name":"Paying","kind":"atomic","doc":"Payment is its own machine: see checkout.road.","span":{"file":0,"line":53,"col":5},"initial":null,"states":[],"entry":[],"exit":[],"invoke":{"kind":"machine","src":"Checkout","args":[{"kind":"ref","path":["order"],"text":"order"},{"kind":"ref","path":["user"],"text":"user"}]},"transitions":[{"trigger":{"kind":"invoke.done"},"group":0,"guard":null,"target":"PlaceOrder.Processing.Confirming","effects":[{"kind":"set","var":"receipt","value":{"kind":"ref","path":["result"],"text":"result"}}],"span":{"file":0,"line":55,"col":9}},{"trigger":{"kind":"invoke.fail","error":"CardDeclined"},"group":1,"guard":null,"target":"PlaceOrder.PaymentFailed","effects":[{"kind":"do","action":"audit","args":[{"kind":"lit","type":"string","value":"card_declined","text":"\"card_declined\""},{"kind":"ref","path":["order"],"text":"order"}]}],"span":{"file":0,"line":56,"col":9}},{"trigger":{"kind":"invoke.fail","error":"GatewayUnavailable"},"group":2,"guard":null,"target":"PlaceOrder.PaymentFailed","effects":[{"kind":"do","action":"audit","args":[{"kind":"lit","type":"string","value":"gateway_down","text":"\"gateway_down\""},{"kind":"ref","path":["order"],"text":"order"}]}],"span":{"file":0,"line":57,"col":9}}],"output":null,"fail":null},{"id":"PlaceOrder.Processing.Confirming","name":"Confirming","kind":"atomic","doc":"","span":{"file":0,"line":61,"col":5},"initial":null,"states":[],"entry":[{"kind":"do","action":"sendConfirmationEmail","args":[{"kind":"ref","path":["user"],"text":"user"},{"kind":"ref","path":["order"],"text":"order"},{"kind":"ref","path":["receipt"],"text":"receipt"}]}],"exit":[],"invoke":null,"transitions":[{"trigger":{"kind":"always"},"group":0,"guard":null,"target":"PlaceOrder.Confirmed","effects":[],"span":{"file":0,"line":63,"col":7}}],"output":null,"fail":null}],"entry":[],"exit":[],"invoke":null,"transitions":[{"trigger":{"kind":"event","event":"Cancel"},"group":0,"guard":null,"target":"PlaceOrder.Cancelled","effects":[],"span":{"file":0,"line":35,"col":5}},{"trigger":{"kind":"after","delay":{"kind":"lit","type":"duration","value":30000,"text":"30s"}},"group":1,"guard":null,"target":"PlaceOrder.TimedOut","effects":[],"span":{"file":0,"line":36,"col":5}}],"output":null,"fail":null},{"id":"PlaceOrder.Confirmed","name":"Confirmed","kind":"final","doc":"","span":{"file":0,"line":67,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"call","fn":"confirmation","args":[{"kind":"ref","path":["order"],"text":"order"},{"kind":"ref","path":["receipt"],"text":"receipt"}],"text":"confirmation(order, receipt)"},"fail":null},{"id":"PlaceOrder.Unauthorized","name":"Unauthorized","kind":"final","doc":"","span":{"file":0,"line":68,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"call","fn":"problem","args":[{"kind":"lit","type":"int","value":401,"text":"401"},{"kind":"lit","type":"string","value":"unauthenticated","text":"\"unauthenticated\""}],"text":"problem(401, \"unauthenticated\")"},"fail":null},{"id":"PlaceOrder.Invalid","name":"Invalid","kind":"final","doc":"","span":{"file":0,"line":69,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"call","fn":"invalid","args":[{"kind":"ref","path":["issues"],"text":"issues"}],"text":"invalid(issues)"},"fail":null},{"id":"PlaceOrder.PaymentFailed","name":"PaymentFailed","kind":"final","doc":"","span":{"file":0,"line":70,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"call","fn":"problem","args":[{"kind":"lit","type":"int","value":402,"text":"402"},{"kind":"lit","type":"string","value":"payment_failed","text":"\"payment_failed\""}],"text":"problem(402, \"payment_failed\")"},"fail":null},{"id":"PlaceOrder.Cancelled","name":"Cancelled","kind":"final","doc":"","span":{"file":0,"line":71,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"call","fn":"problem","args":[{"kind":"lit","type":"int","value":499,"text":"499"},{"kind":"lit","type":"string","value":"cancelled","text":"\"cancelled\""}],"text":"problem(499, \"cancelled\")"},"fail":null},{"id":"PlaceOrder.TimedOut","name":"TimedOut","kind":"final","doc":"","span":{"file":0,"line":72,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"call","fn":"problem","args":[{"kind":"lit","type":"int","value":504,"text":"504"},{"kind":"lit","type":"string","value":"timeout","text":"\"timeout\""}],"text":"problem(504, \"timeout\")"},"fail":null}],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":null,"fail":null}},"Checkout":{"doc":"Charge the customer's card, retrying while the payment gateway is down.","span":{"file":2,"line":4,"col":1},"params":[{"name":"order","type":"Order"},{"name":"user","type":"User"}],"returns":"Receipt","errors":["CardDeclined","GatewayUnavailable"],"vars":[{"name":"attempts","type":"int","init":{"kind":"lit","type":"int","value":0,"text":"0"}},{"name":"receipt","type":"Receipt","init":null},{"name":"declined","type":"CardDeclined","init":null}],"events":{},"root":{"id":"Checkout","name":"Checkout","kind":"compound","doc":"Charge the customer's card, retrying while the payment gateway is down.","span":{"file":2,"line":4,"col":1},"initial":"Checkout.Charging","states":[{"id":"Checkout.Charging","name":"Charging","kind":"atomic","doc":"One attempt against the payment gateway.","span":{"file":2,"line":12,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":{"kind":"task","src":"chargeCard","args":[{"kind":"ref","path":["order"],"text":"order"},{"kind":"ref","path":["user"],"text":"user"}]},"transitions":[{"trigger":{"kind":"invoke.done"},"group":0,"guard":null,"target":"Checkout.Charged","effects":[{"kind":"set","var":"receipt","value":{"kind":"ref","path":["result"],"text":"result"}}],"span":{"file":2,"line":14,"col":7}},{"trigger":{"kind":"invoke.fail","error":"CardDeclined"},"group":1,"guard":null,"target":"Checkout.Declined","effects":[{"kind":"set","var":"declined","value":{"kind":"ref","path":["error"],"text":"error"}}],"span":{"file":2,"line":15,"col":7}},{"trigger":{"kind":"invoke.fail","error":"GatewayUnavailable"},"group":2,"guard":{"kind":"op","op":"\u003c","args":[{"kind":"ref","path":["attempts"],"text":"attempts"},{"kind":"lit","type":"int","value":3,"text":"3"}],"text":"attempts \u003c 3"},"target":"Checkout.Backoff","effects":[],"span":{"file":2,"line":17,"col":9}},{"trigger":{"kind":"invoke.fail","error":"GatewayUnavailable"},"group":2,"guard":null,"target":"Checkout.GaveUp","effects":[],"span":{"file":2,"line":18,"col":9}}],"output":null,"fail":null},{"id":"Checkout.Backoff","name":"Backoff","kind":"atomic","doc":"Wait before the next attempt. The delay grows with each attempt.","span":{"file":2,"line":24,"col":3},"initial":null,"states":[],"entry":[{"kind":"set","var":"attempts","value":{"kind":"op","op":"+","args":[{"kind":"ref","path":["attempts"],"text":"attempts"},{"kind":"lit","type":"int","value":1,"text":"1"}],"text":"attempts + 1"}}],"exit":[],"invoke":null,"transitions":[{"trigger":{"kind":"after","delay":{"kind":"call","fn":"retryDelay","args":[{"kind":"ref","path":["attempts"],"text":"attempts"}],"text":"retryDelay(attempts)"}},"group":0,"guard":null,"target":"Checkout.Charging","effects":[],"span":{"file":2,"line":26,"col":5}}],"output":null,"fail":null},{"id":"Checkout.Charged","name":"Charged","kind":"final","doc":"","span":{"file":2,"line":29,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":{"kind":"ref","path":["receipt"],"text":"receipt"},"fail":null},{"id":"Checkout.Declined","name":"Declined","kind":"final","doc":"","span":{"file":2,"line":30,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":null,"fail":{"kind":"ref","path":["declined"],"text":"declined"}},{"id":"Checkout.GaveUp","name":"GaveUp","kind":"final","doc":"","span":{"file":2,"line":31,"col":3},"initial":null,"states":[],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":null,"fail":{"kind":"record","type":"GatewayUnavailable","fields":{},"text":"GatewayUnavailable"}}],"entry":[],"exit":[],"invoke":null,"transitions":[],"output":null,"fail":null}}}}</script>
 <script>
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.ELK = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 "use strict";
@@ -7261,9 +7261,9 @@ function renderRows(box, x0, y0, width, measure) {
   box.rows.forEach((r, i) => {
     const top = y0 + M.rowsPadY + i * M.rowH
     const y = baseline(top, M.rowH, M.fontRow)
-    const cls = ['wm-row', r.cls ? `wm-k-${r.cls}` : ''].filter(Boolean).join(' ')
+    const cls = ['rb-row', r.cls ? `rb-k-${r.cls}` : ''].filter(Boolean).join(' ')
     const data = r.transition !== undefined ? ` data-transition="${r.transition}"` : ''
-    const kw = r.kw ? `<tspan class="wm-kw">${esc(r.kw)}</tspan> ` : ''
+    const kw = r.kw ? `<tspan class="rb-kw">${esc(r.kw)}</tspan> ` : ''
     if (r.machine) {
       // Machine invoke: a pill the viewer makes clickable.
       const kwW = measure(r.kw + ' ', M.fontRow, false)
@@ -7272,10 +7272,10 @@ function renderRows(box, x0, y0, width, measure) {
       const pillW = textW + 2 * M.machinePillPad + 12
       const cx = px + pillW - 10, cy = top + M.rowH / 2
       out += `<text class="${cls}" x="${n(x0 + M.padX)}" y="${y}">${kw}</text>`
-        + `<g class="wm-machine-link" data-machine="${esc(r.machine)}"><title>Open machine ${esc(r.machine)}</title>`
-        + `<rect class="wm-pill" x="${n(px)}" y="${n(top + 0.5)}" width="${n(pillW)}" height="${M.rowH - 1}" rx="${(M.rowH - 1) / 2}"/>`
-        + `<text class="wm-row wm-pill-text" x="${n(px + M.machinePillPad)}" y="${y}"><tspan class="wm-kw">machine</tspan>${esc(r.text.slice('machine'.length))}</text>`
-        + `<path class="wm-pill-chevron" d="M${n(cx - 2)},${n(cy - 3.5)} l3.5,3.5 l-3.5,3.5"/></g>`
+        + `<g class="rb-machine-link" data-machine="${esc(r.machine)}"><title>Open machine ${esc(r.machine)}</title>`
+        + `<rect class="rb-pill" x="${n(px)}" y="${n(top + 0.5)}" width="${n(pillW)}" height="${M.rowH - 1}" rx="${(M.rowH - 1) / 2}"/>`
+        + `<text class="rb-row rb-pill-text" x="${n(px + M.machinePillPad)}" y="${y}"><tspan class="rb-kw">machine</tspan>${esc(r.text.slice('machine'.length))}</text>`
+        + `<path class="rb-pill-chevron" d="M${n(cx - 2)},${n(cy - 3.5)} l3.5,3.5 l-3.5,3.5"/></g>`
     } else {
       out += `<text class="${cls}"${data} x="${n(x0 + M.padX)}" y="${y}" xml:space="preserve">${kw}${esc(r.text)}</text>`
     }
@@ -7291,25 +7291,25 @@ function renderState(entry, layout, measure) {
   const box = stateBox(state, depth, measure)
   const isContainer = state.states.length > 0
   const inset = state.kind === 'final' ? M.finalInset : 0
-  const cls = ['wm-state', `wm-kind-${state.kind}`, isContainer ? 'wm-container' : 'wm-leaf',
-    parent && parent.kind === 'parallel' ? 'wm-region' : ''].filter(Boolean).join(' ')
+  const cls = ['rb-state', `rb-kind-${state.kind}`, isContainer ? 'rb-container' : 'rb-leaf',
+    parent && parent.kind === 'parallel' ? 'rb-region' : ''].filter(Boolean).join(' ')
   const w = g.width, h = g.height
   let s = `<g class="${cls}" data-state="${esc(state.id)}" transform="translate(${n(g.x)},${n(g.y)})">`
   s += `<title>${esc(state.id)}${state.doc ? ' — ' + esc(state.doc) : ''}</title>`
-  s += `<rect class="wm-box" width="${n(w)}" height="${n(h)}" rx="${isContainer ? 11 : 8}"/>`
+  s += `<rect class="rb-box" width="${n(w)}" height="${n(h)}" rx="${isContainer ? 11 : 8}"/>`
   if (state.kind === 'final') {
-    s += `<rect class="wm-box-inner" x="${inset}" y="${inset}" width="${n(w - 2 * inset)}" height="${n(h - 2 * inset)}" rx="5"/>`
+    s += `<rect class="rb-box-inner" x="${inset}" y="${inset}" width="${n(w - 2 * inset)}" height="${n(h - 2 * inset)}" rx="5"/>`
   }
   const titleY = baseline(inset, box.titleH, M.fontTitle)
   if (isContainer) {
-    s += `<text class="wm-title" x="${M.padX}" y="${titleY}">${esc(state.name)}</text>`
-    if (state.kind === 'parallel') s += `<text class="wm-tag" x="${n(w - M.padX)}" y="${titleY}" text-anchor="end">parallel</text>`
+    s += `<text class="rb-title" x="${M.padX}" y="${titleY}">${esc(state.name)}</text>`
+    if (state.kind === 'parallel') s += `<text class="rb-tag" x="${n(w - M.padX)}" y="${titleY}" text-anchor="end">parallel</text>`
   } else {
-    s += `<text class="wm-title" x="${n(w / 2)}" y="${titleY}" text-anchor="middle">${esc(state.name)}</text>`
+    s += `<text class="rb-title" x="${n(w / 2)}" y="${titleY}" text-anchor="middle">${esc(state.name)}</text>`
   }
   if (box.rows.length) {
     const sepY = inset + box.titleH
-    if (!isContainer) s += `<line class="wm-sep" x1="${inset}" x2="${n(w - inset)}" y1="${sepY}" y2="${sepY}"/>`
+    if (!isContainer) s += `<line class="rb-sep" x1="${inset}" x2="${n(w - inset)}" y1="${sepY}" y2="${sepY}"/>`
     s += renderRows(box, inset, sepY - (isContainer ? M.rowsPadY : 0), w, measure)
   }
   return s + '</g>'
@@ -7319,16 +7319,16 @@ function renderLabel(state, index, kind, label, measure) {
   const M = METRICS
   const lines = transitionLines(state, index)
   const cx = label.x + label.width / 2
-  let s = `<g class="wm-label wm-k-${kind}" data-state="${esc(state.id)}" data-transition="${index}">`
-  s += `<rect class="wm-label-bg" x="${n(label.x)}" y="${n(label.y)}" width="${n(label.width)}" height="${n(label.height)}" rx="5"/>`
+  let s = `<g class="rb-label rb-k-${kind}" data-state="${esc(state.id)}" data-transition="${index}">`
+  s += `<rect class="rb-label-bg" x="${n(label.x)}" y="${n(label.y)}" width="${n(label.width)}" height="${n(label.height)}" rx="5"/>`
   let top = label.y + M.labelPadY
   for (const l of lines) {
     if (l.cls === 'trigger') {
-      const guard = l.guard ? `${l.text ? ' ' : ''}<tspan class="wm-guard">${esc(l.guard)}</tspan>` : ''
-      s += `<text class="wm-label-trigger" x="${n(cx)}" y="${baseline(top, M.labelLineH, M.fontLabel)}" text-anchor="middle" xml:space="preserve">${esc(l.text)}${guard}</text>`
+      const guard = l.guard ? `${l.text ? ' ' : ''}<tspan class="rb-guard">${esc(l.guard)}</tspan>` : ''
+      s += `<text class="rb-label-trigger" x="${n(cx)}" y="${baseline(top, M.labelLineH, M.fontLabel)}" text-anchor="middle" xml:space="preserve">${esc(l.text)}${guard}</text>`
       top += M.labelLineH
     } else {
-      s += `<text class="wm-label-effect" x="${n(cx)}" y="${baseline(top, M.effectLineH, M.fontEffect)}" text-anchor="middle" xml:space="preserve">${esc(l.text)}</text>`
+      s += `<text class="rb-label-effect" x="${n(cx)}" y="${baseline(top, M.effectLineH, M.fontEffect)}" text-anchor="middle" xml:space="preserve">${esc(l.text)}</text>`
       top += M.effectLineH
     }
   }
@@ -7337,17 +7337,17 @@ function renderLabel(state, index, kind, label, measure) {
 
 function markers(prefix) {
   return KINDS.map((k) =>
-    `<marker id="${prefix}-arrow-${k}" class="wm-arrow wm-k-${k}" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker>`,
+    `<marker id="${prefix}-arrow-${k}" class="rb-arrow rb-k-${k}" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0.5,1 L9.5,5 L0.5,9 z"/></marker>`,
   ).join('')
 }
 
 // renderSvg(ir, machineName, layout, opts) -> string
 //   layout: the result of layoutMachine()
 //   opts.measure: the same text measurer the layout used (default: character-count estimate)
-//   opts.idPrefix: prefix for marker ids, unique per document (default "wm")
+//   opts.idPrefix: prefix for marker ids, unique per document (default "rb")
 function renderSvg(ir, machineName, layout, opts = {}) {
   const measure = opts.measure ?? ((text, size) => estimateWidth(text, size))
-  const prefix = opts.idPrefix ?? 'wm'
+  const prefix = opts.idPrefix ?? 'rb'
   const machine = ir.machines[machineName]
   const states = drawnStates(machine)
   const W = layout.width, H = layout.height
@@ -7364,17 +7364,17 @@ function renderSvg(ir, machineName, layout, opts = {}) {
     if (!e || e.points.length < 2) return ''
     const d = roundedPath(e.points)
     // A transition defined on a compound state starts with a dot on the container's border.
-    const port = fromContainer ? `<circle class="wm-port" cx="${n(e.points[0].x)}" cy="${n(e.points[0].y)}" r="3.5"/>` : ''
-    return `<g class="wm-edge wm-k-${kind}"${attrs}>`
-      + `<path class="wm-edge-hit" d="${d}"/>`
-      + `<path class="wm-edge-line" d="${d}" marker-end="url(#${prefix}-arrow-${kind})"/>${port}</g>`
+    const port = fromContainer ? `<circle class="rb-port" cx="${n(e.points[0].x)}" cy="${n(e.points[0].y)}" r="3.5"/>` : ''
+    return `<g class="rb-edge rb-k-${kind}"${attrs}>`
+      + `<path class="rb-edge-hit" d="${d}"/>`
+      + `<path class="rb-edge-line" d="${d}" marker-end="url(#${prefix}-arrow-${kind})"/>${port}</g>`
   }
 
   walk(machine.root, (state) => {
     if (state.initial) {
       const m = layout.nodes[`${state.id}/initial`]
       if (m) {
-        initials += `<circle class="wm-initial" cx="${n(m.x + m.width / 2)}" cy="${n(m.y + m.height / 2)}" r="${METRICS.initialR}"><title>initial state of ${esc(state.id)}</title></circle>`
+        initials += `<circle class="rb-initial" cx="${n(m.x + m.width / 2)}" cy="${n(m.y + m.height / 2)}" r="${METRICS.initialR}"><title>initial state of ${esc(state.id)}</title></circle>`
         edgePaths += edge(`${state.id}/initial/edge`, 'initial', '')
       }
     }
@@ -7388,12 +7388,12 @@ function renderSvg(ir, machineName, layout, opts = {}) {
     })
   })
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" class="wm-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="State diagram of machine ${esc(machineName)}">`
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="rb-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="State diagram of machine ${esc(machineName)}">`
     + `<defs>${markers(prefix)}</defs>`
-    + `<g class="wm-layer-containers">${containers}</g>`
-    + `<g class="wm-layer-edges">${edgePaths}</g>`
-    + `<g class="wm-layer-states">${leaves}${initials}</g>`
-    + `<g class="wm-layer-labels">${labels}</g>`
+    + `<g class="rb-layer-containers">${containers}</g>`
+    + `<g class="rb-layer-edges">${edgePaths}</g>`
+    + `<g class="rb-layer-states">${leaves}${initials}</g>`
+    + `<g class="rb-layer-labels">${labels}</g>`
     + `</svg>`
 }
 
@@ -7405,30 +7405,30 @@ function walk(state, fn) {
 // Legend for the edge styles and the node shapes. HTML string; uses the same classes as the diagram.
 function renderLegend(opts = {}) {
   const line = (kind) =>
-    `<svg class="wm-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true">`
-    + `<g class="wm-edge wm-k-${kind}"><path class="wm-edge-line" d="M1,7 L37,7"/></g>`
-    + `<g class="wm-arrow wm-k-${kind}"><path d="M36,3 L45,7 L36,11 z"/></g></svg>`
+    `<svg class="rb-legend-swatch" viewBox="0 0 46 14" width="46" height="14" aria-hidden="true">`
+    + `<g class="rb-edge rb-k-${kind}"><path class="rb-edge-line" d="M1,7 L37,7"/></g>`
+    + `<g class="rb-arrow rb-k-${kind}"><path d="M36,3 L45,7 L36,11 z"/></g></svg>`
   const item = (swatch, label, text) =>
     `<li>${swatch}<span><code class="${label.cls ?? ''}">${esc(label.text)}</code> ${esc(text)}</span></li>`
-  const shape = (inner) => `<svg class="wm-legend-swatch" viewBox="0 0 46 18" width="46" height="18" aria-hidden="true">${inner}</svg>`
-  return `<ul class="wm-legend-list">`
+  const shape = (inner) => `<svg class="rb-legend-swatch" viewBox="0 0 46 18" width="46" height="18" aria-hidden="true">${inner}</svg>`
+  return `<ul class="rb-legend-list">`
     + item(line('event'), { text: 'Cancel' }, 'event')
-    + item(line('done'), { text: 'done', cls: 'wm-t-done' }, 'invoke or nested states finished')
-    + item(line('fail'), { text: 'fail X', cls: 'wm-t-fail' }, 'invoke failed with error X')
+    + item(line('done'), { text: 'done', cls: 'rb-t-done' }, 'invoke or nested states finished')
+    + item(line('fail'), { text: 'fail X', cls: 'rb-t-fail' }, 'invoke failed with error X')
     + item(line('after'), { text: 'after 30s' }, 'time in the state (dashed)')
     + item(line('always'), { text: 'always' }, 'no event needed (dotted)')
-    + item(shape('<g class="wm-label"><rect class="wm-label-bg" x="5" y="2" width="36" height="14" rx="4"/><text class="wm-label-trigger wm-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="wm-guard">[x&lt;3]</tspan></text></g>'), { text: '[guard]' }, 'condition; branches are tried in order')
-    + item(shape('<g class="wm-edge wm-k-initial"><path class="wm-edge-line" d="M12,9 L37,9"/></g><g class="wm-arrow wm-k-initial"><path d="M36,5 L45,9 L36,13 z"/></g><circle class="wm-initial" cx="7" cy="9" r="5.5"/>'), { text: 'initial' }, 'state')
-    + item(shape('<g class="wm-state wm-kind-final"><rect class="wm-box" x="4" y="1" width="38" height="16" rx="5"/><rect class="wm-box-inner" x="7" y="4" width="32" height="10" rx="2.5"/></g>'), { text: 'final' }, 'state (double border)')
-    + item(shape('<g class="wm-machine-link"><rect class="wm-pill" x="2" y="2" width="42" height="14" rx="7"/><path class="wm-pill-chevron" d="M33,5.5 l3.5,3.5 l-3.5,3.5"/></g>'), { text: 'machine' }, opts.interactive ? 'invokes another machine; click to open it' : 'invokes another machine')
+    + item(shape('<g class="rb-label"><rect class="rb-label-bg" x="5" y="2" width="36" height="14" rx="4"/><text class="rb-label-trigger rb-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="rb-guard">[x&lt;3]</tspan></text></g>'), { text: '[guard]' }, 'condition; branches are tried in order')
+    + item(shape('<g class="rb-edge rb-k-initial"><path class="rb-edge-line" d="M12,9 L37,9"/></g><g class="rb-arrow rb-k-initial"><path d="M36,5 L45,9 L36,13 z"/></g><circle class="rb-initial" cx="7" cy="9" r="5.5"/>'), { text: 'initial' }, 'state')
+    + item(shape('<g class="rb-state rb-kind-final"><rect class="rb-box" x="4" y="1" width="38" height="16" rx="5"/><rect class="rb-box-inner" x="7" y="4" width="32" height="10" rx="2.5"/></g>'), { text: 'final' }, 'state (double border)')
+    + item(shape('<g class="rb-machine-link"><rect class="rb-pill" x="2" y="2" width="42" height="14" rx="7"/><path class="rb-pill-chevron" d="M33,5.5 l3.5,3.5 l-3.5,3.5"/></g>'), { text: 'machine' }, opts.interactive ? 'invokes another machine; click to open it' : 'invokes another machine')
     + `</ul>`
 }
 
 // Header block for a machine: signature and doc comment. HTML string.
 function renderMachineHeader(ir, machineName) {
   const m = ir.machines[machineName]
-  const doc = m.doc ? `<p class="wm-doc">${esc(m.doc).replace(/\n/g, '<br>')}</p>` : ''
-  return `<code class="wm-signature">${esc(signatureText('machine', machineName, m))}</code>${doc}`
+  const doc = m.doc ? `<p class="rb-doc">${esc(m.doc).replace(/\n/g, '<br>')}</p>` : ''
+  return `<code class="rb-signature">${esc(signatureText('machine', machineName, m))}</code>${doc}`
 }
 
 // ── viewer/app.js
@@ -7440,10 +7440,10 @@ function renderMachineHeader(ir, machineName) {
 
 
 function startViewer() {
-  const ir = JSON.parse(document.getElementById('wm-ir').textContent)
+  const ir = JSON.parse(document.getElementById('rb-ir').textContent)
   const $ = (id) => document.getElementById(id)
-  const canvas = $('wm-canvas')
-  const panel = $('wm-panel')
+  const canvas = $('rb-canvas')
+  const panel = $('rb-panel')
   const machineNames = Object.keys(ir.machines)
   const elk = new ELK()
   const layouts = new Map()
@@ -7457,7 +7457,7 @@ function startViewer() {
 
   // Measure text with the real monospace font, so boxes fit their text exactly.
   const ctx = document.createElement('canvas').getContext('2d')
-  const mono = getComputedStyle(document.documentElement).getPropertyValue('--wm-mono').trim() || 'monospace'
+  const mono = getComputedStyle(document.documentElement).getPropertyValue('--rb-mono').trim() || 'monospace'
   const measure = (text, size, bold) => {
     ctx.font = `${bold ? '650' : '400'} ${size}px ${mono}`
     return ctx.measureText(text).width + 1
@@ -7471,11 +7471,11 @@ function startViewer() {
     if (current !== name) return
     if (svg) svg.remove()
     canvas.insertAdjacentHTML('afterbegin', renderSvg(ir, name, layouts.get(name), { measure }))
-    svg = canvas.querySelector('svg.wm-svg')
+    svg = canvas.querySelector('svg.rb-svg')
     svg.removeAttribute('width')
     svg.removeAttribute('height')
     try { history.replaceState(null, '', '#' + name) } catch { /* some file:// setups refuse; the hash is only a convenience */ }
-    document.title = `${name} · Waymark`
+    document.title = `${name} · Roadbook`
     fit()
     renderChrome()
     applySelection()
@@ -7483,11 +7483,11 @@ function startViewer() {
   }
 
   function renderChrome() {
-    $('wm-machine-head').innerHTML = renderMachineHeader(ir, current)
-    $('wm-tabs').innerHTML = `<span class="wm-tabs-label">${machineNames.length === 1 ? 'Machine' : 'Machines'}</span>`
+    $('rb-machine-head').innerHTML = renderMachineHeader(ir, current)
+    $('rb-tabs').innerHTML = `<span class="rb-tabs-label">${machineNames.length === 1 ? 'Machine' : 'Machines'}</span>`
       + machineNames.map((m) =>
-        `<button class="wm-tab" type="button" role="tab" aria-selected="${m === current}" data-machine="${esc(m)}">${esc(m)}</button>`).join('')
-    const back = $('wm-back')
+        `<button class="rb-tab" type="button" role="tab" aria-selected="${m === current}" data-machine="${esc(m)}">${esc(m)}</button>`).join('')
+    const back = $('rb-back')
     const prev = navStack[navStack.length - 1]
     back.hidden = !prev
     if (prev) back.textContent = `← Back to ${prev.machine}`
@@ -7558,7 +7558,7 @@ function startViewer() {
     const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y
     if (!drag.moved && Math.hypot(dx, dy) < 4) return
     drag.moved = true
-    canvas.classList.add('wm-dragging')
+    canvas.classList.add('rb-dragging')
     const k = view.w / size().w
     view.x = drag.vx - dx * k
     view.y = drag.vy - dy * k
@@ -7571,7 +7571,7 @@ function startViewer() {
       setTimeout(() => { suppressClick = false }, 0)
     }
     drag = null
-    canvas.classList.remove('wm-dragging')
+    canvas.classList.remove('rb-dragging')
   })
   new ResizeObserver(() => {
     if (!view) return
@@ -7582,9 +7582,9 @@ function startViewer() {
     applyView()
   }).observe(canvas)
 
-  $('wm-fit').addEventListener('click', fit)
-  $('wm-zoom-in').addEventListener('click', () => zoomBy(1.25, size().w / 2, size().h / 2))
-  $('wm-zoom-out').addEventListener('click', () => zoomBy(0.8, size().w / 2, size().h / 2))
+  $('rb-fit').addEventListener('click', fit)
+  $('rb-zoom-in').addEventListener('click', () => zoomBy(1.25, size().w / 2, size().h / 2))
+  $('rb-zoom-out').addEventListener('click', () => zoomBy(0.8, size().w / 2, size().h / 2))
   document.addEventListener('keydown', (ev) => {
     if (ev.target.closest('input, textarea, select') || ev.metaKey || ev.ctrlKey || ev.altKey) return
     if (ev.key === 'f') fit()
@@ -7593,7 +7593,7 @@ function startViewer() {
 
   // Colour scheme: follow the system, or force one (handy for checking both).
   const themes = ['auto', 'light', 'dark']
-  $('wm-theme').addEventListener('click', (ev) => {
+  $('rb-theme').addEventListener('click', (ev) => {
     const next = themes[(themes.indexOf(document.documentElement.dataset.theme || 'auto') + 1) % themes.length]
     if (next === 'auto') delete document.documentElement.dataset.theme
     else document.documentElement.dataset.theme = next
@@ -7603,17 +7603,17 @@ function startViewer() {
   // ───────────── selection ─────────────
   const q = (s) => s.replace(/["\\]/g, '\\$&')
   function transitionEls(stateId, index, root = svg) {
-    return root ? [...root.querySelectorAll(`[data-state="${q(stateId)}"][data-transition="${index}"], [data-state="${q(stateId)}"] .wm-row[data-transition="${index}"]`)] : []
+    return root ? [...root.querySelectorAll(`[data-state="${q(stateId)}"][data-transition="${index}"], [data-state="${q(stateId)}"] .rb-row[data-transition="${index}"]`)] : []
   }
   function applySelection() {
     if (!svg) return
-    svg.querySelectorAll('.wm-selected').forEach((el) => el.classList.remove('wm-selected'))
+    svg.querySelectorAll('.rb-selected').forEach((el) => el.classList.remove('rb-selected'))
     if (!selection) return
     if (selection.type === 'state') {
-      const el = svg.querySelector(`.wm-state[data-state="${q(selection.id)}"]`)
-      if (el) el.classList.add('wm-selected')
+      const el = svg.querySelector(`.rb-state[data-state="${q(selection.id)}"]`)
+      if (el) el.classList.add('rb-selected')
     } else {
-      transitionEls(selection.state, selection.index).forEach((el) => el.classList.add('wm-selected'))
+      transitionEls(selection.state, selection.index).forEach((el) => el.classList.add('rb-selected'))
     }
   }
   function select(sel, opts = {}) {
@@ -7632,7 +7632,7 @@ function startViewer() {
 
   canvas.addEventListener('click', (ev) => {
     if (suppressClick) return
-    const link = ev.target.closest('.wm-machine-link')
+    const link = ev.target.closest('.rb-machine-link')
     if (link) return openMachine(link.dataset.machine, true)
     const tr = ev.target.closest('[data-transition]')
     if (tr) {
@@ -7644,17 +7644,17 @@ function startViewer() {
   })
   // Hovering an arrow lights up its label and the other way round.
   const hover = (ev, on) => {
-    const el = ev.target.closest && ev.target.closest('.wm-edge[data-transition], .wm-label[data-transition]')
-    if (el) transitionEls(el.dataset.state, el.dataset.transition).forEach((e) => e.classList.toggle('wm-hover', on))
+    const el = ev.target.closest && ev.target.closest('.rb-edge[data-transition], .rb-label[data-transition]')
+    if (el) transitionEls(el.dataset.state, el.dataset.transition).forEach((e) => e.classList.toggle('rb-hover', on))
   }
   canvas.addEventListener('pointerover', (ev) => hover(ev, true))
   canvas.addEventListener('pointerout', (ev) => hover(ev, false))
 
-  $('wm-tabs').addEventListener('click', (ev) => {
+  $('rb-tabs').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-machine]')
     if (b && b.dataset.machine !== current) openMachine(b.dataset.machine, false)
   })
-  $('wm-back').addEventListener('click', () => {
+  $('rb-back').addEventListener('click', () => {
     const prev = navStack.pop()
     if (prev) show(prev.machine, prev.selection)
   })
@@ -7670,15 +7670,15 @@ function startViewer() {
   })
 
   // ───────────── side panel ─────────────
-  const code = (s) => `<pre class="wm-code">${esc(s)}</pre>`
+  const code = (s) => `<pre class="rb-code">${esc(s)}</pre>`
   const section = (title, body) => (body ? `<h3>${esc(title)}</h3>${body}` : '')
-  const list = (items) => (items.length ? `<ul class="wm-list">${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : '')
-  const stateLink = (id, label) => `<button class="wm-link wm-mono" type="button" data-select-state="${esc(id)}">${esc(label ?? shortId(id))}</button>`
+  const list = (items) => (items.length ? `<ul class="rb-list">${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : '')
+  const stateLink = (id, label) => `<button class="rb-link rb-mono" type="button" data-select-state="${esc(id)}">${esc(label ?? shortId(id))}</button>`
   const shortId = (id) => id.slice(current.length + 1) || id
-  const docHtml = (doc) => (doc ? `<p class="wm-doc">${esc(doc).replace(/\n/g, '<br>')}</p>` : '')
+  const docHtml = (doc) => (doc ? `<p class="rb-doc">${esc(doc).replace(/\n/g, '<br>')}</p>` : '')
   const head = (title, chip, onClose) =>
-    `<div class="wm-panel-head"><h2>${title}</h2><span class="wm-chip">${esc(chip)}</span>`
-    + (onClose ? `<button class="wm-btn" type="button" data-clear title="Back to the machine overview (Esc)" aria-label="Close">×</button>` : '') + `</div>`
+    `<div class="rb-panel-head"><h2>${title}</h2><span class="rb-chip">${esc(chip)}</span>`
+    + (onClose ? `<button class="rb-btn" type="button" data-clear title="Back to the machine overview (Esc)" aria-label="Close">×</button>` : '') + `</div>`
 
   function typeDecl(name) {
     const t = ir.types[name]
@@ -7699,7 +7699,7 @@ function startViewer() {
     const lines = [...new Set(names)].map(typeDecl).filter(Boolean)
     return lines.length ? code(lines.join('\n')) : ''
   }
-  const signatureKv = (decl) => `<dl class="wm-kv">`
+  const signatureKv = (decl) => `<dl class="rb-kv">`
     + `<dt>takes</dt><dd>${esc(paramsText(decl.params) || 'nothing')}</dd>`
     + (decl.returns !== undefined ? `<dt>returns</dt><dd>${esc(decl.returns ?? 'nothing')}</dd>` : '')
     + (decl.errors ? `<dt>fails with</dt><dd>${esc(decl.errors.join(' | ') || 'never fails')}</dd>` : '')
@@ -7709,12 +7709,12 @@ function startViewer() {
     const t = state.transitions[index]
     const g = guardText(state, index)
     const kind = triggerKind(t.trigger)
-    const cls = kind === 'done' ? 'wm-t-done' : kind === 'fail' ? 'wm-t-fail' : ''
+    const cls = kind === 'done' ? 'rb-t-done' : kind === 'fail' ? 'rb-t-fail' : ''
     const target = t.target ? shortId(t.target) : 'stays (internal)'
-    return `<button class="wm-tlink" type="button" data-select-transition="${esc(JSON.stringify([state.id, index]))}">`
-      + (withSource ? `<span class="wm-arrow-text">${esc(shortId(state.id))}: </span>` : '')
-      + `<b class="${cls}">${esc(triggerText(t.trigger))}</b>${g ? ' ' + esc(g) : ''} <span class="wm-arrow-text">→</span> ${esc(target)}`
-      + t.effects.map((e) => `<span class="wm-sub">${esc(effectText(e))}</span>`).join('')
+    return `<button class="rb-tlink" type="button" data-select-transition="${esc(JSON.stringify([state.id, index]))}">`
+      + (withSource ? `<span class="rb-arrow-text">${esc(shortId(state.id))}: </span>` : '')
+      + `<b class="${cls}">${esc(triggerText(t.trigger))}</b>${g ? ' ' + esc(g) : ''} <span class="rb-arrow-text">→</span> ${esc(target)}`
+      + t.effects.map((e) => `<span class="rb-sub">${esc(effectText(e))}</span>`).join('')
       + `</button>`
   }
 
@@ -7724,34 +7724,34 @@ function startViewer() {
     const decl = inv.kind === 'machine' ? ir.machines[inv.src] : ir.tasks[inv.src]
     let s = code(`invoke ${invokeText(inv)}`)
     if (!decl) return section('Invoke', s)
-    s += `<p class="wm-path">${inv.kind} declared at ${esc(sourceText(ir, decl.span))}</p>`
+    s += `<p class="rb-path">${inv.kind} declared at ${esc(sourceText(ir, decl.span))}</p>`
     s += code(signatureText(inv.kind, inv.src, decl)) + docHtml(decl.doc) + signatureKv(decl)
-    if (inv.kind === 'machine') s += `<p><button class="wm-btn" type="button" data-open-machine="${esc(inv.src)}">Open machine ${esc(inv.src)} →</button></p>`
+    if (inv.kind === 'machine') s += `<p><button class="rb-btn" type="button" data-open-machine="${esc(inv.src)}">Open machine ${esc(inv.src)} →</button></p>`
     return section(`Invokes ${inv.kind}`, s) + section('Types involved', typesOf(decl))
   }
 
   function machinePanel() {
     const m = ir.machines[current]
-    const tree = (s) => `<li>${stateLink(s.id, s.name)} <span class="wm-chip">${s.kind}</span>${s.states.length ? `<ul>${s.states.map(tree).join('')}</ul>` : ''}</li>`
+    const tree = (s) => `<li>${stateLink(s.id, s.name)} <span class="rb-chip">${s.kind}</span>${s.states.length ? `<ul>${s.states.map(tree).join('')}</ul>` : ''}</li>`
     const callers = []
     for (const [name, other] of Object.entries(ir.machines)) {
       walkStates(other.root, (s) => {
         if (s.invoke && s.invoke.kind === 'machine' && s.invoke.src === current) {
-          callers.push(`<button class="wm-link wm-mono" type="button" data-open-machine="${esc(name)}">${esc(s.id)}</button>`)
+          callers.push(`<button class="rb-link rb-mono" type="button" data-open-machine="${esc(name)}">${esc(s.id)}</button>`)
         }
       })
     }
     return head(esc(current), 'machine', false)
-      + `<p class="wm-path">${esc(sourceText(ir, m.span))}</p>`
+      + `<p class="rb-path">${esc(sourceText(ir, m.span))}</p>`
       + docHtml(m.doc)
       + section('Signature', code(signatureText('machine', current, m)) + signatureKv(m))
-      + section('Variables', list(m.vars.map((v) => `${esc(v.name)}: ${esc(v.type)}${v.init ? ` = ${esc(v.init.text)}` : ' <span class="wm-note">(assigned later)</span>'}`)))
+      + section('Variables', list(m.vars.map((v) => `${esc(v.name)}: ${esc(v.type)}${v.init ? ` = ${esc(v.init.text)}` : ' <span class="rb-note">(assigned later)</span>'}`)))
       + section('Events', list(Object.entries(m.events).map(([name, e]) =>
-        `${esc(name)}${e.fields.length ? ` { ${esc(paramsText(e.fields))} }` : ''}${e.doc ? `<span class="wm-sub wm-note">${esc(e.doc)}</span>` : ''}`)))
-      + section('States', `<ul class="wm-tree">${m.root.states.map(tree).join('')}</ul>`)
+        `${esc(name)}${e.fields.length ? ` { ${esc(paramsText(e.fields))} }` : ''}${e.doc ? `<span class="rb-sub rb-note">${esc(e.doc)}</span>` : ''}`)))
+      + section('States', `<ul class="rb-tree">${m.root.states.map(tree).join('')}</ul>`)
       + section('Invoked by', list(callers))
       + section('Types involved', typesOf(m))
-      + `<h3>Tip</h3><p class="wm-empty">Click a state or an arrow in the diagram for its details.</p>`
+      + `<h3>Tip</h3><p class="rb-empty">Click a state or an arrow in the diagram for its details.</p>`
   }
 
   function statePanel(state) {
@@ -7768,21 +7768,21 @@ function startViewer() {
     let inherited = ''
     for (const p of parents.slice().reverse()) {
       if (!p.transitions.length) continue
-      inherited += `<p class="wm-empty">from ${stateLink(p.id, p.id === m.root.id ? p.name : undefined)}</p>`
+      inherited += `<p class="rb-empty">from ${stateLink(p.id, p.id === m.root.id ? p.name : undefined)}</p>`
         + p.transitions.map((t, i) => transitionSummary(p, i, false)).join('')
     }
     const result = state.output ? code(`output ${state.output.text}`) : state.fail ? code(`fail ${state.fail.text}`) : ''
     return head(esc(state.name), `${state.kind} state${isInitial ? ' · initial' : ''}`, true)
-      + `<p class="wm-path">${esc(state.id)} · ${esc(sourceText(ir, state.span))}</p>`
+      + `<p class="rb-path">${esc(state.id)} · ${esc(sourceText(ir, state.span))}</p>`
       + docHtml(state.doc)
       + section(state.output ? 'Machine returns' : 'Machine fails with', result)
       + invokeSection(state)
       + section('Starts in', state.initial ? stateLink(state.initial) : '')
       + section('On entry', list(state.entry.map((e) => esc(effectText(e)))))
       + section('On exit', list(state.exit.map((e) => esc(effectText(e)))))
-      + section('Transitions out', out || (state.kind === 'final' ? '<p class="wm-empty">None: this state ends the machine.</p>' : '<p class="wm-empty">None.</p>'))
+      + section('Transitions out', out || (state.kind === 'final' ? '<p class="rb-empty">None: this state ends the machine.</p>' : '<p class="rb-empty">None.</p>'))
       + section('Also applies here', inherited)
-      + section('Transitions in', incoming || (isInitial ? '<p class="wm-empty">Entered first (initial state).</p>' : ''))
+      + section('Transitions in', incoming || (isInitial ? '<p class="rb-empty">Entered first (initial state).</p>' : ''))
   }
 
   function transitionPanel(state, index) {
@@ -7816,15 +7816,15 @@ function startViewer() {
     }
     const guard = t.guard ? code(t.guard.text) : group.length > 1 ? code('else') : ''
     const branchNote = group.length > 1
-      ? `<p class="wm-empty">Branch ${pos} of ${group.length} for <code>${esc(triggerText(t.trigger))}</code>; branches are tried in order.</p>` : ''
-    const title = `${esc(shortId(state.id))} <span class="wm-arrow-text">→</span> ${t.target ? esc(shortId(t.target)) : '(stays)'}`
+      ? `<p class="rb-empty">Branch ${pos} of ${group.length} for <code>${esc(triggerText(t.trigger))}</code>; branches are tried in order.</p>` : ''
+    const title = `${esc(shortId(state.id))} <span class="rb-arrow-text">→</span> ${t.target ? esc(shortId(t.target)) : '(stays)'}`
     return head(title, 'transition', true)
-      + `<p class="wm-path">${esc(sourceText(ir, t.span))}</p>`
-      + section('Trigger', code(`${kind === 'event' ? 'on ' : ''}${triggerText(t.trigger)}`) + `<p class="wm-empty">${esc(what)}</p>`)
+      + `<p class="rb-path">${esc(sourceText(ir, t.span))}</p>`
+      + section('Trigger', code(`${kind === 'event' ? 'on ' : ''}${triggerText(t.trigger)}`) + `<p class="rb-empty">${esc(what)}</p>`)
       + section('Guard', guard + branchNote)
-      + section('Effects', list(t.effects.map((e) => esc(effectText(e)))) || '<p class="wm-empty">None.</p>')
+      + section('Effects', list(t.effects.map((e) => esc(effectText(e)))) || '<p class="rb-empty">None.</p>')
       + section('From', stateLink(state.id))
-      + section('To', t.target ? stateLink(t.target) : '<p class="wm-empty">Internal: the state is not left and re-entered.</p>')
+      + section('To', t.target ? stateLink(t.target) : '<p class="rb-empty">Internal: the state is not left and re-entered.</p>')
       + extra
   }
 
@@ -7838,8 +7838,8 @@ function startViewer() {
   }
 
   // ───────────── start ─────────────
-  $('wm-source').textContent = ir.sources[0] ? ir.sources[0].path : ''
-  $('wm-legend').insertAdjacentHTML('beforeend', renderLegend({ interactive: true }))
+  $('rb-source').textContent = ir.sources[0] ? ir.sources[0].path : ''
+  $('rb-legend').insertAdjacentHTML('beforeend', renderLegend({ interactive: true }))
   const wanted = decodeURIComponent(location.hash.slice(1)) || document.body.dataset.initialMachine
   show(ir.machines[wanted] ? wanted : machineNames[0])
   window.addEventListener('hashchange', () => {

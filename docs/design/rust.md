@@ -1,6 +1,6 @@
 # Rust runtime
 
-The Rust side mirrors the TypeScript side: `waymark-core` is the pure interpreter, and `waymark` is the driver, the macro and the public API.
+The Rust side mirrors the TypeScript side: `roadbook-core` is the pure interpreter, and `roadbook` is the driver, the macro and the public API.
 
 The API on this page is not implemented yet, but its shapes compile. [`spike/api-rust`](../../spike/api-rust) contains a hand-written version of what the macro would generate plus a full example, and passes `cargo check`.
 
@@ -9,7 +9,7 @@ The API on this page is not implemented yet, but its shapes compile. [`spike/api
 There is no separate generation step. A macro runs the compiler at build time:
 
 ```rust
-waymark::include!("examples/shop/place_order.way");
+roadbook::include!("examples/shop/place_order.road");
 ```
 
 It expands to a module per machine plus the shared types:
@@ -21,7 +21,7 @@ It expands to a module per machine plus the shared types:
 - `run` and `spawn` functions.
 - The IR, embedded as a constant.
 
-A chart error is a Rust compile error, reported at the macro call with the chart's file and line. Cargo rebuilds when the `.way` file changes. For builds that prefer it, the same generator is available from `build.rs`.
+A chart error is a Rust compile error, reported at the macro call with the chart's file and line. Cargo rebuilds when the `.road` file changes. For builds that prefer it, the same generator is available from `build.rs`.
 
 ## Implementing a machine
 
@@ -90,7 +90,7 @@ A machine that declares no errors returns its output directly. One that does ret
 
 Rust futures are cancelled by dropping them, so "leaving a state cancels its work" needs no extra machinery: the driver drops the invoke's future. Because the driver holds futures and never spawns tasks, `run` borrows the handlers (`&H`) and works on any executor. Only timers need a runtime, behind a small `Timer` trait with a Tokio implementation enabled by default.
 
-`waymark-core` has no async and no I/O. Keeping it `no_std` with `alloc` is a goal to hold onto if it stays cheap, since it would let charts run on embedded targets, but it is not a first-version requirement.
+`roadbook-core` has no async and no I/O. Keeping it `no_std` with `alloc` is a goal to hold onto if it stays cheap, since it would let charts run on embedded targets, but it is not a first-version requirement.
 
 ## Interpreter first, generated code later
 

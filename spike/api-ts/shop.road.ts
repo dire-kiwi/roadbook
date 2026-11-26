@@ -1,10 +1,10 @@
 /**
- * What `waymark gen` would write for examples/shop. Hand-written for the sketch.
+ * What `roadbook gen` would write for examples/shop. Hand-written for the sketch.
  * GENERATED FILE: do not edit.
  */
 import { Schema } from "effect"
 import type { Duration } from "effect"
-import * as Waymark from "./waymark.js"
+import * as Roadbook from "./roadbook.js"
 
 // ---- types -----------------------------------------------------------------
 
@@ -43,7 +43,7 @@ export class GatewayUnavailable extends Schema.TaggedError<GatewayUnavailable>()
 
 // ---- machine: Checkout -----------------------------------------------------
 
-export interface CheckoutDef extends Waymark.MachineDef {
+export interface CheckoutDef extends Roadbook.MachineDef {
   readonly name: "Checkout"
   readonly input: { readonly order: Order; readonly user: User }
   readonly output: Receipt
@@ -66,14 +66,14 @@ export interface CheckoutDef extends Waymark.MachineDef {
 
 declare const ir: unknown // the compiled chart, inlined by the generator
 
-export const Checkout = Waymark.make<CheckoutDef>(ir, "Checkout")
+export const Checkout = Roadbook.make<CheckoutDef>(ir, "Checkout")
 
 // ---- machine: PlaceOrder ---------------------------------------------------
 
 export const Cancel = Schema.TaggedStruct("Cancel", {})
 export type Cancel = typeof Cancel.Type
 
-export interface PlaceOrderDef extends Waymark.MachineDef {
+export interface PlaceOrderDef extends Roadbook.MachineDef {
   readonly name: "PlaceOrder"
   readonly input: { readonly token: string; readonly draft: OrderDraft }
   readonly output: ApiResponse
@@ -115,4 +115,4 @@ export interface PlaceOrderDef extends Waymark.MachineDef {
   }
 }
 
-export const PlaceOrder = Waymark.make<PlaceOrderDef>(ir, "PlaceOrder")
+export const PlaceOrder = Roadbook.make<PlaceOrderDef>(ir, "PlaceOrder")

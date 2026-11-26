@@ -1,6 +1,6 @@
-# The Waymark language
+# The Roadbook language
 
-A `.way` file declares data shapes, the host functions a machine needs, and the machines themselves. It contains no implementation code. The compiler turns it into the [IR](semantics.md#the-ir), which everything else consumes.
+A `.road` file declares data shapes, the host functions a machine needs, and the machines themselves. It contains no implementation code. The compiler turns it into the [IR](semantics.md#the-ir), which everything else consumes.
 
 The examples on this page come from [`examples/shop`](../../examples/shop), which the spike compiles and renders.
 
@@ -58,7 +58,7 @@ Everything a machine refers to is declared, with types. Declarations live at the
 | `type UserId = string` | An alias. | Generated |
 | `enum Role { Customer, Admin }` | A closed set of names. | Generated |
 | `error CardDeclined { reason: string }` | A tagged error. Also usable as a type. | Generated |
-| `extern type Money` | A type that exists only in host code. Opaque to the compiler. | Host, bound per language in `waymark.toml` |
+| `extern type Money` | A type that exists only in host code. Opaque to the compiler. | Host, bound per language in `roadbook.toml` |
 | `fn retryDelay(attempt: int) -> duration` | A pure, synchronous function. Used in guards and expressions. | Host |
 | `action audit(what: string, order: Order)` | A side effect that cannot fail. Awaited, in order. | Host |
 | `task chargeCard(order: Order) -> Receipt ! CardDeclined` | Effectful, fallible, cancellable work. Only run by `invoke`. | Host |
@@ -147,11 +147,11 @@ Warnings:
 - Events, functions, actions or tasks that are declared but never used.
 - A state with an `invoke` and no timeout anywhere above it (off by default).
 
-Diagnostics carry a code, a source span and, where possible, a fix. `waymark check --json` prints them in a machine-readable form so an agent can act on them without parsing prose.
+Diagnostics carry a code, a source span and, where possible, a fix. `roadbook check --json` prints them in a machine-readable form so an agent can act on them without parsing prose.
 
 ```
-error[W0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
-  --> examples/shop/checkout.way:14:5
+error[RB0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
+  --> examples/shop/checkout.road:14:5
    |
 14 |     invoke chargeCard(order, user) {
    |     ^^^^^^^^^^^^^^^^^ declared as `-> Receipt ! CardDeclined | GatewayUnavailable`
@@ -169,7 +169,7 @@ This is what lets host functions take plain non-optional arguments. In xstate th
 
 ## Formatting
 
-`waymark fmt` is canonical: one accepted layout, no options. Agents and humans produce the same text, so diffs show only real changes.
+`roadbook fmt` is canonical: one accepted layout, no options. Agents and humans produce the same text, so diffs show only real changes.
 
 ## Grammar
 

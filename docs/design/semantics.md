@@ -4,11 +4,11 @@ Two runtimes have to behave identically, and the diagram has to match both. This
 
 ## The IR
 
-The compiler's only output is one JSON document per entry file: the intermediate representation. Everything downstream reads it and nothing downstream reads `.way` source.
+The compiler's only output is one JSON document per entry file: the intermediate representation. Everything downstream reads it and nothing downstream reads `.road` source.
 
 ```
-                         ┌─▶ TypeScript code generator ─▶ place_order.way.ts
- *.way ─▶ compiler ─▶ IR ├─▶ Rust macro                ─▶ types, traits, embedded IR
+                         ┌─▶ TypeScript code generator ─▶ place_order.road.ts
+ *.road ─▶ compiler ─▶ IR ├─▶ Rust macro                ─▶ types, traits, embedded IR
           (checks)       ├─▶ viewer                    ─▶ place_order.html
                          ├─▶ exporters                 ─▶ Mermaid, SCXML
                          └─▶ both runtimes interpret it
@@ -23,7 +23,7 @@ An abridged IR for `Checkout` (the spike emits exactly this shape):
 ```jsonc
 {
   "irVersion": "0.1",
-  "sources": [{ "path": "examples/shop/checkout.way" }],
+  "sources": [{ "path": "examples/shop/checkout.road" }],
   "types":     { "CardDeclined": { "kind": "error", "fields": [{ "name": "reason", "type": "string" }] } },
   "functions": { "retryDelay": { "params": [{ "name": "attempt", "type": "int" }], "returns": "duration" } },
   "actions":   {},
@@ -65,7 +65,7 @@ Transitions are in document order. The branches of one block are consecutive and
 
 ## Execution model
 
-Waymark machines are statecharts with the semantics of SCXML, the W3C standard that xstate also follows. Anyone who knows xstate will find no surprises. The rules, briefly:
+Roadbook machines are statecharts with the semantics of SCXML, the W3C standard that xstate also follows. Anyone who knows xstate will find no surprises. The rules, briefly:
 
 1. **One event at a time.** A machine has a queue. It takes one event, does everything that event causes, and only then takes the next (run to completion).
 2. **A step.** Find the active states that have a transition for the event, innermost first. Evaluate guards in document order and take the first that holds. Exit states from the innermost outward, run the transition's effects, enter states from the outermost inward. Within each: `set` assignments first, then `do` actions, in the order written.
@@ -76,7 +76,7 @@ Waymark machines are statecharts with the semantics of SCXML, the W3C standard t
 
 ### Work is tied to states
 
-This is where Waymark is stricter than xstate, and it is the part that matters most for program flow.
+This is where Roadbook is stricter than xstate, and it is the part that matters most for program flow.
 
 - **An `invoke` lives exactly as long as its state.** Entering the state starts the task. Leaving the state for any reason (its own outcome, an event on a parent, a timeout) cancels it. Nothing started by a state can outlive it.
 - **A task's outcome is an event like any other.** It is queued and handled by rule 1. Errors route by tag to the matching `fail` branch. Because every declared error must be handled, an invoke cannot fail silently.
@@ -164,7 +164,7 @@ The two cores are kept identical by a shared test suite rather than by hope. A c
 
 ```jsonc
 {
-  "chart": "retry.way",
+  "chart": "retry.road",
   "machine": "Checkout",
   "input": { "order": { /* … */ }, "user": { /* … */ } },
   "fns": { "retryDelay": [{ "args": [1], "returns": 200 }] },

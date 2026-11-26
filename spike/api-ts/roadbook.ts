@@ -1,11 +1,11 @@
 /**
- * Type-level sketch of the proposed `@waymark/effect` public API.
+ * Type-level sketch of the proposed `@roadbook/effect` public API.
  * Nothing here is implemented: every value is `declare`d. The point is to
  * check that the types work against the real Effect v4 package.
  */
 import type { Duration, Effect, Scope, Stream } from "effect"
 
-/** What the compiler knows about a callable declared in a `.way` file. */
+/** What the compiler knows about a callable declared in a `.road` file. */
 export interface Callable {
   readonly args: object
   readonly success: unknown

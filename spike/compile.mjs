@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Waymark spike compiler: .way source -> IR JSON.
+// Roadbook spike compiler: .road source -> IR JSON.
 // Throwaway. Hand-written lexer + recursive-descent parser for the grammar in
 // docs/design/language.md, import resolution, name/target resolution, a few checks.
 //
-//   node spike/compile.mjs examples/shop/place_order.way > out.json
+//   node spike/compile.mjs examples/shop/place_order.road > out.json
 //
 // Diagnostics go to stderr as `file:line:col: error[CODE]: message`; exit code 1 on errors.
 
@@ -13,26 +13,26 @@ import { fileURLToPath } from 'node:url'
 
 export const IR_VERSION = '0.1'
 
-// Diagnostic codes used by the spike (W0204 is the one the design doc shows).
+// Diagnostic codes used by the spike (RB0204 is the one the design doc shows).
 export const CODES = {
-  W0001: 'syntax error',
-  W0002: 'import cannot be resolved',
-  W0101: 'unknown type',
-  W0102: 'unknown task or machine',
-  W0103: 'unknown function',
-  W0104: 'unknown action',
-  W0105: 'unknown variable',
-  W0106: 'unknown event',
-  W0107: 'duplicate or reserved name',
-  W0108: 'assignment to something that is not a machine variable',
-  W0201: 'unknown transition target',
-  W0202: 'ambiguous transition target',
-  W0203: 'missing or invalid `initial`',
-  W0204: 'invoke does not handle a declared error',
-  W0205: 'same trigger written twice in one state',
-  W0206: 'branch shadowed by an earlier unguarded branch',
-  W0207: 'invoke outcome names an error that is not declared',
-  W0208: 'item not allowed here',
+  RB0001: 'syntax error',
+  RB0002: 'import cannot be resolved',
+  RB0101: 'unknown type',
+  RB0102: 'unknown task or machine',
+  RB0103: 'unknown function',
+  RB0104: 'unknown action',
+  RB0105: 'unknown variable',
+  RB0106: 'unknown event',
+  RB0107: 'duplicate or reserved name',
+  RB0108: 'assignment to something that is not a machine variable',
+  RB0201: 'unknown transition target',
+  RB0202: 'ambiguous transition target',
+  RB0203: 'missing or invalid `initial`',
+  RB0204: 'invoke does not handle a declared error',
+  RB0205: 'same trigger written twice in one state',
+  RB0206: 'branch shadowed by an earlier unguarded branch',
+  RB0207: 'invoke outcome names an error that is not declared',
+  RB0208: 'item not allowed here',
 }
 
 const KEYWORDS = new Set([
@@ -662,8 +662,8 @@ function load(entry, cwd, diags) {
     if (files.has(abs)) return files.get(abs)
     let src
     try { src = fs.readFileSync(abs, 'utf8') } catch {
-      if (from) diags.push({ ...from, code: 'W0002', message: `cannot read \`${rel(abs)}\`` })
-      else diags.push({ file: -1, path: rel(abs), line: 1, col: 1, code: 'W0002', message: 'cannot read file' })
+      if (from) diags.push({ ...from, code: 'RB0002', message: `cannot read \`${rel(abs)}\`` })
+      else diags.push({ file: -1, path: rel(abs), line: 1, col: 1, code: 'RB0002', message: 'cannot read file' })
       return null
     }
     const id = sources.length
@@ -674,12 +674,12 @@ function load(entry, cwd, diags) {
       f.ast = new Parser(lex(src), id).file()
     } catch (e) {
       if (!(e instanceof SyntaxError_)) throw e
-      diags.push({ file: id, line: e.line, col: e.col, code: 'W0001', message: e.message })
+      diags.push({ file: id, line: e.line, col: e.col, code: 'RB0001', message: e.message })
       f.broken = true
     }
     for (const d of f.ast.decls) {
       if (f.own.has(d.name)) {
-        diags.push({ ...d.span, code: 'W0107', message: `\`${d.name}\` is declared twice in this file` })
+        diags.push({ ...d.span, code: 'RB0107', message: `\`${d.name}\` is declared twice in this file` })
         continue
       }
       f.own.set(d.name, d)
@@ -695,9 +695,9 @@ function load(entry, cwd, diags) {
       for (const n of imp.names) {
         const d = target.own.get(n.name)
         if (!d) {
-          diags.push({ ...n.span, code: 'W0002', message: `\`${rel(target.abs)}\` does not declare \`${n.name}\`` })
+          diags.push({ ...n.span, code: 'RB0002', message: `\`${rel(target.abs)}\` does not declare \`${n.name}\`` })
         } else if (f.scope.has(n.name) && f.scope.get(n.name) !== d) {
-          diags.push({ ...n.span, code: 'W0107', message: `\`${n.name}\` is already declared in this file` })
+          diags.push({ ...n.span, code: 'RB0107', message: `\`${n.name}\` is already declared in this file` })
         } else f.scope.set(n.name, d)
       }
     }
@@ -742,19 +742,19 @@ function emit(loaded, diags) {
     }
     const checkType = (t) => {
       if (!t || BUILTIN_TYPES.has(t.base)) return
-      if (!lookup(t.base, 'type')) err(t.span, 'W0101', `unknown type \`${t.base}\`${hint(t.base)}`)
+      if (!lookup(t.base, 'type')) err(t.span, 'RB0101', `unknown type \`${t.base}\`${hint(t.base)}`)
     }
     const checkErrors = (errors) => {
       for (const e of errors) {
         const d = lookup(e.name, 'type')
-        if (!d) err(e.span, 'W0101', `unknown error \`${e.name}\`${hint(e.name)}`)
-        else if (d.kind !== 'error' && !d.poisoned) err(e.span, 'W0101', `\`${e.name}\` is a ${d.kind} type, not an \`error\``)
+        if (!d) err(e.span, 'RB0101', `unknown error \`${e.name}\`${hint(e.name)}`)
+        else if (d.kind !== 'error' && !d.poisoned) err(e.span, 'RB0101', `\`${e.name}\` is a ${d.kind} type, not an \`error\``)
       }
     }
     const checkParams = (params) => {
       const names = new Set()
       for (const p of params) {
-        if (names.has(p.name)) err(p.span, 'W0107', `parameter \`${p.name}\` is declared twice`)
+        if (names.has(p.name)) err(p.span, 'RB0107', `parameter \`${p.name}\` is declared twice`)
         names.add(p.name)
         checkType(p.type)
       }
@@ -765,7 +765,7 @@ function emit(loaded, diags) {
       // The IR keys declarations by bare name, so names must be unique across the whole program.
       if (seen.has(d.name)) {
         const other = seen.get(d.name)
-        err(d.span, 'W0107', `\`${d.name}\` is also declared at ${loaded.sources[other.span.file].path}:${other.span.line}; names must be unique across imported files`)
+        err(d.span, 'RB0107', `\`${d.name}\` is also declared at ${loaded.sources[other.span.file].path}:${other.span.line}; names must be unique across imported files`)
         continue
       }
       seen.set(d.name, d)
@@ -775,7 +775,7 @@ function emit(loaded, diags) {
         if (d.kind === 'record' || d.kind === 'error') {
           const names = new Set()
           for (const fl of d.fields) {
-            if (names.has(fl.name)) err(fl.span, 'W0107', `field \`${fl.name}\` is declared twice`)
+            if (names.has(fl.name)) err(fl.span, 'RB0107', `field \`${fl.name}\` is declared twice`)
             names.add(fl.name)
             checkType(fl.type)
           }
@@ -809,14 +809,14 @@ function emitMachine(m, { lookup, hint, checkType, err }) {
   const vars = new Map()
   for (const p of m.params) vars.set(p.name, { param: true })
   for (const v of m.vars) {
-    if (['result', 'event', 'error'].includes(v.name)) err(v.span, 'W0107', `\`${v.name}\` is reserved: it names the invoke result inside \`done\``)
-    else if (vars.has(v.name)) err(v.span, 'W0107', `\`${v.name}\` is already declared as a ${vars.get(v.name).param ? 'parameter' : 'variable'}`)
+    if (['result', 'event', 'error'].includes(v.name)) err(v.span, 'RB0107', `\`${v.name}\` is reserved: it names the invoke result inside \`done\``)
+    else if (vars.has(v.name)) err(v.span, 'RB0107', `\`${v.name}\` is already declared as a ${vars.get(v.name).param ? 'parameter' : 'variable'}`)
     else vars.set(v.name, { param: false })
     checkType(v.type)
   }
   const events = {}
   for (const e of m.events) {
-    if (e.name in events) err(e.span, 'W0107', `event \`${e.name}\` is declared twice`)
+    if (e.name in events) err(e.span, 'RB0107', `event \`${e.name}\` is declared twice`)
     for (const fl of e.fields) checkType(fl.type)
     events[e.name] = { fields: irFields(e.fields), doc: e.doc }
   }
@@ -831,11 +831,11 @@ function emitMachine(m, { lookup, hint, checkType, err }) {
         if (head === 'event' || head === 'result' || head === 'error') {
           if (ctx[head]) return
           const where = { event: 'an `on` transition', result: "an invoke's `done`", error: "an invoke's `fail`" }[head]
-          err(e.span, 'W0105', `\`${head}\` is only available in ${where}`)
+          err(e.span, 'RB0105', `\`${head}\` is only available in ${where}`)
           return
         }
         const other = lookup(head, 'fn', 'action', 'task')
-        err(e.span, 'W0105', other
+        err(e.span, 'RB0105', other
           ? `\`${head}\` is ${other.decl === 'fn' ? 'a function' : `a${other.decl === 'action' ? 'n' : ''} ${other.decl}`}, not a variable`
           : `unknown variable \`${head}\` in machine \`${m.name}\``)
         return
@@ -844,7 +844,7 @@ function emitMachine(m, { lookup, hint, checkType, err }) {
         const d = lookup(e.fn, 'fn')
         if (!d) {
           const other = lookup(e.fn, 'action', 'task')
-          err(e.span, 'W0103', other
+          err(e.span, 'RB0103', other
             ? `\`${e.fn}\` is a${other.decl === 'action' ? 'n' : ''} ${other.decl}; only a \`fn\` can be called in an expression`
             : `unknown function \`${e.fn}\`${hint(e.fn)}`)
         }
@@ -855,31 +855,31 @@ function emitMachine(m, { lookup, hint, checkType, err }) {
       case 'field': checkExpr(e.of, ctx); return
       case 'record': {
         const d = lookup(e.type, 'type')
-        if (!d) err(e.span, 'W0101', `unknown type \`${e.type}\`${hint(e.type)}`)
-        else if (d.kind !== 'record' && d.kind !== 'error' && !d.poisoned) err(e.span, 'W0101', `\`${e.type}\` is ${d.kind === 'enum' ? 'an enum' : `an ${d.kind} type`}; it has no record value`)
+        if (!d) err(e.span, 'RB0101', `unknown type \`${e.type}\`${hint(e.type)}`)
+        else if (d.kind !== 'record' && d.kind !== 'error' && !d.poisoned) err(e.span, 'RB0101', `\`${e.type}\` is ${d.kind === 'enum' ? 'an enum' : `an ${d.kind} type`}; it has no record value`)
         Object.values(e.fields).forEach((a) => checkExpr(a, ctx))
         return
       }
       case 'enum': {
         const d = lookup(e.type, 'type')
-        if (!d) err(e.span, 'W0101', `unknown type \`${e.type}\`${hint(e.type)}`)
+        if (!d) err(e.span, 'RB0101', `unknown type \`${e.type}\`${hint(e.type)}`)
         else if (d.poisoned) return
-        else if (d.kind !== 'enum') err(e.span, 'W0101', `\`${e.type}\` is not an enum`)
-        else if (!d.variants.includes(e.variant)) err(e.span, 'W0101', `enum \`${e.type}\` has no variant \`${e.variant}\` (it has ${d.variants.join(', ')})`)
+        else if (d.kind !== 'enum') err(e.span, 'RB0101', `\`${e.type}\` is not an enum`)
+        else if (!d.variants.includes(e.variant)) err(e.span, 'RB0101', `enum \`${e.type}\` has no variant \`${e.variant}\` (it has ${d.variants.join(', ')})`)
       }
     }
   }
   const emitEffects = (effects, ctx) => effects.map((ef) => {
     if (ef.kind === 'set') {
       const v = vars.get(ef.var)
-      if (!v) err(ef.span, 'W0105', `unknown variable \`${ef.var}\` in machine \`${m.name}\``)
-      else if (v.param) err(ef.span, 'W0108', `\`${ef.var}\` is a parameter of \`${m.name}\`; parameters are read-only`)
+      if (!v) err(ef.span, 'RB0105', `unknown variable \`${ef.var}\` in machine \`${m.name}\``)
+      else if (v.param) err(ef.span, 'RB0108', `\`${ef.var}\` is a parameter of \`${m.name}\`; parameters are read-only`)
       checkExpr(ef.value, ctx)
       return { kind: 'set', var: ef.var, value: stripSpan(ef.value) }
     }
     if (!lookup(ef.action, 'action')) {
       const other = lookup(ef.action, 'fn', 'task')
-      err(ef.span, 'W0104', other
+      err(ef.span, 'RB0104', other
         ? `\`${ef.action}\` is a ${other.decl === 'fn' ? 'function' : 'task'}, not an action; \`do\` runs actions`
         : `unknown action \`${ef.action}\`${hint(ef.action)}`)
     }
@@ -898,7 +898,7 @@ function emitMachine(m, { lookup, hint, checkType, err }) {
     for (; scope; scope = scope.parent) {
       const hits = scope.states.filter((c) => c.name === head)
       if (hits.length > 1) {
-        err(target.span, 'W0202', `ambiguous target \`${written}\`: \`${scope.id}\` has ${hits.length} states named \`${head}\``)
+        err(target.span, 'RB0202', `ambiguous target \`${written}\`: \`${scope.id}\` has ${hits.length} states named \`${head}\``)
         return null
       }
       if (hits.length === 1) { found = hits[0]; break }
@@ -908,13 +908,13 @@ function emitMachine(m, { lookup, hint, checkType, err }) {
       const help = child
         ? `; \`${head}\` is a child of \`${st.name}\`, write \`${st.name}.${written}\``
         : `; states in scope: ${scopeNames(st).join(', ') || 'none'}`
-      err(target.span, 'W0201', `unknown target state \`${written}\`${help}`)
+      err(target.span, 'RB0201', `unknown target state \`${written}\`${help}`)
       return null
     }
     for (const seg of rest) {
       const next = found.states.find((c) => c.name === seg)
       if (!next) {
-        err(target.span, 'W0201', `unknown target state \`${written}\`: \`${found.id}\` has no child \`${seg}\``)
+        err(target.span, 'RB0201', `unknown target state \`${written}\`: \`${found.id}\` has no child \`${seg}\``)
         return null
       }
       found = next
@@ -935,7 +935,7 @@ function emitMachine(m, { lookup, hint, checkType, err }) {
     // children: unique names, ids assigned before transitions are resolved
     const names = new Map()
     for (const c of st.states) {
-      if (names.has(c.name)) err(c.nameSpan, 'W0107', `state \`${c.name}\` is declared twice in \`${st.id}\` (first at line ${names.get(c.name).span.line})`)
+      if (names.has(c.name)) err(c.nameSpan, 'RB0107', `state \`${c.name}\` is declared twice in \`${st.id}\` (first at line ${names.get(c.name).span.line})`)
       else names.set(c.name, c)
       c.parent = st
       c.id = `${st.id}.${c.name}`
@@ -944,32 +944,32 @@ function emitMachine(m, { lookup, hint, checkType, err }) {
     // initial
     let initial = null
     const inits = st.initials ?? []
-    if (inits.length > 1) err(inits[1].span, 'W0203', `\`${st.id}\` has more than one \`initial\``)
+    if (inits.length > 1) err(inits[1].span, 'RB0203', `\`${st.id}\` has more than one \`initial\``)
     if (kind === 'compound') {
       if (!inits.length) {
-        err(st.nameSpan ?? st.span, 'W0203', `${parent ? 'state' : 'machine'} \`${st.id}\` has child states but no \`initial\`; add \`initial ${st.states[0].name}\``)
+        err(st.nameSpan ?? st.span, 'RB0203', `${parent ? 'state' : 'machine'} \`${st.id}\` has child states but no \`initial\`; add \`initial ${st.states[0].name}\``)
       } else if (!names.has(inits[0].name)) {
-        err(inits[0].span, 'W0203', `\`initial ${inits[0].name}\`: \`${inits[0].name}\` is not a child of \`${st.id}\` (children: ${st.states.map((c) => c.name).join(', ')})`)
+        err(inits[0].span, 'RB0203', `\`initial ${inits[0].name}\`: \`${inits[0].name}\` is not a child of \`${st.id}\` (children: ${st.states.map((c) => c.name).join(', ')})`)
       } else initial = `${st.id}.${inits[0].name}`
     } else if (inits.length) {
       const why = kind === 'parallel' ? 'is parallel: all of its children are entered' : kind === 'final' ? 'is final' : 'has no child states'
-      err(inits[0].span, 'W0203', `\`initial ${inits[0].name}\`: \`${st.id}\` ${why}`)
+      err(inits[0].span, 'RB0203', `\`initial ${inits[0].name}\`: \`${st.id}\` ${why}`)
     }
 
     if ((st.output || st.fail) && !(kind === 'final' && depth === 1)) {
-      err(st.resultSpan, 'W0208', `\`${st.output ? 'output' : 'fail'}\` is only allowed in a final state at the top level of a machine`)
+      err(st.resultSpan, 'RB0208', `\`${st.output ? 'output' : 'fail'}\` is only allowed in a final state at the top level of a machine`)
     }
     checkExpr(st.output, {}); checkExpr(st.fail, {})
 
     // invoke
     let invoke = null
-    if (st.invokes.length > 1) err(st.invokes[1].span, 'W0208', `\`${st.id}\` already has an \`invoke\`; a state runs at most one`)
+    if (st.invokes.length > 1) err(st.invokes[1].span, 'RB0208', `\`${st.id}\` already has an \`invoke\`; a state runs at most one`)
     const inv = st.invokes[0]
     if (inv) {
       const d = lookup(inv.src, inv.kind)
       if (!d) {
         const other = lookup(inv.src, 'fn', 'action')
-        err(inv.nameSpan, 'W0102', other
+        err(inv.nameSpan, 'RB0102', other
           ? `\`${inv.src}\` is ${other.decl === 'fn' ? 'a function' : 'an action'}; \`invoke\` runs a task or a machine`
           : `unknown ${inv.kind} \`${inv.src}\`${hint(inv.src)}`)
       } else if (!d.poisoned) {
@@ -978,13 +978,13 @@ function emitMachine(m, { lookup, hint, checkType, err }) {
         for (const o of inv.outcomes) {
           const e = o.trigger.error
           if (o.trigger.kind === 'invoke.fail' && e !== '*' && !declared.includes(e)) {
-            err(o.errorSpan, 'W0207', `\`${inv.src}\` does not declare error \`${e}\` (declared as \`${declSig(d) || 'no result'}\`)`)
+            err(o.errorSpan, 'RB0207', `\`${inv.src}\` does not declare error \`${e}\` (declared as \`${declSig(d) || 'no result'}\`)`)
           }
         }
         if (!handled.has('*')) {
           for (const e of declared) {
             if (!handled.has(e)) {
-              err(inv.span, 'W0204', `\`invoke ${inv.src}\` does not handle \`${e}\` (declared as \`${declSig(d)}\`); add \`fail ${e} -> <State>\` or \`fail * -> <State>\``)
+              err(inv.span, 'RB0204', `\`invoke ${inv.src}\` does not handle \`${e}\` (declared as \`${declSig(d)}\`); add \`fail ${e} -> <State>\` or \`fail * -> <State>\``)
             }
           }
         }
@@ -999,11 +999,11 @@ function emitMachine(m, { lookup, hint, checkType, err }) {
     st.blocks.forEach((b, group) => {
       const what = b.trigger.kind.startsWith('invoke.') ? `outcome \`${b.key}\`` : `trigger \`${b.key}\``
       if (keys.has(b.key)) {
-        err(b.span, 'W0205', `${what} is written twice in \`${st.id}\` (first at line ${keys.get(b.key).span.line}); put the branches in one block: \`${b.key} { if … else … }\``)
+        err(b.span, 'RB0205', `${what} is written twice in \`${st.id}\` (first at line ${keys.get(b.key).span.line}); put the branches in one block: \`${b.key} { if … else … }\``)
       } else keys.set(b.key, b)
 
       if (b.trigger.kind === 'event' && b.trigger.event !== '*' && !(b.trigger.event in events)) {
-        err(b.eventSpan, 'W0106', `unknown event \`${b.trigger.event}\`; machine \`${m.name}\` declares ${Object.keys(events).map((e) => `\`${e}\``).join(', ') || 'no events'}`)
+        err(b.eventSpan, 'RB0106', `unknown event \`${b.trigger.event}\`; machine \`${m.name}\` declares ${Object.keys(events).map((e) => `\`${e}\``).join(', ') || 'no events'}`)
       }
       const ctx = { event: b.trigger.kind === 'event', result: b.trigger.kind === 'invoke.done', error: b.trigger.kind === 'invoke.fail' }
       let trigger = b.trigger
@@ -1014,7 +1014,7 @@ function emitMachine(m, { lookup, hint, checkType, err }) {
       let unguarded = null
       for (const br of b.branches) {
         if (unguarded) {
-          err(br.span, 'W0206', `this branch can never be taken: the ${unguarded.isElse ? '`else`' : 'unguarded'} branch at line ${unguarded.span.line} always matches first`)
+          err(br.span, 'RB0206', `this branch can never be taken: the ${unguarded.isElse ? '`else`' : 'unguarded'} branch at line ${unguarded.span.line} always matches first`)
         } else if (!br.guard) unguarded = br
         checkExpr(br.guard, ctx)
         transitions.push({
@@ -1038,7 +1038,7 @@ function emitMachine(m, { lookup, hint, checkType, err }) {
   }
 
   for (const v of m.vars) checkExpr(v.init, {})
-  if (!m.root.states.length) err(m.span, 'W0203', `machine \`${m.name}\` has no states`)
+  if (!m.root.states.length) err(m.span, 'RB0203', `machine \`${m.name}\` has no states`)
   const root = emitState(m.root, null, 0)
   if (!m.root.states.length) root.kind = 'compound'
 
@@ -1071,7 +1071,7 @@ export function formatDiagnostic(d) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2)
   if (args.length !== 1 || args[0].startsWith('-')) {
-    console.error('usage: node compile.mjs <file.way>   (IR JSON on stdout, diagnostics on stderr)')
+    console.error('usage: node compile.mjs <file.road>   (IR JSON on stdout, diagnostics on stderr)')
     process.exit(2)
   }
   const { ir, diagnostics, ok } = compile(args[0])

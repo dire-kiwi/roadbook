@@ -1,5 +1,5 @@
 [package]
-name = "waymark-api-sketch"
+name = "roadbook-api-sketch"
 version = "0.0.0"
 edition = "2024"
 publish = false

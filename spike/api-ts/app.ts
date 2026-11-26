@@ -14,7 +14,7 @@ import {
   Unauthenticated,
   type User,
   ValidationFailed
-} from "./shop.way.js"
+} from "./shop.road.js"
 
 // ---- services the implementations use ---------------------------------------
 

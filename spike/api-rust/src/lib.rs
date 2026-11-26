@@ -1,14 +1,14 @@
 //! Type-level sketch of the proposed Rust API. Nothing is implemented: the
 //! runtime entry points are `todo!()`. The point is that the shapes compile.
 //!
-//! - `waymark`  : what the runtime crate would export.
-//! - `shop`     : what `waymark::include!("examples/shop/place_order.way")`
+//! - `roadbook`  : what the runtime crate would export.
+//! - `shop`     : what `roadbook::include!("examples/shop/place_order.road")`
 //!                would expand to. Hand-written here.
 //! - `app`      : what a developer (or an agent) writes.
 
 #![allow(dead_code, unused_variables)]
 
-pub mod waymark {
+pub mod roadbook {
     use std::marker::PhantomData;
 
     /// A running machine instance that accepts events.
@@ -149,7 +149,7 @@ pub mod shop {
 
     pub mod checkout {
         use super::*;
-        use crate::waymark::Actor;
+        use crate::roadbook::Actor;
 
         /// What the chart needs from host code. One method per declared
         /// function, action, task and child machine that the chart uses.
@@ -194,7 +194,7 @@ pub mod shop {
 
     pub mod place_order {
         use super::*;
-        use crate::waymark::Actor;
+        use crate::roadbook::Actor;
         use std::convert::Infallible;
 
         pub trait Handlers: Send + Sync {

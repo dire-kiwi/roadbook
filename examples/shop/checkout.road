@@ -1,4 +1,4 @@
-import { Order, User, Receipt, CardDeclined, GatewayUnavailable, chargeCard, retryDelay } from "./types.way"
+import { Order, User, Receipt, CardDeclined, GatewayUnavailable, chargeCard, retryDelay } from "./types.road"
 
 /// Charge the customer's card, retrying while the payment gateway is down.
 machine Checkout(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUnavailable {

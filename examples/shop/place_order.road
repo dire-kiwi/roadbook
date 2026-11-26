@@ -3,8 +3,8 @@ import {
   Unauthenticated, ValidationFailed, CardDeclined, GatewayUnavailable,
   authenticate, validateOrder, priceOrder, sendConfirmationEmail, audit,
   confirmation, invalid, problem
-} from "./types.way"
-import { Checkout } from "./checkout.way"
+} from "./types.road"
+import { Checkout } from "./checkout.road"
 
 /// POST /orders: authenticate, validate, price, take payment, confirm.
 /// Every final state is one HTTP response.
@@ -49,7 +49,7 @@ machine PlaceOrder(token: string, draft: OrderDraft) -> ApiResponse {
       }
     }
 
-    /// Payment is its own machine: see checkout.way.
+    /// Payment is its own machine: see checkout.road.
     state Paying {
       invoke Checkout(order, user) {
         done                    -> Confirming     set receipt = result

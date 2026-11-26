@@ -1,6 +1,6 @@
 # TypeScript runtime (Effect v4)
 
-The TypeScript side is two packages: `@waymark/core`, the pure interpreter with no dependencies, and `@waymark/effect`, the driver and public API built on Effect v4.
+The TypeScript side is two packages: `@roadbook/core`, the pure interpreter with no dependencies, and `@roadbook/effect`, the driver and public API built on Effect v4.
 
 The API on this page is not implemented yet, but its types are real. [`spike/api-ts`](../../spike/api-ts) declares the whole surface and a full example, and typechecks against `effect@4.1.5`, including the negative cases.
 
@@ -16,19 +16,19 @@ The success type is the chart's output. The error type is the union of the chart
 
 ## What gets generated
 
-`waymark gen` writes one `.way.ts` file next to each `.way` file. It contains:
+`roadbook gen` writes one `.road.ts` file next to each `.road` file. It contains:
 
 - An Effect `Schema` for every `type`, `enum` and `event`, and a `Schema.TaggedError` class for every `error`. These are what make snapshots and traces serialisable and inputs decodable.
 - For each machine, a definition type listing its input, output, errors, events, state ids, and the signature of every function, action, task and child machine it uses.
-- For each machine, a typed handle with the IR embedded: `export const PlaceOrder = Waymark.make<PlaceOrderDef>(ir, "PlaceOrder")`.
+- For each machine, a typed handle with the IR embedded: `export const PlaceOrder = Roadbook.make<PlaceOrderDef>(ir, "PlaceOrder")`.
 
-The generated file is committed. Reviewers see type changes in the diff, consumers need no build step, and `waymark gen --check` in CI fails if it is stale. A Vite plugin that generates on the fly is a later convenience.
+The generated file is committed. Reviewers see type changes in the diff, consumers need no build step, and `roadbook gen --check` in CI fails if it is stale. A Vite plugin that generates on the fly is a later convenience.
 
 ## Implementing a machine
 
 ```ts
 import { Duration, Effect } from "effect"
-import { Checkout, PlaceOrder, ValidationFailed } from "./shop.way.js"
+import { Checkout, PlaceOrder, ValidationFailed } from "./shop.road.js"
 
 export const CheckoutLive = Checkout.implement({
   fns: {
@@ -124,8 +124,8 @@ Effect's structured concurrency is the reason this fits so well. "Leaving a stat
 
 - **A whole sub-machine can be a stub.** `machines: { Checkout: () => Effect.fail(new CardDeclined({ reason: "test" })) }` replaces the payment chart with one function of the same signature.
 - **Time is virtual.** `after` and backoff delays run under `TestClock`.
-- **The core is pure.** `@waymark/core`'s `step` can be called directly to assert on transitions without running any effects.
-- **Paths can be generated.** Because the chart is data, `waymark paths` can list every simple path through a machine, and a test can assert each one is exercised. The viewer's coverage mode shows the result.
+- **The core is pure.** `@roadbook/core`'s `step` can be called directly to assert on transitions without running any effects.
+- **Paths can be generated.** Because the chart is data, `roadbook paths` can list every simple path through a machine, and a test can assert each one is exercised. The viewer's coverage mode shows the result.
 
 ## Why not build on an existing Effect state machine library
 
