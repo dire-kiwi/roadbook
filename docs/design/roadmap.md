@@ -53,9 +53,9 @@ Progress is recorded on each milestone below as it finishes.
 | --- | --- |
 | M1. Language and IR | Done, 26 November 2026 |
 | M2. Viewer | Done, 26 November 2026 |
-| M3. TypeScript runtime | In progress |
-| M4. Rust runtime | In progress |
-| M5. Messaging | Not started |
+| M3. TypeScript runtime | Done, 26 November 2026 |
+| M4. Rust runtime | Done, 26 November 2026 |
+| M5. Messaging | In progress |
 | M6. Depth | Not started |
 | M7. Review tooling | Not started |
 | M8. Editors | Not started |
@@ -70,7 +70,11 @@ Progress is recorded on each milestone below as it finishes.
 
 **M3. TypeScript runtime.** `@roadbook/core`, `@roadbook/effect`, `gen`, the trace, and the first conformance cases. The shop example serves requests from Express.
 
+*Done.* `@roadbook/core` (the pure interpreter, no dependencies) and `@roadbook/effect` (the Effect v4 driver and API), `roadbook gen [--check]` with the generator in `crates/roadbook-gen-ts`, and the shop served by Express. The behavioural contract (`spec/execution.md`, the trace format and 24 conformance cases) was written before both runtimes, reviewed, and checked by two throwaway independent implementations. The runtime passes every case byte for byte through its production driver, and `tsc`-checked tests keep the type-level guarantees of the API page. An independent review's findings (task cancellation waiting for the task, the shop's error handling, generated error fields that clash with `Error`) are fixed.
+
 **M4. Rust runtime.** `roadbook-core`, the macro, the driver. The same example serves requests from axum and passes the same conformance cases.
+
+*Done.* `roadbook-core`, `roadbook-macros` (`roadbook::include!`) and `roadbook` (the driver, `Actor`, `Timer`, `TraceSink`), and the shop served by axum in `examples/shop/axum`. Every conformance case passes byte for byte through the production driver, and `scripts/check-all.sh` diffs the two runtimes' traces directly; they are identical. Express and axum give the same answer to every request in `examples/shop/README.md`. Before M4 committed to a build setup, `spike/cross-crate` settled how the macro will get a chart from a dependency crate. An independent review's findings (aliases in operators, which made the runtimes diverge and is now a conformance case; non-finite floats; panics while dropping futures; the actor's lifetime) are fixed.
 
 **M5. Messaging.** `send` and `emit` with an invoked child, `ref` parameters for peers, and imports across crates and packages, as specified in [actors and messaging](actors.md). The viewer draws message edges and the project index draws which machines can talk to which. How the Rust macro finds a chart in a dependency crate has been prototyped in [`spike/cross-crate`](../../spike/cross-crate).
 
