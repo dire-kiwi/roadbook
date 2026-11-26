@@ -14,6 +14,7 @@
     "input",
     "vars",
     "invokes",
+    "spawned",
     "timers",
     "nextInvoke",
     "nextTimer",
@@ -21,7 +22,7 @@
     "result"
   ],
   "properties": {
-    "snapshotVersion": { "description": "The version of this format.", "const": 1 },
+    "snapshotVersion": { "description": "The version of this format.", "const": 2 },
     "machine": { "description": "The machine's name, a key of the IR's machines.", "$ref": "#/$defs/upperName" },
     "run": {
       "description": "The id the run had when it was saved. A restored run gets a new id.",
@@ -51,6 +52,24 @@
           "id": { "$ref": "#/$defs/id" },
           "state": { "$ref": "#/$defs/stateId" },
           "src": { "$ref": "#/$defs/name" }
+        }
+      }
+    },
+    "spawned": {
+      "description": "The spawned children running when the run was saved, in the order they were started.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "children", "key", "args"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "children": { "description": "The collection, one of the machine's children.", "$ref": "#/$defs/lowerName" },
+          "key": {
+            "description": "The child's key: a string (a string or an enum variant) or an integer.",
+            "oneOf": [{ "type": "string" }, { "type": "integer" }]
+          },
+          "args": { "description": "The arguments it was spawned with.", "$ref": "#/$defs/args" }
         }
       }
     },

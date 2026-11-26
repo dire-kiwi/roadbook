@@ -46,7 +46,7 @@
         "snapshot": {
           "description": "The saved snapshot the run was restored from, after any migration (spec/snapshot.schema.json).",
           "type": "object",
-          "required": ["snapshotVersion", "machine", "run", "ir", "status", "active", "input", "vars", "invokes", "timers", "nextInvoke", "nextTimer", "nextMessage", "result"]
+          "required": ["snapshotVersion", "machine", "run", "ir", "status", "active", "input", "vars", "invokes", "spawned", "timers", "nextInvoke", "nextTimer", "nextMessage", "result"]
         }
       },
       "required": ["machine", "ir", "migrated", "snapshot"]
@@ -118,7 +118,7 @@
       "required": ["message", "to", "value"]
     },
     {
-      "description": "An emit effect ran: the event is queued for the run's invoker (if it used `as`) and for every run that holds a ref to it.",
+      "description": "An emit effect ran: the event is queued for the run's parent (if it used `as`, or spawned it) and for every run that holds a ref to it.",
       "properties": {
         "kind": { "const": "emitted" },
         "message": { "$ref": "#/$defs/id" },
@@ -127,7 +127,7 @@
       "required": ["message", "value"]
     },
     {
-      "description": "A send reached no run: written by the core with `to` null when the child addressed is not running, or by the driver after the `sent` record when run `to` has ended.",
+      "description": "A send reached no run: written by the core with `to` null when the child addressed (invoked, or spawned under a key) is not running, or by the driver after the `sent` record when run `to` has ended.",
       "properties": {
         "kind": { "const": "undelivered" },
         "message": { "$ref": "#/$defs/id" },
@@ -158,6 +158,28 @@
         "src": { "$ref": "#/$defs/name" }
       },
       "required": ["invoke", "state", "src"]
+    },
+    {
+      "description": "A spawned child was started, after the step that spawned it settled, or again on restoring.",
+      "properties": {
+        "kind": { "const": "spawn.started" },
+        "spawn": { "$ref": "#/$defs/id" },
+        "children": { "$ref": "#/$defs/lowerName" },
+        "key": { "$ref": "#/$defs/key" },
+        "src": { "$ref": "#/$defs/upperName" },
+        "args": { "$ref": "#/$defs/args" }
+      },
+      "required": ["spawn", "children", "key", "src", "args"]
+    },
+    {
+      "description": "A running spawned child was stopped: by `stop`, by a `spawn` with its key, or because its parent finished or was cancelled.",
+      "properties": {
+        "kind": { "const": "spawn.stopped" },
+        "spawn": { "$ref": "#/$defs/id" },
+        "children": { "$ref": "#/$defs/lowerName" },
+        "key": { "$ref": "#/$defs/key" }
+      },
+      "required": ["spawn", "children", "key"]
     },
     {
       "description": "An after timer was started.",
@@ -223,6 +245,10 @@
     "safeNatural": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
     "id": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
     "value": { "description": "A Roadbook value in its JSON form (spec/execution.md#values)." },
+    "key": {
+      "description": "A spawned child's key: a string (a string or an enum variant) or an integer.",
+      "oneOf": [{ "type": "string" }, { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 }]
+    },
     "args": {
       "description": "Arguments keyed by parameter name.",
       "type": "object",
@@ -255,7 +281,7 @@
           "additionalProperties": false
         },
         {
-          "description": "An emitted event of run `from`, its message `message`. `invoke` is this run's invoke that started `from`, or null when this run holds a ref to `from`.",
+          "description": "An emitted event of run `from`, its message `message`. `invoke` is the id of this run's invoke or spawned child that started `from`, or null when this run holds a ref to `from`.",
           "properties": {
             "kind": { "const": "emitted" },
             "from": { "$ref": "#/$defs/runId" },
@@ -291,6 +317,33 @@
             "defect": { "$ref": "#/$defs/defect" }
           },
           "required": ["kind", "invoke", "defect"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "spawn.done" },
+            "spawn": { "$ref": "#/$defs/id" },
+            "value": { "$ref": "#/$defs/value" }
+          },
+          "required": ["kind", "spawn", "value"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "spawn.fail" },
+            "spawn": { "$ref": "#/$defs/id" },
+            "error": { "$ref": "#/$defs/tagged" }
+          },
+          "required": ["kind", "spawn", "error"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "spawn.defect" },
+            "spawn": { "$ref": "#/$defs/id" },
+            "defect": { "$ref": "#/$defs/defect" }
+          },
+          "required": ["kind", "spawn", "defect"],
           "additionalProperties": false
         },
         {
