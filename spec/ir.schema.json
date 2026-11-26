@@ -1,0 +1,497 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Roadbook IR 0.1",
+  "description": "The compiled form of a Roadbook project: one document per entry file. See spec/ir.md for what each member means. Every member listed is required; absent values are null, missing docs are \"\", and empty lists and maps are [] and {}.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
+  "properties": {
+    "irVersion": { "const": "0.1" },
+    "sources": {
+      "description": "Source files, entry file first. Spans refer to them by index.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/source" }
+    },
+    "types": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/upperName" },
+      "additionalProperties": { "$ref": "#/$defs/typeDecl" }
+    },
+    "functions": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/lowerName" },
+      "additionalProperties": { "$ref": "#/$defs/functionDecl" }
+    },
+    "actions": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/lowerName" },
+      "additionalProperties": { "$ref": "#/$defs/actionDecl" }
+    },
+    "tasks": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/lowerName" },
+      "additionalProperties": { "$ref": "#/$defs/taskDecl" }
+    },
+    "machines": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/upperName" },
+      "additionalProperties": { "$ref": "#/$defs/machine" }
+    }
+  },
+  "$defs": {
+    "upperName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
+    "lowerName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
+    "typeRef": {
+      "description": "A type in canonical source form: a built-in or a declared name, then any number of [] and ? suffixes.",
+      "type": "string",
+      "pattern": "^(string|int|float|bool|duration|json|[A-Z][A-Za-z0-9]*)(\\[\\]|\\?)*$"
+    },
+    "stateId": {
+      "description": "Absolute dotted path of a state, starting with the machine name.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)*$"
+    },
+    "doc": { "description": "Doc comment text, \"\" if none.", "type": "string" },
+    "safeInteger": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 },
+
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "description": "Relative to the project root, with / separators.",
+          "type": "string",
+          "pattern": "^[^/\\\\][^\\\\]*$"
+        }
+      }
+    },
+    "span": {
+      "description": "1-based lines and columns; columns count Unicode scalar values; the end is exclusive.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "line", "col", "endLine", "endCol"],
+      "properties": {
+        "file": { "type": "integer", "minimum": 0 },
+        "line": { "type": "integer", "minimum": 1 },
+        "col": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "endCol": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "doc"],
+      "properties": {
+        "name": { "$ref": "#/$defs/lowerName" },
+        "type": { "$ref": "#/$defs/typeRef" },
+        "doc": { "$ref": "#/$defs/doc" }
+      }
+    },
+    "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+    "errors": {
+      "description": "Names of error types, in source order.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/upperName" }
+    },
+
+    "typeDecl": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "fields", "doc", "span"],
+          "properties": {
+            "kind": { "const": "record" },
+            "fields": { "$ref": "#/$defs/fields" },
+            "doc": { "$ref": "#/$defs/doc" },
+            "span": { "$ref": "#/$defs/span" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "type", "doc", "span"],
+          "properties": {
+            "kind": { "const": "alias" },
+            "type": { "$ref": "#/$defs/typeRef" },
+            "doc": { "$ref": "#/$defs/doc" },
+            "span": { "$ref": "#/$defs/span" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "variants", "doc", "span"],
+          "properties": {
+            "kind": { "const": "enum" },
+            "variants": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/upperName" } },
+            "doc": { "$ref": "#/$defs/doc" },
+            "span": { "$ref": "#/$defs/span" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "fields", "doc", "span"],
+          "properties": {
+            "kind": { "const": "error" },
+            "fields": { "$ref": "#/$defs/fields" },
+            "doc": { "$ref": "#/$defs/doc" },
+            "span": { "$ref": "#/$defs/span" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "doc", "span"],
+          "properties": {
+            "kind": { "const": "extern" },
+            "doc": { "$ref": "#/$defs/doc" },
+            "span": { "$ref": "#/$defs/span" }
+          }
+        }
+      ]
+    },
+    "functionDecl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["params", "returns", "doc", "span"],
+      "properties": {
+        "params": { "$ref": "#/$defs/fields" },
+        "returns": { "$ref": "#/$defs/typeRef" },
+        "doc": { "$ref": "#/$defs/doc" },
+        "span": { "$ref": "#/$defs/span" }
+      }
+    },
+    "actionDecl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["params", "doc", "span"],
+      "properties": {
+        "params": { "$ref": "#/$defs/fields" },
+        "doc": { "$ref": "#/$defs/doc" },
+        "span": { "$ref": "#/$defs/span" }
+      }
+    },
+    "taskDecl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["params", "returns", "errors", "doc", "span"],
+      "properties": {
+        "params": { "$ref": "#/$defs/fields" },
+        "returns": { "oneOf": [{ "$ref": "#/$defs/typeRef" }, { "type": "null" }] },
+        "errors": { "$ref": "#/$defs/errors" },
+        "doc": { "$ref": "#/$defs/doc" },
+        "span": { "$ref": "#/$defs/span" }
+      }
+    },
+
+    "machine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["doc", "span", "params", "returns", "errors", "vars", "events", "root", "hash"],
+      "properties": {
+        "doc": { "$ref": "#/$defs/doc" },
+        "span": { "$ref": "#/$defs/span" },
+        "params": { "$ref": "#/$defs/fields" },
+        "returns": { "oneOf": [{ "$ref": "#/$defs/typeRef" }, { "type": "null" }] },
+        "errors": { "$ref": "#/$defs/errors" },
+        "vars": { "type": "array", "items": { "$ref": "#/$defs/var" } },
+        "events": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/upperName" },
+          "additionalProperties": { "$ref": "#/$defs/eventDecl" }
+        },
+        "root": {
+          "description": "The machine body as a compound state whose id and name are the machine name.",
+          "allOf": [
+            { "$ref": "#/$defs/state" },
+            {
+              "properties": {
+                "id": { "$ref": "#/$defs/upperName" },
+                "kind": { "const": "compound" }
+              }
+            }
+          ]
+        },
+        "hash": {
+          "description": "sha256: and the lowercase hex SHA-256 of the canonical JSON of the machine's semantic view.",
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "var": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type", "init", "doc", "span"],
+      "properties": {
+        "name": { "$ref": "#/$defs/lowerName" },
+        "type": { "$ref": "#/$defs/typeRef" },
+        "init": { "oneOf": [{ "$ref": "#/$defs/expr" }, { "type": "null" }] },
+        "doc": { "$ref": "#/$defs/doc" },
+        "span": { "$ref": "#/$defs/span" }
+      }
+    },
+    "eventDecl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields", "doc", "span"],
+      "properties": {
+        "fields": { "$ref": "#/$defs/fields" },
+        "doc": { "$ref": "#/$defs/doc" },
+        "span": { "$ref": "#/$defs/span" }
+      }
+    },
+
+    "state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "name", "kind", "doc", "span", "initial", "states", "entry", "exit",
+        "invoke", "transitions", "output", "fail"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/stateId" },
+        "name": { "$ref": "#/$defs/upperName" },
+        "kind": { "enum": ["atomic", "compound", "parallel", "final"] },
+        "doc": { "$ref": "#/$defs/doc" },
+        "span": { "$ref": "#/$defs/span" },
+        "initial": { "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }] },
+        "states": { "type": "array", "items": { "$ref": "#/$defs/state" } },
+        "entry": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
+        "exit": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
+        "invoke": { "oneOf": [{ "$ref": "#/$defs/invoke" }, { "type": "null" }] },
+        "transitions": { "type": "array", "items": { "$ref": "#/$defs/transition" } },
+        "output": { "oneOf": [{ "$ref": "#/$defs/expr" }, { "type": "null" }] },
+        "fail": { "oneOf": [{ "$ref": "#/$defs/expr" }, { "type": "null" }] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "compound" } } },
+          "then": { "properties": { "initial": { "type": "string" }, "states": { "minItems": 1 } } },
+          "else": { "properties": { "initial": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "kind": { "enum": ["atomic", "final"] } } },
+          "then": { "properties": { "states": { "maxItems": 0 } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "parallel" } } },
+          "then": { "properties": { "states": { "minItems": 1 } } }
+        },
+        {
+          "if": { "properties": { "kind": { "not": { "const": "final" } } } },
+          "then": { "properties": { "output": { "type": "null" }, "fail": { "type": "null" } } }
+        }
+      ]
+    },
+    "invoke": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "src", "args", "span"],
+      "properties": {
+        "kind": { "enum": ["task", "machine"] },
+        "src": { "type": "string" },
+        "args": { "type": "array", "items": { "$ref": "#/$defs/expr" } },
+        "span": { "$ref": "#/$defs/span" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "task" } } },
+          "then": { "properties": { "src": { "$ref": "#/$defs/lowerName" } } },
+          "else": { "properties": { "src": { "$ref": "#/$defs/upperName" } } }
+        }
+      ]
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trigger", "group", "guard", "target", "effects", "span"],
+      "properties": {
+        "trigger": { "$ref": "#/$defs/trigger" },
+        "group": { "type": "integer", "minimum": 0 },
+        "guard": { "oneOf": [{ "$ref": "#/$defs/expr" }, { "type": "null" }] },
+        "target": { "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }] },
+        "effects": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
+        "span": { "$ref": "#/$defs/span" }
+      }
+    },
+    "trigger": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "event"],
+          "properties": { "kind": { "const": "event" }, "event": { "$ref": "#/$defs/upperName" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "enum": ["any", "always", "done", "invoke.done"] } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "delay"],
+          "properties": { "kind": { "const": "after" }, "delay": { "$ref": "#/$defs/expr" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "error"],
+          "properties": {
+            "kind": { "const": "invoke.fail" },
+            "error": { "oneOf": [{ "$ref": "#/$defs/upperName" }, { "const": "*" }] }
+          }
+        }
+      ]
+    },
+    "effect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "var", "value"],
+          "properties": {
+            "kind": { "const": "set" },
+            "var": { "$ref": "#/$defs/lowerName" },
+            "value": { "$ref": "#/$defs/expr" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "action", "args"],
+          "properties": {
+            "kind": { "const": "do" },
+            "action": { "$ref": "#/$defs/lowerName" },
+            "args": { "type": "array", "items": { "$ref": "#/$defs/expr" } }
+          }
+        }
+      ]
+    },
+
+    "expr": {
+      "description": "An expression node. Every node has kind, its own members, then type (a typeRef) and text (canonical source form).",
+      "oneOf": [
+        { "$ref": "#/$defs/litExpr" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "path", "type", "text"],
+          "properties": {
+            "kind": { "const": "ref" },
+            "path": {
+              "description": "A variable, parameter or event/result/error, then field names.",
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/lowerName" }
+            },
+            "type": { "$ref": "#/$defs/typeRef" },
+            "text": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "of", "name", "type", "text"],
+          "properties": {
+            "kind": { "const": "field" },
+            "of": { "$ref": "#/$defs/expr" },
+            "name": { "$ref": "#/$defs/lowerName" },
+            "type": { "$ref": "#/$defs/typeRef" },
+            "text": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "fn", "args", "type", "text"],
+          "properties": {
+            "kind": { "const": "call" },
+            "fn": { "$ref": "#/$defs/lowerName" },
+            "args": { "type": "array", "items": { "$ref": "#/$defs/expr" } },
+            "type": { "$ref": "#/$defs/typeRef" },
+            "text": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "op", "args", "type", "text"],
+          "properties": {
+            "kind": { "const": "op" },
+            "op": { "enum": ["==", "!=", "<", "<=", ">", ">=", "+", "-", "*", "and", "or", "not", "neg"] },
+            "args": { "type": "array", "minItems": 1, "maxItems": 2, "items": { "$ref": "#/$defs/expr" } },
+            "type": { "$ref": "#/$defs/typeRef" },
+            "text": { "type": "string" }
+          },
+          "if": { "properties": { "op": { "enum": ["not", "neg"] } } },
+          "then": { "properties": { "args": { "maxItems": 1 } } },
+          "else": { "properties": { "args": { "minItems": 2 } } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "fields", "type", "text"],
+          "properties": {
+            "kind": { "const": "record" },
+            "fields": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "value"],
+                "properties": {
+                  "name": { "$ref": "#/$defs/lowerName" },
+                  "value": { "$ref": "#/$defs/expr" }
+                }
+              }
+            },
+            "type": { "$ref": "#/$defs/upperName" },
+            "text": { "type": "string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "variant", "type", "text"],
+          "properties": {
+            "kind": { "const": "enum" },
+            "variant": { "$ref": "#/$defs/upperName" },
+            "type": { "$ref": "#/$defs/upperName" },
+            "text": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "litExpr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value", "type", "text"],
+      "properties": {
+        "kind": { "const": "lit" },
+        "value": true,
+        "type": { "enum": ["int", "float", "string", "bool", "duration"] },
+        "text": { "type": "string" }
+      },
+      "oneOf": [
+        { "properties": { "type": { "const": "int" }, "value": { "$ref": "#/$defs/safeInteger" } } },
+        { "properties": { "type": { "const": "float" }, "value": { "type": "number" } } },
+        { "properties": { "type": { "const": "string" }, "value": { "type": "string" } } },
+        { "properties": { "type": { "const": "bool" }, "value": { "type": "boolean" } } },
+        {
+          "properties": {
+            "type": { "const": "duration" },
+            "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+          }
+        }
+      ]
+    }
+  }
+}
