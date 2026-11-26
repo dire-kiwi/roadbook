@@ -34,7 +34,7 @@ stateDiagram-v2
   UserVanished: output problem(409, "user_gone")
   TimedOut: output problem(503, "timeout")
   [*] --> Working
-  Working --> TimedOut: after 5s
+  Working --> TimedOut: after 10s
   Working_LookingUp --> UnknownToken: fail TokenNotFound
   Working_LookingUp --> ExpiredToken: fail TokenExpired
   Working_CheckingPolicy --> WeakPassword: always [else]
