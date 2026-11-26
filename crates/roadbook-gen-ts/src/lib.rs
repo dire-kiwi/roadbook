@@ -2,7 +2,7 @@
 //!
 //! [`generate`] turns the IR of one entry file into the text of the module `roadbook gen`
 //! writes next to it (`checkout.road` -> `checkout.road.ts`), for the runtime
-//! `@roadbook/effect`. It reads only the IR. The module holds, for the declarations of the
+//! `@dire-kiwi/roadbook-effect`. It reads only the IR. The module holds, for the declarations of the
 //! entry file (those whose span is in `ir.sources[0]`):
 //!
 //! - an Effect `Schema` and a TypeScript type for every type: `Schema.Struct` and an
@@ -62,7 +62,7 @@ use roadbook_ir::{
 const WIDTH: usize = 100;
 
 /// The runtime the generated module is written for.
-const RUNTIME: &str = "@roadbook/effect";
+const RUNTIME: &str = "@dire-kiwi/roadbook-effect";
 
 /// Choices about the generated code.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

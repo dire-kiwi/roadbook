@@ -1,4 +1,4 @@
-// The programmatic API of @roadbook/cli, for build tools: `check`, `compile`, `gen` and
+// The programmatic API of @dire-kiwi/roadbook-cli, for build tools: `check`, `compile`, `gen` and
 // `format`. Types and documentation are in index.d.ts.
 
 import path from 'node:path'

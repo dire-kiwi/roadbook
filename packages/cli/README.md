@@ -1,4 +1,4 @@
-# @roadbook/cli
+# @dire-kiwi/roadbook-cli
 
 The Roadbook compiler for Node: the `roadbook` command and an API for build tools, on the compiler built as WebAssembly from the Rust crates ([`crates/roadbook-wasm`](../../crates/roadbook-wasm)). Installing it needs no Rust toolchain: the built module is committed in `wasm/`.
 
@@ -20,7 +20,7 @@ These print what the native command line (`crates/roadbook-cli`) prints, byte fo
 ## The API
 
 ```ts
-import { check, compile, format, gen, RoadbookError } from '@roadbook/cli'
+import { check, compile, format, gen, RoadbookError } from '@dire-kiwi/roadbook-cli'
 
 const out = compile('charts/orders.road')        // finds roadbook.toml upward from the file
 if (out.errors > 0) console.error(out.rendered)  // the diagnostics as the command prints them
@@ -44,14 +44,14 @@ Rebuild and commit `wasm/` whenever a compiler crate changes:
 ```sh
 rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli --version 0.2.130   # the version crates/roadbook-wasm pins
-pnpm --filter @roadbook/cli build
+pnpm --filter @dire-kiwi/roadbook-cli build
 ```
 
 `wasm/SOURCES` records what the module was built from: a hash of the sources (every file under `src/` of `roadbook-wasm`, `roadbook-compiler`, `roadbook-syntax`, `roadbook-ir` and `roadbook-gen-ts`, their `Cargo.toml`, the workspace's, and `build.mjs`), the crates.io packages the build used, and the hashes of the module and its glue. `node build.mjs --check`, which `scripts/check-all.sh` and the tests run, fails if any of them no longer matches; it needs no Rust.
 
 ## Tests
 
-`pnpm --filter @roadbook/cli test`:
+`pnpm --filter @dire-kiwi/roadbook-cli test`:
 
 - `test/parity.test.ts` runs this command and the native one (`$ROADBOOK_BIN`, or built with `cargo build -p roadbook-cli`; skipped without cargo) and compares what they print, their exit codes and the files they write: `check --json`, `check`, `export ir`, `fmt --check` and `gen --check` on every chart under `examples/` and `spec/conformance/charts/`, the whole project, `fmt` and `gen` writing into copies of it, projects importing packages, and the error cases.
 - `test/staleness.test.ts`: the committed module is current, and the check fails in a copy of the sources where a compiler source changed, a file was added, Cargo.lock changed or the module was edited.

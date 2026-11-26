@@ -5,7 +5,7 @@
  * `int` as a `number`, and a `ref` as a handle to the run it refers to (its run id in the core).
  * The conversion is driven by the IR's type references.
  */
-import { type Field, type Ir, type Json, parseTypeRef, refMachine, type Tagged } from "@roadbook/core"
+import { type Field, type Ir, type Json, parseTypeRef, refMachine, type Tagged } from "@dire-kiwi/roadbook-core"
 import { Duration, Predicate } from "effect"
 import { portOf } from "./port.ts"
 

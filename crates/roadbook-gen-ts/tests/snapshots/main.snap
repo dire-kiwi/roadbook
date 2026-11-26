@@ -5,7 +5,7 @@ source: crates/roadbook-gen-ts/tests/gen.rs
 
 import { Schema } from "effect"
 import type { Duration } from "effect"
-import * as Roadbook from "@roadbook/effect"
+import * as Roadbook from "@dire-kiwi/roadbook-effect"
 import { Boom, Ids, Money, Quiet, Tree } from "../lib/common.road.js"
 
 // ---- types ----

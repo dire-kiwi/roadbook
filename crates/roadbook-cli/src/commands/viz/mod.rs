@@ -31,7 +31,7 @@ use roadbook_compiler::{Compilation, Ir};
 use crate::workspace::Workspace;
 use crate::{Exit, report};
 
-/// The built viewer (`packages/viewer`, `pnpm --filter @roadbook/viewer build`).
+/// The built viewer (`packages/viewer`, `pnpm --filter @dire-kiwi/roadbook-viewer build`).
 pub const VIEWER_JS: &str = include_str!("../../../assets/roadbook-viewer.js");
 
 /// The name of the shared viewer script in the output directory.
