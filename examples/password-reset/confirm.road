@@ -15,11 +15,11 @@ machine ConfirmPasswordReset(token: string, newPassword: string) -> ApiResponse 
 
   initial Working
 
-  /// Everything the request does. The 5 second budget covers all of it.
+  /// Everything the request does. The 10 second budget covers all of it.
   state Working {
     initial LookingUp
 
-    after 5s -> TimedOut
+    after 10s -> TimedOut
 
     /// The task reports unknown and expired tokens as errors.
     state LookingUp {
