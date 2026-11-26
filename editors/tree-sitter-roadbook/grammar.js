@@ -21,8 +21,8 @@ module.exports = grammar({
 
   word: ($) => $.identifier,
 
-  // Every keyword is reserved: none can be a name. `from`, `as`, `ref` and the built-in type
-  // names are not, because they mean something only where no name can appear.
+  // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref`, `sensitive` and
+  // the built-in type names are not, because they mean something only where no name can appear.
   reserved: {
     global: (_) => [
       'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'var',
@@ -226,9 +226,22 @@ module.exports = grammar({
         field('callee', $._name),
         field('arguments', $.arguments),
         optional(seq('as', field('alias', $.identifier))),
+        optional(field('retry', $.retry)),
         '{',
         repeat1(choice($.done_transition, $.fail_transition)),
         '}',
+      ),
+
+    // `retry 3 on Busy | Gone after backoff(attempt)`: a record value as the delay must be
+    // parenthesised, since the invoke's `{` follows, as after an `after` trigger.
+    retry: ($) =>
+      seq(
+        'retry',
+        field('count', $.integer),
+        optional(
+          seq('on', field('error', $.type_identifier), repeat(seq('|', field('error', $.type_identifier)))),
+        ),
+        optional(seq('after', field('delay', $._expression))),
       ),
 
     fail_transition: ($) =>

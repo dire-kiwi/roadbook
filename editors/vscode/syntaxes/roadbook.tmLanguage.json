@@ -227,6 +227,20 @@
             "1": { "name": "keyword.control.as.roadbook" },
             "2": { "name": "variable.other.definition.roadbook" }
           }
+        },
+        {
+          "match": "\\b(retry)\\s+([0-9]+)(?:\\s+(on)\\s+([A-Z][A-Za-z0-9]*(?:\\s*\\|\\s*[A-Z][A-Za-z0-9]*)*))?",
+          "captures": {
+            "1": { "name": "keyword.control.retry.roadbook" },
+            "2": { "name": "constant.numeric.integer.roadbook" },
+            "3": { "name": "keyword.control.on.roadbook" },
+            "4": {
+              "patterns": [
+                { "match": "[A-Z][A-Za-z0-9]*", "name": "entity.name.type.error.roadbook" },
+                { "match": "\\|", "name": "keyword.operator.error.roadbook" }
+              ]
+            }
+          }
         }
       ]
     },

@@ -32,6 +32,7 @@
   "done"
   "invoke"
   "as"
+  "retry"
   "output"
   "fail"
   "set"

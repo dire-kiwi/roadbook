@@ -594,8 +594,29 @@ pub struct Invoke {
     /// `as name`: the name the state uses to talk to the invoked machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alias: Option<Ident>,
+    /// `retry N [on E | …] [after delay]`, after the arguments and any `as`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retry: Option<Retry>,
     /// `done` and `fail` transitions, in source order.
     pub outcomes: Vec<Transition>,
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `retry N [on E | …] [after delay]` on an invoke: run it again, up to `count` more times,
+/// when it fails with one of `errors` (every declared error if empty), waiting `delay` first.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Retry {
+    pub count: i64,
+    #[serde(skip)]
+    pub count_span: Span,
+    /// The errors after `on`, in the order written; empty without `on`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<Ident>,
+    /// The delay after `after`, in which `attempt` is in scope.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delay: Option<Expr>,
+    /// From `retry` to the end of the clause.
     #[serde(skip)]
     pub span: Span,
 }

@@ -198,6 +198,8 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
 
 The outcomes written inside `invoke { … }` are transitions of the state, with `invoke.done` and `invoke.fail` triggers.
 
+**`retry` is not in the IR.** `invoke … retry N [on …] [after …]` is shorthand that the compiler writes out as a compound state with the children `Attempt` and `Backoff`, a variable counting failed attempts, and guarded `invoke.fail` branches, exactly as [the language page](../docs/design/language.md#what-retry-compiles-to) gives them. A reader sees ordinary states, variables and transitions, and cannot tell a retry from the same states written by hand except by their spans, which point at the `retry` clause. The two forms have the same machine hash.
+
 ## Addresses
 
 An address names another running machine: the receiver of a `send`, or the sender of the events an `emitted` trigger takes.

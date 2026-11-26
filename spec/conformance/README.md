@@ -133,6 +133,9 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `checkout-declined` | `fail CardDeclined` is routed by tag, and a final state's `fail` fails the run. |
 | `checkout-retry` | The retry loop: an `after` whose delay comes from a function and reads a variable set by the state's entry, under virtual time; invokes restarted with new ids. |
 | `checkout-gave-up` | A guarded block tried in order, falling through to `else` once the guard fails; a bare error as the failure. |
+| `retry-exhausted` | `retry 2 on Busy after backoff(attempt)` as the compiler writes it out: the waits in `Backoff` read the counter, the retrying state's `entry` and `exit` run once, the failure after the last retry takes the outcome's own branch; entering the state again sets the counter back to 0; an error not listed is not retried. |
+| `retry-deadline` | The retrying state's own `after` fires during a wait, cancelling the wait's timer and leaving `Backoff` and the state. |
+| `retry-immediate` | A `retry` with no delay and `fail *`: the failure re-enters `Attempt` at once, restarting the invoke with a new id and no timer. |
 | `place-order-checkout` | `PlaceOrder` running `Checkout` from its chart as child run `r1.4`; an `always` that leaves `Confirming` in the step that entered it, after its entry action; actions with arguments. (`Confirming` has no work; `select-rules` shows that a state left this way does not start its work.) |
 | `place-order-checkout-stubbed` | The same with `Checkout` stubbed: `r1`'s records are identical, and there is no child run. |
 | `place-order-cancel` | `Cancel` on the compound `Processing` cancels its timer and the child invoke of `Paying`; the child run is cancelled from outside and exits its states. |

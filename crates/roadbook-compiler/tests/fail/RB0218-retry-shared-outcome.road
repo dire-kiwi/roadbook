@@ -1,0 +1,24 @@
+error Busy
+error Gone
+error Lost
+task ping() ! Busy | Gone | Lost
+
+machine M() {
+  initial A
+  state A {
+    invoke ping() retry 2 on Busy | Gone {
+      done   -> B
+      fail * -> B
+    }
+  }
+  state B {
+    invoke ping() retry 2 on Busy {
+      done      -> C
+      fail Busy -> C
+      fail *    -> C
+    }
+  }
+  final state C {}
+}
+
+// expect: RB0218 at 9:19

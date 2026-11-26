@@ -1,0 +1,19 @@
+error Busy
+error Gone
+error Timeout
+task ping() ! Busy | Gone
+
+machine M() {
+  initial A
+  state A {
+    invoke ping() retry 2 on Bsy | Timeout {
+      done      -> B
+      fail Busy -> B
+      fail Gone -> B
+    }
+  }
+  final state B {}
+}
+
+// expect: RB0207 at 9:30
+// expect: RB0207 at 9:36

@@ -1,0 +1,90 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - invoke:
+                      callee: charge
+                      args:
+                        - var: order
+                      retry:
+                        count: 3
+                        errors:
+                          - Gateway
+                          - Timeout
+                        delay:
+                          call:
+                            name: backoff
+                            args:
+                              - var: attempt
+                      outcomes:
+                        - trigger: done
+                          branches:
+                            single:
+                              guard: ~
+                              target:
+                                - B
+                              effects: []
+                        - trigger:
+                            fail:
+                              any: {}
+                          branches:
+                            single:
+                              guard: ~
+                              target:
+                                - C
+                              effects: []
+            - state:
+                kind: normal
+                name: B
+                body:
+                  - invoke:
+                      callee: Checkout
+                      args: []
+                      retry:
+                        count: 1
+                      outcomes:
+                        - trigger: done
+                          branches:
+                            single:
+                              guard: ~
+                              target:
+                                - A
+                              effects: []
+            - state:
+                kind: normal
+                name: C
+                body:
+                  - invoke:
+                      callee: fetch
+                      args: []
+                      retry:
+                        count: 2
+                        delay:
+                          record:
+                            ty: Cfg
+                            fields:
+                              - name: ms
+                                value:
+                                  int: 5
+                      outcomes:
+                        - trigger: done
+                          branches:
+                            single:
+                              guard: ~
+                              target:
+                                - A
+                              effects: []
+comments: []
