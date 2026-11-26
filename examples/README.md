@@ -6,6 +6,8 @@ Each directory is one project: `roadbook check examples/<dir>` checks it as a wh
 - [`password-reset/`](password-reset): `POST /password-reset/confirm`. Token lookup, a pure password policy, hashing, the update, session revocation and a 5 second budget.
 - [`webhook/`](webhook): a payment provider's webhook. Signature guard, parsing, idempotency, routing on an enum, and a retry loop for `DatabaseBusy`.
 - [`import-job/`](import-job): a long-lived CSV import that accepts `Pause`, `Resume` and `Cancel` and processes batches with timed retries.
+- [`upload/`](upload): messaging with an invoked child. `Publish` invokes `Upload` as `upload`, sends it `Pause` and `Resume`, and shows the `Progress` it emits.
+- [`inventory/`](inventory) and [`orders/`](orders): messaging with a peer, across packages. An `Order` takes `inventory: ref Inventory`, sends it `Reserve` and waits for the `Reserved` or `Rejected` it emits. `orders` imports from the package `inventory` (`"inventory/inventory.road"`), which the root `roadbook.toml` maps to `examples/inventory`. The runtimes do not run these three yet.
 - [`large/`](large): a support ticket's lifecycle with about 50 states, used to test the diagram viewer's layout. It has three levels of nesting, a parallel state and an invoked child machine (`SatisfactionSurvey`).
 
 ## Writing charts from prose

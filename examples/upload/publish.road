@@ -1,0 +1,47 @@
+import { File, Upload, UploadFailed, Url } from "./upload.road"
+
+/// A post as the user wrote it, with the file attached to it.
+type Draft { title: string, file: File }
+
+/// A published post.
+type Post { title: string, url: Url }
+
+/// Show how much of the attachment is uploaded.
+action showProgress(percent: int)
+
+/// Publish the post, linking to its uploaded attachment.
+task publishPost(title: string, url: Url) -> Post
+
+/// Publish a post once its attachment is uploaded. The user can pause and resume the upload
+/// and sees its progress.
+machine Publish(draft: Draft) -> Post ! UploadFailed {
+  var percent: int = 0
+  var url:     Url
+  var post:    Post
+  var failure: UploadFailed
+
+  event PauseClicked
+  event ResumeClicked
+
+  initial Uploading
+
+  /// `upload` names the child while it runs, which is exactly while this state is active.
+  state Uploading {
+    invoke Upload(draft.file) as upload {
+      done              -> Publishing  set url = result
+      fail UploadFailed -> Failed      set failure = error
+    }
+    on PauseClicked    send upload.Pause
+    on ResumeClicked   send upload.Resume
+    on upload.Progress set percent = event.percent  do showProgress(event.percent)
+  }
+
+  state Publishing {
+    invoke publishPost(draft.title, url) {
+      done -> Published  set post = result
+    }
+  }
+
+  final state Published { output post }
+  final state Failed    { fail failure }
+}

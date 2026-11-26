@@ -73,6 +73,12 @@ pub enum GenError {
         /// The name.
         name: String,
     },
+    /// A chart that uses messaging or imports from another package, which this generator
+    /// does not support yet.
+    Unsupported {
+        /// What it uses.
+        what: String,
+    },
     /// A field of an `error` that its class cannot have: see [`error_field_conflict`].
     ErrorField {
         /// The file declaring the error, as in `ir.sources`.
@@ -94,6 +100,11 @@ impl fmt::Display for GenError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             GenError::NoEntry => write!(f, "the IR has no sources, so there is no entry file"),
+            GenError::Unsupported { what } => write!(
+                f,
+                "the TypeScript generator does not support messaging between machines or imports \
+                 from other packages yet: the chart uses {what}"
+            ),
             GenError::Undeclared { kind, name } => {
                 write!(f, "the IR uses {kind} `{name}` but does not declare it")
             }
@@ -136,6 +147,34 @@ impl std::error::Error for GenError {}
 pub fn generate(ir: &Ir, options: &Options) -> Result<String, GenError> {
     let _ = options;
     let entry = ir.sources.first().ok_or(GenError::NoEntry)?;
+    if let Some(s) = ir.sources.iter().find(|s| s.package.is_some()) {
+        let what = format!(
+            "`{}/{}`, a file of another package",
+            s.package.as_deref().unwrap_or(""),
+            s.path
+        );
+        return Err(GenError::Unsupported { what });
+    }
+    for (name, m) in &ir.machines {
+        if let Some(what) = m.messaging() {
+            return Err(GenError::Unsupported {
+                what: format!("{what} (machine `{name}`)"),
+            });
+        }
+    }
+    let has_ref = |t: &TypeRef| t.ref_base().is_some();
+    let host_ref = ir
+        .functions
+        .iter()
+        .map(|(n, d)| (n, &d.params))
+        .chain(ir.actions.iter().map(|(n, d)| (n, &d.params)))
+        .chain(ir.tasks.iter().map(|(n, d)| (n, &d.params)))
+        .find(|(_, ps)| ps.iter().any(|p| has_ref(&p.ty)));
+    if let Some((name, _)) = host_ref {
+        return Err(GenError::Unsupported {
+            what: format!("a `ref` parameter of `{name}`"),
+        });
+    }
     let mut g = Gen {
         ir,
         imports: BTreeMap::new(),
@@ -278,7 +317,7 @@ pub fn error_field_conflict(ir: &Ir, field: &Field) -> Option<&'static str> {
                 Some(TypeDef::Alias { ty }) => stringish(ir, ty),
                 _ => false,
             },
-            TypeRef::List(_) | TypeRef::Optional(_) => false,
+            TypeRef::List(_) | TypeRef::Optional(_) | TypeRef::Ref(_) => false,
         }
     }
     match field.name.as_str() {
@@ -342,6 +381,11 @@ impl<'a> Gen<'a> {
             TypeRef::Named(n) => self.named(n)?.to_owned(),
             TypeRef::List(t) => format!("ReadonlyArray<{}>", self.ts(t)?),
             TypeRef::Optional(t) => format!("{} | null", self.ts(t)?),
+            TypeRef::Ref(m) => {
+                return Err(GenError::Unsupported {
+                    what: format!("`ref {m}`"),
+                });
+            }
         })
     }
 
@@ -368,6 +412,11 @@ impl<'a> Gen<'a> {
             }
             TypeRef::List(t) => format!("Schema.Array({})", self.schema(t, cycle)?),
             TypeRef::Optional(t) => format!("Schema.NullOr({})", self.schema(t, cycle)?),
+            TypeRef::Ref(m) => {
+                return Err(GenError::Unsupported {
+                    what: format!("`ref {m}`"),
+                });
+            }
         })
     }
 
@@ -684,6 +733,7 @@ impl<'a> Uses<'a> {
                     self.expr(a);
                 }
             }
+            Effect::Send { value, .. } | Effect::Emit { value, .. } => self.expr(value),
         }
     }
 

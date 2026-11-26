@@ -39,6 +39,79 @@ fn project(name: &str, files: &[(&str, &str)]) -> PathBuf {
 const OK: &str = "machine M() {\n  initial Done\n  final state Done {}\n}\n";
 
 #[test]
+fn the_messaging_examples_check_and_format_clean() {
+    let dirs = ["examples/upload", "examples/inventory", "examples/orders"];
+    let mut args = vec!["check"];
+    args.extend(dirs);
+    let out = roadbook(&repo(), &args);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(text(&out.stderr), "");
+    let mut args = vec!["fmt", "--check"];
+    args.extend(dirs);
+    let out = roadbook(&repo(), &args);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stdout));
+    // The order imports `Inventory` from the package `inventory`, which the root
+    // `roadbook.toml` maps to `examples/inventory`.
+    let out = roadbook(&repo(), &["export", "ir", "examples/orders/orders.road"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let ir: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(
+        ir["sources"],
+        serde_json::json!([
+            { "path": "examples/orders/orders.road", "package": null },
+            { "path": "inventory.road", "package": "inventory" }
+        ])
+    );
+}
+
+#[test]
+fn packages_are_found_through_roadbook_toml_and_node_modules() {
+    let chart = "import { Stock } from \"stock/stock.road\"\nimport { Item } from \"@acme/items/items.road\"\n\nmachine M(stock: ref Stock, item: Item) {\n  initial A\n  state A {\n    entry send stock.Take { item: item }\n    on stock.Taken -> Done\n  }\n  final state Done {}\n}\n";
+    let stock = "import { Item } from \"@acme/items/items.road\"\n\nmachine Stock() {\n  event Take { item: Item }\n  emits Taken\n\n  initial A\n  state A {\n    on Take -> A  emit Taken\n  }\n}\n";
+    let dir = project(
+        "packages",
+        &[
+            ("app/m.road", chart),
+            ("libs/stock/stock.road", stock),
+            (
+                "node_modules/@acme/items/package.json",
+                "{ \"name\": \"@acme/items\" }",
+            ),
+            (
+                "node_modules/@acme/items/items.road",
+                "type Item { sku: string }\n",
+            ),
+        ],
+    );
+    std::fs::write(
+        dir.join("roadbook.toml"),
+        "exclude = [\"libs\"]\n\n[packages]\nstock = \"libs/stock\"\n",
+    )
+    .unwrap();
+    let out = roadbook(&dir, &["check", "app"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(text(&out.stderr), "");
+    // A package's own warnings are not reported, and its file is named by where it is.
+    std::fs::write(
+        dir.join("libs/stock/stock.road"),
+        stock.replace("Take { item: Item }", "Take { item: Itm }"),
+    )
+    .unwrap();
+    let out = roadbook(&dir, &["check", "--json", "app"]);
+    let json: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(json["diagnostics"][0]["code"], "RB0101");
+    assert_eq!(json["diagnostics"][0]["file"], "libs/stock/stock.road");
+    std::fs::write(dir.join("roadbook.toml"), "[packages]\n").unwrap();
+    let out = roadbook(&dir, &["check", "app"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        text(&out.stderr).contains("package `stock` is not known"),
+        "{}",
+        text(&out.stderr)
+    );
+}
+
+#[test]
 fn the_shop_checks_and_formats_clean() {
     let out = roadbook(&repo(), &["check", "examples/shop"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
@@ -61,7 +134,7 @@ fn export_ir_writes_the_fixture() {
     let out = roadbook(&dir, &["export", "ir", "m.road", "-o", "m.ir.json"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let written = std::fs::read_to_string(dir.join("m.ir.json")).unwrap();
-    assert!(written.contains("\"irVersion\": \"0.1\""));
+    assert!(written.contains("\"irVersion\": \"0.2\""));
 }
 
 #[test]
@@ -411,12 +484,14 @@ fn viz_names_pages_after_their_entries_and_reports_errors() {
         "password-reset-confirm.html",
         "webhook-webhook.html",
         "import-job-import.html",
+        "upload-publish.html",
+        "orders-orders.html",
         "index.html",
     ] {
         assert!(out.join(page).is_file(), "{page}");
     }
     let index = page_data(&std::fs::read_to_string(out.join("index.html")).unwrap());
-    assert_eq!(index["index"]["machines"].as_array().unwrap().len(), 7);
+    assert_eq!(index["index"]["machines"].as_array().unwrap().len(), 11);
 
     let dir = project(
         "viz-bad",

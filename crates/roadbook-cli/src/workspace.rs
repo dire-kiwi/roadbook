@@ -10,6 +10,10 @@
 //! `**` any number of segments, `?` one character. A file named on the command line is never
 //! excluded. `gen-exclude` lists more of them, which only `roadbook gen` skips. Symbolic
 //! links to directories are not followed, so a link loop is harmless.
+//!
+//! A `[packages]` table maps the names of other packages to their directories, relative to
+//! the root: `inventory = "examples/inventory"`. An import of a package not listed there is
+//! looked up in `node_modules`, as Node does (see `roadbook_compiler::FsLoader`).
 
 use std::path::{Component, Path, PathBuf};
 
@@ -24,6 +28,8 @@ pub struct Workspace {
     exclude: Vec<String>,
     /// Its `gen-exclude` globs.
     gen_exclude: Vec<String>,
+    /// Its `[packages]` table: package name to directory, relative to the root.
+    packages: Vec<(String, String)>,
 }
 
 impl Workspace {
@@ -55,6 +61,8 @@ impl Workspace {
                     root: d.to_path_buf(),
                     exclude: list("exclude")?,
                     gen_exclude: list("gen-exclude")?,
+                    packages: string_table(&text, "packages")
+                        .map_err(|e| format!("`{}`: {e}", config.display()))?,
                 });
             }
             dir = d.parent();
@@ -63,11 +71,18 @@ impl Workspace {
             root: cwd,
             exclude: Vec::new(),
             gen_exclude: Vec::new(),
+            packages: Vec::new(),
         })
     }
 
+    /// A loader for the project: its files, the packages of `[packages]`, and packages in
+    /// `node_modules`.
     pub fn loader(&self) -> FsLoader {
-        FsLoader::new(&self.root)
+        let mut loader = FsLoader::new(&self.root).with_node_modules(true);
+        for (name, dir) in &self.packages {
+            loader = loader.with_package(name, dir);
+        }
+        loader
     }
 
     /// The project path of a file: relative to the root, `/`-separated.
@@ -229,6 +244,48 @@ fn string_list(toml: &str, key: &str) -> Result<Vec<String>, String> {
     Ok(Vec::new())
 }
 
+/// The entries `key = "value"` of the table `[name]` of a `roadbook.toml`, in order; empty if
+/// there is no such table. A key may be quoted, as a scoped package name must be:
+/// `"@shop/inventory" = "packages/inventory"`.
+fn string_table(toml: &str, name: &str) -> Result<Vec<(String, String)>, String> {
+    let header = format!("[{name}]");
+    let mut lines = toml.lines().map(|l| without_comment(l).trim());
+    if !lines.any(|l| l == header) {
+        return Ok(Vec::new());
+    }
+    let unquote = |s: &str| {
+        let s = s.trim();
+        s.strip_prefix('"')
+            .and_then(|x| x.strip_suffix('"'))
+            .map(String::from)
+    };
+    let mut out = Vec::new();
+    for line in lines {
+        if line.starts_with('[') {
+            break;
+        }
+        if line.is_empty() {
+            continue;
+        }
+        let bad = || format!("`[{name}]`: `{line}` is not `name = \"directory\"`");
+        let (key, value) = if let Some(quoted) = line.strip_prefix('"') {
+            let (k, rest) = quoted.split_once('"').ok_or_else(bad)?;
+            (
+                k.to_string(),
+                rest.trim_start().strip_prefix('=').ok_or_else(bad)?,
+            )
+        } else {
+            let (k, v) = line.split_once('=').ok_or_else(bad)?;
+            (k.trim().to_string(), v)
+        };
+        if key.is_empty() {
+            return Err(bad());
+        }
+        out.push((key, unquote(value).ok_or_else(bad)?));
+    }
+    Ok(out)
+}
+
 /// A TOML line without its `#` comment, if it has one outside a string.
 fn without_comment(line: &str) -> &str {
     let mut in_string = false;
@@ -340,5 +397,20 @@ mod tests {
         assert_eq!(excludes(both).unwrap(), ["e"]);
         assert_eq!(string_list(both, "gen-exclude").unwrap(), ["g"]);
         assert!(string_list("gen-exclude = 1", "gen-exclude").is_err());
+    }
+
+    #[test]
+    fn package_tables() {
+        let toml = "exclude = [\"x\"]\n[packages]\ninventory = \"examples/inventory\" # local\n\"@shop/inv\" = \"p/inv\"\n\n[other]\na = \"b\"\n";
+        assert_eq!(
+            string_table(toml, "packages").unwrap(),
+            [
+                ("inventory".to_string(), "examples/inventory".to_string()),
+                ("@shop/inv".to_string(), "p/inv".to_string())
+            ]
+        );
+        assert!(string_table("", "packages").unwrap().is_empty());
+        assert!(string_table("[packages]\ninventory = examples", "packages").is_err());
+        assert!(string_table("[packages]\n= \"x\"", "packages").is_err());
     }
 }

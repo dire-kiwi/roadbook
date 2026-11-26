@@ -1,0 +1,56 @@
+/// A file the browser has started to send, as the upload endpoint describes it.
+type File { name: string, size: int }
+
+/// Where a stored file can be fetched.
+type Url = string
+
+/// The storage service refused a chunk, or the finished file.
+error UploadFailed { reason: string }
+
+/// Store the chunk of `file` that starts at `offset`. Returns the offset after it.
+task sendChunk(file: File, offset: int) -> int ! UploadFailed
+
+/// Ask the storage service to assemble the stored chunks, and return the file's address.
+task finishUpload(file: File) -> Url ! UploadFailed
+
+/// How much of `file` is stored once its first `offset` bytes are, from 0 to 100.
+fn percentOf(file: File, offset: int) -> int
+
+/// Whether the first `offset` bytes are all of `file`.
+fn complete(file: File, offset: int) -> bool
+
+/// Upload a file in chunks. Can be paused, and reports its progress to whoever invoked it.
+machine Upload(file: File) -> Url ! UploadFailed {
+  var offset:  int = 0
+  var url:     Url
+  var failure: UploadFailed
+
+  event Pause
+  event Resume
+  emits Progress { percent: int }
+
+  initial Sending
+
+  /// One chunk at a time, until every byte is stored.
+  state Sending {
+    always if complete(file, offset) -> Finishing
+    invoke sendChunk(file, offset) {
+      done              -> Sending  set offset = result  emit Progress { percent: percentOf(file, result) }
+      fail UploadFailed -> Failed   set failure = error
+    }
+    on Pause -> Paused
+  }
+
+  /// Nothing is sent until the user resumes.
+  state Paused { on Resume -> Sending }
+
+  state Finishing {
+    invoke finishUpload(file) {
+      done              -> Done    set url = result
+      fail UploadFailed -> Failed  set failure = error
+    }
+  }
+
+  final state Done   { output url }
+  final state Failed { fail failure }
+}

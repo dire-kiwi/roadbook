@@ -309,12 +309,15 @@ fn effect(e: &Effect) -> String {
             let args: Vec<&str> = args.iter().map(|a| a.text.as_str()).collect();
             format!("do {action}({})", args.join(", "))
         }
+        Effect::Send { to, value, .. } => format!("send {}.{}", to.name, value.text),
+        Effect::Emit { value, .. } => format!("emit {}", value.text),
     }
 }
 
 fn trigger(t: &Trigger) -> String {
     match t {
         Trigger::Event { event } => event.clone(),
+        Trigger::Emitted { from, event } => format!("{}.{event}", from.name),
         Trigger::Any => "on *".into(),
         Trigger::After { delay } => format!("after {}", delay.text),
         Trigger::Always => "always".into(),
@@ -353,13 +356,23 @@ fn description(s: &State) -> Vec<String> {
         } else {
             ""
         };
-        out.push(format!("invoke {kind}{}({})", inv.src, args.join(", ")));
+        let alias = inv
+            .alias
+            .as_ref()
+            .map_or(String::new(), |a| format!(" as {a}"));
+        out.push(format!(
+            "invoke {kind}{}({}){alias}",
+            inv.src,
+            args.join(", ")
+        ));
     }
     out.extend(s.entry.iter().map(|e| format!("entry {}", effect(e))));
     out.extend(s.exit.iter().map(|e| format!("exit {}", effect(e))));
     for t in s.transitions.iter().filter(|t| t.target.is_none()) {
         let head = match &t.trigger {
-            Trigger::Event { event } => format!("on {event}"),
+            Trigger::Event { .. } | Trigger::Emitted { .. } => {
+                format!("on {}", trigger(&t.trigger))
+            }
             other => trigger(other),
         };
         let rest = label(s, t);
