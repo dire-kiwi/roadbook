@@ -10,6 +10,7 @@
 //!   "types":     { name: strip(declaration) }             for every type in T,
 //!   "functions": { name: strip(declaration) }             for every fn in F,
 //!   "actions":   { … }, "tasks": { … }                    likewise
+//!   "interfaces": { name: strip({events, emits}) }        for every machine in R
 //! }
 //! ```
 //!
@@ -17,17 +18,24 @@
 //!   that invokes itself is included once).
 //! - F, A and K are the functions called (`call`), actions run (`do`) and
 //!   tasks invoked by the machines in M.
-//! - T is every type named by the machines in M and by F, A and K, closed
-//!   under the types their declarations name. A type is named by the base of
+//! - R is every machine outside M that the machines in M, F, A and K name
+//!   without invoking it: by a `ref` type, by the address of a `send` or of
+//!   an `emitted` trigger, or by a dotted event type `Machine.Event`. Only
+//!   its interface, its `events` and `emits`, is part of the view, so a
+//!   change to how a peer works inside does not change the machines that
+//!   talk to it.
+//! - T is every type named by the machines in M, by F, A and K and by the
+//!   interfaces of R, closed under the types their declarations name. A type is named by the base of
 //!   any TypeRef (parameters, results, variables, event fields, alias
 //!   targets, record fields and every expression's `type`), by an entry of
 //!   an `errors` list and by an `invoke.fail` trigger's `error` other than
-//!   `"*"`. A name that is only an event of the machine being walked (the
-//!   type of a bare `event`) is not a type and is skipped.
+//!   `"*"`. A name that is an event of the machine being walked (the type
+//!   of a bare `event`, or of an `emit` value), or a dotted event type, is
+//!   not a type and is skipped.
 //! - `strip` removes every member named `doc`, `span` or `text` from every
-//!   object, recursively. The only name-keyed map inside these values is a
-//!   machine's `events`, whose keys are upper-case, so no user-chosen name
-//!   is ever stripped.
+//!   object, recursively. The only name-keyed maps inside these values are a
+//!   machine's `events` and `emits`, whose keys are upper-case, so no
+//!   user-chosen name is ever stripped.
 //!
 //! Comments, formatting, source positions and unused declarations therefore
 //! do not change a hash; any change to behaviour or to a type a machine uses
@@ -41,7 +49,7 @@ use sha2::{Digest, Sha256};
 
 use crate::expr::{Expr, ExprKind};
 use crate::jcs;
-use crate::model::{Effect, Field, InvokeKind, Ir, Machine, State, Trigger, TypeDef};
+use crate::model::{Address, Effect, Field, InvokeKind, Ir, Machine, State, Trigger, TypeDef};
 use crate::types::TypeRef;
 
 /// The prefix of every hash.
@@ -57,7 +65,7 @@ pub enum HashError {
     Unresolved {
         /// The machine being walked when the name was found.
         machine: String,
-        /// `"type"`, `"function"`, `"action"`, `"task"` or `"machine"`.
+        /// `"type"`, `"event"`, `"function"`, `"action"`, `"task"` or `"machine"`.
         kind: &'static str,
         /// The missing name.
         name: String,
@@ -89,6 +97,8 @@ struct Closure {
     functions: BTreeSet<String>,
     actions: BTreeSet<String>,
     tasks: BTreeSet<String>,
+    /// Machines named but not necessarily invoked: R before M is taken out.
+    interfaces: BTreeSet<String>,
 }
 
 struct Walker<'a> {
@@ -115,16 +125,40 @@ impl Walker<'_> {
             Ok(())
         } else if self.events.contains(name) {
             Ok(())
+        } else if let Some((machine, event)) = name.split_once('.') {
+            let found = self
+                .ir
+                .machines
+                .get(machine)
+                .is_some_and(|m| m.events.contains_key(event) || m.emits.contains_key(event));
+            if !found {
+                return Err(self.unresolved("event", name));
+            }
+            self.out.interfaces.insert(machine.to_owned());
+            Ok(())
         } else {
             Err(self.unresolved("type", name))
         }
     }
 
-    fn type_ref(&mut self, t: &TypeRef) -> Result<(), HashError> {
-        match t.named_base() {
-            Some(n) => self.type_name(n),
-            None => Ok(()),
+    fn named_machine(&mut self, name: &str) -> Result<(), HashError> {
+        if !self.ir.machines.contains_key(name) {
+            return Err(self.unresolved("machine", name));
         }
+        self.out.interfaces.insert(name.to_owned());
+        Ok(())
+    }
+
+    fn type_ref(&mut self, t: &TypeRef) -> Result<(), HashError> {
+        match t.base() {
+            TypeRef::Named(n) => self.type_name(n),
+            TypeRef::Ref(m) => self.named_machine(m),
+            _ => Ok(()),
+        }
+    }
+
+    fn address(&mut self, a: &Address) -> Result<(), HashError> {
+        self.named_machine(&a.machine)
     }
 
     fn fields(&mut self, fields: &[Field]) -> Result<(), HashError> {
@@ -133,7 +167,7 @@ impl Walker<'_> {
 
     fn machine(&mut self, name: &str, m: &Machine) -> Result<(), HashError> {
         self.machine = name.to_owned();
-        self.events = m.events.keys().cloned().collect();
+        self.events = m.events.keys().chain(m.emits.keys()).cloned().collect();
         self.fields(&m.params)?;
         if let Some(t) = &m.returns {
             self.type_ref(t)?;
@@ -147,7 +181,7 @@ impl Walker<'_> {
                 self.expr(e)?;
             }
         }
-        for e in m.events.values() {
+        for e in m.events.values().chain(m.emits.values()) {
             self.fields(&e.fields)?;
         }
         self.state(&m.root)
@@ -177,6 +211,7 @@ impl Walker<'_> {
             match &t.trigger {
                 Trigger::After { delay } => self.expr(delay)?,
                 Trigger::InvokeFail { error } if error != "*" => self.type_name(error)?,
+                Trigger::Emitted { from, .. } => self.address(from)?,
                 _ => {}
             }
             if let Some(g) = &t.guard {
@@ -201,6 +236,11 @@ impl Walker<'_> {
                     self.out.actions.insert(action.clone());
                     args.iter().try_for_each(|a| self.expr(a))?;
                 }
+                Effect::Send { to, value, .. } => {
+                    self.address(to)?;
+                    self.expr(value)?;
+                }
+                Effect::Emit { value, .. } => self.expr(value)?,
             }
         }
         Ok(())
@@ -262,6 +302,23 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
             w.type_name(e)?;
         }
     }
+    // The interfaces of the machines named but not walked whole. Event fields
+    // cannot hold a `ref`, so this adds no machine.
+    let peers: Vec<String> = w
+        .out
+        .interfaces
+        .difference(&w.out.machines)
+        .cloned()
+        .collect();
+    for p in &peers {
+        let m = &ir.machines[p];
+        w.machine = p.clone();
+        for e in m.events.values().chain(m.emits.values()) {
+            w.fields(&e.fields)?;
+        }
+    }
+    w.out.interfaces = peers.into_iter().collect();
+    w.machine = name.to_owned();
     // Close the types over their own declarations.
     let mut pending: Vec<String> = w.out.types.iter().cloned().collect();
     while let Some(t) = pending.pop() {
@@ -326,6 +383,14 @@ pub fn semantic_view(ir: &Ir, name: &str) -> Result<Value, HashError> {
     );
     view.insert("actions".into(), section(&c.actions, |n| &ir.actions[n]));
     view.insert("tasks".into(), section(&c.tasks, |n| &ir.tasks[n]));
+    let mut interfaces = Map::new();
+    for n in &c.interfaces {
+        let m = &ir.machines[n];
+        let mut v = serde_json::json!({ "events": m.events, "emits": m.emits });
+        strip(&mut v);
+        interfaces.insert(n.clone(), v);
+    }
+    view.insert("interfaces".into(), Value::Object(interfaces));
     Ok(Value::Object(view))
 }
 

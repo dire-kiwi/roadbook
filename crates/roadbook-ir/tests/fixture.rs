@@ -64,7 +64,7 @@ fn schema_rejects_malformed_documents() {
     let doc: Value = serde_json::from_str(FIXTURE).unwrap();
     let charging = "/machines/Checkout/root/states/0";
     let cases: Vec<(String, Value)> = vec![
-        ("/irVersion".into(), "0.2".into()),
+        ("/irVersion".into(), "0.1".into()),
         (
             "/types/LineItem/fields/0/type".into(),
             "map<string,int>".into(),
@@ -141,6 +141,9 @@ fn state_exprs_mut(s: &mut State, f: &mut impl FnMut(&mut Expr)) {
                 Effect::Set { value, .. } => exprs_mut(value, &mut |x| f(x)),
                 Effect::Do { args, .. } => {
                     args.iter_mut().for_each(|a| exprs_mut(a, &mut |x| f(x)))
+                }
+                Effect::Send { value, .. } | Effect::Emit { value, .. } => {
+                    exprs_mut(value, &mut |x| f(x))
                 }
             }
         }
@@ -276,6 +279,7 @@ fn hash_handles_recursion_and_reports_missing_declarations() {
     backoff.invoke = Some(roadbook_ir::Invoke {
         kind: roadbook_ir::InvokeKind::Machine,
         src: "Checkout".into(),
+        alias: None,
         args: vec![],
         span: backoff.span,
     });
@@ -289,4 +293,97 @@ fn hash_handles_recursion_and_reports_missing_declarations() {
         "machine `Checkout` refers to task `chargeCard`, which the IR does not declare"
     );
     assert!(machine_hash(&ir, "Nope").is_err());
+}
+
+const ORDERS: &str = include_str!("data/orders.ir.json");
+
+#[test]
+fn messaging_fixture_round_trips_and_matches_the_schema() {
+    let ir = Ir::from_json(ORDERS).unwrap();
+    assert_eq!(ir.to_json(), ORDERS);
+    let doc: Value = serde_json::from_str(ORDERS).unwrap();
+    let v = validator();
+    let errors = schema_errors(&v, &doc);
+    assert!(errors.is_empty(), "{errors:#?}");
+    let mut with_hashes = ir.clone();
+    fill_hashes(&mut with_hashes).unwrap();
+    assert_eq!(with_hashes, ir, "stored hashes are stale");
+
+    let reserving = "/machines/Order/root/states/0";
+    let cases: Vec<(String, Value)> = vec![
+        (
+            format!("{reserving}/entry/0/to/state"),
+            "Order.Reserving".into(),
+        ),
+        (format!("{reserving}/entry/0/to/kind"), "child".into()),
+        (
+            format!("{reserving}/entry/0/value/type"),
+            "Reserve[]".into(),
+        ),
+        (format!("{reserving}/entry/0/value/kind"), "ref".into()),
+        (
+            format!("{reserving}/transitions/0/trigger/from/name"),
+            "Inventory".into(),
+        ),
+        (
+            "/machines/Order/params/2/type".into(),
+            "ref inventory".into(),
+        ),
+        ("/sources/1/package".into(), "".into()),
+        (
+            "/machines/Inventory/root/states/1/invoke/as".into(),
+            "reserving".into(),
+        ),
+    ];
+    for (pointer, value) in cases {
+        let mut bad = doc.clone();
+        let (parent, key) = pointer.rsplit_once('/').unwrap();
+        bad.pointer_mut(parent).unwrap()[key] = value.clone();
+        assert!(
+            !v.is_valid(&bad),
+            "setting {pointer} to {value} should be rejected"
+        );
+    }
+}
+
+#[test]
+fn a_peer_contributes_only_its_interface_to_the_hash() {
+    let ir = Ir::from_json(ORDERS).unwrap();
+    let order = machine_hash(&ir, "Order").unwrap();
+    let view = roadbook_ir::semantic_view(&ir, "Order").unwrap();
+    assert_eq!(
+        view["machines"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .collect::<Vec<_>>(),
+        ["Order"]
+    );
+    assert!(view["interfaces"]["Inventory"]["emits"]["Reserved"].is_object());
+    assert!(view["types"]["Item"].is_object());
+
+    // How the warehouse works inside does not change the order's hash.
+    let mut changed = ir.clone();
+    changed.machines["Inventory"].root.states[1].transitions[0].target = None;
+    assert_ne!(
+        machine_hash(&changed, "Inventory").unwrap(),
+        machine_hash(&ir, "Inventory").unwrap()
+    );
+    assert_eq!(machine_hash(&changed, "Order").unwrap(), order);
+
+    // What it accepts and emits does, and so do the types of their fields.
+    let mut changed = ir.clone();
+    changed.machines["Inventory"].emits["Rejected"].fields.pop();
+    assert_ne!(machine_hash(&changed, "Order").unwrap(), order);
+    let mut changed = ir.clone();
+    let roadbook_ir::TypeDef::Record { fields } = &mut changed.types["Item"].def else {
+        panic!("Item is a record")
+    };
+    fields[1].ty = "float".parse().unwrap();
+    assert_ne!(machine_hash(&changed, "Order").unwrap(), order);
+
+    // A peer the IR does not declare is reported.
+    let mut missing = ir.clone();
+    missing.machines.shift_remove("Inventory");
+    assert!(machine_hash(&missing, "Order").is_err());
 }
