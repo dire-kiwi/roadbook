@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0401]: `always` with no guard in the body of `M` is taken again and again: the machine is never left, so it never settles
+ --> RB0401-always-in-machine-body.road:4:3
+  |
+4 |   always -> A
+  |   ^^^^^^
+  |
+  = help: give it a guard that its own effects make false, or move it into a state
+
+error[RB0401]: `always` with no guard in the body of `Nested` is taken again and again: the machine is never left, so it never settles
+  --> RB0401-always-in-machine-body.road:21:3
+   |
+21 |   always -> A.Done
+   |   ^^^^^^
+   |
+   = help: give it a guard that its own effects make false, or move it into a state

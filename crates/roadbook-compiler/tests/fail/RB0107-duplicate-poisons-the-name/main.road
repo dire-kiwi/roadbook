@@ -1,0 +1,11 @@
+import { Run } from "./other.road"
+
+action log(x: string)
+
+machine Main() {
+  initial A
+  state A {
+    invoke Run() { done -> Done }
+  }
+  final state Done { entry do log("done") }
+}

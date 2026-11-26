@@ -190,3 +190,109 @@ fn usage_and_io_errors_exit_2() {
         Some(2)
     );
 }
+
+#[test]
+fn check_json_reports_a_usage_error_as_the_object() {
+    let dir = project("json-fatal", &[]);
+    let out = roadbook(&dir, &["check", "--json", "nope.road"]);
+    assert_eq!(out.status.code(), Some(2));
+    let v: serde_json::Value = serde_json::from_str(&text(&out.stdout)).unwrap();
+    assert_eq!(v["diagnostics"], serde_json::json!([]));
+    assert_eq!(
+        (v["errors"].as_u64(), v["warnings"].as_u64()),
+        (Some(0), Some(0))
+    );
+    assert!(v["fatal"].as_str().unwrap().contains("nope.road"));
+    assert!(text(&out.stderr).contains("nope.road"));
+
+    let dir = project("json-ok", &[("m.road", OK)]);
+    let out = roadbook(&dir, &["check", "--json"]);
+    let v: serde_json::Value = serde_json::from_str(&text(&out.stdout)).unwrap();
+    assert_eq!(v["fatal"], serde_json::Value::Null);
+}
+
+/// Each file is compiled as an entry, with what it imports: charts that do not import one
+/// another may reuse names, and a shared import is reported on once.
+#[test]
+fn independent_charts_may_share_names() {
+    let shared = "action log(s: string)\naction unused(s: string)\ntype T { x: int\n";
+    let chart = |m: &str| {
+        format!(
+            "import {{ log }} from \"./lib.road\"\n\nmachine {m}() {{\n  initial A\n  state A {{ entry do log(\"a\") }}\n}}\n"
+        )
+    };
+    let dir = project(
+        "independent",
+        &[
+            ("a.road", &chart("M")),
+            ("b.road", &chart("M")),
+            (
+                "lib.road",
+                "action log(s: string)\naction unused(s: string)\n",
+            ),
+        ],
+    );
+    let out = roadbook(&dir, &["check"]);
+    let err = text(&out.stderr);
+    assert_eq!(out.status.code(), Some(0), "{err}");
+    // `M.A` has no way out, once per chart; `unused` is reported once, `log` not at all.
+    assert_eq!(err.matches("warning[RB0902]").count(), 2, "{err}");
+    assert_eq!(
+        err.matches("action `unused` is never used").count(),
+        1,
+        "{err}"
+    );
+    assert!(!err.contains("`log`"), "{err}");
+
+    // A syntax error in one file leaves the others checked fully, warnings included.
+    std::fs::write(dir.join("lib.road"), shared).unwrap();
+    std::fs::write(
+        dir.join("c.road"),
+        chart("C").replace("./lib.road", "./d.road"),
+    )
+    .unwrap();
+    std::fs::write(dir.join("d.road"), "action log(s: string)\n").unwrap();
+    let out = roadbook(&dir, &["check"]);
+    let err = text(&out.stderr);
+    assert_eq!(out.status.code(), Some(1), "{err}");
+    assert_eq!(err.matches("error[RB0011]").count(), 1, "{err}");
+    assert_eq!(err.matches("error[").count(), 1, "{err}");
+    assert!(err.contains("state `C.A` has no way out"), "{err}");
+}
+
+#[test]
+fn excluded_paths_and_linked_directories_are_skipped() {
+    let dir = project(
+        "exclude",
+        &[
+            ("a.road", OK),
+            ("broken/x.road", "broken {"),
+            ("gen/deep/y.road", "broken {"),
+            ("gen/keep.road", OK),
+        ],
+    );
+    std::fs::write(
+        dir.join("roadbook.toml"),
+        "exclude = [\n  \"broken\", # on purpose\n  \"gen/**/y.road\",\n]\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(".", dir.join("loop")).unwrap();
+    let out = roadbook(&dir, &["check"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(text(&out.stderr), "");
+    // A file named on the command line is checked even if excluded.
+    let out = roadbook(&dir, &["check", "broken/x.road"]);
+    assert_eq!(out.status.code(), Some(1));
+    std::fs::write(dir.join("roadbook.toml"), "exclude = \"broken\"\n").unwrap();
+    assert_eq!(roadbook(&dir, &["check"]).status.code(), Some(2));
+}
+
+#[test]
+fn the_repository_checks_clean_from_its_root() {
+    let out = roadbook(&repo(), &["check"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(!text(&out.stderr).contains("error["));
+    let out = roadbook(&repo(), &["check", "spec/conformance/charts"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+}

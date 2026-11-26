@@ -66,6 +66,8 @@ Everything a machine refers to is declared, with types. Declarations live at the
 
 Built-in types are `string`, `int` (64-bit signed), `float`, `bool`, `duration` and `json` (any JSON value). `T?` is optional and `T[]` is a list.
 
+An alias of an error type is an ordinary alias: it can be used wherever a type goes. Error lists (`! CardDeclined | Gone`) and `fail E` outcomes name the errors themselves, not aliases of them, since an error is matched by its name.
+
 Names starting with an upper-case letter are types, errors, events, states and machines. Names starting with a lower-case letter are variables, fields, functions, actions and tasks. The grammar enforces this, which keeps `invoke chargeCard(...)` (a task) and `invoke Checkout(...)` (a machine) visibly different.
 
 Host functions receive exactly the arguments the chart passes them. They never see the machine's variables or the current event. This is the main difference from xstate, where every guard and action receives the whole context: here the chart is the complete wiring diagram of both control and data, and the host code is a set of small typed functions that know nothing about the machine that calls them.
@@ -76,9 +78,9 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | --- | --- |
 | `var name: T [= expr]` | A machine variable. |
 | `event Name [{ fields }]` | An event the machine accepts from outside. |
-| `initial Name` | The child state entered first. Required, once, when a state has children. |
+| `initial Name` | The child state entered first. Required, once, in a state that has children, except a `parallel state`, which has none: all its children are entered. |
 | `state Name { ... }` | A state. Atomic if it has no children, compound if it does. |
-| `parallel state Name { ... }` | All children are active at once (regions). |
+| `parallel state Name { ... }` | All children are active at once (regions). A region may be any kind of state. |
 | `final state Name { ... }` | Ends the enclosing compound state, or the machine at the top level. |
 
 ## Inside a state
@@ -101,13 +103,24 @@ on Submit if isValid(order) -> Paying  set attempts = 0  do audit("submitted", o
    ^trigger ^guard             ^target ^assignments      ^actions
 ```
 
-With no `-> Target` the transition is internal: the state is not left and re-entered. `set` assignments run before `do` actions.
+With no `-> Target` the transition is internal: the state is not left and re-entered. `set` assignments run before `do` actions: every `set`, in the order written, then every `do`, in the order written, wherever they are written, so a `do` sees the values its transition's `set`s assign. The same goes for `entry` and `exit`. The formatter writes every `set` clause before every `do` clause, so the source shows the order they run in.
 
 Inside a transition, three names are in scope besides the machine's variables: `event` (in `on`), `result` (in an invoke's `done`) and `error` (in an invoke's `fail`).
 
 A target is resolved like a name in a block-structured language: first among the siblings of the state the transition is written in, then among its parent's siblings, and so on outward. A dotted path such as `Processing.Paying` then descends into a nested state, which is also how a state targets one of its own children. A transition written at machine level resolves among the top-level states. An unknown target is a compile error, and so is a duplicate state name among siblings.
 
 `entry`, `exit`, `on`, `after` and `always` may also be written directly in the machine body, where they apply to the whole machine.
+
+### Which transition is taken
+
+The precise rules are in the [semantics](semantics.md#execution-model) and [`spec/execution.md`](../../spec/execution.md); these are the ones a chart most often depends on.
+
+- **Innermost first.** An event is offered to the active states from the innermost outward. The first state that has an `on` for it tries that `on`'s branches in order, and the first whose guard holds is taken. If none holds, or the state has no `on` for the event, its parent is tried, and so on up to the machine body. So when a state and its ancestor both have `on Resume`, the state's wins whenever its guard holds. A state's `on *` is tried only if that state has no `on` for the event at all. An invoke's outcome is offered only to the state that invokes, and an `after` only to the state it is written in.
+- **A transition with a target is external.** It leaves its source state and enters its target, even when the target is the source itself or one of its children: `-> Self` written in `Self`, or `-> Parent.Child` written in `Parent`, exits `Self` (or `Parent`) and enters it again, running `exit` and `entry` and restarting its `invoke` and its `after` timers. The machine body is the one exception: a transition written there does not leave the machine, so the machine's own `entry`, `exit` and timers are left alone.
+- **A transition with no target is internal.** Nothing is left or entered, and nothing is restarted: only its effects run. An `after` timer starts when its state is entered and is used up when it fires, so an `after` with no target fires once per entry into its state.
+- **The order of a step.** States are exited innermost first, then the transition's effects run, then states are entered outermost first, each running its `entry`. Only then are `always` guards evaluated, and `done` transitions taken, until none applies: an `always` sees what the `entry` effects assigned. Invokes and timers start last, for the states still active.
+- **Events go only to the machine they are sent to.** An invoked child machine receives no events in the first version (messaging between machines comes later, see the end of this page), so a child that waits on `on E` waits until it times out or its parent leaves the invoking state.
+- **A failure that is not a declared error** (a host defect, such as a thrown exception or a panic) is not flow: it fails the whole run and what it started, and propagates to whoever ran it. See [the semantics](semantics.md#work-is-tied-to-states).
 
 ## Expressions
 
@@ -134,7 +147,7 @@ Every expression has a type, and the compiler checks it wherever a value goes: a
 - `+`, `-`, `*` and unary `-` take two `int`s or two `float`s and give the same type. `<`, `<=`, `>` and `>=` compare two `int`s, two `float`s or two `duration`s. `==` and `!=` compare two values of the same scalar type (`string`, `int`, `float`, `bool`, `duration`) or the same enum; records, lists, optionals and `json` cannot be compared (see open question 5 on the [roadmap](roadmap.md#open-questions)). `and`, `or` and `not` take `bool`s.
 - A `T` can be used where a `T?` is expected, but not the reverse, and a field cannot be read from a `T?`: an optional value goes to a `fn` that handles the absent case. A `T[]` can be used where a `U[]` is expected if a `T` can be used as a `U`.
 - Any value can be used where `json` is expected.
-- An alias is the type it names: `type UserId = string` makes `UserId` and `string` interchangeable. An alias cannot refer to itself, even through `[]` or `?`. A type is optional at most once: `string??` is an error.
+- An alias is the type it names: `type UserId = string` makes `UserId` and `string` interchangeable. An alias cannot refer to itself, even through `[]` or `?`. A type is optional at most once, aliases expanded: `string??` is an error, and so is `S?` after `type S = string?`.
 - An `int` or `duration` literal must be within ±(2^53 − 1) (milliseconds, for a duration), the integers the IR's JSON carries exactly.
 
 The implicit names have these types:
@@ -144,6 +157,26 @@ The implicit names have these types:
 - `error`, in an invoke's `fail E`, has type `E`. In `fail *` it has a type only if exactly one declared error is left for `*` to cover.
 
 Outside those transitions the three names are not in scope.
+
+There are no generics, no built-in functions and no list literals, so anything a chart asks of a list goes through a host `fn`. A `json[]` parameter accepts a list of any element type, so one function serves every list: `fn isEmpty(items: json[]) -> bool`, used as `always if isEmpty(problems) -> Accept`. Optionals work the same way: there is no `none` literal and no narrowing, so a chart cannot test for presence and then use the value. When absence changes the flow, make it a declared error of the task that looks the value up (`task findToken(id: string) -> Token ! TokenNotFound`), and build a record whose optional field may be absent in a `fn`.
+
+## Projects
+
+A project is a directory tree of `.road` files. Its root is the nearest directory holding a `roadbook.toml`, searched upward from the first path given to a command (or the current directory), else the current directory. Files are named by their path relative to the root, with `/` separators, in diagnostics and in the IR's `sources`.
+
+Every command works file by file. `roadbook check` compiles each file it is given as an entry, together with everything it imports, and reports each diagnostic once even when several entries import the file it is about. A directory stands for every `.road` file under it, and no path for the whole project. `target`, `node_modules` and `.git` directories are never searched, and links to directories are not followed. `roadbook export ir <file>` compiles one entry.
+
+`roadbook.toml` may be empty. Its keys so far:
+
+| Key | Meaning |
+| --- | --- |
+| `exclude = ["glob", …]` | Files and directories that a directory search skips, as globs over project paths: `*` matches within one path segment, `**` across segments and `?` one character. A directory that matches is skipped whole. A file named on the command line is checked even if it matches. |
+
+```toml
+exclude = ["crates/roadbook-compiler/tests/fail", "spike"]
+```
+
+Other keys, such as the host types bound to `extern type`s, come with the code generators.
 
 ## What the compiler checks
 
@@ -157,17 +190,18 @@ Errors (the build fails):
 - A read of a variable that might not be assigned yet. <a id="definite-assignment"></a> This is [milestone 6](roadmap.md#milestones); until then reading an unassigned variable is a runtime error.
 - A machine that returns `T` with a top-level final state that has no `output` or `fail`, and `output` or `fail` anywhere but a final state at the top level.
 - A transition or `invoke` in a final state. A final state ends its parent as soon as it is entered, so they could never run; it holds only `entry`, `exit`, `output` and `fail`.
-- An unguarded cycle of `always` transitions: states each with an `always` whose first branch has no `if` (an `else` counts as guarded, since it runs only when the guards before it fail), each leading to the next, where entering a state also enters its `initial` chain (and every region of a parallel state), and a transition to a state's own ancestor leaves and re-enters it. An unguarded `always` with no target is the shortest such cycle.
+- A `done` transition in a state with no child states: it waits for a final child, so it could never be taken. (An invoke's `done` goes inside `invoke { }`.)
+- An unguarded cycle of `always` transitions: states each with an `always` whose first branch has no `if` (an `else` counts as guarded, since it runs only when the guards before it fail), each leading to the next, where entering a state also enters its `initial` chain (and every region of a parallel state), and a transition to a state's own ancestor leaves and re-enters it. An unguarded `always` with no target is the shortest such cycle. So is an unguarded `always` written in the machine body, whatever its target, unless that target is a top-level final state: the machine itself is never left, so its `always` would be taken again after every step.
 - A machine that invokes itself, directly or through other machines, without an `after` or event in between (unbounded recursion). Precisely: machine `M` *starts* machine `N` if a state of `M` that invokes `N` can be entered from `M`'s initial states by taking only `always`, `done` and invoke outcome transitions, whatever their guards. Only `on` and `after` transitions count as waiting; an invoke's outcome does not, since a task can finish at once. A cycle of *starts* is an error.
 
 Warnings:
 
 - States that cannot be reached from the initial state, following every transition whatever its guard. Only the outermost unreachable state is reported.
 - Non-final states with no way out: an atomic state that is reachable, where neither it nor any state containing it has a transition with a target (a `done` does not count: it needs a final child).
-- Events, functions, actions or tasks that are declared but never used: an event no `on` of its machine names, or a function, action or task that nothing in the compilation calls, runs or invokes. Only declarations in the files being checked are reported, so checking a file of shared declarations on its own reports everything only other files use; check the whole project instead.
+- Events, functions, actions or tasks that are declared but never used: an event no `on` of its machine names, or a function, action or task that nothing in the compilation calls, runs or invokes. Only declarations in the files being checked are reported, and a use from any file checked at the same time counts, so checking a file of shared declarations on its own reports everything only other files use; check them together (`roadbook check` with no paths checks the whole project).
 - A state with an `invoke` and no timeout anywhere above it: neither the state nor any state containing it has an `after` (off by default; `roadbook check --warn invoke-timeout`).
 
-The checks run in order: names and structure, then types, then the analyses (the cycle and recursion checks and the warnings). A file with syntax errors is checked no further, and the analyses run only once a chart has no other errors, so one mistake does not produce a cascade of diagnostics.
+The checks run in order: names and structure, then types, then the analyses (the cycle and recursion checks and the warnings). A file with syntax errors is checked no further: its declarations are left out, and the names other files import from it are not reported as unknown. The files around it are still checked. The analyses run for each entry file once its compilation (the file and everything it imports) has no other errors, so one mistake does not produce a cascade of diagnostics, and an error in one chart does not turn off the analyses of another.
 
 Diagnostics carry a code, a source span and, where possible, a fix. `roadbook check --json` prints them in a machine-readable form so an agent can act on them without parsing prose.
 
@@ -204,11 +238,12 @@ error[RB0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
     }
   ],
   "errors": 1,
-  "warnings": 0
+  "warnings": 0,
+  "fatal": null                                  // or the message of a usage or I/O error
 }
 ```
 
-Ranges are as in the IR: lines and columns are 1-based, columns count Unicode scalar values, and the end is exclusive. A fix is a set of edits that together resolve the diagnostic: replace each range with its `text` (an empty range inserts). The command exits with 0 when there are no errors (warnings allowed), 1 when there are errors and 2 on a usage or I/O error.
+Ranges are as in the IR: lines and columns are 1-based, columns count Unicode scalar values, and the end is exclusive. A fix is a set of edits that together resolve the diagnostic: replace each range with its `text` (an empty range inserts). The command exits with 0 when there are no errors (warnings allowed), 1 when there are errors and 2 on a usage or I/O error, such as a file that does not exist. In that last case the object has no diagnostics and `fatal` holds the error's message, which is also printed on standard error.
 
 ### Definite assignment
 
@@ -225,12 +260,12 @@ This is what lets host functions take plain non-optional arguments. In xstate th
 The layout, as implemented in `roadbook-syntax`. The example files and the charts on these pages are written in it.
 
 - **Lines.** Two-space indentation, one item per line, and no line wrapping. A file with syntax errors is not formatted.
-- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses. In a transition the target and each `set` or `do` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Consecutive clauses of one kind are merged (`set a = 1, b = 2`).
+- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses. In a transition the target and each `set` or `do` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Every `set` comes before every `do`, and clauses of one kind are merged: `do f()  set a = 1  set b = 2` is written `set a = 1, b = 2  do f()`.
 - **Blank lines** between items are kept, at most one. There are none at the start or end of a block or file.
 - **Lists.** No trailing commas. A list in a declaration (import names, fields, enum variants, parameters) with a line break right after its opening bracket stays multi-line: its elements are indented one level, keep the author's line breaks between them, and the closing bracket goes on its own line. Every other list is printed on one line.
 - **One-line states.** A state whose body is empty, or is a single item other than a state, an `invoke` or a block of branches, and contains no comment, is written on one line: `final state Charged { output receipt }`. Every other state is written as a block.
 - **Expressions** have only the parentheses precedence needs, plus `not (…)` around a comparison or arithmetic operand, and parentheses around a record value used as an `after` delay. Numbers are written as parsed (`007` becomes `7`, `1.50` becomes `1.5`). `error E {}` is written `error E`, and a record value with no fields `E {}` is written `E`.
-- **Comments** are kept as written, trailing spaces removed. A comment on its own line stays on its own line, indented like the code that follows it. A comment after code stays at the end of that line. A comment inside something printed on one line moves to its own line before it.
+- **Comments** are kept as written, trailing spaces removed. A comment on its own line stays on its own line, indented like the code that follows it. A comment after code stays at the end of that line, including one after the closing bracket of a multi-line list, which ends the line that bracket starts (`) { // c`, `} from "./x.road" // c`). A comment inside something printed on one line moves to its own line before it.
 - **Alignment.** An alignment group is a run of consecutive lines of one kind with no blank line or comment line between them. The kinds and what they align:
   - one-line `type`, `enum`, `error` and `extern type` declarations: what follows the name (`{` or `=`);
   - one-line `fn`, `action` and `task` declarations: `->` and `!`;
@@ -251,12 +286,12 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0002` | A string with no closing quote on its line. | `"timeout` |
 | `RB0003` | An escape other than `\"`, `\\`, `\n` and `\t`. | `"a\qb"` |
 | `RB0004` | A number followed by letters that are not a duration unit. | `after 5min`, `after 1.5s` |
-| `RB0005` | An integer that does not fit in an `int`. | `99999999999999999999` |
+| `RB0005` | An integer that does not fit in an `int`, a duration whose number does not fit in 64 bits, or a float too large to be finite. | `99999999999999999999`, a `float` of 400 digits |
 | `RB0006` | A name containing `_`. | `type Line_item` |
 | `RB0010` | An unexpected token. | `type A { x int }` |
 | `RB0011` | A `{` or `(` that is never closed. | `state A {` at the end of the file |
 | `RB0012` | A name of the wrong case. | `type order`, `state idle` |
-| `RB0013` | A keyword, or `result`, used as a name. | `var on: int`, `var result: int` |
+| `RB0013` | A keyword, or `result`, used as a name. | `var on: int`, `var result: int`, `type Evt { type: string }` |
 | `RB0014` | `done`, `invoke`, `output` or `fail` directly in a machine body. | `machine M() { done -> A }` |
 | `RB0015` | `var` or `event` inside a state. | `state A { var x: int }` |
 | `RB0016` | A machine item at the top level of a file. | `state A {}` outside a machine |
@@ -268,6 +303,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0022` | Chained comparisons. | `if a < b < c` |
 | `RB0023` | A `///` comment that documents nothing. | `/// note` above a transition |
 | `RB0024` | A lower-case type name that is not a built-in type. | `x: integer` |
+| `RB0025` | Nesting more than 64 levels deep. | 65 nested states, or `((((…))))` |
 
 The compiler's codes:
 
@@ -279,8 +315,8 @@ The compiler's codes:
 | `RB0104` | An unknown action in `do`. | `do audt("x")` |
 | `RB0105` | An unknown variable. | `set attemps = 1` |
 | `RB0106` | An event the machine does not declare. | `on Cancl -> Done` |
-| `RB0107` | Two declarations with the same name in one project. | `type Order` in two files |
-| `RB0108` | Two fields, parameters, variants, variables, events or sibling states with the same name. | `state A {}` twice in one parent |
+| `RB0107` | Two declarations with the same name in one compilation, or an event named like a type, error or machine. | `type Order` in two files, `event Order` |
+| `RB0108` | Two fields, parameters, variants, variables, events or sibling states with the same name, or a name imported twice. | `state A {}` twice in one parent, `import { B, B }` |
 | `RB0109` | A name used as something it is not. | `invoke audit(x)` where `audit` is an action |
 | `RB0110` | `event`, `result` or `error` where it is not in scope. | `entry set n = result` |
 | `RB0111` | An import of a file that cannot be read. | `import { A } from "./missing.road"` |
@@ -288,7 +324,7 @@ The compiler's codes:
 | `RB0113` | An enum variant that does not exist. | `Role.Admn` |
 | `RB0114` | A `set` of a machine parameter. | `set token = ""` |
 | `RB0201` | A transition target that does not resolve. | `-> Dne` |
-| `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }` |
+| `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }`, `machine M() { initial A }` |
 | `RB0203` | An `initial` that is not a child, is written twice, or is in a state without children. | `initial Strat` |
 | `RB0204` | An `invoke` that leaves a declared error unhandled. | see above |
 | `RB0205` | The same trigger twice in one state or one `invoke`. | `on Go -> A` and `on Go -> B` |
@@ -298,12 +334,13 @@ The compiler's codes:
 | `RB0209` | A top-level final state with no `output` or `fail` in a machine that returns a value. | `final state Done {}` in `machine M() -> int` |
 | `RB0210` | A final state with children, or a parallel state with none. | `final state A { state B {} }` |
 | `RB0211` | A transition or `invoke` in a final state. | `final state Done { on Go -> A }` |
+| `RB0212` | A `done` transition in a state with no child states, which can never be taken. | `state A { done -> B }` |
 | `RB0301` | A value of the wrong type. | `var ratio: float = 1` |
 | `RB0302` | The wrong number of arguments. | `retryDelay(1, 2)` |
 | `RB0303` | An operator on operands it is not defined on. | `attempts + 1.5`, `order == other` |
 | `RB0304` | A field the record, error or event does not have. | `order.idd` |
 | `RB0305` | A record or error value without one of its fields. | `CardDeclined {}` |
-| `RB0306` | A field read from a value that has none, or that is optional. | `attempts.size`, `draft.coupon.code` |
+| `RB0306` | A field read from a value that has none, or that is optional. | `attempts.size`, `draft.coupon.code`, `event.x` in `on Cancel` where `event Cancel` has no fields |
 | `RB0307` | `result` after a task or machine that returns nothing. | `done set n = result` |
 | `RB0308` | `error` in a `fail *` that covers several errors, or none. | `fail * set why = error.reason` |
 | `RB0309` | `event` in `on *`. | `on * do log(event)` |
@@ -408,8 +445,17 @@ Rules the grammar does not express:
 - In a final state, `fail expr` is the machine's failure. Inside `invoke { }`, `fail Upper` is an outcome. The two never appear in the same position.
 - Two `after` transitions in one state are the same trigger only if their delays are the same expression, written the same way once formatted: `after 1s` and `after 1000ms` are different triggers.
 - A type is optional at most once: `T??` is an error.
+- Nesting is at most 64 levels deep, counting states, parentheses, operators (each `+` in `a + b + c` is a level), field reads and type suffixes (`[]`, `?`), so every tool that walks the tree stays within its stack.
 - A final state holds only `entry`, `exit`, `output` and `fail`.
-- Declaration names are unique across a project, because the IR is keyed by name. A file can use only what it declares or imports.
+- Declaration names are unique among the files compiled together: an entry file and everything it imports, directly or not, because the IR is keyed by name. Two charts that do not import one another may use the same names. A file can use only what it declares or imports. An event cannot have the name of a type, error or machine either, because the IR names the type of `event` in `on Name` by the event's name.
+
+Common mistakes, each reported by the compiler but easy to make:
+
+- There is no day unit: 14 days is `336h`.
+- Keywords cannot be names, so a field for an event's kind is `kind`, not `type`; and `event`, `error` and `result` cannot be variables or parameters, since they are the implicit names.
+- A state names its own child through its own name: `-> Parent.Child` written in `Parent`, because a bare `-> Child` is looked up among `Parent`'s siblings.
+- `int` and `float` do not mix: `ratio * 2` is an error for a `float` `ratio`; write `2.0`.
+- A record value as an `after` delay needs parentheses: `after (Cfg { ms: 5 }) -> A`.
 
 Most of these rules, the split between `machineItem` and `stateItem`, and the requirement that a branch does something came from writing the spike's parser against the first draft of this grammar. The spike still implements that draft, which accepts everything above and is slightly more lenient.
 

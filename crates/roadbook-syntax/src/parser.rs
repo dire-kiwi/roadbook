@@ -23,6 +23,8 @@ pub fn parse_file(file: FileId, src: &str) -> (File, Vec<Diagnostic>) {
         doc_used: vec![false; lexed.comments.len()],
         comments: lexed.comments,
         diags: lexed.diagnostics,
+        depth: 0,
+        too_deep: false,
     };
     let file = p.file();
     p.unattached_docs();
@@ -48,7 +50,20 @@ struct Parser<'a> {
     comments: Vec<Comment>,
     doc_used: Vec<bool>,
     diags: Vec<Diagnostic>,
+    /// How deeply the tree being built is nested here: states, expressions (each operator
+    /// and parenthesis), field accesses and type suffixes. Bounded by [`MAX_DEPTH`]. No
+    /// closures here: in a debug build every frame on the recursive path counts.
+    depth: usize,
+    /// Whether the nesting limit has been reported. Once per file is enough: the recovery
+    /// after it may run into the same deep structure again.
+    too_deep: bool,
 }
+
+/// The deepest nesting accepted. The parser and every pass over the tree recurse once per
+/// level, so this bound keeps them all within the stack. In a debug build the parser uses
+/// about 23 KB of stack per level, and 64 levels fit in the 2 MB of a test thread with room
+/// to spare. Real charts nest a handful of levels.
+pub const MAX_DEPTH: usize = 64;
 
 /// Keywords that start a top-level declaration. Seeing one inside a block means the block was
 /// not closed.
@@ -198,6 +213,28 @@ impl Parser<'_> {
         Fail
     }
 
+    /// One more level of nesting, or an error at the current token if that is too deep. A
+    /// function that goes deeper restores the depth when it succeeds; after a failure, the
+    /// loop that recovers restores it.
+    fn deeper(&mut self) -> PResult<()> {
+        self.depth += 1;
+        if self.depth <= MAX_DEPTH {
+            return Ok(());
+        }
+        if self.too_deep {
+            return Err(Fail);
+        }
+        self.too_deep = true;
+        let d = Diagnostic::error(
+            codes::NESTED_TOO_DEEPLY,
+            self.tok().span,
+            format!("this is nested more than {MAX_DEPTH} levels deep"),
+        )
+        .with_help("states, parentheses, operators and type suffixes nest; move part of it into a `fn` or a separate machine");
+        self.error(d);
+        Err(Fail)
+    }
+
     fn expect_p(&mut self, p: P, context: &str) -> PResult<Token> {
         match self.eat_p(p) {
             Some(t) => Ok(t),
@@ -222,21 +259,33 @@ impl Parser<'_> {
     /// A keyword where a name is required is consumed as the name (with an error) when it is on
     /// the same line as the tokens around it, which is when the author most likely meant it as
     /// one. Otherwise the name is probably missing and the keyword starts the next item.
+    /// A keyword followed by `:` is always meant as a name (a field, parameter or variable),
+    /// since no keyword is followed by `:`.
     fn keyword_as_name(&mut self, what: &str) -> PResult<Ident> {
         let t = self.tok();
         let next = self.tokens[(self.pos + 1).min(self.tokens.len() - 1)];
         let same_line =
             next.span.start.line == t.span.end.line && self.prev().end.line == t.span.start.line;
-        if next.kind == T::Eof || !same_line || is_decl_start(t.kind) {
+        let named = next.kind == T::Punct(P::Colon);
+        if !named && (next.kind == T::Eof || !same_line || is_decl_start(t.kind)) {
             return Err(self.unexpected(what));
         }
         let word = self.text(t).to_string();
+        let instead = match word.as_str() {
+            "type" => "kind".to_string(),
+            "error" => "failure".to_string(),
+            "event" => "message".to_string(),
+            "state" => "status".to_string(),
+            w => format!("{w}Name"),
+        };
         let d = Diagnostic::error(
             codes::RESERVED_NAME,
             t.span,
             format!("`{word}` is a keyword and cannot be used as {what}"),
         )
-        .with_help("choose another name");
+        .with_help(format!(
+            "keywords are reserved; rename it, for example to `{instead}`"
+        ));
         self.error(d);
         self.bump();
         Ok(Ident {
@@ -397,7 +446,10 @@ impl Parser<'_> {
             };
             match item {
                 Ok(i) => items.push(i),
-                Err(Fail) => self.recover(start, false, |_| false),
+                Err(Fail) => {
+                    self.depth = 0;
+                    self.recover(start, false, |_| false)
+                }
             }
         }
         let eof = self.tok().span;
@@ -570,16 +622,17 @@ impl Parser<'_> {
         })
     }
 
-    /// A comma-separated list between `open` and its closer, trailing comma allowed. Returns
-    /// the elements and the span from the opener to the closer.
     /// Whether the current token starts a top-level declaration. `error` does so only before an
     /// upper-case name: elsewhere it is the implicit name of an invoke's `fail` outcome, as in
-    /// `do log(error)`.
+    /// `do log(error)`. A declaration keyword followed by `:` is a misused name.
     fn at_decl_start(&self) -> bool {
         is_decl_start(self.peek())
             && (self.peek() != T::Keyword(K::Error) || self.nth(1) == T::Upper)
+            && self.nth(1) != T::Punct(P::Colon)
     }
 
+    /// A comma-separated list between `open` and its closer, trailing comma allowed. Returns
+    /// the elements and the span from the opener to the closer.
     fn list<E>(
         &mut self,
         open: P,
@@ -659,7 +712,11 @@ impl Parser<'_> {
             _ => return Err(self.unexpected("a type")),
         };
         let mut ty = TypeRef { kind, span: t.span };
+        let base = self.depth;
         loop {
+            if matches!(self.peek(), T::Punct(P::LBracket | P::Question)) {
+                self.deeper()?;
+            }
             if self.eat_p(P::LBracket).is_some() {
                 self.expect_p(P::RBracket, " after `[` in a list type `T[]`")?;
                 ty = TypeRef {
@@ -672,6 +729,7 @@ impl Parser<'_> {
                     kind: TypeKind::Optional(Box::new(ty)),
                 };
             } else {
+                self.depth = base;
                 return Ok(ty);
             }
         }
@@ -704,11 +762,14 @@ impl Parser<'_> {
                 self.unclosed(open, owner);
                 break;
             }
-            let start = self.pos;
+            let (start, depth) = (self.pos, self.depth);
             match self.item(kind) {
                 Ok(Some(item)) => items.push(item),
                 Ok(None) => {}
-                Err(Fail) => self.recover(start, true, is_item_start),
+                Err(Fail) => {
+                    self.depth = depth;
+                    self.recover(start, true, is_item_start)
+                }
             }
         }
         Ok(Body {
@@ -884,6 +945,7 @@ impl Parser<'_> {
 
     fn state(&mut self) -> PResult<State> {
         let doc = self.take_doc();
+        self.deeper()?;
         let start = self.tok().span;
         let kind = if self.eat_kw(K::Final).is_some() {
             StateKind::Final
@@ -897,6 +959,7 @@ impl Parser<'_> {
         }
         let name = self.upper("a state name")?;
         let body = self.body(BodyKind::State, &format!("state `{}`", name.name))?;
+        self.depth -= 1;
         Ok(State {
             doc,
             kind,
@@ -964,7 +1027,7 @@ impl Parser<'_> {
             if k == T::Eof || is_decl_start(k) {
                 return Err(self.unclosed(open, "the block of branches"));
             }
-            let start = self.pos;
+            let (start, depth) = (self.pos, self.depth);
             let t = self.tok();
             let result = match k {
                 T::Keyword(K::If | K::Else) if seen_else => {
@@ -1010,6 +1073,7 @@ impl Parser<'_> {
             match result {
                 Ok(b) => branches.push(b),
                 Err(Fail) => {
+                    self.depth = depth;
                     self.recover(start, true, |k| matches!(k, T::Keyword(K::If | K::Else)))
                 }
             }
@@ -1141,10 +1205,11 @@ impl Parser<'_> {
                 self.unclosed(open, &format!("`invoke {}`", callee.name));
                 break;
             }
-            let pos = self.pos;
+            let (pos, depth) = (self.pos, self.depth);
             match self.outcome() {
                 Ok(t) => outcomes.push(t),
                 Err(Fail) => {
+                    self.depth = depth;
                     self.recover(pos, true, |k| matches!(k, T::Keyword(K::Done | K::Fail)))
                 }
             }
@@ -1203,20 +1268,27 @@ impl Parser<'_> {
 
     /// `no_record` forbids a bare `Upper { … }` at this level (for `after` delays).
     fn expr(&mut self, no_record: bool) -> PResult<Expr> {
+        let base = self.depth;
+        self.deeper()?;
         let mut a = self.and_expr(no_record)?;
         while self.eat_kw(K::Or).is_some() {
+            self.deeper()?;
             let b = self.and_expr(no_record)?;
             a = binary(BinaryOp::Or, a, b);
         }
+        self.depth = base;
         Ok(a)
     }
 
     fn and_expr(&mut self, nr: bool) -> PResult<Expr> {
+        let base = self.depth;
         let mut a = self.not_expr(nr)?;
         while self.eat_kw(K::And).is_some() {
+            self.deeper()?;
             let b = self.not_expr(nr)?;
             a = binary(BinaryOp::And, a, b);
         }
+        self.depth = base;
         Ok(a)
     }
 
@@ -1255,25 +1327,33 @@ impl Parser<'_> {
     }
 
     fn add_expr(&mut self, nr: bool) -> PResult<Expr> {
+        let base = self.depth;
         let mut a = self.mul_expr(nr)?;
         loop {
             let op = match self.peek() {
                 T::Punct(P::Plus) => BinaryOp::Add,
                 T::Punct(P::Minus) => BinaryOp::Sub,
-                _ => return Ok(a),
+                _ => break,
             };
+            self.deeper()?;
             self.bump();
             let b = self.mul_expr(nr)?;
             a = binary(op, a, b);
         }
+        self.depth = base;
+        Ok(a)
     }
 
     fn mul_expr(&mut self, nr: bool) -> PResult<Expr> {
+        let base = self.depth;
         let mut a = self.unary(nr)?;
-        while self.eat_p(P::Star).is_some() {
+        while self.at_p(P::Star) {
+            self.deeper()?;
+            self.bump();
             let b = self.unary(nr)?;
             a = binary(BinaryOp::Mul, a, b);
         }
+        self.depth = base;
         Ok(a)
     }
 
@@ -1291,14 +1371,18 @@ impl Parser<'_> {
     }
 
     fn postfix(&mut self, nr: bool) -> PResult<Expr> {
+        let base = self.depth;
         let mut e = self.primary(nr)?;
-        while self.eat_p(P::Dot).is_some() {
+        while self.at_p(P::Dot) {
+            self.deeper()?;
+            self.bump();
             let field = self.lower("a field name")?;
             e = Expr {
                 span: e.span.to(field.span),
                 kind: ExprKind::Field(Box::new(e), field),
             };
         }
+        self.depth = base;
         Ok(e)
     }
 

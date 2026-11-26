@@ -400,26 +400,6 @@
             ],
             "entry": [
               {
-                "kind": "do",
-                "action": "log",
-                "args": [
-                  {
-                    "kind": "lit",
-                    "value": "enter Outer",
-                    "type": "string",
-                    "text": "\"enter Outer\""
-                  },
-                  {
-                    "kind": "ref",
-                    "path": [
-                      "n"
-                    ],
-                    "type": "int",
-                    "text": "n"
-                  }
-                ]
-              },
-              {
                 "kind": "set",
                 "var": "n",
                 "value": {
@@ -444,6 +424,26 @@
                   "type": "int",
                   "text": "n + 1"
                 }
+              },
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "enter Outer",
+                    "type": "string",
+                    "text": "\"enter Outer\""
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "n"
+                    ],
+                    "type": "int",
+                    "text": "n"
+                  }
+                ]
               }
             ],
             "exit": [
@@ -518,26 +518,6 @@
                 "target": null,
                 "effects": [
                   {
-                    "kind": "do",
-                    "action": "log",
-                    "args": [
-                      {
-                        "kind": "lit",
-                        "value": "bump",
-                        "type": "string",
-                        "text": "\"bump\""
-                      },
-                      {
-                        "kind": "ref",
-                        "path": [
-                          "n"
-                        ],
-                        "type": "int",
-                        "text": "n"
-                      }
-                    ]
-                  },
-                  {
                     "kind": "set",
                     "var": "n",
                     "value": {
@@ -562,6 +542,26 @@
                       "type": "int",
                       "text": "n + 10"
                     }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "bump",
+                        "type": "string",
+                        "text": "\"bump\""
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "n"
+                        ],
+                        "type": "int",
+                        "text": "n"
+                      }
+                    ]
                   }
                 ],
                 "span": {
@@ -753,7 +753,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:1ce4378bb0a1589d9cc8506a2f4e2004ed198e5950f53a29c6303a5905bb6586"
+      "hash": "sha256:ee5339ec777615cb8f8de97f82e00aad45369f150a9238352e3a479b7591d91a"
     }
   }
 }

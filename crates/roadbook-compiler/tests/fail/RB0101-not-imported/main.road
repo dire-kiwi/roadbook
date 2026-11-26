@@ -5,4 +5,11 @@ machine M(order: Order, user: User) {
   final state Done {}
 }
 
+// Only the first offers to import `User`: applying both would import it twice.
+machine N(user: User) {
+  initial Done
+  final state Done {}
+}
+
 // expect: RB0101 at 3:31
+// expect: RB0101 at 9:17

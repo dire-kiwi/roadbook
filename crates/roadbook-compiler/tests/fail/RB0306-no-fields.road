@@ -1,14 +1,26 @@
 type Order { id: string }
+error Boom
+task boom() ! Boom
+action log(s: string)
 
 machine M(order: Order?, items: Order[]) {
+  event Cancel
   var n: int = 0
   var a: string = order.id
   var b: string = items.id
   var c: int = n.size
-  initial Done
+  initial A
+  state A {
+    on Cancel -> Done  set a = event.why
+    invoke boom() {
+      fail Boom -> Done  do log(error.why)
+    }
+  }
   final state Done {}
 }
 
-// expect: RB0306 at 5:25
-// expect: RB0306 at 6:25
-// expect: RB0306 at 7:18
+// expect: RB0306 at 9:25
+// expect: RB0306 at 10:25
+// expect: RB0306 at 11:18
+// expect: RB0306 at 14:38
+// expect: RB0306 at 16:39

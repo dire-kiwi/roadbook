@@ -28,6 +28,8 @@ Zero errors does not mean the charts are correct, for two reasons:
 
 ### Unclear points in the language page
 
+Since this experiment, [the language page](../docs/design/language.md) answers points 1, 2, 5, 8, 9 and 11 (see "Which transition is taken" there), documents the `fn` idiom for lists (3), says that there is no `none` literal and that absence which changes the flow is a task error (4), says that an invoked child receives no events (6), and lists the small traps of 10 under "Common mistakes". The suggestions that would change the language remain open: built-in list functions (3), a `none` literal (4), a warning on invoking a machine that declares events (6), a warning on an `always` block with no `else` and an exhaustive `match` (7), and a `d` duration unit (10).
+
 1. **Which transition wins when a state and its ancestor both handle an event.** `import-job` has `on Resume` on `Importing` and `on Resume -> RunningBatch` on its child `Paused`, and its correctness depends on the child winning. The page never says that descendants take priority, how an ancestor's `on` interacts with a child's `on *`, or in what order an ancestor's `after` and a child's invoke outcome are considered.
    *Suggestion:* add a short "Which transition is taken" section (innermost state first, then outward; branches in order), with an example.
 2. **Whether a targeted transition to the state itself, or to its own child, leaves and re-enters it.** The page says that a transition with no target is internal, so the reverse is only implied. `large` relies on `after 2h -> WithAgent` re-entering, to restart the timer and re-run `entry`. It also has `on Assign -> Triage.Assigned` written on `Triage`. If that leaves and re-enters `Triage`, it restarts the triage SLA timer, and the page does not say whether it does. For SLA timers this is the difference between right and wrong.
@@ -53,7 +55,7 @@ Zero errors does not mean the charts are correct, for two reasons:
 ### Diagnostics
 
 - **Hard to act on: a keyword used as a field name.** `type Evt { type: string }` gives `RB0011 expected '}' to close the fields of 'type', found keyword 'type'` and then a follow-on `RB0010`. The page assigns this mistake to `RB0013` ("A keyword, or `result`, used as a name"). The message points at brace matching rather than at the name.
-  *Suggestion:* report `RB0013` with "`type` is a keyword; rename the field (for example `kind`)", and recover so that no `RB0010` follows.
+  *Suggestion:* report `RB0013` with "`type` is a keyword; rename the field (for example `kind`)", and recover so that no `RB0010` follows. *Done:* a keyword followed by `:` now gives one `RB0013` with a rename hint.
 - **Easy to act on: an own-child target.** `RB0201` for `on Go -> C` written on `A` says "`C` is a child of `A`; a state names its own children through its name: `A.C`". The plain unknown-target case lists the states in scope. Both made the fix obvious.
 - **Easy to act on: `initial` in a parallel state.** `RB0203` names the problem directly.
 

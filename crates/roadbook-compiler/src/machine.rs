@@ -14,7 +14,7 @@ use roadbook_syntax::{Diagnostic, Span, expr_text};
 
 use crate::check::{Checker, Sig, SigKind, doc, ir_span};
 use crate::codes;
-use crate::names::{Found, suggest};
+use crate::names::{Found, is_type, kind_phrase, suggest};
 use crate::types::{BOOL, DURATION, Ty, ir_type};
 
 /// Source positions of a state's parts, kept for the analyses that run on the IR.
@@ -177,6 +177,25 @@ pub(crate) fn lower<'p>(
             }
             cx.ck.diags.push(diag);
             continue;
+        }
+        if let Some(&id) = cx.ck.names.global.get(e.name.name.as_str()) {
+            let other = cx.ck.names.decl(id);
+            if is_type(&other.kind) || matches!(other.kind, DeclKind::Machine(_)) {
+                let path = &cx.ck.names.project.files[cx.ck.names.decls[id.0].file].path;
+                cx.ck.diags.push(
+                    Diagnostic::error(
+                        codes::DUPLICATE_DECLARATION,
+                        e.name.span,
+                        format!(
+                            "event `{}` has the name of {} declared in `{path}`",
+                            e.name.name,
+                            kind_phrase(&other.kind)
+                        ),
+                    )
+                    .with_secondary(other.name.span, "declared here")
+                    .with_help("the IR names an event's type by the event's name, so it must not be the name of a type, error or machine; rename one of them"),
+                );
+            }
         }
         cx.ck.unique(e.fields.iter().map(|f| &f.name), "field");
         let fields: Vec<(String, Ty)> = e
@@ -404,6 +423,19 @@ impl<'p> Cx<'_, 'p> {
                     .with_help("a final state ends its parent as soon as it is entered; only `entry`, `exit`, `output` and `fail` belong in it"),
                 );
             }
+            if kind == ir::StateKind::Atomic
+                && let Item::Transition(t) = item
+                && matches!(t.trigger, Trigger::Done)
+            {
+                self.ck.diags.push(
+                    Diagnostic::error(
+                        codes::DONE_WITHOUT_CHILDREN,
+                        t.trigger_span,
+                        format!("`{id}` has no child states, so its `done` can never be taken"),
+                    )
+                    .with_help("`done` is taken when a compound state reaches a final child, or every region of a parallel state does; to leave when an `invoke` finishes, put `done` inside the `invoke { }`"),
+                );
+            }
             match item {
                 Item::Entry(h) => entry.extend(self.effects(&h.effects, &Scope::none())),
                 Item::Exit(h) => exit.extend(self.effects(&h.effects, &Scope::none())),
@@ -551,6 +583,21 @@ impl<'p> Cx<'_, 'p> {
             return None;
         }
         let children = self.nodes[idx].children.clone();
+        if is_root && children.is_empty() && !initials.is_empty() {
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::MISSING_INITIAL,
+                    self.nodes[idx].name_span,
+                    format!("machine `{id}` has no states"),
+                )
+                .with_secondary(initials[0].span, "its `initial` names no state")
+                .with_help(format!(
+                    "declare the state: `final state {} {{}}`",
+                    initials[0].name
+                )),
+            );
+            return None;
+        }
         let Some(first) = initials.first() else {
             if children.is_empty() {
                 self.ck.diags.push(
@@ -835,9 +882,13 @@ impl<'p> Cx<'_, 'p> {
         Some(self.nodes[node].id.clone())
     }
 
+    /// Checks and lowers effects: every `set`, then every `do`, each in the order written,
+    /// which is the order they run in.
     pub(crate) fn effects(&mut self, effects: &[Effect], scope: &Scope) -> Vec<ir::Effect> {
         let mut out = Vec::new();
-        for e in effects {
+        let sets = effects.iter().filter(|e| matches!(e, Effect::Set(_)));
+        let dos = effects.iter().filter(|e| matches!(e, Effect::Do(_)));
+        for e in sets.chain(dos) {
             match e {
                 Effect::Set(a) => {
                     let want = match self.vars.get(&a.var.name) {

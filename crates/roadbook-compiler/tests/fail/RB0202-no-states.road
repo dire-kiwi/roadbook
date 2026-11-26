@@ -2,4 +2,9 @@ machine Empty() {
   var n: int = 0
 }
 
+machine OnlyInitial() {
+  initial A
+}
+
 // expect: RB0202 at 1:9
+// expect: RB0202 at 5:9

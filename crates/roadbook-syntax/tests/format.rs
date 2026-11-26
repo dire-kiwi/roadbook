@@ -33,10 +33,11 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  final state A { fail E {} }\n}\n",
         "machine M() {\n  final state A { fail E }\n}\n",
     ),
-    // Consecutive effects of one kind share a clause.
+    // Every `set` comes before every `do`, which is the order they run in, and effects of
+    // one kind share a clause.
     (
         "machine M() {\n  entry set a = 1 set b = 2 do f() do g() set c = 3\n}\n",
-        "machine M() {\n  entry set a = 1, b = 2  do f(), g()  set c = 3\n}\n",
+        "machine M() {\n  entry set a = 1, b = 2, c = 3  do f(), g()\n}\n",
     ),
     // A record value as an `after` delay keeps its parentheses.
     (
@@ -96,14 +97,47 @@ const COMMENTS: &[(&str, &str)] = &[
         "machine M() {\n  on A -> X on B -> Y // b\n}\n",
         "machine M() {\n  on A -> X\n  on B -> Y // b\n}\n",
     ),
+    // A comment after the closer of a multi-line list stays at the end of its line.
+    (
+        "machine M(\n  n: int\n) // c\n{\n  initial A\n  final state A {}\n}\n",
+        "machine M(\n  n: int\n) { // c\n  initial A\n  final state A {}\n}\n",
+    ),
+    (
+        "import {\n  A, B\n} // c\nfrom \"./x.road\"\n",
+        "import {\n  A, B\n} from \"./x.road\" // c\n",
+    ),
+    (
+        "action a(\n  n: int\n) // c\n",
+        "action a(\n  n: int\n) // c\n",
+    ),
     ("// only a comment\n", "// only a comment\n"),
     ("", ""),
 ];
 
+/// The tree, with every list of effects in the order they run: `set`s, then `do`s.
 fn structure(src: &str) -> serde_json::Value {
     let (file, diags) = parse_file(FileId(0), src);
     assert!(diags.is_empty(), "{src}\n{diags:#?}");
-    serde_json::to_value(&file).unwrap()
+    let mut v = serde_json::to_value(&file).unwrap();
+    sets_first(&mut v);
+    v
+}
+
+fn sets_first(v: &mut serde_json::Value) {
+    match v {
+        serde_json::Value::Object(m) => {
+            for (k, x) in m.iter_mut() {
+                if matches!(k.as_str(), "effects" | "entry" | "exit")
+                    && let Some(list) = x.as_array_mut()
+                {
+                    list.sort_by_key(|e| e.get("set").is_none());
+                }
+                sets_first(x);
+            }
+        }
+        serde_json::Value::Array(a) => a.iter_mut().for_each(sets_first),
+        _ => {}
+    }
 }
 
 fn check_stable(src: &str) {
@@ -149,6 +183,31 @@ fn idempotent_and_round_trips() {
         .chain(COMMENTS.iter().map(|c| c.0));
     for src in inputs {
         check_stable(src);
+    }
+}
+
+/// Comments between the closer of a multi-line list and the rest of its line move into the
+/// list, ahead of one at the end of the closer's line, and stay there.
+#[test]
+fn comments_after_a_list_closer_are_stable() {
+    for src in [
+        "machine M(\n  n: int\n) // c\n// d\n{ // e\n  initial A\n  final state A {}\n}\n",
+        "import {\n  A, B\n} // c\n// d\nfrom \"./x.road\" // e\n",
+        "fn f(\n  n: int\n) // c\n-> int\n",
+    ] {
+        let once = format(src).unwrap();
+        assert_eq!(format(&once).unwrap(), once, "not idempotent:\n{src}");
+        let comments = |s: &str| {
+            let mut c: Vec<String> = parse_file(FileId(0), s)
+                .0
+                .comments
+                .into_iter()
+                .map(|c| c.text)
+                .collect();
+            c.sort();
+            c
+        };
+        assert_eq!(comments(&once), comments(src), "{src}");
     }
 }
 

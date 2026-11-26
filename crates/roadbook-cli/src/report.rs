@@ -35,3 +35,14 @@ pub fn fatal(message: impl std::fmt::Display) -> Exit {
     eprintln!("error: {message}");
     Exit::Usage
 }
+
+/// An I/O or usage error, also printed as the JSON object if `json`.
+pub fn fatal_json(message: impl std::fmt::Display, json: bool) -> Exit {
+    if json {
+        println!(
+            "{}",
+            roadbook_compiler::json::fatal_string(&message.to_string())
+        );
+    }
+    fatal(message)
+}

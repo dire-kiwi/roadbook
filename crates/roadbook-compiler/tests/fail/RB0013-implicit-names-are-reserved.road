@@ -1,8 +1,0 @@
-machine M(event: int) {
-  var result: int = 0
-  initial Done
-  final state Done {}
-}
-
-// expect: RB0013 at 1:11
-// expect: RB0013 at 2:7

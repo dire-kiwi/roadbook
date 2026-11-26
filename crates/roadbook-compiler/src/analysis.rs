@@ -187,7 +187,6 @@ pub(crate) fn run(
         invokes_eagerly.push((name.as_str(), edges));
     }
     recursion(&invokes_eagerly, diags);
-    unused(ck, project, diags);
 }
 
 /// The first branch of a state's `always` block, if it has no guard.
@@ -219,6 +218,25 @@ fn always_cycles(tree: &Tree<'_>, info: &MachineInfo, diags: &mut Vec<Diagnostic
                             format!("`always` with no guard and no target is taken again and again: `{id}` never settles"),
                         )
                         .with_help("give it a guard that its own effects make false, or a target"),
+                    );
+                }
+            }
+            Some(to) if id == tree.root => {
+                // The machine itself is never left, so its `always` is taken again after every
+                // step, unless the machine has finished.
+                let ends = tree.parent.get(to) == Some(&tree.root)
+                    && tree
+                        .states
+                        .get(to)
+                        .is_some_and(|t| t.kind == StateKind::Final);
+                if !ends && let Some(span) = trigger_span(id, i) {
+                    diags.push(
+                        Diagnostic::error(
+                            codes::ALWAYS_CYCLE,
+                            span,
+                            format!("`always` with no guard in the body of `{id}` is taken again and again: the machine is never left, so it never settles"),
+                        )
+                        .with_help("give it a guard that its own effects make false, or move it into a state"),
                     );
                 }
             }
@@ -443,29 +461,59 @@ fn warnings(
     }
 }
 
-/// Functions, actions and tasks declared in a root file that nothing in the compilation uses.
-fn unused(ck: &Checker<'_>, project: &Project, diags: &mut Vec<Diagnostic>) {
+/// A function, action or task, by the project path of its file and its name.
+pub(crate) type DeclKey = (String, String);
+
+/// A declaration an "unused" warning may be given for, if no checked file uses it.
+#[derive(Clone, Debug)]
+pub(crate) struct UnusedCandidate {
+    pub key: DeclKey,
+    pub what: &'static str,
+    pub span: Span,
+}
+
+/// The functions, actions and tasks of a compilation, and those it uses.
+pub(crate) fn uses(
+    ck: &Checker<'_>,
+    project: &Project,
+) -> (Vec<UnusedCandidate>, HashSet<DeclKey>) {
     use roadbook_syntax::ast::DeclKind;
+    let key = |file: usize, name: &str| (project.files[file].path.clone(), name.to_string());
+    let mut candidates = Vec::new();
     for e in &ck.names.decls {
-        if e.duplicate || !project.roots.contains(&e.file) {
-            continue;
-        }
         let what = match e.decl.kind {
             DeclKind::Fn { .. } => "function",
             DeclKind::Action { .. } => "action",
             DeclKind::Task { .. } => "task",
             _ => continue,
         };
-        let name = &e.decl.name.name;
-        if !ck.used.contains(name) {
-            diags.push(
-                Diagnostic::warning(
-                    codes::UNUSED_DECLARATION,
-                    e.decl.name.span,
-                    format!("{what} `{name}` is never used"),
-                )
-                .with_help("remove it, or use it in a machine"),
-            );
+        if !e.duplicate {
+            candidates.push(UnusedCandidate {
+                key: key(e.file, &e.decl.name.name),
+                what,
+                span: e.decl.name.span,
+            });
         }
     }
+    let used = ck
+        .used
+        .iter()
+        .filter_map(|n| {
+            ck.names
+                .global
+                .get(n.as_str())
+                .map(|id| key(ck.names.decls[id.0].file, n))
+        })
+        .collect();
+    (candidates, used)
+}
+
+/// The "unused" warning for a candidate.
+pub(crate) fn unused_warning(c: &UnusedCandidate) -> Diagnostic {
+    Diagnostic::warning(
+        codes::UNUSED_DECLARATION,
+        c.span,
+        format!("{} `{}` is never used", c.what, c.key.1),
+    )
+    .with_help("remove it, or use it in a machine")
 }

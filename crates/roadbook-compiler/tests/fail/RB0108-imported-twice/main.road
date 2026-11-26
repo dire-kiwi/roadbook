@@ -1,0 +1,10 @@
+import { B, B } from "./types.road"
+import { B } from "./types.road"
+
+machine M(b: B) {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0108 at 1:13
+// expect: RB0108 at 2:10

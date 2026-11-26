@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0314]: `S?` is optional twice: `S` is `string?`
+ --> RB0314-double-optional-through-alias.road:2:20
+  |
+2 | type Order { note: S? }
+  |                    ^^
+  |
+  = help: a value is either present or absent; one `?` says so
+
+error[RB0314]: `O?` is optional twice: `O` is `string?`
+ --> RB0314-double-optional-through-alias.road:7:9
+  |
+7 | fn f(x: O?) -> int
+  |         ^^
+  |
+  = help: a value is either present or absent; one `?` says so
+
+error[RB0314]: `S?` is optional twice: `S` is `string?`
+  --> RB0314-double-optional-through-alias.road:11:10
+   |
+11 |   var x: S?
+   |          ^^
+   |
+   = help: a value is either present or absent; one `?` says so

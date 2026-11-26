@@ -29,17 +29,17 @@ enum Warning {
 pub fn run(args: Args) -> Exit {
     let ws = match Workspace::find(args.paths.first().map(PathBuf::as_path)) {
         Ok(ws) => ws,
-        Err(e) => return report::fatal(e),
+        Err(e) => return report::fatal_json(e, args.json),
     };
     let files = match ws.inputs(&args.paths) {
         Ok(f) => f,
-        Err(e) => return report::fatal(e),
+        Err(e) => return report::fatal_json(e, args.json),
     };
     let options = Options {
         warn_invoke_timeout: args.warn.contains(&Warning::InvokeTimeout),
     };
     match roadbook_compiler::check(&mut ws.loader(), &files, &options) {
         Ok(out) => report::diagnostics(&out, args.json),
-        Err(e) => report::fatal(e),
+        Err(e) => report::fatal_json(e, args.json),
     }
 }

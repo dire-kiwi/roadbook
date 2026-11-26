@@ -1,0 +1,29 @@
+machine M() {
+  event Go
+  initial A
+  always -> A
+  state A {
+    on Go -> A
+  }
+}
+
+// Leaving for a top-level final state ends the machine, so this one settles.
+machine Ends() {
+  initial A
+  always -> Done
+  state A {}
+  final state Done {}
+}
+
+// A nested final state does not end the machine.
+machine Nested() {
+  initial A
+  always -> A.Done
+  state A {
+    initial Done
+    final state Done {}
+  }
+}
+
+// expect: RB0401 at 4:3
+// expect: RB0401 at 21:3

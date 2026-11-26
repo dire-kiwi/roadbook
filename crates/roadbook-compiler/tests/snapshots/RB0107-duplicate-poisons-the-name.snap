@@ -1,0 +1,14 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0107]: `log` is already declared in `main.road`
+ --> other.road:2:8
+  |
+2 | action log(x: int, y: int)
+  |        ^^^
+ ::: main.road:3:8
+  |
+3 | action log(x: string)
+  |        --- first declared here
+  |
+  = help: declaration names are unique among the files compiled together (an entry file and what it imports), because the IR is keyed by name

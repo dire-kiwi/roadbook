@@ -14,7 +14,8 @@
 //!     "fixes": [{ "message": "…", "edits": [{ "file": "…", "line": 1, "col": 1, "endLine": 1, "endCol": 1, "text": "…" }] }]
 //!   }],
 //!   "errors": 1,
-//!   "warnings": 0
+//!   "warnings": 0,
+//!   "fatal": null
 //! }
 //! ```
 
@@ -81,6 +82,8 @@ struct Report<'a> {
     diagnostics: Vec<Diag<'a>>,
     errors: usize,
     warnings: usize,
+    /// A usage or I/O error that stopped the check, such as a file that cannot be read.
+    fatal: Option<&'a str>,
 }
 
 fn diag<'a>(d: &'a Diagnostic, files: &'a [(String, String)]) -> Diag<'a> {
@@ -141,5 +144,18 @@ fn report<'a>(diags: &'a [Diagnostic], files: &'a [(String, String)]) -> Report<
         diagnostics: diags.iter().map(|d| diag(d, files)).collect(),
         errors,
         warnings: diags.len() - errors,
+        fatal: None,
     }
+}
+
+/// The object printed when a usage or I/O error stops the check before anything is
+/// compiled: no diagnostics, and the error's message in `fatal`.
+pub fn fatal_string(message: &str) -> String {
+    let report = Report {
+        diagnostics: Vec::new(),
+        errors: 0,
+        warnings: 0,
+        fatal: Some(message),
+    };
+    serde_json::to_string_pretty(&report).unwrap_or_default()
 }

@@ -1,0 +1,9 @@
+# The Roadbook project at the repository root, so that `roadbook check` here checks every
+# chart. Keys are documented under "Projects" in docs/design/language.md.
+
+exclude = [
+  # Charts that fail on purpose: each must give exactly its diagnostics.
+  "crates/roadbook-compiler/tests/fail",
+  # The spike implements the first draft of the language, not this one.
+  "spike",
+]

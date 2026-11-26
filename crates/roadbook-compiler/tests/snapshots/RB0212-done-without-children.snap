@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0212]: `M.A` has no child states, so its `done` can never be taken
+ --> RB0212-done-without-children.road:7:5
+  |
+7 |     done -> B
+  |     ^^^^
+  |
+  = help: `done` is taken when a compound state reaches a final child, or every region of a parallel state does; to leave when an `invoke` finishes, put `done` inside the `invoke { }`

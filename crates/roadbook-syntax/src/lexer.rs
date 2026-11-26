@@ -410,13 +410,32 @@ impl Lexer<'_> {
                 self.error(codes::MALFORMED_NUMBER, start, self.pos, msg);
             }
         }
-        if kind == TokenKind::Int && self.src[start..suffix_start].parse::<i64>().is_err() {
-            let text = self.src[start..suffix_start].to_string();
+        let text = &self.src[start..suffix_start];
+        if kind == TokenKind::Int && text.parse::<i64>().is_err() {
+            let text = text.to_string();
             self.error(
-                codes::INTEGER_TOO_LARGE,
+                codes::NUMBER_TOO_LARGE,
                 start,
                 self.pos,
                 format!("integer `{text}` does not fit in an `int` (64-bit signed)"),
+            );
+        }
+        if kind == TokenKind::Duration && text.parse::<u64>().is_err() {
+            let text = self.src[start..self.pos].to_string();
+            self.error(
+                codes::NUMBER_TOO_LARGE,
+                start,
+                self.pos,
+                format!("duration `{text}` is too large: its number does not fit in 64 bits"),
+            );
+        }
+        if kind == TokenKind::Float && !text.parse::<f64>().is_ok_and(f64::is_finite) {
+            let text = text.to_string();
+            self.error(
+                codes::NUMBER_TOO_LARGE,
+                start,
+                self.pos,
+                format!("float `{text}` is too large to be a finite `float` (64-bit)"),
             );
         }
         self.push(kind, start);
@@ -671,6 +690,20 @@ mod tests {
         assert_eq!(
             errors("99999999999999999999"),
             ["RB0005 integer `99999999999999999999` does not fit in an `int` (64-bit signed)"]
+        );
+        let huge = format!("1{}.0", "0".repeat(400));
+        assert_eq!(
+            errors(&huge),
+            [format!(
+                "RB0005 float `{huge}` is too large to be a finite `float` (64-bit)"
+            )]
+        );
+        assert!(errors(&format!("1{}.0", "0".repeat(300))).is_empty());
+        assert_eq!(
+            errors("99999999999999999999s"),
+            [
+                "RB0005 duration `99999999999999999999s` is too large: its number does not fit in 64 bits"
+            ]
         );
         assert_eq!(
             errors("snake_case"),

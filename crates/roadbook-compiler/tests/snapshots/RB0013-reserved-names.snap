@@ -1,0 +1,58 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0013]: `type` is a keyword and cannot be used as a field name
+ --> RB0013-reserved-names.road:1:12
+  |
+1 | type Evt { type: string }
+  |            ^^^^
+  |
+  = help: keywords are reserved; rename it, for example to `kind`
+
+error[RB0013]: `fn` is a keyword and cannot be used as a field name
+ --> RB0013-reserved-names.road:3:3
+  |
+3 |   fn: int,
+  |   ^^
+  |
+  = help: keywords are reserved; rename it, for example to `fnName`
+
+error[RB0013]: `task` is a keyword and cannot be used as a field name
+ --> RB0013-reserved-names.road:4:3
+  |
+4 |   task: int
+  |   ^^^^
+  |
+  = help: keywords are reserved; rename it, for example to `taskName`
+
+error[RB0013]: `error` is a keyword and cannot be used as a parameter name
+ --> RB0013-reserved-names.road:6:6
+  |
+6 | fn g(error: int) -> int
+  |      ^^^^^
+  |
+  = help: keywords are reserved; rename it, for example to `failure`
+
+error[RB0013]: `event` is a keyword and cannot be used as a parameter name
+ --> RB0013-reserved-names.road:8:11
+  |
+8 | machine M(event: int) {
+  |           ^^^^^
+  |
+  = help: keywords are reserved; rename it, for example to `message`
+
+error[RB0013]: `result` is reserved and cannot be used as a variable name
+ --> RB0013-reserved-names.road:9:7
+  |
+9 |   var result: int = 0
+  |       ^^^^^^
+  |
+  = help: `result` names an invoke's result inside `done`; choose another name
+
+error[RB0013]: `error` is a keyword and cannot be used as a variable name
+  --> RB0013-reserved-names.road:10:7
+   |
+10 |   var error: string = ""
+   |       ^^^^^
+   |
+   = help: keywords are reserved; rename it, for example to `failure`

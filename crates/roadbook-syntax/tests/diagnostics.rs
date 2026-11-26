@@ -28,6 +28,10 @@ fn each_syntax_error_has_its_code() {
         ("import { A } from \"\\q\"".into(), "RB0003"),
         (m("  after 5min -> A"), "RB0004"),
         (m("  var x: int = 99999999999999999999"), "RB0005"),
+        (
+            m(&format!("  var x: float = 1{}.0", "0".repeat(400))),
+            "RB0005",
+        ),
         ("type Line_item { x: int }".into(), "RB0006"),
         ("type A { x int }".into(), "RB0010"),
         ("machine M() {\n  initial S\n".into(), "RB0011"),
@@ -36,6 +40,11 @@ fn each_syntax_error_has_its_code() {
         (m("  var on: int"), "RB0013"),
         (m("  var result: int"), "RB0013"),
         ("task t(result: int)".into(), "RB0013"),
+        ("type Evt { type: string }".into(), "RB0013"),
+        ("type Evt {\n  fn: int\n}".into(), "RB0013"),
+        ("fn g(error: int) -> int".into(), "RB0013"),
+        (m("  var error: string = \"\""), "RB0013"),
+        (m("  event E { task: int }"), "RB0013"),
         (m("  done -> A"), "RB0014"),
         (m("  invoke t() { done -> A }"), "RB0014"),
         (m("  output 1"), "RB0014"),
@@ -62,6 +71,24 @@ fn each_syntax_error_has_its_code() {
         (s("    always if a < b < c -> S"), "RB0022"),
         (s("    /// Documents nothing.\n    on Go -> S"), "RB0023"),
         ("type A { x: integer }".into(), "RB0024"),
+        (
+            m(&format!(
+                "  var x: int = {}1{}",
+                "(".repeat(70),
+                ")".repeat(70)
+            )),
+            "RB0025",
+        ),
+        (m(&format!("  var x: int{}", "[]".repeat(70))), "RB0025"),
+        (
+            m(&format!("  var x: bool = {}", vec!["a"; 70].join(" and "))),
+            "RB0025",
+        ),
+        (m(&format!("  var x: int = a{}", ".b".repeat(70))), "RB0025"),
+        (
+            m(&format!("{}{}", "state S {\n".repeat(70), "}\n".repeat(70))),
+            "RB0025",
+        ),
     ];
     for (src, code) in cases {
         let got = codes(&src);
