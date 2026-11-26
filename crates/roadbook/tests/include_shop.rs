@@ -467,7 +467,16 @@ async fn spawn_send_and_watch() {
     let mut app = App::new(Gateway::Charges);
     app.pricing = Duration::from_secs(60);
     let mut actor = place_order::spawn(Arc::new(app), "t_admin".into(), draft());
-    assert_eq!(actor.state(), place_order::State::Authenticating);
+    // On a multi-threaded runtime the run may already be past the instant `authenticate`
+    // when we look, but it cannot have ended: pricing takes a minute.
+    assert!(
+        matches!(
+            actor.state(),
+            place_order::State::Authenticating | place_order::State::Processing(_)
+        ),
+        "{:?}",
+        actor.state()
+    );
     // Wait until pricing, the slow task, is under way.
     loop {
         let s = actor.changed().await;
