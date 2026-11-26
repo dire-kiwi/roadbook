@@ -110,9 +110,15 @@ pub fn outcome(result: Result<Result<Value, Value>, Defect>) -> Outcome {
     }
 }
 
-/// A `duration` in its JSON form: whole milliseconds, finer parts truncated.
-pub fn millis(d: Duration) -> Value {
-    Value::from(u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
+/// A `duration` in its JSON form: whole milliseconds, finer parts truncated. One longer than
+/// 2^53 - 1 milliseconds (`Duration::MAX`, say) is not a `duration`, as in TypeScript and the
+/// snapshot schema (`spec/execution.md#values`): the error makes it a host defect.
+pub fn millis(d: Duration) -> Result<Value, String> {
+    u64::try_from(d.as_millis())
+        .ok()
+        .filter(|&ms| ms <= roadbook_ir::MAX_SAFE_INTEGER as u64)
+        .map(Value::from)
+        .ok_or_else(|| format!("{d:?} is longer than 2^53 - 1 milliseconds"))
 }
 
 /// An integer from a JSON number in any form: `2`, `2.0` and `2e0` are all 2, since a
@@ -164,7 +170,7 @@ pub mod wire {
 
     impl Wire for Duration {
         fn to_wire(&self) -> Result<Value, String> {
-            Ok(millis(*self))
+            millis(*self)
         }
         fn from_wire(v: Value) -> Result<Self, String> {
             integer(&v)

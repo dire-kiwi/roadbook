@@ -20,6 +20,13 @@ use crate::env::{BoxFuture, Config, TraceRecord};
 use crate::handle::{Peers, with_scope};
 use crate::shared::{Finished, InvokeContext, RunHandle, Shared, with_context};
 
+/// When a timer started at `now` with `delay` is due: their sum, capped at 2^53 - 1, the
+/// largest due time a saved snapshot can hold (`spec/execution.md#time`).
+fn due(now: u64, delay: u64) -> u64 {
+    now.saturating_add(delay)
+        .min(roadbook_ir::MAX_SAFE_INTEGER as u64)
+}
+
 /// How a run ended, as [`crate::dynamic::start`] reports it.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RunEnd {
@@ -438,8 +445,11 @@ impl<'a> Driver<'a> {
         }
         if let Some(observer) = &self.config.observer {
             let child = self.parent.is_some();
-            let handle =
+            let mut handle =
                 RunHandle::new(self.shared.clone(), &self.id, self.program, &machine, child);
+            if !self.suspendable {
+                handle = handle.runs_to_the_end();
+            }
             observer(&self.id, handle);
         }
         let host = self.host;
@@ -518,7 +528,7 @@ impl<'a> Driver<'a> {
         self.dues.retain(|id, _| timers.iter().any(|t| t.id == *id));
         let now = self.config.timer.now();
         let saved = Saved::new(&self.snap, |t| {
-            self.dues.get(&t.id).copied().unwrap_or(now + t.delay)
+            self.dues.get(&t.id).copied().unwrap_or(due(now, t.delay))
         });
         self.shared.set_saved(saved);
     }
@@ -636,6 +646,13 @@ impl<'a> Driver<'a> {
     async fn carry_out(&mut self, commands: Vec<Command>) {
         for c in commands {
             if let Err(defect) = self.carry(c).await {
+                // A run that has already ended with a defect is not changed by another: this
+                // is a child's cancel step failing while `failWithDefect`'s cancels are carried
+                // out. It is ignored, and the rest of the commands (more cancels, the `defect`
+                // record) are carried out.
+                if self.snap.status == Status::Defect {
+                    continue;
+                }
                 let host = self.host;
                 let peers = self.peers.clone();
                 let (snap, rest) =
@@ -795,7 +812,7 @@ impl<'a> Driver<'a> {
                 Ok(())
             }
             Command::TimerStart { timer, delay } => {
-                let due = self.config.timer.now() + delay;
+                let due = due(self.config.timer.now(), delay);
                 let fut = self.config.timer.start(&self.id, timer, delay);
                 self.timers.insert(timer, fut);
                 self.dues.insert(timer, due);

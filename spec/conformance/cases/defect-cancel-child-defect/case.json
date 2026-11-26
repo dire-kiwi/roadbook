@@ -1,0 +1,28 @@
+{
+  "description": "A task's host defect ends the run, which then cancels its two children in region order. The first child's exit action has a host defect: its cancel step ends with it, and the parent, which has already ended with a defect, ignores it and goes on: it cancels the second child, whose exit effects run, and writes its own `defect` record.",
+  "requires": [
+    "parallel"
+  ],
+  "chart": "charts/crash.road",
+  "machine": "Crash",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {
+    "log": [
+      {
+        "args": {
+          "what": "A"
+        },
+        "defect": "flush failed"
+      }
+    ]
+  },
+  "script": [
+    {
+      "task": "crash",
+      "defect": "worker died"
+    }
+  ],
+  "status": "defect"
+}

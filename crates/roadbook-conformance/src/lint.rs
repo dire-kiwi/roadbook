@@ -516,6 +516,20 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
         if defect_in_cancel {
             continue;
         }
+        // A child still running when its parent ended with a defect is
+        // cancelled by `failWithDefect`, which writes no record in the
+        // parent: it ends with its cancel step, `cancelled` or a defect of
+        // its own, which the parent ignores.
+        let cancelled_by_defect = seen.is_none()
+            && parent_end == Some("defect")
+            && runs.get(parent).is_some_and(|p| p.invokes.contains_key(&n))
+            && run
+                .end
+                .as_ref()
+                .is_some_and(|e| matches!(str_of(e, "kind"), "cancelled" | "defect"));
+        if cancelled_by_defect {
+            continue;
+        }
         let expected = run.end.as_ref().map(|e| match str_of(e, "kind") {
             "done" => ("invoke.done".to_owned(), e["output"].clone()),
             "failed" => ("invoke.fail".to_owned(), e["error"].clone()),

@@ -1,0 +1,23 @@
+{"input":{},"ir":"sha256:cc06b1198cd0e16680f1447e14355ff9679581bf725284f80af1d002db61b32d","kind":"started","machine":"Crash","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Crash","t":0}
+{"kind":"entered","run":"r1","state":"Crash.Busy","t":0}
+{"kind":"entered","run":"r1","state":"Crash.Busy.A","t":0}
+{"kind":"entered","run":"r1","state":"Crash.Busy.B","t":0}
+{"kind":"entered","run":"r1","state":"Crash.Busy.C","t":0}
+{"args":{"name":"A"},"invoke":1,"kind":"invoke.started","run":"r1","src":"Child","state":"Crash.Busy.A","t":0}
+{"args":{"name":"B"},"invoke":2,"kind":"invoke.started","run":"r1","src":"Child","state":"Crash.Busy.B","t":0}
+{"args":{},"invoke":3,"kind":"invoke.started","run":"r1","src":"crash","state":"Crash.Busy.C","t":0}
+{"event":{"defect":{"kind":"host","message":"worker died"},"invoke":3,"kind":"invoke.defect"},"kind":"event","run":"r1","t":0}
+{"defect":{"kind":"host","message":"worker died"},"kind":"defect","run":"r1","t":0}
+{"input":{"name":"A"},"ir":"sha256:15b778f27b21412cfb7482423212d528973b52fc295512a99f859a752bb9a33e","kind":"started","machine":"Child","parent":"r1","run":"r1.1","t":0}
+{"kind":"entered","parent":"r1","run":"r1.1","state":"Child","t":0}
+{"kind":"entered","parent":"r1","run":"r1.1","state":"Child.Waiting","t":0}
+{"action":"log","args":{"what":"A"},"kind":"action","parent":"r1","run":"r1.1","t":0}
+{"defect":{"kind":"host","message":"flush failed"},"kind":"defect","parent":"r1","run":"r1.1","t":0}
+{"input":{"name":"B"},"ir":"sha256:15b778f27b21412cfb7482423212d528973b52fc295512a99f859a752bb9a33e","kind":"started","machine":"Child","parent":"r1","run":"r1.2","t":0}
+{"kind":"entered","parent":"r1","run":"r1.2","state":"Child","t":0}
+{"kind":"entered","parent":"r1","run":"r1.2","state":"Child.Waiting","t":0}
+{"action":"log","args":{"what":"B"},"kind":"action","parent":"r1","run":"r1.2","t":0}
+{"kind":"exited","parent":"r1","run":"r1.2","state":"Child.Waiting","t":0}
+{"kind":"exited","parent":"r1","run":"r1.2","state":"Child","t":0}
+{"kind":"cancelled","parent":"r1","run":"r1.2","t":0}

@@ -55,6 +55,29 @@ describe("run", () => {
       assert.deepStrictEqual(last("root.1"), { kind: "cancelled", t: 1000, run: "root.1", parent: "root" })
     }))
 
+  it.effect("a root run id that is not a run id is a host defect before the run starts", () =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      for (const id of ["order:42", "", "r1.0"]) {
+        const named = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+          effect.pipe(
+            Effect.provideService(Roadbook.TraceSink, sink),
+            Effect.provideService(Roadbook.RootRunId, () => id)
+          )
+        for (const exit of [yield* Effect.exit(named(ParentLive.run({}))), yield* Effect.exit(named(ParentLive.spawn({})))]) {
+          const die = Exit.isFailure(exit) ? exit.cause.reasons.find((r) => r._tag === "Die") : undefined
+          const defect = (die as { defect: Roadbook.Defect } | undefined)?.defect.defect
+          assert.strictEqual(defect?.kind, "host")
+          assert.match((defect as { message: string }).message, /is not a run id/)
+        }
+      }
+      assert.deepStrictEqual(records, [])
+      // The schema's ids are fine.
+      const fiber = yield* ParentLive.run({}).pipe(Effect.provideService(Roadbook.RootRunId, () => "order-42"), Effect.forkChild)
+      yield* TestClock.adjust(5000)
+      assert.strictEqual(yield* Fiber.join(fiber), undefined)
+    }).pipe(Effect.scoped))
+
   it.effect("a child that finishes ends its parent through the parent's chart", () =>
     Effect.gen(function*() {
       const fiber = yield* ParentLive.run({}).pipe(Effect.forkChild)
@@ -98,6 +121,40 @@ describe("values at the boundary", () => {
       assert.strictEqual(defect?.kind, "host")
       assert.match((defect as { message: string }).message, /negative duration/)
     }))
+
+  it.effect("a duration longer than 2^53 - 1 ms from a function is a host defect", () =>
+    Effect.gen(function*() {
+      for (const delay of [Duration.millis(2 ** 60), Duration.millis(Number.MAX_SAFE_INTEGER + 2)]) {
+        const Live = impl(Checkout, {
+          fns: { retryDelay: () => delay },
+          tasks: { chargeCard: () => Effect.fail(new GatewayUnavailable()) }
+        })
+        const exit = yield* Effect.exit(Live.run(input))
+        const die = Exit.isFailure(exit) ? exit.cause.reasons.find((r) => r._tag === "Die") : undefined
+        const defect = (die as { defect: Roadbook.Defect } | undefined)?.defect.defect
+        assert.strictEqual(defect?.kind, "host")
+        assert.match((defect as { message: string }).message, /longer than 2\^53 - 1 milliseconds/)
+      }
+    }))
+
+  it.effect("the longest duration starts a timer whose due time is capped at 2^53 - 1", () =>
+    Effect.gen(function*() {
+      const Live = impl(Checkout, {
+        fns: { retryDelay: () => Duration.millis(Number.MAX_SAFE_INTEGER) },
+        tasks: { chargeCard: () => Effect.fail(new GatewayUnavailable()) }
+      })
+      const actor = yield* Live.spawn(input)
+      for (let i = 0; i < 20; i++) yield* Effect.yieldNow
+      const saved = yield* actor.save
+      assert.deepStrictEqual(
+        saved.timers.map((t) => [t.delay, t.due]),
+        [[Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]]
+      )
+      assert.isTrue(Exit.isSuccess(yield* Effect.exit(Live.restore(saved))))
+    }).pipe(
+      Effect.provideService(Roadbook.Timer, { now: Effect.succeed(1000), sleep: () => Effect.never }),
+      Effect.scoped
+    ))
 
   it.effect("errors reach the caller as instances of the error classes make was given", () =>
     Effect.gen(function*() {

@@ -1,0 +1,47 @@
+// Conformance chart: a run that ends with a defect while it cancels two
+// children, the first of which meets a defect of its own in its cancel step.
+
+action log(what: string)
+task crash()
+
+/// Runs two children and a task, one in each region.
+machine Crash() {
+  initial Busy
+
+  parallel state Busy {
+    state A {
+      invoke Child("A") {
+        done -> Over
+      }
+    }
+
+    state B {
+      invoke Child("B") {
+        done -> Over
+      }
+    }
+
+    state C {
+      invoke crash() {
+        done -> Over
+      }
+    }
+  }
+
+  final state Over {}
+}
+
+/// Waits for Stop, which never comes, logging its exit.
+machine Child(name: string) {
+  event Stop
+
+  initial Waiting
+
+  state Waiting {
+    exit do log(name)
+
+    on Stop -> Stopped
+  }
+
+  final state Stopped {}
+}

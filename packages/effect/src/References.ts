@@ -48,6 +48,12 @@ let lastRootRun = 0
 /**
  * Names each root run. The default gives `r1`, `r2`, … in the order runs start in this
  * process. A child run is always named `<parent run>.<invoke id>`.
+ *
+ * An id must be a run id as the snapshot schema writes one, `Core.RUN_ID_PATTERN` (letters,
+ * digits, `_` and `-`, optionally followed by `.` and an invoke id): `run`, `spawn`, `restore`
+ * and `resume` call the function as the run starts, and die with a host `Defect` before it
+ * starts if the id is not one, since a run named `order:42` would save a snapshot that
+ * `restore` refuses as `invalid`. Check an id from outside with `Core.isRunId` first.
  */
 export const RootRunId: Context.Reference<() => string> = Context.Reference<() => string>(
   "@roadbook/effect/RootRunId",

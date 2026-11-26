@@ -246,13 +246,30 @@ impl Config {
 
     /// Names the root run `id`. Without it the driver names root runs `r1`, `r2`, … in the
     /// order they start in this process.
+    ///
+    /// # Panics
+    ///
+    /// If `id` is not a run id ([`crate::is_run_id`]), which the snapshot schema writes as
+    /// [`crate::RUN_ID_PATTERN`]: letters, digits, `_` and `-`, optionally followed by `.` and
+    /// an invoke id, as in a child run's. A run named `order:42` would save a snapshot that
+    /// `restore` refuses as `invalid`, so the name is refused where it is given, rather than
+    /// when the saved state is lost. Check an id from outside with `is_run_id` first.
     pub fn run_id(mut self, id: impl Into<String>) -> Self {
-        self.run_id = Some(id.into());
+        let id = id.into();
+        assert!(
+            roadbook_core::is_run_id(&id),
+            "Config::run_id: {id:?} is not a run id: it must match {}",
+            roadbook_core::RUN_ID_PATTERN
+        );
+        self.run_id = Some(id);
         self
     }
 
     /// Calls `f` with the id and handle of every run as it starts, the root and every child
-    /// run below it. A test uses this to give inputs to a child run directly.
+    /// run below it. A test uses this to give inputs to a child run directly. A child run's
+    /// handle, and the root's for `run` and `run_with`, ignore [`crate::RunHandle::cancel`]
+    /// and [`crate::RunHandle::suspend`]: those runs end only by themselves (or, for a child,
+    /// when its parent leaves the invoking state).
     pub fn on_run(mut self, f: impl Fn(&str, crate::RunHandle) + Send + Sync + 'static) -> Self {
         self.observer = Some(Arc::new(f));
         self

@@ -307,6 +307,9 @@ pub struct RunHandle {
     pub(crate) hash: Arc<str>,
     /// Whether this is a child run's handle.
     pub(crate) child: bool,
+    /// Whether [`RunHandle::cancel`] reaches the run: not for a run that cannot report a
+    /// cancellation (a child run, a root run of `run` or `run_with`).
+    pub(crate) cancellable: bool,
 }
 
 impl std::fmt::Debug for RunHandle {
@@ -343,7 +346,14 @@ impl RunHandle {
             machine: Arc::from(machine),
             hash: Arc::from(hash),
             child,
+            cancellable: !child,
         }
+    }
+
+    /// The handle of a root run of `run` or `run_with`, which goes on to its end.
+    pub(crate) fn runs_to_the_end(mut self) -> Self {
+        self.cancellable = false;
+        self
     }
 
     /// The run's id: what a `ref` to it is in snapshots and traces.
@@ -369,13 +379,36 @@ impl RunHandle {
 
     /// Appends `inputs` to the run's queue in one operation, so that the run takes no step
     /// between them. They are taken after whatever was queued before.
+    ///
+    /// # Panics
+    ///
+    /// If `inputs` holds [`Input::Cancel`] or [`Input::Defect`], which are not inputs a queue
+    /// holds: a cancel request goes through [`RunHandle::cancel`], and a defect comes only from
+    /// the run's own driver.
     pub fn push(&self, inputs: Vec<Input>) {
+        assert!(
+            !inputs
+                .iter()
+                .any(|i| matches!(i, Input::Cancel | Input::Defect { .. })),
+            "RunHandle::push: a cancel request or a defect is not an input to queue; \
+             use RunHandle::cancel to cancel a run"
+        );
         self.shared.push(inputs);
     }
 
     /// Asks the run to cancel. It takes the request between steps, before anything queued.
+    ///
+    /// A run that cannot report a cancellation ignores the request, as it ignores
+    /// [`RunHandle::suspend`]: a child run, which only its parent cancels, by leaving the
+    /// invoking state (a child run has no handle of its own, `spec/execution.md#refs-and-handles`,
+    /// and its parent learns how it ended only through its invoke), and a root run of
+    /// [`crate::dynamic::run`] or [`crate::dynamic::run_with`] (or a generated `run`), whose
+    /// caller gets an output or an error. Cancel a root run gracefully through a run of
+    /// [`crate::dynamic::start`] or a spawned actor; stop one of `run` by dropping its future.
     pub fn cancel(&self) {
-        self.shared.request_cancel();
+        if self.cancellable {
+            self.shared.request_cancel();
+        }
     }
 
     /// Asks a top-level run to suspend: once it is idle (between steps, nothing queued, no

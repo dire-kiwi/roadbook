@@ -134,10 +134,24 @@ interface Env {
   readonly invoker: { readonly invoke: number; readonly port: Port } | undefined
 }
 
+/**
+ * A root run's environment. Its id comes from `RootRunId` and must be a run id: one that is not
+ * would save a snapshot that `restore` refuses, so the run dies with a host defect before it
+ * starts (no record, no snapshot).
+ */
 const rootEnv: Effect.Effect<Env> = Effect.gen(function*() {
   const nextId = yield* RootRunId
+  const runId = nextId()
+  if (!Core.isRunId(runId)) {
+    return yield* Effect.die(
+      new Defect({
+        kind: "host",
+        message: `RootRunId gave ${JSON.stringify(runId)}, which is not a run id: it must match ${Core.RUN_ID_PATTERN}`
+      })
+    )
+  }
   return {
-    runId: nextId(),
+    runId,
     parent: undefined,
     sink: yield* TraceSink,
     timer: yield* Timer,
@@ -392,7 +406,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             return Effect.flatMap(env.timer.now, (now) => {
               const restored = restoredDues.get(command.timer)
               restoredDues.delete(command.timer)
-              dues.set(command.timer, restored ?? now + command.delay)
+              // Capped at 2^53 - 1, the largest due time a saved snapshot holds.
+              dues.set(command.timer, restored ?? Math.min(now + command.delay, Number.MAX_SAFE_INTEGER))
               return Effect.as(FiberMap.run(timers, command.timer, expiry), undefined)
             })
           }
@@ -452,6 +467,11 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           for (const command of stepped.commands) {
             const defect = yield* carry(command)
             if (defect === undefined) continue
+            // A run that has already ended with a defect is not changed by another: this is a
+            // child's cancel step failing while `failWithDefect`'s cancels are carried out. It
+            // is ignored, and the rest of the commands (more cancels, the `defect` record) are
+            // carried out.
+            if (snapshot.status === "defect") continue
             // A host defect in an action, or in a child's cancel step: the rest of the step's
             // commands are dropped and the core's answer to the defect is carried out instead.
             const answer = Core.step(ir, snapshot, { kind: "defect", defect }, fns)

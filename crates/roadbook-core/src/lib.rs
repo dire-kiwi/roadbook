@@ -55,7 +55,7 @@ mod types;
 pub use eval::Fns;
 pub use program::{Program, ProgramError};
 pub use run::{StepResult, UnknownMachine};
-pub use saved::{Migration, Refusal, RestoreError};
+pub use saved::{Migration, RUN_ID_PATTERN, Refusal, RestoreError, is_run_id};
 pub use types::{
     Command, Defect, Input, InvokeEntry, Object, Record, RunResult, Saved, SavedTimer, Snapshot,
     SrcKind, Status, TimerEntry,

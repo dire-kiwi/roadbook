@@ -148,6 +148,7 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `cancel-child` | A parent leaving the invoking state cancels a child run waiting in its timer: the child's timer is cancelled and its exit effects run at every level, innermost first. |
 | `cancel-root` | The same child cancelled because the root run is cancelled from outside; the root's own exit effects run after it. |
 | `cancel-child-defect` | A host defect in a child's exit action while its parent cancels it ends the child with the defect, and the parent with the same defect, in the middle of the step that had already finished it. |
+| `defect-cancel-child-defect` | A run ending with a defect cancels its children without records, in region order; the first child's cancel step has a host defect of its own, which the parent ignores: it still cancels the second child, whose exit effects run, and writes its own `defect` record. |
 | `defect-final-step` | A host defect in the root's exit action, in the step that reaches a top-level final state, ends the run with a `defect` record in place of `done`. |
 | `defect-unassigned-guard` | An optional variable with no initial value starts as `null`; a guard of an invoke's `done` that reads an unassigned variable is an `unassigned` defect inside the core, with no `event` record, and the running timer is cancelled without one. |
 | `defect-undeclared` | A stubbed machine failing with an error it does not declare is an `undeclared` defect inside the core. |
