@@ -1,8 +1,10 @@
 // Conformance chart: guards are tried innermost state first and in document
-// order, and `and` and `or` short-circuit.
+// order, and `and` and `or` short-circuit. The right-hand calls in Waiting
+// take arguments no other call does, so the case's function table can leave
+// out the ones short-circuiting skips.
 
-fn big(amount: int)      -> bool
-fn trusted(who: string)  -> bool
+fn big(amount: int)                  -> bool
+fn trusted(who: string, amount: int) -> bool
 action log(what: string)
 
 /// Classify amounts until stopped.
@@ -26,9 +28,9 @@ machine Gate(who: string) {
     state Waiting {
       // No `else`: when no branch holds, Open's `on Check` is tried.
       on Check {
-        if event.amount < 0                  do log("negative")
-        if count > 0 and big(event.amount)   set count = count + 1  do log("big again")
-        if event.amount == 0 or trusted(who) do log("zero or trusted")
+        if event.amount < 0                                do log("negative")
+        if count > 0 and big(event.amount + 1)             set count = count + 1  do log("big again")
+        if event.amount == 0 or trusted(who, event.amount) do log("zero or trusted")
       }
     }
   }
