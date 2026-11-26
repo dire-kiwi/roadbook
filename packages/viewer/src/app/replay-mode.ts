@@ -6,7 +6,7 @@
 import type { Ir } from '../ir.ts'
 import { own } from '../ir.ts'
 import { findState, triggerText } from '../model.ts'
-import { Replay, recordText, stateName } from '../replay.ts'
+import { Replay, jsonText, recordText, stateName } from '../replay.ts'
 import { esc } from '../render.ts'
 import { activeHtml, pretty, recordsHtml, scrollWithin, variablesHtml } from './modes.ts'
 import type { Controller, Highlight, Host } from './modes.ts'
@@ -32,7 +32,7 @@ export function replayMode(host: Host, el: HTMLElement, embedded: { name: string
     const out: { name: string; via: string }[] = []
     for (let i = 1; i <= parts.length; i++) {
       const r = info(parts.slice(0, i).join('.'))
-      if (r && own(ir.machines, r.machine)) out.push({ name: r.machine, via: `invokes (${r.id}) ›` })
+      if (r && own(ir.machines, r.machine)) out.push({ name: r.machine, via: `${replay?.spawned(r.id) ? 'spawns' : 'invokes'} (${r.id}) ›` })
     }
     return out
   }
@@ -105,8 +105,11 @@ export function replayMode(host: Host, el: HTMLElement, embedded: { name: string
         const tr = st?.transitions[view.taken.index]
         h += `<h3>Last transition</h3><p><button class="rb-link rb-mono" type="button" data-m-transition="${esc(JSON.stringify([view.taken.state, view.taken.index]))}">${esc(stateName(view.taken.state) || view.taken.state)}: ${esc(tr ? triggerText(tr.trigger) : `#${view.taken.index}`)}${tr?.target ? ` → ${esc(stateName(tr.target))}` : ''}</button></p>`
       }
-      if (view.invokes.length || view.timers.length) {
-        h += `<h3>Running</h3><ul class="rb-list">${view.invokes.map((i) => `<li>invoke ${i.id}: ${esc(i.src)} <span class="rb-cnote">in ${esc(stateName(i.state))}${replay!.runs.some((x) => x.id === `${run}.${i.id}`) ? `, child run ${esc(`${run}.${i.id}`)}` : ''}</span></li>`).join('')}${view.timers
+      const childRun = (id: number) => (replay!.runs.some((x) => x.id === `${run}.${id}`) ? `child run ${esc(`${run}.${id}`)}` : '')
+      if (view.invokes.length || view.spawned.length || view.timers.length) {
+        h += `<h3>Running</h3><ul class="rb-list">${view.invokes.map((i) => `<li>invoke ${i.id}: ${esc(i.src)} <span class="rb-cnote">in ${esc(stateName(i.state))}${childRun(i.id) ? `, ${childRun(i.id)}` : ''}</span></li>`).join('')}${view.spawned
+          .map((c) => `<li>spawned ${c.id}: ${esc(c.children)}[${esc(jsonText(c.key, 60))}] = ${esc(c.src)} <span class="rb-cnote">${childRun(c.id)}</span></li>`)
+          .join('')}${view.timers
           .map((t) => `<li>timer ${t.id}: ${t.delay} ms <span class="rb-cnote">in ${esc(stateName(t.state))}</span></li>`)
           .join('')}</ul>`
       }
@@ -164,7 +167,7 @@ export function replayMode(host: Host, el: HTMLElement, embedded: { name: string
       const parent = b.dataset.mParent
       const child = runOf(at)
       const inv = Number(child.slice(child.lastIndexOf('.') + 1))
-      const i = replay?.records.findIndex((r) => r.run === parent && r.kind === 'invoke.started' && r.invoke === inv) ?? -1
+      const i = replay?.records.findIndex((r) => r.run === parent && ((r.kind === 'invoke.started' && r.invoke === inv) || (r.kind === 'spawn.started' && r.spawn === inv))) ?? -1
       void go(i >= 0 ? i : (info(parent)?.first ?? 0))
     }
   })

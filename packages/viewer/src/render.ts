@@ -82,6 +82,24 @@ function messageText(text: string, ref: EventRef): string {
   return `${' '.repeat(lead)}<tspan class="rb-msg"${eventAttr(ref)}><title>Open event ${esc(eventKey(ref))}</title>${inner}</tspan>`
 }
 
+/**
+ * A `spawn` effect, its keyword stressed, marked so the viewer opens the child's machine. In
+ * the colour of a machine invoke, which it is like.
+ */
+function spawnText(text: string, machine: string): string {
+  const lead = text.length - text.trimStart().length
+  const body = text.slice(lead)
+  const inner = body.startsWith('spawn ') ? `<tspan class="rb-spawn-kw">spawn</tspan>${esc(body.slice(5))}` : esc(body)
+  return `${' '.repeat(lead)}<tspan class="rb-spawn" data-machine="${esc(machine)}"><title>Open machine ${esc(machine)}</title>${inner}</tspan>`
+}
+
+/** The text of a row or label line: plain, or linked to the event or machine it names. */
+function lineText(l: { text: string; event?: EventRef | undefined; spawn?: string | undefined }): string {
+  if (l.event) return messageText(l.text, l.event)
+  if (l.spawn) return spawnText(l.text, l.spawn)
+  return esc(l.text)
+}
+
 /** A row's keyword; `on upload.Progress` with the event marked as a link. */
 function rowKeyword(r: Row): string {
   if (!r.kw) return ''
@@ -117,7 +135,7 @@ function renderRows(rows: Row[], x0: number, y0: number, measure: Measure, mark?
     } else if (r.cls === 'collapsed') {
       out += `<text class="${cls}" x="${n(x0 + M.padX)}" y="${y}" xml:space="preserve">${esc(r.text)}</text>`
     } else {
-      const text = r.event ? messageText(r.text, r.event) : esc(r.text)
+      const text = lineText(r)
       out += `<text class="${cls}"${data} x="${n(x0 + M.padX)}" y="${y}" xml:space="preserve">${kw}${text}</text>`
     }
   })
@@ -196,7 +214,7 @@ function renderLabel(state: State, index: number, kind: EdgeKind, label: Box, ma
   s += `<rect class="rb-label-bg" x="${n(label.x)}" y="${n(label.y)}" width="${n(label.width)}" height="${n(label.height)}" rx="5"/>`
   let top = label.y + M.labelPadY
   for (const l of lines) {
-    const text = l.event ? messageText(l.text, l.event) : esc(l.text)
+    const text = lineText(l)
     if (l.cls === 'trigger') {
       const guard = l.guard ? `${l.text ? ' ' : ''}<tspan class="rb-guard">${esc(l.guard)}</tspan>` : ''
       s += `<text class="rb-label-trigger" x="${n(cx)}" y="${baseline(top, M.labelLineH, M.fontLabel)}" text-anchor="middle" xml:space="preserve">${text}${guard}</text>`
@@ -343,8 +361,8 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
     `<ul class="rb-legend-list">` +
     item(line('event'), { text: 'Cancel' }, 'event') +
     item(line('message'), { text: 'upload.Progress', cls: 'rb-t-msg' }, opts.interactive ? 'event emitted by upload, another machine; click the name to open it' : 'event emitted by upload, another machine') +
-    item(line('done'), { text: 'done', cls: 'rb-t-done' }, 'invoke or nested states finished') +
-    item(line('fail'), { text: 'fail X', cls: 'rb-t-fail' }, 'invoke failed with error X') +
+    item(line('done'), { text: 'done', cls: 'rb-t-done' }, 'invoke, spawned child or nested states finished') +
+    item(line('fail'), { text: 'fail X', cls: 'rb-t-fail' }, 'invoke or spawned child failed with error X') +
     item(line('after'), { text: 'after 30s' }, 'time in the state (dashed)') +
     item(line('always'), { text: 'always' }, 'no event needed (dotted)') +
     item(
@@ -362,6 +380,11 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
       shape('<g class="rb-label"><rect class="rb-label-bg" x="2" y="2" width="42" height="14" rx="4"/><text class="rb-label-effect rb-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="rb-msg"><tspan class="rb-msg-kw">send</tspan></tspan></text></g>'),
       { text: 'send x.E', cls: 'rb-t-msg' },
       'queues E for machine x; emit E tells whoever listens',
+    ) +
+    item(
+      shape('<g class="rb-label"><rect class="rb-label-bg" x="2" y="2" width="42" height="14" rx="4"/><text class="rb-label-effect rb-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="rb-spawn"><tspan class="rb-spawn-kw">spawn</tspan></tspan></text></g>'),
+      { text: 'spawn xs[k] = M()', cls: 'rb-t-spawn' },
+      opts.interactive ? 'starts a child machine M under key k; click to open M' : 'starts a child machine M under key k',
     ) +
     item(
       shape('<g class="rb-machine-link"><rect class="rb-pill" x="2" y="2" width="42" height="14" rx="7"/><path class="rb-pill-chevron" d="M33,5.5 l3.5,3.5 l-3.5,3.5"/></g>'),
@@ -402,10 +425,21 @@ export function signatureHtml(ir: Ir, kind: string, name: string, decl: { params
   return s
 }
 
-/** The signature and doc comment of a machine. HTML. */
+/** `children sessions: Session by SessionId` as HTML, the machine a button that opens it. */
+export function childrenHtml(ir: Ir, name: string, c: { machine: string; key: string }): string {
+  const machine = own(ir.machines, c.machine)
+    ? `<button class="rb-link rb-mono rb-ref" type="button" data-open-machine="${esc(c.machine)}" data-via="spawn" title="Open machine ${esc(c.machine)}">${esc(c.machine)}</button>`
+    : esc(c.machine)
+  return `children ${esc(name)}: ${machine} by ${esc(c.key)}`
+}
+
+/** The signature, the collections of spawned children and the doc comment of a machine. HTML. */
 export function renderMachineHeader(ir: Ir, machineName: string): string {
   const m = own(ir.machines, machineName)
   if (!m) return ''
   const doc = m.doc ? `<p class="rb-doc">${esc(m.doc).replace(/\n/g, '<br>')}</p>` : ''
-  return `<code class="rb-signature">${signatureHtml(ir, 'machine', machineName, m)}</code>${doc}`
+  const children = Object.entries(m.children)
+    .map(([name, c]) => `<code class="rb-signature rb-children">${childrenHtml(ir, name, c)}</code>`)
+    .join('')
+  return `<code class="rb-signature">${signatureHtml(ir, 'machine', machineName, m)}</code>${children}${doc}`
 }

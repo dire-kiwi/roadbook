@@ -74,7 +74,11 @@ function breakable(code: string): number[] {
   return out
 }
 
-/** `set a = 1`, `do f(x)`, `send upload.Pause`, `send inventory.Reserve { orderId: id }`, `emit Progress { percent: p }` */
+/**
+ * `set a = 1`, `do f(x)`, `send upload.Pause`, `send inventory.Reserve { orderId: id }`,
+ * `send sessions[id].Notify { text: t }`, `send sessions.*.Leave`, `emit Progress { percent: p }`,
+ * `spawn sessions[id] = Session(id)`, `stop sessions[id]`
+ */
 export function effectText(e: Effect): string {
   switch (e.kind) {
     case 'set':
@@ -83,10 +87,20 @@ export function effectText(e: Effect): string {
       return `do ${e.action}(${e.args.map((a) => a.text).join(', ')})`
     case 'send':
       // A send's or emit's value text is the event as written after `send name.` or `emit`.
-      return `send ${e.to.name}.${e.value.text}`
+      return `send ${e.to.name}${sendKey(e.to, e.key)}.${e.value.text}`
     case 'emit':
       return `emit ${e.value.text}`
+    case 'spawn':
+      return `spawn ${e.children}[${e.key.text}] = ${e.machine}(${e.args.map((a) => a.text).join(', ')})`
+    case 'stop':
+      return `stop ${e.children}[${e.key.text}]`
   }
+}
+
+/** Which child of a collection a send goes to: `[key]`, or `.*` for every one; `""` for another address. */
+function sendKey(to: Address, key: { text: string } | null): string {
+  if (to.kind !== 'children') return ''
+  return key ? `[${key.text}]` : '.*'
 }
 
 /** An event of a machine, as the viewer links to it: `Upload.Progress`. */
@@ -146,14 +160,19 @@ export function triggerKind(trigger: Trigger): EdgeKind {
     case 'always':
       return 'always'
     case 'invoke.fail':
+    case 'spawn.fail':
       return 'fail'
     case 'done':
     case 'invoke.done':
+    case 'spawn.done':
       return 'done'
   }
 }
 
-/** The trigger as the diagram labels it: `Cancel`, `upload.Progress`, `on *`, `after 30s`, `always`, `done`, `fail CardDeclined`. */
+/**
+ * The trigger as the diagram labels it: `Cancel`, `upload.Progress`, `on *`, `after 30s`,
+ * `always`, `done`, `fail CardDeclined`, `sessions.done`, `sessions.fail Lost`.
+ */
 export function triggerText(trigger: Trigger): string {
   switch (trigger.kind) {
     case 'event':
@@ -168,15 +187,23 @@ export function triggerText(trigger: Trigger): string {
       return 'always'
     case 'invoke.fail':
       return `fail ${trigger.error}`
+    case 'spawn.done':
+      return `${trigger.children}.done`
+    case 'spawn.fail':
+      return `${trigger.children}.fail ${trigger.error}`
     case 'done':
     case 'invoke.done':
       return 'done'
   }
 }
 
-/** The trigger as written in source: `on Cancel`, `on upload.Progress`, `on *`, `after 30s`, `done`, `fail E`. */
+/**
+ * The trigger as written in source: `on Cancel`, `on upload.Progress`, `on *`, `after 30s`,
+ * `done`, `fail E`, `on sessions.done`, `on sessions.fail E`.
+ */
 export function triggerSource(trigger: Trigger): string {
-  return trigger.kind === 'event' || trigger.kind === 'emitted' ? `on ${triggerText(trigger)}` : triggerText(trigger)
+  const on = trigger.kind === 'event' || trigger.kind === 'emitted' || trigger.kind === 'spawn.done' || trigger.kind === 'spawn.fail'
+  return on ? `on ${triggerText(trigger)}` : triggerText(trigger)
 }
 
 /** `[guard]` for a guarded branch, `[else]` for the unguarded last branch of a block, `""` otherwise. */
@@ -197,6 +224,8 @@ export interface LabelLine {
    * or `emit` effect. Clicking it opens that event.
    */
   event?: EventRef
+  /** The line is (part of) a `spawn` effect: clicking it opens this machine, the child's. */
+  spawn?: string
 }
 
 /**
@@ -224,10 +253,17 @@ export function transitionLines(state: State, index: number): LabelLine[] {
   }
   const machine = machineOf(state.id)
   for (const e of t.effects) {
-    const event = effectEvent(machine, e)
-    for (const l of wrapCode(effectText(e), METRICS.labelWrapAt + 8)) lines.push(event ? { cls: 'effect', text: l, guard: '', event } : { cls: 'effect', text: l, guard: '' })
+    const link = effectLink(machine, e)
+    for (const l of wrapCode(effectText(e), METRICS.labelWrapAt + 8)) lines.push({ cls: 'effect', text: l, guard: '', ...link })
   }
   return lines
+}
+
+/** What the lines of an effect link to: the event of a `send` or `emit`, the machine of a `spawn`. */
+function effectLink(machine: string, e: Effect): { event?: EventRef; spawn?: string } {
+  const event = effectEvent(machine, e)
+  if (event) return { event }
+  return e.kind === 'spawn' ? { spawn: e.machine } : {}
 }
 
 /** A row inside a state box. `kw` is drawn muted, `text` in the code colour. */
@@ -247,6 +283,8 @@ export interface Row {
   kwEvent?: EventRef
   /** `text` is (part of) a `send` or `emit` effect: clicking it opens the event. */
   event?: EventRef
+  /** `text` is (part of) a `spawn` effect: clicking it opens this machine, the child's. */
+  spawn?: string
 }
 
 /** Number of states nested inside `state`, at any depth. */
@@ -270,10 +308,7 @@ export function stateRows(state: State, collapsed = false): Row[] {
       rows.push(row)
     })
   }
-  const effectExtra = (e: Effect): Partial<Row> => {
-    const event = effectEvent(machine, e)
-    return event ? { event } : {}
-  }
+  const effectExtra = (e: Effect): Partial<Row> => effectLink(machine, e)
   if (state.invoke) {
     const inv = state.invoke
     if (inv.kind === 'machine') {
@@ -474,10 +509,37 @@ export function messageSites(machineName: string, machine: Machine): MessageSite
   return out
 }
 
+/** Where a `spawn` or `stop` is written. */
+export interface SpawnSite {
+  op: 'spawn' | 'stop'
+  /** The collection. */
+  children: string
+  /** The state it is written in. */
+  state: string
+  /** The index of its transition in the state's `transitions`, or the state's `entry` or `exit`. */
+  at: number | 'entry' | 'exit'
+}
+
+/** Every `spawn` and `stop` of a machine, in the document order of `messageSites`. */
+export function spawnSites(machine: Machine): SpawnSite[] {
+  const out: SpawnSite[] = []
+  const effects = (state: string, at: SpawnSite['at'], list: Effect[]) => {
+    for (const e of list) if (e.kind === 'spawn' || e.kind === 'stop') out.push({ op: e.kind, children: e.children, state, at })
+  }
+  walkStates(machine.root, (s) => {
+    effects(s.id, 'entry', s.entry)
+    effects(s.id, 'exit', s.exit)
+    s.transitions.forEach((t, i) => effects(s.id, i, t.effects))
+  })
+  return out
+}
+
 /** Which machines a machine talks to, from its chart alone. Each list in first-written order. */
 export interface Talks {
   /** Machines invoked, with the `as` name if any. */
   invokes: { machine: string; as: string | null; state: string }[]
+  /** Machines it spawns, with the collections (`children name: Machine by Key`) that hold them. */
+  spawns: { machine: string; names: string[] }[]
   /** Machines it holds a `ref` to, with the parameters and variables that hold it. */
   refs: { machine: string; names: string[] }[]
   /** Events it sends, by receiving machine. */
@@ -496,6 +558,7 @@ function group(list: { machine: string; values: string[] }[], machine: string, v
 export function talks(ir: Ir, machineName: string): Talks {
   const m = own(ir.machines, machineName)
   const invokes: Talks['invokes'] = []
+  const spawns: { machine: string; values: string[] }[] = []
   const refs: { machine: string; values: string[] }[] = []
   const sends: { machine: string; values: string[] }[] = []
   const receives: { machine: string; values: string[] }[] = []
@@ -503,6 +566,7 @@ export function talks(ir: Ir, machineName: string): Talks {
     walkStates(m.root, (s) => {
       if (s.invoke && s.invoke.kind === 'machine') invokes.push({ machine: s.invoke.src, as: s.invoke.as, state: s.id })
     })
+    for (const [name, c] of Object.entries(m.children)) group(spawns, c.machine, name)
     for (const v of [...m.params, ...m.vars]) {
       const to = refMachine(ir, v.type)
       if (to) group(refs, to, v.name)
@@ -514,6 +578,7 @@ export function talks(ir: Ir, machineName: string): Talks {
   }
   return {
     invokes,
+    spawns: spawns.map((r) => ({ machine: r.machine, names: r.values })),
     refs: refs.map((r) => ({ machine: r.machine, names: r.values })),
     sends: sends.map((r) => ({ machine: r.machine, events: r.values })),
     receives: receives.map((r) => ({ machine: r.machine, events: r.values })),

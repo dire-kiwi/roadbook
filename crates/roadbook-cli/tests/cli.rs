@@ -505,13 +505,11 @@ fn viz_trace_is_embedded_and_opens_in_replay() {
     let dir = out_dir("trace-files");
     std::fs::create_dir_all(&dir).unwrap();
     let other = dir.join("other.jsonl");
-    std::fs::write(
-        &other,
-        std::fs::read_to_string(repo().join(trace))
-            .unwrap()
-            .replace("\"ir\":\"sha256:e944", "\"ir\":\"sha256:0000"),
-    )
-    .unwrap();
+    let text = std::fs::read_to_string(repo().join(trace)).unwrap();
+    let first: serde_json::Value = serde_json::from_str(text.lines().next().unwrap()).unwrap();
+    let hash = first["ir"].as_str().unwrap();
+    let zeros = format!("sha256:{}", "0".repeat(64));
+    std::fs::write(&other, text.replace(hash, &zeros)).unwrap();
     let res = roadbook(
         &repo(),
         &[
@@ -626,7 +624,7 @@ fn viz_names_pages_after_their_entries_and_reports_errors() {
     }
     let index = page_data(&std::fs::read_to_string(out.join("index.html")).unwrap());
     let machines = index["index"]["machines"].as_array().unwrap();
-    assert_eq!(machines.len(), 11);
+    assert_eq!(machines.len(), 12);
     // Who talks to whom (`projectIndex` in packages/viewer/src/project.ts builds the same).
     let at = |name: &str| machines.iter().position(|m| m["name"] == name).unwrap();
     let (order, inventory) = (&machines[at("Order")], at("Inventory"));
@@ -987,6 +985,7 @@ fn viewer_test_charts_are_fresh() {
         ("examples/orders/orders.road", "orders-orders"),
         ("packages/viewer/test/charts/stress.road", "charts-stress"),
         ("packages/viewer/test/charts/edges.road", "charts-edges"),
+        ("packages/viewer/test/charts/spawn.road", "charts-spawn"),
         ("packages/viewer/test/charts/escape.road", "charts-escape"),
     ] {
         let out = roadbook(&repo(), &["export", "ir", chart]);

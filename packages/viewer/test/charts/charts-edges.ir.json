@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.3",
   "sources": [
     {
       "path": "packages/viewer/test/charts/edges.road",
@@ -76,6 +76,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "OnlyRoot",
         "name": "OnlyRoot",
@@ -194,7 +195,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:5d921e35768548ccd8bc90fa1b926b61c59842db5f229a406805a3a880018d8e"
+      "hash": "sha256:b1651c12acf91b163a72ec84e3d0e852321121a5afb3f55970852c3d11219e84"
     },
     "Note": {
       "doc": "States Mermaid would read as keywords.",
@@ -223,6 +224,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Note",
         "name": "Note",
@@ -734,7 +736,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:8c034c6541160c3e8e0033968ddb0b8bc9731f3d760a7b1b7ee72b7d2f8b3ede"
+      "hash": "sha256:3e681199b59f55208e102b2f369956d5a776a63d4db0e08bd2cfb0ae5410cfce"
     },
     "Same": {
       "doc": "A state named like its machine, which has transitions of its own.",
@@ -763,6 +765,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Same",
         "name": "Same",
@@ -863,7 +866,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:833720a5b68648e8db2b9544d5fd67fb20d416b63d48da6f9fe7f6124133974a"
+      "hash": "sha256:75acf7c6c49c2f419385190dc28655561b8edf6321f206ebf0eddbc5f3de9b4e"
     },
     "Rows": {
       "doc": "Containers with an invoke, entry, exit and internal transitions, and labels with syntax.",
@@ -922,6 +925,7 @@
         }
       },
       "emits": {},
+      "children": {},
       "root": {
         "id": "Rows",
         "name": "Rows",
@@ -1195,7 +1199,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:5c270bc52d22586036fcf246f2ee8ae16b443d8f13f47c90510d3442ef7bc811"
+      "hash": "sha256:ab7e8bf446664577ecac04a18be88ee3d248ec2decfc8b11184d807e2cb0441e"
     }
   }
 }
