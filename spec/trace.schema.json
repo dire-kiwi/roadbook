@@ -139,25 +139,37 @@
       "required": ["message", "to", "value"]
     },
     {
-      "description": "A task or child machine was started.",
+      "description": "A task or child machine was started, or a call was made (src is the address and the call, inventory.reserve).",
       "properties": {
         "kind": { "const": "invoke.started" },
         "invoke": { "$ref": "#/$defs/id" },
         "state": { "$ref": "#/$defs/stateId" },
-        "src": { "$ref": "#/$defs/name" },
+        "src": { "$ref": "#/$defs/src" },
         "args": { "$ref": "#/$defs/args" }
       },
       "required": ["invoke", "state", "src", "args"]
     },
     {
-      "description": "A running task or child machine was cancelled because its state was left.",
+      "description": "A running task, child machine or call was cancelled because its state was left.",
       "properties": {
         "kind": { "const": "invoke.cancelled" },
         "invoke": { "$ref": "#/$defs/id" },
         "state": { "$ref": "#/$defs/stateId" },
-        "src": { "$ref": "#/$defs/name" }
+        "src": { "$ref": "#/$defs/src" }
       },
       "required": ["invoke", "state", "src"]
+    },
+    {
+      "description": "A call was answered: by a reply effect, or with Unanswered because it enabled no transition. to is the caller's run id and invoke its invoke.",
+      "properties": {
+        "kind": { "const": "replied" },
+        "to": { "$ref": "#/$defs/runId" },
+        "invoke": { "$ref": "#/$defs/id" },
+        "call": { "$ref": "#/$defs/lowerName" },
+        "outcome": { "enum": ["done", "fail"] },
+        "value": { "$ref": "#/$defs/value" }
+      },
+      "required": ["to", "invoke", "call", "outcome", "value"]
     },
     {
       "description": "An after timer was started.",
@@ -217,6 +229,11 @@
     "upperName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
     "lowerName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "name": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" },
+    "src": {
+      "description": "An invoke's task or machine, or for a call the address and the call's name.",
+      "type": "string",
+      "pattern": "^([A-Za-z][A-Za-z0-9]*|[a-z][A-Za-z0-9]*\\.[a-z][A-Za-z0-9]*)$"
+    },
     "stateId": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)*$" },
     "runId": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[1-9][0-9]*)*$" },
     "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
@@ -264,6 +281,18 @@
             "value": { "$ref": "#/$defs/tagged" }
           },
           "required": ["kind", "from", "invoke", "message", "value"],
+          "additionalProperties": false
+        },
+        {
+          "description": "A call: run `from` called this machine's call `call` with its invoke `invoke`.",
+          "properties": {
+            "kind": { "const": "call" },
+            "from": { "$ref": "#/$defs/runId" },
+            "invoke": { "$ref": "#/$defs/id" },
+            "call": { "$ref": "#/$defs/lowerName" },
+            "args": { "$ref": "#/$defs/args" }
+          },
+          "required": ["kind", "from", "invoke", "call", "args"],
           "additionalProperties": false
         },
         {
@@ -332,7 +361,14 @@
           "properties": { "kind": { "const": "limit" } },
           "required": ["kind"],
           "additionalProperties": false
+        },
+        {
+          "description": "A reply was given a pending-call value whose call is not pending.",
+          "properties": { "kind": { "const": "answered" }, "call": { "$ref": "#/$defs/lowerName" } },
+          "required": ["kind", "call"],
+          "additionalProperties": false
         }
+
       ]
     }
   }

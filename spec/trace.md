@@ -34,8 +34,9 @@ States are named by their ids in the IR, transitions by their state's id and the
 | `sent` | `message`, `to`, `value` | When a `send` effect runs, before the driver queues the message. `message` is the message's id in the sending run, from 1, shared with `emitted` and `undelivered`; `to` the receiving run's id; `value` the event, a tagged record. |
 | `emitted` | `message`, `value` | When an `emit` effect runs, before the driver queues the event for its receivers. Which runs received it is in their records, not here. |
 | `undelivered` | `message`, `to`, `value` | A `send` that reached no run. Written by the core in place of `sent`, with `to` `null`, when the state the child is addressed through has no running invoke (it has not started yet, or its outcome has been taken). Written by the driver right after the `sent` record, with the same members, when the receiving run has ended. |
-| `invoke.started` | `invoke`, `state`, `src`, `args` | When a task or child machine is started. `invoke` is its id in the run, from 1. |
+| `invoke.started` | `invoke`, `state`, `src`, `args` | When a task or child machine is started, or a call is made. `invoke` is its id in the run, from 1. For a call, `src` is the address and the call, `inventory.reserve`, and `args` is keyed by the call's parameter names. |
 | `invoke.cancelled` | `invoke`, `state`, `src` | When a running invoke is cancelled because its state is left. An invoke whose outcome arrived is not cancelled. |
+| `replied` | `to`, `invoke`, `call`, `outcome`, `value` | When a `reply` effect runs, before the driver answers the caller, and right after the `dropped` record of a call that enabled no transition. `to` is the caller's run id and `invoke` the caller's invoke; `outcome` is `done` or `fail`, and `value` the result (`null` for a call that returns nothing) or the error. A dropped call is answered `fail` with `{"_tag": "Unanswered"}`. |
 | `timer.started` | `timer`, `state`, `index`, `delay` | When an `after` timer is started. `index` is the transition of its `after` block that comes first, and `delay` the evaluated delay in milliseconds. |
 | `timer.cancelled` | `timer`, `state`, `index` | When a running timer is cancelled because its state is left. |
 | `done` | `state`, `output` | Last, when the run reaches a top-level final state with an output. `output` is `null` for a machine that returns nothing. |
@@ -56,6 +57,7 @@ The `event` member of `event`, `dropped` and `stale` records is the input exactl
 | Message from another run | `{"kind": "message", "from": "r1", "message": 2, "value": {"_tag": "Pause"}}` |
 | Emitted by a child run | `{"kind": "emitted", "from": "r1.1", "invoke": 1, "message": 1, "value": {"_tag": "Progress", "offset": 100}}` |
 | Emitted by a peer | `{"kind": "emitted", "from": "r1", "invoke": null, "message": 3, "value": {"_tag": "Reserved", "orderId": "o1"}}` |
+| Call from another run | `{"kind": "call", "from": "r2", "invoke": 1, "call": "reserve", "args": {"orderId": "o1", "items": […]}}` |
 | Invoke succeeded | `{"kind": "invoke.done", "invoke": 1, "value": …}` |
 | Invoke failed | `{"kind": "invoke.fail", "invoke": 1, "error": {"_tag": "GatewayUnavailable"}}` |
 | Invoke ended with a defect | `{"kind": "invoke.defect", "invoke": 1, "defect": {"kind": "host", "message": "…"}}` |
@@ -67,13 +69,16 @@ The two other inputs, `cancel` and `defect`, are not written as `event` records:
 
 ### Defects
 
-`{"kind": "host", "message": …}`, `{"kind": "unassigned", "var": …}`, `{"kind": "overflow", "expr": …}`, `{"kind": "undeclared", "error": …}` or `{"kind": "limit"}`; see [execution.md](execution.md#defects).
+`{"kind": "host", "message": …}`, `{"kind": "unassigned", "var": …}`, `{"kind": "overflow", "expr": …}`, `{"kind": "undeclared", "error": …}`, `{"kind": "limit"}` or `{"kind": "answered", "call": …}`; see [execution.md](execution.md#defects).
 
 ## Messages
 
 Records are enough to draw a sequence view across runs. A `send` is one `sent` record in the sender's group, with `to`, and one `event`, `dropped` or `stale` record in the receiver's, whose input has `from` and the same `message`; or `sent` followed by `undelivered` if the receiver had ended, or `undelivered` alone if there was no child to send to. An `emit` is one `emitted` record, and one input record in the group of each run it reached. A `sent` with no receiving record and no `undelivered` is a message that never reached a transition: it was still queued when the receiver ended and was discarded with the queue ([ending a run](execution.md#ending-a-run)), or it was kept for a child that never claimed its invoke (a stub) and discarded when the invoke ended.
 
+A **call** is an `invoke.started` record in the caller's group whose `src` names the address and the call, and an `event` or `dropped` record in the callee's whose input has `kind` `call`, `from` the caller and the same `invoke`. Its answer is a `replied` record in the callee's group with `to` the caller and that `invoke`, and the `invoke.done` or `invoke.fail` input record in the caller's (or `stale`, if the caller had left the state). A call to a callee that was not open, or that ended before answering, has only the caller's records: its `invoke.fail` input carries `Unanswered`, and the callee writes nothing about it.
+
 ## Order
+
 
 **Within a run**, records are in the order the core emitted them, which is fixed by the run's inputs. **Across runs**, a live trace interleaves records as they are written, and that interleaving depends on how the host schedules the runs: on the Effect scheduler, or on how a Rust driver polls a child's future. It is not part of the format. A `sent` or `emitted` record is always written before the records of the runs that receive it.
 
