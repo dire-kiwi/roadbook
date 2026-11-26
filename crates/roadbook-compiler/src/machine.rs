@@ -423,6 +423,19 @@ impl<'p> Cx<'_, 'p> {
                     .with_help("a final state ends its parent as soon as it is entered; only `entry`, `exit`, `output` and `fail` belong in it"),
                 );
             }
+            if kind == ir::StateKind::Atomic
+                && let Item::Transition(t) = item
+                && matches!(t.trigger, Trigger::Done)
+            {
+                self.ck.diags.push(
+                    Diagnostic::error(
+                        codes::DONE_WITHOUT_CHILDREN,
+                        t.trigger_span,
+                        format!("`{id}` has no child states, so its `done` can never be taken"),
+                    )
+                    .with_help("`done` is taken when a compound state reaches a final child, or every region of a parallel state does; to leave when an `invoke` finishes, put `done` inside the `invoke { }`"),
+                );
+            }
             match item {
                 Item::Entry(h) => entry.extend(self.effects(&h.effects, &Scope::none())),
                 Item::Exit(h) => exit.extend(self.effects(&h.effects, &Scope::none())),
@@ -570,6 +583,21 @@ impl<'p> Cx<'_, 'p> {
             return None;
         }
         let children = self.nodes[idx].children.clone();
+        if is_root && children.is_empty() && !initials.is_empty() {
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::MISSING_INITIAL,
+                    self.nodes[idx].name_span,
+                    format!("machine `{id}` has no states"),
+                )
+                .with_secondary(initials[0].span, "its `initial` names no state")
+                .with_help(format!(
+                    "declare the state: `final state {} {{}}`",
+                    initials[0].name
+                )),
+            );
+            return None;
+        }
         let Some(first) = initials.first() else {
             if children.is_empty() {
                 self.ck.diags.push(

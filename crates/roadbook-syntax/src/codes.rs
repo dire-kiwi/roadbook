@@ -11,8 +11,8 @@ pub const UNTERMINATED_STRING: Code = Code(2);
 pub const UNKNOWN_ESCAPE: Code = Code(3);
 /// A number followed by letters that are not a duration unit, such as `5min` or `1.5s`.
 pub const MALFORMED_NUMBER: Code = Code(4);
-/// A number too large for its type: an integer beyond a 64-bit signed integer, or a float
-/// literal too large to be a finite 64-bit float.
+/// A number too large for its type: an integer beyond a 64-bit signed integer, a duration
+/// whose number does not fit in 64 bits, or a float too large to be a finite 64-bit float.
 pub const NUMBER_TOO_LARGE: Code = Code(5);
 /// A name containing `_`. Names are camelCase or PascalCase.
 pub const UNDERSCORE_IN_NAME: Code = Code(6);

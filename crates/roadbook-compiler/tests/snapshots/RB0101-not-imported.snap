@@ -8,3 +8,11 @@ error[RB0101]: unknown type `User`
   |                               ^^^^
   |
   = help: `User` is declared in `types.road`; import it
+
+error[RB0101]: unknown type `User`
+ --> main.road:9:17
+  |
+9 | machine N(user: User) {
+  |                 ^^^^
+  |
+  = help: `User` is declared in `types.road`; import it

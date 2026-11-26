@@ -457,6 +457,17 @@ impl Cx<'_, '_> {
                 return Ty::Unknown;
             }
         };
+        if fields.is_empty() {
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::NO_FIELDS,
+                    f.span,
+                    format!("`{t}` has no fields, so it has no field `{}`", f.name),
+                )
+                .with_help(format!("declare the field on `{}`, or do not read it", t.to_string().trim_start_matches("event "))),
+            );
+            return Ty::Unknown;
+        }
         match fields.iter().find(|(n, _)| *n == f.name) {
             Some((_, ft)) => ft.clone(),
             None => {

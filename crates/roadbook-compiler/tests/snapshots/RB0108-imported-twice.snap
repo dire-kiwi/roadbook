@@ -1,0 +1,21 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0108]: `B` is imported twice
+ --> main.road:1:13
+  |
+1 | import { B, B } from "./types.road"
+  |             ^
+  |          - first imported here
+  |
+  = help: import each name once
+
+error[RB0108]: `B` is imported twice
+ --> main.road:2:10
+  |
+1 | import { B, B } from "./types.road"
+  |          - first imported here
+2 | import { B } from "./types.road"
+  |          ^
+  |
+  = help: import each name once

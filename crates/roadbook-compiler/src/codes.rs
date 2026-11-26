@@ -22,7 +22,8 @@ pub const UNKNOWN_EVENT: Code = Code(106);
 /// Two top-level declarations with the same name in one compilation, or an event with the
 /// name of a type, error or machine.
 pub const DUPLICATE_DECLARATION: Code = Code(107);
-/// Two fields, parameters, variants, variables, events or sibling states with the same name.
+/// Two fields, parameters, variants, variables, events or sibling states with the same name,
+/// or a name imported twice into one file.
 pub const DUPLICATE_NAME: Code = Code(108);
 /// A declared name used as something it is not, such as an action in `invoke`.
 pub const WRONG_KIND: Code = Code(109);
@@ -61,6 +62,8 @@ pub const MISSING_RESULT: Code = Code(209);
 pub const STATE_KIND_MISMATCH: Code = Code(210);
 /// A transition or `invoke` in a final state, which is left as soon as it is entered.
 pub const ACTIVITY_IN_FINAL_STATE: Code = Code(211);
+/// A `done` transition in a state with no child states, which can never be taken.
+pub const DONE_WITHOUT_CHILDREN: Code = Code(212);
 
 // ───────────── types ─────────────
 
@@ -74,7 +77,8 @@ pub const BAD_OPERANDS: Code = Code(303);
 pub const UNKNOWN_FIELD: Code = Code(304);
 /// A record or error value that leaves out a field.
 pub const MISSING_FIELD: Code = Code(305);
-/// A field read from a value that has no fields.
+/// A field read from a value that has no fields: a scalar, an optional, or a record, error
+/// or event declared with none.
 pub const NO_FIELDS: Code = Code(306);
 /// `result` in the `done` of a task or machine that returns nothing.
 pub const NO_RESULT: Code = Code(307);
@@ -138,6 +142,7 @@ pub const ALL: &[Code] = &[
     MISSING_RESULT,
     STATE_KIND_MISMATCH,
     ACTIVITY_IN_FINAL_STATE,
+    DONE_WITHOUT_CHILDREN,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
     BAD_OPERANDS,

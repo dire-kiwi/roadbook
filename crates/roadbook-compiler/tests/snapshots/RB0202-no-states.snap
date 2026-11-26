@@ -8,3 +8,13 @@ error[RB0202]: machine `Empty` has no states
   |         ^^^^^
   |
   = help: add an `initial` state, such as `initial Done` and `final state Done {}`
+
+error[RB0202]: machine `OnlyInitial` has no states
+ --> RB0202-no-states.road:5:9
+  |
+5 | machine OnlyInitial() {
+  |         ^^^^^^^^^^^
+6 |   initial A
+  |           - its `initial` names no state
+  |
+  = help: declare the state: `final state A {}`

@@ -1,0 +1,17 @@
+task fetch()
+
+machine M() {
+  initial A
+  state A {
+    invoke fetch() { done -> B }
+    done -> B
+  }
+  state B {
+    initial C
+    final state C {}
+    done -> D
+  }
+  final state D {}
+}
+
+// expect: RB0212 at 7:5

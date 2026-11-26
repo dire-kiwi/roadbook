@@ -41,6 +41,9 @@ pub(crate) struct Names<'p> {
     /// Names declared more than once. Already reported, and poisoned in every file: which
     /// declaration a use meant is unknown, so checking it against either would mislead.
     duplicated: HashSet<&'p str>,
+    /// `(file, name)` for which a fix importing `name` into `file` was offered. Offered once:
+    /// applying two identical fixes would import the name twice.
+    import_fixes: HashSet<(usize, String)>,
 }
 
 /// How a declaration kind is called in messages: "a record type", "an action".
@@ -80,6 +83,7 @@ impl<'p> Names<'p> {
             scopes: vec![HashMap::new(); project.files.len()],
             poisoned: vec![HashSet::new(); project.files.len()],
             duplicated: HashSet::new(),
+            import_fixes: HashSet::new(),
         };
         let mut own: Vec<HashMap<&'p str, DeclId>> = vec![HashMap::new(); project.files.len()];
         for (fi, file) in project.files.iter().enumerate() {
@@ -120,6 +124,22 @@ impl<'p> Names<'p> {
             }
         }
         for (fi, file) in project.files.iter().enumerate() {
+            let mut imported: HashMap<&str, Span> = HashMap::new();
+            for n in file.ast.imports().flat_map(|i| &i.names) {
+                if let Some(first) = imported.get(n.name.as_str()) {
+                    diags.push(
+                        Diagnostic::error(
+                            codes::DUPLICATE_NAME,
+                            n.span,
+                            format!("`{}` is imported twice", n.name),
+                        )
+                        .with_secondary(*first, "first imported here")
+                        .with_help("import each name once"),
+                    );
+                } else {
+                    imported.insert(&n.name, n.span);
+                }
+            }
             for (import, target) in file.ast.imports().zip(&file.imports) {
                 let Some(target) = *target else {
                     for n in &import.names {
@@ -182,7 +202,7 @@ impl<'p> Names<'p> {
     /// "unknown {what} `name`", with a fix that imports it if it is declared elsewhere in the
     /// project, or one that corrects the spelling if a name of the right kind is close.
     pub fn unknown(
-        &self,
+        &mut self,
         file: usize,
         ident: &Ident,
         code: Code,
@@ -226,7 +246,10 @@ impl<'p> Names<'p> {
 
     /// Adds a fix that imports `name` from file `from` into file `file`: added to an existing
     /// import of that file if there is one, else as a new import at the top.
-    fn import_fix(&self, d: Diagnostic, file: usize, from: usize, name: &str) -> Diagnostic {
+    fn import_fix(&mut self, d: Diagnostic, file: usize, from: usize, name: &str) -> Diagnostic {
+        if !self.import_fixes.insert((file, name.to_string())) {
+            return d;
+        }
         let f = &self.project.files[file];
         for (import, target) in f.ast.imports().zip(&f.imports) {
             if *target == Some(from)

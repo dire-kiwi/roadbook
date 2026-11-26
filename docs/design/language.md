@@ -157,6 +157,7 @@ Errors (the build fails):
 - A read of a variable that might not be assigned yet. <a id="definite-assignment"></a> This is [milestone 6](roadmap.md#milestones); until then reading an unassigned variable is a runtime error.
 - A machine that returns `T` with a top-level final state that has no `output` or `fail`, and `output` or `fail` anywhere but a final state at the top level.
 - A transition or `invoke` in a final state. A final state ends its parent as soon as it is entered, so they could never run; it holds only `entry`, `exit`, `output` and `fail`.
+- A `done` transition in a state with no child states: it waits for a final child, so it could never be taken. (An invoke's `done` goes inside `invoke { }`.)
 - An unguarded cycle of `always` transitions: states each with an `always` whose first branch has no `if` (an `else` counts as guarded, since it runs only when the guards before it fail), each leading to the next, where entering a state also enters its `initial` chain (and every region of a parallel state), and a transition to a state's own ancestor leaves and re-enters it. An unguarded `always` with no target is the shortest such cycle. So is an unguarded `always` written in the machine body, whatever its target, unless that target is a top-level final state: the machine itself is never left, so its `always` would be taken again after every step.
 - A machine that invokes itself, directly or through other machines, without an `after` or event in between (unbounded recursion). Precisely: machine `M` *starts* machine `N` if a state of `M` that invokes `N` can be entered from `M`'s initial states by taking only `always`, `done` and invoke outcome transitions, whatever their guards. Only `on` and `after` transitions count as waiting; an invoke's outcome does not, since a task can finish at once. A cycle of *starts* is an error.
 
@@ -251,7 +252,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0002` | A string with no closing quote on its line. | `"timeout` |
 | `RB0003` | An escape other than `\"`, `\\`, `\n` and `\t`. | `"a\qb"` |
 | `RB0004` | A number followed by letters that are not a duration unit. | `after 5min`, `after 1.5s` |
-| `RB0005` | An integer that does not fit in an `int`, or a float too large to be finite. | `99999999999999999999`, a `float` of 400 digits |
+| `RB0005` | An integer that does not fit in an `int`, a duration whose number does not fit in 64 bits, or a float too large to be finite. | `99999999999999999999`, a `float` of 400 digits |
 | `RB0006` | A name containing `_`. | `type Line_item` |
 | `RB0010` | An unexpected token. | `type A { x int }` |
 | `RB0011` | A `{` or `(` that is never closed. | `state A {` at the end of the file |
@@ -281,7 +282,7 @@ The compiler's codes:
 | `RB0105` | An unknown variable. | `set attemps = 1` |
 | `RB0106` | An event the machine does not declare. | `on Cancl -> Done` |
 | `RB0107` | Two declarations with the same name in one compilation, or an event named like a type, error or machine. | `type Order` in two files, `event Order` |
-| `RB0108` | Two fields, parameters, variants, variables, events or sibling states with the same name. | `state A {}` twice in one parent |
+| `RB0108` | Two fields, parameters, variants, variables, events or sibling states with the same name, or a name imported twice. | `state A {}` twice in one parent, `import { B, B }` |
 | `RB0109` | A name used as something it is not. | `invoke audit(x)` where `audit` is an action |
 | `RB0110` | `event`, `result` or `error` where it is not in scope. | `entry set n = result` |
 | `RB0111` | An import of a file that cannot be read. | `import { A } from "./missing.road"` |
@@ -289,7 +290,7 @@ The compiler's codes:
 | `RB0113` | An enum variant that does not exist. | `Role.Admn` |
 | `RB0114` | A `set` of a machine parameter. | `set token = ""` |
 | `RB0201` | A transition target that does not resolve. | `-> Dne` |
-| `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }` |
+| `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }`, `machine M() { initial A }` |
 | `RB0203` | An `initial` that is not a child, is written twice, or is in a state without children. | `initial Strat` |
 | `RB0204` | An `invoke` that leaves a declared error unhandled. | see above |
 | `RB0205` | The same trigger twice in one state or one `invoke`. | `on Go -> A` and `on Go -> B` |
@@ -299,12 +300,13 @@ The compiler's codes:
 | `RB0209` | A top-level final state with no `output` or `fail` in a machine that returns a value. | `final state Done {}` in `machine M() -> int` |
 | `RB0210` | A final state with children, or a parallel state with none. | `final state A { state B {} }` |
 | `RB0211` | A transition or `invoke` in a final state. | `final state Done { on Go -> A }` |
+| `RB0212` | A `done` transition in a state with no child states, which can never be taken. | `state A { done -> B }` |
 | `RB0301` | A value of the wrong type. | `var ratio: float = 1` |
 | `RB0302` | The wrong number of arguments. | `retryDelay(1, 2)` |
 | `RB0303` | An operator on operands it is not defined on. | `attempts + 1.5`, `order == other` |
 | `RB0304` | A field the record, error or event does not have. | `order.idd` |
 | `RB0305` | A record or error value without one of its fields. | `CardDeclined {}` |
-| `RB0306` | A field read from a value that has none, or that is optional. | `attempts.size`, `draft.coupon.code` |
+| `RB0306` | A field read from a value that has none, or that is optional. | `attempts.size`, `draft.coupon.code`, `event.x` in `on Cancel` where `event Cancel` has no fields |
 | `RB0307` | `result` after a task or machine that returns nothing. | `done set n = result` |
 | `RB0308` | `error` in a `fail *` that covers several errors, or none. | `fail * set why = error.reason` |
 | `RB0309` | `event` in `on *`. | `on * do log(event)` |

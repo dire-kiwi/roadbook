@@ -420,6 +420,15 @@ impl Lexer<'_> {
                 format!("integer `{text}` does not fit in an `int` (64-bit signed)"),
             );
         }
+        if kind == TokenKind::Duration && text.parse::<u64>().is_err() {
+            let text = self.src[start..self.pos].to_string();
+            self.error(
+                codes::NUMBER_TOO_LARGE,
+                start,
+                self.pos,
+                format!("duration `{text}` is too large: its number does not fit in 64 bits"),
+            );
+        }
         if kind == TokenKind::Float && !text.parse::<f64>().is_ok_and(f64::is_finite) {
             let text = text.to_string();
             self.error(
@@ -690,6 +699,10 @@ mod tests {
             )]
         );
         assert!(errors(&format!("1{}.0", "0".repeat(300))).is_empty());
+        assert_eq!(
+            errors("99999999999999999999s"),
+            ["RB0005 duration `99999999999999999999s` is too large: its number does not fit in 64 bits"]
+        );
         assert_eq!(
             errors("snake_case"),
             ["RB0006 names cannot contain `_`: `snake_case`"]
