@@ -16,52 +16,71 @@ The compiler's only output is one JSON document per entry file: the intermediate
 
 Because both runtimes interpret the same IR the viewer draws, the picture cannot drift from the behaviour. The IR's content hash is stamped into the generated code and into every trace, so the viewer can tell when a trace came from a different version of the chart.
 
-The IR is fully resolved: state ids are absolute (`PlaceOrder.Processing.Paying`), targets are ids, names are checked, and every node carries its source span and doc comment. It is versioned (`irVersion`) and has a published JSON Schema, so third-party tools can read it and a runtime can refuse an IR it does not understand.
+The IR is fully resolved: state ids are absolute (`PlaceOrder.Processing.Paying`), targets are ids, names are checked, every expression carries its type, and every declaration, state, variable, event, invoke and transition carries its source span and doc comment. It is versioned (`irVersion`) and has a published JSON Schema, so third-party tools can read it and a runtime can refuse an IR it does not understand. The field-by-field reference is [`spec/ir.md`](../../spec/ir.md) and the schema is [`spec/ir.schema.json`](../../spec/ir.schema.json).
 
-An abridged IR for `Checkout` (the spike emits exactly this shape):
+An abridged IR for `Checkout` (`/* … */` marks what is left out; the spike emits an earlier draft of this shape, without `type` on expressions, end positions in spans or the hash):
 
 ```jsonc
 {
   "irVersion": "0.1",
-  "sources": [{ "path": "examples/shop/checkout.road" }],
-  "types":     { "CardDeclined": { "kind": "error", "fields": [{ "name": "reason", "type": "string" }] } },
-  "functions": { "retryDelay": { "params": [{ "name": "attempt", "type": "int" }], "returns": "duration" } },
+  "sources": [{ "path": "examples/shop/checkout.road" }, { "path": "examples/shop/types.road" }],
+  "types": {
+    "CardDeclined": { "kind": "error", "fields": [{ "name": "reason", "type": "string", "doc": "" }],
+                      "doc": "", "span": { "file": 1, "line": 15, "col": 1, "endLine": 15, "endCol": 44 } }
+  },
+  "functions": { "retryDelay": { "params": [{ "name": "attempt", "type": "int", "doc": "" }], "returns": "duration",
+                                 "doc": "", "span": { /* … */ } } },
   "actions":   {},
   "tasks":     { "chargeCard": { "params": [/* order, user */], "returns": "Receipt",
-                                 "errors": ["CardDeclined", "GatewayUnavailable"] } },
+                                 "errors": ["CardDeclined", "GatewayUnavailable"], "doc": "", "span": { /* … */ } } },
   "machines": {
     "Checkout": {
       "doc": "Charge the customer's card, retrying while the payment gateway is down.",
+      "span": { "file": 0, "line": 4, "col": 1, "endLine": 32, "endCol": 2 },
       "params": [/* order, user */], "returns": "Receipt", "errors": ["CardDeclined", "GatewayUnavailable"],
-      "vars": [{ "name": "attempts", "type": "int", "init": { "kind": "lit", "type": "int", "value": 0, "text": "0" } }],
+      "vars": [{ "name": "attempts", "type": "int",
+                 "init": { "kind": "lit", "value": 0, "type": "int", "text": "0" },
+                 "doc": "", "span": { "file": 0, "line": 5, "col": 3, "endLine": 5, "endCol": 24 } }],
       "events": {},
       "root": {
-        "id": "Checkout", "kind": "compound", "initial": "Checkout.Charging",
+        "id": "Checkout", "name": "Checkout", "kind": "compound", "doc": "Charge the customer's card, …",
+        "span": { /* the machine's */ }, "initial": "Checkout.Charging",
         "states": [
           {
             "id": "Checkout.Charging", "name": "Charging", "kind": "atomic",
             "doc": "One attempt against the payment gateway.",
-            "span": { "file": 0, "line": 12, "col": 3 },
-            "invoke": { "kind": "task", "src": "chargeCard", "args": [/* order, user */] },
+            "span": { "file": 0, "line": 12, "col": 3, "endLine": 21, "endCol": 4 },
+            "initial": null, "states": [], "entry": [], "exit": [],
+            "invoke": { "kind": "task", "src": "chargeCard", "args": [/* order, user */],
+                        "span": { "file": 0, "line": 13, "col": 5, "endLine": 20, "endCol": 6 } },
             "transitions": [
               { "trigger": { "kind": "invoke.done" }, "group": 0, "guard": null,
                 "target": "Checkout.Charged",
-                "effects": [{ "kind": "set", "var": "receipt", "value": { "kind": "ref", "path": ["result"], "text": "result" } }] },
+                "effects": [{ "kind": "set", "var": "receipt",
+                              "value": { "kind": "ref", "path": ["result"], "type": "Receipt", "text": "result" } }],
+                "span": { "file": 0, "line": 14, "col": 7, "endLine": 14, "endCol": 64 } },
+              /* fail CardDeclined, group 1 */
               { "trigger": { "kind": "invoke.fail", "error": "GatewayUnavailable" }, "group": 2,
-                "guard": { "kind": "op", "op": "<", "args": [/* attempts, 3 */], "text": "attempts < 3" },
-                "target": "Checkout.Backoff", "effects": [] },
+                "guard": { "kind": "op", "op": "<", "args": [/* attempts, 3 */], "type": "bool", "text": "attempts < 3" },
+                "target": "Checkout.Backoff", "effects": [], "span": { /* … */ } },
               { "trigger": { "kind": "invoke.fail", "error": "GatewayUnavailable" }, "group": 2,
-                "guard": null, "target": "Checkout.GaveUp", "effects": [] }
-            ]
+                "guard": null, "target": "Checkout.GaveUp", "effects": [], "span": { /* … */ } }
+            ],
+            "output": null, "fail": null
           }
-        ]
-      }
+          /* Backoff, Charged, Declined, GaveUp */
+        ],
+        "entry": [], "exit": [], "invoke": null, "transitions": [], "output": null, "fail": null
+      },
+      "hash": "sha256:…"
     }
   }
 }
 ```
 
-Transitions are in document order. The branches of one block are consecutive and share a `group`. Expressions are a small tree (`lit`, `ref`, `field`, `call`, `op`, `record`, `enum`), and every node carries `text`, its canonical source form, so tools can display it without a pretty-printer.
+Every member is always present: an absent value is `null`, a missing doc comment `""`, an empty list `[]`. Transitions are in document order, and a trace names one by its state's id and its index in `transitions`. The branches of one block are consecutive and share a `group`. Expressions are a small tree (`lit`, `ref`, `field`, `call`, `op`, `record`, `enum`), and every node carries its `type` and `text`, its canonical source form, so tools can display it without a pretty-printer.
+
+The hash is SHA-256 over the [canonical JSON](../../spec/ir.md#canonical-json) (RFC 8785) of the machine with its docs, spans and source text removed, together with the declarations and child machines it uses ([definition](../../spec/ir.md#the-machine-hash)). Reformatting a chart or editing its comments leaves the hash alone, and any change in behaviour or in a type it uses changes it.
 
 ## Execution model
 
