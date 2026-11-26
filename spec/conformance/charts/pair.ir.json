@@ -191,12 +191,12 @@
       "hash": "sha256:a3ddda38b14b5ec2a94886b68e786f3aa4c678c3782515d40561f8ed17d83566"
     },
     "Sender": {
-      "doc": "Sends First, then Second, in one transition.",
+      "doc": "Sends First, then Second, in one transition, to the same peer named two ways.",
       "span": {
         "file": 0,
         "line": 22,
         "col": 1,
-        "endLine": 30,
+        "endLine": 33,
         "endCol": 2
       },
       "params": [
@@ -208,16 +208,37 @@
       ],
       "returns": null,
       "errors": [],
-      "vars": [],
+      "vars": [
+        {
+          "name": "target",
+          "type": "ref Receiver",
+          "init": {
+            "kind": "ref",
+            "path": [
+              "peer"
+            ],
+            "type": "ref Receiver",
+            "text": "peer"
+          },
+          "doc": "The same peer, held in a variable: an address can be either.",
+          "span": {
+            "file": 0,
+            "line": 24,
+            "col": 3,
+            "endLine": 24,
+            "endCol": 34
+          }
+        }
+      ],
       "events": {
         "Go": {
           "fields": [],
           "doc": "",
           "span": {
             "file": 0,
-            "line": 23,
+            "line": 26,
             "col": 3,
-            "endLine": 23,
+            "endLine": 26,
             "endCol": 11
           }
         }
@@ -227,12 +248,12 @@
         "id": "Sender",
         "name": "Sender",
         "kind": "compound",
-        "doc": "Sends First, then Second, in one transition.",
+        "doc": "Sends First, then Second, in one transition, to the same peer named two ways.",
         "span": {
           "file": 0,
           "line": 22,
           "col": 1,
-          "endLine": 30,
+          "endLine": 33,
           "endCol": 2
         },
         "initial": "Sender.Idle",
@@ -244,10 +265,10 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 27,
+              "line": 30,
               "col": 3,
-              "endLine": 27,
-              "endCol": 81
+              "endLine": 30,
+              "endCol": 83
             },
             "initial": null,
             "states": [],
@@ -298,7 +319,7 @@
                     "kind": "send",
                     "to": {
                       "kind": "ref",
-                      "name": "peer",
+                      "name": "target",
                       "machine": "Receiver",
                       "state": null
                     },
@@ -313,10 +334,10 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 27,
+                  "line": 30,
                   "col": 16,
-                  "endLine": 27,
-                  "endCol": 79
+                  "endLine": 30,
+                  "endCol": 81
                 }
               }
             ],
@@ -330,9 +351,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 29,
+              "line": 32,
               "col": 3,
-              "endLine": 29,
+              "endLine": 32,
               "endCol": 22
             },
             "initial": null,
@@ -352,7 +373,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d3110c9a5d26abcd933a3c96a9f58ba2c9c3685b111420defd6d77580ce4442c"
+      "hash": "sha256:44fcb592287cddc7c3313a3ff3a57b939f2c6ffe34de436657f2877d3c3091b2"
     }
   }
 }

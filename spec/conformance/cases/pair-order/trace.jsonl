@@ -12,7 +12,7 @@
 {"kind":"exited","run":"r1","state":"Receiver.Done","t":0}
 {"kind":"exited","run":"r1","state":"Receiver","t":0}
 {"kind":"done","output":null,"run":"r1","state":"Receiver.Done","t":0}
-{"input":{"peer":"r1"},"ir":"sha256:d3110c9a5d26abcd933a3c96a9f58ba2c9c3685b111420defd6d77580ce4442c","kind":"started","machine":"Sender","run":"r2","t":0}
+{"input":{"peer":"r1"},"ir":"sha256:44fcb592287cddc7c3313a3ff3a57b939f2c6ffe34de436657f2877d3c3091b2","kind":"started","machine":"Sender","run":"r2","t":0}
 {"kind":"entered","run":"r2","state":"Sender","t":0}
 {"kind":"entered","run":"r2","state":"Sender.Idle","t":0}
 {"event":{"kind":"event","value":{"_tag":"Go"}},"kind":"event","run":"r2","t":0}

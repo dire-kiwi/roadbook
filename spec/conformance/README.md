@@ -88,7 +88,7 @@ A runner gives the driver scripted host code and a virtual clock, then drives it
 5. Check that the root run's status is `status` and that each other top-level run's is the `status` of its `start` step. A run still running is left as it is: the runner does not cancel it and writes nothing more.
 6. Arrange the records [grouped by run](../trace.md#order), write each in canonical form followed by a line feed, and compare the bytes with `trace.jsonl`.
 
-**Quiescent** means that every run's queue is empty, no run is carrying out commands, and every child run that has ended has had its outcome taken by its parent. Only scripted invokes and timers are then pending, and nothing happens until the runner acts.
+**Quiescent** means that every run's queue is empty, no run is carrying out commands, and every child run that has ended has had its outcome taken by its parent, unless the parent has ended too. Only scripted invokes and timers are then pending, and nothing happens until the runner acts.
 
 **Inputs.** Ending a scripted invoke gives its run the `invoke.done`, `invoke.fail` or `invoke.defect` input for that invoke's id; an event step gives its run (the root run, or `run`) an `event` input; a cancel step a `cancel` request. A `start` step starts the run with the clock, timer and trace sink the others use, after the runs it holds a `ref` to; it gives no input to the runs already started, though its run's start step may send them messages. Messages and emitted events are never scripted: runs produce them, and the driver delivers them.
 
@@ -106,11 +106,12 @@ A runner gives the driver scripted host code and a virtual clock, then drives it
 
 So the runner's own virtual timer records every timer the driver starts, with its run, id and due time, forgets those the driver cancels, and fires them one at a time as above, waiting for quiescence after each. A Rust runner implements the `Timer` trait so. A TypeScript runner gives the driver its own `Timer` service in the same way; Effect's `TestClock` alone does not meet these rules, because `TestClock.adjust(d)` wakes every sleep in the window without waiting for the runs to settle between them, and it does not promise that `Effect.sleep` with a zero duration waits for the clock to move. A runner may still use `TestClock` as the clock records read, setting it to each due time in turn (`TestClock.setTime`) as its own timer fires.
 
-**A case must not depend on scheduling.** With every input of a step for one run, these rules leave three orders open, and no case depends on them:
+**A case must not depend on scheduling.** With every input of a step for one run, these rules leave four orders open, and no case depends on them:
 
 - Outcomes from two child runs of one parent that both end while the runs settle after a single step: which child ends first is up to the scheduler.
 - Inputs that two runs push onto a third's queue in one step, unless one of them finished pushing before the other started. The messages and emitted events of one sender arrive in order ([order per pair](../execution.md#delivering-messages)), and a child's cancel step is over before its parent's step goes on, so in `cancel-parent-messages` the Logbook takes the Worker's note before Boss's. But nothing orders, say, an Inventory's two replies to two Orders that each forward something to a third run.
 - A message to a run that is cancelled in the same step: whether the run took the message before the cancel request is up to the scheduler. (A cancel request goes before what is queued, but the run may already have taken the message.)
+- A message to a child in the step after the one that started it, which only a `together` can arrange: whether the child has claimed its invoke context yet, and so whether the message is kept for it or pushed (or, if the child ended in its start step, written `undelivered`), is up to the scheduler.
 
 ## The cases
 
@@ -149,4 +150,4 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `peer-two-holders` | One emitted event received by two holders of a `ref`: one drops it (its guard fails), the other takes it; a later one reaches only the holder still running; a send in the transition that ends the sender is delivered. |
 | `peer-timeout` | An `after` gives up on a peer that does not answer; the peer's late reply is not delivered to the ended run. |
 | `peer-stopped` | A send to a peer that has ended: `sent`, then the driver's `undelivered`. |
-| `pair-order` | Two sends from one run to another, in one transition, are taken in order; host code sends to a spawned peer, `r2`; a `ref` in `started` and in an action's arguments is a run id. |
+| `pair-order` | Two sends from one run to another, in one transition, one through a `ref` parameter and one through a `ref` variable, are taken in order; host code sends to a spawned peer, `r2`; a `ref` in `started` and in an action's arguments is a run id. |

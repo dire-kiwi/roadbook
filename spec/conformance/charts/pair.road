@@ -18,13 +18,16 @@ machine Receiver() {
   final state Done {}
 }
 
-/// Sends First, then Second, in one transition.
+/// Sends First, then Second, in one transition, to the same peer named two ways.
 machine Sender(peer: ref Receiver) {
+  /// The same peer, held in a variable: an address can be either.
+  var target: ref Receiver = peer
+
   event Go
 
   initial Idle
 
-  state Idle { on Go -> Sent  do note(peer)  send peer.First  send peer.Second }
+  state Idle { on Go -> Sent  do note(peer)  send peer.First  send target.Second }
 
   final state Sent {}
 }

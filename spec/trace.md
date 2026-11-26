@@ -32,7 +32,7 @@ States are named by their ids in the IR, transitions by their state's id and the
 | `action` | `action`, `args` | When an action is run, before the driver runs it. `args` is keyed by parameter name. |
 | `sent` | `message`, `to`, `value` | When a `send` effect runs, before the driver queues the message. `message` is the message's id in the sending run, from 1, shared with `emitted` and `undelivered`; `to` the receiving run's id; `value` the event, a tagged record. |
 | `emitted` | `message`, `value` | When an `emit` effect runs, before the driver queues the event for its receivers. Which runs received it is in their records, not here. |
-| `undelivered` | `message`, `to`, `value` | A `send` that reached no run. Written by the core in place of `sent`, with `to` `null`, when the child it is addressed to is not running (its invoke has not started yet, or has ended). Written by the driver right after the `sent` record, with the same members, when the receiving run has ended. |
+| `undelivered` | `message`, `to`, `value` | A `send` that reached no run. Written by the core in place of `sent`, with `to` `null`, when the state the child is addressed through has no running invoke (it has not started yet, or its outcome has been taken). Written by the driver right after the `sent` record, with the same members, when the receiving run has ended. |
 | `invoke.started` | `invoke`, `state`, `src`, `args` | When a task or child machine is started. `invoke` is its id in the run, from 1. |
 | `invoke.cancelled` | `invoke`, `state`, `src` | When a running invoke is cancelled because its state is left. An invoke whose outcome arrived is not cancelled. |
 | `timer.started` | `timer`, `state`, `index`, `delay` | When an `after` timer is started. `index` is the transition of its `after` block that comes first, and `delay` the evaluated delay in milliseconds. |
@@ -69,7 +69,7 @@ The two other inputs, `cancel` and `defect`, are not written as `event` records:
 
 ## Messages
 
-Records are enough to draw a sequence view across runs. A `send` is one `sent` record in the sender's group, with `to`, and one `event`, `dropped` or `stale` record in the receiver's, whose input has `from` and the same `message`; or `sent` followed by `undelivered` if the receiver had ended, or `undelivered` alone if there was no child to send to. An `emit` is one `emitted` record, and one input record in the group of each run it reached. A message that reached a run's queue but was still there when the run ended has no receiving record: it was discarded with the queue ([ending a run](execution.md#ending-a-run)).
+Records are enough to draw a sequence view across runs. A `send` is one `sent` record in the sender's group, with `to`, and one `event`, `dropped` or `stale` record in the receiver's, whose input has `from` and the same `message`; or `sent` followed by `undelivered` if the receiver had ended, or `undelivered` alone if there was no child to send to. An `emit` is one `emitted` record, and one input record in the group of each run it reached. A `sent` with no receiving record and no `undelivered` is a message that never reached a transition: it was still queued when the receiver ended and was discarded with the queue ([ending a run](execution.md#ending-a-run)), or it was kept for a child that never claimed its invoke (a stub) and discarded when the invoke ended.
 
 ## Order
 

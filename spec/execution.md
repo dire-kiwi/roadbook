@@ -174,7 +174,7 @@ A transition is **enabled** if its trigger matches the input and its guard holds
 **An emitted event** `{"_tag": N, …}` from run `input.from`: for each active state `s`, innermost first, the candidates are `s`'s transitions with trigger kind `emitted`, `event` `N`, and an address `from` that names the sender:
 
 - an address of kind `child` names it when `input.invoke` is not `null` and the entry of `snap.invokes` with id `input.invoke` has `state` equal to the address's `state`. (That entry exists: the input would otherwise have been stale.)
-- an address of kind `ref` names it when `input.invoke` is `null` and the address's `name` is a parameter whose value, or a variable whose value, is the run id `input.from`. A variable with no value names no sender; reading it here is not an `unassigned` defect.
+- an address of kind `ref` names it when `input.invoke` is `null` and the address's `name` is a parameter whose value, or a variable whose value, is the run id `input.from`. (An address names a parameter or variable of type `ref M`, through aliases: never an optional `ref` or a list of them, which the compiler rejects.) A variable with no value names no sender; reading it here is not an `unassigned` defect.
 
 Try the candidates' guards in document order; the first that holds is taken. If none holds, go on to the next state outward. There is no fallback to `on *`. So `on upload.Progress` is taken only for a `Progress` from the child that `upload` names, and from the run that started it, not from an earlier child of the same state: a child restarted by re-entering its state has a new invoke id.
 
@@ -320,7 +320,8 @@ startWork():
       args = the parameter names of s.invoke.src zipped with eval of s.invoke.args, left to right
       append { id, state: s.id, src: s.invoke.src } to snap.invokes
       emit trace { kind: "invoke.started", invoke: id, state: s.id, src: s.invoke.src, args }
-      emit invoke.start { invoke: id, state: s.id, src: s.invoke.src, srcKind: s.invoke.kind, args }
+      emit invoke.start { invoke: id, state: s.id, src: s.invoke.src, srcKind: s.invoke.kind,
+                          as: s.invoke.as, args }
     for each after block of s, in document order of its first transition (index i):
       delay = eval(s.transitions[i].trigger.delay)
       id = snap.nextTimer; snap.nextTimer += 1
@@ -376,7 +377,7 @@ A run talks to another only through queues. The core's part is small: a `send` o
 - **Sending is queuing.** The sender's driver pushes the input onto the receiver's queue and carries on with the next command. A sender never waits for the receiver and never runs the receiver's transitions; the receiver takes the input later, one at a time, like any other.
 - **Who receives a `send`.** For an address of kind `child`, the child run of the invoke that is running in the address's `state`. For an address of kind `ref`, the run whose id the parameter or variable holds.
 - **Who receives an `emit`.** The run's invoker, if it invoked the run with `as`; an invoker without `as` has no name to receive them under, and they are not delivered to it. And every run that holds a `ref` to the emitting run ([refs and handles](#refs-and-handles)), whether or not it has an `on` for the event: one with no enabled transition writes `dropped`. A run never receives its own emitted events.
-- **A run holds a `ref`** to each run whose id is in its input. A machine gets a `ref` only as an argument (from host code, or from a parent that passes one of its own to an invoke), never from a result, an event or a field, so the runs it holds are fixed when it starts. A `ref` variable holds one of them.
+- **A run holds a `ref`** to each run whose handle it was given as an argument: the value of a parameter whose type is `ref M`, or contains one (`ref M?`, `ref M[]`, an alias of one). A machine gets a `ref` only as an argument (from host code, or from a parent that passes one of its own to an invoke), never from a result, an event or a field, so the runs it holds are fixed when it starts. A `ref` variable holds one of them.
 - **Messages are not supervised.** When a run ends, the runs that hold a `ref` to it are not told; they learn of it only through their own timeouts ([open question 4](../docs/design/actors.md#open-questions)). Messages sent to it afterwards are `undelivered`.
 - **Ending a run.** The exit effects that run when a run finishes or is cancelled are effects like any others, and can send and emit. Whatever is still queued for a run when it ends, messages and emitted events included, is discarded without a record ([ending a run](#ending-a-run)).
 - **Defects.** A runtime error inside the core discards every command of the step, so nothing the step sent or emitted is delivered and no record of it is written; the snapshot the defect is applied to keeps its `nextMessage`. A host defect in an action stops the step's commands, so the sends and emits after it are neither delivered nor traced. `failWithDefect` runs no exit effects, so it sends and emits nothing itself; a child run it cancels runs its own cancel step, whose emitted events find the parent already ended.
@@ -473,7 +474,7 @@ The driver gives each run a queue and a clock, carries out the core's commands w
 
 ```
 run(machine, input):
-  (snap, commands) = core.start(ir, machine, input, fns)
+  (snap, commands) = core.start(ir, machine, runId, input, fns)
   snap = carryOut(snap, commands)
   while snap.status == "running":
     input = take()                  # a cancel request if there is one, else the front of the queue
@@ -533,14 +534,14 @@ A machine invoke's implementation is host code: in TypeScript the value given fo
 
 The core holds a `ref` as a run id ([values](#values)). Host code holds a **handle**: Rust's `Ref` (`inventory::Ref`, from `actor.handle()`), and its TypeScript counterpart, a value from a spawned run's actor. A handle can be cloned and passed on, and it is how host code reaches a run.
 
-- **Encoding.** The binding layer turns a handle into its run's id when it encodes a value for the core (a machine's arguments), and a run id back into the handle when it decodes a value for host code (the arguments of an invoke, an action, a task or a function). A machine can only get a `ref` from its arguments, so every run id its core gives back, in a `send` or in arguments, is one of the handles the run was started with. The driver keeps those for as long as the run is open. It needs no registry of runs: a run reaches exactly the runs it was given.
+- **Encoding.** The binding layer turns a handle into its run's id when it encodes a value for the core (a machine's arguments), and a run id back into the handle when it decodes a value for host code (the arguments of an invoke, an action, a task or a function). A machine can only get a `ref` from its arguments, so every run id its core gives back, in a `send` or in arguments, is one of the handles the run was started with. The driver keeps those for as long as the run is open. It needs no registry of runs by id: a run reaches exactly the runs it was given. What a run needs to emit is the other way round, the runs subscribed to it ([delivery](#delivering-messages)), which its handle can keep.
 - **Where handles come from.** A top-level run that host code `spawn`s has one; host code passes it in the arguments of the runs that are to talk to it. A child run has none: its parent reaches it through its invoke, and nothing else can.
 - **Host code sends** through a handle as through an actor: the run gets an ordinary `event` input, with no sender. Host code does not receive emitted events through a handle; that is not specified yet.
 - **Equality.** The language defines no `==` on `ref`s. The core compares run ids only to tell which address an emitted event is from ([selecting](#selecting-a-transition)).
 
 ### Delivering messages
 
-- **Open and closed.** A run is **open** from just before its driver calls `start` until the core returns a snapshot whose status is not `running`, from `start` or from any `step`; it is then **closed** for good. A run closes before the commands of its last step are carried out, so a message that reaches it while it carries them out (while it waits for a child's cancel step, say) is undelivered, and an emitted event is not delivered to it.
+- **Open and closed.** A run is **open** from just before its driver calls `start` until the core returns a snapshot whose status is not `running`, from `start` or from any `step`; it is then **closed** for good. A run closes before the commands of its last step are carried out, so a message that another run sends it while it carries them out is undelivered, and an emitted event is not delivered to it. Checking that a receiver is open and pushing onto its queue should be one operation with respect to its closing; a driver where a push can slip in just before the receiver closes loses that message with the receiver's queue, without a record. No conformance case can tell these apart.
 - **Subscriptions.** Before it calls `start`, the driver subscribes the run to the emitted events of every run it holds a `ref` to: each run whose handle is in its arguments, once however many times it appears there (a parameter of type `ref M`, `ref M?`, `ref M[]` or an alias of one). When the run closes, it is unsubscribed.
 - **Carrying out `send`.** The driver builds the input `{"kind": "message", "from": <this run's id>, "message": …, "value": …}`.
   - With an `invoke`, it is for the child run of that invoke. If a run has claimed the invoke's token and is open, the driver pushes the input onto its queue. If the token has not been claimed yet (the host code has not called `run` yet), the driver keeps the input in the invoke context for the run that claims it. If the run that claimed it has closed, the driver writes `{"kind": "undelivered", "message": …, "to": …, "value": …}` (adding `t`, `run` and `parent` as for any record). If the invoke ends or is cancelled without its token ever being claimed (a stub, a task-like implementation), the inputs kept for it are discarded without a record.
