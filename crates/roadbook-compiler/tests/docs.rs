@@ -51,3 +51,30 @@ fn the_checkout_example_is_the_shop_file() {
         "the example on the page differs from checkout.road"
     );
 }
+
+#[test]
+fn the_definite_assignment_example() {
+    // `place_order.road` is accepted as it is; without `set order = result` on `Validating`'s
+    // `done`, the compiler points at the read in `Pricing`.
+    let compile_with = |place_order: String| {
+        let mut loader = MemoryLoader::new()
+            .with("examples/shop/place_order.road", place_order)
+            .with("examples/shop/checkout.road", shop("checkout.road"))
+            .with("examples/shop/types.road", shop("types.road"));
+        compile(
+            &mut loader,
+            "examples/shop/place_order.road",
+            &Options::default(),
+        )
+        .unwrap()
+    };
+    let file = shop("place_order.road");
+    let out = compile_with(file.clone());
+    assert!(out.diagnostics.is_empty(), "{}", out.render());
+
+    let line = "        done                  -> Pricing  set order = result\n";
+    assert!(file.contains(line));
+    let edited = file.replace(line, "        done                  -> Pricing\n");
+    let out = compile_with(edited);
+    assert_eq!(out.render(), block("error[RB0403]"));
+}

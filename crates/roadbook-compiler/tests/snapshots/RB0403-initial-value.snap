@@ -1,0 +1,22 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0403]: `early` has no value yet when the initial value of `later` is computed
+ --> RB0403-initial-value.road:3:20
+  |
+3 |   var later: int = early + base
+  |                    ^^^^^
+4 |   var early: int = 1
+  |       ----- declared here, after the variable whose initial value reads it
+  |
+  = help: initial values are computed in the order the variables are declared; declare it first, or assign this variable in an `entry` instead
+
+error[RB0403]: `none` has no value yet when the initial value of `uses` is computed
+ --> RB0403-initial-value.road:6:20
+  |
+5 |   var none:  int
+  |       ---- declared here with no initial value
+6 |   var uses:  int = none + 1
+  |                    ^^^^
+  |
+  = help: give it an initial value, or assign this variable in an `entry` instead

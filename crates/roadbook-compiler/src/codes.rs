@@ -130,6 +130,8 @@ pub const REF_NOT_ALLOWED: Code = Code(316);
 pub const ALWAYS_CYCLE: Code = Code(401);
 /// A machine that invokes itself without waiting for an event or an `after`.
 pub const UNBOUNDED_RECURSION: Code = Code(402);
+/// A read of a variable that might not be assigned yet (definite assignment).
+pub const UNASSIGNED_READ: Code = Code(403);
 
 // ───────────── warnings ─────────────
 
@@ -202,6 +204,7 @@ pub const ALL: &[Code] = &[
     REF_NOT_ALLOWED,
     ALWAYS_CYCLE,
     UNBOUNDED_RECURSION,
+    UNASSIGNED_READ,
     UNREACHABLE_STATE,
     NO_WAY_OUT,
     UNUSED_DECLARATION,

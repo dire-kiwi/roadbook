@@ -10,6 +10,7 @@ error Broken
 error Gone
 
 fn total(items: Item[]) -> float
+fn firstOf(items: Item[]) -> Item
 fn backoff(attempt: int) -> duration
 fn money(cents: int) -> Money
 fn describe(value: json) -> string
@@ -66,7 +67,7 @@ machine Features(id: UserId, level: Level, ratio: float) -> string ! Broken | Go
       fail Broken -> Broke
       fail *      -> Vanished
     }
-    after backoff(attempts) -> Working
+    after backoff(attempts) -> Loading
   }
 
   /// The main work, with a nested chart.
@@ -82,7 +83,7 @@ machine Features(id: UserId, level: Level, ratio: float) -> string ! Broken | Go
     }
     state Checking {
       always {
-        if total(items) >= 10.0 -> Paying
+        if total(items) >= 10.0 -> Paying  set first = firstOf(items)
         else                    -> Collecting
       }
     }

@@ -9,7 +9,9 @@
 //! that a directory walk skips. A glob matches a whole path; `*` matches within one segment,
 //! `**` any number of segments, `?` one character. A file named on the command line is never
 //! excluded. `gen-exclude` lists more of them, which only `roadbook gen` skips. Symbolic
-//! links to directories are not followed, so a link loop is harmless.
+//! links to directories are not followed, so a link loop is harmless. `allow-unassigned`
+//! lists the files whose machines may read a variable before it is assigned (runtime
+//! fixtures for the `unassigned` defect): every command compiles them without `RB0403`.
 //!
 //! A `[packages]` table maps the names of other packages to their directories, relative to
 //! the root: `inventory = "examples/inventory"`. An import of a package not listed there is
@@ -17,7 +19,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
-use roadbook_compiler::FsLoader;
+use roadbook_compiler::{FsLoader, Options};
 
 /// Directories never searched for `.road` files.
 const SKIPPED: &[&str] = &["target", "node_modules", ".git"];
@@ -28,6 +30,8 @@ pub struct Workspace {
     exclude: Vec<String>,
     /// Its `gen-exclude` globs.
     gen_exclude: Vec<String>,
+    /// Its `allow-unassigned` globs.
+    allow_unassigned: Vec<String>,
     /// Its `[packages]` table: package name to directory, relative to the root.
     packages: Vec<(String, String)>,
 }
@@ -61,6 +65,7 @@ impl Workspace {
                     root: d.to_path_buf(),
                     exclude: list("exclude")?,
                     gen_exclude: list("gen-exclude")?,
+                    allow_unassigned: list("allow-unassigned")?,
                     packages: string_table(&text, "packages")
                         .map_err(|e| format!("`{}`: {e}", config.display()))?,
                 });
@@ -71,8 +76,26 @@ impl Workspace {
             root: cwd,
             exclude: Vec::new(),
             gen_exclude: Vec::new(),
+            allow_unassigned: Vec::new(),
             packages: Vec::new(),
         })
+    }
+
+    /// The compiler options of the project: `allow-unassigned`, as the project paths of the
+    /// `.road` files it matches.
+    pub fn options(&self) -> Options {
+        let mut files = Vec::new();
+        if !self.allow_unassigned.is_empty() {
+            self.walk(&self.root, &[], ".road", &mut files);
+        }
+        Options {
+            allow_unassigned: files
+                .iter()
+                .map(|f| self.project_path(f))
+                .filter(|f| self.allow_unassigned.iter().any(|g| glob(g, f)))
+                .collect(),
+            ..Options::default()
+        }
     }
 
     /// A loader for the project: its files, the packages of `[packages]`, and packages in

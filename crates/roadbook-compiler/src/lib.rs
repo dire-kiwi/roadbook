@@ -17,11 +17,12 @@
 //! The passes, in order: [`loader`] and `project` (files and imports), `names` (the
 //! declaration table and each file's scope), `check` and `machine` (declarations, machines,
 //! targets, invokes), `expr` (expressions and their types, with the rules in `types`), then
-//! `analysis` (`always` cycles, recursion, warnings) and finally the machine hashes. Each
+//! `analysis` (`always` cycles, recursion, definite assignment in `assign`, warnings) and finally the machine hashes. Each
 //! pass reports what it finds; a pass whose input has errors is skipped, so one mistake does
 //! not produce a cascade. Diagnostic codes are in [`codes`].
 
 mod analysis;
+mod assign;
 mod check;
 pub mod codes;
 mod expr;
@@ -47,6 +48,10 @@ pub struct Options {
     /// Warn about an `invoke` whose state, and every state containing it, has no `after`
     /// (`RB0904`). Off by default.
     pub warn_invoke_timeout: bool,
+    /// Project paths of files whose machines are not checked for reads of variables that
+    /// might not be assigned yet (`RB0403`): fixtures for a runtime's `unassigned` defect,
+    /// which a chart can reach only this way. `roadbook.toml`'s `allow-unassigned`.
+    pub allow_unassigned: Vec<String>,
 }
 
 /// The result of a compilation.

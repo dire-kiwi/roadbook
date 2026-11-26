@@ -224,6 +224,25 @@ fn warn_invoke_timeout_is_opt_in() {
 }
 
 #[test]
+fn allow_unassigned_turns_off_definite_assignment_for_its_files() {
+    let src = "action log(n: int)\n\nmachine M() {\n  var n: int\n  initial A\n  final state A { entry do log(n) }\n}\n";
+    let dir = project(
+        "unassigned",
+        &[
+            ("a/m.road", src),
+            ("b/m.road", src),
+            ("roadbook.toml", "allow-unassigned = [\"a/*.road\"]\n"),
+        ],
+    );
+    let out = roadbook(&dir, &["check"]);
+    assert_eq!(out.status.code(), Some(1));
+    let err = text(&out.stderr);
+    assert!(err.contains("--> b/m.road") && !err.contains("--> a/m.road"), "{err}");
+    let out = roadbook(&dir, &["export", "ir", "a/m.road"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+}
+
+#[test]
 fn fmt_rewrites_in_place_and_check_lists_files() {
     let messy = "machine M() {\n    initial Done\n  final state Done {\n  }\n}\n";
     let dir = project("fmt", &[("a.road", messy), ("b.road", OK)]);

@@ -1,0 +1,27 @@
+action log(n: int)
+fn ok()            -> bool
+
+// The `else` branch enters `Next` without assigning `n`.
+machine Branches() {
+  var n: int
+
+  event Go
+
+  initial Start
+
+  state Start {
+    on Go {
+      if ok() -> Next  set n = 1
+      else    -> Next
+    }
+  }
+
+  state Next {
+    entry do log(n)
+    on Go -> Done
+  }
+
+  final state Done {}
+}
+
+// expect: RB0403 at 20:18

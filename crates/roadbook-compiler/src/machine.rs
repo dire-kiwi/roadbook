@@ -17,6 +17,22 @@ use crate::codes;
 use crate::names::{Found, is_type, kind_phrase, suggest};
 use crate::types::{BOOL, DURATION, Ty, ir_type};
 
+/// The machine variables (not parameters) an expression or effect reads, each with the span
+/// of the read, in the order written. Kept for definite assignment, which runs on the IR.
+pub(crate) type Reads = Vec<(String, Span)>;
+
+/// What one IR transition reads, by part.
+#[derive(Clone, Debug)]
+pub(crate) struct TransitionReads {
+    /// The `after` delay of its block: the same for every branch of the block.
+    pub delay: Reads,
+    pub guard: Reads,
+    /// By IR effect index.
+    pub effects: Vec<Reads>,
+    /// The branch: the whole line for a single-branch trigger, from `if` or `else` in a block.
+    pub span: Span,
+}
+
 /// Source positions of a state's parts, kept for the analyses that run on the IR.
 #[derive(Clone, Debug)]
 pub(crate) struct StateInfo {
@@ -25,6 +41,31 @@ pub(crate) struct StateInfo {
     pub invoke_span: Option<Span>,
     /// The trigger of each of the state's IR transitions, by index.
     pub triggers: Vec<Span>,
+    /// The name in `initial Name`, for a compound state.
+    pub initial_span: Option<Span>,
+    /// What each IR `entry` and `exit` effect reads, by index.
+    pub entry_reads: Vec<Reads>,
+    pub exit_reads: Vec<Reads>,
+    /// What the invoke's arguments read.
+    pub invoke_reads: Reads,
+    /// What `output` or `fail` reads.
+    pub result_reads: Reads,
+    /// What each IR transition reads, by index.
+    pub transition_reads: Vec<TransitionReads>,
+}
+
+/// A machine variable, for definite assignment.
+#[derive(Clone, Debug)]
+pub(crate) struct VarInfo {
+    pub name: String,
+    /// The variable's name in its declaration.
+    pub span: Span,
+    /// Whether it has an initial value.
+    pub init: bool,
+    /// Whether its type is optional, aliases expanded: it then starts as `null`.
+    pub optional: bool,
+    /// What its initial value reads.
+    pub init_reads: Reads,
 }
 
 #[derive(Clone, Debug)]
@@ -41,6 +82,8 @@ pub(crate) struct MachineInfo {
     pub emitted: HashSet<String>,
     /// Every `on name.Event`: the event's span, the sending machine and the event.
     pub receives: Vec<(Span, String, String)>,
+    /// The machine's variables, in order.
+    pub vars: Vec<VarInfo>,
 }
 
 /// Where effects run, for the check that a `send` to an invoked child finds it running.
@@ -115,6 +158,10 @@ pub(crate) struct Cx<'c, 'p> {
     errors: Vec<String>,
     nodes: Vec<Node<'p>>,
     info: MachineInfo,
+    /// The variables read since this was last taken (see [`Reads`]).
+    pub reads: Reads,
+    /// What the transitions lowered since this was last taken read, in IR order.
+    transition_reads: Vec<TransitionReads>,
 }
 
 /// Checks machine `m` declared in `file` and lowers it. Its hash is left empty.
@@ -145,7 +192,10 @@ pub(crate) fn lower<'p>(
             emits: Vec::new(),
             emitted: HashSet::new(),
             receives: Vec::new(),
+            vars: Vec::new(),
         },
+        reads: Vec::new(),
+        transition_reads: Vec::new(),
     };
 
     // Parameters and variables share one namespace.
@@ -265,6 +315,7 @@ pub(crate) fn lower<'p>(
     // Variable initialisers may read parameters and other variables.
     let mut vars = Vec::new();
     for (v, ty) in m.body.vars().zip(var_tys) {
+        cx.reads.clear();
         let init = v.init.as_ref().map(|e| {
             cx.expect(
                 e,
@@ -272,6 +323,15 @@ pub(crate) fn lower<'p>(
                 &ty,
                 &format!("the initial value of `{}`", v.name.name),
             )
+        });
+        let optional = matches!(cx.ck.env.expand(&ty), Ty::Optional(_));
+        let init_reads = std::mem::take(&mut cx.reads);
+        cx.info.vars.push(VarInfo {
+            name: v.name.name.clone(),
+            span: v.name.span,
+            init: init.is_some(),
+            optional,
+            init_reads,
         });
         vars.push(ir::Var {
             name: v.name.name.clone(),
@@ -603,6 +663,12 @@ impl<'p> Cx<'_, 'p> {
         match &m.to {
             Some(to) => {
                 let (address, invoking) = self.address(current, to)?;
+                // A send to a `ref` variable reads it.
+                if address.kind == ir::AddressKind::Ref
+                    && self.vars.get(&to.name).is_some_and(|v| !v.param)
+                {
+                    self.reads.push((to.name.clone(), to.span));
+                }
                 if let Some(i) = invoking {
                     self.check_running(place, i, to);
                 }
@@ -781,6 +847,16 @@ impl<'p> Cx<'_, 'p> {
                 name_span,
                 invoke_span: None,
                 triggers: Vec::new(),
+                initial_span: if kind == ir::StateKind::Compound {
+                    body.initials().next().map(|n| n.span)
+                } else {
+                    None
+                },
+                entry_reads: Vec::new(),
+                exit_reads: Vec::new(),
+                invoke_reads: Vec::new(),
+                result_reads: Vec::new(),
+                transition_reads: Vec::new(),
             },
         );
 
@@ -793,10 +869,16 @@ impl<'p> Cx<'_, 'p> {
         let mut output = None;
         let mut fail = None;
         let mut result_seen: Option<Span> = None;
+        let mut entry_reads = Vec::new();
+        let mut exit_reads = Vec::new();
+        let mut invoke_reads = Vec::new();
+        let mut result_reads = Vec::new();
+        self.transition_reads.clear();
         let mut group = 0u32;
         let top_final = kind == ir::StateKind::Final && self.nodes[idx].depth == 1;
 
         for item in &body.items {
+            self.reads.clear();
             if kind == ir::StateKind::Final
                 && let Item::Transition(_) | Item::Invoke(_) = item
             {
@@ -834,10 +916,14 @@ impl<'p> Cx<'_, 'p> {
             }
             match item {
                 Item::Entry(h) => {
-                    entry.extend(self.effects(&h.effects, &Scope::none(), Place::Entry(idx)))
+                    let (fx, reads) = self.effects(&h.effects, &Scope::none(), Place::Entry(idx));
+                    entry.extend(fx);
+                    entry_reads.extend(reads);
                 }
                 Item::Exit(h) => {
-                    exit.extend(self.effects(&h.effects, &Scope::none(), Place::Exit(idx)))
+                    let (fx, reads) = self.effects(&h.effects, &Scope::none(), Place::Exit(idx));
+                    exit.extend(fx);
+                    exit_reads.extend(reads);
                 }
                 Item::Transition(t) => {
                     self.duplicate_trigger(&mut keys, t, &id, "");
@@ -854,7 +940,7 @@ impl<'p> Cx<'_, 'p> {
                     group += 1;
                 }
                 Item::Invoke(inv) => {
-                    let lowered =
+                    let (lowered, reads) =
                         self.invoke(idx, inv, &mut group, &mut transitions, &mut triggers);
                     if invoke.is_some() {
                         self.ck.diags.push(
@@ -867,6 +953,7 @@ impl<'p> Cx<'_, 'p> {
                         );
                     } else {
                         invoke = Some(lowered);
+                        invoke_reads = reads;
                         if let Some(info) = self.info.states.get_mut(&id) {
                             info.invoke_span = Some(invoke_head(inv));
                         }
@@ -894,6 +981,7 @@ impl<'p> Cx<'_, 'p> {
                             .with_secondary(first, "already given here"),
                         );
                     }
+                    let first = result_seen.is_none();
                     result_seen.get_or_insert(v.span);
                     if is_output {
                         let e = self.output(&v.value);
@@ -901,6 +989,9 @@ impl<'p> Cx<'_, 'p> {
                     } else {
                         let e = self.fail_value(&v.value);
                         fail.get_or_insert(e);
+                    }
+                    if first {
+                        result_reads = std::mem::take(&mut self.reads);
                     }
                 }
                 Item::Var(_)
@@ -932,8 +1023,14 @@ impl<'p> Cx<'_, 'p> {
             );
         }
 
+        let transition_reads = std::mem::take(&mut self.transition_reads);
         if let Some(info) = self.info.states.get_mut(&id) {
             info.triggers = triggers;
+            info.entry_reads = entry_reads;
+            info.exit_reads = exit_reads;
+            info.invoke_reads = invoke_reads;
+            info.result_reads = result_reads;
+            info.transition_reads = transition_reads;
         }
         let children = self.nodes[idx].children.clone();
         let states = children.into_iter().map(|c| self.lower_state(c)).collect();
@@ -1221,11 +1318,14 @@ impl<'p> Cx<'_, 'p> {
         out: &mut Vec<ir::Transition>,
         triggers: &mut Vec<Span>,
     ) {
+        // What the trigger read: an `after` delay.
+        let delay = std::mem::take(&mut self.reads);
         for b in t.branches.iter() {
             let guard = b
                 .guard
                 .as_ref()
                 .map(|g| self.expect(g, scope, &BOOL, "a guard"));
+            let guard_reads = std::mem::take(&mut self.reads);
             let target_node = b.target.as_ref().and_then(|tg| self.target(idx, tg));
             let target = target_node.map(|n| self.nodes[n].id.clone());
             let place = Place::Transition {
@@ -1233,11 +1333,17 @@ impl<'p> Cx<'_, 'p> {
                 target: target_node,
                 outcome,
             };
-            let effects = self.effects(&b.effects, scope, place);
+            let (effects, effect_reads) = self.effects(&b.effects, scope, place);
             let span = match &t.branches {
                 Branches::Single(_) => t.span,
                 Branches::Block { .. } => b.span,
             };
+            self.transition_reads.push(TransitionReads {
+                delay: delay.clone(),
+                guard: guard_reads,
+                effects: effect_reads,
+                span,
+            });
             out.push(ir::Transition {
                 trigger: trigger.clone(),
                 group,
@@ -1255,27 +1361,30 @@ impl<'p> Cx<'_, 'p> {
     /// among the top-level states); each further segment names a child of the one before.
     fn target(&mut self, from: usize, t: &Target) -> Option<usize> {
         let head = &t.path[0];
-        let mut scope = self.nodes[from].parent.unwrap_or(from);
+        let start = self.nodes[from].parent.unwrap_or(from);
+        let mut scope = Some(start);
         let mut found = None;
-        let mut visible: Vec<String> = Vec::new();
-        loop {
-            if let Some(c) = self.child(scope, &head.name) {
+        while let Some(s) = scope {
+            if let Some(c) = self.child(s, &head.name) {
                 found = Some(c);
                 break;
             }
-            for &c in &self.nodes[scope].children {
-                if !visible.contains(&self.nodes[c].name) {
-                    visible.push(self.nodes[c].name.clone());
-                }
-            }
-            match self.nodes[scope].parent {
-                Some(p) => scope = p,
-                None => break,
-            }
+            scope = self.nodes[s].parent;
         }
         let written: Vec<&str> = t.path.iter().map(|p| p.name.as_str()).collect();
         let written = written.join(".");
         let Some(mut node) = found else {
+            // The states in scope, nearest first, for the message.
+            let mut visible: Vec<String> = Vec::new();
+            let mut scope = Some(start);
+            while let Some(s) = scope {
+                for &c in &self.nodes[s].children {
+                    if !visible.contains(&self.nodes[c].name) {
+                        visible.push(self.nodes[c].name.clone());
+                    }
+                }
+                scope = self.nodes[s].parent;
+            }
             let mut d = Diagnostic::error(
                 codes::UNKNOWN_TARGET,
                 head.span,
@@ -1339,17 +1448,20 @@ impl<'p> Cx<'_, 'p> {
     }
 
     /// Checks and lowers effects: every `set`, then the `do`, `send` and `emit` effects, each
-    /// in the order written, which is the order they run in.
+    /// in the order written, which is the order they run in. With each effect, what it reads.
     pub(crate) fn effects(
         &mut self,
         effects: &[Effect],
         scope: &Scope,
         place: Place,
-    ) -> Vec<ir::Effect> {
+    ) -> (Vec<ir::Effect>, Vec<Reads>) {
         let mut out = Vec::new();
+        let mut reads = Vec::new();
         let sets = effects.iter().filter(|e| matches!(e, Effect::Set(_)));
         let rest = effects.iter().filter(|e| !matches!(e, Effect::Set(_)));
         for e in sets.chain(rest) {
+            self.reads.clear();
+            let before = out.len();
             match e {
                 Effect::Set(a) => {
                     let want = match self.vars.get(&a.var.name) {
@@ -1399,8 +1511,11 @@ impl<'p> Cx<'_, 'p> {
                     }
                 }
             }
+            if out.len() > before {
+                reads.push(std::mem::take(&mut self.reads));
+            }
         }
-        out
+        (out, reads)
     }
 
     /// "unknown variable", with a suggestion among the variables (and parameters, if
@@ -1555,7 +1670,7 @@ impl<'p> Cx<'_, 'p> {
         group: &mut u32,
         transitions: &mut Vec<ir::Transition>,
         triggers: &mut Vec<Span>,
-    ) -> ir::Invoke {
+    ) -> (ir::Invoke, Reads) {
         let is_machine = inv.is_machine();
         let sig = self.callee(
             &inv.callee,
@@ -1572,6 +1687,7 @@ impl<'p> Cx<'_, 'p> {
             sig.as_ref(),
             &Scope::none(),
         );
+        let arg_reads = std::mem::take(&mut self.reads);
 
         let listed: Vec<&Ident> = inv
             .outcomes
@@ -1717,7 +1833,7 @@ impl<'p> Cx<'_, 'p> {
             *group += 1;
         }
 
-        ir::Invoke {
+        let lowered = ir::Invoke {
             kind: if is_machine {
                 ir::InvokeKind::Machine
             } else {
@@ -1731,7 +1847,8 @@ impl<'p> Cx<'_, 'p> {
                 .map(|a| a.name.clone()),
             args,
             span: ir_span(inv.span),
-        }
+        };
+        (lowered, arg_reads)
     }
 
     fn output(&mut self, e: &ast::Expr) -> ir::Expr {

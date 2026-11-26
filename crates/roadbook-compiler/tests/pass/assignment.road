@@ -1,0 +1,154 @@
+// Definite assignment: reads that the analysis must accept.
+
+action log(n: int)
+action note(s: string?)
+fn ok(n: int)           -> bool
+fn delay(n: int)        -> duration
+task fetch(n: int)      -> int
+
+/// Assigned on every branch of a block, and through a loop back to the same state.
+machine Branches(start: int) {
+  var n:    int
+  var seen: int = start
+  var copy: int = seen + 1
+  var memo: string?
+  var tag:  string? = memo
+
+  event Go
+
+  initial Pick
+
+  state Pick {
+    entry do note(tag)
+    on Go {
+      if ok(start) -> Use  set n = 1
+      else         -> Use  set n = 2
+    }
+  }
+
+  state Use {
+    entry do log(n), log(copy)
+    on Go {
+      if ok(n) -> Use
+      else     -> Done
+    }
+  }
+
+  final state Done {}
+}
+
+/// A `set` in a transition is seen by the target's `entry`, its children's and its invoke;
+/// a state's `exit` by the transition's effects.
+machine Transition() -> int {
+  var a: int
+  var b: int
+
+  event Go
+
+  initial Idle
+
+  state Idle {
+    exit set b = 2
+    on Go -> Work.Inner  set a = 1  do log(b)
+  }
+
+  state Work {
+    initial Inner
+    entry do log(a), log(b)
+
+    state Inner {
+      entry do log(a)
+      invoke fetch(a) {
+        done -> Done  set a = result
+      }
+      after delay(a) -> Done
+    }
+  }
+
+  final state Done { output a + b }
+}
+
+/// Every child of `Steps` assigns `n` on entry, so the transitions written on `Steps`, which
+/// run in one of them, can read it; `always` settles after the `entry` it follows.
+machine Children() -> int {
+  var n: int
+
+  event Go
+  event Stop
+
+  initial Steps
+
+  state Steps {
+    initial One
+    on Stop -> Over  do log(n)
+    done    -> Over  do log(n)
+
+    state One {
+      entry set n = 1
+      always if ok(n) -> Two
+      on Go           -> Two
+    }
+
+    state Two {
+      entry set n = 2
+      on Go -> End
+    }
+
+    final state End { entry do log(n) }
+  }
+
+  final state Over { output n }
+}
+
+/// Regions are entered in order, so a later region sees what an earlier one's `entry`
+/// assigned; `done` sees what every region assigned on the way to its final state.
+machine Regions() {
+  var a: int
+  var b: int
+  var c: int
+
+  event Go
+
+  initial Both
+
+  parallel state Both {
+    state Left {
+      initial L1
+      state L1 {
+        entry set a = 1
+        on Go -> L2  set b = 2
+      }
+      final state L2 {}
+    }
+
+    state Right {
+      initial R1
+      state R1 {
+        entry do log(a)
+        on Go -> R2  set c = 3  do log(a)
+      }
+      final state R2 {}
+    }
+
+    done -> Over  do log(a), log(b), log(c)
+  }
+
+  final state Over {}
+}
+
+/// A transition written in the machine body, and the machine's `entry`.
+machine Body() {
+  var n: int
+
+  event Reset
+
+  entry set n = 0
+  on Reset -> Idle  do log(n)
+
+  initial Idle
+
+  state Idle {
+    entry do log(n)
+    on Reset -> Idle
+  }
+}

@@ -22,7 +22,7 @@
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
-use roadbook_compiler::{Ir, Options};
+use roadbook_compiler::Ir;
 use roadbook_ir::{Effect, InvokeKind, Machine, State, StateKind, Transition, Trigger};
 
 use crate::workspace::Workspace;
@@ -49,7 +49,7 @@ pub fn run(args: Args) -> Exit {
         Err(e) => return report::fatal(e),
     };
     let entry = ws.project_path(&args.file);
-    let out = match roadbook_compiler::compile(&mut ws.loader(), &entry, &Options::default()) {
+    let out = match roadbook_compiler::compile(&mut ws.loader(), &entry, &ws.options()) {
         Ok(out) => out,
         Err(e) => return report::fatal(e),
     };

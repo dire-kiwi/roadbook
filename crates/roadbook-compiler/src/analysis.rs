@@ -1,5 +1,6 @@
-//! The analyses that need the whole resolved chart: `always` cycles, unbounded recursion and
-//! the warnings. They run on the IR, once the chart has no other errors.
+//! The analyses that need the whole resolved chart: `always` cycles, unbounded recursion,
+//! definite assignment (in `assign`) and the warnings. They run on the IR, once the chart has
+//! no other errors.
 
 use std::collections::{HashMap, HashSet};
 
@@ -158,6 +159,12 @@ pub(crate) fn run(
         };
         let tree = Tree::new(&m.root);
         always_cycles(&tree, info, diags);
+        if !options
+            .allow_unassigned
+            .contains(&project.files[info.file].path)
+        {
+            crate::assign::check(m, info, diags);
+        }
         // Another package's charts are its own business: only errors are reported in them.
         if project.files[info.file].file.package.is_none() {
             let root_file = project.roots.contains(&info.file);

@@ -1,0 +1,15 @@
+// Initial values are computed in the order the variables are declared.
+machine Inits(base: int) {
+  var later: int = early + base
+  var early: int = 1
+  var none:  int
+  var uses:  int = none + 1
+  var maybe: string?
+
+  initial Done
+
+  final state Done {}
+}
+
+// expect: RB0403 at 3:20
+// expect: RB0403 at 6:20

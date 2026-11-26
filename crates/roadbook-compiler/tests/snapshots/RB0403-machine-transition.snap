@@ -1,0 +1,24 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0403]: `id` might not be assigned yet when this is evaluated
+  --> RB0403-machine-transition.road:11:15
+   |
+11 |   exit do log(id)
+   |               ^^
+...
+14 |   initial Idle
+   |           ---- `Body.Idle` is entered when `Body` starts, and nothing before it assigns `id`
+   |
+   = help: `exit` can run as soon as `Body` is entered (a transition out, or cancelling the run), so assign `id` on every way into `Body`, give it an initial value, or make its type optional
+
+error[RB0403]: `id` might not be assigned yet when this is evaluated
+  --> RB0403-machine-transition.road:12:34
+   |
+12 |   on Cancel -> Cancelled  do log(id)
+   |                                  ^^
+...
+14 |   initial Idle
+   |           ---- `Body.Idle` is entered when `Body` starts, and nothing before it assigns `id`
+   |
+   = help: assign `id` on every way into `Body.Idle`, give it an initial value, or make its type optional

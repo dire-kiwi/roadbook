@@ -1,0 +1,30 @@
+action log(n: int)
+
+// `Idle` is entered when the machine starts, before anything assigns `count`.
+machine Counter() {
+  var count: int
+
+  event Go
+
+  initial Idle
+
+  state Idle {
+    entry do log(count)
+    on Go -> Done  set count = 1
+  }
+
+  final state Done {}
+}
+
+// A `set` in an `entry` is seen by the effects after it, not by a `set` before it.
+machine Order() {
+  var a: int
+  var b: int
+
+  initial Idle
+
+  final state Idle { entry set b = a + 1, a = 1 }
+}
+
+// expect: RB0403 at 12:18
+// expect: RB0403 at 26:36

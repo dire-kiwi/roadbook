@@ -10,8 +10,6 @@
 
 use std::path::PathBuf;
 
-use roadbook_compiler::Options;
-
 use crate::workspace::Workspace;
 use crate::{Exit, report};
 
@@ -53,8 +51,9 @@ pub fn run(args: Args) -> Exit {
         }
         Err(e) => return report::fatal(e),
     }
+    let compiler = ws.options();
     for file in files {
-        let out = match roadbook_compiler::compile(&mut ws.loader(), &file, &Options::default()) {
+        let out = match roadbook_compiler::compile(&mut ws.loader(), &file, &compiler) {
             Ok(out) => out,
             Err(e) => return report::fatal(e),
         };

@@ -1,0 +1,38 @@
+task fetch()       -> int
+fn ready()         -> bool
+action log(n: int)
+
+// `always` and `done` are taken while the step settles: `Check`'s `always` can leave before
+// the invoke assigns `value`, and `Job` can complete through `Skipped`.
+machine Settle() -> int {
+  var value: int
+
+  initial Job
+
+  state Job {
+    initial Check
+
+    state Check {
+      always {
+        if ready() -> Skipped
+        else       -> Load
+      }
+    }
+
+    state Load {
+      invoke fetch() {
+        done -> Loaded  set value = result
+      }
+    }
+
+    final state Loaded  {}
+    final state Skipped {}
+
+    done -> Report  do log(value)
+  }
+
+  final state Report { output value }
+}
+
+// expect: RB0403 at 31:28
+// expect: RB0403 at 34:31

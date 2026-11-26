@@ -215,6 +215,7 @@ The Rust macro does not look for files: it receives the owning crate's compiled 
 | --- | --- |
 | `exclude = ["glob", …]` | Files and directories that a directory search skips, as globs over project paths: `*` matches within one path segment, `**` across segments and `?` one character. A directory that matches is skipped whole. A file named on the command line is checked even if it matches. |
 | `gen-exclude = ["glob", …]` | More files and directories, as for `exclude`, that only `roadbook gen` skips: charts that need no generated TypeScript module, such as fixtures read as IR. `roadbook check` and the other commands still see them, and a file named on the command line is generated even if it matches. |
+| `allow-unassigned = ["glob", …]` | Files, as globs over project paths, whose machines every command compiles without the [definite assignment](#definite-assignment) check (`RB0403`). Only for fixtures that test a runtime's `unassigned` defect, which a chart can reach no other way. |
 | `[packages]` | A table of `name = "directory"`: the directory of each package charts import from, relative to the root. A scoped name is quoted: `"@shop/inventory" = "packages/inventory"`. It comes after the keys above. |
 
 ```toml
@@ -236,7 +237,7 @@ Errors (the build fails):
 - A compound state without `initial`, or an `initial` that is not a child.
 - An `invoke` that does not handle every declared error of the task or machine, or that names an error the task or machine does not declare.
 - The same trigger written twice in one state. Several branches go in one block, where their order is explicit and only the last may be unguarded, so a branch can never be shadowed by an earlier one.
-- A read of a variable that might not be assigned yet. <a id="definite-assignment"></a> This is [milestone 6](roadmap.md#milestones); until then reading an unassigned variable is a runtime error.
+- A read of a variable that might not be assigned yet, in an initial value or anywhere in the chart (see [definite assignment](#definite-assignment)).
 - A machine that returns `T` with a top-level final state that has no `output` or `fail`, and `output` or `fail` anywhere but a final state at the top level.
 - A transition or `invoke` in a final state. A final state ends its parent as soon as it is entered, so they could never run; it holds only `entry`, `exit`, `output` and `fail`.
 - A `done` transition in a state with no child states: it waits for a final child, so it could never be taken. (An invoke's `done` goes inside `invoke { }`.)
@@ -253,7 +254,7 @@ Warnings:
 - An `emits E` that no `emit E` of its machine sends, and an `on name.E` for an `E` its sender declares but never emits, which can never be taken.
 - An `emits E` that no `on name.E` in the checked files receives. As for unused declarations, a receiver in any file checked at the same time counts; host code holding a handle may still receive it.
 
-The checks run in order: names and structure, then types, then the analyses (the cycle and recursion checks and the warnings). A file with syntax errors is checked no further: its declarations are left out, and the names other files import from it are not reported as unknown. The files around it are still checked. The analyses run for each entry file once its compilation (the file and everything it imports) has no other errors, so one mistake does not produce a cascade of diagnostics, and an error in one chart does not turn off the analyses of another.
+The checks run in order: names and structure, then types, then the analyses (the cycle and recursion checks, definite assignment and the warnings). A file with syntax errors is checked no further: its declarations are left out, and the names other files import from it are not reported as unknown. The files around it are still checked. The analyses run for each entry file once its compilation (the file and everything it imports) has no other errors, so one mistake does not produce a cascade of diagnostics, and an error in one chart does not turn off the analyses of another.
 
 Diagnostics carry a code, a source span and, where possible, a fix. `roadbook check --json` prints them in a machine-readable form so an agent can act on them without parsing prose.
 
@@ -299,11 +300,54 @@ Ranges are as in the IR: lines and columns are 1-based, columns count Unicode sc
 
 ### Definite assignment
 
-A `var` with no default and a non-optional type starts unassigned. The compiler runs a forward dataflow analysis over the chart: a variable is assigned in a state if every transition that can enter that state either assigns it or leaves from a state where it was already assigned. Reading a variable in a state where it is not assigned is an error.
+A `var` with no initial value and a type that is not optional starts unassigned. Every other variable always has a value: a parameter, a variable with an initial value, and an optional variable with none, which starts as `null`. The compiler proves that every read of a variable happens after the variable has a value, wherever the read is: a guard, a `set` value, the arguments of a `do`, the value of a `send` or `emit` and the `ref` variable a `send` goes through, the arguments of an `invoke`, an `after` delay, `output` and `fail`, and `entry` and `exit` effects. A read it cannot prove is an error (`RB0403`) at the read, with a label on a way in that leaves the variable unassigned. An `on name.Event` through a `ref` variable is not a read: an unassigned variable names no sender.
 
-In `PlaceOrder`, `order` is assigned on the only way into `Pricing`, so `invoke priceOrder(order, user)` is accepted. Change `Validating`'s `done` branch to drop `set order = result` and the compiler points at the read in `Pricing`.
+The analysis is a forward dataflow over the chart. A variable is assigned when a state is entered if it is assigned on every way into the state. A way in is the start of the machine or a transition with a target, and along it, in the order a step runs them, these assign:
+
+- the source state, if the variable is assigned whenever the source is active (see below);
+- the `exit` of the source and of each state containing it that the transition leaves;
+- the transition's `set`s;
+- the `entry` of each state entered before this one in the same step: the states containing it, outermost first, and the regions of a parallel state before its own, in document order.
+
+So a `set` in a transition is seen by its target's `entry`, by the `entry` of the target's children and by the target's invoke. Within one `entry`, `exit` or transition the `set`s run first, in order, so a `set` sees the `set`s before it and a `do`, `send` or `emit` sees them all.
+
+What each read sees:
+
+- An `entry` sees what is assigned on every way into its state, and its own `set`s as above. `output` and `fail` see that and everything the final state's `entry` assigns.
+- A guard and the effects of a transition, the state's invoke arguments and `after` delays, and its `exit` run while the state is active, and see what is assigned whenever it is: for an atomic state, what its `entry` left; for a compound state, what is assigned in the state itself or in every child, since it is always in one of them; for a parallel state, what is assigned in the state itself or in any region, since it is in all of them. A transition's effects also see the `exit`s that run before them.
+- A `done` sees what is assigned in each final child it can complete through, and for a parallel state what is assigned in any region once every region has reached a final state.
+- A variable is never unassigned again, so the `always` and `done` transitions taken while a step settles, and the invokes and timers started after it, see at least this much.
+- An initial value sees the parameters and the variables declared before it that have an initial value or an optional type: initial values are computed in the order the variables are declared.
+
+The analysis is conservative: it may reject a chart that never reads an unassigned variable when it runs. Where:
+
+- Guards are not evaluated. Every transition whose state can be active is assumed to be taken, so a variable assigned only on a branch whose guard happens to hold is not assigned after the others.
+- A transition with no target assigns only for its own effects: the state can be left before it is taken, so the state's other transitions and its `exit` cannot rely on it.
+- An `exit`, an invoke's arguments and an `after` delay see what was assigned when their state was entered, not what a transition taken inside it assigned later.
+- Inside a parallel state, a region relies on what was assigned before it was entered (by the states containing it and by the regions before it, in order) and on its own transitions. What another region assigns after that does not count, since the regions take their transitions independently. The transitions written on the parallel state itself and its `done` see every region.
+- Of the states a transition leaves, only the `exit`s of its source and the states containing it count, since which of the source's children is active is not known.
+- States that can never be entered are not checked; they are already warned about (`RB0901`).
+
+It is fast: each state's facts only shrink, a state's transitions are looked at again only when they do, and the work grows with the size of the chart times the number of variables that start unassigned.
+
+In `PlaceOrder`, `order` is assigned on the only way into `Pricing`, so `invoke priceOrder(order, user)` is accepted. Change `Validating`'s `done` branch to drop `set order = result` and the compiler points at the read in `Pricing`:
+
+```
+error[RB0403]: `order` might not be assigned yet when this is evaluated
+  --> examples/shop/place_order.road:47:25
+   |
+40 |         done                  -> Pricing
+   |         -------------------------------- this enters `PlaceOrder.Processing.Pricing` without assigning `order`
+...
+47 |       invoke priceOrder(order, user) {
+   |                         ^^^^^
+   |
+   = help: assign `order` on every way into `PlaceOrder.Processing.Pricing`, give it an initial value, or make its type optional
+```
 
 This is what lets host functions take plain non-optional arguments. In xstate the same machine would declare `order: Order | undefined` and every reader would assert it is present.
+
+Both runtimes keep reading an unassigned variable as a runtime error (`unassigned`, see [`spec/execution.md`](../../spec/execution.md#defects)), as a backstop: IR written by hand or by another tool, or a chart compiled with `allow-unassigned`, can still do it, and it ends the run with a defect rather than with an undefined value.
 
 ## Formatting
 
@@ -410,6 +454,7 @@ The compiler's codes:
 | `RB0316` | A `ref` in a field of a record, error or event, or in what a function, task or machine returns. | `type Holder { peer: ref Peer }` |
 | `RB0401` | An unguarded cycle of `always` transitions. | `A { always -> B }`, `B { always -> A }` |
 | `RB0402` | A machine that invokes itself without waiting. | `state A { invoke M() { … } }` as `M`'s initial state |
+| `RB0403` | A read of a variable that might not be assigned yet. | `entry do log(n)` in the initial state, for `var n: int` |
 | `RB0901` | A state that can never be entered (warning). | a state nothing targets |
 | `RB0902` | A non-final state with no way out (warning). | `state Stuck {}` |
 | `RB0903` | An event, function, action or task nothing uses (warning). | `event Unused` |
