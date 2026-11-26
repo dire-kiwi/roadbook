@@ -1,0 +1,22 @@
+machine Child(n: int) -> int {
+  initial Done
+  final state Done { output n }
+}
+
+machine M() {
+  event Go { id: string }
+  children kids: Child by int
+  var total: string = ""
+  initial A
+  state A {
+    on Go        spawn kids[event.id] = Child("one")  stop kids["x"]  send kids[true].Nothing
+    on kids.done set total = result
+  }
+}
+
+// expect: RB0301 at 12:29
+// expect: RB0301 at 12:47
+// expect: RB0301 at 12:65
+// expect: RB0301 at 12:81
+// expect: RB0116 at 12:87
+// expect: RB0301 at 13:30

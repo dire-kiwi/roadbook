@@ -184,6 +184,13 @@ impl Walker<'_> {
         for e in m.events.values().chain(m.emits.values()) {
             self.fields(&e.fields)?;
         }
+        for c in m.children.values() {
+            self.type_ref(&c.key)?;
+            if !self.ir.machines.contains_key(&c.machine) {
+                return Err(self.unresolved("machine", &c.machine));
+            }
+            self.pending_machines.push(c.machine.clone());
+        }
         self.state(&m.root)
     }
 
@@ -210,7 +217,9 @@ impl Walker<'_> {
         for t in &s.transitions {
             match &t.trigger {
                 Trigger::After { delay } => self.expr(delay)?,
-                Trigger::InvokeFail { error } if error != "*" => self.type_name(error)?,
+                Trigger::InvokeFail { error } | Trigger::SpawnFail { error, .. } if error != "*" => {
+                    self.type_name(error)?
+                }
                 Trigger::Emitted { from, .. } => self.address(from)?,
                 _ => {}
             }
@@ -236,11 +245,19 @@ impl Walker<'_> {
                     self.out.actions.insert(action.clone());
                     args.iter().try_for_each(|a| self.expr(a))?;
                 }
-                Effect::Send { to, value, .. } => {
+                Effect::Send { to, key, value, .. } => {
                     self.address(to)?;
+                    if let Some(k) = key {
+                        self.expr(k)?;
+                    }
                     self.expr(value)?;
                 }
                 Effect::Emit { value, .. } => self.expr(value)?,
+                Effect::Spawn { key, args, .. } => {
+                    self.expr(key)?;
+                    args.iter().try_for_each(|a| self.expr(a))?;
+                }
+                Effect::Stop { key, .. } => self.expr(key)?,
             }
         }
         Ok(())

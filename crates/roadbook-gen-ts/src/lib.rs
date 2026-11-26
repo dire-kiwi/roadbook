@@ -803,6 +803,11 @@ impl<'a> Uses<'a> {
                 self.expr(e);
             }
         }
+        // A collection's children run its machine, through the same implementation as an
+        // invoke of it.
+        for c in m.children.values() {
+            self.machines.insert(&c.machine);
+        }
         self.state(&m.root);
     }
 
@@ -847,7 +852,20 @@ impl<'a> Uses<'a> {
                     self.expr(a);
                 }
             }
-            Effect::Send { value, .. } | Effect::Emit { value, .. } => self.expr(value),
+            Effect::Send { key, value, .. } => {
+                if let Some(k) = key {
+                    self.expr(k);
+                }
+                self.expr(value);
+            }
+            Effect::Emit { value, .. } => self.expr(value),
+            Effect::Spawn { key, args, .. } => {
+                self.expr(key);
+                for a in args {
+                    self.expr(a);
+                }
+            }
+            Effect::Stop { key, .. } => self.expr(key),
         }
     }
 

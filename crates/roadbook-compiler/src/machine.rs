@@ -6,8 +6,8 @@ use std::collections::{HashMap, HashSet};
 use indexmap::IndexMap;
 use roadbook_ir as ir;
 use roadbook_syntax::ast::{
-    self, Body, Branches, Decl, DeclKind, Effect, Ident, Invoke, Item, Message, Pattern, State,
-    StateKind, Target, Transition, Trigger,
+    self, Body, Branches, Decl, DeclKind, Effect, Ident, Invoke, Item, Message, Pattern, SendKey,
+    State, StateKind, Target, Transition, Trigger,
 };
 use roadbook_syntax::diagnostic::Code;
 use roadbook_syntax::{Diagnostic, Span, expr_text, message_value};
@@ -83,6 +83,10 @@ pub(crate) struct MachineInfo {
     pub emitted: HashSet<String>,
     /// Every `on name.Event`: the event's span, the sending machine and the event.
     pub receives: Vec<(Span, String, String)>,
+    /// Declared `children` collections with their name spans, in order.
+    pub children: Vec<(String, Span)>,
+    /// The collections a `spawn` of the machine fills.
+    pub spawned: HashSet<String>,
     /// The machine's variables, in order.
     pub vars: Vec<VarInfo>,
 }
@@ -103,7 +107,7 @@ pub(crate) enum Place {
     },
 }
 
-/// What an implicit name (`event`, `result`, `error`) means at some point.
+/// What an implicit name (`event`, `result`, `error`, `key`) means at some point.
 #[derive(Clone, Debug)]
 pub(crate) enum Implicit {
     NotHere,
@@ -117,6 +121,7 @@ pub(crate) struct Scope {
     pub event: Implicit,
     pub result: Implicit,
     pub error: Implicit,
+    pub key: Implicit,
 }
 
 impl Scope {
@@ -125,8 +130,18 @@ impl Scope {
             event: Implicit::NotHere,
             result: Implicit::NotHere,
             error: Implicit::NotHere,
+            key: Implicit::NotHere,
         }
     }
+}
+
+/// A `children` collection: its machine (`None` if it is not a known machine, already
+/// reported) and its key type.
+#[derive(Clone, Debug)]
+pub(crate) struct Collection {
+    pub machine: Option<String>,
+    pub key: Ty,
+    pub symbol: Option<SymbolId>,
 }
 
 struct Node<'p> {
@@ -161,6 +176,7 @@ pub(crate) struct Cx<'c, 'p> {
     pub vars: HashMap<String, Var>,
     pub events: HashMap<String, Vec<(String, Ty)>>,
     pub emits: HashMap<String, Vec<(String, Ty)>>,
+    pub collections: HashMap<String, Collection>,
     returns: Option<Ty>,
     errors: Vec<String>,
     nodes: Vec<Node<'p>>,
@@ -189,6 +205,7 @@ pub(crate) fn lower<'p>(
         vars: HashMap::new(),
         events: HashMap::new(),
         emits: HashMap::new(),
+        collections: HashMap::new(),
         returns: sig.as_ref().and_then(|s| s.returns.clone()),
         errors: sig.as_ref().map(|s| s.errors.clone()).unwrap_or_default(),
         nodes: Vec::new(),
@@ -201,6 +218,8 @@ pub(crate) fn lower<'p>(
             emits: Vec::new(),
             emitted: HashSet::new(),
             receives: Vec::new(),
+            children: Vec::new(),
+            spawned: HashSet::new(),
             vars: Vec::new(),
         },
         reads: Vec::new(),
@@ -220,8 +239,12 @@ pub(crate) fn lower<'p>(
             param: true,
         });
     }
+    for p in &m.params {
+        cx.key_as_name(&p.name, "a parameter");
+    }
     let mut var_tys = Vec::new();
     for v in m.body.vars() {
+        cx.key_as_name(&v.name, "a variable");
         let ty = cx.ck.resolve(file, &v.ty);
         if let Some(first) = seen.get(&v.name.name) {
             let what = if cx.vars.get(&v.name.name).is_some_and(|x| x.param) {
@@ -321,6 +344,70 @@ pub(crate) fn lower<'p>(
         }
     }
 
+    // Children collections share the namespace of parameters and variables.
+    let mut children = IndexMap::new();
+    for c in m.body.children() {
+        cx.key_as_name(&c.name, "a children collection");
+        if let Some(first) = seen.get(&c.name.name) {
+            let what = match cx.vars.get(&c.name.name) {
+                Some(v) if v.param => "a parameter",
+                Some(_) => "a variable",
+                None => "a children collection",
+            };
+            cx.ck.diags.push(
+                Diagnostic::error(
+                    codes::DUPLICATE_NAME,
+                    c.name.span,
+                    format!("`{}` is already {what} of `{name}`", c.name.name),
+                )
+                .with_secondary(*first, "first declared here")
+                .with_help("a collection shares the machine's names with its parameters and variables"),
+            );
+            continue;
+        }
+        seen.insert(c.name.name.clone(), c.name.span);
+        let machine = cx
+            .callee(&c.machine, SigKind::Machine)
+            .map(|_| c.machine.name.clone());
+        let key = cx.ck.resolve(file, &c.key);
+        let fits = match cx.ck.env.expand(&key) {
+            Ty::Builtin(ir::Builtin::String | ir::Builtin::Int) | Ty::Unknown => true,
+            Ty::Named(n) => matches!(cx.ck.env.defs.get(&n), Some(crate::types::TypeDef::Enum(_))),
+            _ => false,
+        };
+        if !fits {
+            cx.ck.diags.push(
+                Diagnostic::error(
+                    codes::BAD_KEY_TYPE,
+                    c.key.span,
+                    format!("a collection's key cannot be `{key}`"),
+                )
+                .with_help("keys are compared by value: use `string`, `int` or an enum (or an alias of one)"),
+            );
+        }
+        let symbol = cx
+            .symbol
+            .and_then(|s| cx.ck.member_symbol(s, &c.name.name));
+        cx.collections.insert(
+            c.name.name.clone(),
+            Collection {
+                machine,
+                key,
+                symbol,
+            },
+        );
+        cx.info.children.push((c.name.name.clone(), c.name.span));
+        children.insert(
+            c.name.name.clone(),
+            ir::ChildrenDecl {
+                machine: c.machine.name.clone(),
+                key: ir_type(&c.key),
+                doc: doc(&c.doc),
+                span: ir_span(c.span),
+            },
+        );
+    }
+
     // Variable initialisers may read parameters and other variables.
     let mut vars = Vec::new();
     for (v, ty) in m.body.vars().zip(var_tys) {
@@ -389,6 +476,7 @@ pub(crate) fn lower<'p>(
         vars,
         events,
         emits,
+        children,
         root,
         hash: String::new(),
     }
@@ -404,6 +492,8 @@ fn trigger_key(t: &Trigger) -> String {
     match t {
         Trigger::On(p) => format!("on {}", pattern(p)),
         Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
+        Trigger::ChildDone { from } => format!("on {}.done", from.name),
+        Trigger::ChildFail { from, error } => format!("on {}.fail {}", from.name, pattern(error)),
         Trigger::After(e) => format!("after {}", expr_text(e)),
         Trigger::Always => "always".into(),
         Trigger::Done => "done".into(),
@@ -482,6 +572,21 @@ impl<'p> Cx<'_, 'p> {
         }
     }
 
+    /// Reports `key` as the name of a parameter, variable, `as` name or collection: inside the
+    /// transitions a spawned child's input takes, `key` is that child's key.
+    fn key_as_name(&mut self, name: &Ident, what: &str) {
+        if name.name == "key" {
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::KEY_AS_NAME,
+                    name.span,
+                    format!("`key` cannot name {what}"),
+                )
+                .with_help("`key` is the implicit name of a spawned child's key, like `event`; choose another name"),
+            );
+        }
+    }
+
     /// Reports `as` names that cannot be used: on a task, the name of a parameter or variable,
     /// or the name of an invoke around it. Such a name is not in scope.
     fn check_aliases(&mut self) {
@@ -489,6 +594,7 @@ impl<'p> Cx<'_, 'p> {
             let Some((alias, callee)) = self.nodes[i].alias.clone() else {
                 continue;
             };
+            self.key_as_name(alias, "an invoked machine");
             let mut bad = None;
             if !callee.starts_with(|c: char| c.is_ascii_uppercase()) {
                 bad = Some(
@@ -513,6 +619,18 @@ impl<'p> Cx<'_, 'p> {
                         format!("`{}` is already {what} of `{}`", alias.name, self.machine),
                     )
                     .with_help("an `as` name shares the machine's names with its parameters and variables; choose another"),
+                );
+            } else if self.collections.contains_key(&alias.name) {
+                bad = Some(
+                    Diagnostic::error(
+                        codes::DUPLICATE_NAME,
+                        alias.span,
+                        format!(
+                            "`{}` is already a children collection of `{}`",
+                            alias.name, self.machine
+                        ),
+                    )
+                    .with_help("an `as` name shares the machine's names with its collections; choose another"),
                 );
             } else {
                 let mut up = self.nodes[i].parent;
@@ -587,6 +705,19 @@ impl<'p> Cx<'_, 'p> {
             }
             up = self.nodes[a].parent;
         }
+        if let Some(c) = self.collections.get(&name.name).cloned() {
+            if let Some(symbol) = c.symbol {
+                self.ck.index.refer(symbol, name.span);
+            }
+            let machine = c.machine?;
+            let address = ir::Address {
+                kind: ir::AddressKind::Children,
+                name: name.name.clone(),
+                machine,
+                state: None,
+            };
+            return Some((address, None));
+        }
         if let Some(v) = self.vars.get(&name.name) {
             let t = v.ty.clone();
             self.ck.refer_member(self.file, self.symbol, name);
@@ -649,6 +780,7 @@ impl<'p> Cx<'_, 'p> {
                     candidates.push(n.clone());
                 }
             }
+            candidates.extend(self.collections.keys().cloned());
             candidates.sort();
             if let Some(s) = suggest(&name.name, candidates.iter().map(String::as_str)) {
                 d = d.with_help(format!("did you mean `{s}`?")).with_fix(
@@ -713,7 +845,54 @@ impl<'p> Cx<'_, 'p> {
         let event = &m.event;
         match &m.to {
             Some(to) => {
-                let (address, invoking) = self.address(current, to)?;
+                let Some((address, invoking)) = self.address(current, to) else {
+                    // The key is still checked, for its own mistakes.
+                    if let Some(SendKey::Key(k)) = &m.key {
+                        self.expr(k, scope);
+                    }
+                    return None;
+                };
+                let is_collection = address.kind == ir::AddressKind::Children;
+                let key = match (&m.key, is_collection) {
+                    (Some(SendKey::Key(k)), true) => {
+                        let want = self.collections[&to.name].key.clone();
+                        Some(self.expect(k, scope, &want, &format!("the key of `{}`", to.name)))
+                    }
+                    (Some(SendKey::All { .. }), true) => None,
+                    (None, true) => {
+                        self.ck.diags.push(
+                            Diagnostic::error(
+                                codes::NOT_A_COLLECTION,
+                                to.span,
+                                format!("`{}` is a children collection: say which child to send to", to.name),
+                            )
+                            .with_help(format!(
+                                "send to one child with `send {0}[key].{1}`, or to every child with `send {0}.*.{1}`",
+                                to.name, event.name
+                            )),
+                        );
+                        None
+                    }
+                    (Some(k), false) => {
+                        let span = match k {
+                            SendKey::Key(k) => {
+                                self.expr(k, scope);
+                                k.span
+                            }
+                            SendKey::All { span } => *span,
+                        };
+                        self.ck.diags.push(
+                            Diagnostic::error(
+                                codes::NOT_A_COLLECTION,
+                                span,
+                                format!("`{}` is not a children collection, so it takes no key", to.name),
+                            )
+                            .with_help(format!("send to it with `send {}.{}`", to.name, event.name)),
+                        );
+                        None
+                    }
+                    (None, false) => None,
+                };
                 // A send to a `ref` variable reads it.
                 if address.kind == ir::AddressKind::Ref
                     && self.vars.get(&to.name).is_some_and(|v| !v.param)
@@ -746,6 +925,7 @@ impl<'p> Cx<'_, 'p> {
                 let value = self.message_value(m, &ty, fields.as_deref(), scope);
                 Some(ir::Effect::Send {
                     to: address,
+                    key,
                     event: event.name.clone(),
                     value,
                 })
@@ -850,6 +1030,48 @@ impl<'p> Cx<'_, 'p> {
             ty: ty.to_ir(),
             text: message_value(m),
         }
+    }
+
+    /// The collection `name` names, recording the use; reports a name that is not one.
+    /// `written` is the construct, for the message: `spawn sessions`, `on sessions.done`.
+    fn collection(&mut self, name: &Ident, written: &str) -> Option<Collection> {
+        if let Some(c) = self.collections.get(&name.name).cloned() {
+            if let Some(symbol) = c.symbol {
+                self.ck.index.refer(symbol, name.span);
+            }
+            return Some(c);
+        }
+        let alias = self
+            .nodes
+            .iter()
+            .any(|n| n.alias.as_ref().is_some_and(|(a, _)| a.name == name.name));
+        let what = if self.vars.contains_key(&name.name) {
+            format!("`{}` is a parameter or variable, not a children collection", name.name)
+        } else if alias {
+            format!("`{}` names an invoked machine, not a children collection", name.name)
+        } else {
+            format!("unknown children collection `{}`", name.name)
+        };
+        let mut d = Diagnostic::error(codes::NOT_A_COLLECTION, name.span, what);
+        if alias {
+            d = d.with_help(format!(
+                "an invoked child is reached with `send {0}.Event` and `on {0}.Event`, and its outcome is handled inside its `invoke {{ }}`",
+                name.name
+            ));
+        } else if let Some(s) = suggest(&name.name, self.collections.keys().map(String::as_str)) {
+            d = d.with_help(format!("did you mean `{s}`?")).with_fix(
+                format!("replace with `{s}`"),
+                name.span,
+                s,
+            );
+        } else {
+            d = d.with_help(format!(
+                "`{written}` needs a collection declared in the machine body: `children {}: Machine by Key`",
+                name.name
+            ));
+        }
+        self.ck.diags.push(d);
+        None
     }
 
     fn child(&self, node: usize, name: &str) -> Option<usize> {
@@ -1051,6 +1273,7 @@ impl<'p> Cx<'_, 'p> {
                 Item::Var(_)
                 | Item::Event(_)
                 | Item::Emits(_)
+                | Item::Children(_)
                 | Item::Initial(_)
                 | Item::State(_) => {}
             }
@@ -1270,6 +1493,9 @@ impl<'p> Cx<'_, 'p> {
                         scope,
                     );
                 };
+                if address.kind == ir::AddressKind::Children {
+                    scope.key = Implicit::Has(self.collections[&from.name].key.clone());
+                }
                 let sender = self.ck.decl_symbol(&address.machine);
                 self.ck.refer_member(self.file, sender, event);
                 let iface = self
@@ -1354,6 +1580,109 @@ impl<'p> Cx<'_, 'p> {
                     "`event` has no type in `on *`, which matches events of different types".into(),
                 );
                 ir::Trigger::Any
+            }
+            Trigger::ChildDone { from } => {
+                scope.key = Implicit::Has(Ty::Unknown);
+                scope.result = Implicit::Has(Ty::Unknown);
+                if let Some(c) = self.collection(from, &format!("on {}.done", from.name)) {
+                    scope.key = Implicit::Has(c.key.clone());
+                    if let Some(sig) = c.machine.as_ref().and_then(|m| self.ck.sigs.get(m)) {
+                        scope.result = match &sig.returns {
+                            Some(t) => Implicit::Has(t.clone()),
+                            None => Implicit::Bad(
+                                codes::NO_RESULT,
+                                format!(
+                                    "`{}` returns nothing, so `on {}.done` has no `result`",
+                                    c.machine.as_deref().unwrap_or_default(),
+                                    from.name
+                                ),
+                            ),
+                        };
+                    }
+                }
+                ir::Trigger::SpawnDone {
+                    children: from.name.clone(),
+                }
+            }
+            Trigger::ChildFail { from, error } => {
+                scope.key = Implicit::Has(Ty::Unknown);
+                scope.error = Implicit::Has(Ty::Unknown);
+                let shown = format!("on {}.fail", from.name);
+                if let Some(c) = self.collection(from, &shown) {
+                    scope.key = Implicit::Has(c.key.clone());
+                    let machine = c.machine.clone().unwrap_or_default();
+                    let sig = c.machine.as_ref().and_then(|m| self.ck.sigs.get(m)).cloned();
+                    // The errors the state lists in its own `on name.fail` triggers.
+                    let listed: Vec<String> = self.nodes[idx]
+                        .body
+                        .transitions()
+                        .filter_map(|t| match &t.trigger {
+                            Trigger::ChildFail {
+                                from: f,
+                                error: Pattern::Name(n),
+                            } if f.name == from.name => Some(n.name.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    match (error, &sig) {
+                        (Pattern::Name(n), Some(sig)) => {
+                            match self.ck.decl_symbol(&n.name) {
+                                Some(e) if sig.errors.contains(&n.name) => {
+                                    self.ck.index.refer(e, n.span);
+                                }
+                                _ => self.ck.refer_decl(self.file, n),
+                            }
+                            if sig.errors.contains(&n.name) {
+                                scope.error = Implicit::Has(Ty::Named(n.name.clone()));
+                            } else {
+                                let mut d = Diagnostic::error(
+                                    codes::UNDECLARED_ERROR_OUTCOME,
+                                    n.span,
+                                    format!("`{machine}` does not declare the error `{}`", n.name),
+                                )
+                                .with_secondary(sig.name_span, format!("declared as `{}`", sig.result_text()));
+                                if let Some(s) = suggest(&n.name, sig.errors.iter().map(String::as_str)) {
+                                    d = d.with_help(format!("did you mean `{s}`?")).with_fix(
+                                        format!("replace with `{s}`"),
+                                        n.span,
+                                        s,
+                                    );
+                                }
+                                self.ck.diags.push(d);
+                            }
+                        }
+                        (Pattern::Any { .. }, Some(sig)) => {
+                            let rest: Vec<&String> =
+                                sig.errors.iter().filter(|e| !listed.contains(e)).collect();
+                            scope.error = match rest.as_slice() {
+                                [one] => Implicit::Has(Ty::Named((*one).clone())),
+                                [] => Implicit::Bad(
+                                    codes::AMBIGUOUS_ERROR,
+                                    format!("`error` has no type here: `{shown} *` covers none of `{machine}`'s errors"),
+                                ),
+                                more => Implicit::Bad(
+                                    codes::AMBIGUOUS_ERROR,
+                                    format!(
+                                        "`error` has no single type here: `{shown} *` covers {}",
+                                        more.iter()
+                                            .map(|e| format!("`{e}`"))
+                                            .collect::<Vec<_>>()
+                                            .join(", ")
+                                    ),
+                                ),
+                            };
+                        }
+                        (Pattern::Name(n), None) => self.ck.refer_decl(self.file, n),
+                        _ => {}
+                    }
+                }
+                ir::Trigger::SpawnFail {
+                    children: from.name.clone(),
+                    error: match error {
+                        Pattern::Name(n) => n.name.clone(),
+                        Pattern::Any { .. } => "*".into(),
+                    },
+                }
             }
             Trigger::After(e) => ir::Trigger::After {
                 delay: self.expect(e, &Scope::none(), &DURATION, "an `after` delay"),
@@ -1583,6 +1912,64 @@ impl<'p> Cx<'_, 'p> {
                         out.push(e);
                     }
                 }
+                Effect::Spawn(sp) => {
+                    let written = format!("spawn {}", sp.children.name);
+                    let c = self.collection(&sp.children, &written);
+                    let want = c.as_ref().map_or(Ty::Unknown, |c| c.key.clone());
+                    let key = self.expect(
+                        &sp.key,
+                        scope,
+                        &want,
+                        &format!("the key of `{}`", sp.children.name),
+                    );
+                    let sig = self.callee(&sp.machine, SigKind::Machine);
+                    if let Some(c) = &c {
+                        self.info.spawned.insert(sp.children.name.clone());
+                        if let Some(m) = &c.machine
+                            && sig.is_some()
+                            && *m != sp.machine.name
+                        {
+                            self.ck.diags.push(
+                                Diagnostic::error(
+                                    codes::SPAWN_MACHINE_MISMATCH,
+                                    sp.machine.span,
+                                    format!(
+                                        "`{}` holds `{m}` machines, not `{}`",
+                                        sp.children.name, sp.machine.name
+                                    ),
+                                )
+                                .with_help(format!("spawn a `{m}`, or declare another collection for `{}`", sp.machine.name)),
+                            );
+                        }
+                    }
+                    let span = sp.machine.span.to(sp.span);
+                    let args = self.args(&sp.machine, span, &sp.args, sig.as_ref(), scope);
+                    if c.is_some() {
+                        out.push(ir::Effect::Spawn {
+                            children: sp.children.name.clone(),
+                            machine: sp.machine.name.clone(),
+                            key,
+                            args,
+                        });
+                    }
+                }
+                Effect::Stop(st) => {
+                    let written = format!("stop {}", st.children.name);
+                    let c = self.collection(&st.children, &written);
+                    let want = c.as_ref().map_or(Ty::Unknown, |c| c.key.clone());
+                    let key = self.expect(
+                        &st.key,
+                        scope,
+                        &want,
+                        &format!("the key of `{}`", st.children.name),
+                    );
+                    if c.is_some() {
+                        out.push(ir::Effect::Stop {
+                            children: st.children.name.clone(),
+                            key,
+                        });
+                    }
+                }
             }
             if out.len() > before {
                 reads.push(std::mem::take(&mut self.reads));
@@ -1612,6 +1999,17 @@ impl<'p> Cx<'_, 'p> {
             )
             .with_help(format!(
                 "an `as` name is used only in `send {0}.Event` and `on {0}.Event`",
+                n.name
+            ));
+        }
+        if self.collections.contains_key(&n.name) {
+            return Diagnostic::error(
+                codes::UNKNOWN_VARIABLE,
+                n.span,
+                format!("`{}` is a children collection, not a value", n.name),
+            )
+            .with_help(format!(
+                "a collection is used only in `spawn {0}[key]`, `stop {0}[key]`, `send {0}[key].Event` and `on {0}.Event`",
                 n.name
             ));
         }

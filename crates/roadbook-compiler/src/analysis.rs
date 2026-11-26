@@ -172,25 +172,47 @@ pub(crate) fn run(
             message_warnings(doc, m, info, root_file, diags);
         }
 
-        // States entered without waiting: through `always`, `done` and invoke outcomes.
-        let eager = tree.reachable(|t| {
-            !matches!(
+        // States entered without waiting: through `always`, `done` and the outcomes of
+        // invokes and spawned children, which can come at once.
+        let waits = |t: &ir::Transition| {
+            matches!(
                 t.trigger,
                 Trigger::Event { .. }
                     | Trigger::Emitted { .. }
                     | Trigger::Any
                     | Trigger::After { .. }
             )
-        });
+        };
+        let eager = tree.reachable(|t| !waits(t));
         let mut edges = Vec::new();
         for id in &tree.order {
             let s = tree.states[id];
-            if eager.contains(id)
-                && let Some(inv) = &s.invoke
+            if !eager.contains(id) {
+                continue;
+            }
+            let si = info.states.get(*id);
+            if let Some(inv) = &s.invoke
                 && inv.kind == InvokeKind::Machine
-                && let Some(span) = info.states.get(*id).and_then(|i| i.invoke_span)
+                && let Some(span) = si.and_then(|i| i.invoke_span)
             {
                 edges.push((inv.src.as_str(), span));
+            }
+            // A spawn in the `entry` of a state entered without waiting, or in a transition
+            // taken without waiting, starts its machine without waiting too.
+            if let Some(si) = si {
+                for target in spawned(m, &s.entry) {
+                    edges.push((target, si.name_span));
+                }
+                for (i, t) in s.transitions.iter().enumerate() {
+                    if waits(t) {
+                        continue;
+                    }
+                    if let Some(r) = si.transition_reads.get(i) {
+                        for target in spawned(m, &t.effects) {
+                            edges.push((target, r.span));
+                        }
+                    }
+                }
             }
         }
         invokes_eagerly.push((name.as_str(), edges));
@@ -338,6 +360,19 @@ fn cycles<'a>(nodes: &[&'a str], graph: &HashMap<&'a str, Vec<&'a str>>) -> Vec<
     out
 }
 
+/// The machines the `spawn` effects of a list start.
+fn spawned<'m>(m: &'m ir::Machine, effects: &'m [ir::Effect]) -> Vec<&'m str> {
+    effects
+        .iter()
+        .filter_map(|e| match e {
+            ir::Effect::Spawn { children, .. } => {
+                m.children.get(children).map(|c| c.machine.as_str())
+            }
+            _ => None,
+        })
+        .collect()
+}
+
 fn recursion(edges: &[(&str, Vec<(&str, Span)>)], diags: &mut Vec<Diagnostic>) {
     let nodes: Vec<&str> = edges.iter().map(|(m, _)| *m).collect();
     let graph: HashMap<&str, Vec<&str>> = edges
@@ -362,10 +397,10 @@ fn recursion(edges: &[(&str, Vec<(&str, Span)>)], diags: &mut Vec<Diagnostic>) {
             continue;
         };
         let what = if cycle.len() == 1 {
-            format!("`{}` invokes itself", cycle[0])
+            format!("`{}` starts itself", cycle[0])
         } else {
             format!(
-                "`{}` invokes itself through {}",
+                "`{}` starts itself through {}",
                 cycle[0],
                 path.join(" -> ")
             )
@@ -376,10 +411,10 @@ fn recursion(edges: &[(&str, Vec<(&str, Span)>)], diags: &mut Vec<Diagnostic>) {
             format!("{what} without waiting for an event or an `after` (unbounded recursion)"),
         )
         .with_label("entered without waiting")
-        .with_help("put an `on` or `after` transition on the way to the state that invokes it");
+        .with_help("put an `on` or `after` transition on the way to the state that invokes or spawns it");
         for (i, m) in cycle.iter().enumerate().skip(1) {
             if let Some(s) = span(m, next(i)) {
-                d = d.with_secondary(s, format!("then `{m}` invokes `{}`", next(i)));
+                d = d.with_secondary(s, format!("then `{m}` starts `{}`", next(i)));
             }
         }
         diags.push(d);
@@ -454,6 +489,20 @@ fn warnings(
                     ),
                 );
             }
+        }
+    }
+    for (c, span) in &info.children {
+        if root_file && !info.spawned.contains(c) {
+            diags.push(
+                Diagnostic::warning(
+                    codes::NEVER_SPAWNED,
+                    *span,
+                    format!("no `spawn` fills the collection `{c}`"),
+                )
+                .with_help(format!(
+                    "start its children with `spawn {c}[key] = Machine(…)`, or remove it"
+                )),
+            );
         }
     }
     for (e, span) in &info.events {

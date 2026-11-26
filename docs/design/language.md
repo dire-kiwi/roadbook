@@ -466,7 +466,7 @@ The compiler's codes:
 | `RB0107` | Two declarations with the same name in one compilation, or an event named like a type, error or machine. | `type Order` in two files, `event Order` |
 | `RB0108` | Two fields, parameters, variants, variables, events or sibling states with the same name, or a name imported twice. | `state A {}` twice in one parent, `import { B, B }` |
 | `RB0109` | A name used as something it is not. | `invoke audit(x)` where `audit` is an action |
-| `RB0110` | `event`, `result` or `error` where it is not in scope. | `entry set n = result` |
+| `RB0110` | `event`, `result`, `error` or `key` where it is not in scope. | `entry set n = result` |
 | `RB0111` | An import of a file that cannot be read. | `import { A } from "./missing.road"` |
 | `RB0112` | An import of a name the file does not declare. | `import { Ordr } from "./types.road"` |
 | `RB0113` | An enum variant that does not exist. | `Role.Admn` |

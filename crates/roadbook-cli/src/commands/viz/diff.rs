@@ -414,6 +414,9 @@ pub fn shift_machine(m: &mut Machine, offset: u32) {
     for e in m.events.values_mut().chain(m.emits.values_mut()) {
         e.span.file += offset;
     }
+    for c in m.children.values_mut() {
+        c.span.file += offset;
+    }
     shift_state(&mut m.root, offset);
 }
 
@@ -759,6 +762,8 @@ pub fn trigger_text(t: &Trigger) -> String {
         Trigger::After { delay } => format!("after {}", delay.text),
         Trigger::Always => "always".into(),
         Trigger::InvokeFail { error } => format!("fail {error}"),
+        Trigger::SpawnDone { children } => format!("{children}.done"),
+        Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
         Trigger::Done | Trigger::InvokeDone => "done".into(),
     }
 }
@@ -774,8 +779,29 @@ pub fn effect_text(e: &Effect) -> String {
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
-        Effect::Send { to, value, .. } => format!("send {}.{}", to.name, value.text),
+        Effect::Send { to, key, value, .. } => {
+            let which = match (to.kind, key) {
+                (roadbook_ir::AddressKind::Children, Some(k)) => format!("[{}]", k.text),
+                (roadbook_ir::AddressKind::Children, None) => ".*".into(),
+                _ => String::new(),
+            };
+            format!("send {}{which}.{}", to.name, value.text)
+        }
         Effect::Emit { value, .. } => format!("emit {}", value.text),
+        Effect::Spawn {
+            children,
+            machine,
+            key,
+            args,
+        } => format!(
+            "spawn {children}[{}] = {machine}({})",
+            key.text,
+            args.iter()
+                .map(|a| a.text.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Effect::Stop { children, key } => format!("stop {children}[{}]", key.text),
     }
 }
 
@@ -979,6 +1005,15 @@ fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
         a.emits
             .iter()
             .map(|(n, e)| (n.clone(), event("emits", n, e))),
+    );
+    let children = |n: &String, c: &roadbook_ir::ChildrenDecl| {
+        (n.clone(), format!("children {n}: {} by {}", c.machine, c.key))
+    };
+    keyed(
+        &mut out,
+        "children",
+        b.children.iter().map(|(n, c)| children(n, c)),
+        a.children.iter().map(|(n, c)| children(n, c)),
     );
     out
 }

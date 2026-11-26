@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0215]: `kids` holds `Child` machines, not `Other`
+  --> RB0215-spawn-machine-mismatch.road:16:27
+   |
+16 |     on Go spawn kids[1] = Other()
+   |                           ^^^^^
+   |
+   = help: spawn a `Child`, or declare another collection for `Other`

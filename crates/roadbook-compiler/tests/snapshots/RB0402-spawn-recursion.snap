@@ -1,0 +1,42 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0902]: state `Swarm.A` has no way out
+ --> RB0402-spawn-recursion.road:4:9
+  |
+4 |   state A {
+  |         ^
+  |
+  = help: nothing leaves it or a state containing it; add a transition, or make it a `final state`
+
+error[RB0402]: `Swarm` starts itself without waiting for an event or an `after` (unbounded recursion)
+ --> RB0402-spawn-recursion.road:4:9
+  |
+4 |   state A {
+  |         ^ entered without waiting
+  |
+  = help: put an `on` or `after` transition on the way to the state that invokes or spawns it
+
+error[RB0402]: `Wave` starts itself without waiting for an event or an `after` (unbounded recursion)
+  --> RB0402-spawn-recursion.road:14:5
+   |
+14 |     always -> B  spawn more[1] = Wave()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ entered without waiting
+   |
+   = help: put an `on` or `after` transition on the way to the state that invokes or spawns it
+
+warning[RB0902]: state `Wave.B` has no way out
+  --> RB0402-spawn-recursion.road:16:9
+   |
+16 |   state B {
+   |         ^
+   |
+   = help: nothing leaves it or a state containing it; add a transition, or make it a `final state`
+
+warning[RB0902]: state `Patient.A` has no way out
+  --> RB0402-spawn-recursion.road:25:9
+   |
+25 |   state A {
+   |         ^
+   |
+   = help: nothing leaves it or a state containing it; add a transition, or make it a `final state`

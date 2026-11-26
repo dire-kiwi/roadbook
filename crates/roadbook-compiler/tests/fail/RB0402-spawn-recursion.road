@@ -1,0 +1,34 @@
+machine Swarm() {
+  children more: Swarm by int
+  initial A
+  state A {
+    entry spawn more[1] = Swarm()
+  }
+}
+
+machine Wave() {
+  event Go
+  children more: Wave by int
+  initial A
+  state A {
+    always -> B  spawn more[1] = Wave()
+  }
+  state B {
+    on Go spawn more[2] = Wave()
+  }
+}
+
+machine Patient() {
+  event Go
+  children more: Patient by int
+  initial A
+  state A {
+    on Go spawn more[1] = Patient()
+  }
+}
+
+// expect: RB0902 at 4:9
+// expect: RB0402 at 4:9
+// expect: RB0402 at 14:5
+// expect: RB0902 at 16:9
+// expect: RB0902 at 25:9

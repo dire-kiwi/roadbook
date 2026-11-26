@@ -27,7 +27,7 @@ pub const DUPLICATE_DECLARATION: Code = Code(107);
 pub const DUPLICATE_NAME: Code = Code(108);
 /// A declared name used as something it is not, such as an action in `invoke`.
 pub const WRONG_KIND: Code = Code(109);
-/// `event`, `result` or `error` where it is not in scope.
+/// `event`, `result`, `error` or `key` where it is not in scope.
 pub const IMPLICIT_NAME_OUT_OF_SCOPE: Code = Code(110);
 /// An import of a file that cannot be read.
 pub const IMPORT_NOT_FOUND: Code = Code(111);
@@ -48,6 +48,12 @@ pub const NOT_ACCEPTED: Code = Code(116);
 /// An `emit E` of an event the machine does not declare with `emits`, or an `on name.E` of an
 /// event the sending machine does not.
 pub const NOT_EMITTED: Code = Code(117);
+/// A `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` or `on name.fail` through a
+/// name that is not a `children` collection, or a `send name.E` to a collection with no key.
+pub const NOT_A_COLLECTION: Code = Code(118);
+/// `key`, the implicit name of a spawned child's key, as the name of a machine parameter,
+/// variable, `as` name or collection.
+pub const KEY_AS_NAME: Code = Code(119);
 
 // ───────────── structure ─────────────
 
@@ -83,6 +89,8 @@ pub const CHILD_NOT_RUNNING: Code = Code(213);
 
 /// `invoke task(…) as name`: only an invoked machine has a name to send to.
 pub const ALIAS_ON_TASK: Code = Code(214);
+/// A `spawn` of a machine other than its collection's.
+pub const SPAWN_MACHINE_MISMATCH: Code = Code(215);
 
 // ───────────── types ─────────────
 
@@ -123,6 +131,8 @@ pub const NOT_A_REF: Code = Code(315);
 /// A `ref` in a field of a record, error or event, or in what a function, task or machine
 /// returns.
 pub const REF_NOT_ALLOWED: Code = Code(316);
+/// A `children` key type that is not `string`, `int` or an enum, or an alias of one.
+pub const BAD_KEY_TYPE: Code = Code(317);
 
 // ───────────── analyses ─────────────
 
@@ -152,6 +162,8 @@ pub const RECEIVES_NOTHING: Code = Code(906);
 
 /// An `emits E` that no `on name.E` in the checked charts receives.
 pub const NEVER_RECEIVED: Code = Code(907);
+/// A `children` collection that no `spawn` fills (warning).
+pub const NEVER_SPAWNED: Code = Code(908);
 
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
@@ -172,6 +184,8 @@ pub const ALL: &[Code] = &[
     UNKNOWN_ADDRESS,
     NOT_ACCEPTED,
     NOT_EMITTED,
+    NOT_A_COLLECTION,
+    KEY_AS_NAME,
     UNKNOWN_TARGET,
     MISSING_INITIAL,
     BAD_INITIAL,
@@ -186,6 +200,7 @@ pub const ALL: &[Code] = &[
     DONE_WITHOUT_CHILDREN,
     CHILD_NOT_RUNNING,
     ALIAS_ON_TASK,
+    SPAWN_MACHINE_MISMATCH,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
     BAD_OPERANDS,
@@ -202,6 +217,7 @@ pub const ALL: &[Code] = &[
     DOUBLE_OPTIONAL,
     NOT_A_REF,
     REF_NOT_ALLOWED,
+    BAD_KEY_TYPE,
     ALWAYS_CYCLE,
     UNBOUNDED_RECURSION,
     UNASSIGNED_READ,
@@ -212,6 +228,7 @@ pub const ALL: &[Code] = &[
     NEVER_EMITTED,
     RECEIVES_NOTHING,
     NEVER_RECEIVED,
+    NEVER_SPAWNED,
 ];
 
 #[cfg(test)]

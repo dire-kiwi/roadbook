@@ -94,6 +94,17 @@ impl Cx<'_, '_> {
                     "event" => Some((&scope.event, "an `on` transition")),
                     "result" => Some((&scope.result, "an invoke's `done` outcome")),
                     "error" => Some((&scope.error, "an invoke's `fail` outcome")),
+                    // A parameter or variable named `key` (already reported) is read as one
+                    // where no child's key is in scope.
+                    "key"
+                        if !(matches!(scope.key, Implicit::NotHere)
+                            && self.vars.contains_key("key")) =>
+                    {
+                        Some((
+                        &scope.key,
+                            "a transition taken for a spawned child: `on name.Event`, `on name.done` or `on name.fail` through a `children` collection",
+                        ))
+                    }
                     _ => None,
                 };
                 let ty = match implicit {

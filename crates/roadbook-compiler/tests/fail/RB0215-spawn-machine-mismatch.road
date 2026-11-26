@@ -1,0 +1,20 @@
+machine Child(n: int) {
+  initial Done
+  final state Done {}
+}
+
+machine Other() {
+  initial Done
+  final state Done {}
+}
+
+machine M() {
+  event Go
+  children kids: Child by int
+  initial A
+  state A {
+    on Go spawn kids[1] = Other()
+  }
+}
+
+// expect: RB0215 at 16:27
