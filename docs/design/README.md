@@ -93,6 +93,8 @@ These are the choices that shape the rest. Each has a recommendation, which the 
 
 **Status, 26 November 2026:** the recommendations are accepted. Machines are written in the custom `.road` language, and messaging between machines stays at milestone 5, after the two runtimes.
 
+**Status, later on 26 November 2026:** all eight milestones of the [roadmap](roadmap.md#milestones) are built, each reviewed independently before it was marked done. Where building showed a page to be wrong or incomplete, the page was changed with the code, so these pages describe what exists. `scripts/check-all.sh` runs every check.
+
 | Decision | Recommendation | Main alternative | Discussed in |
 | --- | --- | --- | --- |
 | How machines are written | A custom language compiled to a JSON IR | YAML with a schema, producing the same IR | [Alternatives](alternatives.md#how-machines-are-written) |
@@ -109,7 +111,7 @@ The first is the one that most needs agreement, because it is the most expensive
 
 ## What has been checked
 
-This is a design, with a few pieces built to test its riskiest claims.
+Before building, a few prototypes tested the design's riskiest claims. Each has since been replaced by the real implementation.
 
 | Claim | Evidence | Where |
 | --- | --- | --- |
@@ -119,7 +121,7 @@ This is a design, with a few pieces built to test its riskiest claims.
 | The Rust API's shapes compile, including `Send` futures and one struct implementing several charts' handlers. | A hand-expanded sketch passed `cargo check`; `roadbook::include!` now generates that code, and tests check the `Send` futures, one struct implementing several charts' handlers, and that a chart error or a missing handler method is a compile error. | `spike/api-rust`, since replaced by [`crates/roadbook-macros`](../../crates/roadbook-macros) and [`crates/roadbook`](../../crates/roadbook) |
 | The Rust macro can find a chart that another crate ships, and refer to that crate's types. | A stand-in macro tried four mechanisms against path, git, vendored and registry dependencies and a downstream crate. Only a hidden macro exported by the owning crate worked everywhere; renamed dependencies need an alias. `roadbook::include!` now works that way: [`examples/orders`](../../examples/orders) imports `Inventory` from the [`examples/inventory`](../../examples/inventory) crate, its generated code uses that crate's types, a wrong event sent to it is a compile error, and editing the dependency's chart rebuilds the importer. | `spike/cross-crate`, since replaced by [`crates/roadbook-macros`](../../crates/roadbook-macros) |
 
-Both runtimes, TypeScript ([`packages/core`](../../packages/core), [`packages/effect`](../../packages/effect)) and Rust ([`crates/roadbook-core`](../../crates/roadbook-core), [`crates/roadbook`](../../crates/roadbook)), run every [conformance case](../../spec/conformance) through their production drivers and write its expected trace byte for byte, including the cases for messaging between machines. Both serve the shop example, from Express and from axum ([`examples/shop`](../../examples/shop)), with the same answers, and both run the upload example and the orders example; in Rust, orders and inventory are two crates.
+Both runtimes, TypeScript ([`packages/core`](../../packages/core), [`packages/effect`](../../packages/effect)) and Rust ([`crates/roadbook-core`](../../crates/roadbook-core), [`crates/roadbook`](../../crates/roadbook)), run all 49 [conformance cases](../../spec/conformance) through their production drivers and write each expected trace byte for byte, including the cases for messaging, parallel states and saved snapshots (whose files are byte-identical too, so a snapshot saved by one runtime restores in the other). Every case's expected trace was derived by hand from `spec/execution.md` and reproduced by a throwaway independent implementation before either runtime ran it. Both serve the shop example, from Express and from axum ([`examples/shop`](../../examples/shop)), with the same answers, and both run the upload example and the orders example; in Rust, orders and inventory are two crates.
 
 ## Pages
 
