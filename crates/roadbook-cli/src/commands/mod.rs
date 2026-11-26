@@ -4,4 +4,5 @@
 pub mod check;
 pub mod export;
 pub mod fmt;
+pub mod r#gen;
 pub mod viz;
