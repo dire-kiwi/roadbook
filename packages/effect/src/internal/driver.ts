@@ -392,7 +392,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             return Effect.flatMap(env.timer.now, (now) => {
               const restored = restoredDues.get(command.timer)
               restoredDues.delete(command.timer)
-              dues.set(command.timer, restored ?? now + command.delay)
+              // Capped at 2^53 - 1, the largest due time a saved snapshot holds.
+              dues.set(command.timer, restored ?? Math.min(now + command.delay, Number.MAX_SAFE_INTEGER))
               return Effect.as(FiberMap.run(timers, command.timer, expiry), undefined)
             })
           }

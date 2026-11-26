@@ -20,6 +20,13 @@ use crate::env::{BoxFuture, Config, TraceRecord};
 use crate::handle::{Peers, with_scope};
 use crate::shared::{Finished, InvokeContext, RunHandle, Shared, with_context};
 
+/// When a timer started at `now` with `delay` is due: their sum, capped at 2^53 - 1, the
+/// largest due time a saved snapshot can hold (`spec/execution.md#time`).
+fn due(now: u64, delay: u64) -> u64 {
+    now.saturating_add(delay)
+        .min(roadbook_ir::MAX_SAFE_INTEGER as u64)
+}
+
 /// How a run ended, as [`crate::dynamic::start`] reports it.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RunEnd {
@@ -518,7 +525,7 @@ impl<'a> Driver<'a> {
         self.dues.retain(|id, _| timers.iter().any(|t| t.id == *id));
         let now = self.config.timer.now();
         let saved = Saved::new(&self.snap, |t| {
-            self.dues.get(&t.id).copied().unwrap_or(now + t.delay)
+            self.dues.get(&t.id).copied().unwrap_or(due(now, t.delay))
         });
         self.shared.set_saved(saved);
     }
@@ -802,7 +809,7 @@ impl<'a> Driver<'a> {
                 Ok(())
             }
             Command::TimerStart { timer, delay } => {
-                let due = self.config.timer.now() + delay;
+                let due = due(self.config.timer.now(), delay);
                 let fut = self.config.timer.start(&self.id, timer, delay);
                 self.timers.insert(timer, fut);
                 self.dues.insert(timer, due);

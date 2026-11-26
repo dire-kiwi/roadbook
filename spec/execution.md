@@ -541,7 +541,7 @@ Every Roadbook value has one JSON form. It is used for the machine's input, task
 | `int` | An integer number. Read in any form (`2.0` is the integer 2, `-0.0` is 0), since a JSON number's form does not matter; written in integer form. |
 | `float` | A number, in canonical form when written: `2.0` is written `2`, `-0.0` is written `0`. Always finite. |
 | `bool` | `true` or `false`. |
-| `duration` | A non-negative integer number of milliseconds. A host duration finer than a millisecond is truncated to whole milliseconds when it enters the core. A negative one (which TypeScript can produce and Rust's `Duration` cannot) is not a `duration`: the binding layer rejects it as a `host` defect. |
+| `duration` | A non-negative integer number of milliseconds. A host duration finer than a millisecond is truncated to whole milliseconds when it enters the core. A negative one (which TypeScript can produce and Rust's `Duration` cannot) is not a `duration`, and neither is one longer than 2^53 − 1 milliseconds (Rust's `Duration::MAX`, a common "never", or an infinite TypeScript `Duration`), which a saved snapshot could not hold: the binding layer rejects both as a `host` defect, in both runtimes. |
 | `json` | The value itself. |
 | A record (`type R { … }`) | An object with every field, by name. An optional field with no value is `null`, never omitted. |
 | An error (`error E { … }`) | An object with `"_tag": "E"` and every field: `{"_tag": "CardDeclined", "reason": "expired"}`, or `{"_tag": "GatewayUnavailable"}` for an error with no fields. |
@@ -655,7 +655,7 @@ When a run ends, for whatever reason, the driver discards anything still in its 
 
 - **Records.** `t` in a trace record is the driver's clock when it writes the record, in integer milliseconds: since the Unix epoch in production, and virtual milliseconds from 0 in conformance runs.
 - **Timers.** A timer's expiry is due `delay` milliseconds after the driver carries out `timer.start`. The driver reads the time and waits only through the clock and timer it was given (in TypeScript a `Timer` service whose default sleeps on Effect's `Clock`, in Rust the `Timer` trait), telling the timer the run id, the timer id and the delay when it starts one and the ids when it cancels one. It never completes a timer itself, not even one with delay 0 (a `timer.fire` command queues an expiry without any timer). A test can therefore give it a virtual clock and fire timers itself, as a conformance runner does.
-- **Due times.** The driver remembers, for each running timer, when it is **due**: the clock when it carried out the `timer.start`, plus the command's `delay`. A timer restored by `timer.fire` keeps the due time it was saved with. A [saved snapshot](#the-saved-snapshot) records these.
+- **Due times.** The driver remembers, for each running timer, when it is **due**: the clock when it carried out the `timer.start`, plus the command's `delay`, capped at 2^53 − 1, the largest due time a saved snapshot holds (a delay near the longest `duration` would pass it). A timer restored by `timer.fire` keeps the due time it was saved with. A [saved snapshot](#the-saved-snapshot) records these.
 
 How a conformance runner drives virtual time, scripted outcomes and quiescence, and what it may rely on the driver for, is specified in [conformance/README.md](conformance/README.md#how-a-runner-works).
 

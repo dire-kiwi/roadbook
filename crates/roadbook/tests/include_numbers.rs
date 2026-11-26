@@ -41,6 +41,8 @@ struct Host {
     value: f64,
     /// Set when `forever`'s future is dropped.
     dropped: Arc<AtomicBool>,
+    /// What `pause` gives.
+    pause: Duration,
 }
 
 struct SetOnDrop(Arc<AtomicBool>);
@@ -79,6 +81,12 @@ impl forever::Handlers for Host {
     async fn forever(&self) {
         let _guard = SetOnDrop(self.dropped.clone());
         std::future::pending::<()>().await
+    }
+}
+
+impl nap::Handlers for Host {
+    fn pause(&self) -> Duration {
+        self.pause
     }
 }
 
@@ -178,6 +186,64 @@ async fn a_non_finite_float_in_an_event_is_the_senders_host_defect() {
             .iter()
             .any(|r| matches!(r.record, Record::Defect { .. }))
     );
+}
+
+/// 2^53 - 1, the longest `duration` in milliseconds.
+const MAX_MILLIS: u64 = (1 << 53) - 1;
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_duration_longer_than_2_53_ms_is_a_host_defect() {
+    // `Duration::MAX`, a common "never", once overflowed the due time; 2^60 ms gave a
+    // snapshot that `restore` refused.
+    for pause in [
+        Duration::MAX,
+        Duration::from_millis(1 << 60),
+        Duration::from_millis(MAX_MILLIS + 1),
+    ] {
+        let h = Arc::new(Host {
+            pause,
+            ..Host::default()
+        });
+        let sink = Arc::new(MemorySink::new());
+        let config = roadbook::Config::new().sink(sink.clone());
+        let e = tokio::spawn(async move { nap::run_with(&config, &*h).await })
+            .await
+            .unwrap_err();
+        let d = defect_of(e);
+        assert!(
+            matches!(&d, Defect::Host { message } if message.contains("longer than 2^53 - 1 milliseconds")),
+            "{d:?}"
+        );
+        let last = sink.records().last().unwrap().record.clone();
+        assert_eq!(last, Record::Defect { defect: d });
+    }
+    // The longest one is a timer, whose due time saturates, and its snapshot restores.
+    let h = Arc::new(Host {
+        pause: Duration::from_millis(MAX_MILLIS),
+        ..Host::default()
+    });
+    let actor = nap::spawn(h.clone());
+    let saved = actor.save().await;
+    let timer = &saved.timers[0];
+    assert_eq!((timer.delay, timer.due), (MAX_MILLIS, MAX_MILLIS));
+    actor.cancel().await;
+    let copy = nap::restore(h, saved).unwrap();
+    copy.cancel().await;
+}
+
+#[test]
+fn a_duration_longer_than_2_53_ms_does_not_encode() {
+    let r = Reading {
+        value: 1.0,
+        count: 1,
+        wait: Duration::MAX,
+    };
+    assert!(serde_json::to_value(&r).is_err());
+    let r = Reading {
+        wait: Duration::from_millis(MAX_MILLIS),
+        ..r
+    };
+    assert_eq!(serde_json::to_value(&r).unwrap()["wait"], json!(MAX_MILLIS));
 }
 
 #[test]

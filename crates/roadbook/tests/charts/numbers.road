@@ -1,6 +1,7 @@
 // Numbers for include_numbers.rs: non-finite floats from every kind of host code, `int` and
 // `duration` fields read from any integral JSON number, an error with fields whose `_tag` is
-// checked, an output that does not decode, and a run that waits for ever.
+// checked, an output that does not decode, a run that waits for ever, and a timer whose delay
+// comes from host code.
 
 extern type Opaque
 
@@ -9,6 +10,7 @@ error Bad    { why: string }
 
 fn ratio(n: int) -> float
 fn opaque()      -> Opaque
+fn pause()       -> duration
 
 task measure(n: int) -> Reading ! Bad
 task forever()
@@ -63,5 +65,12 @@ machine Forever() {
       done -> Done
     }
   }
+  final state Done {}
+}
+
+/// Waits as long as `pause` says.
+machine Nap() {
+  initial Waiting
+  state Waiting    { after pause() -> Done }
   final state Done {}
 }
