@@ -62,7 +62,7 @@ export interface ImportJobDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/import-job/import.road",
@@ -76,6 +76,7 @@ const ir: unknown = {
   "types": {
     "Upload": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "jobId",
@@ -101,6 +102,7 @@ const ir: unknown = {
     },
     "ImportPlan": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "totalRows",
@@ -126,6 +128,7 @@ const ir: unknown = {
     },
     "RowError": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "row",
@@ -151,6 +154,7 @@ const ir: unknown = {
     },
     "ImportSummary": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "jobId",

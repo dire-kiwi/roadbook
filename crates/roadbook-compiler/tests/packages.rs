@@ -709,7 +709,7 @@ fn sensitive_marks_cross_packages() {
         let out = compile(&mut l, "safe.road", &Options::default()).unwrap();
         assert!(out.diagnostics.is_empty(), "{}", out.render());
         let ir = out.ir.unwrap();
-        let roadbook_ir::TypeDef::Record { fields } = &ir.types["Secret"].def else {
+        let roadbook_ir::TypeDef::Record { fields, .. } = &ir.types["Secret"].def else {
             panic!("Secret is a record");
         };
         assert_eq!(

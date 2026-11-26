@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0314]: `Opt<string?>` makes a type optional twice: `Opt` makes its parameter `T` optional, and `string?` already is
+  --> RB0314-double-optional-inferred.road:10:14
+   |
+10 | machine M(o: Opt<string?>) {
+   |              ^^^^^^^^^^^^
+   |
+   = help: a value is either present or absent; pass a type argument that is not optional
+
+error[RB0314]: `Pair<int?>` makes a type optional twice: `Pair` makes its parameter `T` optional, and `int?` already is
+  --> RB0314-double-optional-inferred.road:11:31
+   |
+11 |   var text: string = describe(Pair { first: mi(), second: mi() })
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: a value is either present or absent; pass a type argument that is not optional

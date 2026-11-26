@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -13,6 +13,7 @@
   "types": {
     "Draft": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "title",
@@ -38,6 +39,7 @@
     },
     "Post": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "title",
@@ -63,6 +65,7 @@
     },
     "File": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "name",
@@ -88,6 +91,7 @@
     },
     "Url": {
       "kind": "alias",
+      "params": [],
       "type": "string",
       "doc": "Where a stored file can be fetched.",
       "span": {

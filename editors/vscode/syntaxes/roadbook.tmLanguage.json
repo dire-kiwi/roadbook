@@ -302,6 +302,7 @@
       "patterns": [
         { "match": "\\bref\\b(?=\\s+[A-Z])", "name": "storage.modifier.ref.roadbook" },
         { "match": "\\b(string|int|float|bool|duration|json)\\b", "name": "support.type.primitive.roadbook" },
+        { "match": "\\bmap\\b(?=\\s*<)", "name": "support.type.primitive.roadbook" },
         { "match": "\\b[A-Z][A-Za-z0-9]*\\b", "name": "entity.name.type.roadbook" },
         { "match": "\\[\\]", "name": "keyword.operator.type.list.roadbook" },
         { "match": "\\?", "name": "keyword.operator.type.optional.roadbook" }

@@ -6,7 +6,7 @@ import { TestClock } from "effect/testing"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import * as Roadbook from "../src/index.ts"
-import { Early, Go, Leftover, Overflow, Payload, Settle } from "./charts/runtime.road.ts"
+import { Early, Generic, Go, Leftover, Overflow, Payload, Settle } from "./charts/runtime.road.ts"
 
 const charts = path.resolve(import.meta.dirname, "../../../spec/conformance/charts")
 const readIr = (file: string): unknown => JSON.parse(fs.readFileSync(path.join(charts, file), "utf8"))
@@ -472,5 +472,33 @@ describe("json values from host code", () => {
       assert.isTrue(Exit.isSuccess(exit))
       const output = Exit.isSuccess(exit) ? exit.value : undefined
       assert.strictEqual(Core.canonicalJson(output), '{"__proto__":1,"a":[1,"two",null,true,{"b":0}]}')
+    }))
+})
+
+describe("maps and generic records", () => {
+  it.effect("pass through input, functions and output in their host form", () =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      const boxes = JSON.parse(`{"__proto__": {"value": 2000}, "a": {"value": 5}}`, (_, v) =>
+        typeof v === "number" ? Duration.millis(v) : v)
+      const Live = Generic.implement({
+        fns: {
+          withLongest: ({ boxes }) => {
+            const longest = Object.values(boxes).reduce((a, b) => Duration.isGreaterThan(b.value, a.value) ? b : a)
+            return { ...boxes, longest }
+          }
+        }
+      })
+      const output = yield* Live.run({ boxes }).pipe(Effect.provideService(Roadbook.TraceSink, sink))
+      assert.deepStrictEqual(Object.keys(output), ["__proto__", "a", "longest"])
+      assert.isTrue(Duration.equals(output["__proto__"]!.value, Duration.seconds(2)))
+      assert.isTrue(Duration.equals(output["longest"]!.value, Duration.seconds(2)))
+      const started = records.find((r) => r.kind === "started")!
+      assert.strictEqual(Core.canonicalJson(started.input), `{"boxes":{"__proto__":{"value":2000},"a":{"value":5}}}`)
+      const done = records.find((r) => r.kind === "done")!
+      assert.strictEqual(
+        Core.canonicalJson(done.output),
+        `{"__proto__":{"value":2000},"a":{"value":5},"longest":{"value":2000}}`
+      )
     }))
 })

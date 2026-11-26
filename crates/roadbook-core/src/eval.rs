@@ -47,8 +47,9 @@ pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, 
         }
         ExprKind::Record { fields } => {
             let mut obj = Map::new();
-            let name = match s.program.resolve(&e.ty) {
-                TypeRef::Named(n) => n.as_str(),
+            let resolved = s.program.resolve(&e.ty);
+            let name = match &*resolved {
+                TypeRef::Named(n) | TypeRef::Generic(n, _) => n.as_str(),
                 _ => "",
             };
             let decl = s.program.ir().types.get(name).map(|t| &t.def);
@@ -84,7 +85,9 @@ pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, 
             }
             // An optional field with no value is `null`, never omitted.
             let declared = match (decl, event) {
-                (Some(TypeDef::Record { fields } | TypeDef::Error { fields }), _) => Some(fields),
+                (Some(TypeDef::Record { fields, .. } | TypeDef::Error { fields }), _) => {
+                    Some(fields)
+                }
                 (None, Some((_, d))) => Some(&d.fields),
                 _ => None,
             };
@@ -196,10 +199,10 @@ fn op_value(
             let b = eval(&args[1], s, fns)?;
             let ty = s.program.scalar(&args[0].ty);
             match op {
-                Op::Eq => Ok(Value::from(equal(ty, &a, &b))),
-                Op::Ne => Ok(Value::from(!equal(ty, &a, &b))),
+                Op::Eq => Ok(Value::from(equal(&ty, &a, &b))),
+                Op::Ne => Ok(Value::from(!equal(&ty, &a, &b))),
                 Op::Lt | Op::Le | Op::Gt | Op::Ge => {
-                    let ord = compare(ty, &a, &b);
+                    let ord = compare(&ty, &a, &b);
                     let r = match op {
                         Op::Lt => ord == Some(std::cmp::Ordering::Less),
                         Op::Le => matches!(

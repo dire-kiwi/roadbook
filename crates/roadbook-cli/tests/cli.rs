@@ -134,7 +134,7 @@ fn export_ir_writes_the_fixture() {
     let out = roadbook(&dir, &["export", "ir", "m.road", "-o", "m.ir.json"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let written = std::fs::read_to_string(dir.join("m.ir.json")).unwrap();
-    assert!(written.contains("\"irVersion\": \"0.4\""));
+    assert!(written.contains("\"irVersion\": \"0.5\""));
 }
 
 #[test]
@@ -505,11 +505,12 @@ fn viz_trace_is_embedded_and_opens_in_replay() {
     let dir = out_dir("trace-files");
     std::fs::create_dir_all(&dir).unwrap();
     let other = dir.join("other.jsonl");
+    let recorded = std::fs::read_to_string(repo().join(trace)).unwrap();
+    let first: serde_json::Value = serde_json::from_str(recorded.lines().next().unwrap()).unwrap();
+    let hash = first["ir"].as_str().unwrap();
     std::fs::write(
         &other,
-        std::fs::read_to_string(repo().join(trace))
-            .unwrap()
-            .replace("\"ir\":\"sha256:e944", "\"ir\":\"sha256:0000"),
+        recorded.replace(hash, &format!("sha256:{}", "0".repeat(64))),
     )
     .unwrap();
     let res = roadbook(

@@ -3,9 +3,9 @@
 //! redacted: snapshots, commands and what host code sees keep the real values.
 //!
 //! A value is redacted by its declared type, which the IR gives: a record's or error's
-//! sensitive fields are replaced, and its other fields, list items and present optional
-//! values are redacted by their own types, through aliases. A member a type does not declare
-//! is left as it is.
+//! sensitive fields are replaced, and its other fields, list items, map values and present
+//! optional values are redacted by their own types, through aliases, with the arguments of an
+//! instance of a generic type substituted. A member a type does not declare is left as it is.
 
 use std::collections::{HashMap, HashSet};
 
@@ -30,7 +30,7 @@ impl Marks {
     pub fn new(ir: &Ir) -> Marks {
         let fields = |fs: &[Field]| fs.iter().any(|f| f.sensitive);
         let any = ir.types.values().any(|t| match &t.def {
-            TypeDef::Record { fields: fs } | TypeDef::Error { fields: fs } => fields(fs),
+            TypeDef::Record { fields: fs, .. } | TypeDef::Error { fields: fs } => fields(fs),
             _ => false,
         }) || ir.functions.values().any(|f| fields(&f.params))
             || ir.actions.values().any(|a| fields(&a.params))
@@ -57,15 +57,18 @@ impl Marks {
     }
 }
 
+/// Whether a value of the declared type `name` can hold a sensitive value whatever its type
+/// arguments: a type parameter (not a key of `types`) carries nothing of its own. An instance
+/// also carries what its arguments do (see [`Redactor::carries`]).
 fn carries_named(ir: &Ir, name: &str, seen: &mut HashSet<String>) -> bool {
     if !seen.insert(name.to_owned()) {
         return false;
     }
     match ir.types.get(name).map(|t| &t.def) {
-        Some(TypeDef::Record { fields } | TypeDef::Error { fields }) => fields
+        Some(TypeDef::Record { fields, .. } | TypeDef::Error { fields }) => fields
             .iter()
             .any(|f| f.sensitive || carries_ref(ir, &f.ty, seen)),
-        Some(TypeDef::Alias { ty }) => carries_ref(ir, ty, seen),
+        Some(TypeDef::Alias { ty, .. }) => carries_ref(ir, ty, seen),
         _ => false,
     }
 }
@@ -73,7 +76,10 @@ fn carries_named(ir: &Ir, name: &str, seen: &mut HashSet<String>) -> bool {
 fn carries_ref(ir: &Ir, t: &TypeRef, seen: &mut HashSet<String>) -> bool {
     match t {
         TypeRef::Named(n) => carries_named(ir, n, seen),
-        TypeRef::List(e) | TypeRef::Optional(e) => carries_ref(ir, e, seen),
+        TypeRef::Generic(n, args) => {
+            carries_named(ir, n, seen) || args.iter().any(|a| carries_ref(ir, a, seen))
+        }
+        TypeRef::List(e) | TypeRef::Optional(e) | TypeRef::Map(_, e) => carries_ref(ir, e, seen),
         TypeRef::Builtin(_) | TypeRef::Ref(_) => false,
     }
 }
@@ -89,11 +95,17 @@ impl Redactor<'_> {
         self.marks.any
     }
 
-    /// Whether a value of type `t` can hold a sensitive value.
+    /// Whether a value of type `t` can hold a sensitive value. An instance of a generic type
+    /// can if its type can whatever the arguments, or if an argument can: the compiler makes
+    /// every type parameter used, so each argument's values are in the instance's.
     fn carries(&self, t: &TypeRef) -> bool {
         match t {
             TypeRef::Named(n) => self.marks.carries.get(n).copied().unwrap_or(false),
-            TypeRef::List(e) | TypeRef::Optional(e) => self.carries(e),
+            TypeRef::Generic(n, args) => {
+                self.marks.carries.get(n).copied().unwrap_or(false)
+                    || args.iter().any(|a| self.carries(a))
+            }
+            TypeRef::List(e) | TypeRef::Optional(e) | TypeRef::Map(_, e) => self.carries(e),
             TypeRef::Builtin(_) | TypeRef::Ref(_) => false,
         }
     }
@@ -116,13 +128,19 @@ impl Redactor<'_> {
                     self.value(e, v);
                 }
             }
-            TypeRef::Named(n) => match self.ir.types.get(n).map(|t| &t.def) {
-                Some(TypeDef::Record { fields } | TypeDef::Error { fields }) => {
-                    self.fields(fields, v)
-                }
-                Some(TypeDef::Alias { ty }) => self.value(ty, v),
-                _ => {}
+            TypeRef::Map(_, e) => match v {
+                Value::Object(entries) => entries.values_mut().for_each(|x| self.value(e, x)),
+                _ => redact(v),
             },
+            TypeRef::Named(_) | TypeRef::Generic(..) => {
+                if let Some((_, _, fields)) = self.ir.fields_of(t) {
+                    return self.fields(&fields, v);
+                }
+                let expanded = self.ir.expand_top(t);
+                if *expanded != *t {
+                    self.value(&expanded, v);
+                }
+            }
         }
     }
 
@@ -209,7 +227,9 @@ impl Redactor<'_> {
     fn error(&self, v: &mut Value) {
         let t = tag(v).unwrap_or_default();
         let decl = match self.ir.types.get(&t).map(|d| &d.def) {
-            Some(TypeDef::Error { fields } | TypeDef::Record { fields }) => Some(fields.as_slice()),
+            Some(TypeDef::Error { fields } | TypeDef::Record { fields, .. }) => {
+                Some(fields.as_slice())
+            }
             _ => None,
         };
         self.tagged(decl.into_iter(), v);

@@ -227,7 +227,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -300,6 +300,7 @@ const ir: unknown = {
     },
     "Ticket": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "id",
@@ -337,6 +338,7 @@ const ir: unknown = {
     },
     "Classification": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "category",
@@ -374,6 +376,7 @@ const ir: unknown = {
     },
     "SurveyResult": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "answered",
@@ -399,6 +402,7 @@ const ir: unknown = {
     },
     "Closure": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "ticketId",

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/orders.road",
@@ -9,6 +9,7 @@
   "types": {
     "Item": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "sku",
@@ -34,6 +35,7 @@
     },
     "OrderDraft": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "items",
@@ -59,6 +61,7 @@
     },
     "Receipt": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "orderId",

@@ -1,0 +1,13 @@
+type Page<T> { items: T[] }
+type Tree = map<string, Tree>
+type Pages = Page<Pages>
+type Loop<T> = Loop<T>[]
+
+machine M(t: Tree, p: Pages, l: Loop<int>) {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0313 at 2:6
+// expect: RB0313 at 3:6
+// expect: RB0313 at 4:6

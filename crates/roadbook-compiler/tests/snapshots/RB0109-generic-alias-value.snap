@@ -1,0 +1,8 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0109]: `P` is a generic alias; build the value with the name of the record it stands for
+ --> RB0109-generic-alias-value.road:8:29
+  |
+8 |   final state Done { output P { items: ints() } }
+  |                             ^

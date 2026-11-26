@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.4) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.5) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -24,9 +24,10 @@ export interface Expr {
   text: string
 }
 
+/** A declared type. A record or an alias is generic when it has `params`. */
 export type TypeDecl =
-  | { kind: 'record'; fields: Field[]; doc: string; span: Span }
-  | { kind: 'alias'; type: string; doc: string; span: Span }
+  | { kind: 'record'; params: string[]; fields: Field[]; doc: string; span: Span }
+  | { kind: 'alias'; params: string[]; type: string; doc: string; span: Span }
   | { kind: 'enum'; variants: string[]; doc: string; span: Span }
   | { kind: 'error'; fields: Field[]; doc: string; span: Span }
   | { kind: 'extern'; doc: string; span: Span }
@@ -171,4 +172,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.4'
+export const IR_VERSION = '0.5'

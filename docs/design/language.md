@@ -56,6 +56,7 @@ Everything a machine refers to is declared, with types. Declarations live at the
 | --- | --- | --- |
 | `type User { id: string, role: Role }` | A record. | Generated |
 | `type UserId = string` | An alias. | Generated |
+| `type Page<T> { items: T[], next: string? }` | A generic record (or alias, `type Dict<T> = map<string, T>`). See [maps and generic types](#maps-and-generic-types). | Generated |
 | `enum Role { Customer, Admin }` | A closed set of names. | Generated |
 | `error CardDeclined { reason: string }` | A tagged error. Also usable as a type. | Generated |
 | `extern type Money` | A type that exists only in host code. Opaque to the compiler. | Host, bound per language in `roadbook.toml` |
@@ -64,7 +65,7 @@ Everything a machine refers to is declared, with types. Declarations live at the
 | `task chargeCard(order: Order) -> Receipt ! CardDeclined` | Effectful, fallible, cancellable work. Only run by `invoke`. | Host |
 | `machine Checkout(...) -> Receipt ! ... { }` | A statechart with a task's signature. | The chart |
 
-Built-in types are `string`, `int` (64-bit signed), `float`, `bool`, `duration` and `json` (any JSON value). `T?` is optional and `T[]` is a list. `ref Machine` is a handle to a running machine (see [messages between machines](#messages-between-machines)).
+Built-in types are `string`, `int` (64-bit signed), `float`, `bool`, `duration` and `json` (any JSON value). `T?` is optional, `T[]` is a list and `map<string, T>` a map from strings to `T`. `ref Machine` is a handle to a running machine (see [messages between machines](#messages-between-machines)). A record or alias may take type parameters, `Page<Order>` (see [maps and generic types](#maps-and-generic-types)).
 
 An alias of an error type is an ordinary alias: it can be used wherever a type goes. Error lists (`! CardDeclined | Gone`) and `fail E` outcomes name the errors themselves, not aliases of them, since an error is matched by its name.
 
@@ -211,10 +212,10 @@ Expressions are deliberately small. There are no loops, lambdas or string operat
 Every expression has a type, and the compiler checks it wherever a value goes: arguments of functions, actions, tasks and machines (as many as the declaration has parameters, in order), `set` (only to the machine's `var`s, never its parameters), guards (`bool`), `after` delays (`duration`), `var` initial values, the fields of record and error values (every field, and no others), `output` (the machine's return type) and `fail` (one of the machine's declared errors).
 
 - There are no implicit conversions. `int` and `float` are distinct and do not mix: `ratio * 2` is an error when `ratio` is a `float`; write `ratio * 2.0`.
-- `+`, `-`, `*` and unary `-` take two `int`s or two `float`s and give the same type. `<`, `<=`, `>` and `>=` compare two `int`s, two `float`s or two `duration`s. `==` and `!=` compare two values of the same scalar type (`string`, `int`, `float`, `bool`, `duration`) or the same enum; records, lists, optionals and `json` cannot be compared (see open question 5 on the [roadmap](roadmap.md#open-questions)). `and`, `or` and `not` take `bool`s.
-- A `T` can be used where a `T?` is expected, but not the reverse, and a field cannot be read from a `T?`: an optional value goes to a `fn` that handles the absent case. A `T[]` can be used where a `U[]` is expected if a `T` can be used as a `U`.
+- `+`, `-`, `*` and unary `-` take two `int`s or two `float`s and give the same type. `<`, `<=`, `>` and `>=` compare two `int`s, two `float`s or two `duration`s. `==` and `!=` compare two values of the same scalar type (`string`, `int`, `float`, `bool`, `duration`) or the same enum; records, lists, maps, optionals and `json` cannot be compared (see open question 5 on the [roadmap](roadmap.md#open-questions)). `and`, `or` and `not` take `bool`s.
+- A `T` can be used where a `T?` is expected, but not the reverse, and a field cannot be read from a `T?`: an optional value goes to a `fn` that handles the absent case. A `T[]` can be used where a `U[]` is expected if a `T` can be used as a `U`, and so can a `map<string, T>` where a `map<string, U>` is, and a `Page<T>` where a `Page<U>` is.
 - Any value can be used where `json` is expected.
-- An alias is the type it names: `type UserId = string` makes `UserId` and `string` interchangeable. An alias cannot refer to itself, even through `[]` or `?`. A type is optional at most once, aliases expanded: `string??` is an error, and so is `S?` after `type S = string?`.
+- An alias is the type it names: `type UserId = string` makes `UserId` and `string` interchangeable. An alias cannot refer to itself, even through `[]`, `?`, `map` or a type argument (`type Tree = map<string, Tree>` is an error; declare a record). A type is optional at most once, aliases expanded and type arguments substituted: `string??` is an error, and so is `S?` after `type S = string?`, and `Box<int?>` after `type Box<T> { value: T? }`.
 - An `int` or `duration` literal must be within ±(2^53 − 1) (milliseconds, for a duration), the integers the IR's JSON carries exactly.
 
 The implicit names have these types:
@@ -227,7 +228,33 @@ Outside those transitions the three names are not in scope.
 
 A `ref Machine` is a handle, not data. It can be a parameter of a machine, function, action or task and a `var`, and be passed as an argument to an invoked machine and to host functions, actions and tasks. It cannot be a field of a record, error or event, or what a function, task or machine returns (`RB0316`): a machine gets a handle only from its own signature or from `invoke … as`, so the charts' signatures show who can talk to whom. It has no JSON form, so it cannot be passed where `json` is expected, and `==` and `!=` are not defined on it. `ref A` and `ref B` are different types for different machines; a `ref A` can be used where a `ref A?` is expected, as for any `T`.
 
-There are no generics, no built-in functions and no list literals, so anything a chart asks of a list goes through a host `fn`. A `json[]` parameter accepts a list of any element type, so one function serves every list: `fn isEmpty(items: json[]) -> bool`, used as `always if isEmpty(problems) -> Accept`. Optionals work the same way: there is no `none` literal and no narrowing, so a chart cannot test for presence and then use the value. When absence changes the flow, make it a declared error of the task that looks the value up (`task findToken(id: string) -> Token ! TokenNotFound`), and build a record whose optional field may be absent in a `fn`.
+There are no built-in functions and no list or map literals, so anything a chart asks of a list or a map goes through a host `fn`. A `json[]` parameter accepts a list of any element type, so one function serves every list: `fn isEmpty(items: json[]) -> bool`, used as `always if isEmpty(problems) -> Accept`. Optionals work the same way: there is no `none` literal and no narrowing, so a chart cannot test for presence and then use the value. When absence changes the flow, make it a declared error of the task that looks the value up (`task findToken(id: string) -> Token ! TokenNotFound`), and build a record whose optional field may be absent in a `fn`.
+
+## Maps and generic types
+
+```
+type UserId = string
+
+/// A page of results, of any item type.
+type Page<T> { items: T[], next: string? }
+type Tree<T> { value: T, children: Tree<T>[] }
+type Dict<T> = map<string, T>
+
+fn countByUser(orders: Order[]) -> map<UserId, int>
+fn nextPage(after: Page<Order>) -> Page<Order>
+
+machine Report(regions: Dict<Order[]>) -> Page<Order> {
+  var page:   Page<Order>
+  var counts: map<UserId, int>
+  …
+  final state Done { output Page { items: page.items, next: page.next } }
+}
+```
+
+- **`map<K, V>`** maps keys to values of type `V`. Its keys are strings: `K` is `string` or an alias of it (`map<UserId, Order>`), which documents what the keys are (`RB0319` otherwise). Its JSON form is an object (see [values](../../spec/execution.md#values)). A chart has no map literal and no operation on a map: lookups give a value that may be absent, which a chart cannot narrow, so they belong in a `fn`, as list operations do. A map is passed around whole: in variables, parameters, fields and results, and to `fn`s (`fn emptyCounts() -> map<string, int>` gives an initial value). `map<string, ref Inventory>` holds handles where `ref Inventory[]` could.
+- **Generic types.** A `type` record or alias may take type parameters, upper-case names in `<>` after its name: `type Page<T> { … }`, `type Pair<A, B> { first: A, second: B }`, `type Dict<T> = map<string, T>`. Enums, errors, events and extern types cannot, and neither can functions, tasks or machines (a `json` parameter already accepts any value). A use gives a type for each parameter, `Page<Order>`; the declaration's fields (or the aliased type) are then those of the declaration with each parameter replaced by its argument, so `page.items` is an `Order[]`. A generic alias is transparent like any alias: `Dict<Order>` is `map<string, Order>`.
+- **Record values** of a generic type are written without the arguments, `Page { items: orders, next: cursor }`. The arguments come from the type the value is expected to have, where there is one (a `set`, an argument, a field, `output`), else from its field values. A value whose arguments neither tells (fields that disagree, as in `Pair { first: 1, second: "one" }` for `type Pair<T> { first: T, second: T }`, or the value of `event`) is an error (`RB0323`): use it where its type is known.
+- **Rules.** A use gives exactly as many arguments as the type has parameters, and a type that is not generic takes none (`RB0320`). Every parameter is used by its declaration (`RB0321`), and none has the name of a declaration (`RB0107`). A type argument cannot hold a `ref` (`RB0316`), since it may become a field. A generic type can refer to itself, directly or through other types, only with its own parameters in order (`Tree<T>` in `Tree<T>`; `type Nested<T> { inner: Nested<T[]>? }` is `RB0322`), so that it has finitely many instances. Precisely: in the declaration of a generic type, every use of a generic type that refers back to it passes the declaration's own parameters, in order, so types that refer to each other have the same parameters (`type A<T> { b: B<T>? }` with `type B<T> { a: A<T>? }`); a type that is not generic can use any instance.
 
 ## Messages between machines
 
@@ -321,7 +348,7 @@ machine Vault(login: Credentials, sensitive pin: int) -> Profile ! Locked {
 - **Where.** On any field of a record, error, event or emitted event; any parameter of a machine, task, action or function; any `var`. The mark is part of the declaration, so it holds wherever the declaration is used: through aliases, in other files and in other packages.
 - **What it does.** Every trace record shows the value of a marked field, parameter or variable as the string `"<redacted>"`, at any depth: a `Credentials` in a list in an optional shows `{"user": "ada", "password": "<redacted>"}` there. A variable marked `sensitive` is shown `"<redacted>"` whole. The records keep their form; only their values change. The rules, which both runtimes follow byte for byte, are in [`spec/trace.md`](../../spec/trace.md#redaction).
 - **What it does not.** Nothing but traces changes. The machine, host code and **saved snapshots see and keep the real values**: a restored run goes on with them, so a stored snapshot needs the protection the data needs. Types do not change either, in the generated TypeScript and Rust or anywhere else. On a function's parameter the mark changes nothing, since function calls are not traced; it can still say what the function handles. A marked field does not change a machine's [hash](../../spec/ir.md#the-machine-hash), so marking one later does not invalidate saved snapshots.
-- **Keeping it marked.** A runtime redacts a value by its declared type. So a value read from a sensitive place (`password`, `event.pin`, a field of a sensitive variable) can only go to a place that is also sensitive, or that no trace shows: a guard, a function's argument. Assigning it to a variable that is not sensitive, passing it to an action, task or machine parameter that is not, putting it in a field that is not, or making it an `output`, a `fail`, an `after` delay or a retry's delay is an error (`RB0317`). So is an operator's result with a sensitive operand: `pin + 0`, `not flag` and `pin == 1234` are sensitive too. A value whose type has sensitive fields cannot go where `json` is expected, since `json` has no fields to redact by (`RB0318`), unless that place is itself sensitive. A function's result is not sensitive: a `fn` is how a chart derives what may be shown (`last4(card)`), on purpose.
+- **Keeping it marked.** A runtime redacts a value by its declared type. So a value read from a sensitive place (`password`, `event.pin`, a field of a sensitive variable) can only go to a place that is also sensitive, or that no trace shows: a guard, a function's argument. Assigning it to a variable that is not sensitive, passing it to an action, task or machine parameter that is not, putting it in a field that is not, or making it an `output`, a `fail`, an `after` delay or a retry's delay is an error (`RB0317`). So is an operator's result with a sensitive operand: `pin + 0`, `not flag` and `pin == 1234` are sensitive too. A value whose type has sensitive fields cannot go where `json` is expected, since `json` has no fields to redact by (`RB0318`), unless that place is itself sensitive; that includes a map or list of such values, an instance such as `Page<Login>`, and a `Page<Login>` where a `Page<json>` is expected. Redaction follows maps and type arguments: the `password` of every `Login` in a `map<string, Login>` or a `Page<Login>` is redacted. A function's result is not sensitive: a `fn` is how a chart derives what may be shown (`last4(card)`), on purpose.
 - **What is never covered.** A host defect's message is whatever host code raised, and the trace shows it as it is: a function that is given a sensitive value should not put it in an exception (`JSON.parse` quotes its input). And a run redacts by the IR it was built from: runs that talk to each other should be built from the same charts, since a mark does not change the hash their handles are checked by.
 
 ## Projects
@@ -501,14 +528,14 @@ Both runtimes keep reading an unassigned variable as a runtime error (`unassigne
 The layout, as implemented in `roadbook-syntax`. The example files and the charts on these pages are written in it.
 
 - **Lines.** Two-space indentation, one item per line, and no line wrapping. A file with syntax errors is not formatted.
-- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses. A `retry` clause is written `retry 3 on A | B after delay`, one space between its parts. In a transition the target and each `set`, `do`, `send` or `emit` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Every `set` comes first, then the other clauses in the order written; consecutive clauses of one kind are merged for `set` and `do`: `do f()  set a = 1  set b = 2` is written `set a = 1, b = 2  do f()`. Each `send` and `emit` is a clause of its own, and an empty body is dropped: `send upload.Pause {}` is written `send upload.Pause`.
+- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses or the angle brackets of type arguments (`map<string, int>`, `type Page<T>`). A `retry` clause is written `retry 3 on A | B after delay`, one space between its parts. In a transition the target and each `set`, `do`, `send` or `emit` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Every `set` comes first, then the other clauses in the order written; consecutive clauses of one kind are merged for `set` and `do`: `do f()  set a = 1  set b = 2` is written `set a = 1, b = 2  do f()`. Each `send` and `emit` is a clause of its own, and an empty body is dropped: `send upload.Pause {}` is written `send upload.Pause`.
 - **Blank lines** between items are kept, at most one. There are none at the start or end of a block or file.
 - **Lists.** No trailing commas. A list in a declaration (import names, fields, enum variants, parameters) with a line break right after its opening bracket stays multi-line: its elements are indented one level, keep the author's line breaks between them, and the closing bracket goes on its own line. Every other list is printed on one line.
 - **One-line states.** A state whose body is empty, or is a single item other than a state, an `invoke` or a block of branches, and contains no comment, is written on one line: `final state Charged { output receipt }`. Every other state is written as a block. A history state is written on a line of its own: `history Previous`, `deep history Previous`.
 - **Expressions** have only the parentheses precedence needs, plus `not (…)` around a comparison or arithmetic operand, and parentheses around a record value used as an `after` delay or a retry's delay. Numbers are written as parsed (`007` becomes `7`, `1.50` becomes `1.5`). `error E {}` is written `error E`, and a record value with no fields `E {}` is written `E`.
 - **Comments** are kept as written, trailing spaces removed. A comment on its own line stays on its own line, indented like the code that follows it. A comment after code stays at the end of that line, including one after the closing bracket of a multi-line list, which ends the line that bracket starts (`) { // c`, `} from "./x.road" // c`). A comment inside something printed on one line moves to its own line before it; for the line a multi-line list's closing bracket starts (`) -> T ! E {`), that is into the list, before the bracket. Comments after that line belong to what follows it.
 - **Alignment.** An alignment group is a run of consecutive lines of one kind with no blank line or comment line between them. The kinds and what they align:
-  - one-line `type`, `enum`, `error` and `extern type` declarations: what follows the name (`{` or `=`);
+  - one-line `type`, `enum`, `error` and `extern type` declarations: what follows the name and its type parameters (`{` or `=`);
   - one-line `fn`, `action` and `task` declarations: `->` and `!`;
   - `var` lines: the type;
   - `event` and `emits` lines, together: the field list;
@@ -556,8 +583,8 @@ The compiler's codes:
 | `RB0104` | An unknown action in `do`. | `do audt("x")` |
 | `RB0105` | An unknown variable. | `set attemps = 1` |
 | `RB0106` | An event the machine does not declare. | `on Cancl -> Done` |
-| `RB0107` | Two declarations with the same name in one compilation, or an event named like a type, error or machine. | `type Order` in two files, `event Order` |
-| `RB0108` | Two fields, parameters, variants, variables, events or sibling states with the same name, or a name imported twice. | `state A {}` twice in one parent, `import { B, B }` |
+| `RB0107` | Two declarations with the same name in one compilation, or an event or type parameter named like a type, error or machine. | `type Order` in two files, `event Order`, `type Page<Order>` |
+| `RB0108` | Two fields, parameters, type parameters, variants, variables, events or sibling states with the same name, or a name imported twice. | `state A {}` twice in one parent, `import { B, B }` |
 | `RB0109` | A name used as something it is not. | `invoke audit(x)` where `audit` is an action |
 | `RB0110` | `event`, `result` or `error` where it is not in scope. | `entry set n = result` |
 | `RB0111` | An import of a file that cannot be read. | `import { A } from "./missing.road"` |
@@ -602,9 +629,14 @@ The compiler's codes:
 | `RB0313` | A type alias that refers to itself. | `type A = A[]` |
 | `RB0314` | A type made optional twice. | `note: string??` |
 | `RB0315` | A `send` or `on name.E` through a value that is not a `ref`, or a `ref` that is optional or a list. | `send count.Ping` for `count: int` |
-| `RB0316` | A `ref` in a field of a record, error or event, or in what a function, task or machine returns. | `type Holder { peer: ref Peer }` |
+| `RB0316` | A `ref` in a field of a record, error or event, in what a function, task or machine returns, or in a type argument. | `type Holder { peer: ref Peer }`, `Box<ref Peer>` |
 | `RB0317` | A value read from a sensitive field, parameter or variable (or computed from one by an operator), going where a trace shows it: a variable, a parameter of an action, task or machine, or a field that is not `sensitive`, or an `output`, a `fail`, an `after` delay or a retry's delay. | `set note = event.password` for `var note: string` |
 | `RB0318` | A value whose type has `sensitive` fields, going where `json` is expected in a place a trace shows. | `do log(creds)` for `action log(what: json)` |
+| `RB0319` | A `map` whose key type is not `string` or an alias of it. | `map<int, Order>` |
+| `RB0320` | A generic type without its type arguments or with the wrong number of them, or type arguments on a type that takes none. | `page: Page`, `Order<int>` |
+| `RB0321` | A type parameter its declaration does not use. | `type Id<T> = string` |
+| `RB0322` | A generic type that refers to itself, directly or through other types, with other arguments than its own parameters. | `type Nested<T> { inner: Nested<T[]>? }` |
+| `RB0323` | A record value of a generic type whose type arguments neither the expected type nor its fields tell. | `describe(Pair { first: 1, second: "one" })` |
 | `RB0401` | An unguarded cycle of `always` transitions. | `A { always -> B }`, `B { always -> A }` |
 | `RB0402` | A machine that invokes itself without waiting. | `state A { invoke M() { … } }` as `M`'s initial state |
 | `RB0403` | A read of a variable that might not be assigned yet. | `entry do log(n)` in the initial state, for `var n: int` |
@@ -626,14 +658,16 @@ decl        = typeDecl | enumDecl | errorDecl | externDecl
             | fnDecl | actionDecl | taskDecl | machineDecl ;
 
 externDecl  = "extern" "type" Upper ;
-typeDecl    = "type" Upper ( "=" type | fields ) ;
+typeDecl    = "type" Upper [ typeParams ] ( "=" type | fields ) ;
+typeParams  = "<" Upper { "," Upper } ">" ;
 enumDecl    = "enum" Upper "{" Upper { "," Upper } "}" ;
 errorDecl   = "error" Upper [ fields ] ;
 fields      = "{" [ field { "," field } ] "}" ;
 field       = [ "sensitive" ] lower ":" type ;
-type        = ( Upper | "string" | "int" | "float" | "bool" | "duration" | "json"
-              | "ref" Upper )
+type        = ( Upper [ typeArgs ] | "string" | "int" | "float" | "bool" | "duration" | "json"
+              | "ref" Upper | "map" "<" type "," type ">" )
               { "[]" | "?" } ;
+typeArgs    = "<" type { "," type } ">" ;
 
 fnDecl      = "fn" lower params "->" type ;
 actionDecl  = "action" lower params ;
@@ -708,7 +742,8 @@ comment     = "//" … end of line ;        doc comment = "///" … end of line 
 Rules the grammar does not express:
 
 - Every comma-separated list accepts a trailing comma.
-- All keywords are reserved: `import type enum error extern fn action task machine var event emits initial state final parallel entry exit on after always done invoke output fail if else set do send emit and or not true false`. `from`, `as`, `retry`, `ref`, `sensitive`, `history`, `deep` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), and at the start of an item of a state body (`history`, `deep`). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters.
+- All keywords are reserved: `import type enum error extern fn action task machine var event emits initial state final parallel entry exit on after always done invoke output fail if else set do send emit and or not true false`. `from`, `as`, `retry`, `ref`, `map`, `sensitive`, `history`, `deep` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), and at the start of an item of a state body (`history`, `deep`). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters.
+- In a type, the `>` closing type arguments may be written as the first character of a `>=`: `var m: map<string, int>= f()` reads as written (the formatter writes `> =` with a space).
 - A `///` comment documents the declaration, machine, state, history state, event or variable that follows it. A `///` anywhere else is an error: use `//`.
 - A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust, and so must one in a retry's delay, which the invoke's `{` follows. A `{` after the event of a `send` or `emit` is always its record body.
 - `on name.Event` is told from `on Event` by the lower-case name and the `.` after it.
@@ -734,4 +769,3 @@ Most of these rules, the split between `machineItem` and `stateItem`, and the re
 Each of these has a planned shape, and the grammar leaves room for it.
 
 - **Keyed `spawn`.** A dynamic number of children, sketched on the [actors and messaging](actors.md#many-children) page. `send`, `emit`, `ref` and `invoke … as` are in the language (see [messages between machines](#messages-between-machines)); both runtimes run them, with identical traces across the conformance cases.
-- **Generic types and maps.** `map<string, T>` and user-defined generics.

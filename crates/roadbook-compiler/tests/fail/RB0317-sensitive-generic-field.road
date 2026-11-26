@@ -1,0 +1,18 @@
+// A sensitive value into a field of a generic record value, whose type arguments are
+// inferred or expected, is checked like any field's.
+type Box<T>    { value: T }
+type Secret<T> { sensitive value: T }
+
+action show(v: json)
+action keep(b: Box<int>)
+
+machine M(sensitive pin: int) {
+  initial Done
+  final state Done {
+    entry do show(Box { value: pin }), keep(Box { value: pin }), show(Secret { value: pin })
+  }
+}
+
+// expect: RB0317 at 12:32
+// expect: RB0317 at 12:58
+// expect: RB0318 at 12:71

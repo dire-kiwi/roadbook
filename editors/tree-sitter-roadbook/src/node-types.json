@@ -1189,7 +1189,15 @@
             "named": true
           },
           {
+            "type": "generic_type",
+            "named": true
+          },
+          {
             "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
             "named": true
           },
           {
@@ -1418,7 +1426,15 @@
             "named": true
           },
           {
+            "type": "generic_type",
+            "named": true
+          },
+          {
             "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
             "named": true
           },
           {
@@ -1429,6 +1445,32 @@
             "type": "ref_type",
             "named": true
           },
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "generic_type",
+    "named": true,
+    "fields": {
+      "arguments": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_arguments",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
           {
             "type": "type_identifier",
             "named": true
@@ -1658,7 +1700,15 @@
             "named": true
           },
           {
+            "type": "generic_type",
+            "named": true
+          },
+          {
             "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
             "named": true
           },
           {
@@ -1781,7 +1831,89 @@
             "named": true
           },
           {
+            "type": "generic_type",
+            "named": true
+          },
+          {
             "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
+            "named": true
+          },
+          {
+            "type": "optional_type",
+            "named": true
+          },
+          {
+            "type": "ref_type",
+            "named": true
+          },
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "map_type",
+    "named": true,
+    "fields": {
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "builtin_type",
+            "named": true
+          },
+          {
+            "type": "generic_type",
+            "named": true
+          },
+          {
+            "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
+            "named": true
+          },
+          {
+            "type": "optional_type",
+            "named": true
+          },
+          {
+            "type": "ref_type",
+            "named": true
+          },
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "builtin_type",
+            "named": true
+          },
+          {
+            "type": "generic_type",
+            "named": true
+          },
+          {
+            "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
             "named": true
           },
           {
@@ -2037,7 +2169,15 @@
             "named": true
           },
           {
+            "type": "generic_type",
+            "named": true
+          },
+          {
             "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
             "named": true
           },
           {
@@ -2151,7 +2291,15 @@
             "named": true
           },
           {
+            "type": "generic_type",
+            "named": true
+          },
+          {
             "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
             "named": true
           },
           {
@@ -2722,7 +2870,55 @@
             "named": true
           },
           {
+            "type": "generic_type",
+            "named": true
+          },
+          {
             "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
+            "named": true
+          },
+          {
+            "type": "optional_type",
+            "named": true
+          },
+          {
+            "type": "ref_type",
+            "named": true
+          },
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "type_arguments",
+    "named": true,
+    "fields": {
+      "argument": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "builtin_type",
+            "named": true
+          },
+          {
+            "type": "generic_type",
+            "named": true
+          },
+          {
+            "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
             "named": true
           },
           {
@@ -2765,6 +2961,16 @@
           }
         ]
       },
+      "parameters": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "type_parameters",
+            "named": true
+          }
+        ]
+      },
       "type": {
         "multiple": false,
         "required": false,
@@ -2774,7 +2980,15 @@
             "named": true
           },
           {
+            "type": "generic_type",
+            "named": true
+          },
+          {
             "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
             "named": true
           },
           {
@@ -2785,6 +2999,22 @@
             "type": "ref_type",
             "named": true
           },
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "type_parameters",
+    "named": true,
+    "fields": {
+      "parameter": {
+        "multiple": true,
+        "required": true,
+        "types": [
           {
             "type": "type_identifier",
             "named": true
@@ -2816,7 +3046,15 @@
             "named": true
           },
           {
+            "type": "generic_type",
+            "named": true
+          },
+          {
             "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "map_type",
             "named": true
           },
           {
@@ -3159,6 +3397,10 @@
   },
   {
     "type": "machine",
+    "named": false
+  },
+  {
+    "type": "map",
     "named": false
   },
   {

@@ -131,6 +131,24 @@ fn serde_derives() -> TokenStream {
     }
 }
 
+/// `impl Wire for Name<T…>` through serde, so that the type can be a type argument: a field of
+/// a generic type whose type names a parameter goes through [`Wire`], which numbers and
+/// durations need.
+///
+/// [`Wire`]: ../../roadbook/__private/wire/trait.Wire.html
+fn wire_impl(id: &Ident, params: &[Ident]) -> TokenStream {
+    quote! {
+        impl<#(#params: ::roadbook::__private::wire::Wire),*> ::roadbook::__private::wire::Wire for #id<#(#params),*> {
+            fn to_wire(&self) -> ::core::result::Result<::roadbook::__private::serde_json::Value, ::std::string::String> {
+                ::roadbook::__private::wire::by_serde(self)
+            }
+            fn from_wire(v: ::roadbook::__private::serde_json::Value) -> ::core::result::Result<Self, ::std::string::String> {
+                ::roadbook::__private::wire::from_serde(v)
+            }
+        }
+    }
+}
+
 /// How a `Handlers` parameter is passed, given the decoded owned value.
 #[derive(Clone, Copy)]
 enum Pass {
@@ -176,27 +194,171 @@ struct Gen<'a> {
     /// For each type, the types its Rust form contains in place (not behind a `Vec`): those
     /// of its fields or, for an alias, its target, through `?`, and theirs in turn.
     contains: HashMap<&'a str, HashSet<&'a str>>,
+    /// For each generic type, how it holds each of its parameters (see [`held_params`]).
+    held: Held,
+    /// The names inside type arguments of the chart's declarations: the extern types among
+    /// them need `Wire`.
+    in_arguments: HashSet<String>,
 }
 
-/// The types `t` names in place, not inside a list, each with whether it is behind a `?`.
-fn in_place(t: &TypeRef, optional: bool, out: &mut Vec<(String, bool)>) {
+/// Every name inside a type argument of a type the declarations of `ir` name, the type
+/// arguments of a generic alias's target included.
+fn names_in_arguments(ir: &Ir) -> HashSet<String> {
+    fn walk(t: &TypeRef, inside: bool, out: &mut HashSet<String>) {
+        match t {
+            TypeRef::Named(n) if inside => {
+                out.insert(n.clone());
+            }
+            TypeRef::Generic(n, args) => {
+                if inside {
+                    out.insert(n.clone());
+                }
+                for a in args {
+                    walk(a, true, out);
+                }
+            }
+            TypeRef::Map(k, v) => {
+                walk(k, inside, out);
+                walk(v, inside, out);
+            }
+            TypeRef::List(e) | TypeRef::Optional(e) => walk(e, inside, out),
+            _ => {}
+        }
+    }
+    let mut out = HashSet::new();
+    let mut each = |t: &TypeRef| walk(t, false, &mut out);
+    let fields = |fs: &[Field], each: &mut dyn FnMut(&TypeRef)| fs.iter().for_each(|f| each(&f.ty));
+    for d in ir.types.values() {
+        match &d.def {
+            TypeDef::Record { fields: fs, .. } | TypeDef::Error { fields: fs } => {
+                fields(fs, &mut each)
+            }
+            TypeDef::Alias { ty, .. } => each(ty),
+            TypeDef::Enum { .. } | TypeDef::Extern => {}
+        }
+    }
+    for f in ir.functions.values() {
+        fields(&f.params, &mut each);
+        each(&f.returns);
+    }
+    for a in ir.actions.values() {
+        fields(&a.params, &mut each);
+    }
+    for t in ir.tasks.values() {
+        fields(&t.params, &mut each);
+        t.returns.iter().for_each(&mut each);
+    }
+    for m in ir.machines.values() {
+        fields(&m.params, &mut each);
+        m.returns.iter().for_each(&mut each);
+        m.vars.iter().for_each(|v| each(&v.ty));
+        for e in m.events.values().chain(m.emits.values()) {
+            fields(&e.fields, &mut each);
+        }
+    }
+    out
+}
+
+/// For each generic record, for each of its parameters in order: whether its Rust form holds
+/// a value of the parameter in place, not behind a `Vec`, a map or a `Box`. A `?` around a
+/// parameter in a generic record is always boxed (see [`Gen::ty_in`]), so a parameter held
+/// behind one is not held in place.
+type Held = HashMap<String, Vec<bool>>;
+
+/// How each generic record holds its parameters, worked out to a fixed point, since a generic
+/// type may hold another's instance (`type W<T> { p: Pair<T, int> }`).
+fn held_params(ir: &Ir) -> Held {
+    let mut held: Held = ir
+        .types
+        .iter()
+        .filter_map(|(n, d)| match &d.def {
+            TypeDef::Record { params, .. } if !params.is_empty() => {
+                Some((n.clone(), vec![false; params.len()]))
+            }
+            _ => None,
+        })
+        .collect();
+    loop {
+        let mut changed = false;
+        for (name, decl) in &ir.types {
+            let TypeDef::Record { params, fields } = &decl.def else {
+                continue;
+            };
+            if params.is_empty() {
+                continue;
+            }
+            let mut found = Vec::new();
+            for f in fields {
+                in_place(&f.ty, false, &held, ir, 0, &mut found);
+            }
+            let mut now = vec![false; params.len()];
+            for (n, optional) in found {
+                if let Some(i) = params.iter().position(|p| *p == n) {
+                    now[i] |= !optional;
+                }
+            }
+            if held.get(name) != Some(&now) {
+                held.insert(name.clone(), now);
+                changed = true;
+            }
+        }
+        if !changed {
+            return held;
+        }
+    }
+}
+
+/// The types (and type parameters) `t` names in place, not inside a list or a map, each with
+/// whether it is behind a `?`. A type argument is in place where its generic record holds its
+/// parameter in place; a generic alias is the type it stands for.
+fn in_place(
+    t: &TypeRef,
+    optional: bool,
+    held: &Held,
+    ir: &Ir,
+    depth: usize,
+    out: &mut Vec<(String, bool)>,
+) {
     match t {
         TypeRef::Named(n) => out.push((n.clone(), optional)),
-        TypeRef::Optional(e) => in_place(e, true, out),
-        TypeRef::Builtin(_) | TypeRef::List(_) | TypeRef::Ref(_) => {}
+        TypeRef::Generic(n, args) => match ir.types.get(n).map(|d| &d.def) {
+            Some(TypeDef::Alias { params, ty }) => {
+                if depth < 64 {
+                    in_place(
+                        &ty.substitute(params, args),
+                        optional,
+                        held,
+                        ir,
+                        depth + 1,
+                        out,
+                    );
+                }
+            }
+            _ => {
+                out.push((n.clone(), optional));
+                let how = held.get(n);
+                for (i, a) in args.iter().enumerate() {
+                    if how.and_then(|h| h.get(i)).copied().unwrap_or(false) {
+                        in_place(a, optional, held, ir, depth, out);
+                    }
+                }
+            }
+        },
+        TypeRef::Optional(e) => in_place(e, true, held, ir, depth, out),
+        TypeRef::Builtin(_) | TypeRef::List(_) | TypeRef::Map(..) | TypeRef::Ref(_) => {}
     }
 }
 
 /// The types a declaration's Rust form holds in place, each with whether it is behind a `?`.
-fn holds(def: &TypeDef) -> Vec<(String, bool)> {
+fn holds(def: &TypeDef, held: &Held, ir: &Ir) -> Vec<(String, bool)> {
     let mut out = Vec::new();
     match def {
-        TypeDef::Record { fields } | TypeDef::Error { fields } => {
+        TypeDef::Record { fields, .. } | TypeDef::Error { fields } => {
             for f in fields {
-                in_place(&f.ty, false, &mut out);
+                in_place(&f.ty, false, held, ir, 0, &mut out);
             }
         }
-        TypeDef::Alias { ty } => in_place(ty, false, &mut out),
+        TypeDef::Alias { ty, .. } => in_place(ty, false, held, ir, 0, &mut out),
         TypeDef::Enum { .. } | TypeDef::Extern => {}
     }
     out
@@ -216,11 +378,11 @@ fn reachable<'a>(from: &'a str, edges: &HashMap<&'a str, Vec<&'a str>>) -> HashS
 
 /// For each type of `ir`, the types it contains in place; or the error for a type that
 /// contains itself with no `?` on the way, which has no finite value.
-fn containment(ir: &Ir) -> Result<HashMap<&str, HashSet<&str>>, String> {
+fn containment<'a>(ir: &'a Ir, held: &Held) -> Result<HashMap<&'a str, HashSet<&'a str>>, String> {
     let mut all: HashMap<&str, Vec<&str>> = HashMap::new();
     let mut plain: HashMap<&str, Vec<&str>> = HashMap::new();
     for (name, decl) in &ir.types {
-        for (n, optional) in holds(&decl.def) {
+        for (n, optional) in holds(&decl.def, held, ir) {
             let Some((n, _)) = ir.types.get_key_value(&n) else {
                 continue;
             };
@@ -287,12 +449,15 @@ impl<'a> Gen<'a> {
             }
             error_enums.insert((machine, n), ident(&name));
         }
+        let held = held_params(ir);
         Ok(Gen {
             ir,
             error_enums,
             foreign: &foreign.krate,
             program: program_static(""),
-            contains: containment(ir)?,
+            contains: containment(ir, &held)?,
+            held,
+            in_arguments: names_in_arguments(ir),
         })
     }
 
@@ -320,25 +485,64 @@ impl<'a> Gen<'a> {
                 Builtin::Duration => quote!(::core::time::Duration),
                 Builtin::Json => quote!(::roadbook::__private::serde_json::Value),
             },
+            // A type parameter, in the declaration of a generic type.
+            TypeRef::Named(n) if !self.ir.types.contains_key(n) => {
+                let id = ident(n);
+                quote!(#id)
+            }
             TypeRef::Named(n) => {
                 let id = ident(n);
                 if sup { quote!(super::#id) } else { quote!(#id) }
+            }
+            // In a type's own definition, a generic alias is written as what it stands for, so
+            // that a `?` in it can be boxed where it closes a cycle of the owner's.
+            TypeRef::Generic(n, _)
+                if owner.is_some() && matches!(self.decl(n), Some(TypeDef::Alias { .. })) =>
+            {
+                let expanded = self.ir.expand_top(t).into_owned();
+                self.ty_in(&expanded, sup, owner)
+            }
+            TypeRef::Generic(n, args) => {
+                let id = ident(n);
+                let how = self.held.get(n);
+                let args = args.iter().enumerate().map(|(i, a)| {
+                    // An argument held in place can close a cycle of the owner's.
+                    let in_place = how.and_then(|h| h.get(i)).copied().unwrap_or(false);
+                    self.ty_in(a, sup, owner.filter(|_| in_place))
+                });
+                if sup {
+                    quote!(super::#id<#(#args),*>)
+                } else {
+                    quote!(#id<#(#args),*>)
+                }
+            }
+            TypeRef::Map(k, v) => {
+                let (k, v) = (self.ty(k, sup), self.ty(v, sup));
+                quote!(::std::collections::BTreeMap<#k, #v>)
             }
             TypeRef::List(e) => {
                 let e = self.ty(e, sup);
                 quote!(::std::vec::Vec<#e>)
             }
             TypeRef::Optional(e) => {
-                let cycle = match (&**e, owner) {
-                    (TypeRef::Named(n), Some(owner)) => {
+                // In a generic record, a `?` around its own parameter is boxed whatever the
+                // parameter: an instance in any crate may make it a cycle.
+                let cycle = owner.is_some_and(|owner| {
+                    let own: &[String] = match self.decl(owner) {
+                        Some(TypeDef::Record { params, .. }) => params,
+                        _ => &[],
+                    };
+                    let mut found = Vec::new();
+                    in_place(e, false, &self.held, self.ir, 0, &mut found);
+                    found.iter().any(|(n, _)| {
                         n == owner
+                            || own.contains(n)
                             || self
                                 .contains
                                 .get(n.as_str())
                                 .is_some_and(|c| c.contains(owner))
-                    }
-                    _ => false,
-                };
+                    })
+                });
                 let e = self.ty_in(e, sup, owner);
                 if cycle {
                     quote!(::core::option::Option<::std::boxed::Box<#e>>)
@@ -367,23 +571,41 @@ impl<'a> Gen<'a> {
     fn is_wire_at(&self, t: &TypeRef, depth: usize) -> bool {
         match t {
             TypeRef::Builtin(b) => matches!(b, Builtin::Int | Builtin::Float | Builtin::Duration),
-            TypeRef::List(e) | TypeRef::Optional(e) => self.is_wire_at(e, depth),
-            TypeRef::Named(n) => match self.decl(n) {
-                Some(TypeDef::Alias { ty }) if depth < 64 => self.is_wire_at(ty, depth + 1),
+            TypeRef::List(e) | TypeRef::Optional(e) | TypeRef::Map(_, e) => {
+                self.is_wire_at(e, depth)
+            }
+            TypeRef::Named(_) | TypeRef::Generic(..) => match &*self.ir.expand_top(t) {
+                expanded @ (TypeRef::Builtin(_)
+                | TypeRef::List(_)
+                | TypeRef::Optional(_)
+                | TypeRef::Map(..))
+                    if depth < 64 =>
+                {
+                    self.is_wire_at(expanded, depth + 1)
+                }
                 _ => false,
             },
             TypeRef::Ref(_) => false,
         }
     }
 
+    /// Whether the type names a type parameter of the generic declaration `params` belong to.
+    fn mentions_param(t: &TypeRef, params: &[String]) -> bool {
+        let mut found = false;
+        t.for_each_name(&mut |n| found |= params.iter().any(|p| p == n));
+        found
+    }
+
     /// Whether the type is optional at the top, through aliases.
     fn is_optional(&self, t: &TypeRef, depth: usize) -> bool {
         match t {
             TypeRef::Optional(_) => true,
-            TypeRef::Named(n) => match self.decl(n) {
-                Some(TypeDef::Alias { ty }) if depth < 64 => self.is_optional(ty, depth + 1),
-                _ => false,
-            },
+            TypeRef::Named(_) | TypeRef::Generic(..) if depth < 64 => {
+                match &*self.ir.expand_top(t) {
+                    expanded @ TypeRef::Optional(_) => self.is_optional(expanded, depth + 1),
+                    _ => false,
+                }
+            }
             _ => false,
         }
     }
@@ -393,11 +615,17 @@ impl<'a> Gen<'a> {
     fn by_value(&self, t: &TypeRef, depth: usize) -> bool {
         match t {
             TypeRef::Builtin(b) => !matches!(b, Builtin::String | Builtin::Json),
-            TypeRef::List(_) => false,
+            TypeRef::List(_) | TypeRef::Map(..) => false,
+            TypeRef::Generic(n, _) => match self.decl(n) {
+                Some(TypeDef::Alias { .. }) if depth < 64 => {
+                    self.by_value(&self.ir.expand_top(t), depth + 1)
+                }
+                _ => false,
+            },
             TypeRef::Optional(e) => self.by_value(e, depth),
             TypeRef::Named(n) => match self.decl(n) {
                 Some(TypeDef::Enum { .. }) => true,
-                Some(TypeDef::Alias { ty }) if depth < 64 => self.by_value(ty, depth + 1),
+                Some(TypeDef::Alias { ty, .. }) if depth < 64 => self.by_value(ty, depth + 1),
                 _ => false,
             },
             TypeRef::Ref(_) => false,
@@ -472,6 +700,18 @@ impl<'a> Gen<'a> {
 
     /// Struct fields (record, error) or struct-variant fields (event, with no `pub`).
     fn fields(&self, owner: &str, fields: &[Field], public: bool) -> Result<TokenStream, String> {
+        self.fields_of(owner, &[], fields, public)
+    }
+
+    /// [`Gen::fields`] of a type with type parameters `params`: a field whose type names one
+    /// goes through `wire`, so that `Page<duration>` writes milliseconds.
+    fn fields_of(
+        &self,
+        owner: &str,
+        params: &[String],
+        fields: &[Field],
+        public: bool,
+    ) -> Result<TokenStream, String> {
         let mut seen = HashSet::new();
         let mut out = Vec::new();
         for f in fields {
@@ -483,7 +723,7 @@ impl<'a> Gen<'a> {
             }
             let doc = doc(&f.doc);
             let rename = rename(&f.name, &id);
-            let ms = if self.is_wire(&f.ty) {
+            let ms = if self.is_wire(&f.ty) || Self::mentions_param(&f.ty, params) {
                 // `with` loses serde's "a missing `Option` is `None`".
                 let default = if self.is_optional(&f.ty, 0) {
                     quote!(#[serde(default)])
@@ -512,19 +752,35 @@ impl<'a> Gen<'a> {
         let doc = doc(text);
         let derives = serde_derives();
         let tokens = match def {
-            TypeDef::Record { fields } => {
-                let fields = self.fields(name, fields, true)?;
+            TypeDef::Record { params, fields } => {
+                let fields = self.fields_of(name, params, fields, true)?;
                 let rename = rename(name, &id);
+                let ps: Vec<Ident> = params.iter().map(|p| ident(p)).collect();
+                let bound = if params.is_empty() {
+                    TokenStream::new()
+                } else {
+                    let bounds: Vec<String> = ps
+                        .iter()
+                        .map(|p| format!("{p}: ::roadbook::__private::wire::Wire"))
+                        .collect();
+                    let bounds = bounds.join(", ");
+                    quote!(#[serde(bound(serialize = #bounds, deserialize = #bounds))])
+                };
+                let wire = wire_impl(&id, &ps);
                 quote! {
                     #doc
                     #[derive(::core::fmt::Debug, ::core::clone::Clone, ::core::cmp::PartialEq, #derives)]
                     #[serde(crate = "::roadbook::__private::serde")]
+                    #bound
                     #rename
                     #[allow(dead_code, missing_docs)]
-                    pub struct #id { #fields }
+                    pub struct #id<#(#ps),*> { #fields }
+
+                    #wire
                 }
             }
             TypeDef::Enum { variants } => {
+                let wire = wire_impl(&id, &[]);
                 let variants = variants.iter().map(|v| {
                     let vid = ident(v);
                     let rename = rename(v, &vid);
@@ -541,53 +797,61 @@ impl<'a> Gen<'a> {
                     #rename
                     #[allow(dead_code, missing_docs)]
                     pub enum #id { #(#variants),* }
+
+                    #wire
                 }
             }
-            TypeDef::Error { fields } if fields.is_empty() => quote! {
-                #doc
-                #[derive(
-                    ::core::fmt::Debug, ::core::clone::Clone, ::core::marker::Copy,
-                    ::core::cmp::PartialEq, ::core::cmp::Eq, ::core::hash::Hash,
-                    ::core::default::Default
-                )]
-                #[allow(dead_code, missing_docs)]
-                pub struct #id;
+            TypeDef::Error { fields } if fields.is_empty() => {
+                let wire_unit = wire_impl(&id, &[]);
+                quote! {
+                    #doc
+                    #[derive(
+                        ::core::fmt::Debug, ::core::clone::Clone, ::core::marker::Copy,
+                        ::core::cmp::PartialEq, ::core::cmp::Eq, ::core::hash::Hash,
+                        ::core::default::Default
+                    )]
+                    #[allow(dead_code, missing_docs)]
+                    pub struct #id;
 
-                // `{"_tag": "Name"}`: serde has no tagged unit struct, but it has tagged
-                // unit variants.
-                impl ::roadbook::__private::serde::Serialize for #id {
-                    fn serialize<S: ::roadbook::__private::serde::Serializer>(
-                        &self,
-                        serializer: S,
-                    ) -> ::core::result::Result<S::Ok, S::Error> {
-                        #[derive(::roadbook::__private::serde::Serialize)]
-                        #[serde(crate = "::roadbook::__private::serde", tag = "_tag")]
-                        enum Tagged { #[serde(rename = #name)] Tag }
-                        ::roadbook::__private::serde::Serialize::serialize(&Tagged::Tag, serializer)
+                    // `{"_tag": "Name"}`: serde has no tagged unit struct, but it has tagged
+                    // unit variants.
+                    impl ::roadbook::__private::serde::Serialize for #id {
+                        fn serialize<S: ::roadbook::__private::serde::Serializer>(
+                            &self,
+                            serializer: S,
+                        ) -> ::core::result::Result<S::Ok, S::Error> {
+                            #[derive(::roadbook::__private::serde::Serialize)]
+                            #[serde(crate = "::roadbook::__private::serde", tag = "_tag")]
+                            enum Tagged { #[serde(rename = #name)] Tag }
+                            ::roadbook::__private::serde::Serialize::serialize(&Tagged::Tag, serializer)
+                        }
                     }
-                }
 
-                impl<'de> ::roadbook::__private::serde::Deserialize<'de> for #id {
-                    fn deserialize<D: ::roadbook::__private::serde::Deserializer<'de>>(
-                        deserializer: D,
-                    ) -> ::core::result::Result<Self, D::Error> {
-                        #[derive(::roadbook::__private::serde::Deserialize)]
-                        #[serde(crate = "::roadbook::__private::serde", tag = "_tag")]
-                        enum Tagged { #[serde(rename = #name)] Tag }
-                        let Tagged::Tag = <Tagged as ::roadbook::__private::serde::Deserialize>::deserialize(deserializer)?;
-                        ::core::result::Result::Ok(#id)
+                    impl<'de> ::roadbook::__private::serde::Deserialize<'de> for #id {
+                        fn deserialize<D: ::roadbook::__private::serde::Deserializer<'de>>(
+                            deserializer: D,
+                        ) -> ::core::result::Result<Self, D::Error> {
+                            #[derive(::roadbook::__private::serde::Deserialize)]
+                            #[serde(crate = "::roadbook::__private::serde", tag = "_tag")]
+                            enum Tagged { #[serde(rename = #name)] Tag }
+                            let Tagged::Tag = <Tagged as ::roadbook::__private::serde::Deserialize>::deserialize(deserializer)?;
+                            ::core::result::Result::Ok(#id)
+                        }
                     }
-                }
 
-                impl ::core::fmt::Display for #id {
-                    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                        f.write_str(#name)
+                    impl ::core::fmt::Display for #id {
+                        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                            f.write_str(#name)
+                        }
                     }
-                }
 
-                impl ::std::error::Error for #id {}
-            },
+                    impl ::std::error::Error for #id {}
+
+                    #wire_unit
+                }
+            }
             TypeDef::Error { fields: decl } => {
+                let wire = wire_impl(&id, &[]);
                 let fields = self.fields(name, decl, true)?;
                 let ids: Vec<Ident> = decl.iter().map(|f| ident(&snake(&f.name))).collect();
                 let expected = format!("the error `{name}`");
@@ -630,17 +894,22 @@ impl<'a> Gen<'a> {
                     }
 
                     impl ::std::error::Error for #id {}
+
+                    #wire
                 }
             }
-            TypeDef::Alias { ty } => {
+            TypeDef::Alias { params, ty } => {
                 let ty = self.ty_in(ty, false, Some(name));
+                let ps: Vec<Ident> = params.iter().map(|p| ident(p)).collect();
                 quote! {
                     #doc
                     #[allow(dead_code, missing_docs)]
-                    pub type #id = #ty;
+                    pub type #id<#(#ps),*> = #ty;
                 }
             }
-            // The user defines it next to the call.
+            // The user defines it next to the call, with serde impls. One used inside a type
+            // argument needs `Wire` too, which this crate can give only a type of its own.
+            TypeDef::Extern if self.in_arguments.contains(name) => wire_impl(&id, &[]),
             TypeDef::Extern => TokenStream::new(),
         };
         Ok(tokens)

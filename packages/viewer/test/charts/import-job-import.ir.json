@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/import-job/import.road",
@@ -13,6 +13,7 @@
   "types": {
     "Upload": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "jobId",
@@ -38,6 +39,7 @@
     },
     "ImportPlan": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "totalRows",
@@ -63,6 +65,7 @@
     },
     "RowError": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "row",
@@ -88,6 +91,7 @@
     },
     "ImportSummary": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "jobId",

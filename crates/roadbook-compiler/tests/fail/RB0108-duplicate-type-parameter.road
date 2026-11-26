@@ -1,0 +1,8 @@
+type Pair<T, T> { first: T, second: T }
+
+machine M(p: Pair<int, int>) {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0108 at 1:14

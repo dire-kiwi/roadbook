@@ -1,0 +1,11 @@
+type Page<T> { items: T[] }
+type P<T> = Page<T>
+
+fn ints() -> int[]
+
+machine M() -> Page<int> {
+  initial Done
+  final state Done { output P { items: ints() } }
+}
+
+// expect: RB0109 at 8:29

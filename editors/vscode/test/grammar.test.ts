@@ -84,6 +84,8 @@ describe('scopes', () => {
     expect(await scopesAt('task chargeCard(order: Order) -> Receipt ! CardDeclined', 'chargeCard')).toContain('entity.name.function.roadbook')
     expect(await scopesAt('  final state Charged { output receipt }', 'Charged')).toContain('entity.name.type.state.roadbook')
     expect(await scopesAt('  event Cancel', 'Cancel')).toContain('entity.name.type.event.roadbook')
+    expect(await scopesAt('type Page<T> { items: map<string, T> }', 'map')).toContain('support.type.primitive.roadbook')
+    expect(await scopesAt('type Page<T> { items: map<string, T> }', 'Page')).toContain('entity.name.type.roadbook')
   })
 
   it('marks history states, and history and deep as names elsewhere', async () => {

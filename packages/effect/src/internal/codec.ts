@@ -1,11 +1,21 @@
 /**
  * Values at the API boundary. The core holds every value in its JSON form (execution.md's
  * "Values"); host code sees records as plain objects, errors as instances of their tagged error
- * classes, enums as string literals, `duration` as an Effect `Duration`, optional as `null` and
- * `int` as a `number`, and a `ref` as a handle to the run it refers to (its run id in the core).
- * The conversion is driven by the IR's type references.
+ * classes, enums as string literals, `duration` as an Effect `Duration`, optional as `null`,
+ * `int` as a `number`, a map as a plain object with a member per key, and a `ref` as a handle to
+ * the run it refers to (its run id in the core). An instance of a generic record is a plain
+ * object like any record. The conversion is driven by the IR's type references.
  */
-import { type Field, type Ir, type Json, parseTypeRef, refMachine, type Tagged } from "@roadbook/core"
+import {
+  type Builtin,
+  expandType,
+  type Field,
+  fieldsOf,
+  type Ir,
+  type Json,
+  type Tagged,
+  type TypeRef
+} from "@roadbook/core"
 import { Duration, Predicate } from "effect"
 import { portOf } from "./port.ts"
 
@@ -18,6 +28,21 @@ export class CodecError extends Error {
 }
 
 const MAX_INT = Number.MAX_SAFE_INTEGER
+
+/**
+ * Add member `key` to `object` as an own data property: by assignment, a key `__proto__` (a
+ * map's, say) would set the prototype instead.
+ */
+const defineMember = (object: object, key: string, value: unknown) => {
+  Object.defineProperty(object, key, { value, enumerable: true, writable: true, configurable: true })
+}
+
+/** Whether `value` is a plain object: made by `{}` or `Object.create(null)`, not a class instance. */
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  if (typeof value !== "object" || value === null) return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
 
 /**
  * A copy of host value `value` that is JSON, for a `json` or `extern` value: `null`, a boolean,
@@ -50,13 +75,7 @@ const toJson = (value: unknown, what: string, ancestors: Array<object>): Json =>
         }
         const members: { [key: string]: Json } = {}
         for (const [key, member] of Object.entries(value)) {
-          // defineProperty, so that a member named `__proto__` stays a member.
-          Object.defineProperty(members, key, {
-            value: toJson(member, `${what}.${key}`, ancestors),
-            enumerable: true,
-            writable: true,
-            configurable: true
-          })
+          defineMember(members, key, toJson(member, `${what}.${key}`, ancestors))
         }
         out = members
       }
@@ -94,79 +113,59 @@ export class Codec {
   // ---- host -> core ----
 
   /** The JSON form of host value `value` of type `type`. Throws a `CodecError`. */
-  encode(type: string, value: unknown, what: string): Json {
-    const { base, suffixes } = parseTypeRef(type)
-    return this.encodeRef(base, suffixes, suffixes.length, value, what)
-  }
-
-  private encodeRef(
-    base: string,
-    suffixes: ReadonlyArray<"[]" | "?">,
-    n: number,
-    value: unknown,
-    what: string
-  ): Json {
-    if (n > 0) {
-      if (suffixes[n - 1] === "?") {
-        return value === null || value === undefined ? null : this.encodeRef(base, suffixes, n - 1, value, what)
+  encode(type: TypeRef | string, value: unknown, what: string): Json {
+    const t = expandType(this.ir, type)
+    switch (t.kind) {
+      case "optional":
+        return value === null || value === undefined ? null : this.encode(t.of, value, what)
+      case "list":
+        if (!Array.isArray(value)) throw new CodecError(`${what} is not a list`)
+        return value.map((item, i) => this.encode(t.of, item, `${what}[${i}]`))
+      case "map": {
+        if (!isPlainObject(value)) throw new CodecError(`${what} is not a map: a plain object, a member per key`)
+        const out: { [key: string]: Json } = {}
+        for (const key of Object.keys(value)) {
+          defineMember(out, key, this.encode(t.value, value[key], `${what}[${JSON.stringify(key)}]`))
+        }
+        return out
       }
-      if (!Array.isArray(value)) throw new CodecError(`${what} is not a list`)
-      return value.map((item, i) => this.encodeRef(base, suffixes, n - 1, item, `${what}[${i}]`))
-    }
-    switch (base) {
-      case "string":
-        if (typeof value !== "string") throw new CodecError(`${what} is not a string`)
-        return value
-      case "int":
-        if (typeof value !== "number" || !Number.isInteger(value)) throw new CodecError(`${what} is not an int`)
-        if (Math.abs(value) > MAX_INT) throw new CodecError(`${what} is outside the int range ±(2^53 - 1)`)
-        return value === 0 ? 0 : value
-      case "float":
-        if (typeof value !== "number" || !Number.isFinite(value)) throw new CodecError(`${what} is not a finite float`)
-        return value
-      case "bool":
-        if (typeof value !== "boolean") throw new CodecError(`${what} is not a bool`)
-        return value
-      case "duration": {
-        if (!Duration.isDuration(value)) throw new CodecError(`${what} is not a Duration`)
-        if (!Duration.isFinite(value)) throw new CodecError(`${what} is not a finite duration`)
-        const millis = Math.trunc(Duration.toMillis(value))
-        if (millis < 0) throw new CodecError(`${what} is a negative duration`)
-        if (millis > MAX_INT) throw new CodecError(`${what} is longer than 2^53 - 1 milliseconds`)
-        return millis === 0 ? 0 : millis
+      case "builtin":
+        return encodeBuiltin(t.name, value, what)
+      case "ref": {
+        const port = portOf(value)
+        if (port === undefined) throw new CodecError(`${what} is not a handle to a running ${t.machine}`)
+        if (port.machine !== t.machine) {
+          throw new CodecError(`${what} is a handle to a ${port.machine}, not a ${t.machine}`)
+        }
+        const hash = this.ir.machines[t.machine]?.hash
+        if (hash !== undefined && port.hash !== hash) {
+          throw new CodecError(`${what} is a handle to another version of ${t.machine} (${port.hash}, not ${hash})`)
+        }
+        this.refs?.set(port.id, value as object)
+        return port.id
       }
-      case "json":
-        return toJson(value, what, [])
+      case "event":
+        throw new CodecError(`${what} has unknown type ${t.machine}.${t.event}`)
+      case "named":
+        break
     }
-    const machine = refMachine(base)
-    if (machine !== undefined) {
-      const port = portOf(value)
-      if (port === undefined) throw new CodecError(`${what} is not a handle to a running ${machine}`)
-      if (port.machine !== machine) throw new CodecError(`${what} is a handle to a ${port.machine}, not a ${machine}`)
-      const hash = this.ir.machines[machine]?.hash
-      if (hash !== undefined && port.hash !== hash) {
-        throw new CodecError(`${what} is a handle to another version of ${machine} (${port.hash}, not ${hash})`)
-      }
-      this.refs?.set(port.id, value as object)
-      return port.id
-    }
-    const decl = Object.hasOwn(this.ir.types, base) ? this.ir.types[base] : undefined
-    if (decl === undefined) throw new CodecError(`${what} has unknown type ${base}`)
-    switch (decl.kind) {
+    const decl = Object.hasOwn(this.ir.types, t.name) ? this.ir.types[t.name] : undefined
+    switch (decl?.kind) {
+      case undefined:
       case "alias":
-        return this.encode(decl.type, value, what)
+        throw new CodecError(`${what} has unknown type ${t.name}`)
       case "enum":
         if (typeof value !== "string" || !decl.variants.includes(value)) {
-          throw new CodecError(`${what} is not a variant of ${base}`)
+          throw new CodecError(`${what} is not a variant of ${t.name}`)
         }
         return value
       case "record":
-        return this.encodeFields(decl.fields, value, what)
+        return this.encodeFields(fieldsOf(this.ir, t)!.fields, value, what)
       case "error": {
-        if (!Predicate.isObject(value) || (value as { _tag?: unknown })._tag !== base) {
-          throw new CodecError(`${what} is not a ${base}`)
+        if (!Predicate.isObject(value) || (value as { _tag?: unknown })._tag !== t.name) {
+          throw new CodecError(`${what} is not a ${t.name}`)
         }
-        return { _tag: base, ...this.encodeFields(decl.fields, value, what) }
+        return { _tag: t.name, ...this.encodeFields(decl.fields, value, what) }
       }
       case "extern":
         return toJson(value, what, [])
@@ -202,37 +201,35 @@ export class Codec {
   // ---- core -> host ----
 
   /** The host value of JSON value `value` of type `type`. */
-  decode(type: string, value: Json): unknown {
-    const { base, suffixes } = parseTypeRef(type)
-    return this.decodeRef(base, suffixes, suffixes.length, value)
-  }
-
-  private decodeRef(base: string, suffixes: ReadonlyArray<"[]" | "?">, n: number, value: Json): unknown {
-    if (n > 0) {
-      if (suffixes[n - 1] === "?") return value === null ? null : this.decodeRef(base, suffixes, n - 1, value)
-      return (value as ReadonlyArray<Json>).map((item) => this.decodeRef(base, suffixes, n - 1, item))
-    }
-    switch (base) {
-      case "duration":
-        return Duration.millis(value as number)
-      case "string":
-      case "int":
-      case "float":
-      case "bool":
-      case "json":
+  decode(type: TypeRef | string, value: Json): unknown {
+    const t = expandType(this.ir, type)
+    switch (t.kind) {
+      case "optional":
+        return value === null ? null : this.decode(t.of, value)
+      case "list":
+        return (value as ReadonlyArray<Json>).map((item) => this.decode(t.of, item))
+      case "map": {
+        const map = value as { readonly [key: string]: Json }
+        const out: Record<string, unknown> = {}
+        for (const key of Object.keys(map)) defineMember(out, key, this.decode(t.value, map[key]!))
+        return out
+      }
+      case "builtin":
+        return t.name === "duration" ? Duration.millis(value as number) : value
+      case "ref": {
+        const handle = this.refs?.get(value as string)
+        if (handle === undefined) throw new CodecError(`no handle to the run ${JSON.stringify(value)}`)
+        return handle
+      }
+      case "event":
         return value
+      case "named":
+        break
     }
-    if (refMachine(base) !== undefined) {
-      const handle = this.refs?.get(value as string)
-      if (handle === undefined) throw new CodecError(`no handle to the run ${JSON.stringify(value)}`)
-      return handle
-    }
-    const decl = Object.hasOwn(this.ir.types, base) ? this.ir.types[base] : undefined
+    const decl = Object.hasOwn(this.ir.types, t.name) ? this.ir.types[t.name] : undefined
     switch (decl?.kind) {
-      case "alias":
-        return this.decode(decl.type, value)
       case "record":
-        return this.decodeFields(decl.fields, value)
+        return this.decodeFields(fieldsOf(this.ir, t)!.fields, value)
       case "error":
         return this.decodeError(value as Tagged)
       default:
@@ -258,5 +255,34 @@ export class Codec {
   /** Arguments keyed by parameter name, as host values. */
   decodeArgs(params: ReadonlyArray<Field>, args: { readonly [param: string]: Json }): Record<string, unknown> {
     return this.decodeFields(params, args)
+  }
+}
+
+/** The JSON form of host value `value` of builtin type `name`. Throws a `CodecError`. */
+const encodeBuiltin = (name: Builtin, value: unknown, what: string): Json => {
+  switch (name) {
+    case "string":
+      if (typeof value !== "string") throw new CodecError(`${what} is not a string`)
+      return value
+    case "int":
+      if (typeof value !== "number" || !Number.isInteger(value)) throw new CodecError(`${what} is not an int`)
+      if (Math.abs(value) > MAX_INT) throw new CodecError(`${what} is outside the int range ±(2^53 - 1)`)
+      return value === 0 ? 0 : value
+    case "float":
+      if (typeof value !== "number" || !Number.isFinite(value)) throw new CodecError(`${what} is not a finite float`)
+      return value
+    case "bool":
+      if (typeof value !== "boolean") throw new CodecError(`${what} is not a bool`)
+      return value
+    case "duration": {
+      if (!Duration.isDuration(value)) throw new CodecError(`${what} is not a Duration`)
+      if (!Duration.isFinite(value)) throw new CodecError(`${what} is not a finite duration`)
+      const millis = Math.trunc(Duration.toMillis(value))
+      if (millis < 0) throw new CodecError(`${what} is a negative duration`)
+      if (millis > MAX_INT) throw new CodecError(`${what} is longer than 2^53 - 1 milliseconds`)
+      return millis === 0 ? 0 : millis
+    }
+    case "json":
+      return toJson(value, what, [])
   }
 }

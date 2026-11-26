@@ -38,6 +38,12 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  var history: int = 0\n  var deep: int = 0\n  state A {\n    initial B\n    /// Back.\n    history   H\n    deep  history D\n    state B {}\n  }\n  state C { deep history E }\n}\n",
         "machine M() {\n  var history: int = 0\n  var deep:    int = 0\n  state A {\n    initial B\n    /// Back.\n    history H\n    deep history D\n    state B {}\n  }\n  state C {\n    deep history E\n  }\n}\n",
     ),
+    // Type arguments and parameters: no space inside `<>`, one after each comma; a `>=` closing
+    // type arguments is a `>` and an `=`; one-line types align after their parameters.
+    (
+        "type Page < T , > {items:T[]}\ntype Dict<T>=map<string,T>\ntype Id=string\nmachine M() {\n  var m: map<string, Page<int>>= f()\n}\n",
+        "type Page<T> { items: T[] }\ntype Dict<T> = map<string, T>\ntype Id      = string\nmachine M() {\n  var m: map<string, Page<int>> = f()\n}\n",
+    ),
     // `error E {}` is `error E`; a record value with no fields is the bare name.
     ("error E {}\n\nfn f() -> E\n", "error E\n\nfn f() -> E\n"),
     (

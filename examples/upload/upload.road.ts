@@ -70,7 +70,7 @@ export interface UploadDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/upload/upload.road",
@@ -80,6 +80,7 @@ const ir: unknown = {
   "types": {
     "File": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "name",
@@ -105,6 +106,7 @@ const ir: unknown = {
     },
     "Url": {
       "kind": "alias",
+      "params": [],
       "type": "string",
       "doc": "Where a stored file can be fetched.",
       "span": {

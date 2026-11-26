@@ -945,11 +945,20 @@ fn type_text(name: &str, t: &roadbook_ir::TypeDecl) -> String {
             format!(" {{ {} }}", fields_text(fs))
         }
     };
+    let generic = |params: &[String]| {
+        if params.is_empty() {
+            String::new()
+        } else {
+            format!("<{}>", params.join(", "))
+        }
+    };
     match &t.def {
-        TypeDef::Record { fields: fs } => format!("type {name}{}", fields(fs)),
+        TypeDef::Record { params, fields: fs } => {
+            format!("type {name}{}{}", generic(params), fields(fs))
+        }
         TypeDef::Error { fields: fs } => format!("error {name}{}", fields(fs)),
         TypeDef::Enum { variants } => format!("enum {name} {{ {} }}", variants.join(", ")),
-        TypeDef::Alias { ty } => format!("type {name} = {ty}"),
+        TypeDef::Alias { params, ty } => format!("type {name}{} = {ty}", generic(params)),
         TypeDef::Extern => format!("extern type {name}"),
     }
 }

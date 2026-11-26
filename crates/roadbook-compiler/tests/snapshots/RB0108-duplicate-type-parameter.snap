@@ -1,0 +1,9 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0108]: type parameter `T` is declared twice
+ --> RB0108-duplicate-type-parameter.road:1:14
+  |
+1 | type Pair<T, T> { first: T, second: T }
+  |              ^
+  |           - first declared here

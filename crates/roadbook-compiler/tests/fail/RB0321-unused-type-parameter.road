@@ -1,0 +1,10 @@
+type Tagged<T, Unused> { value: T }
+type Id<T> = string
+
+machine M(t: Tagged<int, string>, id: Id<int>) {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0321 at 1:16
+// expect: RB0321 at 2:9

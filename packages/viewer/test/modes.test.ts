@@ -303,7 +303,8 @@ describe('replay', () => {
 
   it('warns when the trace was recorded from another version of the chart', () => {
     const ir = chart('shop-place_order')
-    const text = readTrace('place-order-checkout').replace('"ir":"sha256:4549', '"ir":"sha256:0000')
+    const hash = ir.machines.Checkout!.hash.slice(0, 'sha256:'.length + 4)
+    const text = readTrace('place-order-checkout').replace(`"ir":"${hash}`, '"ir":"sha256:0000')
     const replay = new Replay(ir, text)
     expect(replay.warnings).toHaveLength(1)
     expect(replay.warnings[0]).toMatch(/^Run r1\.4 was recorded from another version of Checkout: the trace has IR sha256:0000/)

@@ -46,7 +46,7 @@ impl Sensitive {
         for d in decls {
             let name = d.name.name.as_str();
             match &d.kind {
-                DeclKind::Record { fields: fs } | DeclKind::Error { fields: fs } => {
+                DeclKind::Record { fields: fs, .. } | DeclKind::Error { fields: fs } => {
                     fields(&mut s, name, fs)
                 }
                 DeclKind::Fn { params, .. }
@@ -93,15 +93,21 @@ pub(crate) enum Dest {
 
 impl Checker<'_> {
     /// Whether a value of type `t` can hold a value of a sensitive field: a record, error or
-    /// event with a sensitive field, or with a field whose type can, through lists, optionals
-    /// and aliases. A bare event name is one of `machine`'s.
+    /// event with a sensitive field, or with a field whose type can, through lists, optionals,
+    /// maps and aliases; or an instance of a generic type whose type can whatever its
+    /// arguments, or with an argument that can (every parameter is used, so an argument's
+    /// values are in the instance's). A bare event name is one of `machine`'s.
     pub(crate) fn carries_sensitive(&self, t: &Ty, machine: &str) -> bool {
         self.carries(t, machine, &mut HashSet::new())
     }
 
     fn carries(&self, t: &Ty, machine: &str, seen: &mut HashSet<String>) -> bool {
         match self.env.expand(t) {
-            Ty::List(e) | Ty::Optional(e) => self.carries(&e, machine, seen),
+            Ty::List(e) | Ty::Optional(e) | Ty::Map(_, e) => self.carries(&e, machine, seen),
+            Ty::Generic(n, args) => {
+                args.iter().any(|a| self.carries(a, machine, seen))
+                    || self.carries(&Ty::Named(n), machine, seen)
+            }
             Ty::Named(n) => {
                 if !seen.insert(n.clone()) {
                     return false;
@@ -138,8 +144,16 @@ impl Checker<'_> {
     fn leaks_into_json(&self, got: &Ty, want: &Ty, machine: &str) -> bool {
         match (self.env.expand(got), self.env.expand(want)) {
             (_, Ty::Builtin(Builtin::Json)) => self.carries_sensitive(got, machine),
-            (Ty::List(g), Ty::List(w)) | (Ty::Optional(g), Ty::Optional(w)) => {
-                self.leaks_into_json(&g, &w, machine)
+            (Ty::List(g), Ty::List(w))
+            | (Ty::Optional(g), Ty::Optional(w))
+            | (Ty::Map(_, g), Ty::Map(_, w)) => self.leaks_into_json(&g, &w, machine),
+            (Ty::Generic(a, gs), Ty::Generic(b, ws)) if a == b => {
+                // An argument is in the instance's fields where the parameter is, so it leaks
+                // where the parameter's place is `json`; with the declaration's own fields,
+                // the same as the argument's.
+                gs.iter()
+                    .zip(&ws)
+                    .any(|(g, w)| self.leaks_into_json(g, w, machine))
             }
             (g, Ty::Optional(w)) => self.leaks_into_json(&g, &w, machine),
             _ => false,
@@ -152,7 +166,7 @@ impl Cx<'_, '_> {
     /// error type, or `Machine.Event`.
     pub(crate) fn field_owner(&self, t: &Ty) -> Option<String> {
         match self.ck.env.expand(t) {
-            Ty::Named(n) => Some(n),
+            Ty::Named(n) | Ty::Generic(n, _) => Some(n),
             Ty::Event(n) if n.contains('.') => Some(n),
             Ty::Event(n) => Some(format!("{}.{n}", self.machine)),
             _ => None,
@@ -176,8 +190,24 @@ impl Cx<'_, '_> {
         target: Dest,
     ) -> roadbook_ir::Expr {
         let (ie, got) = self.expect_typed(e, scope, want, what);
-        if target == Dest::Sensitive {
-            return ie;
+        self.check_dest(e, &ie.text, &got, want, what, &target);
+        ie
+    }
+
+    /// Reports `e` (whose IR text is `text`, of type `got`, sensitive if [`Cx::sens`] says so)
+    /// if it goes to `target`, where `want` is expected, and a trace would show a sensitive
+    /// value as it is.
+    pub(crate) fn check_dest(
+        &mut self,
+        e: &Expr,
+        text: &str,
+        got: &Ty,
+        want: &Ty,
+        what: &str,
+        target: &Dest,
+    ) {
+        if *target == Dest::Sensitive {
+            return;
         }
         if self.sens {
             let help = match &target {
@@ -192,12 +222,12 @@ impl Cx<'_, '_> {
                 Diagnostic::error(
                     codes::SENSITIVE_VALUE,
                     e.span,
-                    format!("`{}` is sensitive, and {what} is not", ie.text),
+                    format!("`{text}` is sensitive, and {what} is not"),
                 )
                 .with_label("a trace would show this value")
                 .with_help(help),
             );
-        } else if self.ck.leaks_into_json(&got, want, &self.machine) {
+        } else if self.ck.leaks_into_json(got, want, &self.machine) {
             self.ck.diags.push(
                 Diagnostic::error(
                     codes::SENSITIVE_INTO_JSON,
@@ -205,7 +235,7 @@ impl Cx<'_, '_> {
                     format!("`{got}` has sensitive fields, and {what} is `{want}`"),
                 )
                 .with_label("a trace would show these fields")
-                .with_help(match &target {
+                .with_help(match target {
                     Dest::Plain(place) => format!(
                         "traces redact a value by its type, and `json` has no fields to redact by: give {place} the value's own type, or mark it `sensitive`"
                     ),
@@ -213,6 +243,5 @@ impl Cx<'_, '_> {
                 }),
             );
         }
-        ie
     }
 }

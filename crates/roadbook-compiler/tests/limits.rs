@@ -33,6 +33,13 @@ fn charts(n: usize) -> Vec<(&'static str, String)> {
             "type suffixes",
             machine(&format!("int{}", "[]".repeat(n)), leaf),
         ),
+        (
+            "type arguments",
+            machine(
+                &format!("{}int{}", "map<string, ".repeat(n), ">".repeat(n)),
+                leaf,
+            ),
+        ),
     ]
 }
 

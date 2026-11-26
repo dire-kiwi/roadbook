@@ -2,3 +2,6 @@
 
 /// What a One says.
 type Greeting { text: string }
+
+/// A value and how long it waited: a generic type other crates instantiate.
+type Timed<T> { value: T, wait: duration }

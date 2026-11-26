@@ -1,11 +1,12 @@
 /**
- * The Roadbook IR, version 0.4, as `spec/ir.md` describes it. The types mirror the JSON;
+ * The Roadbook IR, version 0.5, as `spec/ir.md` describes it. The types mirror the JSON;
  * {@link loadIr} checks the version before anything else.
  */
+import { aliasCycle } from "./typeref.ts"
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.4"
+export const IR_VERSION = "0.5"
 
 export interface Span {
   readonly file: number
@@ -18,16 +19,35 @@ export interface Span {
 /** A field of a record, error or event, or a parameter. */
 export interface Field {
   readonly name: string
-  /** A type reference in canonical source form: `LineItem[]`, `string?`, `ref Inventory`. */
+  /**
+   * A type reference in canonical source form: `LineItem[]`, `string?`, `ref Inventory`,
+   * `map<string, int>`, `Page<Order>`. {@link parseTypeRef} reads it.
+   */
   readonly type: string
   /** Marked `sensitive`: trace records show its value as `"<redacted>"`. */
   readonly sensitive: boolean
   readonly doc: string
 }
 
+/**
+ * A declared type. A record or an alias is generic when it has `params`: inside it, a bare name
+ * that is one of them refers to that parameter.
+ */
 export type TypeDecl =
-  | { readonly kind: "record"; readonly fields: ReadonlyArray<Field>; readonly doc: string; readonly span: Span }
-  | { readonly kind: "alias"; readonly type: string; readonly doc: string; readonly span: Span }
+  | {
+    readonly kind: "record"
+    readonly params: ReadonlyArray<string>
+    readonly fields: ReadonlyArray<Field>
+    readonly doc: string
+    readonly span: Span
+  }
+  | {
+    readonly kind: "alias"
+    readonly params: ReadonlyArray<string>
+    readonly type: string
+    readonly doc: string
+    readonly span: Span
+  }
   | { readonly kind: "enum"; readonly variants: ReadonlyArray<string>; readonly doc: string; readonly span: Span }
   | { readonly kind: "error"; readonly fields: ReadonlyArray<Field>; readonly doc: string; readonly span: Span }
   | { readonly kind: "extern"; readonly doc: string; readonly span: Span }
@@ -201,6 +221,10 @@ export const loadIr = (json: unknown): Ir => {
       `unsupported IR version ${JSON.stringify(version ?? null)}: this runtime reads IR version ${IR_VERSION}`
     )
   }
+  const cycle = aliasCycle(json as Ir)
+  if (cycle !== undefined) {
+    throw new IrError(`type alias ${JSON.stringify(cycle)} refers to itself, so it cannot be expanded`)
+  }
   return json as Ir
 }
 
@@ -213,33 +237,3 @@ export const getMachine = (ir: Ir, name: string): Machine => {
   return machine
 }
 
-/**
- * A parsed type reference: its base and its suffixes, applied left to right. The base is a
- * builtin or a declared name (`Item`), an event type (`Upload.Progress`) or a handle type
- * (`ref Inventory`, whose suffixes apply to the handle: `ref Inventory[]` is a list of them).
- */
-export interface TypeRef {
-  readonly base: string
-  readonly suffixes: ReadonlyArray<"[]" | "?">
-}
-
-/** The machine of a `ref` base (`ref Inventory` gives `Inventory`), or `undefined`. */
-export const refMachine = (base: string): string | undefined =>
-  base.startsWith("ref ") ? base.slice(4) : undefined
-
-export const parseTypeRef = (type: string): TypeRef => {
-  const match = /^(ref [A-Z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(?:\.[A-Z][A-Za-z0-9]*)?)((?:\[\]|\?)*)$/.exec(type)
-  if (match === null) throw new IrError(`not a type reference: ${JSON.stringify(type)}`)
-  const suffixes: Array<"[]" | "?"> = []
-  const rest = match[2] ?? ""
-  for (let i = 0; i < rest.length;) {
-    if (rest[i] === "?") {
-      suffixes.push("?")
-      i += 1
-    } else {
-      suffixes.push("[]")
-      i += 2
-    }
-  }
-  return { base: match[1] ?? "", suffixes }
-}

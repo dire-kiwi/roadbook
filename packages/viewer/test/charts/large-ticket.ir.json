@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -72,6 +72,7 @@
     },
     "Ticket": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "id",
@@ -109,6 +110,7 @@
     },
     "Classification": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "category",
@@ -146,6 +148,7 @@
     },
     "SurveyResult": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "answered",
@@ -171,6 +174,7 @@
     },
     "Closure": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "ticketId",

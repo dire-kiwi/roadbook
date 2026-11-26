@@ -11,7 +11,7 @@ use crate::diagnostic::Diagnostic;
 use crate::lexer::{
     Comment, CommentKind, Keyword as K, Punct as P, Token, TokenKind as T, lex, unescape,
 };
-use crate::span::{FileId, Span};
+use crate::span::{FileId, Pos, Span};
 
 /// Parse one file. Always returns a tree; after syntax errors it is partial.
 pub fn parse_file(file: FileId, src: &str) -> (File, Vec<Diagnostic>) {
@@ -520,16 +520,26 @@ impl Parser<'_> {
         let (name, kind) = match k {
             K::Type => {
                 let name = self.upper("a type name")?;
+                let params = if self.at_p(P::Lt) {
+                    self.angle_list("the type parameters", |p| p.upper("a type parameter"))?
+                } else {
+                    Vec::new()
+                };
                 let kind = if self.eat_p(P::Eq).is_some() {
                     DeclKind::Alias {
+                        params,
                         target: self.type_ref()?,
                     }
                 } else if self.at_p(P::LBrace) {
                     DeclKind::Record {
+                        params,
                         fields: self.fields("the fields of `type`")?,
                     }
                 } else {
-                    return Err(self.unexpected(&format!("`=` or `{{` after `type {}`", name.name)));
+                    let after = if params.is_empty() { "" } else { "<…>" };
+                    return Err(
+                        self.unexpected(&format!("`=` or `{{` after `type {}{after}`", name.name))
+                    );
                 };
                 (name, kind)
             }
@@ -709,10 +719,111 @@ impl Parser<'_> {
         })
     }
 
+    /// A non-empty comma-separated list between `<` and `>`, trailing comma allowed. A `>=`
+    /// where the `>` is expected is split in two, so `var m: map<string, int>= f()` reads as
+    /// written.
+    fn angle_list<E>(
+        &mut self,
+        what: &str,
+        mut elem: impl FnMut(&mut Self) -> PResult<E>,
+    ) -> PResult<Vec<E>> {
+        let open = self.expect_p(P::Lt, &format!(" to start {what}"))?;
+        let mut out = Vec::new();
+        loop {
+            if !out.is_empty() && self.close_angle() {
+                break;
+            }
+            if self.at(T::Eof) || self.at_decl_start() {
+                return Err(self.unclosed(open, what));
+            }
+            out.push(elem(self)?);
+            if self.eat_p(P::Comma).is_none() {
+                if self.close_angle() {
+                    break;
+                }
+                return Err(self.unexpected("`,` or `>`"));
+            }
+        }
+        Ok(out)
+    }
+
+    /// Takes a `>`, or the `>` of a `>=` (leaving its `=`), if the next token starts with one.
+    fn close_angle(&mut self) -> bool {
+        if self.eat_p(P::Gt).is_some() {
+            return true;
+        }
+        if self.at_p(P::Ge) {
+            let t = self.tok();
+            let mid = Pos {
+                offset: t.span.start.offset + 1,
+                line: t.span.start.line,
+                col: t.span.start.col + 1,
+            };
+            self.tokens[self.pos] = Token {
+                kind: T::Punct(P::Eq),
+                span: Span {
+                    start: mid,
+                    ..t.span
+                },
+            };
+            self.tokens.insert(
+                self.pos,
+                Token {
+                    kind: T::Punct(P::Gt),
+                    span: Span { end: mid, ..t.span },
+                },
+            );
+            self.bump();
+            return true;
+        }
+        false
+    }
+
+    /// A type argument: a type one level deeper.
+    fn type_arg(&mut self) -> PResult<TypeRef> {
+        let base = self.depth;
+        self.deeper()?;
+        let t = self.type_ref();
+        self.depth = base;
+        t
+    }
+
     fn type_ref(&mut self) -> PResult<TypeRef> {
         let t = self.tok();
         let kind = match t.kind {
-            T::Upper => TypeKind::Named(self.bump_ident()),
+            T::Upper => {
+                let name = self.bump_ident();
+                if self.at_p(P::Lt) {
+                    TypeKind::Generic(
+                        name,
+                        self.angle_list("the type arguments", |p| p.type_arg())?,
+                    )
+                } else {
+                    TypeKind::Named(name)
+                }
+            }
+            T::Lower if self.text(t) == "map" && self.nth(1) == T::Punct(P::Lt) => {
+                self.bump();
+                let open = self.tok();
+                let mut args =
+                    self.angle_list("the key and value types of `map`", |p| p.type_arg())?;
+                if args.len() != 2 {
+                    let d = Diagnostic::error(
+                        codes::UNEXPECTED_TOKEN,
+                        open.span.to(self.prev()),
+                        format!(
+                            "`map` takes a key type and a value type, not {}",
+                            args.len()
+                        ),
+                    )
+                    .with_help("write `map<string, T>`");
+                    self.error(d);
+                    return Err(Fail);
+                }
+                let v = args.pop().expect("two");
+                let k = args.pop().expect("two");
+                TypeKind::Map(Box::new(k), Box::new(v))
+            }
             T::Lower if self.text(t) == "ref" && self.nth(1) == T::Upper => {
                 self.bump();
                 TypeKind::Ref(self.bump_ident())

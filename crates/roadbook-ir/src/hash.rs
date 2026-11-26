@@ -25,8 +25,8 @@
 //!   change to how a peer works inside does not change the machines that
 //!   talk to it.
 //! - T is every type named by the machines in M, by F, A and K and by the
-//!   interfaces of R, closed under the types their declarations name. A type is named by the base of
-//!   any TypeRef (parameters, results, variables, event fields, alias
+//!   interfaces of R, closed under the types their declarations name. A type is named by any name
+//!   in any TypeRef (its base, type arguments and map key and value) (parameters, results, variables, event fields, alias
 //!   targets, record fields and every expression's `type`), by an entry of
 //!   an `errors` list and by an `invoke.fail` trigger's `error` other than
 //!   `"*"`. A name that is an event of the machine being walked (the type
@@ -35,7 +35,9 @@
 //! - `strip` removes every member named `doc`, `span`, `text` or
 //!   `sensitive` from every object, recursively. The only name-keyed maps inside these values are a
 //!   machine's `events` and `emits`, whose keys are upper-case, so no
-//!   user-chosen name is ever stripped.
+//!   user-chosen name is ever stripped. A type declaration's `params` is
+//!   removed too when it is `[]`, so a type that is not generic hashes as
+//!   it did before generic types existed.
 //!
 //! Comments, formatting, source positions, `sensitive` marks and unused
 //! declarations therefore do not change a hash (a mark changes only what
@@ -109,6 +111,8 @@ struct Walker<'a> {
     /// The machine being walked and its events.
     machine: String,
     events: BTreeSet<String>,
+    /// The type parameters of the generic declaration being walked: names that are not types.
+    params: Vec<String>,
 }
 
 impl Walker<'_> {
@@ -151,10 +155,20 @@ impl Walker<'_> {
     }
 
     fn type_ref(&mut self, t: &TypeRef) -> Result<(), HashError> {
-        match t.base() {
+        match t {
+            TypeRef::Named(n) if self.params.contains(n) => Ok(()),
             TypeRef::Named(n) => self.type_name(n),
+            TypeRef::Generic(n, args) => {
+                self.type_name(n)?;
+                args.iter().try_for_each(|a| self.type_ref(a))
+            }
+            TypeRef::Map(k, v) => {
+                self.type_ref(k)?;
+                self.type_ref(v)
+            }
+            TypeRef::List(t) | TypeRef::Optional(t) => self.type_ref(t),
             TypeRef::Ref(m) => self.named_machine(m),
-            _ => Ok(()),
+            TypeRef::Builtin(_) => Ok(()),
         }
     }
 
@@ -275,6 +289,7 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
         pending_machines: vec![name.to_owned()],
         machine: name.to_owned(),
         events: BTreeSet::new(),
+        params: Vec::new(),
     };
     while let Some(m) = w.pending_machines.pop() {
         if w.out.machines.insert(m.clone()) {
@@ -313,10 +328,18 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
         while let Some(t) = pending.pop() {
             let before = w.out.types.clone();
             match &ir.types[&t].def {
-                TypeDef::Record { fields } | TypeDef::Error { fields } => w.fields(fields)?,
-                TypeDef::Alias { ty } => w.type_ref(ty)?,
+                TypeDef::Record { params, fields } => {
+                    w.params = params.clone();
+                    w.fields(fields)?;
+                }
+                TypeDef::Error { fields } => w.fields(fields)?,
+                TypeDef::Alias { params, ty } => {
+                    w.params = params.clone();
+                    w.type_ref(ty)?;
+                }
                 TypeDef::Enum { .. } | TypeDef::Extern => {}
             }
+            w.params.clear();
             pending.extend(w.out.types.difference(&before).cloned());
         }
         let peers: Vec<String> = w
@@ -388,7 +411,19 @@ pub fn semantic_view(ir: &Ir, name: &str) -> Result<Value, HashError> {
     let mut view = Map::new();
     view.insert("machine".into(), Value::String(name.to_owned()));
     view.insert("machines".into(), machines);
-    view.insert("types".into(), section(&c.types, |n| &ir.types[n]));
+    let mut types = section(&c.types, |n| &ir.types[n]);
+    // A type that is not generic has the hash it had before `params` existed.
+    if let Value::Object(map) = &mut types {
+        for t in map.values_mut() {
+            if let Value::Object(t) = t
+                && t.get("params")
+                    .is_some_and(|p| p.as_array().is_some_and(Vec::is_empty))
+            {
+                t.remove("params");
+            }
+        }
+    }
+    view.insert("types".into(), types);
     view.insert(
         "functions".into(),
         section(&c.functions, |n| &ir.functions[n]),

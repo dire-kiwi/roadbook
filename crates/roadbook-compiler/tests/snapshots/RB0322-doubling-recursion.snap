@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0322]: `Boom<Pair<T, T>>` refers back to `Boom` with other type arguments than its parameters `<T>`
+ --> RB0322-doubling-recursion.road:3:23
+  |
+3 | type Boom<T> { inner: Boom<Pair<T, T>>?, v: T }
+  |                       ^^^^^^^^^^^^^^^^
+  |
+  = help: a generic type can refer to itself, directly or through other types, only with its own parameters, in order, so that it has finitely many instances

@@ -244,3 +244,38 @@ fn signatures_show_sensitive_marks() {
     assert_eq!(sig("M("), "machine M(sensitive pin: int)");
     assert_eq!(sig("token"), "sensitive var token: string = \"\"");
 }
+
+/// Type parameters, names in type arguments and maps, and fields read through an instance of
+/// a generic type resolve to their declarations.
+#[test]
+fn generic_names_resolve() {
+    let src = "type UserId = string\ntype Page<T> { items: T[], next: string? }\n\
+               type Dict<V> = map<UserId, V>\nfn ints() -> int[]\n\n\
+               machine M(p: Page<Dict<int>>) -> Page<int> {\n  initial Done\n  \
+               final state Done { output Page { items: ints(), next: p.next } }\n}\n";
+    let out = compile_source("g.road", src, &Options::default());
+    assert!(!out.has_errors(), "{}", out.render());
+    for (needle, want, kind) in [
+        ("Page<^T>", "Page.T", SymbolKind::TypeParameter),
+        ("items: ^T[]", "Page.T", SymbolKind::TypeParameter),
+        ("Dict<^V>", "Dict.V", SymbolKind::TypeParameter),
+        ("map<^UserId", "UserId", SymbolKind::Alias),
+        ("UserId, ^V>", "Dict.V", SymbolKind::TypeParameter),
+        ("p: ^Page<Dict", "Page", SymbolKind::Record),
+        ("Page<^Dict<int>>", "Dict", SymbolKind::Alias),
+        ("output ^Page", "Page", SymbolKind::Record),
+        ("^items: ints", "Page.items", SymbolKind::Field),
+        ("p.^next", "Page.next", SymbolKind::Field),
+    ] {
+        let id = at(&out, 0, needle);
+        assert_eq!(name(&out, id), want, "`{needle}`");
+        assert_eq!(out.index.symbol(id).kind, kind, "`{needle}`");
+    }
+    let page = at(&out, 0, "type ^Page");
+    assert_eq!(
+        out.index.symbol(page).signature,
+        "type Page<T> { items: T[], next: string? }"
+    );
+    let t = at(&out, 0, "Page<^T>");
+    assert_eq!(out.index.references_to(t).count(), 1);
+}

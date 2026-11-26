@@ -252,7 +252,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             if let Some(init) = &v.init {
                 let value = self.eval(init, None)?;
                 self.snap.vars.insert(v.name.clone(), value);
-            } else if matches!(self.program.resolve(&v.ty), TypeRef::Optional(_)) {
+            } else if matches!(*self.program.resolve(&v.ty), TypeRef::Optional(_)) {
                 self.snap.vars.insert(v.name.clone(), Value::Null);
             }
         }

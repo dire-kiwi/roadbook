@@ -16,6 +16,7 @@ import {
 } from "./ir.ts"
 import type { Json } from "./json.ts"
 import { redactor } from "./redact.ts"
+import { expandType, isOptionalType } from "./typeref.ts"
 import type {
   Command,
   CoreRecord,
@@ -73,7 +74,7 @@ export const start = (
   try {
     for (const v of index.machine.vars) {
       if (v.init !== null) macro.vars[v.name] = macro.eval(v.init, NO_BINDINGS)
-      else if (isOptional(ir, v.type)) macro.vars[v.name] = null
+      else if (isOptionalType(ir, v.type)) macro.vars[v.name] = null
     }
     const root = index.machine.root
     macro.enterStates([root, ...index.defaultEntry(root)])
@@ -952,14 +953,16 @@ class Macrostep {
 
   /**
    * The `_tag` of a record of type `type`, if it has one: an error's name, or an event's
-   * (`Machine.Name`, or a bare event of this machine) without the machine.
+   * (`Machine.Name`, or a bare event of this machine) without the machine. Aliases are expanded
+   * first; an instance of a generic record (`Page<Order>`) has none.
    */
   private tagOf(type: string): string | undefined {
-    if (Object.hasOwn(this.ir.types, type)) return this.ir.types[type]!.kind === "error" ? type : undefined
-    const dot = type.indexOf(".")
-    if (dot !== -1) return type.slice(dot + 1)
+    const t = expandType(this.ir, type)
+    if (t.kind === "event") return t.event
+    if (t.kind !== "named") return undefined
+    if (Object.hasOwn(this.ir.types, t.name)) return this.ir.types[t.name]!.kind === "error" ? t.name : undefined
     const m = this.index.machine
-    return Object.hasOwn(m.emits, type) || Object.hasOwn(m.events, type) ? type : undefined
+    return Object.hasOwn(m.emits, t.name) || Object.hasOwn(m.events, t.name) ? t.name : undefined
   }
 
   private evalOp(expr: Extract<Expr, { kind: "op" }>, bindings: Bindings): Json {
@@ -998,9 +1001,12 @@ class Macrostep {
     }
   }
 
-  /** Check an arithmetic result against the node's type: `int` range or finite `float`. */
+  /**
+   * Check an arithmetic result against the node's type, aliases expanded: `int` range or
+   * finite `float`.
+   */
   private arith(expr: Expr, value: number): number {
-    if (expr.type === "int") {
+    if (scalarOf(this.ir, expr.type) === "int") {
       if (!Number.isSafeInteger(value)) throw new Abort({ kind: "overflow", expr: expr.text })
       return value === 0 ? 0 : value
     }
@@ -1031,10 +1037,9 @@ export const compareCodePoints = (a: string, b: string): number => {
   return (a.length - i) - (b.length - j)
 }
 
-/** Whether a type reference is optional once aliases are expanded (`type Note = string?`). */
-function isOptional(ir: Ir, type: string): boolean {
-  if (type.endsWith("?")) return true
-  if (type.endsWith("[]")) return false
-  const decl = Object.hasOwn(ir.types, type) ? ir.types[type] : undefined
-  return decl !== undefined && decl.kind === "alias" ? isOptional(ir, decl.type) : false
+/** The builtin an operand of type `type` is, aliases and `?` removed, or `undefined`. */
+function scalarOf(ir: Ir, type: string): string | undefined {
+  let t = expandType(ir, type)
+  while (t.kind === "optional") t = expandType(ir, t.of)
+  return t.kind === "builtin" ? t.name : undefined
 }

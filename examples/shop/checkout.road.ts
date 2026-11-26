@@ -46,7 +46,7 @@ export interface CheckoutDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/shop/checkout.road",
@@ -60,6 +60,7 @@ const ir: unknown = {
   "types": {
     "LineItem": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "sku",
@@ -85,6 +86,7 @@ const ir: unknown = {
     },
     "OrderDraft": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "items",
@@ -110,6 +112,7 @@ const ir: unknown = {
     },
     "Order": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "id",
@@ -141,6 +144,7 @@ const ir: unknown = {
     },
     "Receipt": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "chargeId",
@@ -166,6 +170,7 @@ const ir: unknown = {
     },
     "User": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "id",
@@ -206,6 +211,7 @@ const ir: unknown = {
     },
     "ApiResponse": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "status",

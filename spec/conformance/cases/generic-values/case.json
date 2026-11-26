@@ -1,0 +1,31 @@
+{
+  "description": "Maps and generic types in every place a value goes. The input's maps have integer-like keys, which a JavaScript object orders before the others, and the key `__proto__`; both stay keys like any other, in the input, the arguments of `longest` and `merge` (matched as canonical JSON), the event, the variables, the action and the trace, which canonical JSON writes with its keys sorted. `best.wait`, a field read through an instance `Timed<string>`, is the delay; `adds + 1` is arithmetic on a generic alias `First<int>` of `int`. The task's result, a `Page<Timed<int>>`, goes to the action as it is, and the output is a `Page` record value built from a field of it, with its type arguments taken from the machine's result type.",
+  "requires": [],
+  "chart": "charts/generic.road",
+  "machine": "Gather",
+  "input": {
+    "waits": { "b": 300, "a": 100, "10": 50, "9": 70, "__proto__": 20 },
+    "counts": { "x": 1, "2": 5 }
+  },
+  "stub": [],
+  "fns": {
+    "longest": [
+      {
+        "args": [{ "b": 300, "a": 100, "10": 50, "9": 70, "__proto__": 20 }],
+        "returns": { "value": "b", "wait": 300 }
+      }
+    ],
+    "merge": [
+      {
+        "args": [{ "x": 1, "2": 5 }, { "__proto__": 3, "1": 4 }],
+        "returns": { "x": 1, "2": 5, "__proto__": 3, "1": 4 }
+      }
+    ]
+  },
+  "actions": {},
+  "script": [
+    { "event": { "_tag": "Add", "more": { "__proto__": 3, "1": 4 } } },
+    { "task": "fetch", "done": { "items": [{ "value": 7, "wait": 250 }], "next": "p2" } }
+  ],
+  "status": "done"
+}

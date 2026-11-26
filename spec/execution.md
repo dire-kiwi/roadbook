@@ -563,11 +563,11 @@ Expressions are evaluated by their IR node, recursively. Every node's `type` is 
 | `ref` | `path[0]` is a parameter (from `input`), a variable (from `vars`; reading one with no value is `unassigned`), or the implicit name `event`, `result` or `error`. Each further name reads that field of the value. A parameter or variable of a `ref` type reads as the run id it holds. |
 | `field` | Evaluate `of`, then read field `name`. |
 | `call` | Evaluate `args` left to right, then `fns(fn, args)`. |
-| `record` | An object with the fields in order. If `type` is an error, it also has `"_tag": type`. If `type` is an event (the value of a `send` or `emit`: `Machine.Name`, or the name of one of the current machine's `emits`), it also has `"_tag"` with the event's name, the part after the dot: `send upload.Pause` sends `{"_tag": "Pause"}`. |
+| `record` | An object with the fields in order. Its `type` may be an instance of a generic record (`Page<Order>`); the fields are the same. If `type` is an error, it also has `"_tag": type`. If `type` is an event (the value of a `send` or `emit`: `Machine.Name`, or the name of one of the current machine's `emits`), it also has `"_tag"` with the event's name, the part after the dot: `send upload.Pause` sends `{"_tag": "Pause"}`. |
 | `enum` | The string `variant`. |
 | `op` | See below. |
 
-Operators, by `op`. An operand's type is its IR `type` with aliases expanded, transitively: `<` on a `Money` after `type Money = int` compares integers. The IR keeps the alias's name, so a runtime that dispatches on the type string must expand it first.
+Operators, by `op`. An operand's type is its IR `type` with aliases expanded, transitively, the arguments of a generic alias substituted: `<` on a `Money` after `type Money = int` compares integers, and so does `+` on a `First<int>` after `type First<T> = T`. The IR keeps the alias's name, so a runtime that dispatches on the type string must expand it first.
 
 - `and`, `or`: evaluate the left side; if it decides the result (`false` for `and`, `true` for `or`), that is the result and the right side is **not evaluated**. Otherwise the result is the right side. `not` negates.
 - `==`, `!=`: on `string`, `int`, `float`, `bool`, `duration` and enums. Strings are equal when their Unicode scalar values are. Floats compare as IEEE 754 doubles, so `0.0 == -0.0`.
@@ -594,6 +594,8 @@ Every Roadbook value has one JSON form. It is used for the machine's input, task
 | An enum | The variant's name: `"Customer"`. |
 | `T?` | `null`, or the `T`. (`T??` cannot be told apart from `T?` and should be rejected by the compiler.) |
 | `T[]` | An array. |
+| `map<K, V>` | An object with a member per key, each value in `V`'s form: `{"a": 1, "b": 2}`. The order of its members means nothing (canonical JSON sorts them), and any string is a key, `"__proto__"` included: a JavaScript runtime keeps it as an own data member, never as the object's prototype. |
+| An instance `G<A, …>` of a generic record or alias | The form of `G`'s declaration with each parameter replaced by its argument: `Page<int>` is `{"items": [1, 2], "next": null}`. |
 | An alias | The aliased type's form. |
 | An `extern` type | Whatever the language binding's encoder produces. The core never looks inside it. Conformance cases do not use extern types. |
 | `ref M` | The id of the run it refers to, a string: `"r2"`. The binding layer gives host code a handle to that run instead ([refs](#refs-and-handles)). |

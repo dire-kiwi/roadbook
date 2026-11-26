@@ -19,7 +19,7 @@ pub fn outline(text: &str, enc: Encoding) -> Vec<DocumentSymbol> {
         .map(|d| {
             let (_, detail) = declaration(d);
             let (kind, children) = match &d.kind {
-                DeclKind::Record { fields } => (Kind::STRUCT, o.fields(fields)),
+                DeclKind::Record { fields, .. } => (Kind::STRUCT, o.fields(fields)),
                 DeclKind::Error { fields } => (Kind::STRUCT, o.fields(fields)),
                 DeclKind::Alias { .. } => (Kind::TYPE_PARAMETER, Vec::new()),
                 DeclKind::Enum { variants } => (

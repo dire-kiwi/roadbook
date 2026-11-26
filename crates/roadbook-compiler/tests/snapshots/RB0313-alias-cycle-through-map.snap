@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0313]: type alias `Tree` refers to itself: `Tree` = `map<string, Tree>`
+ --> RB0313-alias-cycle-through-map.road:2:6
+  |
+2 | type Tree = map<string, Tree>
+  |      ^^^^
+  |
+  = help: an alias must end in a built-in or a declared record, enum, error or extern type
+
+error[RB0313]: type alias `Pages` refers to itself: `Pages` = `Page<Pages>`
+ --> RB0313-alias-cycle-through-map.road:3:6
+  |
+3 | type Pages = Page<Pages>
+  |      ^^^^^
+  |
+  = help: an alias must end in a built-in or a declared record, enum, error or extern type
+
+error[RB0313]: type alias `Loop` refers to itself: `Loop` = `Loop<T>[]`
+ --> RB0313-alias-cycle-through-map.road:4:6
+  |
+4 | type Loop<T> = Loop<T>[]
+  |      ^^^^
+  |
+  = help: an alias must end in a built-in or a declared record, enum, error or extern type
