@@ -39,7 +39,9 @@ editors/
 | `roadbook fmt [--check]` | Canonical formatting. |
 | `roadbook gen [--check]` | Write the `.road.ts` files. |
 | `roadbook viz [paths…] [-o dir] [--self-contained] [--watch]` | Write the HTML viewer, a page per entry chart, plus an index. |
-| `roadbook viz --diff <git range>` | Write a viewer showing what changed between two revisions. |
+| `roadbook viz --trace <run.jsonl>` | The same, opening the pages that have the trace's machine in replay mode. |
+| `roadbook viz --diff <git range>` | Write a viewer showing what changed between two revisions (`main..HEAD`, `main...HEAD`, or one revision against the working tree), with `summary.md` and `summary.json`. |
+| `roadbook viz --coverage <traces…>` | Write the viewer shading each transition and state by how often the traces took it. |
 | `roadbook export mermaid\|scxml\|ir` | Other formats. Mermaid renders inline on GitHub. |
 | `roadbook paths <Machine>` | List the paths through a machine, for test generation and coverage. |
 

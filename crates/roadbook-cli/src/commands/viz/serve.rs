@@ -58,6 +58,7 @@ pub fn watch(ws: &Workspace, args: &Args, mut built: Built) -> Exit {
             let options = super::BuildOptions {
                 self_contained: args.self_contained,
                 trace: args.trace.as_deref(),
+                coverage: &args.coverage,
             };
             let (_, b) = build(ws, &args.paths, &args.out, &options);
             (!b.inputs.is_empty()).then_some(b.inputs)

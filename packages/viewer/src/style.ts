@@ -22,6 +22,14 @@ export const LIGHT = `
   --rb-live-bg: #fdf0e2;
   --rb-label-bg: #ffffff;
   --rb-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --rb-add: #0a7d34;
+  --rb-add-bg: #e2f4e7;
+  --rb-del: #b3261e;
+  --rb-del-bg: #fbe8e6;
+  --rb-chg: #8f5b00;
+  --rb-chg-bg: #fcf1d6;
+  --rb-cov: #1f62c9;
+  --rb-never: #c22a2b;
 `
 
 export const DARK = `
@@ -44,6 +52,14 @@ export const DARK = `
   --rb-live-bg: #3a2614;
   --rb-label-bg: #15181c;
   --rb-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --rb-add: #5fd38a;
+  --rb-add-bg: #15301f;
+  --rb-del: #ff8a80;
+  --rb-del-bg: #3a1a18;
+  --rb-chg: #f0c060;
+  --rb-chg-bg: #362a10;
+  --rb-cov: #75adf7;
+  --rb-never: #ff8482;
 `
 
 export const FONTS = `
@@ -120,6 +136,49 @@ export const DIAGRAM_CSS = `
 .rb-label.rb-k-done .rb-label-trigger { fill: var(--rb-ok); }
 .rb-label.rb-k-fail .rb-label-trigger { fill: var(--rb-err); }
 .rb-label .rb-guard { fill: var(--rb-fg); }
+
+/* what diff and coverage mark: a badge on a box's or a label's corner, a glyph before a row */
+.rb-badge rect { fill: var(--rb-surface); stroke: var(--rb-fg); stroke-width: 1.2; }
+.rb-svg .rb-badge text { font-size: 10px; font-weight: 750; }
+.rb-glyph { font-size: 11.5px; font-weight: 800; }
+
+/* diff: added heavy and solid (+), removed dashed, faded and struck through (−), changed heavy (~) */
+.rb-diff-added > .rb-box { stroke: var(--rb-add); stroke-width: 2.6; stroke-dasharray: none; }
+.rb-diff-added.rb-leaf > .rb-box { fill: var(--rb-add-bg); }
+.rb-diff-removed { opacity: 0.6; }
+.rb-diff-removed > .rb-box, .rb-diff-removed > .rb-box-inner { stroke: var(--rb-del); stroke-dasharray: 4 3; stroke-width: 1.8; }
+.rb-diff-removed.rb-leaf > .rb-box { fill: var(--rb-del-bg); }
+.rb-diff-removed > .rb-title, .rb-row.rb-diff-removed, .rb-label.rb-diff-removed text { text-decoration: line-through; }
+.rb-diff-changed > .rb-box { stroke: var(--rb-chg); stroke-width: 2.6; }
+.rb-diff-changed.rb-leaf > .rb-box { fill: var(--rb-chg-bg); }
+.rb-diff-inside > .rb-box { stroke: var(--rb-chg); stroke-width: 2.2; }
+.rb-edge.rb-diff-added .rb-edge-line { stroke: var(--rb-add); stroke-width: 3; }
+.rb-edge.rb-diff-removed .rb-edge-line { stroke: var(--rb-del); stroke-dasharray: 4 3; }
+.rb-edge.rb-diff-changed .rb-edge-line { stroke: var(--rb-chg); stroke-width: 3; }
+.rb-label.rb-diff-added .rb-label-bg { stroke: var(--rb-add); stroke-width: 2.2; }
+.rb-label.rb-diff-removed .rb-label-bg { stroke: var(--rb-del); stroke-dasharray: 3 2; }
+.rb-label.rb-diff-changed .rb-label-bg { stroke: var(--rb-chg); stroke-width: 2.2; }
+.rb-diff-added > .rb-badge rect { stroke: var(--rb-add); }
+.rb-diff-removed > .rb-badge rect { stroke: var(--rb-del); }
+.rb-diff-changed > .rb-badge rect, .rb-diff-inside > .rb-badge rect { stroke: var(--rb-chg); }
+.rb-svg .rb-diff-added > .rb-badge text, .rb-svg .rb-glyph.rb-diff-added { fill: var(--rb-add); }
+.rb-svg .rb-diff-removed > .rb-badge text, .rb-svg .rb-glyph.rb-diff-removed { fill: var(--rb-del); }
+.rb-svg .rb-diff-changed > .rb-badge text, .rb-svg .rb-diff-inside > .rb-badge text, .rb-svg .rb-glyph.rb-diff-changed { fill: var(--rb-chg); }
+
+/* coverage: heavier and darker the more often taken (×N), never taken dotted in the error colour ("never") */
+.rb-edge.rb-cov-1 .rb-edge-line { stroke: var(--rb-cov); stroke-width: 2; }
+.rb-edge.rb-cov-2 .rb-edge-line { stroke: var(--rb-cov); stroke-width: 3; }
+.rb-edge.rb-cov-3 .rb-edge-line { stroke: var(--rb-cov); stroke-width: 4.2; }
+.rb-edge.rb-cov-4 .rb-edge-line { stroke: var(--rb-cov); stroke-width: 5.6; }
+.rb-edge.rb-cov-never .rb-edge-line { stroke: var(--rb-never); stroke-dasharray: 1.5 3.5; stroke-width: 2; stroke-linecap: round; }
+.rb-label.rb-cov-never .rb-label-bg { stroke: var(--rb-never); stroke-dasharray: 2 2; stroke-width: 1.6; }
+.rb-label.rb-cov-never .rb-badge rect, .rb-cov-never > .rb-badge rect { stroke: var(--rb-never); }
+.rb-svg .rb-cov-never > .rb-badge text, .rb-svg .rb-glyph.rb-cov-never { fill: var(--rb-never); }
+.rb-cov-1.rb-leaf > .rb-box { fill: color-mix(in srgb, var(--rb-cov) 10%, var(--rb-surface)); }
+.rb-cov-2.rb-leaf > .rb-box { fill: color-mix(in srgb, var(--rb-cov) 20%, var(--rb-surface)); }
+.rb-cov-3.rb-leaf > .rb-box { fill: color-mix(in srgb, var(--rb-cov) 31%, var(--rb-surface)); }
+.rb-cov-4.rb-leaf > .rb-box { fill: color-mix(in srgb, var(--rb-cov) 42%, var(--rb-surface)); }
+.rb-cov-never > .rb-box { stroke: var(--rb-never); stroke-dasharray: 2 3; stroke-width: 2; }
 `
 
 /** The rules of the pages around the diagram. */
@@ -319,6 +378,32 @@ details.rb-choice[open] > summary { border-style: dashed; margin-bottom: 5px; }
 .rb-vars .rb-vnote { color: var(--rb-muted); font-family: var(--rb-sans); font-size: 11.5px; }
 .rb-file { display: inline-block; }
 .rb-problems summary { cursor: pointer; color: var(--rb-err); font-size: 13px; margin-top: 8px; }
+/* diff and coverage panels */
+.rb-diff-chip-added { border-color: var(--rb-add); color: var(--rb-add); font-weight: 650; }
+.rb-diff-chip-removed { border-color: var(--rb-del); color: var(--rb-del); border-style: dashed; }
+.rb-diff-chip-changed { border-color: var(--rb-chg); color: var(--rb-chg); font-weight: 650; }
+.rb-diff-chip-error { border: 2px solid var(--rb-err); color: var(--rb-err); font-weight: 650; }
+.rb-diff-sign { display: inline-block; width: 1.2em; text-align: center; font: 800 13px var(--rb-mono); }
+.rb-diff-sign-added { color: var(--rb-add); }
+.rb-diff-sign-removed { color: var(--rb-del); }
+.rb-diff-sign-changed { color: var(--rb-chg); }
+.rb-diff-list li.rb-current, .rb-cov-list li.rb-current { outline: 2px solid var(--rb-accent); outline-offset: 1px; border-radius: 3px; }
+.rb-changes { width: 100%; border-collapse: collapse; font-size: 12px; margin: 6px 0; table-layout: fixed; }
+.rb-changes th, .rb-changes td { text-align: left; vertical-align: top; padding: 4px 5px; border-bottom: 1px solid var(--rb-border); }
+.rb-changes thead th { font-size: 11px; color: var(--rb-muted); font-weight: 600; }
+.rb-changes tbody th { width: 22%; font-weight: 650; font-family: var(--rb-mono); overflow-wrap: anywhere; }
+.rb-changes .rb-code { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rb-changes td.rb-before .rb-code { border-left: 3px dashed var(--rb-del); text-decoration: line-through; text-decoration-color: var(--rb-del); }
+.rb-changes td.rb-after .rb-code { border-left: 3px solid var(--rb-add); }
+.rb-diff-details, .rb-cov-details { margin: 0 0 10px; padding: 6px 9px; border-left: 4px solid var(--rb-chg); background: var(--rb-bg); }
+.rb-cov-details { border-left-color: var(--rb-cov); }
+.rb-cov-table { border-collapse: collapse; font-size: 12px; }
+.rb-cov-table td { padding: 2px 6px; vertical-align: top; }
+.rb-cov-n { font: 700 12px var(--rb-mono); text-align: right; white-space: nowrap; }
+.rb-cov-all summary { cursor: pointer; font-size: 13px; margin-top: 10px; }
+.rb-diagnostics { white-space: pre; overflow-x: auto; }
+.rb-diff-summary { margin-bottom: 18px; }
+
 .rb-now { margin: 10px 0 0; padding: 6px 9px; border-left: 4px solid var(--rb-live); background: var(--rb-bg); }
 .rb-now p { margin: 0; }
 .rb-now-text { font: 12.5px var(--rb-mono); overflow-wrap: anywhere; }

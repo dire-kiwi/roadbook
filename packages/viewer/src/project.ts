@@ -4,6 +4,7 @@
 // lays it out and draws it. Pure and DOM-free.
 
 import type { ElkNode, ElkExtendedEdge } from 'elkjs/lib/elk-api.js'
+import type { ChartDiff, IndexDiff } from './diff.ts'
 import type { Ir } from './ir.ts'
 import { own } from './ir.ts'
 import type { ElkLike, Box, Point } from './layout.ts'
@@ -15,8 +16,12 @@ import { esc } from './render.ts'
 export type PageData =
   | {
       kind: 'chart'
-      /** The mode the page opens in: `explore`, or `replay` for a page given a trace. (Diff and coverage come later.) */
-      mode: 'explore' | 'simulate' | 'replay'
+      /**
+       * The mode the page opens in: `explore`; `replay` for a page given a trace; `coverage`
+       * for one given traces to count; `diff` for a page of `roadbook viz --diff`, whose IR is
+       * the merged chart.
+       */
+      mode: 'explore' | 'simulate' | 'replay' | 'coverage' | 'diff'
       /** Project path of the entry chart. */
       entry: string
       /** Href of the project index (relative, `./index.html`), or null if there is none. */
@@ -24,6 +29,10 @@ export type PageData =
       ir: Ir
       /** A trace to replay (`roadbook viz --trace`): the file's name and its JSON Lines text. */
       trace?: { name: string; text: string } | null
+      /** Traces to count (`roadbook viz --coverage`): each file's name and JSON Lines text. */
+      coverage?: { name: string; text: string }[]
+      /** What changed (`roadbook viz --diff`). */
+      diff?: ChartDiff
     }
   | { kind: 'index'; index: ProjectIndex }
 
@@ -48,6 +57,8 @@ export interface ProjectIndex {
   pages: { href: string; entry: string }[]
   /** Every machine once, in the order of the pages and then of the IR. */
   machines: IndexMachine[]
+  /** For the index of `roadbook viz --diff`: the summary, and how each machine and chart changed. */
+  diff?: IndexDiff
 }
 
 export interface IndexMachine {

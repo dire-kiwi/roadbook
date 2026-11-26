@@ -78,11 +78,11 @@ The viewer's tests lay out every example, every conformance chart and a stress c
 - Click a `send`, an `emit` or the name in an `on upload.Progress` label to open the event in the machine that declares it: its declaration and fields, where that machine handles or emits it, and every place in the chart that sends it or handles it, each a link. The transitions it triggers are highlighted. A `ref` type in a signature opens its machine.
 - Search (`/`) by state, event (declared, sent, emitted or handled), task, machine, error or action name. Matches are highlighted; choosing one opens its machine, expands what hides it and selects it.
 - Light and dark themes, following the system, with a toggle that is remembered.
-- A mode switch in the header: Explore (the default), Simulate and Replay ([modes](#modes)). In simulate and replay, `→` (or `n`) steps forward and `←` (or `p`) steps back; in replay `Home` and `End` go to the first and last record.
+- A mode switch in the header: Explore (the default), Simulate, Replay and Coverage; a diff page has Diff only ([modes](#modes)). In simulate and replay, `→` (or `n`) steps forward and `←` (or `p`) steps back; in replay `Home` and `End` go to the first and last record.
 
 ## Modes
 
-Explore, simulate and replay are built; diff and coverage come later. Simulate and replay keep the diagram and its interaction and put their own section at the top of the details panel (the details of a state or transition clicked follow below it). Both light up the diagram the same way, and as everywhere else every distinction reads in greyscale:
+Explore, simulate, replay, diff and coverage are built. The modes other than explore keep the diagram and its interaction and put their own section at the top of the details panel (the details of a state or transition clicked follow below it). Simulate and replay light up the diagram the same way, and as everywhere else every distinction reads in greyscale:
 
 | What | Drawn as |
 | --- | --- |
@@ -114,9 +114,58 @@ A line over the diagram says where the mode is in words (`Simulate · step 3/5 �
 
 A failed request becomes a picture of where it went: the trace a failing test or a production run wrote, opened on its chart.
 
-**Diff.** `roadbook viz --diff main..HEAD` draws both versions as one chart with added, removed and changed states and transitions marked. This is the mode aimed most directly at the project's goal. When an agent changes a program, the reviewer sees the change in flow before reading any code.
+**Diff.** `roadbook viz --diff main..HEAD` draws both versions of each chart as one, with what was added, removed and changed marked. This is the mode aimed most directly at the project's goal. When an agent changes a program, the reviewer sees the change in flow before reading any code.
 
-**Coverage.** Load many traces, from a test run or from production, and shade each transition by how often it was taken. Transitions never taken stand out.
+- **Ranges.** `A..B` compares revision A with revision B; `A...B` compares where B forked from A with B (what a pull request changes, whatever has landed on its base since); a single revision compares it with the working tree. Paths after the flags limit it to the charts under them, as for `roadbook viz`.
+- **Each side** is compiled on its own: the `.road` files the revision has under the project root (less `exclude`), read with `git` along with what they import, and the entry charts found as `roadbook viz` finds them. A package under `node_modules`, which git does not hold, is read from disk, and `roadbook.toml` is the working tree's for both sides. A chart is matched across the sides by the path of its entry file, so a chart can be added, removed or changed; one that does not compile at a side gets a page showing that side's diagnostics, as `roadbook check` prints them, instead of a drawing, and is listed under "Charts that do not compile" in the index. The command still writes everything and exits 0, so a pull request with a broken chart still gets its summary.
+- **Matching.** Machines are matched by name and states by id, the path of names from the machine (`Checkout.Charging`): a state renamed, or moved into another parent, is a removed state and an added one. A transition is matched by its source state, its trigger (the event; the sender and event of `on upload.Progress`; the error of a `fail`; `after` by the keyword alone, so a new delay is a change to the trigger) and which block with that trigger it is in the state, and then, among the branches of a guarded block, first by the guard's text and then by position, so a branch added in the middle of an `if` is an added branch and the others keep their partners. Everything is compared by its canonical text, as the formatter writes it, so formatting, comments and moved lines are not changes. A machine whose own states and transitions are the same is unchanged even when one it invokes changed.
+- **One chart.** The page draws the after version with what was removed put back: a removed state where it was among its siblings, a removed transition with its state's others. The details of a removed state or transition are the before version's, and its source line is in a copy of the file named `checkout.road @ main`. A diff page has diff mode only, since the merged chart is neither version and cannot be simulated. Containers opened collapsed are expanded where something inside them changed; one the reader collapses over a change is marked `~`.
+
+| What | Drawn as |
+| --- | --- |
+| Added state or transition | A heavy solid border or line in the "added" colour, and a `+` badge on the box's or the label's corner (a `+` before a row inside a state) |
+| Removed | A dashed border or line in the "removed" colour, faded, its name and label struck through, and a `−` badge |
+| Changed | A heavy border or line in the "changed" colour and a `~` badge; its tooltip names what changed (`changed (guard)`) |
+| A collapsed state with changes inside | A `~` badge |
+
+The diff panel says what the chart and each machine of it did (`~ changed`, with `states +2 −1, transitions +1 ~3`), lists the changes to the machine itself (signature, doc comment, each variable, event and emitted event) as before and after, and every changed state and transition in document order; `→` and `←` step through them, selecting each. The details of a selected state or transition begin with its status and a table of what changed, before and after: guard, effects, target and trigger of a transition; kind, doc comment, initial state, invoke and its arguments, `entry`, `exit`, `output` and `fail` of a state. Changed types, functions, actions and tasks are listed with their declarations before and after.
+
+The index puts the summary first: the two revisions, the counts of machines, states and transitions added, removed and changed, and a table of the machines that changed, each linked to its page, before the graph and the table of all machines. Next to the pages `--diff` writes `summary.md`, the same summary as a Markdown table for a pull request comment (also printed on standard output), and `summary.json`:
+
+```json
+{
+  "from": "main", "to": "HEAD", "changed": true,
+  "machines": {"added": 0, "removed": 0, "changed": 1},
+  "states": {"added": 2, "removed": 1, "changed": 0},
+  "transitions": {"added": 1, "removed": 0, "changed": 3},
+  "changes": [{"machine": "Checkout", "status": "changed", "chart": "examples/shop/place_order.road", "page": "place_order.html", "states": {…}, "transitions": {…}}],
+  "errors": [{"chart": "…", "side": "after", "page": "…"}]
+}
+```
+
+**Coverage.** Load the traces of many runs, from a test run or from production, and see how often each transition was taken and each state entered, across every run of the machine, child runs included. `roadbook viz --coverage traces/` (files, or directories searched for `*.jsonl`) puts into each page the traces with a run of one of its machines, and the pages open in coverage mode; any page can also load traces with the file picker in the coverage panel or by dropping them on the page while in coverage mode. Nothing is uploaded.
+
+| What | Drawn as |
+| --- | --- |
+| A transition taken | A line heavier and in a stronger colour the more often it was taken (four steps, on a logarithmic scale relative to the machine's most taken), and a `×12` badge on its label (a `✓` before a row inside a state) |
+| A state entered | Its box shaded the same way, and a `×12` badge |
+| Never taken or entered | A dotted line or border in the error colour and a `never` badge (a `0` before a row) |
+
+Hovering anything gives its count in words (`taken 12 times in 8 runs`), and so do the details of what is selected. The panel says how many files, runs and records were read, how many transitions of the machine on screen were taken (`7 of 11`) and states entered, and lists the transitions never taken and the states never entered, each a link; `→` and `←` step through the transitions never taken. A table gives every transition with its count. A run recorded from another version of its machine (the `ir` of its `started` or `restored` record differs from the machine's hash) is left out, since its states and transitions may not be the chart's: the panel warns with the number of runs and records left out, and so does the CLI. Runs of machines the chart does not have are counted apart. The tests count the shop's conformance traces: all five transitions of `Checkout` taken across its eight runs, and the four `fail` transitions of `PlaceOrder` that no case takes flagged.
+
+## Reviewing chart changes in pull requests
+
+[`docs/ci/roadbook-diff.yml`](../ci/roadbook-diff.yml) is a GitHub Actions workflow to copy into a repository's `.github/workflows/`. On every pull request that touches a `.road` file or `roadbook.toml` it:
+
+1. checks out the pull request with the base branch's history (`fetch-depth: 0`),
+2. installs `roadbook` (from source in this repository; a released binary elsewhere),
+3. runs `roadbook viz --diff "origin/<base>...HEAD" -o roadbook-diff`,
+4. uploads `roadbook-diff/` as the artifact `roadbook-diff`, kept 14 days,
+5. posts a comment with `summary.md` and a link to the artifact, or updates the one it posted before (found by a hidden marker), so a pull request has one comment however many times it is pushed.
+
+The artifact is a zip: unpack it and open `index.html`, which needs nothing else, not even a network. A pull request from a fork gets a read-only token, so the workflow skips the comment there; the artifact is still uploaded. The comment needs `pull-requests: write`, which the workflow asks for.
+
+The file lives under `docs/`, not in this repository's `.github/workflows/`, so this repository's own CI does not run it. What was checked without GitHub: the `roadbook` command, on a clone with a commit that changes the shop, with the range the workflow uses; the comment script, run under Node with a stand-in for the GitHub client (it creates a comment, then updates it); and that the file is valid YAML. Not checked: the workflow on GitHub itself, `actions/upload-artifact`'s `artifact-url` output and the link it gives, and the comment's permissions.
 
 ## Other outputs
 

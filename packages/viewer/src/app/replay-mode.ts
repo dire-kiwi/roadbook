@@ -174,7 +174,7 @@ export function replayMode(host: Host, el: HTMLElement, embedded: { name: string
   })
   document.addEventListener('drop', (ev) => {
     const file = ev.dataTransfer?.files[0]
-    if (!file) return
+    if (!file || document.body.dataset.mode === 'coverage' || document.body.dataset.mode === 'diff') return
     ev.preventDefault()
     host.setMode('replay')
     readFile(file)

@@ -41,6 +41,30 @@ function roundedPath(all: Point[], r = 7): string {
   return `${d} L${n(last.x)},${n(last.y)}`
 }
 
+/**
+ * What a mode adds to a state or transition it is about (diff, coverage): a class on its
+ * elements, a short badge (`+`, `×12`, `never`) drawn on the box's or the label's corner, a
+ * one-character `glyph` in the left margin of a row inside a state (an internal transition),
+ * where a badge would not fit, and a line added to its tooltip.
+ */
+export interface Mark {
+  cls: string
+  badge?: string
+  glyph?: string
+  title?: string
+}
+
+export interface Annotations {
+  state?(id: string): Mark | null | undefined
+  transition?(state: string, index: number): Mark | null | undefined
+}
+
+/** A badge: a small pill centred on (x, y), its text in the diagram's font. */
+function badge(text: string, x: number, y: number): string {
+  const w = Math.max(14, text.length * 6.4 + 8)
+  return `<g class="rb-badge" aria-hidden="true"><rect x="${n(x - w / 2)}" y="${n(y - 7.5)}" width="${n(w)}" height="15" rx="7.5"/><text x="${n(x)}" y="${n(y + 3.6)}" text-anchor="middle">${esc(text)}</text></g>`
+}
+
 const baseline = (top: number, lineH: number, fontSize: number) => n(top + lineH / 2 + fontSize * 0.34)
 
 /** An attribute naming another machine's event, which the viewer opens on a click. */
@@ -65,15 +89,17 @@ function rowKeyword(r: Row): string {
   return `<tspan class="rb-kw">${esc(r.kw)}</tspan> `
 }
 
-function renderRows(rows: Row[], x0: number, y0: number, measure: Measure): string {
+function renderRows(rows: Row[], x0: number, y0: number, measure: Measure, mark?: (index: number) => Mark | null | undefined): string {
   const M = METRICS
   let out = ''
   rows.forEach((r, i) => {
     const top = y0 + M.rowsPadY + i * M.rowH
     const y = baseline(top, M.rowH, M.fontRow)
-    const cls = ['rb-row', r.cls ? `rb-k-${r.cls}` : ''].filter(Boolean).join(' ')
+    const mk = r.transition !== undefined ? mark?.(r.transition) : null
+    const cls = ['rb-row', r.cls ? `rb-k-${r.cls}` : '', mk?.cls ?? ''].filter(Boolean).join(' ')
     const data = r.transition !== undefined ? ` data-transition="${r.transition}"` : ''
     const kw = rowKeyword(r)
+    if (mk?.glyph && !r.cont) out += `<text class="rb-glyph ${esc(mk.cls)}"${data} x="${n(x0 + 2)}" y="${y}">${esc(mk.glyph)}${mk.title ? `<title>${esc(mk.title)}</title>` : ''}</text>`
     if (r.machine) {
       // A machine invoke: a pill the viewer makes clickable.
       const kwW = measure(r.kw + ' ', M.fontRow, false)
@@ -106,24 +132,26 @@ function pillRest(r: Row): string {
   return `${esc(rest.slice(0, -tail.length))} <tspan class="rb-kw">as</tspan> <tspan class="rb-alias">${esc(r.alias!)}</tspan>`
 }
 
-function renderState(state: State, parent: State | null, collapsed: boolean, g: Box, measure: Measure, interactive: boolean): string {
+function renderState(state: State, parent: State | null, collapsed: boolean, g: Box, measure: Measure, interactive: boolean, annotate?: Annotations): string {
   const M = METRICS
   const box = stateBox(state, measure, collapsed)
   const isContainer = state.states.length > 0 && !collapsed
   const inset = state.kind === 'final' ? M.finalInset : 0
+  const mark = annotate?.state?.(state.id)
   const cls = [
     'rb-state',
     `rb-kind-${state.kind}`,
     isContainer ? 'rb-container' : 'rb-leaf',
     collapsed ? 'rb-collapsed' : '',
     parent && parent.kind === 'parallel' ? 'rb-region' : '',
+    mark?.cls ?? '',
   ]
     .filter(Boolean)
     .join(' ')
   const w = g.width
   const h = g.height
   let s = `<g class="${cls}" data-state="${esc(state.id)}" transform="translate(${n(g.x)},${n(g.y)})">`
-  s += `<title>${esc(state.id)}${state.doc ? ' - ' + esc(state.doc) : ''}</title>`
+  s += `<title>${esc(state.id)}${state.doc ? ' - ' + esc(state.doc) : ''}${mark?.title ? '\n' + esc(mark.title) : ''}</title>`
   s += `<rect class="rb-box" width="${n(w)}" height="${n(h)}" rx="${isContainer ? 11 : 8}"/>`
   if (collapsed) s += `<rect class="rb-box-stack" x="3" y="${n(h)}" width="${n(w - 6)}" height="3" rx="1.5"/>`
   if (state.kind === 'final') {
@@ -152,16 +180,19 @@ function renderState(state: State, parent: State | null, collapsed: boolean, g: 
   if (box.rows.length) {
     const sepY = inset + box.titleH
     if (!isContainer) s += `<line class="rb-sep" x1="${inset}" x2="${n(w - inset)}" y1="${sepY}" y2="${sepY}"/>`
-    s += renderRows(box.rows, inset, sepY - (isContainer ? M.rowsPadY : 0), measure)
+    const tr = annotate?.transition
+    s += renderRows(box.rows, inset, sepY - (isContainer ? M.rowsPadY : 0), measure, tr ? (i) => tr(state.id, i) : undefined)
   }
+  if (mark?.badge) s += badge(mark.badge, w - 6, 0)
   return s + '</g>'
 }
 
-function renderLabel(state: State, index: number, kind: EdgeKind, label: Box): string {
+function renderLabel(state: State, index: number, kind: EdgeKind, label: Box, mark?: Mark | null): string {
   const M = METRICS
   const lines = transitionLines(state, index)
   const cx = label.x + label.width / 2
-  let s = `<g class="rb-label rb-k-${kind}" data-state="${esc(state.id)}" data-transition="${index}">`
+  let s = `<g class="rb-label rb-k-${kind}${mark ? ' ' + esc(mark.cls) : ''}" data-state="${esc(state.id)}" data-transition="${index}">`
+  if (mark?.title) s += `<title>${esc(mark.title)}</title>`
   s += `<rect class="rb-label-bg" x="${n(label.x)}" y="${n(label.y)}" width="${n(label.width)}" height="${n(label.height)}" rx="5"/>`
   let top = label.y + M.labelPadY
   for (const l of lines) {
@@ -175,6 +206,7 @@ function renderLabel(state: State, index: number, kind: EdgeKind, label: Box): s
       top += M.effectLineH
     }
   }
+  if (mark?.badge) s += badge(mark.badge, label.x + label.width, label.y)
   return s + '</g>'
 }
 
@@ -196,6 +228,8 @@ export interface RenderOptions {
   standalone?: boolean
   /** With `standalone`: `light` or `dark`. Default: follow the system. */
   theme?: 'light' | 'dark'
+  /** What a mode marks on states and transitions (diff, coverage). */
+  annotate?: Annotations | undefined
 }
 
 /**
@@ -221,12 +255,12 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
   for (const d of view.states) {
     const g = layout.nodes[d.state.id]
     if (!g) continue
-    const svg = renderState(d.state, d.parent, d.collapsed, g, measure, opts.interactive ?? false)
+    const svg = renderState(d.state, d.parent, d.collapsed, g, measure, opts.interactive ?? false, opts.annotate)
     if (d.state.states.length && !d.collapsed) containers += svg
     else leaves += svg
   }
 
-  const edge = (id: string, kind: EdgeKind, attrs: string, port: boolean, inner: boolean) => {
+  const edge = (id: string, kind: EdgeKind, attrs: string, port: boolean, inner: boolean, mk?: Mark | null) => {
     const e = layout.edges[id]
     if (!e || e.points.length < 2) return ''
     const d = roundedPath(e.points)
@@ -239,7 +273,8 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
         ? `<circle class="rb-port" cx="${n(p0.x)}" cy="${n(p0.y)}" r="3.5"/>`
         : ''
     return (
-      `<g class="rb-edge rb-k-${kind}${inner ? ' rb-from-inside' : ''}"${attrs}>` +
+      `<g class="rb-edge rb-k-${kind}${inner ? ' rb-from-inside' : ''}${mk ? ' ' + esc(mk.cls) : ''}"${attrs}>` +
+      (mk?.title ? `<title>${esc(mk.title)}</title>` : '') +
       `<path class="rb-edge-hit" d="${d}"/>` +
       `<path class="rb-edge-line" d="${d}" marker-end="url(#${prefix}-arrow-${kind})"/>${mark}</g>`
     )
@@ -260,9 +295,10 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
       const kind = triggerKind(t.trigger)
       const inner = view.visible(state.id) !== state.id
       const isContainer = state.states.length > 0 && !(here?.collapsed ?? false)
-      edgePaths += edge(id, kind, ` data-state="${esc(state.id)}" data-transition="${index}"`, isContainer, inner)
+      const mark = opts.annotate?.transition?.(state.id, index)
+      edgePaths += edge(id, kind, ` data-state="${esc(state.id)}" data-transition="${index}"`, isContainer, inner, mark)
       const e = layout.edges[id]
-      if (e && e.label) labels += renderLabel(state, index, kind, e.label)
+      if (e && e.label) labels += renderLabel(state, index, kind, e.label, mark)
     })
   })
 

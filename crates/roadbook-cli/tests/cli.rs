@@ -1356,3 +1356,231 @@ machine Order(item: Item, i: ref Inv, s: ref Stock, f: ref Far, a: ref A) {
     let _ = std::fs::remove_dir_all(&outside);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+fn git(dir: &Path, args: &[&str]) {
+    let out = Command::new("git")
+        .args(["-c", "user.name=Test", "-c", "user.email=test@example.com"])
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "git {args:?}: {}", text(&out.stderr));
+}
+
+#[test]
+fn viz_diff_draws_two_commits_as_one_chart() {
+    // A repository whose project is a subdirectory, with the shop and two small charts.
+    let shop = |f: &str| std::fs::read_to_string(repo().join("examples/shop").join(f)).unwrap();
+    let old = "machine Old() {\n  initial A\n  final state A {}\n}\n";
+    let dir = project(
+        "diff/proj",
+        &[
+            ("shop/checkout.road", &shop("checkout.road")),
+            ("shop/place_order.road", &shop("place_order.road")),
+            ("shop/types.road", &shop("types.road")),
+            ("old.road", old),
+        ],
+    );
+    let top = dir.parent().unwrap().to_path_buf();
+    git(&top, &["init", "-q", "-b", "main"]);
+    git(&top, &["add", "."]);
+    git(&top, &["commit", "-q", "-m", "one"]);
+    // The second commit changes a guard and a target, adds a state, renames another (removed
+    // and added), removes a chart and adds one.
+    let checkout = shop("checkout.road")
+        .replace("if attempts < 3       -> Backoff", "if attempts < 5       -> Backoff")
+        .replace(
+            "done                    -> Charged   set receipt = result",
+            "done                    -> Notifying set receipt = result",
+        )
+        .replace(
+            "  final state Charged  { output receipt }",
+            "  state Notifying { after 1s -> Charged }\n\n  final state Charged  { output receipt }",
+        )
+        .replace("-> GaveUp", "-> GivenUp")
+        .replace("final state GaveUp", "final state GivenUp");
+    std::fs::write(dir.join("shop/checkout.road"), &checkout).unwrap();
+    std::fs::remove_file(dir.join("old.road")).unwrap();
+    std::fs::write(
+        dir.join("new.road"),
+        "machine New() {\n  initial A\n  final state A {}\n}\n",
+    )
+    .unwrap();
+    git(&top, &["add", "-A"]);
+    git(&top, &["commit", "-q", "-m", "two"]);
+
+    let out = out_dir("diff");
+    let o = out.to_str().unwrap();
+    let res = roadbook(&dir, &["viz", "--diff", "HEAD~1..HEAD", "-o", o]);
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    let mut files: Vec<String> = std::fs::read_dir(&out)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    files.sort();
+    assert_eq!(
+        files,
+        [
+            "index.html",
+            "new.html",
+            "old.html",
+            "roadbook-viewer.js",
+            "shop-place_order.html",
+            "summary.json",
+            "summary.md"
+        ]
+    );
+    let summary: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(out.join("summary.json")).unwrap()).unwrap();
+    assert_eq!(summary["from"], "HEAD~1");
+    assert_eq!(summary["to"], "HEAD");
+    assert_eq!(summary["changed"], true);
+    assert_eq!(
+        summary["machines"],
+        serde_json::json!({ "added": 1, "removed": 1, "changed": 1 })
+    );
+    // Notifying and GivenUp added, GaveUp removed (and Old's and New's one state each).
+    assert_eq!(
+        summary["states"],
+        serde_json::json!({ "added": 3, "removed": 2, "changed": 0 })
+    );
+    let changes: Vec<(&str, &str)> = summary["changes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| {
+            (
+                c["machine"].as_str().unwrap(),
+                c["status"].as_str().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        changes,
+        [
+            ("New", "added"),
+            ("Old", "removed"),
+            ("Checkout", "changed")
+        ]
+    );
+    let md = std::fs::read_to_string(out.join("summary.md")).unwrap();
+    assert!(
+        md.contains("| ~ changed | `Checkout` | `shop/place_order.road` | +2 −1 | +1 ~3 |"),
+        "{md}"
+    );
+    assert_eq!(text(&res.stdout), md);
+
+    // The page draws the merged chart, with what changed.
+    let data = page_data(&std::fs::read_to_string(out.join("shop-place_order.html")).unwrap());
+    assert_eq!(data["mode"], "diff");
+    let d = &data["diff"];
+    assert_eq!(d["status"], "changed");
+    let checkout = &d["machines"]["Checkout"];
+    assert_eq!(checkout["status"], "changed");
+    assert_eq!(checkout["states"]["Checkout.GaveUp"]["status"], "removed");
+    assert_eq!(checkout["states"]["Checkout.Notifying"]["status"], "added");
+    let guard = &checkout["transitions"]["Checkout.Charging#2"]["changes"][0];
+    assert_eq!(
+        guard,
+        &serde_json::json!({ "what": "guard", "before": "[attempts < 3]", "after": "[attempts < 5]" })
+    );
+    assert_eq!(d["machines"]["PlaceOrder"]["status"], "unchanged");
+    let ir = roadbook_ir::Ir::from_json(&data["ir"].to_string()).unwrap();
+    let names: Vec<&str> = ir.machines["Checkout"]
+        .root
+        .states
+        .iter()
+        .map(|s| s.name.as_str())
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "Charging",
+            "Backoff",
+            "Notifying",
+            "Charged",
+            "Declined",
+            "GaveUp",
+            "GivenUp"
+        ]
+    );
+    assert!(
+        ir.sources
+            .iter()
+            .any(|s| s.path == "shop/checkout.road @ HEAD~1")
+    );
+    let old_page = page_data(&std::fs::read_to_string(out.join("old.html")).unwrap());
+    assert_eq!(old_page["diff"]["status"], "removed");
+
+    // The index puts what changed first.
+    let index = page_data(&std::fs::read_to_string(out.join("index.html")).unwrap());
+    assert_eq!(index["index"]["diff"]["summary"]["machines"]["changed"], 1);
+    assert_eq!(index["index"]["diff"]["charts"][0]["status"], "added");
+
+    // One revision against the working tree, where a chart no longer compiles: its page shows
+    // the diagnostics.
+    std::fs::write(
+        dir.join("new.road"),
+        "machine New() {\n  initial Missing\n  final state A {}\n}\n",
+    )
+    .unwrap();
+    let out = out_dir("diff-worktree");
+    let o = out.to_str().unwrap();
+    let res = roadbook(&dir, &["viz", "--diff", "HEAD", "-o", o, "new.road"]);
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    assert!(text(&res.stderr).contains("`new.road` does not compile at working tree"));
+    let data = page_data(&std::fs::read_to_string(out.join("new.html")).unwrap());
+    assert_eq!(data["diff"]["status"], "error");
+    assert_eq!(data["diff"]["errors"][0]["side"], "after");
+    assert!(
+        data["diff"]["errors"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Missing")
+    );
+
+    let res = roadbook(&dir, &["viz", "--diff", "nope..HEAD", "-o", o]);
+    assert_eq!(res.status.code(), Some(2));
+    assert!(text(&res.stderr).contains("`nope` is not a revision"));
+}
+
+#[test]
+fn viz_coverage_embeds_the_traces_of_each_page() {
+    let out = out_dir("coverage");
+    let o = out.to_str().unwrap();
+    let res = roadbook(
+        &repo(),
+        &[
+            "viz",
+            "examples/shop",
+            "--coverage",
+            "spec/conformance/cases",
+            "-o",
+            o,
+        ],
+    );
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    assert!(text(&res.stderr).contains("13 of"), "{}", text(&res.stderr));
+    let data = page_data(&std::fs::read_to_string(out.join("place_order.html")).unwrap());
+    assert_eq!(data["mode"], "coverage");
+    let traces = data["coverage"].as_array().unwrap();
+    // Only the traces with a run of PlaceOrder or Checkout.
+    assert!(traces.len() >= 8 && traces.len() < 20, "{}", traces.len());
+    assert!(traces.iter().all(|t| {
+        let text = t["text"].as_str().unwrap();
+        text.contains("\"machine\":\"Checkout\"") || text.contains("\"machine\":\"PlaceOrder\"")
+    }));
+    let res = roadbook(
+        &repo(),
+        &[
+            "viz",
+            "examples/shop",
+            "--coverage",
+            "spec/conformance/cases/gate-guards",
+            "-o",
+            o,
+        ],
+    );
+    assert_eq!(res.status.code(), Some(2));
+    assert!(text(&res.stderr).contains("none of the traces"));
+}
