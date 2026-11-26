@@ -52,9 +52,9 @@ Progress is recorded on each milestone below as it finishes.
 | Milestone | Status |
 | --- | --- |
 | M1. Language and IR | Done, 26 November 2026 |
-| M2. Viewer | In progress |
-| M3. TypeScript runtime | Not started |
-| M4. Rust runtime | Not started |
+| M2. Viewer | Done, 26 November 2026 |
+| M3. TypeScript runtime | In progress |
+| M4. Rust runtime | In progress |
 | M5. Messaging | Not started |
 | M6. Depth | Not started |
 | M7. Review tooling | Not started |
@@ -65,6 +65,8 @@ Progress is recorded on each milestone below as it finishes.
 *Done.* `crates/roadbook-syntax`, `roadbook-ir`, `roadbook-compiler` and `roadbook-cli` (`check [--json]`, `fmt [--check]`, `export ir`); `spec/ir.md` and `spec/ir.schema.json`. Every check on the language page has a failing chart and an expected diagnostic, except definite assignment, which stays in M6 as planned. `examples/shop` checks and formats clean. Four further charts were written from prose by an agent that had read only the language page (`examples/README.md`); all compiled clean on the first attempt, and what was unclear went back into the language page. Two independent reviews found edge-case bugs (non-finite floats, deep nesting, multi-file projects, a root-level `always` loop), which are fixed. The behavioural contract for M3 and M4 (`spec/execution.md`, the trace format and the conformance cases) was written during M1 as well.
 
 **M2. Viewer.** `roadbook viz` in explore mode, built from the spike: layout, drill-down into child machines, details panel, project index. `export mermaid`. At this point the project already delivers its main promise for charts that are written but not yet run.
+
+*Done.* `packages/viewer` (`@roadbook/viewer`) is built into one script that `roadbook viz` embeds; pages in one output directory share it, or `--self-contained` inlines it. Explore mode has pan, zoom, fit, collapse and expand, a details panel, drill-down into child machines with a trail, search, light and dark themes, and a project index of which machine invokes which. `roadbook viz --watch` serves the output locally and reloads, and `roadbook export mermaid` is checked against Mermaid's own parser. The spike's problems are handled (see the visualization page), and the 46-state `examples/large` opens with its deep levels collapsed. The pages were checked in a browser in both themes, and an independent review's findings (Mermaid syntax, link escaping, container widths, the watch server's host check) are fixed. The spike viewer and compiler are deleted.
 
 **M3. TypeScript runtime.** `@roadbook/core`, `@roadbook/effect`, `gen`, the trace, and the first conformance cases. The shop example serves requests from Express.
 
