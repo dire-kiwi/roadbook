@@ -381,3 +381,55 @@ async fn a_parallel_run_is_in_its_parallel_state_and_restores_with_every_region(
     );
     jobs.cancel().await;
 }
+
+/// Host code holding a run's handle from `Config::on_run` can ask it to suspend. A spawned
+/// run stops once idle, and its actor's `result` says so with the saved snapshot; a run of
+/// `run_with` goes on to its end, ignoring the request, since its caller gets an output.
+#[tokio::test]
+async fn suspending_through_the_handle_from_on_run() {
+    let app = Arc::new(Shop::default());
+    let handles: Arc<Mutex<Vec<roadbook::RunHandle>>> = Arc::default();
+    let seen = handles.clone();
+    let sink = Arc::new(MemorySink::new());
+    let config = Config::new()
+        .sink(sink.clone())
+        .timer(Arc::new(Clock::default()))
+        .on_run(move |_, handle| seen.lock().unwrap().push(handle));
+
+    let actor = v2::counter::spawn_with(config.clone().run_id("a1"), app.clone(), 1);
+    actor.send(v2::counter::Event::Add { by: 2 }).await;
+    let handle = loop {
+        if let Some(h) = handles.lock().unwrap().pop() {
+            break h;
+        }
+        tokio::time::sleep(Duration::from_millis(1)).await;
+    };
+    handle.suspend();
+    match actor.result().await {
+        Err(roadbook::Stopped::Suspended(saved)) => {
+            assert_eq!(saved.status, Status::Running);
+            assert_eq!(saved.vars["n"], 3);
+        }
+        other => panic!("not suspended: {other:?}"),
+    }
+    assert_eq!(
+        kinds(&sink, "a1").last().map(String::as_str),
+        Some("suspended")
+    );
+
+    let finish = async {
+        let handle = loop {
+            if let Some(h) = handles.lock().unwrap().pop() {
+                break h;
+            }
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        };
+        handle.suspend();
+        tokio::time::sleep(Duration::from_millis(5)).await;
+        handle.send(json!({"_tag": "Finish"}));
+    };
+    let config = config.run_id("w1");
+    let (out, ()) = tokio::join!(v2::counter::run_with(&config, &*app, 5), finish);
+    assert_eq!(out, 5);
+    assert!(!kinds(&sink, "w1").iter().any(|k| k == "suspended"));
+}

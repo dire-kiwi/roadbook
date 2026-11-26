@@ -77,7 +77,9 @@ pub enum Outcome {
 ///
 /// Returns the output (`Ok`) or the error (`Err`). A run that ends with a defect resumes
 /// unwinding with a [`Defect`] payload. A cancelled child run never returns: it reports
-/// through the token, and its parent drops the future.
+/// through the token, and its parent drops the future. The run goes on to its end: a suspend
+/// request through its [`RunHandle`] (from [`Config::on_run`]) is ignored, as a child run
+/// ignores one; [`start`] gives a root run that can be suspended.
 pub async fn run(
     program: &Program,
     machine: &str,
@@ -103,7 +105,8 @@ pub async fn run(
                     &config,
                     id,
                     Shared::claimed(),
-                ),
+                )
+                .run_to_the_end(),
                 false,
             )
         }
@@ -112,7 +115,7 @@ pub async fn run(
     finish(end, child && cancelled).await
 }
 
-/// Like [`run`], but always a root run, set up by `config`.
+/// Like [`run`], but always a root run, set up by `config`. It too ignores suspend requests.
 pub async fn run_with(
     config: &Config,
     program: &Program,
@@ -130,7 +133,8 @@ pub async fn run_with(
         config,
         config.root_id(),
         Shared::claimed(),
-    );
+    )
+    .run_to_the_end();
     finish(driver.drive().await, false).await
 }
 
@@ -141,11 +145,8 @@ async fn finish(end: RunEnd, cancelled_child: bool) -> Result<Value, Value> {
         RunEnd::Done(v) => Ok(v),
         RunEnd::Failed(e) => Err(e),
         RunEnd::Defect(defect) if !cancelled_child => std::panic::resume_unwind(Box::new(defect)),
-        // Only host code holding the run's handle from `Config::on_run` can suspend it.
-        RunEnd::Suspended(_) => std::panic::resume_unwind(Box::new(Defect::host(
-            "the run was suspended through its handle",
-        ))),
-        // Reported through the token; the parent drops this future.
+        // Reported through the token (or, for a suspended run, impossible: these runs ignore
+        // suspend requests); the parent drops this future.
         _ => std::future::pending().await,
     }
 }
@@ -198,6 +199,11 @@ pub fn restore<'a>(
 /// while the run was saved are taken before the event. A run that ends gives its final
 /// snapshot (`done`, `failed`, `cancelled`); one that ends with a defect resumes unwinding
 /// with the [`Defect`], as [`run`] does.
+///
+/// Both inputs are checked before anything runs or is written: the snapshot first (a
+/// [`RestoreError`]), then the event, which must be one the machine accepts, with exactly its
+/// fields, each of its type. An event that is not is the caller's host defect, as one that
+/// does not encode is for `Actor::send`: `resume` resumes unwinding with the [`Defect`].
 pub async fn resume(
     config: &Config,
     program: &Program,
@@ -207,6 +213,15 @@ pub async fn resume(
     host: &dyn Host,
 ) -> Result<Saved, RestoreError> {
     let checked = crate::driver::check(program, machine, saved, config)?;
+    let event = event.map(|value| {
+        program
+            .check_event(&checked.0.machine, value)
+            .unwrap_or_else(|e| {
+                std::panic::resume_unwind(Box::new(Defect::host(format!(
+                    "resume was given an event that is not one of the machine's: {e}"
+                ))))
+            })
+    });
     let shared = Shared::claimed();
     if let Some(value) = event {
         shared.push([Input::Event { value }]);

@@ -358,3 +358,99 @@ fn a_defect_restarting_an_invoke_makes_restore_atomic() {
         [Record::Restored { .. }, Record::Defect { .. }]
     ));
 }
+
+#[test]
+fn a_migration_cannot_turn_the_snapshot_into_another_machines() {
+    let p = program();
+    let mut old = saved(&p);
+    old["ir"] = json!(format!("sha256:{}", "0".repeat(64)));
+    // A valid snapshot of `Peer` (whose `ref` would otherwise be refused later, as `ref`).
+    let peer_hash = p.ir().machines["Peer"].hash.clone();
+    let peer = json!({
+        "snapshotVersion": 1, "machine": "Peer", "run": "r9", "ir": peer_hash,
+        "status": "running", "active": ["Peer", "Peer.X"], "input": {"other": "r1"},
+        "vars": {}, "invokes": [], "timers": [], "nextInvoke": 1, "nextTimer": 1,
+        "nextMessage": 1, "result": null
+    });
+    for machine in [None, Some("M")] {
+        let mut other = |_: Value| Ok(peer.clone());
+        let e = p
+            .check_saved(old.clone(), machine, Some(&mut other))
+            .unwrap_err();
+        assert_eq!(e.reason(), "machine", "asked for {machine:?}: {e}");
+    }
+}
+
+#[test]
+fn a_number_s_form_does_not_matter() {
+    let p = program();
+    let mut v = saved(&p);
+    v["snapshotVersion"] = json!(1.0);
+    v["nextTimer"] = json!(3.0);
+    v["timers"][0]["due"] = json!(1000.0);
+    v["timers"][0]["index"] = json!(0.0);
+    v["vars"]["n"] = json!(-0.0);
+    v["input"]["item"]["qty"] = json!(2.0);
+    let read = Saved::from_value(v.clone()).expect("integral floats are integers");
+    let (checked, _) = p.check_saved(v, Some("M"), None).unwrap();
+    for s in [&read, &checked] {
+        let text = serde_json::to_string(s).unwrap();
+        assert!(!text.contains(".0"), "an integer saved as a float: {text}");
+        assert_eq!(s.vars["n"], json!(0));
+        assert_eq!(s.timers[0].due, 1000);
+    }
+    // A float that holds an integer is saved as the integer, as the other runtime writes it.
+    let (mut snap, _) = p
+        .start(
+            "M",
+            "r1",
+            json!({"item": {"sku": "s", "qty": 1}})
+                .as_object()
+                .unwrap()
+                .clone(),
+            &mut no_fns,
+        )
+        .unwrap();
+    snap.vars.insert("n".into(), json!(2.0));
+    snap.vars.insert("note".into(), json!(-0.0));
+    let text = serde_json::to_string(&Saved::new(&snap, |t| t.delay)).unwrap();
+    assert!(text.contains(r#""n":2,"note":0"#), "{text}");
+    // A fraction is not an integer.
+    let mut v = saved(&p);
+    v["nextTimer"] = json!(3.5);
+    assert_eq!(reason(&p, v), "invalid");
+}
+
+#[test]
+fn a_result_decides_with_the_status() {
+    let p = program();
+    // A running run has no result yet.
+    let mut v = saved(&p);
+    v["result"] = json!({"output": null});
+    assert_eq!(reason(&p, v.clone()), "invalid");
+    assert!(Saved::from_value(v).is_ok(), "it matches the schema");
+    // A defect of a kind this runtime does not know matches the schema: the run has ended.
+    let mut v = saved(&p);
+    v["status"] = json!("defect");
+    v["active"] = json!([]);
+    v["result"] = json!({"defect": {"kind": "cosmic", "ray": 1}});
+    assert_eq!(reason(&p, v.clone()), "ended");
+    assert_eq!(Saved::from_value(v).unwrap_err().reason(), "ended");
+}
+
+#[test]
+fn an_event_is_checked_against_the_events_the_machine_accepts() {
+    let p = program();
+    assert_eq!(
+        p.check_event("M", json!({"_tag": "Go"})),
+        Ok(json!({"_tag": "Go"}))
+    );
+    for bad in [
+        json!({"_tag": "Stop"}),
+        json!({"_tag": "Go", "extra": 1}),
+        json!({"by": 1}),
+        json!(7),
+    ] {
+        assert!(p.check_event("M", bad.clone()).is_err(), "{bad}");
+    }
+}

@@ -84,6 +84,9 @@ pub(crate) struct Driver<'a> {
     final_state: Option<String>,
     cancel_requested: bool,
     cancel_taken: bool,
+    /// Whether a suspend request stops the run: a top-level run's does, unless it was
+    /// started to run to its end (`run`, `run_with`). A child run ignores it.
+    suspendable: bool,
 }
 
 /// Calls a host function with no invoke context and the run's handles in scope, catching a
@@ -394,7 +397,16 @@ impl<'a> Driver<'a> {
             final_state: None,
             cancel_requested: false,
             cancel_taken: false,
+            suspendable: true,
         }
+    }
+
+    /// The run goes on to its end: a suspend request through its handle is ignored, as a
+    /// child run ignores one. For `run` and `run_with`, whose callers get an output or an
+    /// error and nothing else.
+    pub fn run_to_the_end(mut self) -> Self {
+        self.suspendable = false;
+        self
     }
 
     pub async fn drive(self) -> RunEnd {
@@ -515,21 +527,31 @@ impl<'a> Driver<'a> {
     /// a top-level run asked to suspend, the stop once it is idle.
     async fn take(&mut self) -> Next {
         poll_fn(|cx| {
-            self.poll_sources(cx);
-            if self.cancel_requested {
-                self.cancel_taken = true;
-                return Poll::Ready(Next::Input(Input::Cancel));
-            }
-            if self.queue.is_empty()
-                && self.snap.invokes.is_empty()
-                && self.parent.is_none()
-                && self.shared.suspend_requested()
-            {
-                return Poll::Ready(Next::Suspend);
-            }
-            match self.queue.pop_front() {
-                Some(input) => Poll::Ready(Next::Input(input)),
-                None => Poll::Pending,
+            loop {
+                self.poll_sources(cx);
+                if self.cancel_requested {
+                    self.cancel_taken = true;
+                    return Poll::Ready(Next::Input(Input::Cancel));
+                }
+                if self.queue.is_empty()
+                    && self.snap.invokes.is_empty()
+                    && self.parent.is_none()
+                    && self.suspendable
+                    && self.shared.suspend_requested()
+                {
+                    // Idle as far as the inbox drained above shows. The run closes only if
+                    // nothing has arrived since (an event, a message, a cancel request): that
+                    // check and the close are one operation, so what was pushed while the
+                    // run was still open is taken, not discarded with the closed inbox.
+                    if self.shared.close_if_idle() {
+                        return Poll::Ready(Next::Suspend);
+                    }
+                    continue;
+                }
+                return match self.queue.pop_front() {
+                    Some(input) => Poll::Ready(Next::Input(input)),
+                    None => Poll::Pending,
+                };
             }
         })
         .await
@@ -887,5 +909,159 @@ impl Drop for Driver<'_> {
             let _ = drop_caught(slot);
         }
         self.shared.finish(Finished::Ok);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    use serde_json::json;
+
+    use super::*;
+    use crate::env::MemorySink;
+
+    /// Nothing but actions that return at once.
+    struct Quiet;
+
+    impl Host for Quiet {
+        fn function(&self, name: &str, _: Vec<Value>) -> Result<Value, Defect> {
+            Err(Defect::host(format!("no function {name}")))
+        }
+
+        fn action<'a>(&'a self, _: &str, _: Object) -> BoxFuture<'a, Result<(), Defect>> {
+            Box::pin(async { Ok(()) })
+        }
+
+        fn invoke<'a>(&'a self, _: Invocation) -> BoxFuture<'a, Outcome> {
+            Box::pin(std::future::pending())
+        }
+    }
+
+    /// An event pushed onto a run's inbox while the run decides to suspend is either taken
+    /// (the push came first) or refused (`deliver` gives `false`, the run had closed): never
+    /// accepted and then discarded. One thread drives the run, another pushes events and asks
+    /// it to suspend half-way; every event `deliver` accepted is in the count it saved.
+    /// A counter that waits for `Add` in a state with no work.
+    fn counter() -> Program {
+        const CHART: &str = "machine C() {\n  var n: int = 0\n  event Add { by: int }\n  \
+                             initial S\n  state S { on Add set n = n + event.by }\n}\n";
+        let c = roadbook_compiler::compile_source("c.road", CHART, &Default::default());
+        assert!(!c.has_errors(), "{}", c.render());
+        Program::new(c.ir.unwrap()).unwrap()
+    }
+
+    /// `resume` checks the snapshot, then the event, before anything runs or is written: an
+    /// event that is not one the machine accepts (an unknown tag, a field missing or of the
+    /// wrong type) is the caller's host defect, as one that does not encode is for `send`.
+    #[test]
+    fn resume_checks_the_event_before_anything_runs() {
+        let program = counter();
+        let mut no_fns = |n: &str, _: Vec<Value>| Err(Defect::host(n));
+        let (snap, _) = program
+            .start("C", "r1", Object::new(), &mut no_fns)
+            .unwrap();
+        let saved = Saved::new(&snap, |t| t.delay);
+        let sink = Arc::new(MemorySink::new());
+        let config = Config::new().sink(sink.clone());
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let resume = |saved: &Saved, event: Value| {
+            catch_unwind(AssertUnwindSafe(|| {
+                rt.block_on(crate::dynamic::resume(
+                    &config,
+                    &program,
+                    None,
+                    saved,
+                    Some(event),
+                    &Quiet,
+                ))
+            }))
+        };
+        for bad in [
+            json!({"_tag": "Add", "by": "x"}),
+            json!({"_tag": "Add"}),
+            json!({"_tag": "Add", "by": 1, "and": 2}),
+            json!({"_tag": "Nope"}),
+            json!(7),
+        ] {
+            let payload = resume(&saved, bad.clone()).expect_err("a bad event panics");
+            let defect = payload.downcast::<Defect>().expect("with a Defect");
+            assert!(matches!(*defect, Defect::Host { .. }), "{bad}: {defect}");
+        }
+        assert!(sink.records().is_empty(), "a bad request wrote records");
+        // A snapshot that is refused is refused first.
+        let mut wrong = saved.clone();
+        wrong.status = Status::Done;
+        let refused = resume(&wrong, json!({"_tag": "Nope"})).unwrap();
+        assert_eq!(refused.unwrap_err().reason(), "ended");
+        // A good one, its `int` written as a float.
+        let after = resume(&saved, json!({"_tag": "Add", "by": 2.0}))
+            .unwrap()
+            .unwrap();
+        assert_eq!(after.vars["n"], json!(2));
+    }
+
+    #[test]
+    fn an_event_that_arrives_while_a_run_suspends_is_taken_or_refused() {
+        let program = counter();
+        let add = || Input::Event {
+            value: json!({"_tag": "Add", "by": 1}),
+        };
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let (mut lost, mut raced) = (0, 0);
+        for round in 0..3000_u64 {
+            let shared = Shared::claimed();
+            let config = Config::new().sink(Arc::new(MemorySink::new())).run_id("r1");
+            let driver = Driver::root(
+                &program,
+                "C",
+                Object::new(),
+                &[],
+                &Quiet,
+                &config,
+                "r1".into(),
+                shared.clone(),
+            );
+            let accepted = AtomicU64::new(0);
+            let end = std::thread::scope(|s| {
+                let pusher = s.spawn(|| {
+                    shared.request_suspend();
+                    // Pauses of varying length, so that the run often finds its inbox empty
+                    // and decides to stop just as the next event arrives.
+                    for i in 0..50 {
+                        for _ in 0..(round * 7 + i * 13) % 300 {
+                            std::hint::spin_loop();
+                        }
+                        if shared.deliver(add()) {
+                            accepted.fetch_add(1, Ordering::SeqCst);
+                        }
+                    }
+                });
+                let end = rt.block_on(driver.drive());
+                pusher.join().unwrap();
+                end
+            });
+            let RunEnd::Suspended(saved) = end else {
+                panic!("the run was not suspended: {end:?}");
+            };
+            let taken = saved.vars["n"].as_u64().unwrap();
+            let accepted = accepted.load(Ordering::SeqCst);
+            if taken != accepted {
+                lost += 1;
+            }
+            if accepted < 50 {
+                raced += 1;
+            }
+        }
+        assert_eq!(
+            lost, 0,
+            "rounds that lost an accepted event ({raced} rounds raced)"
+        );
     }
 }
