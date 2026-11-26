@@ -1,0 +1,46 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - transition:
+                      trigger:
+                        "on":
+                          name: Go
+                      branches:
+                        single:
+                          guard: ~
+                          target:
+                            - B
+                          effects: []
+            - state:
+                kind: final
+                name: B
+                body: []
+comments:
+  - kind: line
+    text: // File comment.
+  - kind: line
+    text: // trailing on header
+  - kind: line
+    text: // Before the state.
+  - kind: line
+    text: // trailing on transition
+  - kind: line
+    text: // At the end of the block.
+  - kind: line
+    text: //// Four slashes is a plain comment.
+  - kind: line
+    text: // End of file.

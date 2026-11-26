@@ -1,0 +1,60 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: f
+      kind:
+        fn:
+          params:
+            - name: a
+              ty:
+                builtin: int
+            - name: b
+              ty:
+                builtin: duration
+          returns:
+            builtin: bool
+  - decl:
+      name: log
+      kind:
+        action:
+          params:
+            - name: what
+              ty:
+                builtin: string
+  - decl:
+      name: ping
+      kind:
+        action:
+          params: []
+  - decl:
+      name: t
+      kind:
+        task:
+          params:
+            - name: x
+              ty:
+                builtin: json
+          returns:
+            builtin: float
+          errors:
+            - E
+            - F
+  - decl:
+      name: u
+      kind:
+        task:
+          params: []
+          returns: ~
+          errors: []
+  - decl:
+      name: v
+      kind:
+        task:
+          params: []
+          returns: ~
+          errors:
+            - E
+comments: []

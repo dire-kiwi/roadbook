@@ -1,0 +1,54 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - initial: A
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - initial: Inner
+                  - state:
+                      kind: normal
+                      name: Inner
+                      body:
+                        - transition:
+                            trigger:
+                              "on":
+                                name: Go
+                            branches:
+                              single:
+                                guard: ~
+                                target:
+                                  - Done
+                                effects: []
+                  - state:
+                      kind: final
+                      name: Done
+                      body: []
+            - state:
+                kind: parallel
+                name: P
+                body:
+                  - state:
+                      kind: normal
+                      name: R1
+                      body: []
+                  - state:
+                      kind: normal
+                      name: R2
+                      body: []
+            - state:
+                kind: final
+                name: Z
+                body: []
+comments: []

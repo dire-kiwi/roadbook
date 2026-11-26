@@ -1,0 +1,116 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      doc: A type.
+      name: A
+      kind:
+        record:
+          fields:
+            - name: x
+              ty:
+                builtin: int
+  - decl:
+      doc: An enum.
+      name: B
+      kind:
+        enum:
+          variants:
+            - C
+  - decl:
+      doc: An error.
+      name: D
+      kind:
+        error:
+          fields: []
+  - decl:
+      doc: Extern.
+      name: E
+      kind: extern
+  - decl:
+      doc: "A fn.\nTwo lines."
+      name: f
+      kind:
+        fn:
+          params: []
+          returns:
+            builtin: int
+  - decl:
+      doc: An action.
+      name: g
+      kind:
+        action:
+          params: []
+  - decl:
+      doc: A task.
+      name: h
+      kind:
+        task:
+          params: []
+          returns: ~
+          errors: []
+  - decl:
+      doc: A machine.
+      name: M
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - var:
+                doc: A variable.
+                name: v
+                ty:
+                  builtin: int
+                init: ~
+            - event:
+                doc: An event.
+                name: Go
+                fields: []
+            - state:
+                doc: A state.
+                kind: normal
+                name: S
+                body:
+                  - state:
+                      doc: A final child.
+                      kind: final
+                      name: T
+                      body: []
+            - state:
+                doc: A parallel state.
+                kind: parallel
+                name: P
+                body: []
+comments:
+  - kind: doc
+    text: /// A type.
+  - kind: doc
+    text: /// An enum.
+  - kind: doc
+    text: /// An error.
+  - kind: doc
+    text: /// Extern.
+  - kind: doc
+    text: /// A fn.
+  - kind: doc
+    text: /// Two lines.
+  - kind: doc
+    text: /// An action.
+  - kind: doc
+    text: /// A task.
+  - kind: doc
+    text: /// A machine.
+  - kind: doc
+    text: /// A variable.
+  - kind: doc
+    text: /// An event.
+  - kind: doc
+    text: /// A state.
+  - kind: doc
+    text: /// A final child.
+  - kind: doc
+    text: /// A parallel state.

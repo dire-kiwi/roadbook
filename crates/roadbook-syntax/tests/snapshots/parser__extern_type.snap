@@ -1,0 +1,9 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: Money
+      kind: extern
+comments: []

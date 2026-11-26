@@ -1,0 +1,132 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - transition:
+                      trigger:
+                        "on":
+                          name: Go
+                      branches:
+                        single:
+                          guard: ~
+                          target:
+                            - B
+                          effects: []
+                  - transition:
+                      trigger:
+                        "on":
+                          any: {}
+                      branches:
+                        single:
+                          guard: ~
+                          target:
+                            - C
+                          effects: []
+                  - transition:
+                      trigger:
+                        "on":
+                          name: Tick
+                      branches:
+                        single:
+                          guard:
+                            binary:
+                              - "<"
+                              - var: n
+                              - int: 3
+                          target:
+                            - A
+                            - Inner
+                          effects:
+                            - set:
+                                var: n
+                                value:
+                                  binary:
+                                    - +
+                                    - var: n
+                                    - int: 1
+                  - transition:
+                      trigger:
+                        "on":
+                          name: Poke
+                      branches:
+                        single:
+                          guard: ~
+                          target: ~
+                          effects:
+                            - do:
+                                name: log
+                                args:
+                                  - string: poked
+                  - transition:
+                      trigger:
+                        after:
+                          duration:
+                            value: 30
+                            unit: s
+                      branches:
+                        single:
+                          guard: ~
+                          target:
+                            - Late
+                          effects: []
+                  - transition:
+                      trigger:
+                        after:
+                          call:
+                            name: delay
+                            args:
+                              - var: n
+                      branches:
+                        single:
+                          guard: ~
+                          target:
+                            - Late
+                          effects: []
+                  - transition:
+                      trigger:
+                        after:
+                          record:
+                            ty: Cfg
+                            fields:
+                              - name: ms
+                                value:
+                                  int: 5
+                      branches:
+                        single:
+                          guard: ~
+                          target:
+                            - Late
+                          effects: []
+                  - transition:
+                      trigger: always
+                      branches:
+                        single:
+                          guard:
+                            var: ready
+                          target:
+                            - Go
+                            - Deep
+                            - Path
+                          effects: []
+                  - transition:
+                      trigger: done
+                      branches:
+                        single:
+                          guard: ~
+                          target:
+                            - Next
+                          effects: []
+comments: []

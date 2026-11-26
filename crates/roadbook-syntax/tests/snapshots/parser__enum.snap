@@ -1,0 +1,13 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: Role
+      kind:
+        enum:
+          variants:
+            - Customer
+            - Admin
+comments: []

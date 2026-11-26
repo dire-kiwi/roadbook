@@ -410,8 +410,8 @@ impl Lexer<'_> {
                 self.error(codes::MALFORMED_NUMBER, start, self.pos, msg);
             }
         }
-        if kind == TokenKind::Int && self.src[start..self.pos].parse::<i64>().is_err() {
-            let text = self.src[start..self.pos].to_string();
+        if kind == TokenKind::Int && self.src[start..suffix_start].parse::<i64>().is_err() {
+            let text = self.src[start..suffix_start].to_string();
             self.error(
                 codes::INTEGER_TOO_LARGE,
                 start,

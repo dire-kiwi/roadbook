@@ -1,0 +1,90 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - invoke:
+                      callee: charge
+                      args:
+                        - var: order
+                        - var: user
+                      outcomes:
+                        - trigger: done
+                          branches:
+                            single:
+                              guard: ~
+                              target:
+                                - B
+                              effects:
+                                - set:
+                                    var: r
+                                    value:
+                                      var: result
+                        - trigger:
+                            fail:
+                              name: CardDeclined
+                          branches:
+                            single:
+                              guard: ~
+                              target:
+                                - C
+                              effects:
+                                - set:
+                                    var: d
+                                    value:
+                                      var: error
+                        - trigger:
+                            fail:
+                              any: {}
+                          branches:
+                            single:
+                              guard: ~
+                              target:
+                                - D
+                              effects: []
+                        - trigger:
+                            fail:
+                              name: Gateway
+                          branches:
+                            block:
+                              branches:
+                                - guard:
+                                    binary:
+                                      - "<"
+                                      - var: attempts
+                                      - int: 3
+                                  target:
+                                    - Backoff
+                                  effects: []
+                                - guard: ~
+                                  target:
+                                    - GaveUp
+                                  effects: []
+            - state:
+                kind: normal
+                name: B
+                body:
+                  - invoke:
+                      callee: Checkout
+                      args: []
+                      outcomes:
+                        - trigger: done
+                          branches:
+                            single:
+                              guard: ~
+                              target:
+                                - A
+                              effects: []
+comments: []

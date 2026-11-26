@@ -8,6 +8,9 @@
 //! `Serialize` gives a structural form with every span left out. It is meant for tests and
 //! tools that compare trees, not as an interchange format: that is the IR's job.
 
+// Nodes are built once and read many times; boxing variants would only add noise.
+#![allow(clippy::large_enum_variant)]
+
 use serde::{Serialize, Serializer};
 
 use crate::lexer::Comment;

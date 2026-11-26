@@ -219,12 +219,15 @@ impl Parser<'_> {
         }
     }
 
-    /// A keyword where a name is required is consumed as the name (with an error) when the
-    /// next token is on the same line, which is when the author most likely meant it as one.
+    /// A keyword where a name is required is consumed as the name (with an error) when it is on
+    /// the same line as the tokens around it, which is when the author most likely meant it as
+    /// one. Otherwise the name is probably missing and the keyword starts the next item.
     fn keyword_as_name(&mut self, what: &str) -> PResult<Ident> {
         let t = self.tok();
         let next = self.tokens[(self.pos + 1).min(self.tokens.len() - 1)];
-        if next.kind == T::Eof || next.span.start.line != t.span.end.line || is_decl_start(t.kind) {
+        let same_line =
+            next.span.start.line == t.span.end.line && self.prev().end.line == t.span.start.line;
+        if next.kind == T::Eof || !same_line || is_decl_start(t.kind) {
             return Err(self.unexpected(what));
         }
         let word = self.text(t).to_string();
@@ -735,10 +738,8 @@ impl Parser<'_> {
                 self.bump();
                 let effects = self.effects()?;
                 if effects.is_empty() {
-                    return Err(self.unexpected(&format!(
-                        "`set` or `do` after `{}`",
-                        self.text(t).to_string()
-                    )));
+                    let expected = format!("`set` or `do` after `{}`", self.text(t));
+                    return Err(self.unexpected(&expected));
                 }
                 let hook = Hook {
                     effects,
@@ -945,6 +946,7 @@ impl Parser<'_> {
         let open = self.bump();
         let mut branches: Vec<Branch> = Vec::new();
         let mut seen_else = false;
+        let errors_before = self.diags.len();
         loop {
             let k = self.peek();
             if k == T::Punct(P::RBrace) {
@@ -1004,7 +1006,7 @@ impl Parser<'_> {
                 }
             }
         }
-        if branches.is_empty() {
+        if branches.is_empty() && self.diags.len() == errors_before {
             let d = Diagnostic::error(
                 codes::MALFORMED_BRANCH_BLOCK,
                 open.span.to(self.prev()),
@@ -1120,6 +1122,7 @@ impl Parser<'_> {
         let (args, _) = self.list(P::LParen, "the argument list", |p| p.expr(false))?;
         let open = self.expect_p(P::LBrace, " and the invoke's outcomes (`done`, `fail`)")?;
         let mut outcomes = Vec::new();
+        let errors_before = self.diags.len();
         loop {
             let k = self.peek();
             if k == T::Punct(P::RBrace) {
@@ -1138,7 +1141,7 @@ impl Parser<'_> {
                 }
             }
         }
-        if outcomes.is_empty() {
+        if outcomes.is_empty() && self.diags.len() == errors_before {
             let d = Diagnostic::error(
                 codes::UNEXPECTED_TOKEN,
                 open.span.to(self.prev()),

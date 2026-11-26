@@ -1,0 +1,27 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: E
+      kind:
+        error:
+          fields: []
+  - decl:
+      name: F
+      kind:
+        error:
+          fields:
+            - name: reason
+              ty:
+                builtin: string
+            - name: code
+              ty:
+                builtin: int
+  - decl:
+      name: G
+      kind:
+        error:
+          fields: []
+comments: []

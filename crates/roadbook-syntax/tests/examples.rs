@@ -32,18 +32,66 @@ fn examples_parse_without_diagnostics() {
 }
 
 #[test]
-fn scratch() {
-    let src = "machine M() {\n  var x: int\n  state A {\n    on Go\n    invoke foo(x) {\n      done -> B\n      on X -> C\n      fail Bad -> D set = 1\n    }\n    var y: int\n  }\n  done -> X\n  after Foo { a: 1 } -> X\n}\nstate Z {}\ntype a = order\n";
-    println!("{}", render_all("t.road", src));
-}
-
-#[test]
 fn examples_are_fixed_points() {
     for (name, src) in EXAMPLES {
-        let out = format(src).unwrap();
-        if out != src {
-            std::fs::write(format!("/tmp/fmt-{}", name.replace('/', "_")), &out).unwrap();
-        }
-        assert_eq!(out, src, "{name}");
+        assert_eq!(format(src).unwrap(), src, "{name}");
     }
+}
+
+const DOCS: [(&str, &str); 4] = [
+    ("README.md", include_str!("../../../docs/design/README.md")),
+    (
+        "language.md",
+        include_str!("../../../docs/design/language.md"),
+    ),
+    (
+        "alternatives.md",
+        include_str!("../../../docs/design/alternatives.md"),
+    ),
+    (
+        "semantics.md",
+        include_str!("../../../docs/design/semantics.md"),
+    ),
+];
+
+/// The unlabelled code blocks of a Markdown page.
+fn code_blocks(md: &str) -> Vec<String> {
+    let mut blocks = Vec::new();
+    let mut current: Option<String> = None;
+    for line in md.lines() {
+        match (&mut current, line.trim_end()) {
+            (None, "```") => current = Some(String::new()),
+            (None, l) if l.starts_with("```") => current = Some("\u{0}".into()),
+            (Some(_), "```") => blocks.extend(current.take().filter(|b| !b.starts_with('\u{0}'))),
+            (Some(b), l) => {
+                b.push_str(l);
+                b.push('\n');
+            }
+            (None, _) => {}
+        }
+    }
+    blocks
+}
+
+/// Every chart snippet in the design pages that is valid on its own (or, for a lone state, inside
+/// a machine) is formatted exactly as written. Snippets using syntax from later milestones and
+/// annotated fragments do not parse and are skipped.
+#[test]
+fn doc_snippets_are_fixed_points() {
+    let mut checked = Vec::new();
+    for (page, md) in DOCS {
+        for block in code_blocks(md) {
+            let src = if block.starts_with("state ") {
+                let body: String = block.lines().map(|l| format!("  {l}\n")).collect();
+                format!("machine M() {{\n{body}}}\n")
+            } else {
+                block
+            };
+            if parse_file(FileId(0), &src).1.is_empty() {
+                assert_eq!(format(&src).unwrap(), src, "{page}");
+                checked.push(page);
+            }
+        }
+    }
+    assert_eq!(checked, ["README.md", "language.md", "alternatives.md"]);
 }

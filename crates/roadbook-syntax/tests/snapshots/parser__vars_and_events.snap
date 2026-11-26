@@ -1,0 +1,49 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - var:
+                name: a
+                ty:
+                  builtin: int
+                init:
+                  int: 1
+            - var:
+                name: b
+                ty:
+                  optional:
+                    builtin: string
+                init: ~
+            - var:
+                name: c
+                ty:
+                  list:
+                    named: Order
+                init: ~
+            - event:
+                name: Go
+                fields: []
+            - event:
+                name: Change
+                fields:
+                  - name: value
+                    ty:
+                      builtin: int
+                  - name: note
+                    ty:
+                      builtin: string
+            - initial: S
+            - state:
+                kind: normal
+                name: S
+                body: []
+comments: []

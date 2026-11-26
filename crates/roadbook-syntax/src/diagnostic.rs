@@ -205,7 +205,7 @@ impl Diagnostic {
                 let line = span.start.line;
                 if last_line != Some(line) {
                     if last_line.is_some_and(|l| line > l + 1) {
-                        let _ = writeln!(out, "{pad}...");
+                        let _ = writeln!(out, "...");
                     }
                     let text = index.line_text(src, line).replace('\t', "    ");
                     let _ = writeln!(out, "{}", format!("{line:>width$} | {text}").trim_end());
@@ -328,8 +328,8 @@ error[RB0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
         let src = "state A {\n  on X -> B\n\n\n  on X -> C\n}\n";
         let first = span_of(src, "on X -> B");
         let second = Span {
-            start: LineIndex::new(src).pos(src, 33),
-            end: LineIndex::new(src).pos(src, 37),
+            start: LineIndex::new(src).pos(src, 26),
+            end: LineIndex::new(src).pos(src, 30),
             ..first
         };
         let d = Diagnostic::warning(Code(901), second, "same trigger")
@@ -340,7 +340,7 @@ error[RB0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
         };
         let expected = "\
 warning[RB0901]: same trigger
- --> a.road:2:3
+ --> a.road:5:3
   |
 2 |   on X -> B
   |   --------- first here

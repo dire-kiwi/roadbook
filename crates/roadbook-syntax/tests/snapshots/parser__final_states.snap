@@ -1,0 +1,52 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          params: []
+          returns:
+            named: R
+          errors:
+            - E
+          body:
+            - state:
+                kind: final
+                name: Ok
+                body:
+                  - output:
+                      record:
+                        ty: R
+                        fields:
+                          - name: value
+                            value:
+                              int: 1
+            - state:
+                kind: final
+                name: Bad
+                body:
+                  - fail:
+                      record:
+                        ty: E
+                        fields: []
+            - state:
+                kind: final
+                name: Worse
+                body:
+                  - fail:
+                      record:
+                        ty: E
+                        fields:
+                          - name: reason
+                            value:
+                              string: x
+            - state:
+                kind: final
+                name: Plain
+                body:
+                  - output:
+                      var: receipt
+comments: []

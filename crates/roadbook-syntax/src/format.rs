@@ -37,8 +37,10 @@ const INDENT: usize = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Group {
-    /// One-line top-level declarations.
-    Decl,
+    /// One-line `type`, `enum`, `error` and `extern type` declarations.
+    Data,
+    /// One-line `fn`, `action` and `task` declarations.
+    Callable,
     Var,
     Event,
     /// One-line states.
@@ -409,25 +411,25 @@ impl Formatter<'_> {
                     start,
                     0,
                 ) {
-                    self.row(whole, 0, vec![head, text], "", Some(Group::Decl));
+                    self.row(whole, 0, vec![head, text], "", Some(Group::Data));
                 }
             }
             DeclKind::Enum { variants } => {
                 let items: Vec<_> = variants.iter().map(|v| (v.span, v.name.clone())).collect();
                 if let Some(text) = self.brace_list(d.name.span.end.offset, &head, &items, start, 0)
                 {
-                    self.row(whole, 0, vec![head, text], "", Some(Group::Decl));
+                    self.row(whole, 0, vec![head, text], "", Some(Group::Data));
                 }
             }
             DeclKind::Record { .. } | DeclKind::Error { .. } | DeclKind::Extern => {
-                self.decl_row(whole, vec![head])
+                self.row(whole, 0, vec![head], "", Some(Group::Data))
             }
             DeclKind::Alias { target } => self.row(
                 whole,
                 0,
                 vec![head, format!("= {}", ty(target))],
                 "",
-                Some(Group::Decl),
+                Some(Group::Data),
             ),
             DeclKind::Fn { params, returns } => {
                 let head = self.params(&d.name, params, head, start, 0);
@@ -618,7 +620,7 @@ fn decl_group(head: &str) -> Option<Group> {
     if head.starts_with(')') {
         None
     } else {
-        Some(Group::Decl)
+        Some(Group::Callable)
     }
 }
 

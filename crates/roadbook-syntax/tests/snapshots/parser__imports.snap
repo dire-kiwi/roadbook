@@ -1,0 +1,17 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - import:
+      names:
+        - A
+        - b
+      path: "./x.road"
+  - import:
+      names:
+        - A
+        - B
+        - c
+      path: "y \"q\".road"
+comments: []
