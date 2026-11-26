@@ -1,0 +1,52 @@
+// Conformance chart: an alias is the type it names, so comparison, equality
+// and arithmetic on aliases of `int`, `float`, `duration` and an enum behave
+// as on those types, and a variable whose alias is optional starts as `null`.
+// In each guard the alias-typed operand comes first, since a runtime picks an
+// operator's behaviour from its first operand's type.
+
+type Money = int
+type Cash  = Money
+type Ratio = float
+type Wait  = duration
+enum Level { Low, High }
+type Tier  = Level
+type Note  = string?
+
+action log(what: string)
+action show(note: Note)
+
+/// Counts up to a limit, comparing what it is sent with what it holds.
+machine Aliases(limit: Money) -> Cash {
+  var m:    Cash = 5
+  var r:    Ratio = 1.5
+  var w:    Wait = 1s
+  var t:    Tier = Level.Low
+  var note: Note
+
+  event Bump  { by: Money }
+  event Check { ratio: Ratio, wait: Wait }
+  event Rank  { tier: Tier }
+
+  initial Counting
+
+  state Counting {
+    entry do show(note)
+
+    on Bump {
+      if limit < m + event.by                 -> Done  set m = m + event.by
+      if limit == m + event.by                         set m = m * 2  do log("hit")
+      if m <= limit and m != limit                     set m = m + event.by  do log("under")
+    }
+    on Check {
+      if event.ratio < r and event.wait <= w           do log("smaller")
+      if event.ratio == r and event.wait == w          do log("same")
+      if event.ratio >= r and event.wait > w           set r = r * event.ratio  do log("larger")
+    }
+    on Rank {
+      if event.tier == t and -r < -1.0                 do log("same tier")
+      if event.tier != t and m >= 0                    set t = event.tier  do log("promoted")
+    }
+  }
+
+  final state Done { output m }
+}

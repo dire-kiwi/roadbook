@@ -153,3 +153,50 @@ fn parallel_states_are_refused() {
         Err(ProgramError::Parallel { state, .. }) if state == "M.P"
     ));
 }
+
+#[test]
+fn operators_see_through_aliases() {
+    // Each guard holds only if its operator works on the aliased type: a `false` guard
+    // drops `Go`.
+    let guards = [
+        "m < 10",
+        "m <= 5",
+        "m > 4",
+        "m >= 5",
+        "m == 5",
+        "m != 6",
+        "m + 1 == 6",
+        "f < 2.5",
+        "f == 1.5",
+        "-f < 0.0",
+        "d < 2s",
+        "d >= 1s",
+        "d == 1000ms",
+        "k == Kind.B",
+        "k != Kind.A",
+        "w == 5",
+        "w < 6",
+    ];
+    for g in guards {
+        let src = format!(
+            "type Money = int\ntype Cash = Money\ntype Ratio = float\ntype Wait = duration\n\
+             enum Kind {{ A, B }}\ntype K = Kind\n\
+             machine M() {{\n  var m: Money = 5\n  var w: Cash = 5\n  var f: Ratio = 1.5\n  \
+             var d: Wait = 1s\n  var k: K = Kind.B\n  event Go\n  initial A\n  \
+             state A {{ on Go {{ if {g} -> B }} }}\n  final state B {{}}\n}}\n"
+        );
+        let p = program(&src);
+        let (s, _) = p.start("M", Map::new(), &mut no_fns).unwrap();
+        let (s, _) = p.step(&s, go(), &mut no_fns);
+        assert_eq!(s.status, Status::Done, "`{g}` should hold");
+    }
+}
+
+#[test]
+fn an_optional_alias_var_starts_as_null() {
+    let p = program(
+        "type S = string?\nmachine M() {\n  var s: S\n  event Go\n  initial A\n  state A { on Go -> B }\n  final state B {}\n}\n",
+    );
+    let (s, _) = p.start("M", Map::new(), &mut no_fns).unwrap();
+    assert_eq!(s.vars.get("s"), Some(&Value::Null));
+}

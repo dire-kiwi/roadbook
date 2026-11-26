@@ -104,7 +104,7 @@ start(ir, name, input, fns):
   return (snap, commands)
 ```
 
-A variable's initial value may read the parameters and the variables declared before it; reading a later one is a runtime error (`unassigned`). A variable with no initial value starts unassigned, unless its type is optional (`string?`, whose IR type string ends in `?`): an optional variable with no initial value starts as `null`, as the [language](../docs/design/language.md#definite-assignment) says, and reading it is never `unassigned`. Initial values are not traced.
+A variable's initial value may read the parameters and the variables declared before it; reading a later one is a runtime error (`unassigned`). A variable with no initial value starts unassigned, unless its type is optional (`string?`, whose IR type string ends in `?`, or an alias of an optional type, aliases expanded transitively): an optional variable with no initial value starts as `null`, as the [language](../docs/design/language.md#definite-assignment) says, and reading it is never `unassigned`. Initial values are not traced.
 
 `defaultEntry(s)` is `[]` for a state that is not compound, and `[c] + defaultEntry(c)` where `c` is `s.initial` for a compound one. So starting enters the root, then its initial child, and so on down to an atomic or final state, outermost first: the root's `entry` effects run before any other state's. Starting takes no transition, so it writes no `transition` record.
 
@@ -372,7 +372,7 @@ Expressions are evaluated by their IR node, recursively. Every node's `type` is 
 | `enum` | The string `variant`. |
 | `op` | See below. |
 
-Operators, by `op`:
+Operators, by `op`. An operand's type is its IR `type` with aliases expanded, transitively: `<` on a `Money` after `type Money = int` compares integers. The IR keeps the alias's name, so a runtime that dispatches on the type string must expand it first.
 
 - `and`, `or`: evaluate the left side; if it decides the result (`false` for `and`, `true` for `or`), that is the result and the right side is **not evaluated**. Otherwise the result is the right side. `not` negates.
 - `==`, `!=`: on `string`, `int`, `float`, `bool`, `duration` and enums. Strings are equal when their Unicode scalar values are. Floats compare as IEEE 754 doubles, so `0.0 == -0.0`.

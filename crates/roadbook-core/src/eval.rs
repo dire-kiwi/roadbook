@@ -47,7 +47,10 @@ pub(crate) fn eval(e: &Expr, s: &Scope<'_>, fns: &mut Fns<'_>) -> Result<Value, 
         }
         ExprKind::Record { fields } => {
             let mut obj = Map::new();
-            let name = e.ty.named_base().unwrap_or("");
+            let name = match s.program.resolve(&e.ty) {
+                TypeRef::Named(n) => n.as_str(),
+                _ => "",
+            };
             let decl = s.program.ir().types.get(name).map(|t| &t.def);
             if let Some(TypeDef::Error { .. }) = decl {
                 obj.insert("_tag".into(), Value::from(name));
@@ -98,16 +101,36 @@ fn float(f: f64, e: &Expr) -> Result<Value, Defect> {
         })
 }
 
-fn is(ty: &TypeRef, b: Builtin) -> bool {
-    *ty == TypeRef::Builtin(b)
+/// Whether a value of type `ty` is a `b`, aliases expanded.
+fn is(s: &Scope<'_>, ty: &TypeRef, b: Builtin) -> bool {
+    *s.program.scalar(ty) == TypeRef::Builtin(b)
 }
 
 fn as_bool(v: &Value) -> bool {
     v.as_bool().unwrap_or(false)
 }
 
+/// An `int` value. The binding layer decodes host values against their types, so an `int`
+/// is an integer; an integral number written as a float (`2.0`) is read as one all the same,
+/// since a JSON number's form does not matter.
+fn int(v: &Value) -> Option<i64> {
+    v.as_i64().or_else(|| {
+        let f = v.as_f64()?;
+        (f.fract() == 0.0
+            && (-9.223_372_036_854_775_808e18..9.223_372_036_854_775_808e18).contains(&f))
+        .then_some(f as i64)
+    })
+}
+
 fn as_i64(v: &Value) -> i64 {
-    v.as_i64().unwrap_or(0)
+    int(v).unwrap_or(0)
+}
+
+/// A `duration` value, in milliseconds, read like [`int`].
+fn millis(v: &Value) -> Option<u64> {
+    int(v)
+        .and_then(|i| u64::try_from(i).ok())
+        .or_else(|| v.as_u64())
 }
 
 fn as_f64(v: &Value) -> f64 {
@@ -135,7 +158,7 @@ fn op_value(
         Op::Not => Ok(Value::from(!as_bool(&eval(&args[0], s, fns)?))),
         Op::Neg => {
             let v = eval(&args[0], s, fns)?;
-            if is(&e.ty, Builtin::Float) {
+            if is(s, &e.ty, Builtin::Float) {
                 float(-as_f64(&v), e)
             } else {
                 as_i64(&v)
@@ -147,7 +170,7 @@ fn op_value(
         _ => {
             let a = eval(&args[0], s, fns)?;
             let b = eval(&args[1], s, fns)?;
-            let ty = &args[0].ty;
+            let ty = s.program.scalar(&args[0].ty);
             match op {
                 Op::Eq => Ok(Value::from(equal(ty, &a, &b))),
                 Op::Ne => Ok(Value::from(!equal(ty, &a, &b))),
@@ -168,7 +191,7 @@ fn op_value(
                     Ok(Value::from(r))
                 }
                 Op::Add | Op::Sub | Op::Mul => {
-                    if is(&e.ty, Builtin::Float) {
+                    if is(s, &e.ty, Builtin::Float) {
                         let (x, y) = (as_f64(&a), as_f64(&b));
                         let r = match op {
                             Op::Add => x + y,
@@ -192,25 +215,27 @@ fn op_value(
     }
 }
 
-/// `==` on the operands' type: numbers compare numerically (floats as IEEE 754 doubles, so
-/// `0.0 == -0.0`), everything else as JSON.
+/// `==` on the operands' type, aliases expanded: numbers compare numerically (floats as
+/// IEEE 754 doubles, so `0.0 == -0.0`), everything else as JSON.
 fn equal(ty: &TypeRef, a: &Value, b: &Value) -> bool {
-    match ty {
-        TypeRef::Builtin(Builtin::Float) => as_f64(a) == as_f64(b),
-        TypeRef::Builtin(Builtin::Int) => a.as_i64() == b.as_i64(),
-        TypeRef::Builtin(Builtin::Duration) => a.as_u64() == b.as_u64(),
-        _ => match (a, b) {
-            (Value::Number(x), Value::Number(y)) => x.as_f64() == y.as_f64(),
-            _ => a == b,
-        },
-    }
+    let same = match ty {
+        TypeRef::Builtin(Builtin::Float) => a.as_f64().zip(b.as_f64()).map(|(x, y)| x == y),
+        TypeRef::Builtin(Builtin::Int) => int(a).zip(int(b)).map(|(x, y)| x == y),
+        TypeRef::Builtin(Builtin::Duration) => millis(a).zip(millis(b)).map(|(x, y)| x == y),
+        _ => None,
+    };
+    same.unwrap_or_else(|| match (a, b) {
+        (Value::Number(x), Value::Number(y)) => x.as_f64() == y.as_f64(),
+        _ => a == b,
+    })
 }
 
+/// The order of the operands, on their type with aliases expanded.
 fn compare(ty: &TypeRef, a: &Value, b: &Value) -> Option<std::cmp::Ordering> {
     match ty {
         TypeRef::Builtin(Builtin::Float) => as_f64(a).partial_cmp(&as_f64(b)),
         TypeRef::Builtin(Builtin::Int) => Some(as_i64(a).cmp(&as_i64(b))),
-        TypeRef::Builtin(Builtin::Duration) => a.as_u64().partial_cmp(&b.as_u64()),
+        TypeRef::Builtin(Builtin::Duration) => millis(a).partial_cmp(&millis(b)),
         TypeRef::Builtin(Builtin::String) => a.as_str().partial_cmp(&b.as_str()),
         _ => None,
     }

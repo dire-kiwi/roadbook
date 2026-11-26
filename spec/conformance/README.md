@@ -128,4 +128,5 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `defect-final-step` | A host defect in the root's exit action, in the step that reaches a top-level final state, ends the run with a `defect` record in place of `done`. |
 | `defect-unassigned-guard` | An optional variable with no initial value starts as `null`; a guard of an invoke's `done` that reads an unassigned variable is an `unassigned` defect inside the core, with no `event` record, and the running timer is cancelled without one. |
 | `defect-undeclared` | A stubbed machine failing with an error it does not declare is an `undeclared` defect inside the core. |
+| `alias-operators` | Comparison, equality and arithmetic on aliases (of an alias) of `int`, `float`, `duration` and an enum behave as on those types, with the alias-typed operand first; a variable whose type is an alias of an optional type starts as `null`. |
 | `run-ids` | Ten child runs: in run order `r1.10` comes after `r1.9`, since segments after the first compare as numbers. |
