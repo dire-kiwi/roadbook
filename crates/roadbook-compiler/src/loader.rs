@@ -155,7 +155,37 @@ fn split_package(spec: &str) -> Option<(&str, &str)> {
     package_ok.then_some((package, &rest[1..]))
 }
 
-/// Reads files under a project root on the real file system, and finds packages: first in
+/// The file system [`FsLoader`] reads: the real one ([`StdFs`]), or one a host supplies, as
+/// the WebAssembly build's host does, which has no file system of its own.
+pub trait FileSystem {
+    /// The file's text. The error is a short reason, shown in the diagnostic.
+    fn read_to_string(&self, path: &Path) -> Result<String, String>;
+    /// Whether the path is a directory (following symbolic links).
+    fn is_dir(&self, path: &Path) -> bool;
+    /// The canonical path, with symbolic links resolved, if the path exists.
+    fn canonicalize(&self, path: &Path) -> Option<PathBuf>;
+}
+
+/// The real file system, through `std::fs`.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct StdFs;
+
+impl FileSystem for StdFs {
+    fn read_to_string(&self, path: &Path) -> Result<String, String> {
+        std::fs::read_to_string(path).map_err(|e| e.to_string())
+    }
+
+    fn is_dir(&self, path: &Path) -> bool {
+        path.is_dir()
+    }
+
+    fn canonicalize(&self, path: &Path) -> Option<PathBuf> {
+        std::fs::canonicalize(path).ok()
+    }
+}
+
+/// Reads files under a project root on a file system ([`StdFs`] unless given another with
+/// [`FsLoader::with_fs`]), and finds packages: first in
 /// the explicit map ([`FsLoader::with_package`], `[packages]` in `roadbook.toml`), then, if
 /// enabled, as Node does, in `node_modules/<package>` of the importing file's directory and
 /// of each directory above it.
@@ -170,7 +200,7 @@ fn split_package(spec: &str) -> Option<(&str, &str)> {
 /// both by a relative path and as a file of a package, or through a symbolic link, is loaded
 /// once.
 #[derive(Clone, Debug)]
-pub struct FsLoader {
+pub struct FsLoader<F = StdFs> {
     pub root: PathBuf,
     /// Package name to directory. A relative directory is relative to `root`.
     pub packages: BTreeMap<String, PathBuf>,
@@ -180,6 +210,7 @@ pub struct FsLoader {
     found: HashMap<FileRef, PathBuf>,
     /// The directory each package was found in, once found.
     dirs: HashMap<String, PathBuf>,
+    fs: F,
 }
 
 /// Where [`FsLoader`] found a file of a package.
@@ -197,23 +228,36 @@ pub struct PackageFile {
 impl FsLoader {
     /// A loader for the project at `root`, with no packages.
     pub fn new(root: impl Into<PathBuf>) -> FsLoader {
+        FsLoader::with_fs(root, StdFs)
+    }
+}
+
+impl<F: FileSystem> FsLoader<F> {
+    /// A loader for the project at `root` on the file system `fs`, with no packages.
+    pub fn with_fs(root: impl Into<PathBuf>, fs: F) -> FsLoader<F> {
         FsLoader {
             root: root.into(),
             packages: BTreeMap::new(),
             node_modules: false,
             found: HashMap::new(),
             dirs: HashMap::new(),
+            fs,
         }
     }
 
+    /// The file system it reads.
+    pub fn fs(&self) -> &F {
+        &self.fs
+    }
+
     /// Maps a package name to its directory.
-    pub fn with_package(mut self, name: &str, dir: impl Into<PathBuf>) -> FsLoader {
+    pub fn with_package(mut self, name: &str, dir: impl Into<PathBuf>) -> FsLoader<F> {
         self.packages.insert(name.to_string(), dir.into());
         self
     }
 
     /// Turns the `node_modules` lookup on or off.
-    pub fn with_node_modules(mut self, on: bool) -> FsLoader {
+    pub fn with_node_modules(mut self, on: bool) -> FsLoader<F> {
         self.node_modules = on;
         self
     }
@@ -253,7 +297,7 @@ impl FsLoader {
         let mut dir = Some(from);
         while let Some(d) = dir {
             let candidate = d.join("node_modules").join(package);
-            if candidate.is_dir() {
+            if self.fs.is_dir(&candidate) {
                 return Ok(candidate);
             }
             dir = d.parent();
@@ -503,7 +547,7 @@ fn string_leaves<'a>(e: &'a Exports, out: &mut Vec<&'a str>) {
     }
 }
 
-impl Loader for FsLoader {
+impl<F: FileSystem> Loader for FsLoader<F> {
     fn resolve(&mut self, importer: &FileRef, spec: &str) -> Result<FileRef, String> {
         let file = resolve_spec(importer, spec)?;
         let Some(package) = file.package.clone() else {
@@ -539,7 +583,7 @@ impl Loader for FsLoader {
             }
         };
         let mut disk = dir.join(&file.path);
-        if let Ok(text) = std::fs::read_to_string(dir.join("package.json")) {
+        if let Ok(text) = self.fs.read_to_string(&dir.join("package.json")) {
             match exported(&text, &file.path, LOAD_CONDITIONS) {
                 Ok(Some(target)) => disk = dir.join(target),
                 Ok(None) => {}
@@ -569,14 +613,12 @@ impl Loader for FsLoader {
                 file.package.as_deref().unwrap_or("")
             )
         })?;
-        std::fs::read_to_string(path)
-            .map(Loaded::Source)
-            .map_err(|e| e.to_string())
+        self.fs.read_to_string(&path).map(Loaded::Source)
     }
 
     fn location(&self, file: &FileRef) -> Option<PathBuf> {
         let disk = self.disk_path(file)?;
-        Some(std::fs::canonicalize(&disk).unwrap_or(disk))
+        Some(self.fs.canonicalize(&disk).unwrap_or(disk))
     }
 
     fn display(&self, file: &FileRef) -> String {

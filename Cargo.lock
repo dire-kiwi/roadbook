@@ -1256,6 +1256,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "roadbook-wasm"
+version = "0.1.0"
+dependencies = [
+ "roadbook-compiler",
+ "roadbook-gen-ts",
+ "roadbook-ir",
+ "roadbook-syntax",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "rustix"
 version = "1.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

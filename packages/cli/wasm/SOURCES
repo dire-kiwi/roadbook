@@ -1,0 +1,31 @@
+# What wasm/ was built from, by packages/cli/build.mjs. Do not edit.
+sources sha256:06b9afdf18addcba5855ce24f6fe45aea172d6f5c34a74db33942ef0b502c238
+roadbook_wasm_bg.wasm sha256:f21520b39a35508c33a8ba335418a7c578242a650dc63d92ef1077573d94d388
+roadbook_wasm.js sha256:7ef4f1a335ee58a7bc91494c4406685a45ff369d60c9054bc464c23494ec154b
+crate block-buffer 0.10.4
+crate bumpalo 3.20.4
+crate cfg-if 1.0.5
+crate crypto-common 0.1.7
+crate digest 0.10.7
+crate equivalent 1.0.3
+crate generic-array 0.14.7
+crate hashbrown 0.17.2
+crate indexmap 2.14.2
+crate itoa 1.0.19
+crate memchr 2.8.3
+crate proc-macro2 1.0.107
+crate quote 1.0.47
+crate ryu-js 1.0.4
+crate serde 1.0.229
+crate serde_core 1.0.229
+crate serde_derive 1.0.229
+crate serde_json 1.0.154
+crate sha2 0.10.9
+crate syn 3.0.10
+crate typenum 1.20.1
+crate unicode-ident 1.0.27
+crate wasm-bindgen 0.2.130
+crate wasm-bindgen-macro 0.2.130
+crate wasm-bindgen-macro-support 0.2.130
+crate wasm-bindgen-shared 0.2.130
+crate zmij 1.0.23

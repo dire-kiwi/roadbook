@@ -85,6 +85,9 @@ rm -rf "$out"
 step "Viewer: the bundle the CLI embeds is current"
 node packages/viewer/build.mjs --check
 
+step "npm CLI: the committed WebAssembly compiler (packages/cli/wasm) is current"
+node packages/cli/build.mjs --check
+
 step "Editors: the tree-sitter grammar (generated parser, corpus, every chart, queries)"
 if command -v tree-sitter >/dev/null; then
   editors/tree-sitter-roadbook/check.sh

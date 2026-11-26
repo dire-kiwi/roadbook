@@ -39,7 +39,7 @@ mod project;
 mod types;
 
 pub use index::{Reference, Symbol, SymbolId, SymbolIndex, SymbolKind};
-pub use loader::{FsLoader, Loaded, Loader, MemoryLoader};
+pub use loader::{FileSystem, FsLoader, Loaded, Loader, MemoryLoader, StdFs};
 pub use project::LoadError;
 pub use roadbook_ir::Ir;
 pub use roadbook_syntax::{Diagnostic, FileId, Severity, Span};

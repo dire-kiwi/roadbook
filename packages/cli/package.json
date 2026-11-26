@@ -1,0 +1,37 @@
+{
+  "name": "@roadbook/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Roadbook compiler for Node, as WebAssembly: the `roadbook` command (check, fmt, gen, export ir) and an API for build tools",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "bin": {
+    "roadbook": "./bin/roadbook.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/api.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "bin",
+    "src",
+    "wasm/roadbook_wasm.js",
+    "wasm/roadbook_wasm.d.ts",
+    "wasm/roadbook_wasm_bg.wasm"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.7",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  }
+}
