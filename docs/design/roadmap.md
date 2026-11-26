@@ -59,9 +59,9 @@ Progress is recorded on each milestone below as it finishes.
 | M3. TypeScript runtime | Done, 26 November 2026 |
 | M4. Rust runtime | Done, 26 November 2026 |
 | M5. Messaging | Done, 26 November 2026 |
-| M6. Depth | In progress |
-| M7. Review tooling | Not started |
-| M8. Editors | Not started |
+| M6. Depth | Done, 26 November 2026 |
+| M7. Review tooling | In progress |
+| M8. Editors | In progress |
 
 **M1. Language and IR.** Parser, name resolution, the structural checks, IR and its schema, `check` and `fmt`, in Rust. Covers atomic, compound and final states, events, guards, `invoke`, `after`, `always`. Type checking of expressions and arguments. The shop example compiles, and bad charts produce the diagnostics described in the language page.
 
@@ -84,6 +84,8 @@ Progress is recorded on each milestone below as it finishes.
 *Done.* The language, the compiler and IR 0.2: `emits`, `ref`, `invoke … as`, `on name.Event`, `send` and `emit`, with their checks, and imports from other packages (`[packages]` in `roadbook.toml`, `node_modules` with Node-style `exports`, and an import satisfied by another package's compiled IR). The semantics are in `spec/execution.md` with ten conformance cases that start several top-level runs; an independent throwaway implementation reproduced every trace. Both runtimes implement messaging and write identical traces for all 34 cases; both run `examples/upload` and `examples/orders`. In Rust, `examples/inventory` and `examples/orders` are two crates, and chains and diamonds of crates are tested. The TypeScript generator imports other packages' generated modules. The viewer draws messaging in each machine and, in the project index, which machines invoke, send to, hold references to and receive from which. Two independent reviews found lifecycle bugs in the Rust driver, a `$crate` hygiene bug that broke crate chains, and gaps in package resolution; all are fixed with tests.
 
 **M6. Depth.** Definite assignment analysis. Parallel states. Saving and restoring snapshots (`resume`), with the IR hash check. Simulate and replay modes in the viewer, which need the TypeScript core and the trace.
+
+*Done.* Definite assignment (`RB0403`): a forward analysis over the chart, conservative in a few documented places, about 100 ms on a 1,000-state chart; it found two real bugs in a compiler test chart, and the runtime check stays as a backstop. Parallel states and snapshots (`restore`, `save`, `suspend`, `resume`, with the IR hash check and migrations) are specified in `spec/execution.md` and `spec/snapshot.schema.json`, with conformance cases checked by an independent throwaway implementation, and built in both runtimes: they write identical traces and byte-identical snapshot files for all 49 cases, so a snapshot saved by one runtime restores in the other. The viewer has simulate mode (it runs `@roadbook/core` in the page and asks the reader for task outcomes and function results) and replay mode (`roadbook viz --trace`, or a trace dropped on the page). Independent reviews found a suspend/cancel race in each runtime, aliased snapshot objects, and several places the runtimes disagreed on restore; all are fixed, several as new conformance cases.
 
 **M7. Review tooling.** Diff mode and coverage mode in the viewer. A CI recipe that attaches the diff viewer to a pull request.
 
