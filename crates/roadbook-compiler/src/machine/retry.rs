@@ -85,7 +85,9 @@ impl<'p> Cx<'_, 'p> {
                     param: false,
                 },
             );
+            self.counter = Some(var.clone());
             let e = self.expect(&renamed, &Scope::none(), &DURATION, "a retry delay");
+            self.counter = None;
             self.vars.remove(&var);
             (e, std::mem::take(&mut self.reads))
         });
@@ -106,7 +108,8 @@ impl<'p> Cx<'_, 'p> {
             }
             ir::StateKind::Atomic => {}
         }
-        if let Some(a) = &plan.inv.alias {
+        // `as` on a task is reported as such.
+        if let Some(a) = plan.inv.alias.as_ref().filter(|_| plan.inv.is_machine()) {
             self.ck.diags.push(
                 Diagnostic::error(
                     codes::RETRY_WITH_ALIAS,
@@ -173,7 +176,10 @@ impl<'p> Cx<'_, 'p> {
                         n.name
                     ),
                 );
-                if let Some(s) = suggest(&n.name, declared.iter().map(String::as_str)) {
+                let unlisted = declared
+                    .iter()
+                    .filter(|e| !r.errors.iter().any(|l| l.name == **e));
+                if let Some(s) = suggest(&n.name, unlisted.map(String::as_str)) {
                     d = d.with_help(format!("did you mean `{s}`?")).with_fix(
                         format!("replace with `{s}`"),
                         n.span,
@@ -187,7 +193,7 @@ impl<'p> Cx<'_, 'p> {
             }
         }
         let declared = plan.declared.clone()?;
-        if declared.is_empty() {
+        if declared.is_empty() && r.count >= 1 {
             self.ck.diags.push(
                 Diagnostic::error(
                     codes::RETRY_NOTHING,
@@ -196,6 +202,9 @@ impl<'p> Cx<'_, 'p> {
                 )
                 .with_help("only a declared error is retried; a host defect never is"),
             );
+            return None;
+        }
+        if declared.is_empty() {
             return None;
         }
         let retried: Vec<String> = if r.errors.is_empty() {
@@ -375,6 +384,7 @@ impl<'p> Cx<'_, 'p> {
         };
         let read = vec![(var.clone(), span)];
         let mut attempt = Vec::new();
+        let mut retry_branches = Vec::new();
         let mut seen_group = HashSet::new();
         for (t, rd, tr) in outcomes {
             let retries = match &t.trigger {
@@ -383,6 +393,7 @@ impl<'p> Cx<'_, 'p> {
                 _ => false,
             };
             if retries && seen_group.insert(t.group) {
+                retry_branches.push(attempt.len());
                 attempt.push((
                     ir::Transition {
                         trigger: t.trigger.clone(),
@@ -456,6 +467,8 @@ impl<'p> Cx<'_, 'p> {
                 invoke_reads: std::mem::take(&mut info.invoke_reads),
                 result_reads: Vec::new(),
                 transition_reads: attempt_reads,
+                retry_branches,
+                written_as: Some(st.id.clone()),
             },
         );
         if let Some((delay, delay_reads)) = delay {
@@ -498,6 +511,8 @@ impl<'p> Cx<'_, 'p> {
                         effects: Vec::new(),
                         span,
                     }],
+                    retry_branches: Vec::new(),
+                    written_as: Some(st.id.clone()),
                 },
             );
         }

@@ -30,6 +30,12 @@ machine Worker(settings: Settings, peer: ref Worker) {
         fail * -> B
       }
     }
+    state C {
+      invoke fetch(retry) retry 3 on Busy | Gone after backoff(attempt) {
+        done -> A
+        fail * -> B
+      }
+    }
   }
   final state Broken { fail error }
 }

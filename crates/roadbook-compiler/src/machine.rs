@@ -55,6 +55,11 @@ pub(crate) struct StateInfo {
     pub result_reads: Reads,
     /// What each IR transition reads, by index.
     pub transition_reads: Vec<TransitionReads>,
+    /// The IR transitions a `retry` added: they do not count as a way out, since they stop
+    /// once the retries run out.
+    pub retry_branches: Vec<usize>,
+    /// For a state a `retry` added, the state it was written in, which diagnostics name.
+    pub written_as: Option<String>,
 }
 
 /// A machine variable, for definite assignment.
@@ -173,6 +178,9 @@ pub(crate) struct Cx<'c, 'p> {
     transition_reads: Vec<TransitionReads>,
     /// The counters of the `retry`s written out so far, in the order of their states.
     retry_vars: Vec<(ir::Var, VarInfo)>,
+    /// The counter `attempt` reads while a retry's delay is checked: a variable for the
+    /// checker, but not one to suggest, since the chart cannot name it.
+    counter: Option<String>,
 }
 
 /// Checks machine `m` declared in `file` and lowers it. Its hash is left empty.
@@ -210,6 +218,7 @@ pub(crate) fn lower<'p>(
         reads: Vec::new(),
         transition_reads: Vec::new(),
         retry_vars: Vec::new(),
+        counter: None,
     };
 
     // Parameters and variables share one namespace.
@@ -920,6 +929,8 @@ impl<'p> Cx<'_, 'p> {
                 invoke_reads: Vec::new(),
                 result_reads: Vec::new(),
                 transition_reads: Vec::new(),
+                retry_branches: Vec::new(),
+                written_as: None,
             },
         );
 
@@ -1652,7 +1663,7 @@ impl<'p> Cx<'_, 'p> {
         let mut candidates: Vec<&str> = self
             .vars
             .iter()
-            .filter(|(_, v)| params || !v.param)
+            .filter(|(k, v)| (params || !v.param) && self.counter.as_ref() != Some(*k))
             .map(|(k, _)| k.as_str())
             .collect();
         candidates.sort_unstable();

@@ -55,6 +55,11 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  state A {\n    invoke f( x )   retry   007 on A|B   after (d) {\n      done -> A\n    }\n    invoke g() as g retry 1 after (Cfg { ms: 1 }) { done -> A }\n  }\n}\n",
         "machine M() {\n  state A {\n    invoke f(x) retry 7 on A | B after d {\n      done -> A\n    }\n    invoke g() as g retry 1 after (Cfg { ms: 1 }) {\n      done -> A\n    }\n  }\n}\n",
     ),
+    // Comments inside a `retry` clause, which is printed on one line, move before the invoke.
+    (
+        "machine M() {\n  state A {\n    invoke f() retry 2 // two\n      on A // which\n      after 1s {\n      done -> A\n    }\n  }\n}\n",
+        "machine M() {\n  state A {\n    // two\n    // which\n    invoke f() retry 2 on A after 1s {\n      done -> A\n    }\n  }\n}\n",
+    ),
     // Alignment: transition arrows and effects across a block, nested branches included.
     (
         "machine M() {\n  state A {\n    on Go -> B set x = 1\n    on LongerName -> Somewhere\n    on Pick {\n      if x > 1 -> B do f()\n      else -> C\n    }\n    on After -> B\n\n    on Alone -> B set y = 2\n  }\n}\n",

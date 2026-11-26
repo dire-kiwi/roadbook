@@ -209,6 +209,23 @@ fn the_generated_states_and_variable_cannot_be_named() {
     );
     let codes: Vec<String> = out.diagnostics.iter().map(|d| d.code.to_string()).collect();
     assert_eq!(codes, ["RB0105", "RB0201", "RB0105"], "{}", out.render());
+    // The counter is not offered as a fix for the name in the delay.
+    assert!(out.diagnostics[0].fixes.is_empty(), "{}", out.render());
+    // `as` on a task is reported once, as such.
+    let out = build(
+        "machine M() ! Busy {
+  initial A
+  state A {
+    invoke ping() as p retry 1 {
+      done      -> B
+      fail Busy -> B
+    }
+  }
+  final state B { fail Busy }
+}",
+    );
+    let codes: Vec<String> = out.diagnostics.iter().map(|d| d.code.to_string()).collect();
+    assert_eq!(codes, ["RB0214"], "{}", out.render());
 }
 
 #[test]
@@ -287,4 +304,17 @@ fn the_language_page_example() {
     };
     // `attempts` is left unused by both.
     assert_eq!(with(&sugar), with(&explicit));
+}
+
+#[test]
+fn retrying_a_machine() {
+    let child = "machine Child() ! Busy {\n  initial Run\n  final state Run { fail Busy }\n}\n";
+    same(
+        &format!(
+            "{child}machine M() ! Busy {{\n  initial A\n  state A {{\n    invoke Child() retry 1 after 1s {{\n      done      -> B\n      fail Busy -> C\n    }}\n  }}\n  final state B {{}}\n  final state C {{ fail Busy }}\n}}\n"
+        ),
+        &format!(
+            "{child}machine M() ! Busy {{\n  var aAttempt: int = 0\n  initial A\n  state A {{\n    entry set aAttempt = 0\n    initial Attempt\n    state Attempt {{\n      invoke Child() {{\n        done -> B\n        fail Busy {{\n          if aAttempt < 1 -> Backoff  set aAttempt = aAttempt + 1\n          else -> C\n        }}\n      }}\n    }}\n    state Backoff {{ after 1s -> Attempt }}\n  }}\n  final state B {{}}\n  final state C {{ fail Busy }}\n}}\n"
+        ),
+    );
 }
