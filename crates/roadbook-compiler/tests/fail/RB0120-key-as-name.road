@@ -37,7 +37,7 @@ machine Q() {
   }
 }
 
-// expect: RB0119 at 6:11
-// expect: RB0119 at 17:12
-// expect: RB0119 at 26:7
-// expect: RB0119 at 34:23
+// expect: RB0120 at 6:11
+// expect: RB0120 at 17:12
+// expect: RB0120 at 26:7
+// expect: RB0120 at 34:23

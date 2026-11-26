@@ -89,13 +89,16 @@ pub(crate) struct Driver<'a> {
     dues: BTreeMap<u64, u64>,
     /// The due times of the snapshot this run was restored from, for `timer.fire`.
     restored_dues: BTreeMap<u64, u64>,
-    snap: Snapshot,
+    snap: Arc<Snapshot>,
     final_state: Option<String>,
     cancel_requested: bool,
     cancel_taken: bool,
     /// Whether a suspend request stops the run: a top-level run's does, unless it was
     /// started to run to its end (`run`, `run_with`). A child run ignores it.
     suspendable: bool,
+    /// The message and value of the last `sent` record: the core writes it, redacted, right
+    /// before the `send` command, and an `undelivered` record repeats it.
+    last_sent: Option<(u64, Value)>,
 }
 
 /// Calls a host function with no invoke context and the run's handles in scope, catching a
@@ -403,11 +406,12 @@ impl<'a> Driver<'a> {
             timers: BTreeMap::new(),
             dues: BTreeMap::new(),
             restored_dues: BTreeMap::new(),
-            snap: blank(),
+            snap: Arc::new(blank()),
             final_state: None,
             cancel_requested: false,
             cancel_taken: false,
             suspendable: true,
+            last_sent: None,
         }
     }
 
@@ -503,7 +507,7 @@ impl<'a> Driver<'a> {
     /// Takes the core's snapshot. A run closes as soon as its core gives a snapshot that is
     /// not `running`, before that step's commands are carried out.
     fn set_snapshot(&mut self, snap: Snapshot) {
-        self.snap = snap;
+        self.snap = Arc::new(snap);
         if self.snap.status != Status::Running {
             self.close();
         }
@@ -531,10 +535,11 @@ impl<'a> Driver<'a> {
         let timers = &self.snap.timers;
         self.dues.retain(|id, _| timers.iter().any(|t| t.id == *id));
         let now = self.config.timer.now();
-        let saved = Saved::new(&self.snap, |t| {
-            self.dues.get(&t.id).copied().unwrap_or(due(now, t.delay))
-        });
-        self.shared.set_saved(saved);
+        let dues = timers
+            .iter()
+            .map(|t| self.dues.get(&t.id).copied().unwrap_or(due(now, t.delay)))
+            .collect();
+        self.shared.publish(self.snap.clone(), dues);
     }
 
     /// The next input: a cancel request if there is one, else the front of the queue; or, for
@@ -694,6 +699,9 @@ impl<'a> Driver<'a> {
     async fn carry(&mut self, c: Command) -> Result<(), Defect> {
         match c {
             Command::Trace { record } => {
+                if let Record::Sent { message, value, .. } = &record {
+                    self.last_sent = Some((*message, value.clone()));
+                }
                 self.write(record);
                 Ok(())
             }
@@ -772,6 +780,12 @@ impl<'a> Driver<'a> {
                     None => self.peers.get(&to).is_some_and(|p| p.shared.deliver(input)),
                 };
                 if !delivered {
+                    // The value as the `sent` record showed it, redacted. The core always
+                    // writes that record first; were it missing, only the event's tag is shown.
+                    let value = match self.last_sent.take() {
+                        Some((m, shown)) if m == message => shown,
+                        _ => serde_json::json!({ "_tag": value.get("_tag") }),
+                    };
                     self.write(Record::Undelivered {
                         message,
                         to: Some(to),
@@ -923,6 +937,9 @@ impl<'a> Driver<'a> {
     fn write(&mut self, record: Record) {
         if let Record::Done { state, .. } | Record::Failed { state, .. } = &record {
             self.final_state = Some(state.clone());
+        }
+        if !self.config.sink.enabled() {
+            return;
         }
         let record = TraceRecord {
             t: self.config.timer.now(),

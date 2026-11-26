@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/shop/checkout.road",
@@ -17,11 +17,13 @@
         {
           "name": "sku",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "qty",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -40,11 +42,13 @@
         {
           "name": "items",
           "type": "LineItem[]",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "coupon",
           "type": "string?",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -63,16 +67,19 @@
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "items",
           "type": "LineItem[]",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "totalCents",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -91,11 +98,13 @@
         {
           "name": "chargeId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "amountCents",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -114,11 +123,13 @@
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "role",
           "type": "Role",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -152,11 +163,13 @@
         {
           "name": "status",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "body",
           "type": "json",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -187,6 +200,7 @@
         {
           "name": "issues",
           "type": "string[]",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -205,6 +219,7 @@
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -236,6 +251,7 @@
         {
           "name": "attempt",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -254,11 +270,13 @@
         {
           "name": "order",
           "type": "Order",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "receipt",
           "type": "Receipt",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -277,6 +295,7 @@
         {
           "name": "issues",
           "type": "string[]",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -295,11 +314,13 @@
         {
           "name": "status",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "code",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -320,16 +341,19 @@
         {
           "name": "user",
           "type": "User",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "order",
           "type": "Order",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "receipt",
           "type": "Receipt",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -347,11 +371,13 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "order",
           "type": "Order",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -371,6 +397,7 @@
         {
           "name": "token",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -392,6 +419,7 @@
         {
           "name": "draft",
           "type": "OrderDraft",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -413,11 +441,13 @@
         {
           "name": "order",
           "type": "Order",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "user",
           "type": "User",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -437,11 +467,13 @@
         {
           "name": "order",
           "type": "Order",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "user",
           "type": "User",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -474,11 +506,13 @@
         {
           "name": "order",
           "type": "Order",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "user",
           "type": "User",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -491,6 +525,7 @@
         {
           "name": "attempts",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -509,6 +544,7 @@
         {
           "name": "receipt",
           "type": "Receipt",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -522,6 +558,7 @@
         {
           "name": "declined",
           "type": "CardDeclined",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {

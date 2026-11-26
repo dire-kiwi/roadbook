@@ -1,4 +1,4 @@
-# The Roadbook IR, version 0.3
+# The Roadbook IR, version 0.4
 
 The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with messaging and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
@@ -22,7 +22,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 ```jsonc
 {
-  "irVersion": "0.3",
+  "irVersion": "0.4",
   "sources":   [{ "path": "examples/shop/place_order.road", "package": null },
                 { "path": "examples/shop/types.road", "package": null }],
   "types":     { /* Name: type declaration */ },
@@ -78,8 +78,10 @@ Pattern: `^(string|int|float|bool|duration|json|[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z
 Record fields, error fields, event fields and parameters have one shape:
 
 ```json
-{ "name": "sku", "type": "string", "doc": "" }
+{ "name": "sku", "type": "string", "sensitive": false, "doc": "" }
 ```
+
+`sensitive` is `true` for a field or parameter written `sensitive name: T`: trace records show its value as `"<redacted>"` ([redaction](trace.md#redaction)). On a function's parameter it changes nothing, since function calls are not traced. It is not part of the [machine hash](#the-machine-hash).
 
 ### Types
 
@@ -143,7 +145,7 @@ Spans cover the whole declaration.
 | `root` | The machine body as a state. See below. |
 | `hash` | The [machine hash](#the-machine-hash). |
 
-A **variable** is `{"name", "type", "init", "doc", "span"}`. `init` is the initial value expression, or `null` if there is none. With no initialiser, a variable of optional type starts as `null` and any other variable starts unassigned (see `spec/execution.md`). The span covers the declaration from `var` to the end of its type or initial value.
+A **variable** is `{"name", "type", "sensitive", "init", "doc", "span"}`. `sensitive` is `true` for `sensitive var`, as for a [field](#fields-and-parameters). `init` is the initial value expression, or `null` if there is none. With no initialiser, a variable of optional type starts as `null` and any other variable starts unassigned (see `spec/execution.md`). The span covers the declaration from `var` to the end of its type or initial value.
 
 An **event** is `{"fields", "doc", "span"}`, keyed by its name, in `events` and in `emits` alike. The span covers the declaration from `event` or `emits` to its end.
 
@@ -199,6 +201,8 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
 | `span` | From `invoke` to the closing brace of its outcomes. |
 
 The outcomes written inside `invoke { … }` are transitions of the state, with `invoke.done` and `invoke.fail` triggers.
+
+**`retry` is not in the IR.** `invoke … retry N [on …] [after …]` is shorthand that the compiler writes out as a compound state with the children `Attempt` and `Backoff`, a variable counting failed attempts, and guarded `invoke.fail` branches, exactly as [the language page](../docs/design/language.md#what-retry-compiles-to) gives them. A reader sees ordinary states, variables and transitions, and cannot tell a retry from the same states written by hand except by their spans, which point at the `retry` clause. The two forms have the same machine hash.
 
 ## Addresses
 
@@ -338,28 +342,32 @@ A machine's `hash` is `"sha256:"` followed by the 64 lowercase hexadecimal digit
 - **F**, **A** and **K** are the functions called (`call`), the actions run (`do`) and the tasks invoked by the machines in M.
 - **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send` or an `emitted` trigger), or by an event type `Machine.Name`. Only its interface, its `events` and `emits`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts or emits changes, and not when how the peer works inside does. (A child addressed with `as` is invoked, and a collection's machine is spawned, so they are in M whole.)
 - **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by the base of any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`), by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, or `Machine.Name`), and the machine of a `ref`, are not part of T.
-- **strip** removes every member named `doc`, `span` or `text` from every object, recursively, except the keys of a machine's `children` map, which are kept whatever they are. The other name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed: `children text: C by string` keeps its collection.
+- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `children` map, which are kept whatever they are. The other name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed: `children text: C by string` keeps its collection.
 
-So comments, formatting, source positions, file names, packages, declaration order and unused declarations do not change a machine's hash, and any change to what the machine does, to a type it uses, to a machine it invokes, or to the interface of a machine it talks to does. A declaration copied from another package's compiled IR therefore keeps the hash it had there. In Rust, `roadbook_ir::machine_hash(&ir, name)` computes it, `roadbook_ir::semantic_view` returns the view, and `roadbook_ir::fill_hashes(&mut ir)` sets every machine's `hash`; the compiler calls the last after type checking. Snapshots and traces record the hash, so restoring a snapshot into a changed machine is refused and the viewer can tell when a trace came from another version of a chart.
+So comments, formatting, source positions, file names, packages, declaration order, `sensitive` marks and unused declarations do not change a machine's hash (a run compiled without a peer's marks therefore talks to it all the same, and shows what the peer marks: build the runs that talk to each other from the same charts), and any change to what the machine does, to a type it uses, to a machine it invokes, or to the interface of a machine it talks to does. A declaration copied from another package's compiled IR therefore keeps the hash it had there. In Rust, `roadbook_ir::machine_hash(&ir, name)` computes it, `roadbook_ir::semantic_view` returns the view, and `roadbook_ir::fill_hashes(&mut ir)` sets every machine's `hash`; the compiler calls the last after type checking. Snapshots and traces record the hash, so restoring a snapshot into a changed machine is refused and the viewer can tell when a trace came from another version of a chart.
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.3`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.4`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
 
-## Changes from 0.2
+## Changes from 0.3
 
-Version 0.3 adds keyed `spawn` ([spawned children](execution.md#spawned-children)). Every machine has the new member `children` and every `send` effect `key`, so every hash changed.
+Version 0.4 adds keyed `spawn` ([spawned children](execution.md#spawned-children)). Every machine has the new member `children` and every `send` effect `key`, so every hash changed.
 
 - Machines have [`children`](#machines), the keyed collections of spawned children.
 - The address kind `children`, and `key` on `send` effects (`send name[key].E`, `send name.*.E`).
 - The effect kinds `spawn` and `stop`, and the trigger kinds `spawn.done` and `spawn.fail`.
 - The implicit name `key` in `ref` paths.
 - A collection's machine is in the hash's M.
+
+## Changes from 0.2
+
+Version 0.3 adds `sensitive` marks ([redaction](trace.md#redaction)). Every [field and parameter](#fields-and-parameters) and every variable has the new member `sensitive`, so a 0.2 document is not a 0.3 document. The [machine hash](#the-machine-hash) strips `sensitive` as it strips `doc`, so no hash changed: a snapshot saved with 0.2 restores into the same machine compiled to 0.3, and marking a field later does not invalidate snapshots, because a mark changes only what traces show.
 
 ## Changes from 0.1
 

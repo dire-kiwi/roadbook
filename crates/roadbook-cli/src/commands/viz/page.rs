@@ -327,12 +327,14 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
 }
 
 /// `machine Name(p: T) -> R ! E | F`
+/// `name: T`, or `sensitive name: T`: a field or parameter as written.
+pub fn field_text(f: &roadbook_ir::Field) -> String {
+    let sensitive = if f.sensitive { "sensitive " } else { "" };
+    format!("{sensitive}{}: {}", f.name, f.ty)
+}
+
 pub fn signature(name: &str, m: &Machine) -> String {
-    let params: Vec<String> = m
-        .params
-        .iter()
-        .map(|p| format!("{}: {}", p.name, p.ty))
-        .collect();
+    let params: Vec<String> = m.params.iter().map(field_text).collect();
     let mut s = format!("machine {name}({})", params.join(", "));
     if let Some(r) = &m.returns {
         s.push_str(&format!(" -> {r}"));

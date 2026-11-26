@@ -23,7 +23,7 @@ machine M() {
 
 fn nothing() -> string[]
 
-// expect: RB0317 at 12:30
-// expect: RB0317 at 13:30
-// expect: RB0317 at 14:30
-// expect: RB0317 at 15:30
+// expect: RB0319 at 12:30
+// expect: RB0319 at 13:30
+// expect: RB0319 at 14:30
+// expect: RB0319 at 15:30

@@ -106,9 +106,38 @@ impl TraceRecord {
         v
     }
 
-    /// The record in canonical JSON (RFC 8785), the form traces are compared in.
+    /// The record in canonical JSON (RFC 8785), the form traces are compared in: the same
+    /// text as [`TraceRecord::to_json`]'s, written with no JSON value in between.
     pub fn to_canonical(&self) -> String {
-        roadbook_ir::jcs::to_canonical_string(&self.to_json())
+        let mut out = String::new();
+        self.write_canonical(&mut out);
+        out
+    }
+
+    /// Appends [`TraceRecord::to_canonical`] to `out`.
+    pub fn write_canonical(&self, out: &mut String) {
+        /// The record with `t`, `run` and `parent` among its members.
+        #[derive(serde::Serialize)]
+        struct Line<'a> {
+            t: u64,
+            run: &'a str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            parent: Option<&'a str>,
+            #[serde(flatten)]
+            record: &'a Record,
+        }
+        let start = out.len();
+        let line = Line {
+            t: self.t,
+            run: &self.run,
+            parent: self.parent.as_deref(),
+            record: &self.record,
+        };
+        if roadbook_ir::jcs::write_canonical(out, &line).is_err() {
+            // As `to_json` gives for a record that does not serialise.
+            out.truncate(start);
+            out.push_str("null");
+        }
     }
 }
 
@@ -116,6 +145,12 @@ impl TraceRecord {
 pub trait TraceSink: Send + Sync {
     /// Writes one record. Called in the order the run emitted them.
     fn record(&self, record: &TraceRecord);
+
+    /// Whether the sink wants records at all. A sink that says `false` is never given one,
+    /// and the driver saves itself building them. Asked once per record, so it may change.
+    fn enabled(&self) -> bool {
+        true
+    }
 }
 
 /// The default sink: drops every record.
@@ -124,32 +159,39 @@ pub struct NoTrace;
 
 impl TraceSink for NoTrace {
     fn record(&self, _record: &TraceRecord) {}
+
+    fn enabled(&self) -> bool {
+        false
+    }
 }
 
 /// Writes each record as one line of canonical JSON ([JSON Lines](https://jsonlines.org/)).
 pub struct JsonLines<W> {
-    out: Mutex<W>,
+    /// The writer, and the line being written, kept to reuse its buffer.
+    out: Mutex<(W, String)>,
 }
 
 impl<W: Write + Send> JsonLines<W> {
     /// Writes to `out`.
     pub fn new(out: W) -> Self {
         JsonLines {
-            out: Mutex::new(out),
+            out: Mutex::new((out, String::new())),
         }
     }
 
     /// The writer back.
     pub fn into_inner(self) -> W {
-        self.out.into_inner().unwrap_or_else(|e| e.into_inner())
+        self.out.into_inner().unwrap_or_else(|e| e.into_inner()).0
     }
 }
 
 impl<W: Write + Send> TraceSink for JsonLines<W> {
     fn record(&self, record: &TraceRecord) {
-        let mut line = record.to_canonical();
+        let mut guard = self.out.lock().unwrap_or_else(|e| e.into_inner());
+        let (out, line) = &mut *guard;
+        line.clear();
+        record.write_canonical(line);
         line.push('\n');
-        let mut out = self.out.lock().unwrap_or_else(|e| e.into_inner());
         // A trace that cannot be written must not stop the machine.
         let _ = out.write_all(line.as_bytes());
     }

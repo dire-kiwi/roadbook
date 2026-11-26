@@ -273,7 +273,7 @@ export function machinePanel(ctx: PanelContext): string {
     section('Signature', code(signatureText('machine', ctx.machine, m)) + signatureKv(ir, m)) +
     section(
       'Variables',
-      list(m.vars.map((v) => `${esc(v.name)}: ${typeHtml(ir, v.type)}${v.init ? ` = ${esc(v.init.text)}` : ' <span class="rb-note">(assigned later)</span>'}${v.doc ? `<span class="rb-sub rb-note">${esc(v.doc)}</span>` : ''}`)),
+      list(m.vars.map((v) => `${v.sensitive ? 'sensitive ' : ''}${esc(v.name)}: ${typeHtml(ir, v.type)}${v.init ? ` = ${esc(v.init.text)}` : ' <span class="rb-note">(assigned later)</span>'}${v.doc ? `<span class="rb-sub rb-note">${esc(v.doc)}</span>` : ''}`)),
     ) +
     section('Events it accepts', eventItems(ctx.machine, m.events)) +
     section('Events it emits', eventItems(ctx.machine, m.emits)) +
@@ -478,7 +478,7 @@ export function eventPanel(ctx: PanelContext, name: string): string {
         ? `${esc(ctx.machine)} emits it to the machine that invoked or spawned it and to every machine holding a ref to it.`
         : `${esc(ctx.machine)} accepts it: another machine sends it with <code>send name.${esc(name)}</code>, or host code through the machine's handle.`
     }</p>`) +
-    section('Fields', list(decl.fields.map((f) => `${esc(f.name)}: ${esc(f.type)}${f.doc ? `<span class="rb-sub rb-note">${esc(f.doc)}</span>` : ''}`))) +
+    section('Fields', list(decl.fields.map((f) => `${f.sensitive ? 'sensitive ' : ''}${esc(f.name)}: ${esc(f.type)}${f.doc ? `<span class="rb-sub rb-note">${esc(f.doc)}</span>` : ''}`))) +
     body
   )
 }

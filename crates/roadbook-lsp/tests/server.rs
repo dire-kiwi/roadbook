@@ -968,3 +968,25 @@ fn ir_compiles_the_editor_s_text_as_export_ir_would() {
     assert!(main["ir"].is_string(), "{main}");
     c.shutdown();
 }
+
+#[test]
+fn the_errors_of_a_retry_are_references() {
+    let text = "error Busy\nerror Gone\nfn backoff(n: int) -> duration\ntask ping() ! Busy | Gone\n\nmachine M() {\n  var tries: int = 0\n\n  initial A\n\n  state A {\n    invoke ping() retry 2 on Busy after backoff(attempt) {\n      done      -> B  set tries = 1\n      fail Busy -> B\n      fail Gone -> B\n    }\n  }\n\n  final state B {}\n}\n";
+    let p = Project::new("retry", &[("c.road", text)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, text);
+    assert!(c.diagnostics(&uri).is_empty());
+    let loc = c
+        .request("textDocument/definition", at(&uri, text, "on ^Busy"))
+        .unwrap();
+    assert_eq!(loc["range"]["start"], position(text, "error ^Busy"));
+    let out = rename(&mut c, &uri, text, "error ^Busy", "Throttled");
+    assert!(out.contains("retry 2 on Throttled after"), "{out}");
+    assert!(out.contains("fail Throttled -> B"), "{out}");
+    // `attempt` in the delay counts the failed attempts: a variable named so would make it
+    // ambiguous.
+    let why = rename_error(&mut c, &uri, text, "var ^tries", "attempt");
+    assert!(why.contains("`attempt` is ambiguous"), "{why}");
+    c.shutdown();
+}

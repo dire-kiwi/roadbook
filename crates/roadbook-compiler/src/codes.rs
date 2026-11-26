@@ -48,12 +48,15 @@ pub const NOT_ACCEPTED: Code = Code(116);
 /// An `emit E` of an event the machine does not declare with `emits`, or an `on name.E` of an
 /// event the sending machine does not.
 pub const NOT_EMITTED: Code = Code(117);
+
+/// `attempt` in a retry's delay, in a machine with a parameter or variable named `attempt`.
+pub const ATTEMPT_SHADOWED: Code = Code(118);
 /// A `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` or `on name.fail` through a
 /// name that is not a `children` collection, or a `send name.E` to a collection with no key.
-pub const NOT_A_COLLECTION: Code = Code(118);
+pub const NOT_A_COLLECTION: Code = Code(119);
 /// `key`, the implicit name of a spawned child's key, as the name of a machine parameter,
 /// variable, `as` name or collection.
-pub const KEY_AS_NAME: Code = Code(119);
+pub const KEY_AS_NAME: Code = Code(120);
 
 // ───────────── structure ─────────────
 
@@ -69,7 +72,8 @@ pub const UNHANDLED_ERROR: Code = Code(204);
 pub const DUPLICATE_TRIGGER: Code = Code(205);
 /// A second `invoke` in one state.
 pub const SECOND_INVOKE: Code = Code(206);
-/// A `fail E` outcome for an error the task or machine does not declare.
+/// A `fail E` outcome, or a `retry … on E`, for an error the task or machine does not
+/// declare.
 pub const UNDECLARED_ERROR_OUTCOME: Code = Code(207);
 /// `output` or `fail` outside a top-level final state, or more than one in a final state.
 pub const MISPLACED_RESULT: Code = Code(208);
@@ -89,8 +93,24 @@ pub const CHILD_NOT_RUNNING: Code = Code(213);
 
 /// `invoke task(…) as name`: only an invoked machine has a name to send to.
 pub const ALIAS_ON_TASK: Code = Code(214);
+
+/// `retry` on the invoke of a state with child states, which cannot be written out as
+/// `Attempt` and `Backoff` children.
+pub const RETRY_WITH_CHILDREN: Code = Code(215);
+
+/// `retry` on an invoke with `as`: each attempt is a new child, which a name cannot address
+/// during the waits.
+pub const RETRY_WITH_ALIAS: Code = Code(216);
+
+/// A `retry` that retries nothing (`retry 0`, a task or machine with no declared errors), or
+/// names an error twice.
+pub const RETRY_NOTHING: Code = Code(217);
+
+/// A retried error handled by a `fail *` that also handles an error that is not retried.
+pub const RETRY_SHARED_OUTCOME: Code = Code(218);
+
 /// A `spawn` of a machine other than its collection's.
-pub const SPAWN_MACHINE_MISMATCH: Code = Code(215);
+pub const SPAWN_MACHINE_MISMATCH: Code = Code(219);
 
 // ───────────── types ─────────────
 
@@ -131,8 +151,18 @@ pub const NOT_A_REF: Code = Code(315);
 /// A `ref` in a field of a record, error or event, or in what a function, task or machine
 /// returns.
 pub const REF_NOT_ALLOWED: Code = Code(316);
+
+/// A value read from a sensitive field, parameter or variable (or computed from one by an
+/// operator) going where a trace shows it:
+/// to a variable, parameter or field that is not sensitive, or to an `output`, a `fail` or an
+/// `after` delay.
+pub const SENSITIVE_VALUE: Code = Code(317);
+
+/// A value whose type has sensitive fields going where `json` is expected, in a place a trace
+/// shows.
+pub const SENSITIVE_INTO_JSON: Code = Code(318);
 /// A `children` key type that is not `string`, `int` or an enum, or an alias of one.
-pub const BAD_KEY_TYPE: Code = Code(317);
+pub const BAD_KEY_TYPE: Code = Code(319);
 
 // ───────────── analyses ─────────────
 
@@ -184,6 +214,7 @@ pub const ALL: &[Code] = &[
     UNKNOWN_ADDRESS,
     NOT_ACCEPTED,
     NOT_EMITTED,
+    ATTEMPT_SHADOWED,
     NOT_A_COLLECTION,
     KEY_AS_NAME,
     UNKNOWN_TARGET,
@@ -200,6 +231,10 @@ pub const ALL: &[Code] = &[
     DONE_WITHOUT_CHILDREN,
     CHILD_NOT_RUNNING,
     ALIAS_ON_TASK,
+    RETRY_WITH_CHILDREN,
+    RETRY_WITH_ALIAS,
+    RETRY_NOTHING,
+    RETRY_SHARED_OUTCOME,
     SPAWN_MACHINE_MISMATCH,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
@@ -217,6 +252,8 @@ pub const ALL: &[Code] = &[
     DOUBLE_OPTIONAL,
     NOT_A_REF,
     REF_NOT_ALLOWED,
+    SENSITIVE_VALUE,
+    SENSITIVE_INTO_JSON,
     BAD_KEY_TYPE,
     ALWAYS_CYCLE,
     UNBOUNDED_RECURSION,

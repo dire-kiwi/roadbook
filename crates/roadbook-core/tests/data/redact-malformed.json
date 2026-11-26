@@ -1,0 +1,17 @@
+{
+  "description": "Redaction fails closed on what no conformance script can give, since the TypeScript codec refuses it, but raw host code in Rust can: an undeclared member of an argument, a record or an event, an event of an undeclared tag, an emitted event whose members fit no machine's declaration, a value of the wrong shape, and stale outcomes. Both cores must write `redact-malformed.jsonl` from these inputs (their trace records in order, canonical JSON, without t and run).",
+  "ir": "spec/conformance/charts/teller.ir.json",
+  "machine": "Teller",
+  "input": { "code": "c0de", "owner": { "user": "ada", "password": "hunter2", "extra": "x" }, "pin": 1234 },
+  "inputs": [
+    { "kind": "event", "value": { "_tag": "Ask", "question": "why", "extra": "x" } },
+    { "kind": "event", "value": { "_tag": "Unknown", "secret": "s3" } },
+    { "kind": "message", "from": "r9", "message": 1, "value": { "_tag": "Ask", "question": 7 } },
+    { "kind": "emitted", "from": "r5", "invoke": null, "message": 1, "value": { "_tag": "Told", "answer": "a", "to": "b", "extra": "x" } },
+    { "kind": "emitted", "from": "r5", "invoke": null, "message": 2, "value": { "_tag": "Told", "answer": "a", "to": "b" } },
+    { "kind": "invoke.done", "invoke": 7, "value": { "x": 1 } },
+    { "kind": "invoke.done", "invoke": 8, "value": null },
+    { "kind": "invoke.fail", "invoke": 9, "error": { "_tag": "Nope", "why": "x" } },
+    { "kind": "event", "value": { "_tag": "Bye" } }
+  ]
+}

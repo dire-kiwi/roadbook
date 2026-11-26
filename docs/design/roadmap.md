@@ -6,9 +6,10 @@ One repository, a Cargo workspace and a pnpm workspace side by side.
 
 ```
 spec/
-  language.md              the language reference
-  ir.schema.json           JSON Schema for the IR
-  trace.schema.json        JSON Schema for trace records
+  execution.md             how machines execute: the rules both runtimes follow
+  ir.md, ir.schema.json    the IR, and its JSON Schema
+  trace.md, trace.schema.json  trace records, and their JSON Schema
+  snapshot.schema.json     JSON Schema for saved snapshots
   conformance/             charts, scripts and expected traces
 crates/
   roadbook-syntax           lexer, parser, syntax tree, formatter
@@ -16,8 +17,11 @@ crates/
   roadbook-ir               IR types (serde) and schema
   roadbook-core             pure interpreter
   roadbook-macros           the include! macro and Rust code generation
+  roadbook-gen-ts           the TypeScript generator behind `gen`
   roadbook                  driver, Actor, tracing; re-exports the macro
-  roadbook-cli              check, fmt, gen, viz, export, paths
+  roadbook-cli              check, fmt, gen, viz, export, paths, lsp
+  roadbook-lsp              the language server
+  roadbook-conformance      loads and checks the conformance cases
   roadbook-wasm             the compiler as WebAssembly, for packages/cli
 packages/
   core                     @roadbook/core: pure interpreter, no dependencies
@@ -91,15 +95,19 @@ Progress is recorded on each milestone below as it finishes.
 
 **M7. Review tooling.** Diff mode and coverage mode in the viewer. A CI recipe that attaches the diff viewer to a pull request.
 
-*Done.* `roadbook viz --diff <range>` draws both revisions of each chart as one diagram, with added, removed, changed and moved states, transitions, machines and declarations marked in text and line style as well as colour, and writes `summary.md` and `summary.json`. Coverage (`roadbook viz --coverage`, or traces dropped on a page) shades each state and transition by how often the traces took it and flags the ones never taken. `roadbook paths` lists the paths through a machine for test generation. `docs/ci/roadbook-diff.yml` is a GitHub Actions recipe that builds the diff pages for a pull request, uploads them and comments a summary; this repository has no remote, so it was checked locally and under Node with a stand-in client but never run on GitHub. An independent review found an argument-parsing bug, unescaped chart text in the pull-request comment, and gaps in matching across files; all are fixed.
+*Done.* `roadbook viz --diff <range>` draws both revisions of each chart as one diagram, with added, removed, changed and moved states, transitions, machines and declarations marked in text and line style as well as colour, and writes `summary.md` and `summary.json`. Coverage (`roadbook viz --coverage`, or traces dropped on a page) shades each state and transition by how often the traces took it and flags the ones never taken. `roadbook paths` lists the paths through a machine for test generation. `docs/ci/roadbook-diff.yml` is a GitHub Actions recipe that builds the diff pages for a pull request, uploads them and comments a summary. It has run on GitHub, in the repository's first pull request (dire-kiwi/roadbook#1, a test that changed one chart): it drew the change, uploaded the pages and posted its comment, and on the next push updated that comment instead of adding another. It needed no changes beyond moving its actions to their current major versions. An independent review found an argument-parsing bug, unescaped chart text in the pull-request comment, and gaps in matching across files; all are fixed.
 
 **M8. Editors.** Tree-sitter grammar, language server (diagnostics, go to definition, rename), VS Code extension with live preview.
 
 *Done.* The tree-sitter grammar (`editors/tree-sitter-roadbook`) parses every chart in the repository, with highlight, locals, fold and indent queries for Neovim, Helix and Zed; `scripts/check-all.sh` checks it. The language server (`roadbook lsp`, `crates/roadbook-lsp`, on a symbol index added to the compiler without changing its output) gives diagnostics with the compiler's fixes as quick fixes, go to definition, references, hover, rename that refuses to capture or clash, formatting and an outline, across files and packages and for unsaved and untitled documents. The VS Code extension (`editors/vscode`) adds the language, highlighting, the server and a live preview that compiles through the server, so it sees every unsaved buffer; its integration test passed in a real VS Code (headless). An independent review found edge cases with packages under `node_modules`, the preview's compilation, rename scoping and workspace trust; all are fixed.
 
-**Keyed spawn.** *Done, 27 November 2026.* A dynamic number of children, built as M5 was ([actors and messaging](actors.md#many-children)). The language: `children name: Machine by Key`, `spawn name[key] = Machine(args)`, `stop name[key]`, `send name[key].E` and `send name.*.E`, `on name.E`, `on name.done` and `on name.fail E` with the implicit name `key`, and their checks (`RB0118`, `RB0119`, `RB0215`, `RB0317`, `RB0908`, and `RB0402` through spawns); IR 0.3 and snapshot version 2. The semantics are in `spec/execution.md` ("Spawned children") with seven conformance cases; an independent throwaway implementation reproduced the first six byte for byte from the spec, and an independent review's findings (`int` keys in float form in Rust, collections named `text` missing from the hash, gaps in `RB0402`, a wrong claim about what a parent's exit can tell its children) are fixed, the first as the seventh case. Both runtimes write identical traces and snapshots for all 57 cases, and both run `examples/upload/batch.road`, which spawns an upload per file. The viewer draws spawning and the project index lists it; the tree-sitter grammar and the language server know the new syntax. What depends on the open messaging questions (supervision, bounded queues, who receives emitted events, replies) is listed in [actors and messaging](actors.md#what-depends-on-the-open-questions).
+**Retry sugar.** `invoke … retry N [on E | …] [after delay]`, with `attempt` in the delay, as the [language page](language.md#retrying-an-invoke) describes.
 
-**Later.** History states, retry sugar, a durable driver, generated Rust state machines for hot paths.
+*Done.* The compiler writes a retry out as explicit states (the invoking state becomes compound, with `Attempt` and `Backoff`), a counter variable and guarded `invoke.fail` branches, so the IR gains nothing, and both runtimes, the viewer and the exporters are unchanged, and the sugar and the same states written by hand have the same machine hash. Conformance cases run the written-out form in both runtimes; the formatter, the diagnostics (`RB0118`, `RB0215`–`RB0218`), the tree-sitter grammar and the language server know the clause.
+
+**Keyed spawn.** *Done, 27 November 2026.* A dynamic number of children, built as M5 was ([actors and messaging](actors.md#many-children)). The language: `children name: Machine by Key`, `spawn name[key] = Machine(args)`, `stop name[key]`, `send name[key].E` and `send name.*.E`, `on name.E`, `on name.done` and `on name.fail E` with the implicit name `key`, and their checks (`RB0119`, `RB0120`, `RB0219`, `RB0319`, `RB0908`, and `RB0402` through spawns); IR 0.4 and snapshot version 2. The semantics are in `spec/execution.md` ("Spawned children") with seven conformance cases; an independent throwaway implementation reproduced the first six byte for byte from the spec, and an independent review's findings (`int` keys in float form in Rust, collections named `text` missing from the hash, gaps in `RB0402`, a wrong claim about what a parent's exit can tell its children) are fixed, the first as the seventh case. Both runtimes write identical traces and snapshots for all 57 cases, and both run `examples/upload/batch.road`, which spawns an upload per file. The viewer draws spawning and the project index lists it; the tree-sitter grammar and the language server know the new syntax. What depends on the open messaging questions (supervision, bounded queues, who receives emitted events, replies) is listed in [actors and messaging](actors.md#what-depends-on-the-open-questions).
+
+**Later.** History states, a durable driver, generated Rust state machines for hot paths.
 
 M3 and M4 are independent once M1 is done and can run in parallel. M2 depends only on M1.
 
@@ -110,9 +118,9 @@ M3 and M4 are independent once M1 is done and can run in parallel. M2 depends on
 | The language is a poor fit for real programs. | Port two or three real request handlers during M1, before the runtimes exist. The viewer makes shortcomings obvious early. |
 | The two runtimes diverge. | The conformance suite is the specification, and both run it in CI from M4 on. |
 | Agents write the syntax badly. | Small grammar, canonical formatter, machine-readable diagnostics with fixes, and a bundled instructions file for agents. Measure it in M1 by having an agent write charts from prose. |
-| Large charts are unreadable as diagrams. | Collapse compound states by default beyond a size, and push structure into child machines, which the language makes cheap. The spike should be tried on a 40-state chart during M2. |
+| Large charts are unreadable as diagrams. | Collapse compound states by default beyond a size, and push structure into child machines, which the language makes cheap. M2 tried the viewer on the 46-state `examples/large`, which opens with its deep levels collapsed. |
 | Definite assignment is too strict or too slow. | Built in M6 and tuned against the example charts: it is conservative in a few documented places, and takes about 100 ms on a 1,000-state chart in a debug build. The runtime check stays as a backstop. |
-| No editor support at first. | `roadbook viz --watch` gives live feedback from M2. Highlighting needs only the tree-sitter grammar, which can be pulled forward. |
+| No editor support at first. | `roadbook viz --watch` gave live feedback from M2. M8 added the tree-sitter grammar, the language server and the VS Code extension. |
 
 ## Open questions
 

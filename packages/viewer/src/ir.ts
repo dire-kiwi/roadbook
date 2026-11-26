@@ -12,6 +12,8 @@ export interface Span {
 export interface Field {
   name: string
   type: string
+  /** Marked `sensitive`: traces show its value as "<redacted>". */
+  sensitive: boolean
   doc: string
 }
 
@@ -53,6 +55,8 @@ export interface TaskDecl {
 export interface Var {
   name: string
   type: string
+  /** Marked `sensitive`: traces show its value as "<redacted>". */
+  sensitive: boolean
   init: Expr | null
   doc: string
   span: Span
@@ -186,4 +190,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.3'
+export const IR_VERSION = '0.4'

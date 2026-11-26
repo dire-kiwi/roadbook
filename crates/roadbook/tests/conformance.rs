@@ -755,6 +755,13 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
         return Err(problems.join("; "));
     }
     let records: Vec<Value> = sink.records().iter().map(|r| r.to_json()).collect();
+    // `JsonLines` writes `to_canonical`, straight from the record: the same text.
+    for (r, v) in sink.records().iter().zip(&records) {
+        let direct = r.to_canonical();
+        if direct != roadbook_ir::jcs::to_canonical_string(v) {
+            return Err(format!("to_canonical writes {direct} for {v}"));
+        }
+    }
     let text = to_lines(&arrange(records));
     for run in &runner.runs {
         let status = status_of(&run.end);

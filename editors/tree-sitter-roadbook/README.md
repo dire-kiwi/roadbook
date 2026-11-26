@@ -16,8 +16,10 @@ check.sh              every check below
 
 ## Build and test
 
-You need the tree-sitter CLI 0.26 (`npm install -g tree-sitter-cli@0.26`, or
-`cargo install tree-sitter-cli`) and a C compiler.
+You need the tree-sitter CLI 0.26.9 (`npm install -g tree-sitter-cli@0.26.9`, or
+`cargo install tree-sitter-cli --version 0.26.9`) and a C compiler. Use that exact version:
+`src/` is what it generates, and other releases, patch releases too, write a different one,
+which `check.sh` and CI reject.
 
 ```sh
 cd editors/tree-sitter-roadbook

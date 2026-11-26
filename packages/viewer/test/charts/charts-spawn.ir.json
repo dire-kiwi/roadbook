@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "packages/viewer/test/charts/spawn.road",
@@ -40,6 +40,7 @@
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -72,6 +73,7 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -89,11 +91,13 @@
         {
           "name": "id",
           "type": "SessionId",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "count",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -122,11 +126,13 @@
         {
           "name": "id",
           "type": "SessionId",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "greeting",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -139,6 +145,7 @@
         {
           "name": "seen",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -161,6 +168,7 @@
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -191,6 +199,7 @@
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -434,6 +443,7 @@
         {
           "name": "lane",
           "type": "Lane",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -548,6 +558,7 @@
         {
           "name": "open",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -566,6 +577,7 @@
         {
           "name": "last",
           "type": "string",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": "",
@@ -599,6 +611,7 @@
             {
               "name": "id",
               "type": "SessionId",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -616,6 +629,7 @@
             {
               "name": "id",
               "type": "SessionId",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -633,6 +647,7 @@
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],

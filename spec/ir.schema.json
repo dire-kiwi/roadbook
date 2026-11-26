@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Roadbook IR 0.3",
+  "title": "Roadbook IR 0.4",
   "description": "The compiled form of a Roadbook project: one document per entry file. See spec/ir.md for what each member means. Every member listed is required; absent values are null, missing docs are \"\", and empty lists and maps are [] and {}.",
   "type": "object",
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.3" },
+    "irVersion": { "const": "0.4" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -95,14 +95,19 @@
     "field": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "type", "doc"],
+      "required": ["name", "type", "sensitive", "doc"],
       "properties": {
         "name": { "$ref": "#/$defs/lowerName" },
         "type": { "$ref": "#/$defs/typeRef" },
+        "sensitive": { "$ref": "#/$defs/sensitive" },
         "doc": { "$ref": "#/$defs/doc" }
       }
     },
     "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+    "sensitive": {
+      "description": "Marked `sensitive`: trace records show the value as \"<redacted>\" (spec/trace.md#redaction).",
+      "type": "boolean"
+    },
     "errors": {
       "description": "Names of error types, in source order.",
       "type": "array",
@@ -250,10 +255,11 @@
     "var": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "type", "init", "doc", "span"],
+      "required": ["name", "type", "sensitive", "init", "doc", "span"],
       "properties": {
         "name": { "$ref": "#/$defs/lowerName" },
         "type": { "$ref": "#/$defs/typeRef" },
+        "sensitive": { "$ref": "#/$defs/sensitive" },
         "init": { "oneOf": [{ "$ref": "#/$defs/expr" }, { "type": "null" }] },
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" }

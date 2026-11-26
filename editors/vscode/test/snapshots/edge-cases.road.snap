@@ -248,6 +248,41 @@
 #      ^ punctuation.section.braces.roadbook
 >    }
 #    ^ punctuation.section.braces.roadbook
+>    state C {
+#    ^^^^^ storage.type.state.roadbook
+#          ^ entity.name.type.state.roadbook
+#            ^ punctuation.section.braces.roadbook
+>      invoke fetch(retry) retry 3 on Busy | Gone after backoff(attempt) {
+#      ^^^^^^ keyword.control.invoke.roadbook
+#             ^^^^^ entity.name.function.call.roadbook
+#                  ^ punctuation.section.parens.roadbook
+#                   ^^^^^ variable.other.roadbook
+#                        ^ punctuation.section.parens.roadbook
+#                          ^^^^^ keyword.control.retry.roadbook
+#                                ^ constant.numeric.integer.roadbook
+#                                  ^^ keyword.control.on.roadbook
+#                                     ^^^^ entity.name.type.error.roadbook
+#                                          ^ keyword.operator.error.roadbook
+#                                            ^^^^ entity.name.type.error.roadbook
+#                                                 ^^^^^ keyword.control.after.roadbook
+#                                                       ^^^^^^^ entity.name.function.call.roadbook
+#                                                              ^ punctuation.section.parens.roadbook
+#                                                               ^^^^^^^ variable.other.roadbook
+#                                                                      ^ punctuation.section.parens.roadbook
+#                                                                        ^ punctuation.section.braces.roadbook
+>        done -> A
+#        ^^^^ keyword.control.done.roadbook
+#             ^^ keyword.operator.arrow.roadbook
+#                ^ entity.name.type.state.roadbook
+>        fail * -> B
+#        ^^^^ keyword.control.fail.roadbook
+#             ^ keyword.operator.wildcard.roadbook
+#               ^^ keyword.operator.arrow.roadbook
+#                  ^ entity.name.type.state.roadbook
+>      }
+#      ^ punctuation.section.braces.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
 >  }
 #  ^ punctuation.section.braces.roadbook
 >  final state Broken { fail error }

@@ -25,7 +25,7 @@ jobs:
   diff:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The pull request's head commit. By default a pull request checks out the merge
           # commit GitHub makes of it into the base, which is neither the head nor a commit
@@ -38,7 +38,7 @@ jobs:
       # reads it from `node_modules`, which git does not hold: install the project's packages
       # when it has a `package.json`. Both sides of the diff read the packages installed here,
       # the pull request's. Install scripts are not run: the charts need only the files.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: hashFiles('package.json') != ''
         with:
           node-version: 22
@@ -75,14 +75,14 @@ jobs:
 
       - name: Upload the pages
         id: upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: roadbook-diff
           path: roadbook-diff
           retention-days: 14
 
       - name: Post or update the comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
         with:

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/saved.road",
@@ -14,6 +14,7 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -31,11 +32,13 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -53,11 +56,13 @@
         {
           "name": "order",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "amount",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -77,6 +82,7 @@
         {
           "name": "amount",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -96,6 +102,7 @@
         {
           "name": "price",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -115,6 +122,7 @@
         {
           "name": "order",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -144,6 +152,7 @@
         {
           "name": "start",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -153,6 +162,7 @@
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "ref",
             "path": [
@@ -177,6 +187,7 @@
             {
               "name": "by",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -374,6 +385,7 @@
         {
           "name": "amount",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -383,6 +395,7 @@
         {
           "name": "receipt",
           "type": "string",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": "",
@@ -539,6 +552,7 @@
         {
           "name": "amount",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -548,6 +562,7 @@
         {
           "name": "price",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -566,6 +581,7 @@
         {
           "name": "receipt",
           "type": "string",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": "",
@@ -942,6 +958,7 @@
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -951,6 +968,7 @@
         {
           "name": "paid",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -969,6 +987,7 @@
         {
           "name": "tracking",
           "type": "string",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": "",
@@ -991,6 +1010,7 @@
             {
               "name": "amount",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],

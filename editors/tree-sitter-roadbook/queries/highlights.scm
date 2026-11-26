@@ -34,6 +34,7 @@
   "done"
   "invoke"
   "as"
+  "retry"
   "output"
   "fail"
   "set"
@@ -60,6 +61,8 @@
   "final"
   "parallel"
 ] @keyword.modifier
+
+(sensitive) @keyword.modifier
 
 [
   "if"

@@ -406,8 +406,8 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
  * A list of parameters or fields as HTML: `name: Type`, a `ref Machine` type (or an alias of
  * one) a button that opens that machine.
  */
-export function paramsHtml(ir: Ir, params: { name: string; type: string }[]): string {
-  return params.map((p) => `${esc(p.name)}: ${typeHtml(ir, p.type)}`).join(', ')
+export function paramsHtml(ir: Ir, params: { name: string; type: string; sensitive?: boolean }[]): string {
+  return params.map((p) => `${p.sensitive ? 'sensitive ' : ''}${esc(p.name)}: ${typeHtml(ir, p.type)}`).join(', ')
 }
 
 /** A type reference as HTML; a `ref` to a machine of the IR links to it. */

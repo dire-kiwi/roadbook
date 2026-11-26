@@ -54,7 +54,7 @@ export interface PublishDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.3",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -72,11 +72,13 @@ const ir: unknown = {
         {
           "name": "title",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -95,11 +97,13 @@ const ir: unknown = {
         {
           "name": "title",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "url",
           "type": "Url",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -118,11 +122,13 @@ const ir: unknown = {
         {
           "name": "name",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "size",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -153,6 +159,7 @@ const ir: unknown = {
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -172,11 +179,13 @@ const ir: unknown = {
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -195,11 +204,13 @@ const ir: unknown = {
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -220,6 +231,7 @@ const ir: unknown = {
         {
           "name": "percent",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -239,11 +251,13 @@ const ir: unknown = {
         {
           "name": "title",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "url",
           "type": "Url",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -263,11 +277,13 @@ const ir: unknown = {
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -289,6 +305,7 @@ const ir: unknown = {
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -320,6 +337,7 @@ const ir: unknown = {
         {
           "name": "draft",
           "type": "Draft",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -331,6 +349,7 @@ const ir: unknown = {
         {
           "name": "percent",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -349,6 +368,7 @@ const ir: unknown = {
         {
           "name": "url",
           "type": "Url",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -362,6 +382,7 @@ const ir: unknown = {
         {
           "name": "post",
           "type": "Post",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -375,6 +396,7 @@ const ir: unknown = {
         {
           "name": "failure",
           "type": "UploadFailed",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -811,6 +833,7 @@ const ir: unknown = {
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -822,6 +845,7 @@ const ir: unknown = {
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -840,6 +864,7 @@ const ir: unknown = {
         {
           "name": "url",
           "type": "Url",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -853,6 +878,7 @@ const ir: unknown = {
         {
           "name": "failure",
           "type": "UploadFailed",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -894,6 +920,7 @@ const ir: unknown = {
             {
               "name": "percent",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],

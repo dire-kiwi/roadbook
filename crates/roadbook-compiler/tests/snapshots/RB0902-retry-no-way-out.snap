@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0902]: state `M.A` has no way out
+ --> RB0902-retry-no-way-out.road:7:5
+  |
+7 |     invoke ping() retry 2 {
+  |     ^^^^^^^^^^^
+  |
+  = help: nothing leaves it or a state containing it; add a transition, or make it a `final state`

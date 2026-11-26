@@ -16,7 +16,10 @@ use crate::check::{Checker, Sig, SigKind, doc, ir_span};
 use crate::codes;
 use crate::index::{SymbolId, SymbolKind};
 use crate::names::{Found, is_type, kind_phrase, suggest};
+use crate::sensitive::Dest;
 use crate::types::{BOOL, DURATION, Ty, ir_type};
+
+mod retry;
 
 /// The machine variables (not parameters) an expression or effect reads, each with the span
 /// of the read, in the order written. Kept for definite assignment, which runs on the IR.
@@ -53,6 +56,11 @@ pub(crate) struct StateInfo {
     pub result_reads: Reads,
     /// What each IR transition reads, by index.
     pub transition_reads: Vec<TransitionReads>,
+    /// The IR transitions a `retry` added: they do not count as a way out, since they stop
+    /// once the retries run out.
+    pub retry_branches: Vec<usize>,
+    /// For a state a `retry` added, the state it was written in, which diagnostics name.
+    pub written_as: Option<String>,
 }
 
 /// A machine variable, for definite assignment.
@@ -165,6 +173,8 @@ struct Node<'p> {
 pub(crate) struct Var {
     pub ty: Ty,
     pub param: bool,
+    /// Marked `sensitive`.
+    pub sensitive: bool,
 }
 
 pub(crate) struct Cx<'c, 'p> {
@@ -185,6 +195,13 @@ pub(crate) struct Cx<'c, 'p> {
     pub reads: Reads,
     /// What the transitions lowered since this was last taken read, in IR order.
     transition_reads: Vec<TransitionReads>,
+    /// The counters of the `retry`s written out so far, in the order of their states.
+    retry_vars: Vec<(ir::Var, VarInfo)>,
+    /// The counter `attempt` reads while a retry's delay is checked: a variable for the
+    /// checker, but not one to suggest, since the chart cannot name it.
+    counter: Option<String>,
+    /// Whether the expression [`Cx::expr`] last returned reads a sensitive value.
+    pub sens: bool,
 }
 
 /// Checks machine `m` declared in `file` and lowers it. Its hash is left empty.
@@ -224,6 +241,9 @@ pub(crate) fn lower<'p>(
         },
         reads: Vec::new(),
         transition_reads: Vec::new(),
+        retry_vars: Vec::new(),
+        counter: None,
+        sens: false,
     };
 
     // Parameters and variables share one namespace.
@@ -237,6 +257,7 @@ pub(crate) fn lower<'p>(
         cx.vars.entry(p.name.name.clone()).or_insert(Var {
             ty: ty.clone(),
             param: true,
+            sensitive: p.sensitive,
         });
     }
     for p in &m.params {
@@ -267,6 +288,7 @@ pub(crate) fn lower<'p>(
                 Var {
                     ty: ty.clone(),
                     param: false,
+                    sensitive: v.sensitive,
                 },
             );
         }
@@ -325,6 +347,7 @@ pub(crate) fn lower<'p>(
                 .map(|f| ir::Field {
                     name: f.name.name.clone(),
                     ty: ir_type(&f.ty),
+                    sensitive: f.sensitive,
                     doc: String::new(),
                 })
                 .collect(),
@@ -413,11 +436,12 @@ pub(crate) fn lower<'p>(
     for (v, ty) in m.body.vars().zip(var_tys) {
         cx.reads.clear();
         let init = v.init.as_ref().map(|e| {
-            cx.expect(
+            cx.expect_to(
                 e,
                 &Scope::none(),
                 &ty,
                 &format!("the initial value of `{}`", v.name.name),
+                dest(v.sensitive, format!("`{}`", v.name.name)),
             )
         });
         let optional = matches!(cx.ck.env.expand(&ty), Ty::Optional(_));
@@ -432,6 +456,7 @@ pub(crate) fn lower<'p>(
         vars.push(ir::Var {
             name: v.name.name.clone(),
             ty: ir_type(&v.ty),
+            sensitive: v.sensitive,
             init,
             doc: doc(&v.doc),
             span: ir_span(v.span),
@@ -456,6 +481,10 @@ pub(crate) fn lower<'p>(
     let mut root = cx.lower_state(0);
     root.doc = doc(&d.doc);
     root.span = ir_span(d.span);
+    for (v, info) in std::mem::take(&mut cx.retry_vars) {
+        vars.push(v);
+        cx.info.vars.push(info);
+    }
 
     let info = cx.info;
     ck.machines.push(info);
@@ -468,6 +497,7 @@ pub(crate) fn lower<'p>(
             .map(|p| ir::Field {
                 name: p.name.name.clone(),
                 ty: ir_type(&p.ty),
+                sensitive: p.sensitive,
                 doc: String::new(),
             })
             .collect(),
@@ -1145,6 +1175,8 @@ impl<'p> Cx<'_, 'p> {
                 invoke_reads: Vec::new(),
                 result_reads: Vec::new(),
                 transition_reads: Vec::new(),
+                retry_branches: Vec::new(),
+                written_as: None,
             },
         );
 
@@ -1164,6 +1196,7 @@ impl<'p> Cx<'_, 'p> {
         self.transition_reads.clear();
         let mut group = 0u32;
         let top_final = kind == ir::StateKind::Final && self.nodes[idx].depth == 1;
+        let mut retry: Option<retry::Plan<'p>> = None;
 
         for item in &body.items {
             self.reads.clear();
@@ -1228,8 +1261,19 @@ impl<'p> Cx<'_, 'p> {
                     group += 1;
                 }
                 Item::Invoke(inv) => {
-                    let (lowered, reads) =
+                    let first = transitions.len();
+                    let (lowered, reads, declared) =
                         self.invoke(idx, inv, &mut group, &mut transitions, &mut triggers);
+                    if invoke.is_none()
+                        && let Some(r) = &inv.retry
+                    {
+                        retry = Some(retry::Plan {
+                            inv,
+                            retry: r,
+                            outcomes: first..transitions.len(),
+                            declared,
+                        });
+                    }
                     if invoke.is_some() {
                         self.ck.diags.push(
                             Diagnostic::error(
@@ -1321,9 +1365,10 @@ impl<'p> Cx<'_, 'p> {
             info.result_reads = result_reads;
             info.transition_reads = transition_reads;
         }
+        let retry = retry.and_then(|plan| self.check_retry(idx, kind, plan));
         let children = self.nodes[idx].children.clone();
         let states = children.into_iter().map(|c| self.lower_state(c)).collect();
-        ir::State {
+        let mut lowered = ir::State {
             name: self.nodes[idx].name.clone(),
             id,
             kind,
@@ -1339,7 +1384,11 @@ impl<'p> Cx<'_, 'p> {
             transitions,
             output,
             fail,
+        };
+        if let Some(r) = retry {
+            self.write_out_retry(&mut lowered, r);
         }
+        lowered
     }
 
     fn initial(&mut self, idx: usize, kind: ir::StateKind) -> Option<String> {
@@ -1712,7 +1761,13 @@ impl<'p> Cx<'_, 'p> {
                 }
             }
             Trigger::After(e) => ir::Trigger::After {
-                delay: self.expect(e, &Scope::none(), &DURATION, "an `after` delay"),
+                delay: self.expect_to(
+                    e,
+                    &Scope::none(),
+                    &DURATION,
+                    "an `after` delay",
+                    Dest::Shown,
+                ),
             },
             Trigger::Always => ir::Trigger::Always,
             // `fail` outcomes only occur inside an invoke; the parser rejects them elsewhere.
@@ -1893,6 +1948,10 @@ impl<'p> Cx<'_, 'p> {
             match e {
                 Effect::Set(a) => {
                     self.ck.refer_member(self.file, self.symbol, &a.var);
+                    let to = dest(
+                        self.vars.get(&a.var.name).is_some_and(|v| v.sensitive),
+                        format!("`{}`", a.var.name),
+                    );
                     let want = match self.vars.get(&a.var.name) {
                         Some(v) if v.param => {
                             self.ck.diags.push(
@@ -1915,11 +1974,12 @@ impl<'p> Cx<'_, 'p> {
                             Ty::Unknown
                         }
                     };
-                    let value = self.expect(
+                    let value = self.expect_to(
                         &a.value,
                         scope,
                         &want,
                         &format!("the value assigned to `{}`", a.var.name),
+                        to,
                     );
                     out.push(ir::Effect::Set {
                         var: a.var.name.clone(),
@@ -1928,7 +1988,14 @@ impl<'p> Cx<'_, 'p> {
                 }
                 Effect::Do(c) => {
                     let sig = self.callee(&c.name, SigKind::Action);
-                    let args = self.args(&c.name, c.span, &c.args, sig.as_ref(), scope);
+                    let args = self.args(
+                        &c.name,
+                        c.span,
+                        &c.args,
+                        sig.as_ref(),
+                        SigKind::Action,
+                        scope,
+                    );
                     out.push(ir::Effect::Do {
                         action: c.name.name.clone(),
                         args,
@@ -1943,11 +2010,13 @@ impl<'p> Cx<'_, 'p> {
                     let written = format!("spawn {}", sp.children.name);
                     let c = self.collection(&sp.children, &written);
                     let want = c.as_ref().map_or(Ty::Unknown, |c| c.key.clone());
-                    let key = self.expect(
+                    // `spawn.started` and `spawn.stopped` records show the key as it is.
+                    let key = self.expect_to(
                         &sp.key,
                         scope,
                         &want,
                         &format!("the key of `{}`", sp.children.name),
+                        Dest::Shown,
                     );
                     let sig = self.callee(&sp.machine, SigKind::Machine);
                     if let Some(c) = &c {
@@ -1973,7 +2042,7 @@ impl<'p> Cx<'_, 'p> {
                         }
                     }
                     let span = sp.machine.span.to(sp.span);
-                    let args = self.args(&sp.machine, span, &sp.args, sig.as_ref(), scope);
+                    let args = self.args(&sp.machine, span, &sp.args, sig.as_ref(), SigKind::Machine, scope);
                     if c.is_some() {
                         out.push(ir::Effect::Spawn {
                             children: sp.children.name.clone(),
@@ -2054,11 +2123,13 @@ impl<'p> Cx<'_, 'p> {
         let mut candidates: Vec<&str> = self
             .vars
             .iter()
-            .filter(|(_, v)| params || !v.param)
+            .filter(|(k, v)| (params || !v.param) && self.counter.as_ref() != Some(*k))
             .map(|(k, _)| k.as_str())
             .collect();
         candidates.sort_unstable();
-        if let Some(s) = suggest(&n.name, candidates.into_iter()) {
+        if n.name == "attempt" {
+            d = d.with_help("`attempt` counts failed attempts only in a retry's delay: `invoke f() retry 3 after backoff(attempt) { … }`");
+        } else if let Some(s) = suggest(&n.name, candidates.into_iter()) {
             d = d.with_help(format!("did you mean `{s}`?")).with_fix(
                 format!("replace with `{s}`"),
                 n.span,
@@ -2123,6 +2194,7 @@ impl<'p> Cx<'_, 'p> {
         span: Span,
         args: &[ast::Expr],
         sig: Option<&Sig>,
+        kind: SigKind,
         scope: &Scope,
     ) -> Vec<ir::Expr> {
         if let Some(sig) = sig
@@ -2158,7 +2230,17 @@ impl<'p> Cx<'_, 'p> {
             .map(|(i, a)| match sig.and_then(|s| s.params.get(i)) {
                 Some((p, t)) => {
                     let t = t.clone();
-                    self.expect(a, scope, &t, &format!("argument `{p}` of `{}`", name.name))
+                    let what = format!("argument `{p}` of `{}`", name.name);
+                    if kind == SigKind::Fn {
+                        // Function calls are not traced.
+                        self.expect(a, scope, &t, &what)
+                    } else {
+                        let to = dest(
+                            self.ck.sensitive.is(&name.name, p),
+                            format!("parameter `{p}` of `{}`", name.name),
+                        );
+                        self.expect_to(a, scope, &t, &what, to)
+                    }
                 }
                 None => self.expr(a, scope).0,
             })
@@ -2172,7 +2254,7 @@ impl<'p> Cx<'_, 'p> {
         group: &mut u32,
         transitions: &mut Vec<ir::Transition>,
         triggers: &mut Vec<Span>,
-    ) -> (ir::Invoke, Reads) {
+    ) -> (ir::Invoke, Reads, Option<Vec<String>>) {
         let is_machine = inv.is_machine();
         let sig = self.callee(
             &inv.callee,
@@ -2187,6 +2269,11 @@ impl<'p> Cx<'_, 'p> {
             invoke_head(inv),
             &inv.args,
             sig.as_ref(),
+            if is_machine {
+                SigKind::Machine
+            } else {
+                SigKind::Task
+            },
             &Scope::none(),
         );
         let arg_reads = std::mem::take(&mut self.reads);
@@ -2357,14 +2444,14 @@ impl<'p> Cx<'_, 'p> {
             args,
             span: ir_span(inv.span),
         };
-        (lowered, arg_reads)
+        (lowered, arg_reads, sig.map(|s| s.errors))
     }
 
     fn output(&mut self, e: &ast::Expr) -> ir::Expr {
         match self.returns.clone() {
             Some(t) => {
                 let what = format!("the output of `{}`", self.machine);
-                self.expect(e, &Scope::none(), &t, &what)
+                self.expect_to(e, &Scope::none(), &t, &what, Dest::Shown)
             }
             None => {
                 let m = self.machine.clone();
@@ -2386,6 +2473,17 @@ impl<'p> Cx<'_, 'p> {
     fn fail_value(&mut self, e: &ast::Expr) -> ir::Expr {
         let (ie, t) = self.expr(e, &Scope::none());
         let m = self.machine.clone();
+        if self.sens {
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::SENSITIVE_VALUE,
+                    e.span,
+                    format!("`{}` is sensitive, and the failure of `{m}` is not", ie.text),
+                )
+                .with_label("a trace would show this value")
+                .with_help("traces show a machine's failure as it is, redacting only the error's sensitive fields; fail with an error built with the value in a `sensitive` field"),
+            );
+        }
         let ok = match self.ck.env.expand(&t) {
             Ty::Unknown => true,
             Ty::Named(n) => self.errors.contains(&n),
@@ -2418,4 +2516,13 @@ impl<'p> Cx<'_, 'p> {
 /// `invoke name`: where diagnostics about an invoke point.
 fn invoke_head(inv: &Invoke) -> Span {
     inv.span.to(inv.callee.span)
+}
+
+/// Where a value goes: `place`, which is marked `sensitive` or not.
+fn dest(sensitive: bool, place: String) -> Dest {
+    if sensitive {
+        Dest::Sensitive
+    } else {
+        Dest::Plain(place)
+    }
 }

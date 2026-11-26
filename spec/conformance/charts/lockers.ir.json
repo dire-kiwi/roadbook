@@ -1,0 +1,785 @@
+{
+  "irVersion": "0.4",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/lockers.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Code": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "label",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "pin",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "doc": "What an opened locker gives back.",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 51
+      }
+    },
+    "Jammed": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "owner",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "pin",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "doc": "The PIN was refused too often.",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 54
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "note": {
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 12,
+        "endCol": 34
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Locker": {
+      "doc": "One locker, opened with its PIN.",
+      "span": {
+        "file": 0,
+        "line": 15,
+        "col": 1,
+        "endLine": 26,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "owner",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "pin",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "returns": "Code",
+      "errors": [
+        "Jammed"
+      ],
+      "vars": [],
+      "events": {
+        "Open": {
+          "fields": [
+            {
+              "name": "pin",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 39
+          }
+        },
+        "Jam": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 12
+          }
+        }
+      },
+      "emits": {},
+      "children": {},
+      "root": {
+        "id": "Locker",
+        "name": "Locker",
+        "kind": "compound",
+        "doc": "One locker, opened with its PIN.",
+        "span": {
+          "file": 0,
+          "line": 15,
+          "col": 1,
+          "endLine": 26,
+          "endCol": 2
+        },
+        "initial": "Locker.Shut",
+        "states": [
+          {
+            "id": "Locker.Shut",
+            "name": "Shut",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 20,
+              "col": 3,
+              "endLine": 23,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Open"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "pin"
+                      ],
+                      "type": "string",
+                      "text": "event.pin"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "pin"
+                      ],
+                      "type": "string",
+                      "text": "pin"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.pin == pin"
+                },
+                "target": "Locker.Opened",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 5,
+                  "endLine": 21,
+                  "endCol": 42
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Jam"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Locker.Jammed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 42
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Locker.Opened",
+            "name": "Opened",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 24,
+              "col": 3,
+              "endLine": 24,
+              "endCol": 64
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "record",
+              "fields": [
+                {
+                  "name": "label",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "owner"
+                    ],
+                    "type": "string",
+                    "text": "owner"
+                  }
+                },
+                {
+                  "name": "pin",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "pin"
+                    ],
+                    "type": "string",
+                    "text": "pin"
+                  }
+                }
+              ],
+              "type": "Code",
+              "text": "Code { label: owner, pin: pin }"
+            },
+            "fail": null
+          },
+          {
+            "id": "Locker.Jammed",
+            "name": "Jammed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 25,
+              "col": 3,
+              "endLine": 25,
+              "endCol": 64
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "record",
+              "fields": [
+                {
+                  "name": "owner",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "owner"
+                    ],
+                    "type": "string",
+                    "text": "owner"
+                  }
+                },
+                {
+                  "name": "pin",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "pin"
+                    ],
+                    "type": "string",
+                    "text": "pin"
+                  }
+                }
+              ],
+              "type": "Jammed",
+              "text": "Jammed { owner: owner, pin: pin }"
+            }
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:3c4b14915093f17ffc9b8640fb3df8c20c3b9bb7b4b1ed6461776c051c376f2a"
+    },
+    "Lockers": {
+      "doc": "Lockers by number.",
+      "span": {
+        "file": 0,
+        "line": 29,
+        "col": 1,
+        "endLine": 47,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Add": {
+          "fields": [
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            },
+            {
+              "name": "owner",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            },
+            {
+              "name": "pin",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 30,
+            "col": 3,
+            "endLine": 30,
+            "endCol": 62
+          }
+        },
+        "Try": {
+          "fields": [
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            },
+            {
+              "name": "pin",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 31,
+            "col": 3,
+            "endLine": 31,
+            "endCol": 47
+          }
+        },
+        "Jam": {
+          "fields": [
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 32,
+            "col": 3,
+            "endLine": 32,
+            "endCol": 24
+          }
+        },
+        "Done": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 33,
+            "col": 3,
+            "endLine": 33,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "children": {
+        "lockers": {
+          "machine": "Locker",
+          "key": "int",
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 35,
+            "col": 3,
+            "endLine": 35,
+            "endCol": 34
+          }
+        }
+      },
+      "root": {
+        "id": "Lockers",
+        "name": "Lockers",
+        "kind": "compound",
+        "doc": "Lockers by number.",
+        "span": {
+          "file": 0,
+          "line": 29,
+          "col": 1,
+          "endLine": 47,
+          "endCol": 2
+        },
+        "initial": "Lockers.Open",
+        "states": [
+          {
+            "id": "Lockers.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 38,
+              "col": 3,
+              "endLine": 45,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Add"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "spawn",
+                    "children": "lockers",
+                    "machine": "Locker",
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "n"
+                      ],
+                      "type": "int",
+                      "text": "event.n"
+                    },
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "owner"
+                        ],
+                        "type": "string",
+                        "text": "event.owner"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "pin"
+                        ],
+                        "type": "string",
+                        "text": "event.pin"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 39,
+                  "col": 5,
+                  "endLine": 39,
+                  "endCol": 94
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Try"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "children",
+                      "name": "lockers",
+                      "machine": "Locker",
+                      "state": null
+                    },
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "n"
+                      ],
+                      "type": "int",
+                      "text": "event.n"
+                    },
+                    "event": "Open",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "pin",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "pin"
+                            ],
+                            "type": "string",
+                            "text": "event.pin"
+                          }
+                        }
+                      ],
+                      "type": "Locker.Open",
+                      "text": "Open { pin: event.pin }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 40,
+                  "col": 5,
+                  "endLine": 40,
+                  "endCol": 84
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Jam"
+                },
+                "group": 2,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "children",
+                      "name": "lockers",
+                      "machine": "Locker",
+                      "state": null
+                    },
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "n"
+                      ],
+                      "type": "int",
+                      "text": "event.n"
+                    },
+                    "event": "Jam",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Locker.Jam",
+                      "text": "Jam"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 41,
+                  "col": 5,
+                  "endLine": 41,
+                  "endCol": 64
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "spawn.done",
+                  "children": "lockers"
+                },
+                "group": 3,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "key"
+                        ],
+                        "type": "int",
+                        "text": "key"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "result",
+                          "label"
+                        ],
+                        "type": "string",
+                        "text": "result.label"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 42,
+                  "col": 5,
+                  "endLine": 42,
+                  "endCol": 65
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "spawn.fail",
+                  "children": "lockers",
+                  "error": "Jammed"
+                },
+                "group": 4,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "key"
+                        ],
+                        "type": "int",
+                        "text": "key"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "error",
+                          "owner"
+                        ],
+                        "type": "string",
+                        "text": "error.owner"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 43,
+                  "col": 5,
+                  "endLine": 43,
+                  "endCol": 64
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Done"
+                },
+                "group": 5,
+                "guard": null,
+                "target": "Lockers.Closed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 44,
+                  "endCol": 37
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Lockers.Closed",
+            "name": "Closed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 46,
+              "col": 3,
+              "endLine": 46,
+              "endCol": 24
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:9b6a6064390ec0cba1e2c4511704ff027c234f127004e925901be0bf70a117b3"
+    }
+  }
+}

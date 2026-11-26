@@ -1,0 +1,47 @@
+// Conformance chart: redaction in the records of spawned children. A spawned child's
+// arguments, its result and its error are redacted by its machine's types, in
+// `spawn.started`, in the `spawn.done` and `spawn.fail` inputs and in a `restored` record's
+// `spawned`; keys are shown as they are.
+
+/// What an opened locker gives back.
+type Code { label: string, sensitive pin: string }
+
+/// The PIN was refused too often.
+error Jammed { owner: string, sensitive pin: string }
+
+action note(n: int, what: string)
+
+/// One locker, opened with its PIN.
+machine Locker(owner: string, sensitive pin: string) -> Code ! Jammed {
+  event Open { sensitive pin: string }
+  event Jam
+
+  initial Shut
+  state Shut {
+    on Open if event.pin == pin -> Opened
+    on Jam                      -> Jammed
+  }
+  final state Opened { output Code { label: owner, pin: pin } }
+  final state Jammed { fail Jammed { owner: owner, pin: pin } }
+}
+
+/// Lockers by number.
+machine Lockers() {
+  event Add  { n: int, owner: string, sensitive pin: string }
+  event Try  { n: int, sensitive pin: string }
+  event Jam  { n: int }
+  event Done
+
+  children lockers: Locker by int
+
+  initial Open
+  state Open {
+    on Add                            spawn lockers[event.n] = Locker(event.owner, event.pin)
+    on Try                            send lockers[event.n].Open { pin: event.pin }
+    on Jam                            send lockers[event.n].Jam
+    on lockers.done                   do note(key, result.label)
+    on lockers.fail Jammed            do note(key, error.owner)
+    on Done                -> Closed
+  }
+  final state Closed {}
+}

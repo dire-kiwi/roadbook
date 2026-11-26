@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/select.road",
@@ -39,6 +39,7 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -100,6 +101,7 @@
         {
           "name": "ready",
           "type": "bool",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": false,
@@ -118,6 +120,7 @@
         {
           "name": "laps",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -140,6 +143,7 @@
             {
               "name": "n",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],

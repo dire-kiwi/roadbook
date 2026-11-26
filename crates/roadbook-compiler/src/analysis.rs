@@ -467,10 +467,14 @@ fn warnings(
     diags: &mut Vec<Diagnostic>,
 ) {
     let reach = tree.reachable(|_| true);
+    // A `retry`'s own branches are not a way out: they stop once the retries run out.
     let leaves = |s: &ir::State| {
-        s.transitions
-            .iter()
-            .any(|t| t.target.is_some() && !matches!(t.trigger, Trigger::Done))
+        let added = info.states.get(&s.id).map(|i| &i.retry_branches);
+        s.transitions.iter().enumerate().any(|(i, t)| {
+            t.target.is_some()
+                && !matches!(t.trigger, Trigger::Done)
+                && !added.is_some_and(|a| a.contains(&i))
+        })
     };
     for &id in &tree.order[1..] {
         let s = tree.states[id];
@@ -501,7 +505,10 @@ fn warnings(
                 Diagnostic::warning(
                     codes::NO_WAY_OUT,
                     si.name_span,
-                    format!("state `{id}` has no way out"),
+                    format!(
+                        "state `{}` has no way out",
+                        si.written_as.as_deref().unwrap_or(id)
+                    ),
                 )
                 .with_help("nothing leaves it or a state containing it; add a transition, or make it a `final state`"),
             );

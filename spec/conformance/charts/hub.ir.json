@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/hub.road",
@@ -13,6 +13,7 @@
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -33,6 +34,7 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -50,6 +52,7 @@
         {
           "name": "name",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -78,6 +81,7 @@
         {
           "name": "name",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -89,6 +93,7 @@
         {
           "name": "count",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -111,6 +116,7 @@
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -128,6 +134,7 @@
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -180,6 +187,7 @@
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -494,6 +502,7 @@
         {
           "name": "said",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -516,11 +525,13 @@
             {
               "name": "id",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "name",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -538,16 +549,19 @@
             {
               "name": "id",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "name",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -565,6 +579,7 @@
             {
               "name": "id",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -582,6 +597,7 @@
             {
               "name": "id",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -599,11 +615,13 @@
             {
               "name": "id",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -621,6 +639,7 @@
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -638,6 +657,7 @@
             {
               "name": "id",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -655,6 +675,7 @@
             {
               "name": "id",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -672,6 +693,7 @@
             {
               "name": "id",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -700,6 +722,7 @@
             {
               "name": "id",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1471,11 +1494,13 @@
             {
               "name": "n",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "name",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1493,6 +1518,7 @@
             {
               "name": "n",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1510,6 +1536,7 @@
             {
               "name": "n",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1527,6 +1554,7 @@
             {
               "name": "n",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
