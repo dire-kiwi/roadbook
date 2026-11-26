@@ -60,17 +60,23 @@ impl Shared {
     }
 
     pub fn push(&self, inputs: impl IntoIterator<Item = Input>) {
-        let mut g = self.lock();
-        g.inbox.extend(inputs);
-        if let Some(w) = g.waker.take() {
+        let waker = {
+            let mut g = self.lock();
+            g.inbox.extend(inputs);
+            g.waker.take()
+        };
+        if let Some(w) = waker {
             w.wake();
         }
     }
 
     pub fn request_cancel(&self) {
-        let mut g = self.lock();
-        g.cancel = true;
-        if let Some(w) = g.waker.take() {
+        let waker = {
+            let mut g = self.lock();
+            g.cancel = true;
+            g.waker.take()
+        };
+        if let Some(w) = waker {
             w.wake();
         }
     }
@@ -118,7 +124,9 @@ impl Shared {
         if g.state.as_deref() != Some(leaf) {
             g.state = Some(leaf.to_owned());
             g.state_version += 1;
-            for w in g.state_wakers.drain(..) {
+            let wakers = std::mem::take(&mut g.state_wakers);
+            drop(g);
+            for w in wakers {
                 w.wake();
             }
         }
