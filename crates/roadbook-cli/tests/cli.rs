@@ -443,6 +443,118 @@ fn viz_writes_a_page_per_entry_and_an_index() {
 }
 
 #[test]
+fn viz_trace_is_embedded_and_opens_in_replay() {
+    let out = out_dir("trace");
+    let o = out.to_str().unwrap();
+    let trace = "spec/conformance/cases/place-order-checkout/trace.jsonl";
+    let res = roadbook(
+        &repo(),
+        &["viz", "examples/shop", "-o", o, "--trace", trace],
+    );
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    // The frozen copy of the shop has the same hashes as the example: no warning.
+    assert!(
+        !text(&res.stderr).contains("warning"),
+        "{}",
+        text(&res.stderr)
+    );
+    let page = std::fs::read_to_string(out.join("place_order.html")).unwrap();
+    let data = page_data(&page);
+    assert_eq!(data["mode"], "replay");
+    assert_eq!(data["trace"]["name"], "trace.jsonl");
+    assert_eq!(
+        data["trace"]["text"].as_str().unwrap(),
+        std::fs::read_to_string(repo().join(trace)).unwrap(),
+        "the trace is embedded as it is"
+    );
+
+    // Without --trace the page opens in explore mode, with no trace.
+    let plain = out_dir("trace-none");
+    let res = roadbook(
+        &repo(),
+        &["viz", "examples/shop", "-o", plain.to_str().unwrap()],
+    );
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    let data = page_data(&std::fs::read_to_string(plain.join("place_order.html")).unwrap());
+    assert_eq!(data["mode"], "explore");
+    assert!(data["trace"].is_null());
+
+    // Another version of the machine: written all the same, with a warning.
+    let dir = out_dir("trace-files");
+    std::fs::create_dir_all(&dir).unwrap();
+    let other = dir.join("other.jsonl");
+    std::fs::write(
+        &other,
+        std::fs::read_to_string(repo().join(trace))
+            .unwrap()
+            .replace("\"ir\":\"sha256:e944", "\"ir\":\"sha256:0000"),
+    )
+    .unwrap();
+    let res = roadbook(
+        &repo(),
+        &[
+            "viz",
+            "examples/shop",
+            "-o",
+            o,
+            "--trace",
+            other.to_str().unwrap(),
+        ],
+    );
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    assert!(
+        text(&res.stderr)
+            .contains("warning: `other.jsonl` was recorded from another version of PlaceOrder"),
+        "{}",
+        text(&res.stderr)
+    );
+
+    // A machine no chart has, and a file that is not a trace, are errors.
+    let elsewhere = dir.join("elsewhere.jsonl");
+    std::fs::write(
+        &elsewhere,
+        "{\"input\":{},\"ir\":\"sha256:00\",\"kind\":\"started\",\"machine\":\"Nope\",\"run\":\"r1\",\"t\":0}\n",
+    )
+    .unwrap();
+    let res = roadbook(
+        &repo(),
+        &[
+            "viz",
+            "examples/shop",
+            "-o",
+            o,
+            "--trace",
+            elsewhere.to_str().unwrap(),
+        ],
+    );
+    assert_eq!(res.status.code(), Some(2));
+    assert!(
+        text(&res.stderr).contains("its run r1 is of machine Nope, which none of the charts has"),
+        "{}",
+        text(&res.stderr)
+    );
+    let junk = dir.join("junk.jsonl");
+    std::fs::write(&junk, "{\"kind\":\"started\"}\nnot json\n").unwrap();
+    let res = roadbook(
+        &repo(),
+        &[
+            "viz",
+            "examples/shop",
+            "-o",
+            o,
+            "--trace",
+            junk.to_str().unwrap(),
+        ],
+    );
+    assert_eq!(res.status.code(), Some(2));
+    assert!(
+        text(&res.stderr).contains("line 1: not a trace record"),
+        "{}",
+        text(&res.stderr)
+    );
+}
+
+#[test]
 fn viz_self_contained_pages_need_nothing_else() {
     let out = out_dir("single");
     let o = out.to_str().unwrap();
@@ -737,15 +849,16 @@ fn export_mermaid_nests_and_splits_regions() {
     );
 }
 
-/// The viewer bundle the CLI embeds was built from `packages/viewer` as it is now, and not
-/// edited since: its header names the hash of the sources, computed as
+/// The viewer bundle the CLI embeds was built from `packages/viewer` and `packages/core` as
+/// they are now, and not edited since: its header names the hash of the sources, computed as
 /// `packages/viewer/build.mjs` does, the versions of elkjs and esbuild in `pnpm-lock.yaml`,
 /// and the hash of the script after it.
 #[test]
 fn viewer_asset_is_fresh() {
     use sha2::{Digest, Sha256};
     let hex = |d: &[u8]| -> String { d.iter().map(|b| format!("{b:02x}")).collect() };
-    let pkg = repo().join("packages/viewer");
+    let packages = repo().join("packages");
+    let pkg = packages.join("viewer");
     let mut files = Vec::new();
     fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
         for e in std::fs::read_dir(dir).unwrap() {
@@ -763,11 +876,13 @@ fn viewer_asset_is_fresh() {
         }
     }
     walk(&pkg.join("src"), &mut files);
+    walk(&packages.join("core/src"), &mut files);
     files.push(pkg.join("build.mjs"));
+    // Named relative to `packages/`: `viewer/src/…`, `core/src/…`, `viewer/build.mjs`.
     let mut names: Vec<(String, PathBuf)> = files
         .into_iter()
         .map(|p| {
-            let rel = p.strip_prefix(&pkg).unwrap();
+            let rel = p.strip_prefix(&packages).unwrap();
             let name: Vec<String> = rel
                 .components()
                 .map(|c| c.as_os_str().to_string_lossy().into_owned())

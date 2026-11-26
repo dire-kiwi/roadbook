@@ -55,7 +55,11 @@ pub fn watch(ws: &Workspace, args: &Args, mut built: Built) -> Exit {
         std::thread::sleep(Duration::from_millis(500));
         let rebuilt = watcher.poll(ws, || {
             eprintln!("change detected, rebuilding");
-            let (_, b) = build(ws, &args.paths, &args.out, args.self_contained);
+            let options = super::BuildOptions {
+                self_contained: args.self_contained,
+                trace: args.trace.as_deref(),
+            };
+            let (_, b) = build(ws, &args.paths, &args.out, &options);
             (!b.inputs.is_empty()).then_some(b.inputs)
         });
         if rebuilt {

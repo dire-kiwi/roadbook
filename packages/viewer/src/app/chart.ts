@@ -1,10 +1,11 @@
-// A chart page in explore mode: machine tabs and trail, pan and zoom, collapse and expand,
-// selection and the details panel, search. Everything drawn comes from renderSvg(); this file
-// only wires up interaction.
+// A chart page: machine tabs and trail, pan and zoom, collapse and expand, selection and the
+// details panel, search, and the mode switch. Everything drawn comes from renderSvg(); this
+// file only wires up interaction.
 //
-// Later modes (simulate and replay in M6, diff and coverage in M7) reuse this page: they add
-// their own controls, decorate the drawn SVG (classes on the `data-state` and
-// `data-transition` elements) and add sections to the panel.
+// Explore is the default mode. Simulate (app/simulate.ts) and replay (app/replay-mode.ts) reuse
+// the page: each has its own section of the panel, and decorates the drawn SVG with classes on
+// the `data-state` and `data-transition` elements (rb-active, rb-taken, rb-named) and a ring
+// around the active states. Diff and coverage (M7) will do the same.
 
 import type { Ir } from '../ir.ts'
 import { own } from '../ir.ts'
@@ -20,6 +21,9 @@ import { esc, renderLegend, renderMachineHeader, renderSvg } from '../render.ts'
 import { buildSearchIndex, search } from '../search.ts'
 import type { SearchEntry } from '../search.ts'
 import { $, setupTheme } from './dom.ts'
+import type { Controller, Highlight, Host, Mode } from './modes.ts'
+import { replayMode } from './replay-mode.ts'
+import { simulateMode } from './simulate.ts'
 import { Viewport } from './viewport.ts'
 
 type ChartData = Extract<PageData, { kind: 'chart' }>
@@ -31,6 +35,11 @@ const SHELL = `
   <div class="rb-search" role="search">
     <input id="rb-search" type="search" placeholder="Search states, events, tasks, errors (/)" aria-label="Search" autocomplete="off" spellcheck="false">
     <ul class="rb-results" id="rb-results" role="listbox" hidden></ul>
+  </div>
+  <div class="rb-modes" id="rb-modes" role="group" aria-label="Mode">
+    <button class="rb-mode-btn" type="button" data-mode="explore" title="The chart as written">Explore</button>
+    <button class="rb-mode-btn" type="button" data-mode="simulate" title="Run the machine by hand, in the page">Simulate</button>
+    <button class="rb-mode-btn" type="button" data-mode="replay" title="Step through a recorded trace">Replay</button>
   </div>
   <div class="rb-tools">
     <button class="rb-btn" id="rb-zoom-out" type="button" title="Zoom out (-)" aria-label="Zoom out">−</button>
@@ -50,11 +59,16 @@ const SHELL = `
   <div class="rb-stage">
     <div class="rb-canvas" id="rb-canvas">
       <div class="rb-busy" id="rb-busy" hidden>Laying out…</div>
+      <div class="rb-mode-status" id="rb-mode-status" aria-live="polite" hidden></div>
       <div class="rb-hint">drag to pan · scroll to zoom · click a state or an arrow</div>
     </div>
     <div class="rb-legend" id="rb-legend" aria-label="Legend"></div>
   </div>
-  <aside class="rb-panel" id="rb-panel" aria-live="polite"></aside>
+  <aside class="rb-panel" id="rb-aside">
+    <section class="rb-mode-panel" id="rb-mode-simulate" aria-label="Simulate" hidden></section>
+    <section class="rb-mode-panel" id="rb-mode-replay" aria-label="Replay" hidden></section>
+    <div id="rb-panel" aria-live="polite"></div>
+  </aside>
 </main>`
 
 export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
@@ -63,7 +77,9 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   document.body.innerHTML = SHELL
   const root = document.body
   const canvas = $(root, '#rb-canvas')
+  const aside = $(root, '#rb-aside')
   const panel = $(root, '#rb-panel')
+  const modeStatus = $(root, '#rb-mode-status')
   const busy = $(root, '#rb-busy')
   const searchInput = $<HTMLInputElement>(root, '#rb-search')
   const results = $(root, '#rb-results')
@@ -150,6 +166,7 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
       renderChrome()
     }
     renderPanel()
+    if (changed) controller()?.render()
     await draw({ keepView: !changed && (opts.keepView ?? false) })
     if (selection) reveal(selection)
   }
@@ -253,6 +270,7 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   }
 
   function applyClasses() {
+    applyHighlight()
     if (!svg) return
     svg.querySelectorAll('.rb-selected, .rb-match').forEach((el) => el.classList.remove('rb-selected', 'rb-match'))
     for (const m of matches) {
@@ -303,8 +321,91 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   }
 
   function renderPanel() {
-    panel.innerHTML = panelHtml({ ir, machine: current, collapsed: collapsedOf(current) }, selection)
-    panel.scrollTop = 0
+    // In simulate and replay the panel is the mode's; the details follow when something is selected.
+    const details = mode === 'explore' || selection !== null
+    panel.hidden = !details
+    panel.classList.toggle('rb-details-below', mode !== 'explore')
+    panel.innerHTML = details ? panelHtml({ ir, machine: current, collapsed: collapsedOf(current) }, selection) : ''
+    if (mode === 'explore') aside.scrollTop = 0
+  }
+
+  // ───────────── modes ─────────────
+  let mode: Mode = 'explore'
+  const host: Host = {
+    ir,
+    current: () => current,
+    async open(name, path) {
+      if (!own(ir.machines, name)) return
+      if (path?.length) trail = path.map((t, i) => ({ name: t.name, via: i ? t.via : '' }))
+      else if (!trail.some((t) => t.name === name)) trail = [{ name, via: '' }]
+      if (name === current) renderChrome()
+      await show(name)
+      renderChrome()
+    },
+    refresh() {
+      applyClasses()
+      // Keep what the mode is about in view: the state the record names, or the innermost active one.
+      const h = controller()?.highlight(current)
+      const id = h?.named[0] ?? h?.active[h.active.length - 1]
+      if (id && layout && id !== own(ir.machines, current)?.root.id) viewport.reveal(layout.nodes[visibleId(id)])
+    },
+    setMode: (m) => setMode(m),
+  }
+  const controllers: Partial<Record<Mode, Controller>> = {}
+  const controller = (): Controller | undefined => (mode === 'explore' ? undefined : controllers[mode])
+  function makeController(m: Mode): Controller | undefined {
+    if (m === 'explore') return undefined
+    let c = controllers[m]
+    if (!c) {
+      const el = $(root, `#rb-mode-${m}`)
+      c = m === 'simulate' ? simulateMode(host, el) : replayMode(host, el, data.trace ?? null)
+      controllers[m] = c
+    }
+    return c
+  }
+  function setMode(m: Mode) {
+    const changed = m !== mode
+    mode = m
+    for (const b of root.querySelectorAll<HTMLElement>('[data-mode]')) b.setAttribute('aria-pressed', String(b.dataset.mode === m))
+    for (const x of ['simulate', 'replay'] as const) $(root, `#rb-mode-${x}`).hidden = x !== m
+    document.body.dataset.mode = m
+    if (changed) selection = null
+    const c = makeController(m)
+    renderPanel()
+    c?.render()
+    applyClasses()
+  }
+
+  /** Marks what the mode lights up: rings around active and named states, heavy taken transitions. */
+  function applyHighlight() {
+    if (!svg) return
+    svg.querySelectorAll('.rb-active, .rb-named, .rb-taken').forEach((el) => el.classList.remove('rb-active', 'rb-named', 'rb-taken'))
+    svg.querySelectorAll('.rb-ring').forEach((el) => el.remove())
+    const c = controller()
+    const h: Highlight | null = c?.highlight(current) ?? null
+    modeStatus.hidden = !c
+    modeStatus.textContent = c ? c.status() : ''
+    if (!h) return
+    const ring = (id: string, cls: string, gap: number) => {
+      const g = stateEl(visibleId(id))
+      const box = g?.querySelector(':scope > .rb-box')
+      if (!g || !box) return
+      g.classList.add(cls)
+      const w = Number(box.getAttribute('width'))
+      const ht = Number(box.getAttribute('height'))
+      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+      r.setAttribute('class', `rb-ring rb-ring-${cls.slice(3)}`)
+      r.setAttribute('x', String(-gap))
+      r.setAttribute('y', String(-gap))
+      r.setAttribute('width', String(w + 2 * gap))
+      r.setAttribute('height', String(ht + 2 * gap))
+      r.setAttribute('rx', String(8 + gap))
+      g.insertBefore(r, box)
+    }
+    const root = own(ir.machines, current)?.root.id
+    for (const id of h.active) if (id !== root) ring(id, 'rb-active', 4)
+    for (const id of h.named) if (id !== root) ring(id, 'rb-named', 9)
+    for (const t of h.taken) transitionEls(t.state, t.index).forEach((el) => el.classList.add('rb-taken'))
   }
 
   // ───────────── events ─────────────
@@ -353,9 +454,15 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     const b = (ev.target as Element).closest<HTMLElement>('[data-open-machine]')
     if (b) void openMachine(b.dataset.openMachine!, 'link')
   })
-  panel.addEventListener('click', (ev) => {
+  aside.addEventListener('click', (ev) => {
     const b = (ev.target as Element).closest<HTMLElement>('button')
     if (!b) return
+    if (b.dataset.mState) return void goTo(current, { type: 'state', id: b.dataset.mState })
+    if (b.dataset.mTransition) {
+      const [state, index] = JSON.parse(b.dataset.mTransition) as [string, number]
+      return void goTo(current, { type: 'transition', state, index })
+    }
+    if (b.closest('.rb-mode-panel')) return // the mode's own controls
     if (b.dataset.openMachine) {
       // Drilling into an invoke, or following a ref, a message or a caller.
       void openMachine(b.dataset.openMachine, b.dataset.via === 'invoke' ? 'invoke' : 'link')
@@ -375,10 +482,23 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   $(root, '#rb-zoom-in').addEventListener('click', () => viewport.zoomBy(1.25))
   $(root, '#rb-zoom-out').addEventListener('click', () => viewport.zoomBy(0.8))
   setupTheme($(root, '#rb-theme'))
+  $(root, '#rb-modes').addEventListener('click', (ev) => {
+    const b = (ev.target as Element).closest<HTMLElement>('[data-mode]')
+    if (b) setMode(b.dataset.mode as Mode)
+  })
   document.addEventListener('keydown', (ev) => {
     const t = ev.target as Element
-    if (t.closest('input, textarea, select') || ev.metaKey || ev.ctrlKey || ev.altKey) return
-    if (ev.key === 'f') viewport.fit()
+    if (t.closest?.('input, textarea, select') || ev.metaKey || ev.ctrlKey || ev.altKey) return
+    const c = controller()
+    if (c && (ev.key === 'ArrowRight' || ev.key === 'n' || ev.key === '.')) {
+      ev.preventDefault()
+      c.forward()
+    } else if (c && (ev.key === 'ArrowLeft' || ev.key === 'p' || ev.key === ',')) {
+      ev.preventDefault()
+      c.back()
+    } else if (c && ev.key === 'Home' && c.first) c.first()
+    else if (c && ev.key === 'End' && c.last) c.last()
+    else if (ev.key === 'f') viewport.fit()
     else if (ev.key === '+' || ev.key === '=') viewport.zoomBy(1.25)
     else if (ev.key === '-') viewport.zoomBy(0.8)
     else if (ev.key === '/') {
@@ -462,7 +582,7 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     return
   }
   trail = [{ name: first, via: '' }]
-  void show(first)
+  void show(first).then(() => setMode(data.mode === 'simulate' || data.mode === 'replay' ? data.mode : 'explore'))
   window.addEventListener('hashchange', () => {
     const name = fromHash()
     if (own(ir.machines, name) && name !== current) void openMachine(name, 'tab')

@@ -3,8 +3,9 @@
 // The CLI includes that file at compile time, so `cargo build` needs no Node. Rebuild and
 // commit it whenever packages/viewer changes: `pnpm --filter @roadbook/viewer build`.
 // `node build.mjs --check` (and the tests) fail when the committed file is stale. The Rust
-// test `viewer_asset_is_fresh` checks the header without Node: the sources' hash, the versions
-// of elkjs and esbuild in pnpm-lock.yaml, and the hash of the script after the header.
+// test `viewer_asset_is_fresh` checks the header without Node: the sources' hash (this
+// package's and `@roadbook/core`'s, which simulate mode runs), the versions of elkjs and
+// esbuild in pnpm-lock.yaml, and the hash of the script after the header.
 
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
@@ -15,7 +16,12 @@ import * as esbuild from 'esbuild'
 const here = path.dirname(fileURLToPath(import.meta.url))
 export const ASSET = path.resolve(here, '../../crates/roadbook-cli/assets/roadbook-viewer.js')
 
-/** The files the bundle is built from, besides dependencies: every file under src, and this script. */
+const packages = path.resolve(here, '..')
+
+/**
+ * The files the bundle is built from, besides npm dependencies, relative to `packages/`: every
+ * file under `viewer/src` and `core/src` (the interpreter, a workspace package), and this script.
+ */
 function sourceFiles() {
   const out = []
   const walk = (dir) => {
@@ -26,8 +32,9 @@ function sourceFiles() {
     }
   }
   walk(path.join(here, 'src'))
+  walk(path.join(packages, 'core/src'))
   out.push(path.join(here, 'build.mjs'))
-  return out.map((p) => path.relative(here, p).split(path.sep).join('/')).sort()
+  return out.map((p) => path.relative(packages, p).split(path.sep).join('/')).sort()
 }
 
 /**
@@ -38,7 +45,7 @@ export function sourcesHash() {
   const h = createHash('sha256')
   for (const f of sourceFiles()) {
     h.update(f + '\0')
-    h.update(fs.readFileSync(path.join(here, f)))
+    h.update(fs.readFileSync(path.join(packages, f)))
     h.update('\0')
   }
   return h.digest('hex')

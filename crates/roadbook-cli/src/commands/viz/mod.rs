@@ -1,4 +1,4 @@
-//! `roadbook viz [paths…] [-o dir] [--self-contained] [--watch [--port N]]`
+//! `roadbook viz [paths…] [-o dir] [--self-contained] [--trace run.jsonl] [--watch [--port N]]`
 //!
 //! Writes one HTML page per entry chart, plus `index.html`, the project index. An entry chart
 //! is a `.road` file given (or found under a directory given, or in the project if none is)
@@ -6,6 +6,8 @@
 //! machine of its compilation. Each page holds its IR as JSON and loads the viewer script
 //! `roadbook-viewer.js`, written once next to the pages, so a directory of pages shares one copy
 //! and still opens from `file://`. `--self-contained` inlines the script in every page instead.
+//! `--trace` puts a trace (spec/trace.md) in the pages that have its top-level run's machine,
+//! which then open in replay mode.
 //!
 //! The viewer script is `packages/viewer` built by its `build.mjs` into `assets/`, and is
 //! included here at compile time, so building the CLI needs no Node.
@@ -47,6 +49,16 @@ pub struct Args {
     /// The port `--watch` serves on (0: any free port).
     #[arg(long, default_value_t = 7357, requires = "watch")]
     port: u16,
+    /// A trace (JSON Lines, as a run writes it) to replay: it goes into the page of every chart
+    /// that has the machine of its first top-level run, and those pages open in replay mode.
+    #[arg(long, value_name = "FILE")]
+    trace: Option<PathBuf>,
+}
+
+/// How `build` writes the pages: with the viewer script inline or shared, and with a trace.
+pub struct BuildOptions<'a> {
+    pub self_contained: bool,
+    pub trace: Option<&'a Path>,
 }
 
 /// What one build wrote, and the files it read (for `--watch`).
@@ -60,7 +72,11 @@ pub fn run(args: Args) -> Exit {
         Ok(ws) => ws,
         Err(e) => return report::fatal(e),
     };
-    let (exit, built) = build(&ws, &args.paths, &args.out, args.self_contained);
+    let options = BuildOptions {
+        self_contained: args.self_contained,
+        trace: args.trace.as_deref(),
+    };
+    let (exit, built) = build(&ws, &args.paths, &args.out, &options);
     if !args.watch {
         return exit;
     }
@@ -68,10 +84,20 @@ pub fn run(args: Args) -> Exit {
 }
 
 /// Compiles the charts and writes the pages. On errors writes nothing.
-pub fn build(ws: &Workspace, paths: &[PathBuf], out: &Path, self_contained: bool) -> (Exit, Built) {
+pub fn build(
+    ws: &Workspace,
+    paths: &[PathBuf],
+    out: &Path,
+    options: &BuildOptions,
+) -> (Exit, Built) {
+    let self_contained = options.self_contained;
     let mut built = Built {
         pages: Vec::new(),
         inputs: Vec::new(),
+    };
+    let trace = match options.trace.map(read_trace).transpose() {
+        Ok(t) => t,
+        Err(e) => return (report::fatal(e), built),
     };
     let files = match ws.inputs(paths) {
         Ok(f) => f,
@@ -129,6 +155,30 @@ pub fn build(ws: &Workspace, paths: &[PathBuf], out: &Path, self_contained: bool
         );
     }
 
+    // The trace goes into the pages that have its first top-level run's machine.
+    if let Some(t) = &trace {
+        let with: Vec<&Ir> = charts
+            .iter()
+            .map(|(_, ir)| *ir)
+            .filter(|ir| ir.machines.contains_key(&t.machine))
+            .collect();
+        if with.is_empty() {
+            return (
+                report::fatal(format!(
+                    "`{}`: its run {} is of machine {}, which none of the charts has",
+                    t.name, t.run, t.machine
+                )),
+                built,
+            );
+        }
+        if with.iter().any(|ir| ir.machines[&t.machine].hash != t.hash) {
+            eprintln!(
+                "warning: `{}` was recorded from another version of {} (IR {}); the viewer will say so",
+                t.name, t.machine, t.hash
+            );
+        }
+    }
+
     let names = page::file_names(&charts.iter().map(|(f, _)| *f).collect::<Vec<_>>());
     let title = ws
         .root
@@ -143,7 +193,11 @@ pub fn build(ws: &Workspace, paths: &[PathBuf], out: &Path, self_contained: bool
     let mut writes: Vec<(PathBuf, String)> = Vec::new();
     let index_href = page::href(page::INDEX);
     for ((entry, ir), name) in charts.iter().zip(&names) {
-        let html = page::chart_page(entry, ir, Some(&index_href), &script);
+        let trace = trace
+            .as_ref()
+            .filter(|t| ir.machines.contains_key(&t.machine))
+            .map(|t| (t.name.as_str(), t.text.as_str()));
+        let html = page::chart_page(entry, ir, Some(&index_href), trace, &script);
         writes.push((out.join(name), html));
     }
     let index = page::project_index(&title, &charts, &names);
@@ -186,4 +240,66 @@ pub fn build(ws: &Workspace, paths: &[PathBuf], out: &Path, self_contained: bool
         out.display()
     );
     (exit, built)
+}
+
+/// A trace given with `--trace`: its text, and its first top-level run.
+struct Trace {
+    /// The file name the page shows.
+    name: String,
+    text: String,
+    run: String,
+    machine: String,
+    hash: String,
+}
+
+/// Reads a trace and checks that it is one: JSON Lines of records, with a `started` record of a
+/// top-level run. The viewer checks the records against the chart.
+fn read_trace(path: &Path) -> Result<Trace, String> {
+    let text = std::fs::read_to_string(path)
+        .map_err(|e| format!("cannot read the trace `{}`: {e}", path.display()))?;
+    let name = path.file_name().map_or_else(
+        || path.display().to_string(),
+        |n| n.to_string_lossy().into_owned(),
+    );
+    let mut first = None;
+    for (i, line) in text.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let record: serde_json::Value = serde_json::from_str(line).map_err(|e| {
+            format!(
+                "`{}`, line {}: not a JSON record: {e}",
+                path.display(),
+                i + 1
+            )
+        })?;
+        let member = |m: &str| record.get(m).and_then(|v| v.as_str());
+        if member("kind").is_none() || member("run").is_none() {
+            return Err(format!(
+                "`{}`, line {}: not a trace record (it needs `kind` and `run`)",
+                path.display(),
+                i + 1
+            ));
+        }
+        if first.is_none() && member("kind") == Some("started") && record.get("parent").is_none() {
+            first = Some((
+                member("run").unwrap_or_default().to_string(),
+                member("machine").unwrap_or_default().to_string(),
+                member("ir").unwrap_or_default().to_string(),
+            ));
+        }
+    }
+    let (run, machine, hash) = first.ok_or_else(|| {
+        format!(
+            "`{}` has no `started` record of a top-level run: it is not a trace",
+            path.display()
+        )
+    })?;
+    Ok(Trace {
+        name,
+        text,
+        run,
+        machine,
+        hash,
+    })
 }
