@@ -15,6 +15,14 @@ machine Worker(settings: Settings, peer: ref Worker) {
   var text: string = "tab\t quote\" backslash\\ newline\n bad\q"
   emits Ready { level: Level }
 
+  state Paused {
+    initial Idle
+    /// Back to where `Paused` was.
+    history Last
+    deep history All
+    state Idle { on * -> Paused.Last }
+  }
+
   parallel state Running {
     state A {
       on * -> Running.B

@@ -173,6 +173,14 @@
           }
         },
         {
+          "match": "\\b(?:(deep)\\s+)?(history)\\s+([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "storage.modifier.deep.roadbook" },
+            "2": { "name": "storage.type.history.roadbook" },
+            "3": { "name": "entity.name.type.state.roadbook" }
+          }
+        },
+        {
           "match": "\\b(initial)\\s+([A-Z][A-Za-z0-9]*)",
           "captures": {
             "1": { "name": "keyword.control.initial.roadbook" },

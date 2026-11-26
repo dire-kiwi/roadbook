@@ -117,6 +117,37 @@
 #                       ^^^^^ entity.name.type.roadbook
 #                             ^ punctuation.section.braces.roadbook
 >
+>  state Paused {
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^^^ entity.name.type.state.roadbook
+#               ^ punctuation.section.braces.roadbook
+>    initial Idle
+#    ^^^^^^^ keyword.control.initial.roadbook
+#            ^^^^ entity.name.type.state.roadbook
+>    /// Back to where `Paused` was.
+#    ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#       ^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+#                      ^^^^^^^^ comment.line.documentation.roadbook markup.inline.raw.roadbook
+#                              ^^^^^ comment.line.documentation.roadbook
+>    history Last
+#    ^^^^^^^ storage.type.history.roadbook
+#            ^^^^ entity.name.type.state.roadbook
+>    deep history All
+#    ^^^^ storage.modifier.deep.roadbook
+#         ^^^^^^^ storage.type.history.roadbook
+#                 ^^^ entity.name.type.state.roadbook
+>    state Idle { on * -> Paused.Last }
+#    ^^^^^ storage.type.state.roadbook
+#          ^^^^ entity.name.type.state.roadbook
+#               ^ punctuation.section.braces.roadbook
+#                 ^^ keyword.control.trigger.roadbook
+#                    ^ keyword.operator.wildcard.roadbook
+#                      ^^ keyword.operator.arrow.roadbook
+#                         ^^^^^^^^^^^ entity.name.type.state.roadbook
+#                                     ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>
 >  parallel state Running {
 #  ^^^^^^^^ storage.modifier.parallel.roadbook
 #           ^^^^^ storage.type.state.roadbook

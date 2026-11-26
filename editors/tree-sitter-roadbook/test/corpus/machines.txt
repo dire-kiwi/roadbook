@@ -245,3 +245,80 @@ machine M() {
               (assignment
                 (identifier)
                 (integer)))))))))
+
+================================================================================
+History and deep history states
+================================================================================
+
+machine M() {
+  state Work {
+    initial A
+    /// Back to where `Work` was.
+    history Last
+    deep history All
+    state A { on Go -> Work.Last }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (initial
+            (type_identifier))
+          (doc_comment)
+          (history_state
+            (type_identifier))
+          (history_state
+            (type_identifier))
+          (state_declaration
+            (type_identifier)
+            (state_body
+              (on_transition
+                (event_pattern
+                  (type_identifier))
+                (target
+                  (type_identifier)
+                  (type_identifier))))))))))
+
+================================================================================
+History and deep as names
+================================================================================
+
+machine M(history: int) {
+  var deep: int
+  state A {
+    always set deep = history
+    history H
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type)))
+    (machine_body
+      (variable_declaration
+        (identifier)
+        (builtin_type))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (always_transition
+            (set
+              (assignment
+                (identifier)
+                (identifier))))
+          (history_state
+            (type_identifier)))))))

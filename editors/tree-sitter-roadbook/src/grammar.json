@@ -1055,6 +1055,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "history_state"
+        },
+        {
+          "type": "SYMBOL",
           "name": "done_transition"
         },
         {
@@ -1068,6 +1072,39 @@
         {
           "type": "SYMBOL",
           "name": "fail"
+        }
+      ]
+    },
+    "history_state": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "kind",
+              "content": {
+                "type": "STRING",
+                "value": "deep"
+              }
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "STRING",
+          "value": "history"
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
+          "content": {
+            "type": "SYMBOL",
+            "name": "type_identifier"
+          }
         }
       ]
     },
