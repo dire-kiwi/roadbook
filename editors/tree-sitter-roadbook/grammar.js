@@ -21,7 +21,8 @@ module.exports = grammar({
 
   word: ($) => $.identifier,
 
-  // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref`, `sensitive` and
+  // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref`, `sensitive`,
+  // `history`, `deep` and
   // the built-in type names are not, because they mean something only where no name can appear.
   reserved: {
     global: (_) => [
@@ -184,7 +185,11 @@ module.exports = grammar({
     state_body: ($) => seq('{', repeat($._state_item), '}'),
 
     _state_item: ($) =>
-      choice($._common_item, $.done_transition, $.invoke, $.output, $.fail),
+      choice($._common_item, $.history_state, $.done_transition, $.invoke, $.output, $.fail),
+
+    // `history` and `deep` are not reserved: they mean something only at the start of an item.
+    history_state: ($) =>
+      seq(optional(field('kind', 'deep')), 'history', field('name', $.type_identifier)),
 
     _common_item: ($) =>
       choice(

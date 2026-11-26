@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Roadbook IR 0.3",
+  "title": "Roadbook IR 0.4",
   "description": "The compiled form of a Roadbook project: one document per entry file. See spec/ir.md for what each member means. Every member listed is required; absent values are null, missing docs are \"\", and empty lists and maps are [] and {}.",
   "type": "object",
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.3" },
+    "irVersion": { "const": "0.4" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -280,7 +280,7 @@
       "properties": {
         "id": { "$ref": "#/$defs/stateId" },
         "name": { "$ref": "#/$defs/upperName" },
-        "kind": { "enum": ["atomic", "compound", "parallel", "final"] },
+        "kind": { "enum": ["atomic", "compound", "parallel", "final", "history", "deepHistory"] },
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" },
         "initial": { "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }] },
@@ -299,8 +299,20 @@
           "else": { "properties": { "initial": { "type": "null" } } }
         },
         {
-          "if": { "properties": { "kind": { "enum": ["atomic", "final"] } } },
+          "if": { "properties": { "kind": { "enum": ["atomic", "final", "history", "deepHistory"] } } },
           "then": { "properties": { "states": { "maxItems": 0 } } }
+        },
+        {
+          "description": "A history state is a pseudo-state: no effects, work or transitions.",
+          "if": { "properties": { "kind": { "enum": ["history", "deepHistory"] } } },
+          "then": {
+            "properties": {
+              "entry": { "maxItems": 0 },
+              "exit": { "maxItems": 0 },
+              "invoke": { "type": "null" },
+              "transitions": { "maxItems": 0 }
+            }
+          }
         },
         {
           "if": { "properties": { "kind": { "const": "parallel" } } },

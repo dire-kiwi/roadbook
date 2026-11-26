@@ -105,7 +105,11 @@ Progress is recorded on each milestone below as it finishes.
 
 *Done.* The compiler writes a retry out as explicit states (the invoking state becomes compound, with `Attempt` and `Backoff`), a counter variable and guarded `invoke.fail` branches, so the IR gains nothing, and both runtimes, the viewer and the exporters are unchanged, and the sugar and the same states written by hand have the same machine hash. Conformance cases run the written-out form in both runtimes; the formatter, the diagnostics (`RB0118`, `RB0215`–`RB0218`), the tree-sitter grammar and the language server know the clause.
 
-**Later.** History states, keyed `spawn`, a durable driver, generated Rust state machines for hot paths.
+**History states.** `history Name` and `deep history Name`, as in SCXML, built after M8 the way the milestones were: the syntax and semantics first ([language](language.md#history-states), `spec/execution.md`, IR 0.4 and snapshot version 2), then six conformance cases, which a throwaway independent implementation written only from `spec/` reproduced byte for byte, as it did the 30 earlier cases in its scope.
+
+*Done, 27 November 2026.* The compiler (with `RB0219` and `RB0908`), both runtimes (identical traces and saved snapshots for every case), the viewer's five modes, `export mermaid` and `scxml`, `roadbook paths`, `viz --diff`, the tree-sitter grammar, the VS Code grammar and the language server. Two choices differ from SCXML or extend it, and are written down: which states a transition to a history state leaves never depends on what was recorded, and a history state with no record enters its parent's default entry (SCXML requires a default transition). A machine with no history state keeps its hash, so its saved snapshots (version 1) still restore. An independent review found that the `always` cycle check missed loops back through a history state, and that the Rust runtime restored a snapshot naming a history state as active; both are fixed, the second as a conformance case.
+
+**Later.** Keyed `spawn`, a durable driver, generated Rust state machines for hot paths.
 
 M3 and M4 are independent once M1 is done and can run in parallel. M2 depends only on M1.
 

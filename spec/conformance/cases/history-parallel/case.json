@@ -1,0 +1,69 @@
+{
+  "description": "History states of a parallel state. Leaving it records, for the deep history state, the active leaf of every region, and for the shallow one, every region. Entering the deep history state enters each region down to its recorded leaf (`R2` and its child included, once recorded), and entering the shallow one enters every region by its default entry. Each time the parallel state is left, the records are replaced. A deep record that misses a region, or holds a state that is not a leaf, and a shallow record of a parallel state that does not hold every region, are not records the history state could have made, and a snapshot holding one is refused.",
+  "requires": [
+    "parallel",
+    "history",
+    "snapshots"
+  ],
+  "chart": "charts/history-regions.road",
+  "machine": "Panels",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Left"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Away"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Back"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Right"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Away"
+      }
+    },
+    {
+      "event": {
+        "_tag": "BackShallow"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Away"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Back"
+      }
+    },
+    {
+      "restore": "partial",
+      "refused": "invalid"
+    },
+    {
+      "restore": "nonleaf",
+      "refused": "invalid"
+    },
+    {
+      "restore": "oneregion",
+      "refused": "invalid"
+    }
+  ],
+  "status": "running"
+}

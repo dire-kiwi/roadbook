@@ -258,6 +258,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       nextInvoke: 1,
       nextTimer: 1,
       nextMessage: 1,
+      history: {},
       result: null
     }
     const ref = yield* SubscriptionRef.make(snapshot)

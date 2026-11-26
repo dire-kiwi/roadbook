@@ -26,7 +26,8 @@ pub(crate) struct MachineIndex {
     paths: Vec<Vec<usize>>,
     /// For each state, its parent's index (`None` for the root).
     pub parents: Vec<Option<usize>>,
-    /// For each state, its children's indices.
+    /// For each state, its children's indices, in document order. A history state is not a
+    /// child: it is never active.
     pub children: Vec<Vec<usize>>,
     pub by_id: HashMap<String, usize>,
     /// For each state, its transitions' targets' indices, in order (`None`: no target).
@@ -167,7 +168,9 @@ fn walk(s: &State, parent: Option<usize>, path: &mut Vec<usize>, idx: &mut Machi
         path.push(i);
         let ci = walk(c, Some(me), path, idx);
         path.pop();
-        idx.children[me].push(ci);
+        if !c.kind.is_history() {
+            idx.children[me].push(ci);
+        }
     }
     me
 }

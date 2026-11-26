@@ -596,6 +596,16 @@ impl Formatter<'_> {
                 self.close_block((whole.1 - 1, whole.1), indent, "}".into(), None);
             }
             Item::Transition(t) => self.transition(t, indent),
+            Item::History(h) => {
+                let kw = if h.deep { "deep history" } else { "history" };
+                self.row(
+                    whole,
+                    indent,
+                    vec![format!("{kw} {}", h.name.name)],
+                    "",
+                    None,
+                );
+            }
             _ => {
                 let text = inline_item(item).expect("every other item is one line");
                 self.row(whole, indent, vec![text], "", None);
@@ -689,7 +699,8 @@ fn state_prefix(kind: StateKind) -> &'static str {
     }
 }
 
-/// The text of an item that fits on one line, or `None` for states, invokes and branch blocks.
+/// The text of an item that fits on one line, or `None` for states, invokes, branch blocks
+/// and history states, which keep a line of their own.
 fn inline_item(item: &Item) -> Option<String> {
     Some(match item {
         Item::Initial(n) => format!("initial {}", n.name),
@@ -714,6 +725,7 @@ fn inline_item(item: &Item) -> Option<String> {
         | Item::Emits(_)
         | Item::State(_)
         | Item::Invoke(_)
+        | Item::History(_)
         | Item::Transition(_) => {
             return None;
         }

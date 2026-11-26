@@ -287,6 +287,15 @@ impl Body {
             }
         })
     }
+    pub fn histories(&self) -> impl Iterator<Item = &History> {
+        self.items.iter().filter_map(|i| {
+            if let Item::History(h) = i {
+                Some(h)
+            } else {
+                None
+            }
+        })
+    }
     pub fn states(&self) -> impl Iterator<Item = &State> {
         self.items.iter().filter_map(|i| {
             if let Item::State(s) = i {
@@ -351,6 +360,8 @@ pub enum Item {
     Output(FinalValue),
     /// `fail expr`
     Fail(FinalValue),
+    /// `[deep] history Name`
+    History(History),
 }
 
 impl Item {
@@ -364,6 +375,7 @@ impl Item {
             Item::Transition(t) => t.span,
             Item::Invoke(i) => i.span,
             Item::Output(v) | Item::Fail(v) => v.span,
+            Item::History(h) => h.span,
         }
     }
 }
@@ -411,6 +423,19 @@ pub struct State {
     pub kind: StateKind,
     pub name: Ident,
     pub body: Body,
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `history Name` or `deep history Name`: a history pseudo-state of the state it is written
+/// in.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct History {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc: Option<Doc>,
+    pub deep: bool,
+    pub name: Ident,
+    /// From `history` or `deep` to the end of the name.
     #[serde(skip)]
     pub span: Span,
 }

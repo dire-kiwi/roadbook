@@ -69,7 +69,7 @@ impl<'a> Tree<'a> {
                 }
             }
             StateKind::Parallel => {
-                for c in &s.states {
+                for c in s.states.iter().filter(|c| !c.kind.is_history()) {
                     self.enter_down(&c.id, out);
                 }
             }
@@ -81,6 +81,9 @@ impl<'a> Tree<'a> {
     /// deepest state that strictly contains both (the machine root at most), down to `to`,
     /// with the other regions of any parallel state on the way, then `to`'s initial chain. A
     /// transition to the state itself or to an ancestor leaves and re-enters it.
+    ///
+    /// A transition to a history state enters its parent's default entry: a history state
+    /// only restores states that were entered before.
     fn entry_set(&self, from: &'a str, to: &'a str) -> Vec<&'a str> {
         let from_anc = self.ancestors(from);
         let domain = self
@@ -88,6 +91,19 @@ impl<'a> Tree<'a> {
             .into_iter()
             .find(|a| from_anc.contains(a))
             .unwrap_or(self.root);
+        let to = if self.states[to].kind.is_history() {
+            let parent = self.parent[to];
+            if parent == domain {
+                // From inside the parent, which is not left: its default entry, below it.
+                let mut out = vec![parent];
+                self.enter_down(parent, &mut out);
+                out.drain(..2);
+                return out;
+            }
+            parent
+        } else {
+            to
+        };
         let mut path = vec![to];
         let mut cur = to;
         while let Some(&p) = self.parent.get(cur) {
@@ -103,7 +119,11 @@ impl<'a> Tree<'a> {
             if let Some(&parent) = self.parent.get(p)
                 && self.states[parent].kind == StateKind::Parallel
             {
-                for c in &self.states[parent].states {
+                for c in self.states[parent]
+                    .states
+                    .iter()
+                    .filter(|c| !c.kind.is_history())
+                {
                     if c.id != p {
                         self.enter_down(&c.id, &mut out);
                     }
@@ -116,6 +136,35 @@ impl<'a> Tree<'a> {
             }
         }
         out
+    }
+
+    /// Every state history state `h` could restore: each child of its parent with its
+    /// default entry for a shallow one, every state below the parent for a deep one. A loop
+    /// through a history state goes back into what it recorded, so the cycle check counts
+    /// all of these, not only the parent's default entry.
+    fn could_restore(&self, h: &'a str) -> Vec<&'a str> {
+        let parent = self.states[self.parent[h]];
+        let mut out = Vec::new();
+        for c in parent.states.iter().filter(|c| !c.kind.is_history()) {
+            if self.states[h].kind == StateKind::DeepHistory {
+                self.below(&c.id, &mut out);
+            } else {
+                self.enter_down(&c.id, &mut out);
+            }
+        }
+        out
+    }
+
+    /// `id` and every state below it, history states left out.
+    fn below(&self, id: &'a str, out: &mut Vec<&'a str>) {
+        out.push(id);
+        for c in self.states[id]
+            .states
+            .iter()
+            .filter(|c| !c.kind.is_history())
+        {
+            self.below(&c.id, out);
+        }
     }
 
     /// The states that can become active, starting from the initial configuration and
@@ -252,7 +301,11 @@ fn always_cycles(tree: &Tree<'_>, info: &MachineInfo, diags: &mut Vec<Diagnostic
             Some(to) => {
                 if let Some((&to, _)) = tree.states.get_key_value(to) {
                     nodes.push(id);
-                    edges.insert(id, tree.entry_set(id, to));
+                    let mut entered = tree.entry_set(id, to);
+                    if tree.states[to].kind.is_history() {
+                        entered.extend(tree.could_restore(to));
+                    }
+                    edges.insert(id, entered);
                 }
             }
         }
@@ -403,12 +456,37 @@ fn warnings(
                 && !added.is_some_and(|a| a.contains(&i))
         })
     };
+    let targeted: HashSet<&str> = tree
+        .order
+        .iter()
+        .flat_map(|id| &tree.states[id].transitions)
+        .filter_map(|t| t.target.as_deref())
+        .collect();
     for &id in &tree.order[1..] {
         let s = tree.states[id];
         let Some(si) = info.states.get(id) else {
             continue;
         };
         let parent = tree.parent[id];
+        if s.kind.is_history() {
+            // Never entered itself: only whether anything goes to it matters.
+            if !targeted.contains(id) {
+                let word = if s.kind == StateKind::DeepHistory {
+                    "deep history"
+                } else {
+                    "history"
+                };
+                diags.push(
+                    Diagnostic::warning(
+                        codes::UNUSED_HISTORY,
+                        si.name_span,
+                        format!("{word} state `{id}` is never used"),
+                    )
+                    .with_help(format!("no transition targets it; a transition to it returns to where `{parent}` was when it was last left")),
+                );
+            }
+            continue;
+        }
         if !reach.contains(id) {
             if reach.contains(parent) {
                 diags.push(

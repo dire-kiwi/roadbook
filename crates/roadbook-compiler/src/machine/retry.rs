@@ -101,8 +101,10 @@ impl<'p> Cx<'_, 'p> {
         });
 
         match kind {
-            // Reported as an invoke in a final state.
-            ir::StateKind::Final => return None,
+            // Reported as an invoke in a final state; a history state has no invoke.
+            ir::StateKind::Final | ir::StateKind::History | ir::StateKind::DeepHistory => {
+                return None;
+            }
             ir::StateKind::Parallel | ir::StateKind::Compound => {
                 self.ck.diags.push(
                     Diagnostic::error(

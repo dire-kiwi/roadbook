@@ -23,6 +23,7 @@
   "event"
   "emits"
   "state"
+  "history"
   "initial"
   "entry"
   "exit"
@@ -56,6 +57,7 @@
 [
   "final"
   "parallel"
+  "deep"
 ] @keyword.modifier
 
 (sensitive) @keyword.modifier
@@ -136,6 +138,9 @@
 ; ─── States and events ───
 
 (state_declaration
+  name: (type_identifier) @label)
+
+(history_state
   name: (type_identifier) @label)
 
 (initial

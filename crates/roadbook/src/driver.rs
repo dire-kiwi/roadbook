@@ -277,6 +277,7 @@ fn blank() -> Snapshot {
         next_invoke: 1,
         next_timer: 1,
         next_message: 1,
+        history: Default::default(),
         result: None,
     }
 }
