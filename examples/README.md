@@ -25,7 +25,7 @@ States are counted from `roadbook export ir`, not counting the machine itself. E
 
 Zero errors does not mean the charts are correct, for two reasons:
 
-- **The check most likely to catch an agent's bugs does not exist yet.** The compiler does not yet do definite assignment (milestone 6). Deleting `set reset = result` from `password-reset` still checks clean. I checked every read of a `var` with no default by hand.
+- **The check most likely to catch an agent's bugs did not exist yet.** The compiler did not yet do definite assignment (milestone 6). Deleting `set reset = result` from `password-reset` still checked clean, so I checked every read of a `var` with no default by hand. Since milestone 6 that deletion is reported as `RB0403`.
 - **The page was read in full and its traps were avoided on purpose.** Each trap is documented, but an agent writing quickly would hit it. The list below says what a natural first draft would have contained and what the compiler does with it. I probed each case with a scratch file after the experiment.
 
 ### Unclear points in the language page

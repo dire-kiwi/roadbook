@@ -6,9 +6,10 @@ One repository, a Cargo workspace and a pnpm workspace side by side.
 
 ```
 spec/
-  language.md              the language reference
-  ir.schema.json           JSON Schema for the IR
-  trace.schema.json        JSON Schema for trace records
+  execution.md             how machines execute: the rules both runtimes follow
+  ir.md, ir.schema.json    the IR, and its JSON Schema
+  trace.md, trace.schema.json  trace records, and their JSON Schema
+  snapshot.schema.json     JSON Schema for saved snapshots
   conformance/             charts, scripts and expected traces
 crates/
   roadbook-syntax           lexer, parser, syntax tree, formatter
@@ -16,8 +17,11 @@ crates/
   roadbook-ir               IR types (serde) and schema
   roadbook-core             pure interpreter
   roadbook-macros           the include! macro and Rust code generation
+  roadbook-gen-ts           the TypeScript generator behind `gen`
   roadbook                  driver, Actor, tracing; re-exports the macro
-  roadbook-cli              check, fmt, gen, viz, export, paths
+  roadbook-cli              check, fmt, gen, viz, export, paths, lsp
+  roadbook-lsp              the language server
+  roadbook-conformance      loads and checks the conformance cases
   roadbook-wasm             the compiler as WebAssembly, for packages/cli
 packages/
   core                     @roadbook/core: pure interpreter, no dependencies
@@ -108,9 +112,9 @@ M3 and M4 are independent once M1 is done and can run in parallel. M2 depends on
 | The language is a poor fit for real programs. | Port two or three real request handlers during M1, before the runtimes exist. The viewer makes shortcomings obvious early. |
 | The two runtimes diverge. | The conformance suite is the specification, and both run it in CI from M4 on. |
 | Agents write the syntax badly. | Small grammar, canonical formatter, machine-readable diagnostics with fixes, and a bundled instructions file for agents. Measure it in M1 by having an agent write charts from prose. |
-| Large charts are unreadable as diagrams. | Collapse compound states by default beyond a size, and push structure into child machines, which the language makes cheap. The spike should be tried on a 40-state chart during M2. |
+| Large charts are unreadable as diagrams. | Collapse compound states by default beyond a size, and push structure into child machines, which the language makes cheap. M2 tried the viewer on the 46-state `examples/large`, which opens with its deep levels collapsed. |
 | Definite assignment is too strict or too slow. | Built in M6 and tuned against the example charts: it is conservative in a few documented places, and takes about 100 ms on a 1,000-state chart in a debug build. The runtime check stays as a backstop. |
-| No editor support at first. | `roadbook viz --watch` gives live feedback from M2. Highlighting needs only the tree-sitter grammar, which can be pulled forward. |
+| No editor support at first. | `roadbook viz --watch` gave live feedback from M2. M8 added the tree-sitter grammar, the language server and the VS Code extension. |
 
 ## Open questions
 
