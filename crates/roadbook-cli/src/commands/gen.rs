@@ -34,6 +34,9 @@ pub fn run(args: Args) -> Exit {
         Ok(f) => f,
         Err(e) => return report::fatal(e),
     };
+    // A module imports a file of a `[packages]` package by a relative path into its directory.
+    let options =
+        roadbook_gen_ts::Options::default().with_packages(ws.packages().iter().cloned().collect());
     let mut exit = Exit::Ok;
     match orphans(&ws, &args.paths) {
         Ok(orphans) => {
@@ -61,7 +64,7 @@ pub fn run(args: Args) -> Exit {
             exit = Exit::Errors;
             continue;
         };
-        let code = match roadbook_gen_ts::generate(ir, &roadbook_gen_ts::Options::default()) {
+        let code = match roadbook_gen_ts::generate(ir, &options) {
             Ok(code) => code,
             Err(mut e) => {
                 if let roadbook_gen_ts::GenError::ErrorField {

@@ -11,6 +11,7 @@ export interface OverflowDef extends Roadbook.MachineDef {
   readonly output: number
   readonly error: never
   readonly event: never
+  readonly emits: never
   readonly state: "Overflow" | "Overflow.Over"
   readonly fns: {}
   readonly actions: {}
@@ -691,6 +692,7 @@ export interface SettleDef extends Roadbook.MachineDef {
   readonly output: void
   readonly error: never
   readonly event: never
+  readonly emits: never
   readonly state: "Settle" | "Settle.Spin"
   readonly fns: {}
   readonly actions: {}
@@ -709,6 +711,7 @@ export interface EarlyDef extends Roadbook.MachineDef {
   readonly output: number
   readonly error: never
   readonly event: never
+  readonly emits: never
   readonly state: "Early" | "Early.Over"
   readonly fns: {}
   readonly actions: {}
@@ -730,6 +733,7 @@ export interface LeftoverDef extends Roadbook.MachineDef {
   readonly output: void
   readonly error: never
   readonly event: Go
+  readonly emits: never
   readonly state: "Leftover" | "Leftover.Outer" | "Leftover.Outer.Inner" | "Leftover.Over"
   readonly fns: {}
   readonly actions: { readonly log: { readonly what: string } }
@@ -750,6 +754,7 @@ export interface PayloadDef extends Roadbook.MachineDef {
   readonly output: Schema.Json
   readonly error: never
   readonly event: never
+  readonly emits: never
   readonly state: "Payload" | "Payload.Over"
   readonly fns: { readonly payload: { readonly args: {}; readonly returns: Schema.Json } }
   readonly actions: {}

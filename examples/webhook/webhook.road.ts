@@ -12,6 +12,7 @@ export interface PaymentWebhookDef extends Roadbook.MachineDef {
   readonly output: ApiResponse
   readonly error: never
   readonly event: never
+  readonly emits: never
   readonly state:
     | "PaymentWebhook"
     | "PaymentWebhook.Verifying"

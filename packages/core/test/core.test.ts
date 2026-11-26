@@ -41,20 +41,38 @@ describe("loadIr", () => {
     expect(() => getMachine(parallel, "Nest")).toThrow(/parallel state/)
     expect(() => getMachine(ir, "Nope")).toThrow(/no machine "Nope"/)
   })
-  it("refuses a machine that uses messaging", () => {
-    const ir = readIr("nest.ir.json")
-    const nest = ir.machines["Nest"]!
-    const field = { name: "percent", type: "int", doc: "" }
-    const emits = { ...nest, emits: { Progress: { fields: [field], doc: "", span: nest.span } } }
-    expect(() => getMachine({ ...ir, machines: { Nest: emits } }, "Nest")).toThrow(
-      /uses emits Progress: messaging between machines is not supported/
-    )
-    const param = { ...nest, params: [{ name: "stock", type: "ref Inventory", doc: "" }] }
-    expect(() => getMachine({ ...ir, machines: { Nest: param } }, "Nest")).toThrow(/the parameter stock: ref Inventory/)
-    const value = { kind: "record" as const, fields: [], type: "Inventory.Ping", text: "Ping" }
-    const to = { kind: "ref" as const, name: "stock", machine: "Inventory", state: null }
-    const sending = { ...nest, root: { ...nest.root, entry: [{ kind: "send" as const, to, event: "Ping", value }] } }
-    expect(() => getMachine({ ...ir, machines: { Nest: sending } }, "Nest")).toThrow(/send stock\.Ping in state Nest/)
+})
+
+describe("messaging", () => {
+  it("sends through a ref parameter and a ref variable, in order", () => {
+    const ir = readIr("pair.ir.json")
+    const started = start(ir, "Sender", "r2", { peer: "r1" }, noFns)
+    expect(started.snapshot.run).toBe("r2")
+    expect(started.snapshot.vars).toEqual({ target: "r1" })
+    const go = step(ir, started.snapshot, { kind: "event", value: { _tag: "Go" } }, noFns)
+    expect(go.commands.filter((c) => c.kind === "send")).toEqual([
+      { kind: "send", to: "r1", invoke: null, message: 1, value: { _tag: "First" } },
+      { kind: "send", to: "r1", invoke: null, message: 2, value: { _tag: "Second" } }
+    ])
+    expect(go.snapshot.nextMessage).toBe(3)
+  })
+
+  it("takes an emitted event only from the child its address names, and a stale one from none", () => {
+    const ir = readIr("upload.ir.json")
+    const started = start(ir, "Publish", "r1", { size: 200 }, noFns)
+    expect(started.commands.at(-1)).toMatchObject({ kind: "invoke.start", invoke: 1, as: "upload" })
+    const progress = { _tag: "Progress", offset: 100 }
+    const taken = step(ir, started.snapshot, { kind: "emitted", from: "r1.1", invoke: 1, message: 1, value: progress }, noFns)
+    expect(taken.snapshot.vars).toMatchObject({ shown: 100 })
+    const stale = step(ir, started.snapshot, { kind: "emitted", from: "r1.7", invoke: 7, message: 1, value: progress }, noFns)
+    expect(stale.commands).toEqual([
+      {
+        kind: "trace",
+        record: { kind: "stale", event: { kind: "emitted", from: "r1.7", invoke: 7, message: 1, value: progress } }
+      }
+    ])
+    const peer = step(ir, started.snapshot, { kind: "emitted", from: "r2", invoke: null, message: 1, value: progress }, noFns)
+    expect(peer.commands.map((c) => c.kind === "trace" && c.record.kind)).toEqual(["dropped"])
   })
 })
 
@@ -66,7 +84,7 @@ describe("start and step", () => {
   }
 
   it("asks the driver to start the invoke, then finishes on its outcome", () => {
-    const started = start(ir, "Checkout", input, noFns)
+    const started = start(ir, "Checkout", "r1", input, noFns)
     expect(started.snapshot.active).toEqual(["Checkout", "Checkout.Charging"])
     expect(started.snapshot.invokes).toEqual([{ id: 1, state: "Checkout.Charging", src: "chargeCard" }])
     expect(started.commands.at(-1)).toEqual({
@@ -75,6 +93,7 @@ describe("start and step", () => {
       state: "Checkout.Charging",
       src: "chargeCard",
       srcKind: "task",
+      as: null,
       args: input
     })
     const receipt = { chargeId: "c1", amountCents: 4200 }
@@ -86,7 +105,7 @@ describe("start and step", () => {
   })
 
   it("is atomic: a host defect in a function discards the step's commands", () => {
-    const started = start(ir, "Checkout", input, noFns)
+    const started = start(ir, "Checkout", "r1", input, noFns)
     const failed = step(ir, started.snapshot, { kind: "invoke.fail", invoke: 1, error: { _tag: "GatewayUnavailable" } }, noFns)
     expect(failed.snapshot.status).toBe("defect")
     expect(failed.snapshot.result).toEqual({ defect: { kind: "host", message: "unexpected call of retryDelay" } })
@@ -97,7 +116,7 @@ describe("start and step", () => {
   })
 
   it("traces a stale outcome and changes nothing else", () => {
-    const started = start(ir, "Checkout", input, noFns)
+    const started = start(ir, "Checkout", "r1", input, noFns)
     const stale = step(ir, started.snapshot, { kind: "invoke.done", invoke: 9, value: null }, noFns)
     expect(stale.commands).toEqual([
       { kind: "trace", record: { kind: "stale", event: { kind: "invoke.done", invoke: 9, value: null } } }

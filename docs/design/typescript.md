@@ -2,7 +2,7 @@
 
 The TypeScript side is two packages: `@roadbook/core`, the pure interpreter with no dependencies, and `@roadbook/effect`, the driver and public API built on Effect v4.
 
-Both are implemented (milestone 3), against `effect@4.1.5`. `@roadbook/core` has no dependencies and runs in the browser too; `@roadbook/effect` passes every [conformance case](../../spec/conformance) through its production driver. The [shop example](../../examples/shop) serves `POST /orders` from Express with them, and its [type tests](../../examples/shop/test/types.ts) check the guarantees below with `tsc`.
+Both are implemented (milestone 3, and messaging between machines in milestone 5), against `effect@4.1.5`. `@roadbook/core` has no dependencies and runs in the browser too; `@roadbook/effect` passes every [conformance case](../../spec/conformance), the messaging cases included, through its production driver. The [shop example](../../examples/shop) serves `POST /orders` from Express with them, and its [type tests](../../examples/shop/test/types.ts) check the guarantees below with `tsc`. The messaging examples, [`upload`](../../examples/upload) and [`orders`](../../examples/orders) with its [`inventory`](../../examples/inventory) peer, run end to end in [`packages/effect/test/examples.test.ts`](../../packages/effect/test/examples.test.ts).
 
 ## A machine is an Effect
 
@@ -18,13 +18,13 @@ The success type is the chart's output. The error type is the union of the chart
 
 `roadbook gen` writes one `.road.ts` file next to each `.road` file. It contains:
 
-- An Effect `Schema` for every `type`, `enum` and `event`, and a `Schema.TaggedError` class for every `error`. These are what make snapshots and traces serialisable and inputs decodable.
-- For each machine, a definition type listing its input, output, errors, events, state ids (the root's included), and the signature of every function, action, task and child machine it uses.
+- An Effect `Schema` for every `type`, `enum`, `event` and `emits`, and a `Schema.TaggedError` class for every `error`. These are what make snapshots and traces serialisable and inputs decodable.
+- For each machine, a definition type (`PlaceOrderDef`) listing its input, output, errors, events (`event`), emitted events (`emits`), state ids (the root's included), and the signature of every function, action, task and child machine it uses.
 - For each machine, a typed handle with the IR embedded: `export const PlaceOrder = Roadbook.make<PlaceOrderDef>(ir, "PlaceOrder", errors)`. `errors` holds every error class the IR declares, imported from the modules that declare them, so that the runtime can hand host code and callers instances of them rather than plain objects.
 
 An error's class extends JavaScript's `Error`, so a few field names are taken. A field named `name`, `message` or `stack` must be a `string` or an enum, as on `Error`; any other type would give the field the wrong type (a `bool` makes the class `never`, which `tsc` rejects). A field named `toString`, `toJSON` or `pipe` would replace a method every error instance has. `roadbook gen` rejects both, naming the file, line and field; rename the field. Records and events have no such restriction.
 
-Declarations of an imported file are not repeated: the module imports them from that file's generated module (`import { Order, User } from "./types.road.js"`). An `extern type` is `unknown` (and `Schema.Unknown`); binding one to a host type in `roadbook.toml` is not implemented yet. The generator is the library crate [`roadbook-gen-ts`](../../crates/roadbook-gen-ts), so other tools can reuse it.
+Declarations of an imported file are not repeated: the module imports them from that file's generated module (`import { Order, User } from "./types.road.js"`). A file of another package is imported from the generated module in that package: through a relative path into the package's directory when the `[packages]` table of `roadbook.toml` maps it (`orders.road.ts` has `import { type InventoryDef, Item, OutOfStock } from "../inventory/inventory.road.js"`), and by the package specifier otherwise (`"inventory/inventory.road.js"`), which Node and TypeScript resolve in `node_modules`, so the package must ship its generated modules. A `ref Inventory` is the type `Roadbook.Handle<InventoryDef>`, with `InventoryDef` imported as a type when another file declares `Inventory`; it has no schema, since a `ref` is never in a record, error or event, and an alias of a type with a `ref` in it is a type alias only. An `extern type` is `unknown` (and `Schema.Unknown`); binding one to a host type in `roadbook.toml` is not implemented yet. The generator is the library crate [`roadbook-gen-ts`](../../crates/roadbook-gen-ts), so other tools can reuse it.
 
 The generated file is committed. Reviewers see type changes in the diff, consumers need no build step, and `roadbook gen --check` in CI fails if one is stale or missing, or left behind by a deleted chart (the project's `gen-exclude` names charts that need none; see [projects](language.md#projects)). A Vite plugin that generates on the fly is a later convenience.
 
@@ -113,6 +113,16 @@ const response = yield* actor.result                  // Effect<Output, Errors>
 yield* actor.cancel                                   // cancel gracefully and wait
 ```
 
+**Handles.** `actor.handle` is a `Handle<D>`, the TypeScript counterpart of Rust's `actor.handle()`: the run's `id`, its `machine`, and `send`. It is what a `ref` parameter takes, so a spawned machine is passed to the machines that talk to it as an ordinary argument:
+
+```ts
+const stock = yield* InventoryLive.spawn({ warehouse: "w1" })
+const receipt = yield* OrderLive.run({ id: "o1", draft, inventory: stock.handle })   // inventory: ref Inventory
+yield* stock.handle.send({ _tag: "Restock", sku: "apple", qty: 10 })               // host code sends too
+```
+
+The input type of `Order` has `inventory: Roadbook.Handle<InventoryDef>`, so only a handle to an `Inventory` fits, and `send` takes only the events the target declares with `event`: `stock.handle.send({ _tag: "Reserved", … })` does not compile, since `Reserved` is one `Inventory` emits. The core holds a `ref` as the run's id (`"r2"`), as snapshots and traces show it; the driver turns a handle into its id when it encodes a machine's arguments, and the id back into the same handle object for host code (the arguments of an invoke, an action, a task or a function). A value that is not a handle to a running machine of the right kind is a `host` defect. `handle.send` gives the run an ordinary external event, with no sender, and does nothing once the run has ended, like `actor.send`. A `run` that is not spawned has no handle. Host code cannot subscribe to what a run emits through its handle: that is [not specified yet](../../spec/execution.md#not-yet-specified).
+
 Closing the scope, `actor.cancel`, or interrupting the fiber of a `run`, cancels the machine gracefully: the step in progress finishes, then every active state's exit effects run, innermost first, and the trace ends with `cancelled`. Everything the machine started is cancelled with it. `snapshot.status` is the run's status (`running`, `done`, `failed`, `cancelled` or `defect`), and `snapshot.core` the snapshot as the core holds it.
 
 A machine with a parallel state cannot run yet (milestone 6): `implement` throws, naming the state. `make` throws for an IR of another version.
@@ -135,6 +145,8 @@ A machine with a parallel state cannot run yet (milestone 6): `implement` throws
 | Time | `Timer`, a `Context.Reference` with `now` and `sleep({ run, timer, delay })`. The default, `ClockTimer`, uses Effect's `Clock`. |
 | Root run ids | `RootRunId`, a `Context.Reference` holding a function that names each root run (`r1`, `r2`, … by default) |
 | Tracing | `Effect.withSpan` per run, and log annotations `roadbook.machine` and `roadbook.run` on everything a run does, plus `roadbook.invoke` in an invoke's fiber. Spans per state and transitions as span events are not done yet. |
+| `send` and `emit` | A run's queue sits behind a port: the queue, an open flag, and the ports of the runs subscribed to what it emits. Pushing a message or an emitted event checks the flag and calls `Queue.offerUnsafe`, synchronously, so it is one operation with respect to the receiver closing, which also happens synchronously, as soon as its core returns a snapshot that is not `running` ([delivery](#messages)) |
+| A `ref` | A `Handle`, which a run's arguments encode to the run's id; the run decodes the ids its core gives back to the same handles |
 | Tools that drive runs | `RunObserver`, a `Context.Reference` told about every run as it starts, with a handle that can append inputs to its queue in one operation (`Queue.offerAll`). The conformance runner uses it for `together` steps. |
 
 Effect's structured concurrency is the reason this fits so well. "Leaving a state cancels its work" is a scope closing.
@@ -149,11 +161,19 @@ The rules are in [execution.md](../../spec/execution.md#child-runs); in Effect t
 - **Defects.** A thrown `Error` becomes a host defect with its `message`, any other value one with `String(value)`; so does a failure in an action, or a task's failure with a value that has no `_tag`. A run that ends with a defect dies with a `Defect` (an `Error` whose `defect` member is the defect object), which the parent's driver passes on unchanged, so a child's defect reaches the root as it was. A defect in a child's cancel step is written into the token by the child, and the parent reads it once the interrupted fiber has ended and ends with that defect; the child's fiber also dies with it.
 - **Cancelling from outside.** Interrupting the fiber of a root `run`, or closing the scope of a `spawn`ed actor, cancels it the same way: exit effects run and the trace ends with `cancelled` before the interruption completes.
 
+### Messages
+
+The rules are in [execution.md](../../spec/execution.md#delivering-messages).
+
+- **Open and closed.** A run's port is open from before its `start` until its core returns a snapshot that is not `running`, from `start`, a step, the cancel step or the answer to a defect; the driver closes it then, before carrying out that step's commands, and unsubscribes it from its peers. A message pushed onto a closed port is not pushed: for a `send` the driver writes `undelivered` after the `sent` record, for an `emit` it writes nothing.
+- **Subscriptions.** Encoding a machine's arguments collects the handles in them. Just before `start` the run's port is added to the subscribers of each of those runs, once each, and removed when it closes. Carrying out `emit` pushes `{"kind": "emitted", "invoke": null, …}` onto every subscriber's queue.
+- **Children.** The invoke context also holds, for an invoke with `as`, the parent's port, and its token holds the messages the parent sent before a child run took them. A `send` to a child pushes onto the child's port once a run has claimed the token and made its queue; before that it is kept in the token, and the child's queue starts with what was kept. A stub never claims it, so what is kept for it is dropped with the token when the invoke ends. A child's `emit` pushes onto the parent's port with its invoke id; it does so in the child's own step, and its outcome is offered only when its `run` ends, after the commands of its last step, so its emitted events always come first. A child cancelled by its parent emits from its cancel step while the parent waits in `invoke.cancel`; if the parent is still open those events are queued and later taken as stale, and once the parent's `invoke.cancel` is over the child has ended and pushes nothing more.
+
 ## Testing
 
 - **A whole sub-machine can be a stub.** `machines: { Checkout: () => Effect.fail(new CardDeclined({ reason: "test" })) }` replaces the payment chart with one function of the same signature.
 - **Time is virtual.** `after` and backoff delays sleep through the driver's `Timer` service on Effect's `Clock`, so they run under `TestClock` ([the shop's retry test](../../examples/shop/test/retry.test.ts)). The conformance runner, which has to fire timers one at a time and let the machines settle in between, gives the driver its own virtual `Timer` ([what a runner relies on](../../spec/conformance/README.md#how-a-runner-works)).
-- **The conformance runner** ([`packages/effect/test/conformance`](../../packages/effect/test/conformance)) drives each case through `make`, `implement` and `spawn`, replacing only the timer and the host code. It runs every fiber on a manual `Scheduler` that queues tasks rather than using `setImmediate`; since nothing in a case waits on real time or I/O, the runs are quiescent exactly when that scheduler has no task left, which the runner checks by draining it. A scripted invoke learns its run and invoke id from the log annotations above. `pnpm --filter @roadbook/effect conformance` prints a line per case; with `ROADBOOK_CONFORMANCE_OUT=dir` each case's actual trace is written to `dir/<case>.jsonl`.
+- **The conformance runner** ([`packages/effect/test/conformance`](../../packages/effect/test/conformance)) drives each case through `make`, `implement` and `spawn`, replacing only the timer and the host code. A `start` step spawns another top-level run with the same timer, sink and observer, named by `RootRunId`, and decodes its input with the handles of the runs started before it. It runs every fiber on a manual `Scheduler` that queues tasks rather than using `setImmediate`; since nothing in a case waits on real time or I/O, the runs are quiescent exactly when that scheduler has no task left, which the runner checks by draining it. A scripted invoke learns its run and invoke id from the log annotations above. `pnpm --filter @roadbook/effect conformance` prints a line per case; with `ROADBOOK_CONFORMANCE_OUT=dir` each case's actual trace is written to `dir/<case>.jsonl`.
 - **The core is pure.** `@roadbook/core`'s `step` can be called directly to assert on transitions without running any effects.
 - **Paths can be generated.** Because the chart is data, `roadbook paths` can list every simple path through a machine, and a test can assert each one is exercised. The viewer's coverage mode shows the result.
 

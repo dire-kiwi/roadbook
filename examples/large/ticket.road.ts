@@ -95,6 +95,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
     | MarkOutOfScope
     | MergeInto
     | GiveUp
+  readonly emits: never
   readonly state:
     | "SupportTicket"
     | "SupportTicket.Intake"

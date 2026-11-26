@@ -1,16 +1,20 @@
 /**
  * The driver: execution.md's "The driver", on Effect. One run is one fiber running the loop
  * below in its own `Scope`, with one `Queue` that events, invoke fibers and timer fibers all
- * offer to. Invokes are detached fibers in a map keyed by invoke id, timers fibers in a
- * `FiberMap` keyed by timer id. Each step runs uninterruptibly; interrupting the run is a
- * graceful cancel, whose step runs in `Effect.onInterrupt`.
+ * offer to, behind a `Port` that other runs and handles push messages and emitted events onto.
+ * Invokes are detached fibers in a map keyed by invoke id, timers fibers in a `FiberMap` keyed
+ * by timer id. Each step runs uninterruptibly; interrupting the run is a graceful cancel, whose
+ * step runs in `Effect.onInterrupt`.
  */
 import * as Core from "@roadbook/core"
 import { Cause, Context, Deferred, Effect, Exit, Fiber, FiberMap, Predicate, Queue, Stream, SubscriptionRef } from "effect"
 import { Defect, hostDefect } from "../Defect.ts"
-import type { Actor, MachineDef, Snapshot } from "../Machine.ts"
+import type { Actor, Handle, MachineDef, Snapshot } from "../Machine.ts"
 import { RootRunId, RunObserver, TraceSink, Timer } from "../References.ts"
 import type { Codec } from "./codec.ts"
+import { type Port, portOf, push, registerHandle } from "./port.ts"
+
+export type { Port } from "./port.ts"
 
 // ---- the invoke context ----------------------------------------------------------------------
 
@@ -24,6 +28,10 @@ export interface CancelToken {
   claimed: boolean
   cancelled: boolean
   cancelDefect: Core.Defect | undefined
+  /** The messages the parent sent to the invoke before a child run took them, in order. */
+  held: Array<Core.Input>
+  /** The child run's port, once the run that claimed the token has its queue. */
+  child: Port | undefined
 }
 
 /** What a machine invoke's implementation runs with: what a child run needs from its parent. */
@@ -34,6 +42,8 @@ export interface InvokeContext {
   readonly parentRun: string
   readonly invoke: number
   readonly token: CancelToken
+  /** The parent's port, when it invoked the child with `as`: where the child's emitted events go. */
+  readonly invoker: Port | undefined
 }
 
 export const CurrentInvoke: Context.Reference<InvokeContext | undefined> = Context.Reference<
@@ -60,7 +70,6 @@ export class Program {
   readonly machine: Core.Machine
   readonly codec: Codec
   readonly handlers: AnyHandlers
-  readonly fns: Core.Fns
 
   constructor(codec: Codec, name: string, handlers: AnyHandlers) {
     this.ir = codec.ir
@@ -68,8 +77,13 @@ export class Program {
     this.machine = Core.getMachine(codec.ir, name)
     this.codec = codec
     this.handlers = handlers
-    this.fns = (fn, args) => {
-      const decl = this.ir.functions[fn]
+  }
+
+  /** The host's functions for a run whose values `codec` converts (its `ref`s among them). */
+  fns(codec: Codec): Core.Fns {
+    const { handlers, ir } = this
+    return (fn, args) => {
+      const decl = ir.functions[fn]
       const impl = handlers.fns?.[fn]
       try {
         if (decl === undefined || impl === undefined) throw new Error(`no implementation of function ${fn}`)
@@ -82,6 +96,14 @@ export class Program {
         return { defect: hostDefect(error) }
       }
     }
+  }
+
+  /** The JSON form of one of the machine's events, given by host code. Throws a `CodecError`. */
+  encodeEvent(event: unknown): Core.Tagged {
+    const tag = Predicate.hasProperty(event, "_tag") ? String(event._tag) : ""
+    const decl = Object.hasOwn(this.machine.events, tag) ? this.machine.events[tag] : undefined
+    if (decl === undefined) throw new Error(`${this.name} has no event ${JSON.stringify(tag)}`)
+    return this.codec.encodeTagged(event, "the event", decl.fields)
   }
 
   /** The host value a run with this snapshot ended with, as its Effect. */
@@ -106,6 +128,8 @@ interface Env {
   readonly observer: RunObserver
   /** The token this run claimed, if it is a child run. */
   readonly token: CancelToken | undefined
+  /** For a child run invoked with `as`: its invoke id and the parent's port, for what it emits. */
+  readonly invoker: { readonly invoke: number; readonly port: Port } | undefined
 }
 
 const rootEnv: Effect.Effect<Env> = Effect.gen(function*() {
@@ -116,7 +140,8 @@ const rootEnv: Effect.Effect<Env> = Effect.gen(function*() {
     sink: yield* TraceSink,
     timer: yield* Timer,
     observer: yield* RunObserver,
-    token: undefined
+    token: undefined,
+    invoker: undefined
   }
 })
 
@@ -130,12 +155,13 @@ const claimEnv: Effect.Effect<Env> = Effect.flatMap(CurrentInvoke, (ctx) => {
     sink: ctx.sink,
     timer: ctx.timer,
     observer: ctx.observer,
-    token: ctx.token
+    token: ctx.token,
+    invoker: ctx.invoker === undefined ? undefined : { invoke: ctx.invoke, port: ctx.invoker }
   })
 })
 
 interface Instance {
-  readonly queue: Queue.Queue<Core.Input>
+  readonly handle: Handle<any>
   readonly ref: SubscriptionRef.SubscriptionRef<Core.Snapshot>
   readonly started: Deferred.Deferred<void>
   /** Runs the machine to its end and gives its outcome. */
@@ -144,7 +170,11 @@ interface Instance {
 
 const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect<Instance> =>
   Effect.gen(function*() {
-    const { codec, ir, machine, name } = program
+    const { ir, machine, name } = program
+    // The handles in the arguments: the runs this one holds a `ref` to.
+    const refs = new Map<string, object>()
+    const codec = program.codec.withRefs(refs)
+    const fns = program.fns(codec)
     let coreInput: { [param: string]: Core.Json }
     try {
       coreInput = codec.encodeArgs(machine.params, input, `the input of ${name}`)
@@ -152,8 +182,40 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
       return yield* Effect.die(new Defect(hostDefect(error)))
     }
     const queue = yield* Queue.unbounded<Core.Input>()
+    const port: Port = { id: env.runId, machine: name, queue, open: true, subscribers: new Set() }
+    if (env.token !== undefined) {
+      // A child run's queue starts with what its parent sent before it claimed the invoke;
+      // from now on the parent's sends go straight to it.
+      Queue.offerAllUnsafe(queue, env.token.held)
+      env.token.held = []
+      env.token.child = port
+    }
+    const peers = new Set<Port>()
+    for (const handle of refs.values()) peers.add(portOf(handle)!)
+    /** Closing: nothing more is pushed onto the queue, and the run hears from no peer. */
+    const close = () => {
+      if (!port.open) return
+      port.open = false
+      for (const peer of peers) peer.subscribers.delete(port)
+    }
+    const handle = registerHandle<Handle<any>>({
+      id: env.runId,
+      machine: name,
+      send: (event: unknown) =>
+        Effect.suspend(() => {
+          let value: Core.Tagged
+          try {
+            value = program.encodeEvent(event)
+          } catch (error) {
+            return Effect.die(new Defect(hostDefect(error)))
+          }
+          push(port, { kind: "event", value })
+          return Effect.void
+        })
+    } as unknown as Handle<any>, port)
     let snapshot: Core.Snapshot = {
       machine: name,
+      run: env.runId,
       ir: machine.hash,
       status: "running",
       active: [],
@@ -163,6 +225,7 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
       timers: [],
       nextInvoke: 1,
       nextTimer: 1,
+      nextMessage: 1,
       result: null
     }
     const ref = yield* SubscriptionRef.make(snapshot)
@@ -204,7 +267,13 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
       const tokens = new Map<number, CancelToken>()
 
       const startInvoke = (command: Extract<Core.Command, { kind: "invoke.start" }>) => {
-        const token: CancelToken = { claimed: false, cancelled: false, cancelDefect: undefined }
+        const token: CancelToken = {
+          claimed: false,
+          cancelled: false,
+          cancelDefect: undefined,
+          held: [],
+          child: undefined
+        }
         tokens.set(command.invoke, token)
         const { src } = command
         const decl = command.srcKind === "task" ? ir.tasks[src] : ir.machines[src]
@@ -223,7 +292,8 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
             observer: env.observer,
             parentRun: env.runId,
             invoke: command.invoke,
-            token
+            token,
+            invoker: command.as === null ? undefined : port
           }
           : undefined
         const fiber = work.pipe(
@@ -287,19 +357,56 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
           }
           case "timer.cancel":
             return Effect.as(FiberMap.remove(timers, command.timer), undefined)
+          case "send":
+            return send(command)
+          case "emit":
+            return Effect.sync(() => {
+              const { message, value } = command
+              const from = env.runId
+              if (env.invoker !== undefined) {
+                push(env.invoker.port, { kind: "emitted", from, invoke: env.invoker.invoke, message, value })
+              }
+              for (const subscriber of port.subscribers) {
+                push(subscriber, { kind: "emitted", from, invoke: null, message, value })
+              }
+              return undefined
+            })
         }
+      }
+
+      /** Queue a message for a child or a peer, or write `undelivered` if it has ended. */
+      const send = (command: Extract<Core.Command, { kind: "send" }>): Effect.Effect<undefined> => {
+        const { message, to, value } = command
+        const input: Core.Input = { kind: "message", from: env.runId, message, value }
+        if (command.invoke !== null) {
+          const token = tokens.get(command.invoke)
+          if (token === undefined) return Effect.succeed(undefined)
+          if (token.child === undefined) {
+            // Not claimed yet (or never: a stub), so kept for the run that claims it.
+            token.held.push(input)
+            return Effect.succeed(undefined)
+          }
+          if (push(token.child, input)) return Effect.succeed(undefined)
+        } else {
+          const peer = portOf(refs.get(to))
+          if (peer !== undefined && push(peer, input)) return Effect.succeed(undefined)
+        }
+        return Effect.as(write({ kind: "undelivered", message, to, value }), undefined)
       }
 
       const carryOut = (stepped: Core.Stepped) =>
         Effect.gen(function*() {
           snapshot = stepped.snapshot
+          // A run closes before the commands of its last step are carried out.
+          if (snapshot.status !== "running") close()
           for (const command of stepped.commands) {
             const defect = yield* carry(command)
             if (defect === undefined) continue
             // A host defect in an action, or in a child's cancel step: the rest of the step's
             // commands are dropped and the core's answer to the defect is carried out instead.
-            const answer = Core.step(ir, snapshot, { kind: "defect", defect }, program.fns)
+            const answer = Core.step(ir, snapshot, { kind: "defect", defect }, fns)
             snapshot = answer.snapshot
+            close()
             for (const rest of answer.commands) yield* carry(rest)
             break
           }
@@ -308,11 +415,13 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
 
       const steps = Effect.uninterruptibleMask((restore) =>
         Effect.gen(function*() {
-          yield* carryOut(Core.start(ir, name, coreInput, program.fns))
+          // Subscribed to the peers' emitted events before `start`, until the run closes.
+          for (const peer of peers) peer.subscribers.add(port)
+          yield* carryOut(Core.start(ir, name, env.runId, coreInput, fns))
           yield* Deferred.succeed(started, undefined)
           while (snapshot.status === "running") {
             const next = yield* restore(Queue.take(queue))
-            const stepped = Core.step(ir, snapshot, next, program.fns)
+            const stepped = Core.step(ir, snapshot, next, fns)
             // An invoke or timer is forgotten once its outcome or expiry is taken.
             if (next.kind === "invoke.done" || next.kind === "invoke.fail" || next.kind === "invoke.defect") {
               yield* stopInvoke(next.invoke)
@@ -329,7 +438,7 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
       const cancel = Effect.suspend(() => {
         if (snapshot.status !== "running") return Effect.void
         return Effect.gen(function*() {
-          yield* carryOut(Core.step(ir, snapshot, { kind: "cancel" }, program.fns))
+          yield* carryOut(Core.step(ir, snapshot, { kind: "cancel" }, fns))
           const result = snapshot.result
           if (result !== null && "defect" in result) {
             if (env.token !== undefined) env.token.cancelDefect = result.defect
@@ -342,6 +451,7 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
       // dropped as on `invoke.cancel` (a child run is cancelled and its cancel step waited for;
       // a defect there changes nothing). Its timers are dropped when the scope closes.
       const end = Effect.suspend(() => {
+        close()
         Queue.shutdownUnsafe(queue)
         return Effect.asVoid(stopInvokes([...tokens.keys()]))
       })
@@ -357,7 +467,7 @@ const makeInstance = (program: Program, input: unknown, env: Env): Effect.Effect
       })
     )
 
-    return { queue, ref, started, loop }
+    return { handle, ref, started, loop }
   })
 
 /** The defect for a failed host Effect: a die's defect, else a failure's error. */
@@ -412,20 +522,10 @@ export const spawn = <D extends MachineDef>(program: Program, input: unknown) =>
     const fiber = yield* Effect.forkScoped(instance.loop)
     // The actor is returned once the run has started: its start step carried out.
     yield* Effect.raceFirst(Deferred.await(instance.started), Effect.asVoid(Fiber.await(fiber)))
+    const handle = instance.handle as Handle<D>
     const actor: Actor<D> = {
-      send: (event) =>
-        Effect.suspend(() => {
-          let value: Core.Tagged
-          try {
-            const tag = Predicate.hasProperty(event, "_tag") ? String(event._tag) : ""
-            const decl = Object.hasOwn(program.machine.events, tag) ? program.machine.events[tag] : undefined
-            if (decl === undefined) throw new Error(`${program.name} has no event ${JSON.stringify(tag)}`)
-            value = program.codec.encodeTagged(event, "the event", decl.fields)
-          } catch (error) {
-            return Effect.die(new Defect(hostDefect(error)))
-          }
-          return Effect.asVoid(Queue.offer(instance.queue, { kind: "event", value }))
-        }),
+      send: handle.send,
+      handle,
       snapshot: Effect.map(SubscriptionRef.get(instance.ref), toSnapshot<D>),
       // Every step sets the snapshot, the last one included, so the stream ends with it.
       changes: SubscriptionRef.changes(instance.ref).pipe(

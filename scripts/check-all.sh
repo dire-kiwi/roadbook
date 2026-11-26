@@ -45,10 +45,11 @@ out=$(mktemp -d)
 mkdir -p "$out/ts" "$out/rust"
 ROADBOOK_CONFORMANCE_OUT="$out/ts" pnpm --filter @roadbook/effect exec vitest run test/conformance >/dev/null
 ROADBOOK_CONFORMANCE_OUT="$out/rust" cargo test -q -p roadbook --test conformance >/dev/null
-# A runtime skips the cases whose `requires` it does not support yet; diff -r fails if the
-# two ran different sets.
-test -n "$(ls "$out/ts")"
-diff -r "$out/ts" "$out/rust"
+# The TypeScript runtime runs every case. A runtime skips the cases whose `requires` it does
+# not support yet and writes no trace for them; every trace both wrote must be identical.
+test "$(ls "$out/ts" | wc -l)" -eq "$(ls spec/conformance/cases | wc -l)"
+test -n "$(ls "$out/rust")"
+for trace in "$out/rust"/*; do diff "$out/ts/$(basename "$trace")" "$trace"; done
 rm -rf "$out"
 
 step "Viewer: the bundle the CLI embeds is current"

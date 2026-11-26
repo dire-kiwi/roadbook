@@ -17,11 +17,6 @@ gen-exclude = [
   "crates/roadbook/tests/charts",
   "packages/viewer/test/charts",
   "spec/conformance/charts",
-  # Messaging between machines and imports from other packages: the TypeScript generator
-  # and runtime do not support them yet.
-  "examples/inventory",
-  "examples/orders",
-  "examples/upload",
 ]
 
 # Other packages a chart can import from, by name, and their directories. `examples/orders`

@@ -19,6 +19,7 @@ export interface SatisfactionSurveyDef extends Roadbook.MachineDef {
   readonly output: SurveyResult
   readonly error: never
   readonly event: never
+  readonly emits: never
   readonly state:
     | "SatisfactionSurvey"
     | "SatisfactionSurvey.Sending"

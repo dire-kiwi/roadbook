@@ -32,6 +32,7 @@ export interface ImportJobDef extends Roadbook.MachineDef {
   readonly output: ImportSummary
   readonly error: InvalidFile | BatchFailed | ImportCancelled
   readonly event: Pause | Resume | Cancel
+  readonly emits: never
   readonly state:
     | "ImportJob"
     | "ImportJob.Validating"

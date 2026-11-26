@@ -7,7 +7,13 @@
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
     "declaration": false,
-    "sourceMap": false
+    "sourceMap": false,
+    // The examples are not packages: test/examples.test.ts runs their generated modules, whose
+    // imports of these two are mapped to this package's (vitest.config.ts does the same).
+    "paths": {
+      "effect": ["./node_modules/effect/dist/index.d.ts"],
+      "@roadbook/effect": ["./src/index.ts"]
+    }
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "vitest.config.ts"]
 }

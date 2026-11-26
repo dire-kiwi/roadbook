@@ -18,6 +18,7 @@ export interface ConfirmPasswordResetDef extends Roadbook.MachineDef {
   readonly output: ApiResponse
   readonly error: never
   readonly event: never
+  readonly emits: never
   readonly state:
     | "ConfirmPasswordReset"
     | "ConfirmPasswordReset.Working"
