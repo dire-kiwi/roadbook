@@ -108,7 +108,6 @@ export const park = (exec: Execution, name: string, delay: number | undefined): 
 /** The durable runs of one engine in this process, by run id, and the workflows registered. */
 export interface Registry {
   readonly runs: Map<string, Entry>
-  readonly byExecution: Map<string, Entry>
   /** The durable machines registered with the engine, by workflow name. */
   readonly flows: Map<string, Flow>
 }
@@ -122,11 +121,16 @@ export interface Flow {
 
 const registries = new WeakMap<object, Registry>()
 
+/**
+ * The registry of an engine's durable runs in this process. It is keyed by the engine's
+ * `register`, not the engine object, so that an engine wrapped by spreading it (`{ ...engine,
+ * … }`, to trace or instrument it) shares one registry with the engine its workflows run on.
+ */
 export const registryOf = (engine: WorkflowEngine.WorkflowEngine["Service"]): Registry => {
-  let registry = registries.get(engine)
+  let registry = registries.get(engine.register)
   if (registry === undefined) {
-    registry = { runs: new Map(), byExecution: new Map(), flows: new Map() }
-    registries.set(engine, registry)
+    registry = { runs: new Map(), flows: new Map() }
+    registries.set(engine.register, registry)
   }
   return registry
 }
@@ -145,6 +149,8 @@ export interface Attempt {
   readonly queue: Queue.Queue<Core.Input | Wake>
   readonly save: () => Core.Saved
   readonly snapshot: () => Core.Snapshot
+  /** Whether it has replayed its journal: its snapshot is then the run's, and no older one. */
+  readonly live: () => boolean
 }
 
 const WAKE: Wake = { kind: "wake" }
@@ -168,6 +174,11 @@ export class Entry {
   saved: Core.Saved | undefined = undefined
   /** Completed when the run ends. */
   readonly ended = Deferred.makeUnsafe<void>()
+  /**
+   * Completed once an attempt of the run in this process has replayed its journal: from then on
+   * `emitted` is the run's, not only what this process has seen of it.
+   */
+  readonly known = Deferred.makeUnsafe<void>()
   /** The largest message id this run has emitted, and what it emitted, for later subscribers. */
   emitted = 0
   readonly log: Array<{ readonly message: number; readonly value: Core.Tagged }> = []
@@ -226,12 +237,33 @@ export class Entry {
     return this.registry.flows.get(this.info.workflow)?.workflow
   }
 
-  /** Have the engine replay the run, once: it is not live here and has an input waiting. */
+  /**
+   * Have the engine replay the run, once: it is not live here and something waits for it. If
+   * its execution has already ended (in an earlier process, or before the run could begin), the
+   * entry ends instead, so that nothing waits for it for ever.
+   */
   private resume() {
     const workflow = this.workflow()
     if (this.resumed || workflow === undefined) return
     this.resumed = true
-    this.fork(workflow.resume(this.info.executionId))
+    const executionId = this.info.executionId
+    this.fork(Effect.flatMap(workflow.poll(executionId), (found) =>
+      Option.isSome(found) && found.value._tag === "Complete"
+        ? Effect.sync(() => this.finish())
+        : workflow.resume(executionId)) as Effect.Effect<void, never, WorkflowEngine.WorkflowEngine>)
+  }
+
+  /** Wait until `emitted` is the run's: an attempt here has replayed it, or the run has ended. */
+  whenKnown(): Effect.Effect<void> {
+    return Effect.suspend(() => {
+      if (this.state === "pending") this.resume()
+      return Effect.raceFirst(Deferred.await(this.known), Deferred.await(this.ended))
+    })
+  }
+
+  /** An attempt here has replayed the run's journal. */
+  reachedEdge() {
+    Deferred.doneUnsafe(this.known, Exit.void)
   }
 
   private wake() {
@@ -308,11 +340,16 @@ export class Entry {
     Deferred.doneUnsafe(ack, Exit.void)
   }
 
-  /** The live run parks at `name`. */
-  parking(name: string) {
+  /**
+   * The live run parks at `name`, unless an input reached its queue meanwhile (it then takes
+   * it instead). Called in the same synchronous block as the run's own check that it is idle.
+   */
+  parking(name: string): boolean {
+    if (this.cancelRequested || (this.attempt !== undefined && Queue.sizeUnsafe(this.attempt.queue) > 0)) return false
     this.state = "parked"
     this.parkedAt = name
-    if (this.mailbox.length > 0 || this.cancelRequested) this.wake()
+    if (this.mailbox.length > 0) this.wake()
+    return true
   }
 
   /** The run carries on after a park in the same attempt. */
@@ -327,19 +364,25 @@ export class Entry {
     this.state = "ended"
     this.mailbox = []
     this.subscribers.clear()
+    this.log.length = 0
+  }
+
+  /** The run has ended: whoever waits for it stops waiting. */
+  finish() {
+    this.close()
+    for (const ack of this.acks.values()) Deferred.doneUnsafe(ack, Exit.void)
+    this.acks.clear()
+    Deferred.doneUnsafe(this.ended, Exit.void)
   }
 
   /** The attempt stopped: the run ended, parked, or the process is stopping. */
   detach(attempt: Attempt) {
     if (this.attempt !== attempt) return
-    this.saved = attempt.save()
+    // A snapshot from the middle of a replay is older than the run: keep the last whole one.
+    if (attempt.live()) this.saved = attempt.save()
     this.attempt = undefined
-    if (attempt.snapshot().status !== "running") {
-      this.close()
-      for (const ack of this.acks.values()) Deferred.doneUnsafe(ack, Exit.void)
-      this.acks.clear()
-      Deferred.doneUnsafe(this.ended, Exit.void)
-    } else if (this.state === "live") this.state = "pending"
+    if (attempt.snapshot().status !== "running") this.finish()
+    else if (this.state === "live") this.state = "pending"
   }
 
   /** Emit to the durable runs holding a `ref` to this one (replays emit again; they deduplicate). */
@@ -377,7 +420,6 @@ export const entryOf = (
   if (entry === undefined) {
     entry = new Entry(info, engine, registry)
     registry.runs.set(info.run, entry)
-    registry.byExecution.set(`${info.workflow}/${info.executionId}`, entry)
     ports.set(entry.port, entry)
     registerHandle(entry.handle, entry.port)
   }

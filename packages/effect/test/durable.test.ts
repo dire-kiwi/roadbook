@@ -7,10 +7,10 @@
  * opens, so it decides where each crash falls.
  */
 import * as Core from "@roadbook/core"
-import { Context, Deferred, Duration, Effect, Exit, Layer, Option, Scope } from "effect"
+import { Context, Deferred, Duration, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
 import { MessageStorage, RunnerHealth, Runners, RunnerStorage, Sharding, ShardingConfig } from "effect/cluster"
 import { ClusterWorkflowEngine } from "effect/cluster"
-import { WorkflowEngine } from "effect/workflow"
+import { DurableDeferred, WorkflowEngine } from "effect/workflow"
 import { describe, expect, it } from "vitest"
 import { Durable } from "../src/entry-durable.ts"
 import * as Roadbook from "../src/index.ts"
@@ -86,15 +86,31 @@ type Machines = ReturnType<typeof machines>
 /** One process: a runner, its engine and the durable machines, on the shared storage. */
 type Storage = Context.Context<MessageStorage.MessageStorage | MessageStorage.MemoryDriver>
 
-const startProcess = (storage: Storage, world: World, flows: Machines) =>
+const engineLayer = ClusterWorkflowEngine.layer.pipe(
+  Layer.provideMerge(Sharding.layer),
+  Layer.provide(Runners.layerNoop),
+  Layer.provide([RunnerStorage.layerMemory, RunnerHealth.layerNoop]),
+  Layer.provide(config)
+)
+
+/**
+ * The engine with every record read taking `ms`, as reads from SQL storage take time: the
+ * memory storage answers at once, which would hide what happens while a run waits for a read.
+ */
+const slowReads = (ms: number) =>
+  Layer.effect(
+    WorkflowEngine.WorkflowEngine,
+    Effect.map(WorkflowEngine.WorkflowEngine, (engine): WorkflowEngine.WorkflowEngine["Service"] => ({
+      ...engine,
+      deferredResult: (deferred) => Effect.delay(engine.deferredResult(deferred), ms)
+    }))
+  ).pipe(Layer.provideMerge(engineLayer))
+
+const startProcess = (storage: Storage, world: World, flows: Machines, slow?: number) =>
   Effect.gen(function*() {
     const scope = yield* Scope.make()
     const layer = Layer.mergeAll(flows.pipeline.layer, flows.parent.layer, flows.counter.layer, flows.adder.layer).pipe(
-      Layer.provideMerge(ClusterWorkflowEngine.layer),
-      Layer.provideMerge(Sharding.layer),
-      Layer.provide(Runners.layerNoop),
-      Layer.provide([RunnerStorage.layerMemory, RunnerHealth.layerNoop]),
-      Layer.provide(config)
+      Layer.provideMerge(slow === undefined ? engineLayer : slowReads(slow))
     )
     const context = yield* Layer.buildWithScope(layer, scope).pipe(
       Effect.provideContext(storage),
@@ -112,8 +128,9 @@ const startProcess = (storage: Storage, world: World, flows: Machines) =>
 const scenario = <A>(
   body: (t: {
     world: World
-    start: (flows?: Machines) => ReturnType<typeof startProcess>
+    start: (flows?: Machines, slow?: number) => ReturnType<typeof startProcess>
     flows: Machines
+    storage: Storage
   }) => Effect.Effect<A, unknown, Scope.Scope>,
   options: Partial<Durable.Options<any>> = {}
 ) =>
@@ -124,7 +141,8 @@ const scenario = <A>(
     return yield* body({
       world,
       flows,
-      start: (given) => startProcess(storage, world, given ?? flows)
+      storage,
+      start: (given, slow) => startProcess(storage, world, given ?? flows, slow)
     })
   })))
 
@@ -261,6 +279,9 @@ describe("durable runs across a crash", () => {
         const defect = Exit.isFailure(exit) ? exit.cause.reasons.find((r) => r._tag === "Die") : undefined
         expect(String((defect as { defect: Roadbook.Defect } | undefined)?.defect.message)).toMatch(/changed while run/)
         expect(Option.isSome(yield* process.run(flows.pipeline.poll(id)))).toBe(true)
+        // The run has ended, so sends and cancels do nothing.
+        yield* process.run(flows.pipeline.send(id, { _tag: "Nudge", by: 1 }).pipe(Effect.timeout(3000)))
+        yield* process.run(flows.pipeline.cancel(id).pipe(Effect.timeout(3000)))
         yield* process.crash
       })), 20_000)
 
@@ -377,6 +398,111 @@ describe("parking", () => {
         world.open(3)
         expect(yield* process.run(flows.pipeline.run({ id: "j" }))).toBe(62)
         expect(world.count(1)).toBe(1)
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
+})
+
+describe("durable runs, with slow storage reads", () => {
+  it("take an event that arrives while they decide to park", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        world.setPatience(60_000)
+        world.open(1)
+        world.open(2)
+        const process = yield* start(undefined, 300)
+        const id = yield* process.run(flows.pipeline.start({ id: "k" }))
+        yield* until(() => world.records.some((r) => r.kind === "timer.started"), 10_000)
+        // While the run reads its park records before parking.
+        yield* Effect.sleep(350)
+        yield* process.run(flows.pipeline.send(id, { _tag: "Nudge", by: 1 }).pipe(Effect.timeout(8000)))
+        yield* until(() => world.count(3) === 1)
+        yield* process.crash
+      }), { park: { after: 100 } }), 30_000)
+
+  it("run the exit effects of a child cancelled by the last journalled step", () =>
+    scenario(({ world, flows, start, storage }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const id = yield* process.run(flows.parent.start({ id: "l" }))
+        yield* until(() => world.count(1) === 1)
+        yield* process.crash
+        // The crash fell just after the Parent journalled its deadline's expiry (timer 1), before
+        // the step that cancels its Pipeline.
+        const scope = yield* Scope.make()
+        const engine = Context.get(
+          yield* Layer.buildWithScope(engineLayer, scope).pipe(Effect.provideContext(storage)),
+          WorkflowEngine.WorkflowEngine
+        )
+        const name = `${id}/in/1`
+        yield* engine.deferredDone(DurableDeferred.make(name, { success: Schema.Json }), {
+          workflowName: "Parent",
+          executionId: id,
+          deferredName: name,
+          exit: Exit.succeed({ kind: "after", timer: 1 })
+        })
+        yield* Scope.close(scope, Exit.void)
+
+        process = yield* start(undefined, 50)
+        yield* until(() => world.count(4) === 1, 10_000)
+        expect(world.logged).toEqual(["one", "pipeline exited"])
+        expect(world.count(1)).toBe(1)
+        yield* process.crash
+      })), 30_000)
+})
+
+describe("durable runs that have ended", () => {
+  it("take no more events or cancels, in a later process too", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        world.open(1)
+        world.open(2)
+        world.open(3)
+        let process = yield* start()
+        const id = yield* process.run(flows.pipeline.start({ id: "m" }))
+        yield* until(() => world.records.some((r) => r.kind === "timer.started"))
+        yield* process.run(flows.pipeline.send(id, { _tag: "Nudge", by: 1 }))
+        expect(yield* process.run(flows.pipeline.run({ id: "m" }))).toBe(61)
+        yield* process.crash
+
+        process = yield* start()
+        yield* process.run(flows.pipeline.send(id, { _tag: "Nudge", by: 1 }).pipe(Effect.timeout(3000)))
+        yield* process.run(flows.pipeline.cancel(id).pipe(Effect.timeout(3000)))
+        yield* process.crash
+      })), 20_000)
+
+  it("a cancel reaches a parked run", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        world.open(1)
+        world.open(2)
+        const process = yield* start()
+        const id = yield* process.run(flows.pipeline.start({ id: "n" }))
+        yield* until(() => world.records.some((r) => r.kind === "timer.started"))
+        yield* Effect.sleep(300)
+        yield* process.run(flows.pipeline.cancel(id).pipe(Effect.timeout(5000)))
+        expect(world.logged).toEqual(["one", "pipeline exited"])
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
+
+  it("a holder started after a restart hears only what its parked peer emits from then on", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        world.open(1)
+        let process = yield* start()
+        const counterId = yield* process.run(flows.counter.start({}))
+        const counter = yield* process.run(flows.counter.handle(counterId))
+        // The Counter reaches 100, then parks.
+        yield* process.run(flows.counter.send(counterId, { _tag: "Add", by: 100 }))
+        yield* Effect.sleep(300)
+        yield* process.crash
+
+        process = yield* start()
+        // An Adder with goal 5 would end on the old Total { n: 100 } if it heard it.
+        world.records.length = 0
+        yield* process.run(flows.adder.start({ counter, goal: 5 }))
+        expect(yield* process.run(flows.adder.run({ counter, goal: 5 }))).toBe(5)
+        const heard = world.records.filter((r) => r.kind === "event" && r.event.kind === "emitted")
+        expect(heard.map((r) => (r as { event: { message: number } }).event.message)).toEqual([2])
         yield* process.crash
       }), { park: { after: 100 } }), 20_000)
 })

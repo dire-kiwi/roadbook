@@ -37,6 +37,12 @@ export interface CancelToken {
   child: Port | undefined
   /** A durable child is cancelled by an input: the parent asked for it. */
   cancelRequested: boolean
+  /**
+   * A durable machine invoke whose implementation has not finished yet and may still claim the
+   * token: cancelling it asks and waits, so that a child run cut short by a crash gets to run
+   * its cancel step, even if it has not claimed the token when its parent cancels it.
+   */
+  starting: boolean
 }
 
 /** What a machine invoke's implementation runs with: what a child run needs from its parent. */
@@ -321,8 +327,10 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
     let last: Core.Snapshot | undefined
     /** Completed with the run's last saved snapshot once it has stopped: ended or suspended. */
     const stopped = yield* Deferred.make<Core.Saved>()
+    /** Whether a durable run has replayed its journal in this attempt. */
+    let atEdge = false
     /** This attempt of a durable root run, as its registry entry sees it. */
-    const attempt: Attempt = { queue, save: () => saved, snapshot: () => snapshot }
+    const attempt: Attempt = { queue, save: () => saved, snapshot: () => snapshot, live: () => atEdge }
     env.observer.started({
       id: env.runId,
       parent: env.parent,
@@ -395,7 +403,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           cancelDefect: undefined,
           held: [],
           child: undefined,
-          cancelRequested: false
+          cancelRequested: false,
+          starting: false
         }
         tokens.set(invoke, token)
         return token
@@ -432,11 +441,16 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           if (command.srcKind === "machine" && Predicate.hasProperty(impl, "run")) {
             // A machine that runs from its chart claims the invoke and journals its own run;
             // only one that does not (a `run` of host code) has its outcome recorded here.
+            token.starting = true
             recorded = Effect.flatMap(peek(durable.exec, name), (found) =>
               found !== undefined
                 ? Effect.succeed(found as unknown as Core.Input)
                 : Effect.tap(outcome, (input) =>
-                  token.claimed ? Effect.void : writeRecord(durable.exec, name, input as unknown as Core.Json)))
+                  token.claimed ? Effect.void : writeRecord(durable.exec, name, input as unknown as Core.Json))).pipe(
+                Effect.ensuring(Effect.sync(() => {
+                  token.starting = false
+                }))
+              )
           } else {
             // A task, or a machine stubbed by a function: an activity.
             recorded = Effect.map(
@@ -481,7 +495,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             deferredInvokes.delete(id)
             if (token === undefined || fiber === undefined) continue
             token.cancelled = true
-            if (!token.claimed) fiber.interruptUnsafe(self.id)
+            const child = token.claimed || (durable !== undefined && mode === "cancel" && token.starting)
+            if (!child) fiber.interruptUnsafe(self.id)
             else if (durable === undefined) children.push({ fiber, token })
             else if (mode === "cancel") {
               token.cancelRequested = true
@@ -769,6 +784,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
               const subName = `${env.runId}/sub/${peer.id}`
               let from = (yield* peek(exec, subName)) as number | undefined
               if (from === undefined) {
+                // From what the peer emits next: what it has emitted is known once it replayed.
+                yield* peerEntry.whenKnown()
                 from = peerEntry.emitted + 1
                 yield* writeRecord(exec, subName, from)
               }
@@ -801,11 +818,13 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
                   quiet = false
                   replaying = false
                   yield* startDeferred("all")
+                  atEdge = true
+                  entry?.reachedEdge()
                 }
                 const taken = yield* takeLive(d, k + 1, restore, () => parkAt, (at, seq) => {
                   parkAt = at
                   parkSeq = seq
-                }, () => parkSeq++)
+                }, () => parkSeq, () => parkSeq++)
                 input = taken
                 k += 1
                 yield* writeRecord(exec, at(k), input as unknown as Core.Json)
@@ -840,7 +859,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         restore: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
         parkAt: () => number,
         setPark: (at: number, seq: number) => void,
-        nextPark: () => number
+        nextPark: () => number,
+        usePark: () => void
       ): Effect.Effect<Core.Input> =>
         Effect.gen(function*() {
           const { exec } = d
@@ -858,9 +878,13 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
               const delay = earliest === undefined ? undefined : earliest - now
               if (delay === undefined || delay > exec.park) {
                 const at = `${env.runId}/park/${position}/${nextPark()}`
-                entry.parking(at)
-                yield* restore(park(exec, at, delay))
-                entry.unparked()
+                // Deciding and parking at once: what reached the queue while the records above
+                // were read is taken instead, and a park number is used only by a park.
+                if (entry.parking(at)) {
+                  usePark()
+                  yield* restore(park(exec, at, delay))
+                  entry.unparked()
+                }
                 continue
               }
             }

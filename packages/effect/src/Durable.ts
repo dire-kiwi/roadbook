@@ -149,6 +149,11 @@ export const workflow = <D extends MachineDef, R>(
       }
       const info = infoOf(executionId)
       const entry = entryOf(registry, engine, info)
+      if (!Core.isRunId(info.run)) {
+        entry.finish()
+        const message = `runId gave ${JSON.stringify(info.run)}, which is not a run id: it must match ${Core.RUN_ID_PATTERN}`
+        return { status: "defect", result: { defect: { kind: "host", message } } } as Core.Json
+      }
       const json = payload.begin as unknown as BeginJson
       let begin: Begin
       if (json.kind === "restore") begin = { kind: "restore", saved: json.saved, migrated: json.migrated }
@@ -172,7 +177,10 @@ export const workflow = <D extends MachineDef, R>(
         // Not ended: the process is stopping, or the run parked (the engine suspends it). A
         // defect before the run began (a changed chart) ends the execution with it.
         const defect = Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined
-        if (defect instanceof Defect) return { status: "defect", result: { defect: defect.defect } } as Core.Json
+        if (defect instanceof Defect) {
+          entry.finish()
+          return { status: "defect", result: { defect: defect.defect } } as Core.Json
+        }
         return yield* Effect.failCause(Exit.isFailure(exit) ? exit.cause : Cause.interrupt())
       }
       return { status: snapshot.status, result: snapshot.result } as unknown as Core.Json
@@ -249,7 +257,8 @@ export const workflow = <D extends MachineDef, R>(
 
   const snapshot = (id: string) =>
     Effect.flatMap(entryFor(id), (entry) => {
-      const saved = entry.attempt?.save() ?? entry.saved
+      // During a replay the attempt's snapshot is older than the run: give the last whole one.
+      const saved = entry.attempt !== undefined && entry.attempt.live() ? entry.attempt.save() : entry.saved
       if (saved === undefined) return Effect.die(new Error(`no snapshot of durable run ${entry.info.run} in this process`))
       return Effect.succeed(Core.copyJson(saved) as Saved)
     })
