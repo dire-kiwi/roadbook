@@ -1,0 +1,100 @@
+// Conformance chart: calls between runs. An Inventory peer answers `reserve`
+// calls one at a time, keeping the pending call in a variable while its task
+// runs, and `count` calls at once from the machine body. Orders and Counters
+// hold a `ref` to it and call it from an invoke.
+
+/// One line of an order: a product and how many of it.
+type Item { sku: string, qty: int }
+
+/// What a reservation holds.
+type Reservation { orderId: string, count: int }
+
+/// The warehouse cannot supply every item.
+error OutOfStock { reason: string }
+
+/// Hold `items` for an order; gives how many units were held.
+task reserveStock(warehouse: string, orderId: string, items: Item[]) -> int ! OutOfStock
+
+/// The stock of one warehouse, shared by every order.
+machine Inventory(warehouse: string) {
+  /// Hold the items for an order, or fail if they cannot all be supplied.
+  call reserve(orderId: string, items: Item[]) -> Reservation ! OutOfStock
+
+  /// How many reservations have been made.
+  call count() -> int
+
+  var pending: call reserve
+  var orderId: string
+  var items:   Item[]
+  var held:    int = 0
+
+  event Close
+  event Pause
+  event Resume
+  event Twice
+
+  initial Ready
+
+  on count reply call done held
+
+  state Ready {
+    on reserve -> Reserving  set pending = call, orderId = event.orderId, items = event.items
+    on Pause   -> Paused
+    on Close   -> Closed
+  }
+
+  /// One reservation at a time: another call meanwhile is turned away at once.
+  state Reserving {
+    invoke reserveStock(warehouse, orderId, items) {
+      done            -> Ready  set held = held + 1  reply pending done Reservation { orderId: orderId, count: result }
+      fail OutOfStock -> Ready  reply pending fail error
+    }
+    on reserve reply call fail OutOfStock { reason: "busy" }
+    on Twice   reply pending fail OutOfStock { reason: "first" }  reply pending fail OutOfStock { reason: "second" }
+    on Close   -> Closed
+  }
+
+  /// No `on reserve`: a reserve call is dropped, and answered Unanswered.
+  state Paused {
+    on Resume -> Ready
+  }
+
+  final state Closed {}
+}
+
+/// Reserve the items with the warehouse, giving up after 5s.
+machine Order(id: string, items: Item[], inventory: ref Inventory) -> Reservation ! OutOfStock {
+  var reservation: Reservation
+  var problem:     OutOfStock
+
+  initial Reserving
+
+  state Reserving {
+    invoke inventory.reserve(id, items) {
+      done            -> Reserved  set reservation = result
+      fail OutOfStock -> Failed    set problem = error
+      fail Unanswered -> Failed    set problem = OutOfStock { reason: "unanswered" }
+    }
+    after 5s -> Failed  set problem = OutOfStock { reason: "timed out" }
+  }
+
+  final state Reserved { output reservation }
+  final state Failed   { fail problem }
+}
+
+/// Ask the warehouse how many reservations it holds; 0 if it cannot say.
+machine Counter(inventory: ref Inventory) -> int {
+  var n: int
+
+  initial Asking
+
+  state Asking {
+    invoke inventory.count() {
+      done   -> Got   set n = result
+      fail * -> Gave
+    }
+  }
+
+  final state Got  { output n }
+  final state Gave { output 0 }
+}
