@@ -237,7 +237,10 @@ fn allow_unassigned_turns_off_definite_assignment_for_its_files() {
     let out = roadbook(&dir, &["check"]);
     assert_eq!(out.status.code(), Some(1));
     let err = text(&out.stderr);
-    assert!(err.contains("--> b/m.road") && !err.contains("--> a/m.road"), "{err}");
+    assert!(
+        err.contains("--> b/m.road") && !err.contains("--> a/m.road"),
+        "{err}"
+    );
     let out = roadbook(&dir, &["export", "ir", "a/m.road"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
 }
