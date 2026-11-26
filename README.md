@@ -40,6 +40,7 @@ The design, its decisions and what was built are in [`docs/design/`](docs/design
 | `crates/roadbook-lsp` | The language server. |
 | `crates/roadbook-conformance` | Loads and checks the conformance cases. |
 | `packages/core`, `packages/effect` | The TypeScript runtime: `@roadbook/core`, the pure interpreter, and `@roadbook/effect`, the Effect v4 driver and API. |
+| `crates/roadbook-wasm`, `packages/cli` | The compiler as WebAssembly, and `@roadbook/cli`, a Node `roadbook` (`check`, `fmt`, `gen`, `export ir`) that gives the same output as the native one without a Rust toolchain. |
 | `packages/viewer` | The diagram viewer (explore, simulate, replay, diff and coverage), built into the script `roadbook viz` embeds. |
 | `spec/` | The contract every tool and runtime is built against: the IR, the execution rules, the trace and snapshot formats, and the conformance cases. |
 | `examples/` | Charts used throughout, including the shop example served by both Express and axum. |
