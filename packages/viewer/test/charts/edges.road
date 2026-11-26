@@ -1,0 +1,70 @@
+// Edge cases for the viewer's tests and `export mermaid`, not an example: states named like
+// Mermaid keywords or like their machine, containers with rows of their own wider than their
+// children, and text Mermaid or Markdown could read as syntax.
+
+action note(what: string)
+task work(n: int) -> int
+
+/// A root with rows of its own, wider than everything inside it.
+/// ```
+/// a fence in a doc, then <b>HTML</b> & an ending fence:
+/// ```
+machine OnlyRoot() {
+  event Go
+  on Go do note("a root internal transition with a long text, wider than the state inside")
+  entry do note("x")
+  exit do note("y")
+  initial S
+  state S { on Go -> S }
+}
+
+/// States Mermaid would read as keywords.
+machine Note() {
+  event Go
+  initial State
+  state State { on Go -> Direction }
+  state Direction { on Go -> ClassDef }
+  state ClassDef { on Go -> Class }
+  state Class { on Go -> Style }
+  state Style { on Go -> Default }
+  state Default { on Go -> Click }
+  state Click { on Go -> Href }
+  state Href { on Go -> Scale }
+  state Scale { on Go -> As }
+  state As { on Go -> AccTitle }
+  state AccTitle { on Go -> AccDescr }
+  state AccDescr { on Go -> StateDiagram }
+  final state StateDiagram {}
+}
+
+/// A state named like its machine, which has transitions of its own.
+machine Same() {
+  event Go
+  on Go -> Same
+  initial Same
+  state Same { on Go -> Bar }
+  final state Bar {}
+}
+
+/// Containers with an invoke, entry, exit and internal transitions, and labels with syntax.
+machine Rows() {
+  var n: int = 0
+  event Go
+  event Bump
+  initial Busy
+  state Busy {
+    entry do note("entering Busy, which is a container with a fairly long entry row")
+    exit set n = n + 1
+    on Bump do note("direction TB; a::b #c: %% d")
+    invoke work(n) {
+      done -> Done
+    }
+    initial Inner
+    state Inner {
+      initial Deep
+      state Deep { on Go -> Busy.Inner.Deeper }
+      state Deeper { on Go -> Deep }
+    }
+  }
+  final state Done {}
+}

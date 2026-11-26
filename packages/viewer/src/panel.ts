@@ -4,6 +4,7 @@
 //   data-open-machine="<name>", data-toggle="<id>" (collapse or expand), data-clear.
 
 import type { Ir, State, TaskDecl, Machine } from './ir.ts'
+import { own } from './ir.ts'
 import {
   baseType,
   effectText,
@@ -55,7 +56,7 @@ function head(title: string, chip: string, closable: boolean): string {
 function typesOf(ir: Ir, decl: { params: { type: string }[]; returns?: string | null; errors?: string[] }): string {
   const names = [...decl.params.map((p) => p.type), decl.returns ?? null, ...(decl.errors ?? [])].filter((t): t is string => !!t).map(baseType)
   const lines = [...new Set(names)].flatMap((n) => {
-    const t = ir.types[n]
+    const t = own(ir.types, n)
     return t ? [typeDeclText(n, t)] : []
   })
   return lines.length ? code(lines.join('\n')) : ''
@@ -90,7 +91,7 @@ function invokeSection(ctx: PanelContext, state: State): string {
   const { ir } = ctx
   const inv = state.invoke
   if (!inv) return ''
-  const decl: Machine | TaskDecl | undefined = inv.kind === 'machine' ? ir.machines[inv.src] : ir.tasks[inv.src]
+  const decl: Machine | TaskDecl | undefined = inv.kind === 'machine' ? own(ir.machines, inv.src) : own(ir.tasks, inv.src)
   let s = code(`invoke ${invokeText(inv)}`)
   if (!decl) return section('Invoke', s)
   s += `<p class="rb-path">${inv.kind} declared at ${esc(sourceText(ir, decl.span))}</p>`
@@ -112,7 +113,7 @@ export function callersOf(ir: Ir, name: string): [string, string][] {
 
 export function machinePanel(ctx: PanelContext): string {
   const { ir } = ctx
-  const m = ir.machines[ctx.machine]!
+  const m = own(ir.machines, ctx.machine)!
   const tree = (s: State): string =>
     `<li>${stateLink(ctx, s.id, s.name)} <span class="rb-chip">${s.kind}${ctx.collapsed.has(s.id) ? ', collapsed' : ''}</span>${s.states.length ? `<ul>${s.states.map(tree).join('')}</ul>` : ''}</li>`
   const callers = callersOf(ir, ctx.machine).map(([name, id]) => `<button class="rb-link rb-mono" type="button" data-open-machine="${esc(name)}">${esc(id)}</button>`)
@@ -138,7 +139,7 @@ export function machinePanel(ctx: PanelContext): string {
 
 export function statePanel(ctx: PanelContext, state: State): string {
   const { ir } = ctx
-  const m = ir.machines[ctx.machine]!
+  const m = own(ir.machines, ctx.machine)!
   const parents: State[] = []
   let incoming = ''
   walkStates(m.root, (s) => {
@@ -181,17 +182,17 @@ export function statePanel(ctx: PanelContext, state: State): string {
 export function transitionPanel(ctx: PanelContext, state: State, index: number): string {
   const { ir } = ctx
   const t = state.transitions[index]!
-  const m = ir.machines[ctx.machine]!
+  const m = own(ir.machines, ctx.machine)!
   const group = state.transitions.map((o, i) => [o, i] as const).filter(([o]) => o.group === t.group)
   const pos = group.findIndex(([, i]) => i === index) + 1
   const inv = state.invoke
-  const decl = inv ? (inv.kind === 'machine' ? ir.machines[inv.src] : ir.tasks[inv.src]) : undefined
+  const decl = inv ? (inv.kind === 'machine' ? own(ir.machines, inv.src) : own(ir.tasks, inv.src)) : undefined
   let what = ''
   let extra = ''
   const short = shortId(ctx, state.id)
   switch (t.trigger.kind) {
     case 'event': {
-      const e = m.events[t.trigger.event]
+      const e = own(m.events, t.trigger.event)
       what = `Event ${t.trigger.event} arrives.`
       if (e) extra = section('Event', code(`event ${t.trigger.event}${e.fields.length ? ` { ${paramsText(e.fields)} }` : ''}`) + docHtml(e.doc))
       break
@@ -214,7 +215,7 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
     case 'invoke.fail': {
       const err = t.trigger.error
       what = `${inv ? inv.src : 'The invoke'} failed with ${err === '*' ? 'a declared error not listed' : err}; the error is available as error.`
-      const td = ir.types[err]
+      const td = own(ir.types, err)
       if (td) extra = section('Error', code(typeDeclText(err, td)) + docHtml(td.doc))
       break
     }
@@ -245,7 +246,7 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
 
 /** The panel for a selection; the machine overview when nothing (or nothing valid) is selected. */
 export function panelHtml(ctx: PanelContext, selection: Selection): string {
-  const m = ctx.ir.machines[ctx.machine]
+  const m = own(ctx.ir.machines, ctx.machine)
   if (!m) return ''
   const state = selection && findState(m, selection.type === 'state' ? selection.id : selection.state)
   if (!selection || !state) return machinePanel(ctx)

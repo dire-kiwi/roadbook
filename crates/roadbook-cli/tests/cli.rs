@@ -338,7 +338,7 @@ fn viz_writes_a_page_per_entry_and_an_index() {
     let data = page_data(&page);
     assert_eq!(data["kind"], "chart");
     assert_eq!(data["entry"], "examples/shop/place_order.road");
-    assert_eq!(data["index"], "index.html");
+    assert_eq!(data["index"], "./index.html");
     let exported = roadbook(&repo(), &["export", "ir", "examples/shop/place_order.road"]);
     let ir = roadbook_ir::Ir::from_json(&data["ir"].to_string()).unwrap();
     assert_eq!(
@@ -359,7 +359,7 @@ fn viz_writes_a_page_per_entry_and_an_index() {
     assert_eq!(names, ["PlaceOrder", "Checkout"]);
     assert_eq!(machines[0]["invokes"], serde_json::json!([1]));
     assert_eq!(machines[1]["source"], "examples/shop/checkout.road:4");
-    assert_eq!(data["index"]["pages"][0]["href"], "place_order.html");
+    assert_eq!(data["index"]["pages"][0]["href"], "./place_order.html");
 
     let js = std::fs::read_to_string(out.join("roadbook-viewer.js")).unwrap();
     assert_eq!(
@@ -429,6 +429,63 @@ fn viz_names_pages_after_their_entries_and_reports_errors() {
 }
 
 #[test]
+fn viz_links_are_relative_whatever_the_file_names() {
+    let dir = project(
+        "viz-href",
+        &[("javascript:alert(1).road", OK), ("a b#c.road", OK)],
+    );
+    let res = roadbook(&dir, &["viz", "-o", "out"]);
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    let index = page_data(&std::fs::read_to_string(dir.join("out/index.html")).unwrap());
+    let hrefs: Vec<&str> = index["index"]["pages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["href"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        hrefs,
+        ["./a%20b%23c.html", "./javascript%3Aalert%281%29.html"]
+    );
+    for page in ["a b#c.html", "javascript:alert(1).html"] {
+        let data = page_data(&std::fs::read_to_string(dir.join("out").join(page)).unwrap());
+        assert_eq!(data["index"], "./index.html");
+    }
+}
+
+/// IR text and file names full of markup reach the pages only as escaped text or JSON.
+#[test]
+fn viz_escapes_ir_text_in_pages() {
+    let chart =
+        std::fs::read_to_string(repo().join("packages/viewer/test/charts/escape.road")).unwrap();
+    let dir = project("viz-escape", &[("a<b>&\"c\".road", &chart)]);
+    let res = roadbook(&dir, &["viz", "-o", "out"]);
+    assert_eq!(res.status.code(), Some(0), "{}", text(&res.stderr));
+    let page = std::fs::read_to_string(dir.join("out/a<b>&\"c\".html")).unwrap();
+    let index = std::fs::read_to_string(dir.join("out/index.html")).unwrap();
+    for html in [&page, &index] {
+        // The data's script element and the viewer's: nothing else closes one.
+        assert_eq!(html.matches("</script").count(), 2, "{html}");
+        for raw in ["<img", "<svg", "<script>alert", "<!--", "<b>"] {
+            assert!(!html.contains(raw), "{raw} in {html}");
+        }
+    }
+    assert!(
+        page.contains("<title>Escape · a&lt;b&gt;&amp;\"c\".road · Roadbook</title>"),
+        "{page}"
+    );
+    let data = page_data(&page);
+    let doc = data["ir"]["machines"]["Escape"]["doc"].as_str().unwrap();
+    assert!(doc.starts_with("Doc </script><script>alert('doc')</script>"));
+    assert_eq!(data["entry"], "a<b>&\"c\".road");
+    let data = page_data(&index);
+    assert_eq!(
+        data["index"]["pages"][0]["href"],
+        "./a%3Cb%3E%26%22c%22.html"
+    );
+}
+
+#[test]
 fn viz_watch_serves_and_rebuilds() {
     use std::io::{BufRead, BufReader, Read, Write};
     use std::net::TcpStream;
@@ -451,13 +508,23 @@ fn viz_watch_serves_and_rebuilds() {
         line.clear();
     }
     let port = port.expect("the server's address");
-    let get = |path: &str| {
+    let get_from = |host: &str, path: &str| {
         let mut s = TcpStream::connect(("127.0.0.1", port)).unwrap();
-        write!(s, "GET {path} HTTP/1.1\r\nHost: localhost\r\n\r\n").unwrap();
+        write!(s, "GET {path} HTTP/1.1\r\nHost: {host}\r\n\r\n").unwrap();
         let mut r = String::new();
         s.read_to_string(&mut r).unwrap();
         r
     };
+    let local = format!("localhost:{port}");
+    let get = |path: &str| get_from(&local, path);
+    // DNS rebinding: a name that is not this machine's is refused, as is another port.
+    for host in [format!("evil.example:{port}"), "localhost:1".to_string()] {
+        assert!(
+            get_from(&host, "/m.html").starts_with("HTTP/1.1 403"),
+            "{host}"
+        );
+    }
+    assert!(get_from(&format!("127.0.0.1:{port}"), "/m.html").starts_with("HTTP/1.1 200"));
     let index = get("/");
     assert!(index.starts_with("HTTP/1.1 200"), "{index}");
     assert!(
@@ -537,7 +604,12 @@ fn export_mermaid_nests_and_splits_regions() {
     );
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let m = text(&out.stdout);
-    assert!(m.starts_with("stateDiagram-v2\n  [*] --> Stress\n"), "{m}");
+    assert!(
+        m.starts_with(
+            "stateDiagram-v2\n  [*] --> Stress_machine\n  state \"Stress\" as Stress_machine\n"
+        ),
+        "{m}"
+    );
     assert!(m.contains("    state Running {\n"), "{m}");
     assert!(
         m.contains("\n      --\n"),
@@ -547,7 +619,7 @@ fn export_mermaid_nests_and_splits_regions() {
         m.contains("Running_Right_X_X1 --> Running_Right_X_X1: Poke"),
         "{m}"
     );
-    assert!(m.contains("Stress --> Start: Reset"), "{m}");
+    assert!(m.contains("Stress_machine --> Start: Reset"), "{m}");
     assert!(
         m.contains("Start: on * / do note(#quot;ignored#quot;)")
             || m.contains("Start: on * / do note(\"ignored\")"),
@@ -555,11 +627,14 @@ fn export_mermaid_nests_and_splits_regions() {
     );
 }
 
-/// The viewer bundle the CLI embeds was built from `packages/viewer` as it is now: its header
-/// names the hash of the sources, computed as `packages/viewer/build.mjs` does.
+/// The viewer bundle the CLI embeds was built from `packages/viewer` as it is now, and not
+/// edited since: its header names the hash of the sources, computed as
+/// `packages/viewer/build.mjs` does, the versions of elkjs and esbuild in `pnpm-lock.yaml`,
+/// and the hash of the script after it.
 #[test]
 fn viewer_asset_is_fresh() {
     use sha2::{Digest, Sha256};
+    let hex = |d: &[u8]| -> String { d.iter().map(|b| format!("{b:02x}")).collect() };
     let pkg = repo().join("packages/viewer");
     let mut files = Vec::new();
     fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -593,12 +668,52 @@ fn viewer_asset_is_fresh() {
         h.update(std::fs::read(p).unwrap());
         h.update([0]);
     }
-    let hash: String = h.finalize().iter().map(|b| format!("{b:02x}")).collect();
+    let sources = hex(&h.finalize());
+
+    // `depsText` in build.mjs: in the lockfile's `packages/viewer:` importer, each package's
+    // `version:`.
+    let lock = std::fs::read_to_string(repo().join("pnpm-lock.yaml")).unwrap();
+    let lines: Vec<&str> = lock.lines().collect();
+    let start = lines
+        .iter()
+        .position(|l| *l == "  packages/viewer:")
+        .expect("pnpm-lock.yaml has the packages/viewer importer");
+    let block: Vec<&str> = lines[start + 1..]
+        .iter()
+        .take_while(|l| l.starts_with("   "))
+        .copied()
+        .collect();
+    let deps: Vec<String> = ["elkjs", "esbuild"]
+        .iter()
+        .map(|dep| {
+            let at = block
+                .iter()
+                .position(|l| *l == format!("      {dep}:"))
+                .unwrap_or_else(|| panic!("no {dep} in the lockfile"));
+            let version = block[at + 1..(at + 3).min(block.len())]
+                .iter()
+                .find_map(|l| l.strip_prefix("        version: "))
+                .unwrap_or_else(|| panic!("no version of {dep} in the lockfile"));
+            format!("{dep}@{}", version.trim())
+        })
+        .collect();
+
     let asset = include_str!("../assets/roadbook-viewer.js");
-    let header = asset.lines().next().unwrap();
+    let (header, body) = asset.split_once('\n').unwrap();
+    let stale = "crates/roadbook-cli/assets/roadbook-viewer.js is stale: run `pnpm --filter @roadbook/viewer build` and commit it";
     assert!(
-        header.contains(&format!("sources sha256:{hash} ")),
-        "crates/roadbook-cli/assets/roadbook-viewer.js is stale: run `pnpm --filter @roadbook/viewer build` and commit it\n{header}"
+        header.contains(&format!("sources sha256:{sources} ")),
+        "{stale} (the sources changed)\n{header}"
+    );
+    assert!(
+        header.contains(&format!(" deps {} body ", deps.join(" "))),
+        "{stale} (elkjs or esbuild changed: {})\n{header}",
+        deps.join(" ")
+    );
+    let body_hash = hex(&Sha256::digest(body.as_bytes()));
+    assert!(
+        header.contains(&format!(" body sha256:{body_hash} ")),
+        "{stale} (it was edited by hand)\n{header}"
     );
 }
 
@@ -617,6 +732,8 @@ fn viewer_test_charts_are_fresh() {
         ("examples/webhook/webhook.road", "webhook-webhook"),
         ("examples/import-job/import.road", "import-job-import"),
         ("packages/viewer/test/charts/stress.road", "charts-stress"),
+        ("packages/viewer/test/charts/edges.road", "charts-edges"),
+        ("packages/viewer/test/charts/escape.road", "charts-escape"),
     ] {
         let out = roadbook(&repo(), &["export", "ir", chart]);
         assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
@@ -626,4 +743,59 @@ fn viewer_test_charts_are_fresh() {
             "{name}.ir.json is stale: run packages/viewer/test/charts/regen.sh"
         );
     }
+}
+
+/// `packages/viewer/test/mermaid` holds `export mermaid` of every chart under `examples`,
+/// `spec/conformance/charts` and `packages/viewer/test/charts` that declares a machine, as the
+/// CLI writes it now; the viewer's tests run each through Mermaid's parser.
+#[test]
+fn viewer_mermaid_fixtures_are_fresh() {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        for e in std::fs::read_dir(dir).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                walk(&p, out);
+            } else if p.extension().is_some_and(|x| x == "road") {
+                out.push(p);
+            }
+        }
+    }
+    let root = repo();
+    let mut charts = Vec::new();
+    for dir in [
+        "examples",
+        "spec/conformance/charts",
+        "packages/viewer/test/charts",
+    ] {
+        walk(&root.join(dir), &mut charts);
+    }
+    let fixtures = root.join("packages/viewer/test/mermaid");
+    let mut expected = Vec::new();
+    for chart in charts {
+        let rel = chart.strip_prefix(&root).unwrap();
+        let rel: Vec<String> = rel
+            .components()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned())
+            .collect();
+        let rel = rel.join("/");
+        let out = roadbook(&root, &["export", "mermaid", &rel]);
+        assert_eq!(out.status.code(), Some(0), "{rel}: {}", text(&out.stderr));
+        if out.stdout.is_empty() {
+            continue;
+        }
+        let name = format!("{}.md", rel.trim_end_matches(".road").replace('/', "-"));
+        let committed = std::fs::read_to_string(fixtures.join(&name)).unwrap_or_default();
+        assert!(
+            text(&out.stdout) == committed,
+            "test/mermaid/{name} is stale: run packages/viewer/test/charts/regen.sh"
+        );
+        expected.push(name);
+    }
+    expected.sort();
+    let mut found: Vec<String> = std::fs::read_dir(&fixtures)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    found.sort();
+    assert_eq!(found, expected, "run packages/viewer/test/charts/regen.sh");
 }

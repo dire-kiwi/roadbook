@@ -1,6 +1,7 @@
 // Search by state, event, task, machine, error or action name, across every machine of an IR. Pure.
 
 import type { Ir } from './ir.ts'
+import { own } from './ir.ts'
 import { effectText, invokeText, triggerText, walkStates } from './model.ts'
 
 export type SearchKind = 'state' | 'event' | 'task' | 'machine' | 'error' | 'action'
@@ -33,7 +34,7 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
           target: { type: 'state', id: s.id },
         })
       }
-      if (s.fail && ir.types[s.fail.type]?.kind === 'error') {
+      if (s.fail && own(ir.types, s.fail.type)?.kind === 'error') {
         out.push({ kind: 'error', name: s.fail.type, label: `fail ${s.fail.text} in ${machine}.${short(s.id)}`, machine, target: { type: 'state', id: s.id } })
       }
       s.transitions.forEach((t, index) => {

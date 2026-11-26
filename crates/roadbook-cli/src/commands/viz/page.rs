@@ -19,7 +19,23 @@ pub enum Script<'a> {
     Inline(&'a str),
 }
 
-/// The page of one entry chart: every machine of its IR.
+/// The href of a page or file next to the current one: `./` and the name percent-encoded, so
+/// whatever the file is called (`javascript:alert(1).html`, `a#b?.html`) it is a relative
+/// path to that file.
+pub fn href(name: &str) -> String {
+    let mut out = String::from("./");
+    for b in name.bytes() {
+        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') {
+            out.push(b as char);
+        } else {
+            out.push_str(&format!("%{b:02X}"));
+        }
+    }
+    out
+}
+
+/// The page of one entry chart: every machine of its IR. `index`: the href of the project
+/// index.
 pub fn chart_page(entry: &str, ir: &Ir, index: Option<&str>, script: &Script) -> String {
     // The entry file's first machine, not one it imports.
     let title = ir
@@ -176,7 +192,7 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
     let pages: Vec<Value> = charts
         .iter()
         .zip(names)
-        .map(|((entry, _), href)| json!({ "href": href, "entry": entry }))
+        .map(|((entry, _), name)| json!({ "href": href(name), "entry": entry }))
         .collect();
     json!({ "title": title, "pages": pages, "machines": machines })
 }
@@ -236,6 +252,20 @@ mod tests {
             ["a-index.html", "b-c.html", "b-c-2.html"]
         );
         assert_eq!(file_names(&["index.road"]), ["index-chart.html"]);
+    }
+
+    #[test]
+    fn hrefs_are_relative_and_percent_encoded() {
+        assert_eq!(href("index.html"), "./index.html");
+        assert_eq!(
+            href("javascript:alert(1).html"),
+            "./javascript%3Aalert%281%29.html"
+        );
+        assert_eq!(
+            href("a b#c?d\"e<f>.html"),
+            "./a%20b%23c%3Fd%22e%3Cf%3E.html"
+        );
+        assert_eq!(href("ü.html"), "./%C3%BC.html");
     }
 
     #[test]

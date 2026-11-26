@@ -141,8 +141,9 @@ pub fn build(ws: &Workspace, paths: &[PathBuf], out: &Path, self_contained: bool
         page::Script::Shared(VIEWER_FILE)
     };
     let mut writes: Vec<(PathBuf, String)> = Vec::new();
+    let index_href = page::href(page::INDEX);
     for ((entry, ir), name) in charts.iter().zip(&names) {
-        let html = page::chart_page(entry, ir, Some(page::INDEX), &script);
+        let html = page::chart_page(entry, ir, Some(&index_href), &script);
         writes.push((out.join(name), html));
     }
     let index = page::project_index(&title, &charts, &names);

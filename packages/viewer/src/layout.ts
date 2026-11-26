@@ -4,6 +4,7 @@
 
 import type { ElkExtendedEdge, ElkNode, LayoutOptions as ElkOptions } from 'elkjs/lib/elk-api.js'
 import type { Machine, State, Ir } from './ir.ts'
+import { own } from './ir.ts'
 import { METRICS, ancestorIds, descendantCount, estimateWidth, rootIsVisible, stateRows, transitionId, transitionLines, walkStates } from './model.ts'
 import type { Measure, Row, LabelLine } from './model.ts'
 
@@ -223,7 +224,7 @@ const isInvisible = (id: string) => id.endsWith('/wrap')
 
 export function buildElkGraph(ir: Ir, machineName: string, opts: LayoutOptions = {}): ElkNode {
   const measure = opts.measure ?? estimateWidth
-  const machine = ir.machines[machineName]
+  const machine = own(ir.machines, machineName)
   if (!machine) throw new Error(`no machine ${machineName}`)
   const view = machineView(machine, opts.collapsed)
   const drawn = new Map(view.states.map((d) => [d.state.id, d]))
@@ -293,8 +294,11 @@ export function buildElkGraph(ir: Ir, machineName: string, opts: LayoutOptions =
       layoutOptions: {
         ...ELK_OPTIONS,
         'elk.padding': `[top=${box.height + 8},left=16,bottom=16,right=16]`,
+        // At least as wide as its own rows. ELK applies a compound node's minimum size before
+        // it rotates the graph for direction DOWN, so it is given as (height, width).
+        // test/layout.test.ts checks every box holds its content.
         'elk.nodeSize.constraints': 'MINIMUM_SIZE',
-        'elk.nodeSize.minimum': `(${box.width},${box.height + 30})`,
+        'elk.nodeSize.minimum': `(${box.height + 30},${box.width})`,
       },
       children,
     }

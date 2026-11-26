@@ -4,6 +4,7 @@
 
 import type { ElkNode, ElkExtendedEdge } from 'elkjs/lib/elk-api.js'
 import type { Ir } from './ir.ts'
+import { own } from './ir.ts'
 import type { ElkLike, Box, Point } from './layout.ts'
 import { METRICS, descendantCount, estimateWidth, invokedMachines, signatureText, sourceText, wrapCode } from './model.ts'
 import type { Measure } from './model.ts'
@@ -17,15 +18,30 @@ export type PageData =
       mode: 'explore'
       /** Project path of the entry chart. */
       entry: string
-      /** Href of the project index, or null if there is none. */
+      /** Href of the project index (relative, `./index.html`), or null if there is none. */
       index: string | null
       ir: Ir
     }
   | { kind: 'index'; index: ProjectIndex }
 
+/**
+ * A link to a file next to the page: `./` and the name, each path segment percent-encoded,
+ * so no file name (`javascript:alert(1).html`) can make it anything but a relative path. A
+ * href that already starts with `./` (as `roadbook viz` writes them) is kept as it is.
+ */
+export function localHref(href: string): string {
+  if (href.startsWith('./')) return href
+  return './' + href.split('/').map(encodeURIComponent).join('/')
+}
+
+/** The link to the machine `name` on the page `href`. */
+export function machineHref(href: string, name: string): string {
+  return `${localHref(href)}#${encodeURIComponent(name)}`
+}
+
 export interface ProjectIndex {
   title: string
-  /** One page per entry chart. */
+  /** One page per entry chart. `href`: relative, percent-encoded (`./shop-place_order.html`). */
   pages: { href: string; entry: string }[]
   /** Every machine once, in the order of the pages and then of the IR. */
   machines: IndexMachine[]
@@ -54,7 +70,7 @@ export interface IndexMachine {
 export function projectIndex(title: string, pages: { href: string; entry: string; ir: Ir }[]): ProjectIndex {
   const machines: IndexMachine[] = []
   const keys = new Map<string, number>()
-  const key = (ir: Ir, name: string) => `${ir.sources[ir.machines[name]!.span.file]?.path}\u0000${name}`
+  const key = (ir: Ir, name: string) => `${ir.sources[own(ir.machines, name)!.span.file]?.path}\u0000${name}`
   pages.forEach((p, page) => {
     for (const [name, m] of Object.entries(p.ir.machines)) {
       const k = key(p.ir, name)
@@ -66,7 +82,7 @@ export function projectIndex(title: string, pages: { href: string; entry: string
   for (const p of pages) {
     for (const name of Object.keys(p.ir.machines)) {
       const from = machines[keys.get(key(p.ir, name))!]!
-      for (const child of invokedMachines(p.ir.machines[name]!)) {
+      for (const child of invokedMachines(own(p.ir.machines, name)!)) {
         const to = keys.get(key(p.ir, child))
         if (to !== undefined && !from.invokes.includes(to)) from.invokes.push(to)
       }
@@ -143,7 +159,7 @@ export function renderIndexSvg(index: ProjectIndex, layout: IndexLayout): string
     const b = layout.nodes[i]
     if (!b) return
     const page = index.pages[m.page]
-    const href = page ? `${page.href}#${encodeURIComponent(m.name)}` : '#'
+    const href = page ? machineHref(page.href, m.name) : '#'
     const lines = nodeLines(m)
     let t = `<text class="rb-title" x="${n(b.width / 2)}" y="20" text-anchor="middle">${esc(m.name)}</text>`
     lines.forEach((l, k) => {
@@ -172,7 +188,7 @@ export function renderIndexSvg(index: ProjectIndex, layout: IndexLayout): string
 export function renderIndexTable(index: ProjectIndex): string {
   const rows = index.machines.map((m) => {
     const page = index.pages[m.page]
-    const href = page ? `${page.href}#${encodeURIComponent(m.name)}` : '#'
+    const href = page ? machineHref(page.href, m.name) : '#'
     const invokes = m.invokes.map((j) => index.machines[j]?.name ?? '?').join(', ')
     return (
       `<tr><td><a href="${esc(href)}">${esc(m.name)}</a></td>` +

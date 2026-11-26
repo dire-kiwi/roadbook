@@ -6,8 +6,10 @@ expression: text(&out.stdout)
 
 `examples/shop/place_order.road:11`
 
+```text
 POST /orders: authenticate, validate, price, take payment, confirm.
 Every final state is one HTTP response.
+```
 
 ```mermaid
 stateDiagram-v2
@@ -53,7 +55,9 @@ stateDiagram-v2
 
 `examples/shop/checkout.road:4`
 
+```text
 Charge the customer's card, retrying while the payment gateway is down.
+```
 
 ```mermaid
 stateDiagram-v2

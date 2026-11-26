@@ -1,0 +1,1195 @@
+{
+  "irVersion": "0.1",
+  "sources": [
+    {
+      "path": "packages/viewer/test/charts/edges.road"
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "note": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 26
+      }
+    }
+  },
+  "tasks": {
+    "work": {
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 25
+      }
+    }
+  },
+  "machines": {
+    "OnlyRoot": {
+      "doc": "A root with rows of its own, wider than everything inside it.\n```\na fence in a doc, then <b>HTML</b> & an ending fence:\n```",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 19,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 11
+          }
+        }
+      },
+      "root": {
+        "id": "OnlyRoot",
+        "name": "OnlyRoot",
+        "kind": "compound",
+        "doc": "A root with rows of its own, wider than everything inside it.\n```\na fence in a doc, then <b>HTML</b> & an ending fence:\n```",
+        "span": {
+          "file": 0,
+          "line": 12,
+          "col": 1,
+          "endLine": 19,
+          "endCol": 2
+        },
+        "initial": "OnlyRoot.S",
+        "states": [
+          {
+            "id": "OnlyRoot.S",
+            "name": "S",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 18,
+              "col": 3,
+              "endLine": 18,
+              "endCol": 25
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "OnlyRoot.S",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 13,
+                  "endLine": 18,
+                  "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [
+          {
+            "kind": "do",
+            "action": "note",
+            "args": [
+              {
+                "kind": "lit",
+                "value": "x",
+                "type": "string",
+                "text": "\"x\""
+              }
+            ]
+          }
+        ],
+        "exit": [
+          {
+            "kind": "do",
+            "action": "note",
+            "args": [
+              {
+                "kind": "lit",
+                "value": "y",
+                "type": "string",
+                "text": "\"y\""
+              }
+            ]
+          }
+        ],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Go"
+            },
+            "group": 0,
+            "guard": null,
+            "target": null,
+            "effects": [
+              {
+                "kind": "do",
+                "action": "note",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "a root internal transition with a long text, wider than the state inside",
+                    "type": "string",
+                    "text": "\"a root internal transition with a long text, wider than the state inside\""
+                  }
+                ]
+              }
+            ],
+            "span": {
+              "file": 0,
+              "line": 14,
+              "col": 3,
+              "endLine": 14,
+              "endCol": 92
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:139c56791c9e9e8ec396e3629575681565057d2076fbc4024af676af2addc84e"
+    },
+    "Note": {
+      "doc": "States Mermaid would read as keywords.",
+      "span": {
+        "file": 0,
+        "line": 22,
+        "col": 1,
+        "endLine": 38,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 23,
+            "col": 3,
+            "endLine": 23,
+            "endCol": 11
+          }
+        }
+      },
+      "root": {
+        "id": "Note",
+        "name": "Note",
+        "kind": "compound",
+        "doc": "States Mermaid would read as keywords.",
+        "span": {
+          "file": 0,
+          "line": 22,
+          "col": 1,
+          "endLine": 38,
+          "endCol": 2
+        },
+        "initial": "Note.State",
+        "states": [
+          {
+            "id": "Note.State",
+            "name": "State",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 25,
+              "col": 3,
+              "endLine": 25,
+              "endCol": 37
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Note.Direction",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 17,
+                  "endLine": 25,
+                  "endCol": 35
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Note.Direction",
+            "name": "Direction",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 26,
+              "col": 3,
+              "endLine": 26,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Note.ClassDef",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 21,
+                  "endLine": 26,
+                  "endCol": 38
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Note.ClassDef",
+            "name": "ClassDef",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 27,
+              "col": 3,
+              "endLine": 27,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Note.Class",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 20,
+                  "endLine": 27,
+                  "endCol": 34
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Note.Class",
+            "name": "Class",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 28,
+              "col": 3,
+              "endLine": 28,
+              "endCol": 33
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Note.Style",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 17,
+                  "endLine": 28,
+                  "endCol": 31
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Note.Style",
+            "name": "Style",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 29,
+              "col": 3,
+              "endLine": 29,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Note.Default",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 29,
+                  "col": 17,
+                  "endLine": 29,
+                  "endCol": 33
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Note.Default",
+            "name": "Default",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 30,
+              "col": 3,
+              "endLine": 30,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Note.Click",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 19,
+                  "endLine": 30,
+                  "endCol": 33
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Note.Click",
+            "name": "Click",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 31,
+              "col": 3,
+              "endLine": 31,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Note.Href",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 31,
+                  "col": 17,
+                  "endLine": 31,
+                  "endCol": 30
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Note.Href",
+            "name": "Href",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 32,
+              "col": 3,
+              "endLine": 32,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Note.Scale",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 32,
+                  "col": 16,
+                  "endLine": 32,
+                  "endCol": 30
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Note.Scale",
+            "name": "Scale",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 33,
+              "col": 3,
+              "endLine": 33,
+              "endCol": 30
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Note.As",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 17,
+                  "endLine": 33,
+                  "endCol": 28
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Note.As",
+            "name": "As",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 34,
+              "col": 3,
+              "endLine": 34,
+              "endCol": 33
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Note.AccTitle",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 34,
+                  "col": 14,
+                  "endLine": 34,
+                  "endCol": 31
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Note.AccTitle",
+            "name": "AccTitle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 35,
+              "col": 3,
+              "endLine": 35,
+              "endCol": 39
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Note.AccDescr",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 35,
+                  "col": 20,
+                  "endLine": 35,
+                  "endCol": 37
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Note.AccDescr",
+            "name": "AccDescr",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 36,
+              "col": 3,
+              "endLine": 36,
+              "endCol": 43
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Note.StateDiagram",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 36,
+                  "col": 20,
+                  "endLine": 36,
+                  "endCol": 41
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Note.StateDiagram",
+            "name": "StateDiagram",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 37,
+              "col": 3,
+              "endLine": 37,
+              "endCol": 30
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:e751f940b400007b507399c94bb381a57d0499ae00874b33377270e609aa0367"
+    },
+    "Same": {
+      "doc": "A state named like its machine, which has transitions of its own.",
+      "span": {
+        "file": 0,
+        "line": 41,
+        "col": 1,
+        "endLine": 47,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 42,
+            "col": 3,
+            "endLine": 42,
+            "endCol": 11
+          }
+        }
+      },
+      "root": {
+        "id": "Same",
+        "name": "Same",
+        "kind": "compound",
+        "doc": "A state named like its machine, which has transitions of its own.",
+        "span": {
+          "file": 0,
+          "line": 41,
+          "col": 1,
+          "endLine": 47,
+          "endCol": 2
+        },
+        "initial": "Same.Same",
+        "states": [
+          {
+            "id": "Same.Same",
+            "name": "Same",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 45,
+              "col": 3,
+              "endLine": 45,
+              "endCol": 30
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Same.Bar",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 45,
+                  "col": 16,
+                  "endLine": 45,
+                  "endCol": 28
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Same.Bar",
+            "name": "Bar",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 46,
+              "col": 3,
+              "endLine": 46,
+              "endCol": 21
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Go"
+            },
+            "group": 0,
+            "guard": null,
+            "target": "Same.Same",
+            "effects": [],
+            "span": {
+              "file": 0,
+              "line": 43,
+              "col": 3,
+              "endLine": 43,
+              "endCol": 16
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:34eff9a1b5d852cb922dc2d9fe5e623e9fc83451f71fdeb080c217e0fba07c5c"
+    },
+    "Rows": {
+      "doc": "Containers with an invoke, entry, exit and internal transitions, and labels with syntax.",
+      "span": {
+        "file": 0,
+        "line": 50,
+        "col": 1,
+        "endLine": 70,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "n",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 51,
+            "col": 3,
+            "endLine": 51,
+            "endCol": 17
+          }
+        }
+      ],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 52,
+            "col": 3,
+            "endLine": 52,
+            "endCol": 11
+          }
+        },
+        "Bump": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 53,
+            "col": 3,
+            "endLine": 53,
+            "endCol": 13
+          }
+        }
+      },
+      "root": {
+        "id": "Rows",
+        "name": "Rows",
+        "kind": "compound",
+        "doc": "Containers with an invoke, entry, exit and internal transitions, and labels with syntax.",
+        "span": {
+          "file": 0,
+          "line": 50,
+          "col": 1,
+          "endLine": 70,
+          "endCol": 2
+        },
+        "initial": "Rows.Busy",
+        "states": [
+          {
+            "id": "Rows.Busy",
+            "name": "Busy",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 55,
+              "col": 3,
+              "endLine": 68,
+              "endCol": 4
+            },
+            "initial": "Rows.Busy.Inner",
+            "states": [
+              {
+                "id": "Rows.Busy.Inner",
+                "name": "Inner",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 63,
+                  "col": 5,
+                  "endLine": 67,
+                  "endCol": 6
+                },
+                "initial": "Rows.Busy.Inner.Deep",
+                "states": [
+                  {
+                    "id": "Rows.Busy.Inner.Deep",
+                    "name": "Deep",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 65,
+                      "col": 7,
+                      "endLine": 65,
+                      "endCol": 48
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Go"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Rows.Busy.Inner.Deeper",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 65,
+                          "col": 20,
+                          "endLine": 65,
+                          "endCol": 46
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Rows.Busy.Inner.Deeper",
+                    "name": "Deeper",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 66,
+                      "col": 7,
+                      "endLine": 66,
+                      "endCol": 37
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Go"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Rows.Busy.Inner.Deep",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 66,
+                          "col": 22,
+                          "endLine": 66,
+                          "endCol": 35
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "note",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "entering Busy, which is a container with a fairly long entry row",
+                    "type": "string",
+                    "text": "\"entering Busy, which is a container with a fairly long entry row\""
+                  }
+                ]
+              }
+            ],
+            "exit": [
+              {
+                "kind": "set",
+                "var": "n",
+                "value": {
+                  "kind": "op",
+                  "op": "+",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "n"
+                      ],
+                      "type": "int",
+                      "text": "n"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 1,
+                      "type": "int",
+                      "text": "1"
+                    }
+                  ],
+                  "type": "int",
+                  "text": "n + 1"
+                }
+              }
+            ],
+            "invoke": {
+              "kind": "task",
+              "src": "work",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "n"
+                  ],
+                  "type": "int",
+                  "text": "n"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 59,
+                "col": 5,
+                "endLine": 61,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Bump"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "direction TB; a::b #c: %% d",
+                        "type": "string",
+                        "text": "\"direction TB; a::b #c: %% d\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 58,
+                  "col": 5,
+                  "endLine": 58,
+                  "endCol": 51
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Rows.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 60,
+                  "col": 7,
+                  "endLine": 60,
+                  "endCol": 19
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Rows.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 69,
+              "col": 3,
+              "endLine": 69,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:f24511b741ad6342d300baf25e337a89b13d4a02e93185e654c71af3246f4bc2"
+    }
+  }
+}

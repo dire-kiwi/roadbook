@@ -1,10 +1,10 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { ElkNode } from 'elkjs/lib/elk-api.js'
-import { ATTEMPTS, FINALS_PER_ROW, buildElkGraph, defaultCollapsed, layoutMachine, machineView } from '../src/layout.ts'
+import { ATTEMPTS, FINALS_PER_ROW, buildElkGraph, defaultCollapsed, layoutMachine, machineView, stateBox } from '../src/layout.ts'
 import type { Box, ElkLike, Layout } from '../src/layout.ts'
 import { renderSvg } from '../src/render.ts'
-import { descendantCount, transitionId } from '../src/model.ts'
+import { descendantCount, estimateWidth, transitionId } from '../src/model.ts'
 import type { Ir } from '../src/ir.ts'
 import { chart, chartFiles, loadIr, newElk } from './charts.ts'
 
@@ -39,6 +39,23 @@ function overlaps(ir: Ir, machine: string, layout: Layout, collapsed: ReadonlySe
   return out
 }
 
+/** Drawn states whose box does not hold its title and rows, or a child, below its rows. */
+function overflows(ir: Ir, machine: string, layout: Layout, collapsed: ReadonlySet<string>): string[] {
+  const out: string[] = []
+  const inside = (a: Box, b: Box, top: number) =>
+    a.x >= b.x - 0.5 && a.x + a.width <= b.x + b.width + 0.5 && a.y >= top - 0.5 && a.y + a.height <= b.y + b.height + 0.5
+  for (const d of machineView(ir.machines[machine]!, collapsed).states) {
+    const n = layout.nodes[d.state.id]
+    if (!n) continue
+    const content = stateBox(d.state, estimateWidth, d.collapsed)
+    if (content.width > n.width + 0.5) out.push(`${d.state.id} is ${n.width} wide, its rows ${content.width}`)
+    if (content.height > n.height + 0.5) out.push(`${d.state.id} is ${n.height} high, its rows ${content.height}`)
+    const p = d.parent && layout.nodes[d.parent.id]
+    if (p && !inside(n, p, p.y + stateBox(d.parent!, estimateWidth).height)) out.push(`${d.state.id} is not inside ${d.parent!.id}, below its rows`)
+  }
+  return out
+}
+
 const cases = chartFiles().flatMap((file) => {
   const ir = loadIr(file)
   return Object.keys(ir.machines).map((m) => ({ name: `${path.basename(file, '.ir.json')} ${m}`, ir, machine: m }))
@@ -55,6 +72,7 @@ describe.each(cases)('$name', ({ ir, machine }) => {
     const layout = await layoutMachine(ir, machine, elk, { collapsed })
     expect(layout.attempt).toBe(0)
     expect(overlaps(ir, machine, layout, collapsed)).toEqual([])
+    expect(overflows(ir, machine, layout, collapsed)).toEqual([])
     expect(layout.width).toBeGreaterThan(0)
     const svg = renderSvg(ir, machine, layout, { collapsed, interactive: true })
     expect(svg).not.toMatch(/NaN|undefined/)
@@ -108,6 +126,26 @@ describe('the fixes for the spike', () => {
     expect(edge?.targets).toEqual(['SupportTicket.Active.Resolving'])
     // WithAgent: on Hold -> OnHold, between two states inside it: not drawn.
     expect((graph.edges ?? []).some((e) => e.id === transitionId('SupportTicket.Active.Working.WithAgent', 2))).toBe(false)
+  })
+})
+
+describe('the fixes for the review', () => {
+  const elk = newElk()
+
+  it('make a container as wide as its own rows (nest Outer, edges OnlyRoot and Rows.Busy)', async () => {
+    const cases: [Ir, string, string][] = [
+      [loadIr(chartFiles().find((f) => f.endsWith('/nest.ir.json'))!), 'Nest', 'Nest.Outer'],
+      [chart('charts-edges'), 'OnlyRoot', 'OnlyRoot'],
+      [chart('charts-edges'), 'Rows', 'Rows.Busy'],
+    ]
+    for (const [ir, machine, id] of cases) {
+      const l = await layoutMachine(ir, machine, elk)
+      const state = id === machine ? ir.machines[machine]!.root : machineView(ir.machines[machine]!).states.find((d) => d.state.id === id)!.state
+      const rows = stateBox(state, estimateWidth)
+      expect(l.nodes[id]!.width).toBeGreaterThanOrEqual(rows.width)
+      // Much wider than its children need: the rows set the width.
+      expect(rows.width).toBeGreaterThan(Math.max(...state.states.map((c) => l.nodes[c.id]?.width ?? 0)) + 32)
+    }
   })
 })
 
