@@ -1,0 +1,8 @@
+import { Order } from "./missing.road"
+
+machine M(order: Order) {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0111 at 1:23

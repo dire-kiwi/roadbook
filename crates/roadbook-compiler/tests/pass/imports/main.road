@@ -1,0 +1,7 @@
+import { Shape, area } from "./shapes/shape.road"
+import { Unit } from "./units.road"
+
+machine Measure(s: Shape, u: Unit) -> float {
+  initial Done
+  final state Done { output area(s) }
+}

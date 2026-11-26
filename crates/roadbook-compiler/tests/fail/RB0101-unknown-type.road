@@ -1,0 +1,10 @@
+type Order { id: string }
+
+machine M(order: Ordr) {
+  var note: Note
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0101 at 3:18
+// expect: RB0101 at 4:13

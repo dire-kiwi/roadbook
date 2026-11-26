@@ -1,0 +1,12 @@
+machine M() {
+  var n: int = 0
+  initial A
+  state A {
+    entry set n = result
+    always if error -> Done
+  }
+  final state Done { }
+}
+
+// expect: RB0110 at 5:19
+// expect: RB0110 at 6:15

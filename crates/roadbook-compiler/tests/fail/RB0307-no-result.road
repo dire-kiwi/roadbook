@@ -1,0 +1,14 @@
+task ping()
+
+machine M() {
+  var n: int = 0
+  initial A
+  state A {
+    invoke ping() {
+      done -> Done  set n = result
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0307 at 8:29

@@ -6,7 +6,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 **Every member is always present.** Nothing is ever omitted. An absent value is `null`, a missing doc comment is `""`, and an empty list or map is `[]` or `{}`. This gives each input exactly one output, which matters because compiled IR is committed and hashed, and it means readers never need to tell a missing member from a null one. Readers reject members this page does not list.
 
-**Order is source order.** Maps keyed by name (`types`, `functions`, `actions`, `tasks`, `machines`, a machine's `events`) keep declaration order: the entry file's declarations first, then each imported file's in the order the files were first loaded. Lists (fields, parameters, variables, states, transitions, effects, arguments) are in the order written. A JSON parser that does not keep member order loses nothing a runtime needs, since order in the maps is for readability and diffs only.
+**Order is source order.** Maps keyed by name (`types`, `functions`, `actions`, `tasks`, `machines`, a machine's `events`) keep declaration order: the entry file's declarations first, then each imported file's in the order the files were first loaded (depth first: a file's imports, in the order written, are loaded before the next import of the file that imports it). Lists (fields, parameters, variables, states, transitions, effects, arguments) are in the order written. A JSON parser that does not keep member order loses nothing a runtime needs, since order in the maps is for readability and diffs only.
 
 **Names.** Upper-case names (`[A-Z][A-Za-z0-9]*`) are types, errors, events, states and machines. Lower-case names (`[a-z][A-Za-z0-9]*`) are variables, parameters, fields, functions, actions and tasks. Declaration names are unique across a project, so a name in `types`, `functions`, `actions`, `tasks` or `machines` identifies a declaration on its own.
 
@@ -14,7 +14,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 **Spans.** A span is `{"file", "line", "col", "endLine", "endCol"}`. `file` is an index into `sources`. Lines and columns are 1-based. Columns count Unicode scalar values (Rust `char`s, JavaScript code points), and a tab is one column. The end is exclusive: `endLine`/`endCol` is the position just after the last character. A span never includes the item's doc comment. Which text each span covers is given with each item below.
 
-**Numbers.** Integers in the IR (literal values, span positions, `group`) are within ±(2^53 − 1), so every JSON parser reads them exactly and canonical JSON represents them exactly. An `int` literal outside that range is a compile error.
+**Numbers.** Integers in the IR (literal values, span positions, `group`) are within ±(2^53 − 1), so every JSON parser reads them exactly and canonical JSON represents them exactly. An `int` literal outside that range is a compile error, and so is a `duration` literal of more than 2^53 − 1 milliseconds.
 
 **File form.** The compiler writes the IR as JSON indented by two spaces, members in the order this page lists them, with a final newline (`Ir::to_json` in the Rust crate). Hashing and byte-for-byte comparison use [canonical JSON](#canonical-json) instead.
 
@@ -35,7 +35,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 | Member | Meaning |
 | --- | --- |
 | `irVersion` | `"MAJOR.MINOR"`. See [versioning](#versioning). |
-| `sources` | Every file the IR was compiled from, the entry file first. `path` is relative to the project root, with `/` separators. |
+| `sources` | Every file the IR was compiled from, the entry file first, then in load order (see [order](#conventions)). `path` is relative to the project root, with `/` separators. The project root is the nearest directory holding a `roadbook.toml`, searched upward from the entry file, or else the directory the compiler runs in. |
 | `types` | Records, aliases, enums, errors and extern types. |
 | `functions`, `actions`, `tasks` | The host declarations. |
 | `machines` | Every machine declared in the entry file and its imports. |

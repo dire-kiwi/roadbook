@@ -1,0 +1,5 @@
+// Imports back from the file that imports it: cycles are fine.
+import { Shape } from "./shapes/shape.road"
+
+enum Unit { Metre, Foot }
+type Drawing { shapes: Shape[] }

@@ -1,0 +1,13 @@
+machine M() {
+  event Go
+  initial A
+  parallel state A {
+    on Go -> Done
+  }
+  final state Done {
+    state Inner {}
+  }
+}
+
+// expect: RB0210 at 4:18
+// expect: RB0210 at 7:15

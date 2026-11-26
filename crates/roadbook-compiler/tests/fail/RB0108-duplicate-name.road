@@ -1,0 +1,22 @@
+type Order { id: string, id: int }
+enum Role { Admin, Admin }
+
+machine M(order: Order, order: int) {
+  var count: int = 0
+  var count: int = 1
+  event Go
+  event Go
+  initial A
+  state A {
+    on Go -> Done
+  }
+  state A {}
+  final state Done {}
+}
+
+// expect: RB0108 at 1:26
+// expect: RB0108 at 2:20
+// expect: RB0108 at 4:25
+// expect: RB0108 at 6:7
+// expect: RB0108 at 8:9
+// expect: RB0108 at 13:9

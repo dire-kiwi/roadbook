@@ -1,0 +1,20 @@
+fn helper(n: int) -> int
+fn used(n: int) -> bool
+action ping()
+task fetch()
+
+machine M() {
+  event Go
+  event Unused
+  var n: int = 0
+  initial A
+  state A {
+    on Go if used(n) -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0903 at 1:4
+// expect: RB0903 at 3:8
+// expect: RB0903 at 4:6
+// expect: RB0903 at 8:9

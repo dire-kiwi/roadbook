@@ -1,0 +1,136 @@
+// Exercises most of the language. Compiles with no diagnostics.
+
+type UserId = string
+type Tags = string[]
+extern type Money
+enum Level { Low, High }
+type Item { sku: string, qty: int, price: float, tags: Tags, extra: json? }
+error Busy { retryAfter: duration }
+error Broken
+error Gone
+
+fn total(items: Item[]) -> float
+fn backoff(attempt: int) -> duration
+fn money(cents: int) -> Money
+fn describe(value: json) -> string
+action log(message: string)
+action charge(amount: Money)
+task fetch(id: UserId) -> Item[] ! Busy | Broken | Gone
+task store(items: Item[])
+
+/// A machine that waits for a sub-job.
+machine Job(id: UserId) -> float ! Broken {
+  var items: Item[]
+  initial Fetching
+  state Fetching {
+    invoke fetch(id) {
+      done        -> Done    set items = result
+      fail Busy   -> Waiting do log(describe(error))
+      fail Broken -> Failed
+      fail *      -> Failed
+    }
+  }
+  state Waiting {
+    after 1s -> Fetching
+  }
+  final state Done   { output total(items) }
+  final state Failed { fail Broken }
+}
+
+machine Features(id: UserId, level: Level, ratio: float) -> string ! Broken | Gone {
+  /// Attempts so far.
+  var attempts: int = 0
+  var items:    Item[]
+  var score:    float = ratio * 2.0 - -1.5
+  var flag:     bool = not (attempts > 3) and level == Level.High or false
+  var first:    Item
+  var note:     string?
+
+  event Add { item: Item, note: string? }
+  event Cancel
+  event Ping
+
+  initial Loading
+
+  on Cancel -> Cancelled
+  entry do log("start")
+  exit do log("stop")
+
+  state Loading {
+    invoke fetch(id) {
+      done        -> Working   set items = result
+      fail Busy {
+        if attempts < 3 -> Loading  set attempts = attempts + 1
+        else            -> Broke
+      }
+      fail Broken -> Broke
+      fail *      -> Vanished
+    }
+    after backoff(attempts) -> Working
+  }
+
+  /// The main work, with a nested chart.
+  state Working {
+    initial Collecting
+    after 30s -> Broke
+    done -> Finished
+
+    state Collecting {
+      on Add if event.item.qty > 0 -> Collecting  set first = event.item, note = event.note
+      on Ping -> Working.Checking
+      on * do log("ignored")
+    }
+    state Checking {
+      always {
+        if total(items) >= 10.0 -> Paying
+        else                    -> Collecting
+      }
+    }
+    state Paying {
+      entry do charge(money(attempts * 100))
+      on Add do log(describe(event))
+      invoke Job(id) {
+        done        -> Saving  set score = result
+        fail Broken -> Collecting
+      }
+    }
+    state Saving {
+      invoke store(items) {
+        done -> Both
+      }
+    }
+    parallel state Both {
+      state Left {
+        initial L1
+        state L1 { on Ping -> L2 }
+        final state L2 {}
+      }
+      state Right {
+        initial R1
+        state R1 { on Ping -> R2 }
+        final state R2 {}
+      }
+      done -> Over
+    }
+    final state Over {}
+  }
+
+  final state Finished  { output first.sku }
+  final state Cancelled { output "cancelled" }
+  final state Broke     { fail Broken }
+  final state Vanished  { fail Gone }
+}
+
+/// Invokes itself, but only after an event.
+machine Repeat() {
+  event Again
+  initial Idle
+  state Idle {
+    on Again -> Running
+  }
+  state Running {
+    invoke Repeat() {
+      done -> Idle
+    }
+  }
+}

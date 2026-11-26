@@ -1,0 +1,32 @@
+type Order { id: string }
+
+machine M(order: Order, other: Order, name: string) {
+  var n: int = 1
+  var x: float = 1.5
+  var b: bool = true
+  initial A
+  state A {
+    entry set n = n + 1.5, x = x * 2, n = -b
+    always if not n -> Done
+  }
+  state D {
+    always if order == other -> Done
+  }
+  state B {
+    always if name < "b" and n -> Done
+  }
+  state C {
+    always if 1s + 2s > 2s or n == x -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0303 at 9:19
+// expect: RB0303 at 9:32
+// expect: RB0303 at 9:43
+// expect: RB0303 at 10:15
+// expect: RB0303 at 13:15
+// expect: RB0303 at 16:15
+// expect: RB0303 at 16:15
+// expect: RB0303 at 19:15
+// expect: RB0303 at 19:31

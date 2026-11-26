@@ -1,0 +1,12 @@
+action audit(what: string)
+
+machine M() {
+  initial A
+  state A {
+    entry do audt("entered")
+    always -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0104 at 6:14

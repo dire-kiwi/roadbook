@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0314]: `string??` is optional twice
+ --> RB0314-double-optional.road:1:20
+  |
+1 | type Order { note: string??, tags: string[]?? }
+  |                    ^^^^^^^^
+  |
+  = help: a value is either present or absent; one `?` says so
+
+error[RB0314]: `string[]??` is optional twice
+ --> RB0314-double-optional.road:1:36
+  |
+1 | type Order { note: string??, tags: string[]?? }
+  |                                    ^^^^^^^^^^
+  |
+  = help: a value is either present or absent; one `?` says so

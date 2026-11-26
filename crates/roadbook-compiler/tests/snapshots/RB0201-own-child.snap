@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0201]: unknown target state `Resting`
+ --> RB0201-own-child.road:6:14
+  |
+6 |     on Go -> Resting
+  |              ^^^^^^^
+  |
+  = help: `Resting` is a child of `Busy`; a state names its own children through its name: `Busy.Resting`

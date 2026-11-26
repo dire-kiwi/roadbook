@@ -1,0 +1,12 @@
+machine M(limit: int) {
+  var attempts: int = 0
+  initial A
+  state A {
+    entry set attemps = 1
+    always if attempts < limt -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0105 at 5:15
+// expect: RB0105 at 6:26

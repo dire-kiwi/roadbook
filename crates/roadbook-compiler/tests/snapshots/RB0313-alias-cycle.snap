@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0313]: type alias `A` refers to itself: `A` = `B` = `A`
+ --> RB0313-alias-cycle.road:1:6
+  |
+1 | type A = B
+  |      ^
+  |
+  = help: an alias must end in a built-in or a declared record, enum, error or extern type
+
+error[RB0313]: type alias `C` refers to itself: `C` = `C`
+ --> RB0313-alias-cycle.road:3:6
+  |
+3 | type C = C
+  |      ^
+  |
+  = help: an alias must end in a built-in or a declared record, enum, error or extern type

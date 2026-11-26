@@ -1,0 +1,38 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0302]: `note` takes 2 arguments but 1 was given
+  --> RB0302-argument-count.road:13:14
+   |
+ 2 | action note(what: string, level: int)
+   |        ---- declared as `note(what: string, level: int)`
+...
+13 |     entry do note("x")
+   |              ^^^^^^^^^
+
+error[RB0302]: `delay` takes 1 argument but 2 were given
+  --> RB0302-argument-count.road:14:11
+   |
+ 1 | fn delay(attempt: int) -> duration
+   |    ----- declared as `delay(attempt: int)`
+...
+14 |     after delay(1, 2) -> B
+   |           ^^^^^^^^^^^
+
+error[RB0302]: `fetch` takes 1 argument but 0 were given
+  --> RB0302-argument-count.road:17:5
+   |
+ 3 | task fetch(id: string) -> string
+   |      ----- declared as `fetch(id: string)`
+...
+17 |     invoke fetch() {
+   |     ^^^^^^^^^^^^
+
+error[RB0302]: `Child` takes 1 argument but 2 were given
+  --> RB0302-argument-count.road:22:5
+   |
+ 5 | machine Child(a: int) {
+   |         ----- declared as `Child(a: int)`
+...
+22 |     invoke Child(1, 2) {
+   |     ^^^^^^^^^^^^

@@ -1,0 +1,10 @@
+machine M() -> int {
+  event Go
+  initial A
+  state A {
+    on Go -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0209 at 7:15

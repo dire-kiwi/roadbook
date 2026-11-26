@@ -1,0 +1,12 @@
+fn isValid(n: int) -> bool
+
+machine M() {
+  var n: int = 0
+  initial A
+  state A {
+    always if isVald(n) -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0103 at 7:15

@@ -1,0 +1,9 @@
+type Order { note: string??, tags: string[]?? }
+
+machine M(order: Order) {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0314 at 1:20
+// expect: RB0314 at 1:36

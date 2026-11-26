@@ -1,0 +1,34 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0903]: function `helper` is never used
+ --> RB0903-unused.road:1:4
+  |
+1 | fn helper(n: int) -> int
+  |    ^^^^^^
+  |
+  = help: remove it, or use it in a machine
+
+warning[RB0903]: action `ping` is never used
+ --> RB0903-unused.road:3:8
+  |
+3 | action ping()
+  |        ^^^^
+  |
+  = help: remove it, or use it in a machine
+
+warning[RB0903]: task `fetch` is never used
+ --> RB0903-unused.road:4:6
+  |
+4 | task fetch()
+  |      ^^^^^
+  |
+  = help: remove it, or use it in a machine
+
+warning[RB0903]: event `Unused` is never used
+ --> RB0903-unused.road:8:9
+  |
+8 |   event Unused
+  |         ^^^^^^
+  |
+  = help: no state of `M` has `on Unused`

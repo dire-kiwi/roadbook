@@ -1,0 +1,14 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0110]: `result` is only in scope in an invoke's `done` outcome
+ --> RB0110-implicit-out-of-scope.road:5:19
+  |
+5 |     entry set n = result
+  |                   ^^^^^^
+
+error[RB0110]: `error` is only in scope in an invoke's `fail` outcome
+ --> RB0110-implicit-out-of-scope.road:6:15
+  |
+6 |     always if error -> Done
+  |               ^^^^^

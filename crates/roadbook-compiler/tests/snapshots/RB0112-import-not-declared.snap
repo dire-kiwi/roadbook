@@ -1,0 +1,16 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0112]: `types.road` does not declare `Ordr`
+ --> main.road:1:10
+  |
+1 | import { Ordr, User } from "./types.road"
+  |          ^^^^
+  |
+  = help: did you mean `Order`?
+
+error[RB0112]: `types.road` does not declare `User`
+ --> main.road:1:16
+  |
+1 | import { Ordr, User } from "./types.road"
+  |                ^^^^

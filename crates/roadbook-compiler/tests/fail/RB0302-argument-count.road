@@ -1,0 +1,32 @@
+fn delay(attempt: int) -> duration
+action note(what: string, level: int)
+task fetch(id: string) -> string
+
+machine Child(a: int) {
+  initial Done
+  final state Done {}
+}
+
+machine M() {
+  initial A
+  state A {
+    entry do note("x")
+    after delay(1, 2) -> B
+  }
+  state B {
+    invoke fetch() {
+      done -> C
+    }
+  }
+  state C {
+    invoke Child(1, 2) {
+      done -> Done
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0302 at 13:14
+// expect: RB0302 at 14:11
+// expect: RB0302 at 17:5
+// expect: RB0302 at 22:5

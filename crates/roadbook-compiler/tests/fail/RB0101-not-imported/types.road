@@ -1,0 +1,2 @@
+type Order { id: string }
+type User { id: string }

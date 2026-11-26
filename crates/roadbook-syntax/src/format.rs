@@ -752,6 +752,13 @@ fn precedence(e: &Expr) -> u8 {
     }
 }
 
+/// The canonical source text of an expression, as the formatter writes it: only the
+/// parentheses precedence needs, plus `not (…)` around a binary operand of `not`. This is the
+/// `text` of an IR expression node.
+pub fn expr_text(e: &Expr) -> String {
+    expr(e)
+}
+
 /// An expression with the parentheses its context needs: those required by precedence, plus
 /// `not (…)` around any binary operand of `not`.
 pub(crate) fn expr(e: &Expr) -> String {

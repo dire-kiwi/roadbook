@@ -1,0 +1,24 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0207]: `chargeCard` does not declare the error `GatewayUnavailabe`
+  --> RB0207-undeclared-error-outcome.road:12:12
+   |
+ 4 | task chargeCard() ! CardDeclined | GatewayUnavailable
+   |      ---------- declared as `! CardDeclined | GatewayUnavailable`
+...
+12 |       fail GatewayUnavailabe -> Done
+   |            ^^^^^^^^^^^^^^^^^
+   |
+   = help: did you mean `GatewayUnavailable`?
+
+error[RB0207]: `chargeCard` does not declare the error `Timeout`
+  --> RB0207-undeclared-error-outcome.road:13:12
+   |
+ 4 | task chargeCard() ! CardDeclined | GatewayUnavailable
+   |      ---------- declared as `! CardDeclined | GatewayUnavailable`
+...
+13 |       fail Timeout           -> Done
+   |            ^^^^^^^
+   |
+   = help: remove this outcome, or add the error to the declaration

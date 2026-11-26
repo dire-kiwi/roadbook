@@ -1,0 +1,50 @@
+machine M() {
+  var n: int = 0
+  initial A
+  state A {
+    always -> B
+  }
+  state B {
+    always -> A
+  }
+}
+
+machine Nested() {
+  initial Outer
+  state Outer {
+    initial Inner
+    state Inner {
+      always -> Other
+    }
+  }
+  state Other {
+    always -> Outer
+  }
+}
+
+machine Spin() {
+  event Stop
+  var n: int = 0
+  initial A
+  state A {
+    on Stop -> Done
+    always set n = n + 1
+  }
+  final state Done {}
+}
+
+machine Guarded() {
+  var n: int = 0
+  initial A
+  state A {
+    always if n < 3 -> B
+  }
+  state B {
+    entry set n = n + 1
+    always -> A
+  }
+}
+
+// expect: RB0401 at 5:5
+// expect: RB0401 at 17:7
+// expect: RB0401 at 31:5

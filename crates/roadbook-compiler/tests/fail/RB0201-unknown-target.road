@@ -1,0 +1,17 @@
+machine M() {
+  event Go
+  initial Idle
+  state Idle {
+    on Go -> Dne
+  }
+  state Busy {
+    initial Working
+    state Working {
+      always -> Busy.Wroking
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0201 at 5:14
+// expect: RB0201 at 10:22

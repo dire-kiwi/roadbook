@@ -1,0 +1,17 @@
+machine M() -> int {
+  initial A
+  state A {
+    initial Inner
+    final state Inner { output 1 }
+    done -> Done
+  }
+  state B { output 2 }
+  final state Done {
+    output 3
+    output 4
+  }
+}
+
+// expect: RB0208 at 5:25
+// expect: RB0208 at 8:13
+// expect: RB0208 at 11:5

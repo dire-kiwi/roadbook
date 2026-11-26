@@ -1,0 +1,23 @@
+machine M() {
+  event Go
+  initial A
+  state A {
+    on Go -> Done
+  }
+  state Lost {
+    initial Inner
+    state Inner {
+      on Go -> Done
+    }
+  }
+  state B {
+    initial One
+    on Go -> Done
+    state One {}
+    state Two {}
+  }
+  final state Done {}
+}
+
+// expect: RB0901 at 7:9
+// expect: RB0901 at 13:9

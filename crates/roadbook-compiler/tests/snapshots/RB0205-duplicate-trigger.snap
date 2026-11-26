@@ -1,0 +1,23 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0205]: trigger `on Go` is written twice in `M.A`
+ --> RB0205-duplicate-trigger.road:7:5
+  |
+6 |     on Go -> B
+  |     ----- first written here
+7 |     on Go -> Done
+  |     ^^^^^
+  |
+  = help: put every branch in one block, where their order is explicit: `on Go { if … -> A  else -> B }`
+
+error[RB0205]: trigger `after 1s` is written twice in `M.A`
+  --> RB0205-duplicate-trigger.road:10:5
+   |
+ 8 |     after 1s -> B
+   |     -------- first written here
+...
+10 |     after 1s set n = 1
+   |     ^^^^^^^^
+   |
+   = help: put every branch in one block, where their order is explicit: `after 1s { if … -> A  else -> B }`

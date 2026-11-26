@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0902]: state `M.Stuck` has no way out
+ --> RB0902-no-way-out.road:8:9
+  |
+8 |   state Stuck {
+  |         ^^^^^
+  |
+  = help: nothing leaves it or a state containing it; add a transition, or make it a `final state`

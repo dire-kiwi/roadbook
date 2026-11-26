@@ -1,0 +1,14 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0308]: `error` has no single type here: `fail *` covers `A1`, `B1`
+  --> RB0308-ambiguous-error.road:11:33
+   |
+11 |       fail * -> Done  set why = error.why
+   |                                 ^^^^^
+
+error[RB0308]: `error` has no type here: `fail *` covers none of `work`'s errors
+  --> RB0308-ambiguous-error.road:19:34
+   |
+19 |       fail *  -> Done  set why = error.why
+   |                                  ^^^^^

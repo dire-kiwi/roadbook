@@ -131,3 +131,12 @@ fn from_and_builtin_type_names_are_not_reserved() {
     let file = parse("type Transfer { from: string, string: int, duration: duration }\n");
     assert_eq!(file.decls().count(), 1);
 }
+
+#[test]
+fn implicit_names_are_arguments() {
+    // `error` starts a declaration only before a name; first in an argument list it is the
+    // implicit name of a `fail` outcome.
+    let src = "machine M() {\n  initial A\n  state A {\n    invoke t() {\n      done -> A  do log(result)\n      fail E -> A  do log(error), log(error.why)\n    }\n    on Go do log(event)\n  }\n}\n";
+    let file = parse(src);
+    assert_eq!(file.machines().count(), 1);
+}

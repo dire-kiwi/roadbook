@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0904]: `invoke fetch` has no timeout
+ --> RB0904-invoke-timeout.road:7:5
+  |
+7 |     invoke fetch() {
+  |     ^^^^^^^^^^^^
+  |
+  = help: add an `after` transition to this state or to a state that contains it

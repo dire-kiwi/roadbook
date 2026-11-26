@@ -1,0 +1,32 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0401]: unguarded `always` transitions form a cycle: `M.A` -> `M.B` -> `M.A`
+ --> RB0401-always-cycle.road:5:5
+  |
+5 |     always -> B
+  |     ^^^^^^
+...
+8 |     always -> A
+  |     ------ then `M.B`
+  |
+  = help: the machine would never settle; guard one of them with `if`
+
+error[RB0401]: unguarded `always` transitions form a cycle: `Nested.Outer.Inner` -> `Nested.Other` -> `Nested.Outer.Inner`
+  --> RB0401-always-cycle.road:17:7
+   |
+17 |       always -> Other
+   |       ^^^^^^
+...
+21 |     always -> Outer
+   |     ------ then `Nested.Other`
+   |
+   = help: the machine would never settle; guard one of them with `if`
+
+error[RB0401]: `always` with no guard and no target is taken again and again: `Spin.A` never settles
+  --> RB0401-always-cycle.road:31:5
+   |
+31 |     always set n = n + 1
+   |     ^^^^^^
+   |
+   = help: give it a guard that its own effects make false, or a target

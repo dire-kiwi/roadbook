@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0209]: final state `Done` does not say what `M` returns
+ --> RB0209-missing-result.road:7:15
+  |
+7 |   final state Done {}
+  |               ^^^^ `M` returns `int`
+  |
+  = help: add `output <value>`, or `fail <error>` for one of its declared errors

@@ -1,0 +1,16 @@
+type Order { id: string, total: int }
+
+machine M(order: Order) {
+  var id: string = order.idd
+  var copy: Order = Order { id: "x", total: 1, note: "y" }
+  event Go { sku: string }
+  initial A
+  state A {
+    on Go if event.skuu == "a" -> Done
+  }
+  final state Done {}
+}
+
+// expect: RB0304 at 4:26
+// expect: RB0304 at 5:48
+// expect: RB0304 at 9:20

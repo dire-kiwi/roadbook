@@ -1,0 +1,50 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0108]: field `id` is declared twice
+ --> RB0108-duplicate-name.road:1:26
+  |
+1 | type Order { id: string, id: int }
+  |                          ^^
+  |              -- first declared here
+
+error[RB0108]: variant `Admin` is declared twice
+ --> RB0108-duplicate-name.road:2:20
+  |
+2 | enum Role { Admin, Admin }
+  |                    ^^^^^
+  |             ----- first declared here
+
+error[RB0108]: parameter `order` is declared twice
+ --> RB0108-duplicate-name.road:4:25
+  |
+4 | machine M(order: Order, order: int) {
+  |                         ^^^^^
+  |           ----- first declared here
+
+error[RB0108]: `count` is already a variable of `M`
+ --> RB0108-duplicate-name.road:6:7
+  |
+5 |   var count: int = 0
+  |       ----- first declared here
+6 |   var count: int = 1
+  |       ^^^^^
+
+error[RB0108]: event `Go` is declared twice
+ --> RB0108-duplicate-name.road:8:9
+  |
+7 |   event Go
+  |         -- first declared here
+8 |   event Go
+  |         ^^
+
+error[RB0108]: state `A` is declared twice in `M`
+  --> RB0108-duplicate-name.road:13:9
+   |
+10 |   state A {
+   |         - first declared here
+...
+13 |   state A {}
+   |         ^
+   |
+   = help: sibling states need different names

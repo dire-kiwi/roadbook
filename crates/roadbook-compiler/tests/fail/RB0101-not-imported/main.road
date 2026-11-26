@@ -1,0 +1,8 @@
+import { Order } from "./types.road"
+
+machine M(order: Order, user: User) {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0101 at 3:31

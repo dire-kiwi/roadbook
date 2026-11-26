@@ -1,0 +1,20 @@
+error Declined
+task chargeCard() ! Declined
+
+machine M() {
+  initial Charging
+  state Charging {
+    invoke chrgeCard() {
+      done -> Done
+    }
+  }
+  state Paying {
+    invoke Chekout() {
+      done -> Done
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0102 at 7:12
+// expect: RB0102 at 12:12

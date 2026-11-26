@@ -1,0 +1,22 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0311]: `fail` needs one of the errors `M` declares, found `Timeout`
+  --> RB0311-fail-not-declared.road:11:27
+   |
+11 |   final state Done { fail Timeout }
+   |                           ^^^^^^^ `M` declares `! Declined`
+
+error[RB0311]: `fail` needs one of the errors `M` declares, found `string`
+  --> RB0311-fail-not-declared.road:12:27
+   |
+12 |   final state Late { fail "late" }
+   |                           ^^^^^^ `M` declares `! Declined`
+
+error[RB0311]: `N` declares no errors, so it cannot `fail`
+  --> RB0311-fail-not-declared.road:17:27
+   |
+17 |   final state Done { fail Declined }
+   |                           ^^^^^^^^
+   |
+   = help: declare the errors it can fail with: `machine N(…) ! Declined`

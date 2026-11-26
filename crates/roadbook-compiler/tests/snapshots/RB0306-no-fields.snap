@@ -1,0 +1,22 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0306]: cannot read field `id` of an optional value: `Order?` may be absent
+ --> RB0306-no-fields.road:5:25
+  |
+5 |   var a: string = order.id
+  |                         ^^
+  |
+  = help: pass the value to a `fn` that handles the absent case
+
+error[RB0306]: `Order[]` has no fields, so it has no field `id`
+ --> RB0306-no-fields.road:6:25
+  |
+6 |   var b: string = items.id
+  |                         ^^
+
+error[RB0306]: `int` has no fields, so it has no field `size`
+ --> RB0306-no-fields.road:7:18
+  |
+7 |   var c: int = n.size
+  |                  ^^^^

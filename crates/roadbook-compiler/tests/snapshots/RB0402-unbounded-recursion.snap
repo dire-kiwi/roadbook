@@ -1,0 +1,21 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0402]: `Loop` invokes itself without waiting for an event or an `after` (unbounded recursion)
+ --> RB0402-unbounded-recursion.road:6:5
+  |
+6 |     invoke Loop() {
+  |     ^^^^^^^^^^^ entered without waiting
+  |
+  = help: put an `on` or `after` transition on the way to the state that invokes it
+
+error[RB0402]: `Ping` invokes itself through `Ping` -> `Pong` -> `Ping` without waiting for an event or an `after` (unbounded recursion)
+  --> RB0402-unbounded-recursion.road:21:5
+   |
+21 |     invoke Pong() {
+   |     ^^^^^^^^^^^ entered without waiting
+...
+34 |     invoke Ping() {
+   |     ----------- then `Pong` invokes `Ping`
+   |
+   = help: put an `on` or `after` transition on the way to the state that invokes it

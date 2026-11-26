@@ -1,0 +1,24 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0203]: `initial Strat`: `M` has no child state `Strat`
+ --> RB0203-bad-initial.road:2:11
+  |
+2 |   initial Strat
+  |           ^^^^^ children: Start, Done
+  |
+  = help: did you mean `Start`?
+
+error[RB0203]: `M` has more than one `initial`
+ --> RB0203-bad-initial.road:3:11
+  |
+2 |   initial Strat
+  |           ----- the first is here
+3 |   initial Done
+  |           ^^^^
+
+error[RB0203]: `initial Inner`: `M.Start` has no child states
+ --> RB0203-bad-initial.road:5:13
+  |
+5 |     initial Inner
+  |             ^^^^^

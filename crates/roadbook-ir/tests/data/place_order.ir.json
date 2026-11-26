@@ -247,7 +247,7 @@
         "line": 29,
         "col": 1,
         "endLine": 29,
-        "endCol": 40
+        "endCol": 60
       }
     },
     "confirmation": {
@@ -288,7 +288,7 @@
         "line": 31,
         "col": 1,
         "endLine": 31,
-        "endCol": 44
+        "endCol": 63
       }
     },
     "problem": {
@@ -311,7 +311,7 @@
         "line": 32,
         "col": 1,
         "endLine": 32,
-        "endCol": 53
+        "endCol": 63
       }
     }
   },
@@ -385,7 +385,7 @@
         "line": 19,
         "col": 1,
         "endLine": 19,
-        "endCol": 74
+        "endCol": 71
       }
     },
     "validateOrder": {
@@ -406,7 +406,7 @@
         "line": 20,
         "col": 1,
         "endLine": 20,
-        "endCol": 75
+        "endCol": 72
       }
     },
     "priceOrder": {
@@ -430,7 +430,7 @@
         "line": 21,
         "col": 1,
         "endLine": 21,
-        "endCol": 54
+        "endCol": 51
       }
     },
     "chargeCard": {
@@ -457,7 +457,7 @@
         "line": 22,
         "col": 1,
         "endLine": 22,
-        "endCol": 92
+        "endCol": 89
       }
     }
   },
