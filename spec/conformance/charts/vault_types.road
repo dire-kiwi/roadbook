@@ -1,0 +1,23 @@
+// Conformance chart: the types of vault.road, in a file of their own, so that the marks of
+// their fields reach the machines through an import and through aliases.
+
+/// A login, as the user typed it.
+type Credentials { user: string, sensitive password: string }
+
+/// The same, as the machines name it.
+type Login = Credentials
+
+/// An alias of a list of an alias.
+type Logins = Login[]
+
+/// A signed-in session.
+type Session { id: string, sensitive token: string, expires: int }
+
+/// A payment card.
+type Card { last4: string, sensitive number: string }
+
+/// What the vault loads once signed in: marks inside a list, an optional and an aliased list.
+type Profile { name: string, cards: Card[], backup: Session?, logins: Logins }
+
+/// Too many attempts.
+error Locked { user: string, sensitive hint: string }

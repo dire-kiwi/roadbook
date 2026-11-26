@@ -1,0 +1,136 @@
+{
+  "description": "Values of sensitive fields, parameters and variables are \"<redacted>\" in every record that shows them, and only there: in `started` (a parameter, a field of an alias declared in another file, inside a list of an alias), in `action` and `invoke.started` arguments, in `event` and `dropped` inputs (an event's field, a task's result), in `set` (a sensitive variable whole, a field of a record), in a list a function returned, in a stale result (redacted as every task and machine would redact its result), and in `done`'s output, inside lists and an optional. Function calls see the real values: the function table is keyed by them.",
+  "requires": [],
+  "chart": "charts/vault.road",
+  "machine": "Vault",
+  "input": {
+    "login": {
+      "user": "ada",
+      "password": "hunter2"
+    },
+    "pin": 1234,
+    "extra": [
+      {
+        "user": "bob",
+        "password": "pw-bob"
+      }
+    ],
+    "backup": null
+  },
+  "stub": [],
+  "fns": {
+    "both": [
+      {
+        "args": [
+          {
+            "id": "s1",
+            "token": "tok-s1",
+            "expires": 60
+          }
+        ],
+        "returns": [
+          {
+            "id": "s1",
+            "token": "tok-s1",
+            "expires": 60
+          },
+          {
+            "id": "s1",
+            "token": "tok-s1",
+            "expires": 60
+          }
+        ]
+      }
+    ]
+  },
+  "actions": {},
+  "script": [
+    {
+      "task": "signIn",
+      "fail": {
+        "_tag": "Locked",
+        "user": "ada",
+        "hint": "first pet"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Nudge",
+        "why": "just because"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Retry",
+        "pin": 4321,
+        "note": "second try"
+      }
+    },
+    {
+      "task": "signIn",
+      "done": {
+        "id": "s1",
+        "token": "tok-s1",
+        "expires": 60
+      }
+    },
+    {
+      "together": [
+        {
+          "event": {
+            "_tag": "Retry",
+            "pin": 1,
+            "note": "again"
+          }
+        },
+        {
+          "task": "loadProfile",
+          "done": {
+            "name": "Ada",
+            "cards": [
+              {
+                "last4": "4242",
+                "number": "4242424242424242"
+              }
+            ],
+            "backup": {
+              "id": "s0",
+              "token": "tok-s0",
+              "expires": 1
+            },
+            "logins": [
+              {
+                "user": "ada",
+                "password": "hunter2"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "task": "loadProfile",
+      "done": {
+        "name": "Ada",
+        "cards": [
+          {
+            "last4": "4242",
+            "number": "4242424242424242"
+          }
+        ],
+        "backup": {
+          "id": "s0",
+          "token": "tok-s0",
+          "expires": 1
+        },
+        "logins": [
+          {
+            "user": "ada",
+            "password": "hunter2"
+          }
+        ]
+      }
+    }
+  ],
+  "status": "done"
+}

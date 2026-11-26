@@ -179,3 +179,8 @@ So the runner's own virtual timer records every timer the driver starts, with it
 | `snapshot-ended` | Saving a run that has ended gives its final snapshot: `done`, `cancelled` and `defect`. |
 | `float-forms` | Integers written as floats (`1.0`, `-0.0`, `10000.0`) in a snapshot and an event are the integers, and are saved in integer form. |
 | `resume-order` | The request-handler flow: create and suspend, restore and pay (suspend waits for the task the payment started), restore and deliver, and a late payment to a restored order whose deadline passed, which expires first. |
+| `redact-values` | Redaction (`vault.road`, its types in another file): a sensitive parameter, a field of an alias of a record, inside a list of an alias and an optional, in `started`, `action` and `invoke.started` arguments, `event` and `dropped` inputs, an error's field in `invoke.fail`, `set` of a sensitive variable and of a record, a list a function returned, a stale result (redacted as every task's and machine's result would be), and `done`; functions get the real values. |
+| `redact-failure` | An error's sensitive field in the variable it is set to and in `failed`. |
+| `redact-child` | Redaction in messages to and from a child (`teller.road`): its arguments and `started`, an `undelivered` send before it runs, `sent` and the child's `message` input, its `emitted` event and the parent's `emitted` input, a sensitive variable set from it. |
+| `redact-peer` | Redaction between peers: `sent` and `message`, an `emitted` input through a `ref`, and the driver's `undelivered` after `sent` to an ended run, which repeats the redacted value. |
+| `redact-snapshot` | A saved snapshot keeps the real values; the `restored` record of the run restored from it shows them redacted. |
