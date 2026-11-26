@@ -398,7 +398,8 @@ export class Simulation {
       case 'invoke.start':
       case 'send':
       case 'emit':
-        // The invoke waits for the reader; messages have no other run to go to.
+      case 'reply':
+        // The invoke waits for the reader; messages and replies have no other run to go to.
         return null
       case 'timer.fire':
         // Only `restore` emits it, and simulate mode never restores a run.

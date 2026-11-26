@@ -25,9 +25,10 @@ export const Saved: Schema.declare<Core.Saved> = Schema.declare<Core.Saved>(Core
  * Why a saved snapshot was refused, before any run started: `invalid` (not a saved snapshot of
  * this version, or it does not fit the machine), `machine` (of another machine), `ir` (another
  * hash and no migration, or a migration that did not give the current one), `migration` (the
- * migration threw), `ended` (the run had ended) or `ref` (the machine holds a `ref`).
+ * migration threw), `ended` (the run had ended), `ref` (the machine holds a `ref`) or `calls` (the
+ * run had pending calls, whose callers are gone).
  */
 export class RestoreError extends Schema.TaggedError<RestoreError>()("RestoreError", {
-  reason: Schema.Literals(["invalid", "machine", "ir", "migration", "ended", "ref"]),
+  reason: Schema.Literals(["invalid", "machine", "ir", "migration", "ended", "ref", "calls"]),
   message: Schema.String
 }) {}
