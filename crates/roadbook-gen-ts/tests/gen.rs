@@ -1,0 +1,204 @@
+//! The generator on the shop example and on charts that use what the shop does not.
+
+use std::path::Path;
+
+use roadbook_compiler::{FsLoader, Loader, MemoryLoader, Options, compile};
+use roadbook_gen_ts::{GenError, generate};
+use roadbook_ir::Ir;
+
+fn ir(loader: &mut dyn Loader, entry: &str) -> Ir {
+    let out = compile(loader, entry, &Options::default()).unwrap();
+    assert!(!out.has_errors(), "{}", out.render());
+    out.ir.unwrap()
+}
+
+fn gen_ok(ir: &Ir) -> String {
+    let code = generate(ir, &Default::default()).unwrap();
+    assert!(code.ends_with('\n') && !code.ends_with("\n\n"));
+    assert_eq!(generate(ir, &Default::default()).unwrap(), code);
+    code
+}
+
+/// The module with the inlined IR replaced by `<ir>`, after checking that it is the IR.
+fn without_ir(ir: &Ir, code: &str) -> String {
+    let json = ir.to_json();
+    let literal = format!("const ir: unknown = {}", json.trim_end());
+    if code.contains("const ir: unknown") {
+        assert!(code.contains(&literal), "the IR is not inlined verbatim");
+    }
+    code.replace(&literal, "const ir: unknown = <ir>")
+}
+
+fn snapshot(name: &str, ir: &Ir) {
+    let code = gen_ok(ir);
+    insta::with_settings!({ prepend_module_to_snapshot => false, omit_expression => true }, {
+        insta::assert_snapshot!(name, without_ir(ir, &code));
+    });
+}
+
+#[test]
+fn the_shop() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    for file in ["types", "checkout", "place_order"] {
+        let ir = ir(
+            &mut FsLoader::new(&root),
+            &format!("examples/shop/{file}.road"),
+        );
+        snapshot(&format!("shop_{file}"), &ir);
+    }
+}
+
+const COMMON: &str = r#"
+/// An amount in the host's own representation.
+extern type Money
+type Ids = string[]
+type Tree { label: string, children: Tree[] }
+error Boom { why: string }
+error Quiet
+
+task fetch(id: string) -> Tree ! Boom
+task ping()
+action log(msg: string, at: duration)
+action unused(n: int)
+fn label(t: Tree) -> string
+fn delay(n: int) -> duration
+fn ok(n: int) -> bool
+fn price(m: Money) -> Money
+fn wrap(s: string) -> string
+fn start() -> int
+fn ids() -> Ids
+fn reason() -> string
+fn blob() -> json
+"#;
+
+const MAIN: &str = r#"
+import {
+  Money, Ids, Tree, Boom, Quiet,
+  fetch, ping, log, label, delay, ok, price, wrap, start, ids, reason, blob
+} from "../lib/common.road"
+
+type Basket { items: Ids, total: Money, best: Tree, extra: json }
+type Wrapper { basket: Basket, maybe: string[]? , many: string?[] }
+enum Mode { Fast, Slow }
+
+machine Child() {
+  /// Move on.
+  event Go
+  initial Done
+  on Go -> Done
+  final state Done {}
+}
+
+machine Parent(id: string, cost: Money) -> Basket ! Boom | Quiet {
+  var n: int = start()
+  var tree: Tree
+
+  event Go { n: int }
+
+  initial Fetching
+
+  state Fetching {
+    invoke fetch(wrap(id)) {
+      done      -> Waiting  set tree = result
+      fail Boom -> Failed
+    }
+  }
+
+  state Waiting {
+    entry do log(label(tree), delay(1))
+    on Go {
+      if ok(event.n) -> Pinging
+    }
+    after delay(n) -> Running
+  }
+
+  state Pinging {
+    invoke ping() {
+      done -> Running
+    }
+  }
+
+  state Running {
+    invoke Child() {
+      done -> Finished
+    }
+  }
+
+  final state Finished { output Basket { items: ids(), total: price(cost), best: tree, extra: blob() } }
+  final state Failed   { fail Boom { why: reason() } }
+}
+"#;
+
+fn project() -> MemoryLoader {
+    MemoryLoader::new()
+        .with("lib/common.road", COMMON)
+        .with("app/main.road", MAIN)
+}
+
+#[test]
+fn imports_recursion_extern_and_clashing_events() {
+    let main = ir(&mut project(), "app/main.road");
+    snapshot("main", &main);
+    let common = ir(&mut project(), "lib/common.road");
+    snapshot("common", &common);
+}
+
+fn error_of(files: &[(&str, &str)]) -> GenError {
+    let mut loader = MemoryLoader::new();
+    for (path, src) in files {
+        loader.insert(path, *src);
+    }
+    let ir = ir(&mut loader, files[0].0);
+    generate(&ir, &Default::default()).unwrap_err()
+}
+
+#[test]
+fn rejects_what_it_cannot_express() {
+    let e = error_of(&[("a.road", "type T { e: E, next: T? }\nerror E\n")]);
+    assert!(
+        matches!(&e, GenError::Recursive { types, .. } if types == &["T"]),
+        "{e}"
+    );
+    let e = error_of(&[("a.road", "error R { next: R? }\n")]);
+    assert!(matches!(e, GenError::Recursive { .. }), "{e}");
+    let e = error_of(&[
+        (
+            "x.road",
+            "import { Y } from \"./y.road\"\ntype X { y: Y? }\n",
+        ),
+        (
+            "y.road",
+            "import { X } from \"./x.road\"\ntype Y { x: X? }\n",
+        ),
+    ]);
+    assert!(e.to_string().contains("spans several files"), "{e}");
+    let e = error_of(&[(
+        "c.road",
+        "type MDef { a: int }\nmachine M() {\n  initial D\n  final state D {}\n}\n",
+    )]);
+    assert_eq!(
+        e,
+        GenError::Clash {
+            name: "MDef".into()
+        }
+    );
+    let e = error_of(&[("d.road", "type Schema { a: int }\n")]);
+    assert_eq!(
+        e,
+        GenError::Clash {
+            name: "Schema".into()
+        }
+    );
+}
+
+#[test]
+fn a_file_with_nothing_to_export() {
+    let ir = ir(
+        &mut MemoryLoader::new().with("t.road", "task t()\n"),
+        "t.road",
+    );
+    assert_eq!(
+        gen_ok(&ir),
+        "// Generated by roadbook gen from t.road. Do not edit.\n"
+    );
+}

@@ -115,11 +115,11 @@ This is a design, with a few pieces built to test its riskiest claims.
 | --- | --- | --- |
 | The language can be parsed and checked. | A throwaway compiler in JavaScript parses the three example files, resolves imports and targets, and reports errors with locations. Writing it exposed about a dozen gaps in the first grammar, which are now fixed in the language page. | `spike/compile.mjs`, since replaced by [`crates/roadbook-compiler`](../../crates/roadbook-compiler) |
 | A readable diagram can be produced from the IR with no manual layout. | A viewer that renders nested states, invokes, guards and effects for both example machines, interactive and static, checked in a browser. What it showed, and what the real viewer does about it, is on the visualization page. | `spike/viewer`, since replaced by [`packages/viewer`](../../packages/viewer) and `roadbook viz` |
-| The TypeScript API's types work with Effect v4: exact inferred error and requirement types, and compile errors for missing, extra or wrongly typed implementations. | A type-level sketch that passes `tsc` against `effect@4.1.5`. | [`spike/api-ts`](../../spike/api-ts) |
+| The TypeScript API's types work with Effect v4: exact inferred error and requirement types, and compile errors for missing, extra or wrongly typed implementations. | A type-level sketch that passed `tsc` against `effect@4.1.5`, then the real packages and the generated shop modules, whose `tsc`-checked tests keep its negative cases. | `spike/api-ts`, since replaced by [`packages/effect`](../../packages/effect) and [`examples/shop/test/types.ts`](../../examples/shop/test/types.ts) |
 | The Rust API's shapes compile, including `Send` futures and one struct implementing several charts' handlers. | A hand-expanded sketch that passes `cargo check`. | [`spike/api-rust`](../../spike/api-rust) |
 | The Rust macro can find a chart that another crate ships, and refer to that crate's types. | A stand-in macro tried four mechanisms against path, git, vendored and registry dependencies and a downstream crate. Only a hidden macro exported by the owning crate worked everywhere; renamed dependencies need an alias. | [`spike/cross-crate`](../../spike/cross-crate) |
 
-No runtime exists yet. The semantics, the trace format and everything on the actors and messaging page are specified on paper only.
+The TypeScript runtime ([`packages/core`](../../packages/core) and [`packages/effect`](../../packages/effect)) runs every [conformance case](../../spec/conformance) and writes its expected trace byte for byte, through its production driver. Everything on the actors and messaging page is specified on paper only.
 
 ## Pages
 

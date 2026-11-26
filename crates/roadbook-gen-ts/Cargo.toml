@@ -1,0 +1,18 @@
+[package]
+name = "roadbook-gen-ts"
+description = "The TypeScript code generator: a `.road.ts` module per `.road` file, for `@roadbook/effect`"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+roadbook-ir = { path = "../roadbook-ir" }
+
+[dev-dependencies]
+roadbook-compiler = { path = "../roadbook-compiler" }
+insta.workspace = true
+
+[lints]
+workspace = true

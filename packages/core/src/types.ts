@@ -1,0 +1,133 @@
+/**
+ * The core's data: snapshots, inputs, commands, defects and trace records, exactly as
+ * `spec/execution.md` and `spec/trace.md` define them. All of it is plain JSON.
+ */
+import type { Json } from "./json.ts"
+
+export type Status = "running" | "done" | "failed" | "cancelled" | "defect"
+
+/** A defect: the reason a run ended at once, never routed to a `fail` branch. */
+export type Defect =
+  | { readonly kind: "host"; readonly message: string }
+  | { readonly kind: "unassigned"; readonly var: string }
+  | { readonly kind: "overflow"; readonly expr: string }
+  | { readonly kind: "undeclared"; readonly error: string }
+  | { readonly kind: "limit" }
+
+export interface InvokeEntry {
+  readonly id: number
+  readonly state: string
+  readonly src: string
+}
+
+export interface TimerEntry {
+  readonly id: number
+  readonly state: string
+  readonly index: number
+  readonly delay: number
+}
+
+export type RunResult =
+  | { readonly output: Json }
+  | { readonly error: Json }
+  | { readonly defect: Defect }
+
+export interface Snapshot {
+  readonly machine: string
+  readonly ir: string
+  readonly status: Status
+  /** Active state ids, in document order. */
+  readonly active: ReadonlyArray<string>
+  readonly input: { readonly [param: string]: Json }
+  /** Every variable that has a value. */
+  readonly vars: { readonly [name: string]: Json }
+  readonly invokes: ReadonlyArray<InvokeEntry>
+  readonly timers: ReadonlyArray<TimerEntry>
+  readonly nextInvoke: number
+  readonly nextTimer: number
+  readonly result: RunResult | null
+}
+
+/** A tagged record: an event or an error value. */
+export interface Tagged {
+  readonly _tag: string
+  readonly [field: string]: Json
+}
+
+export type Input =
+  | { readonly kind: "event"; readonly value: Tagged }
+  | { readonly kind: "invoke.done"; readonly invoke: number; readonly value: Json }
+  | { readonly kind: "invoke.fail"; readonly invoke: number; readonly error: Tagged }
+  | { readonly kind: "invoke.defect"; readonly invoke: number; readonly defect: Defect }
+  | { readonly kind: "after"; readonly timer: number }
+  | { readonly kind: "cancel" }
+  | { readonly kind: "defect"; readonly defect: Defect }
+
+/** The inputs that `event`, `dropped` and `stale` records can carry. */
+export type TracedInput = Exclude<Input, { readonly kind: "cancel" } | { readonly kind: "defect" }>
+
+/** A trace record as the core emits it, without `t`, `run` and `parent`. */
+export type CoreRecord =
+  | { readonly kind: "started"; readonly machine: string; readonly ir: string; readonly input: Json }
+  | { readonly kind: "entered"; readonly state: string }
+  | { readonly kind: "exited"; readonly state: string }
+  | { readonly kind: "event" | "dropped" | "stale"; readonly event: TracedInput }
+  | { readonly kind: "transition"; readonly from: string; readonly index: number; readonly to: string | null }
+  | { readonly kind: "set"; readonly var: string; readonly value: Json }
+  | { readonly kind: "action"; readonly action: string; readonly args: { readonly [param: string]: Json } }
+  | {
+    readonly kind: "invoke.started"
+    readonly invoke: number
+    readonly state: string
+    readonly src: string
+    readonly args: { readonly [param: string]: Json }
+  }
+  | { readonly kind: "invoke.cancelled"; readonly invoke: number; readonly state: string; readonly src: string }
+  | {
+    readonly kind: "timer.started"
+    readonly timer: number
+    readonly state: string
+    readonly index: number
+    readonly delay: number
+  }
+  | { readonly kind: "timer.cancelled"; readonly timer: number; readonly state: string; readonly index: number }
+  | { readonly kind: "done"; readonly state: string; readonly output: Json }
+  | { readonly kind: "failed"; readonly state: string; readonly error: Json }
+  | { readonly kind: "cancelled" }
+  | { readonly kind: "defect"; readonly defect: Defect }
+
+/** A trace record as a driver writes it: the core's record with the clock and the run's ids. */
+export type TraceRecord = CoreRecord & {
+  readonly t: number
+  readonly run: string
+  readonly parent?: string
+}
+
+export type Command =
+  | { readonly kind: "trace"; readonly record: CoreRecord }
+  | { readonly kind: "action"; readonly action: string; readonly args: { readonly [param: string]: Json } }
+  | {
+    readonly kind: "invoke.start"
+    readonly invoke: number
+    readonly state: string
+    readonly src: string
+    readonly srcKind: "task" | "machine"
+    readonly args: { readonly [param: string]: Json }
+  }
+  | { readonly kind: "invoke.cancel"; readonly invoke: number }
+  | { readonly kind: "timer.start"; readonly timer: number; readonly delay: number }
+  | { readonly kind: "timer.cancel"; readonly timer: number }
+
+/** What the host's function `name` gave: its value, or a host defect. */
+export type FnResult = { readonly value: Json } | { readonly defect: Defect }
+
+/**
+ * The host's pure functions. Called with positional argument values; must not throw (the
+ * binding layer catches what host code throws and returns a `host` defect instead).
+ */
+export type Fns = (name: string, args: ReadonlyArray<Json>) => FnResult
+
+export interface Stepped {
+  readonly snapshot: Snapshot
+  readonly commands: ReadonlyArray<Command>
+}

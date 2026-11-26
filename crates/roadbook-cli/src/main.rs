@@ -14,7 +14,7 @@ mod commands;
 mod report;
 mod workspace;
 
-use commands::{check, export, fmt, viz};
+use commands::{check, export, fmt, r#gen, viz};
 
 /// Exit codes shared by every command.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,6 +44,8 @@ enum Command {
     Check(check::Args),
     /// Format `.road` files in place, canonically.
     Fmt(fmt::Args),
+    /// Write the TypeScript module for each `.road` file next to it: `<file>.road.ts`.
+    Gen(r#gen::Args),
     /// Write the HTML diagram viewer: a page per entry chart, plus an index.
     Viz(viz::Args),
     /// Write a chart in another format.
@@ -56,6 +58,7 @@ fn main() -> ExitCode {
     let exit = match cli.command {
         Command::Check(args) => check::run(args),
         Command::Fmt(args) => fmt::run(args),
+        Command::Gen(args) => r#gen::run(args),
         Command::Viz(args) => viz::run(args),
         Command::Export(format) => export::run(format),
     };

@@ -824,6 +824,7 @@ dependencies = [
  "clap",
  "insta",
  "roadbook-compiler",
+ "roadbook-gen-ts",
  "roadbook-ir",
  "roadbook-syntax",
  "serde_json",
@@ -852,6 +853,15 @@ dependencies = [
  "roadbook-ir",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "roadbook-gen-ts"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "roadbook-compiler",
+ "roadbook-ir",
 ]
 
 [[package]]
