@@ -47,7 +47,7 @@ A source is `{"path", "package"}`.
 
 | Member | Meaning |
 | --- | --- |
-| `path` | With `/` separators. For a file of the project, relative to the project root: the nearest directory holding a `roadbook.toml`, searched upward from the entry file, or else the directory the compiler runs in. For a file of another package, relative to that package's root. |
+| `path` | With `/` separators. For a file of the project, relative to the project root: the nearest directory holding a `roadbook.toml`, searched upward from the entry file, or else the directory the compiler runs in. For a file of another package, the path in the package as imports write it, after the package's name (which a `package.json` `exports` map may place elsewhere on disk). |
 | `package` | `null` for a file of the project. For a file of another package, the package's name as imports write it: `inventory`, `@shop/inventory`. |
 
 A file of another package is named by its package and its path in the package, never by where the package happens to be installed, so the IR is the same wherever the package was found (a `node_modules` directory, a directory mapped in `roadbook.toml`, a Cargo dependency). `import { Inventory } from "inventory/inventory.road"` loads the source `{"path": "inventory.road", "package": "inventory"}`.
