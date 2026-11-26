@@ -45,10 +45,13 @@ out=$(mktemp -d)
 mkdir -p "$out/ts" "$out/rust"
 ROADBOOK_CONFORMANCE_OUT="$out/ts" pnpm --filter @roadbook/effect exec vitest run test/conformance >/dev/null
 ROADBOOK_CONFORMANCE_OUT="$out/rust" cargo test -q -p roadbook --test conformance >/dev/null
-# A runtime skips the cases whose `requires` it does not support yet; diff -r fails if the
-# two ran different sets.
+# A runtime skips the cases whose `requires` it does not support yet, so the traces are
+# compared for the cases both ran. The Rust runtime runs every case.
+test "$(ls "$out/rust" | wc -l)" -eq "$(ls spec/conformance/cases | wc -l)"
 test -n "$(ls "$out/ts")"
-diff -r "$out/ts" "$out/rust"
+for trace in "$out/ts"/*; do
+  diff "$trace" "$out/rust/$(basename "$trace")"
+done
 rm -rf "$out"
 
 step "Viewer: the bundle the CLI embeds is current"
