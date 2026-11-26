@@ -96,6 +96,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | `always ...` | Transition taken as soon as its guard holds (no event). |
 | `done ...` | Transition taken when a compound state reaches a final child, or every region of a parallel state does. |
 | `invoke name(args) [as name] { done ...  fail Err ... }` | Run a task or machine while the state is active. At most one per state. `fail *` matches the declared errors not listed. `as` names an invoked machine, so that the state can send to it and receive what it emits. |
+| `invoke name(args) retry N [on Err] [after delay] { ... }` | The same, run again when it fails, up to `N` more times (see [retrying an invoke](#retrying-an-invoke)). |
 | `output expr` / `fail expr` | Final states at the top level only: the machine's result. |
 
 A transition has up to four parts, all optional except that it must do something:
@@ -123,6 +124,68 @@ The precise rules are in the [semantics](semantics.md#execution-model) and [`spe
 - **The order of a step.** States are exited innermost first, then the transition's effects run, then states are entered outermost first, each running its `entry`. Only then are `always` guards evaluated, and `done` transitions taken, until none applies: an `always` sees what the `entry` effects assigned. Invokes and timers start last, for the states still active.
 - **Events go only to the machine they are sent to.** Host code sends to the machine it runs. An invoked child receives an event only when its parent sends it one with `send name.Event`, so a child that waits on `on E` with no such `send` waits until it times out or its parent leaves the invoking state.
 - **A failure that is not a declared error** (a host defect, such as a thrown exception or a panic) is not flow: it fails the whole run and what it started, and propagates to whoever ran it. See [the semantics](semantics.md#work-is-tied-to-states).
+
+## Retrying an invoke
+
+The `Backoff` pattern at the top of this page is common enough to have a shorthand. `retry` after an invoke's arguments runs the task again when it fails:
+
+```
+state Charging {
+  invoke chargeCard(order, user) retry 3 on GatewayUnavailable after retryDelay(attempt) {
+    done                    -> Charged   set receipt = result
+    fail CardDeclined       -> Declined  set declined = error
+    fail GatewayUnavailable -> GaveUp
+  }
+}
+```
+
+`retry N [on E | F …] [after delay]` means:
+
+- **How many times.** `N` is an integer literal of at least 1: the number of retries, so the task runs at most `N + 1` times. `retry 3` above makes up to four attempts.
+- **Which errors.** The errors listed after `on`, each one the task or machine declares; without `on`, every error it declares. Nothing else is retried: not `done`, and not a host defect (a thrown exception, a panic), which is not flow and fails the run as it does without `retry`.
+- **When the retries run out.** A failure that is not retried, an error not in the list or the failure after the last retry, goes to its outcome as it would without `retry`, with `error` the last failure. Every declared error still needs an outcome (`RB0204`): it says what happens when retrying did not help.
+- **Delays.** `after delay` is how long to wait between a failure and the next attempt; without it, the next attempt starts at once. The delay is a `duration` expression, evaluated when the wait starts, like an `after` transition's. In it, `attempt` is the number of attempts that have failed so far, an `int`: 1 before the first retry, 2 before the second. So `after 2s` waits the same each time and `after retryDelay(attempt)` lets a host function grow the delay (doubling, a cap, jitter): the language has no arithmetic on durations, so backoff is the function's choice. `attempt` is in scope only in a retry's delay. It is not reserved, so a machine may have a parameter or variable named `attempt`, but then it cannot use `attempt` in a retry delay (`RB0118`).
+- **The state stays active.** While it retries, the invoking state is still active, through every attempt and every wait. Its own `on`, `after` and `always` transitions apply all the time, so `after 30s -> TimedOut` written in the state is a deadline for all the attempts together, and `on Cancel` stops a wait as well as an attempt. Its `entry` and `exit` run once, not once per attempt. Leaving the state and entering it again starts counting from zero.
+- **Where.** `retry` is allowed on the invoke of a state with no child states (`RB0215`), without `as` (`RB0216`): a retried machine is a new child run each attempt, so a name for it would address nothing during a wait. A retried error that `fail *` handles must not share that outcome with an error that is not retried (`RB0218`): give it an outcome of its own.
+
+### What `retry` compiles to
+
+`retry` is shorthand only. The compiler writes it out as states, a variable and transitions that a chart could contain without it, so the IR has nothing new, the runtimes run it unchanged, and the diagram, the trace and snapshots show the explicit states whichever way the chart was written. The example above compiles to exactly what this compiles to:
+
+```
+var chargingAttempt: int = 0
+
+state Charging {
+  entry set chargingAttempt = 0
+  initial Attempt
+
+  state Attempt {
+    invoke chargeCard(order, user) {
+      done                     -> Charged   set receipt = result
+      fail CardDeclined        -> Declined  set declined = error
+      fail GatewayUnavailable {
+        if chargingAttempt < 3 -> Backoff   set chargingAttempt = chargingAttempt + 1
+        else                   -> GaveUp
+      }
+    }
+  }
+
+  state Backoff {
+    after retryDelay(chargingAttempt) -> Attempt
+  }
+}
+```
+
+- **The variable** counts the failed attempts. Its name is the state's path below the machine, joined, with a lower-case first letter, and `Attempt`: `chargingAttempt` for `Charging`, `processingPayingAttempt` for `Processing.Paying`. If a parameter, a variable, an `as` name or another retry's variable already has that name, or the delay uses it, the smallest number from 2 that makes it free is added: `chargingAttempt2`. It starts at 0, is set to 0 by the state's `entry`, before the state's own `entry` effects, and comes after the machine's own variables in the IR, in the order of the states. `attempt` in the delay reads it.
+- **The state** becomes a compound state whose `initial` is `Attempt`. It keeps its `entry`, `exit`, `on`, `after` and `always`. `Attempt` holds the invoke and its outcomes; `Backoff` holds the wait. Without `after` there is no `Backoff`: the retry branch goes `-> Attempt`, which leaves `Attempt` and enters it again, starting the next attempt.
+- **The retry branch** comes first in the block of the outcome that handles the error, before the branches written there (which keep their guards), and so is tried first: `fail E { if counter < N -> Backoff  set counter = counter + 1  … }`. When `fail *` handles the retried errors, the branch goes first in the `fail *` block.
+- **Targets** of the outcomes are resolved where they were written, in the state, before it gets its children: a sibling of `Charging` named `Backoff` is still what `-> Backoff` in an outcome means.
+- **Names in the chart.** The generated states and the variable cannot be named in the chart: `-> Charging.Attempt` is an unknown target and `chargingAttempt` an unknown variable, since neither exists in the source.
+- **Sources.** In the IR the variable, `Backoff`, and the retry branches have the span of the `retry` clause, and `Attempt` the span of the invoke. Their docs are empty.
+
+The pattern at the top of the page has `Backoff` as a sibling of `Charging` instead. The shorthand nests both in the state because that is what makes the count start again whenever the state is entered from elsewhere, and what keeps the state's own transitions, such as a deadline or a cancel, in force during the waits. The sibling form stays available, and is what to write when the counter is needed elsewhere, or the wait needs transitions of its own.
+
+**In a trace** a retry is the explicit states at work: on entering `Charging`, `entered Checkout.Charging`, `set chargingAttempt 0`, `entered Checkout.Charging.Attempt` and `invoke.started`; on a retried failure, the `invoke.fail` input, the `transition` from `Checkout.Charging.Attempt` to `Checkout.Charging.Backoff`, `exited` and `set chargingAttempt` 1, `entered Checkout.Charging.Backoff` and `timer.started` with the evaluated delay; when the timer expires, the transition back to `Attempt` and a new `invoke.started` with the next invoke id. The viewer's replay and coverage modes read these as for any chart.
 
 ## Expressions
 
@@ -369,11 +432,11 @@ Both runtimes keep reading an unassigned variable as a runtime error (`unassigne
 The layout, as implemented in `roadbook-syntax`. The example files and the charts on these pages are written in it.
 
 - **Lines.** Two-space indentation, one item per line, and no line wrapping. A file with syntax errors is not formatted.
-- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses. In a transition the target and each `set`, `do`, `send` or `emit` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Every `set` comes first, then the other clauses in the order written; consecutive clauses of one kind are merged for `set` and `do`: `do f()  set a = 1  set b = 2` is written `set a = 1, b = 2  do f()`. Each `send` and `emit` is a clause of its own, and an empty body is dropped: `send upload.Pause {}` is written `send upload.Pause`.
+- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses. A `retry` clause is written `retry 3 on A | B after delay`, one space between its parts. In a transition the target and each `set`, `do`, `send` or `emit` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Every `set` comes first, then the other clauses in the order written; consecutive clauses of one kind are merged for `set` and `do`: `do f()  set a = 1  set b = 2` is written `set a = 1, b = 2  do f()`. Each `send` and `emit` is a clause of its own, and an empty body is dropped: `send upload.Pause {}` is written `send upload.Pause`.
 - **Blank lines** between items are kept, at most one. There are none at the start or end of a block or file.
 - **Lists.** No trailing commas. A list in a declaration (import names, fields, enum variants, parameters) with a line break right after its opening bracket stays multi-line: its elements are indented one level, keep the author's line breaks between them, and the closing bracket goes on its own line. Every other list is printed on one line.
 - **One-line states.** A state whose body is empty, or is a single item other than a state, an `invoke` or a block of branches, and contains no comment, is written on one line: `final state Charged { output receipt }`. Every other state is written as a block.
-- **Expressions** have only the parentheses precedence needs, plus `not (…)` around a comparison or arithmetic operand, and parentheses around a record value used as an `after` delay. Numbers are written as parsed (`007` becomes `7`, `1.50` becomes `1.5`). `error E {}` is written `error E`, and a record value with no fields `E {}` is written `E`.
+- **Expressions** have only the parentheses precedence needs, plus `not (…)` around a comparison or arithmetic operand, and parentheses around a record value used as an `after` delay or a retry's delay. Numbers are written as parsed (`007` becomes `7`, `1.50` becomes `1.5`). `error E {}` is written `error E`, and a record value with no fields `E {}` is written `E`.
 - **Comments** are kept as written, trailing spaces removed. A comment on its own line stays on its own line, indented like the code that follows it. A comment after code stays at the end of that line, including one after the closing bracket of a multi-line list, which ends the line that bracket starts (`) { // c`, `} from "./x.road" // c`). A comment inside something printed on one line moves to its own line before it; for the line a multi-line list's closing bracket starts (`) -> T ! E {`), that is into the list, before the bracket. Comments after that line belong to what follows it.
 - **Alignment.** An alignment group is a run of consecutive lines of one kind with no blank line or comment line between them. The kinds and what they align:
   - one-line `type`, `enum`, `error` and `extern type` declarations: what follows the name (`{` or `=`);
@@ -405,7 +468,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0015` | `var` or `event` inside a state. | `state A { var x: int }` |
 | `RB0016` | A machine item at the top level of a file. | `state A {}` outside a machine |
 | `RB0017` | A transition with no target, `set` or `do`. | `on Go` |
-| `RB0018` | A record value as an `after` delay without parentheses. | `after Cfg { ms: 5 } -> A` |
+| `RB0018` | A record value as an `after` delay, or a retry's delay, without parentheses. | `after Cfg { ms: 5 } -> A` |
 | `RB0019` | An invoke outcome outside `invoke { }`. | `fail CardDeclined -> Declined` in a state |
 | `RB0020` | Something other than an outcome inside `invoke { }`. | `fail declined`, `on Go -> A` in an invoke |
 | `RB0021` | A block of branches that does not start with `if`, or has a branch after `else`. | `on Go { else -> A }` |
@@ -435,13 +498,14 @@ The compiler's codes:
 | `RB0115` | A `send name.E` or `on name.E` whose `name` is not an `invoke … as name` in scope or a parameter or variable. | `send uplod.Pause`, `upload` outside its invoking state |
 | `RB0116` | A `send` of an event the receiving machine does not declare with `event`. | `send upload.Stop` |
 | `RB0117` | An `emit` of an event the machine does not declare with `emits`, or an `on name.E` of one its sender does not. | `emit Progres`, `on upload.Pause` |
+| `RB0118` | `attempt` in a retry delay of a machine with a parameter or variable named `attempt`. | `retry 3 after backoff(attempt)` with `var attempt: int` |
 | `RB0201` | A transition target that does not resolve. | `-> Dne` |
 | `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }`, `machine M() { initial A }` |
 | `RB0203` | An `initial` that is not a child, is written twice, or is in a state without children. | `initial Strat` |
 | `RB0204` | An `invoke` that leaves a declared error unhandled. | see above |
 | `RB0205` | The same trigger twice in one state or one `invoke`. | `on Go -> A` and `on Go -> B` |
 | `RB0206` | A second `invoke` in a state. | two `invoke`s in `state A` |
-| `RB0207` | An outcome for an error the task or machine does not declare. | `fail Timeout -> A` |
+| `RB0207` | An outcome, or a retry, for an error the task or machine does not declare. | `fail Timeout -> A`, `retry 3 on Timeout` |
 | `RB0208` | `output` or `fail` outside a top-level final state, or two of them. | `state A { output 1 }` |
 | `RB0209` | A top-level final state with no `output` or `fail` in a machine that returns a value. | `final state Done {}` in `machine M() -> int` |
 | `RB0210` | A final state with children, or a parallel state with none. | `final state A { state B {} }` |
@@ -449,6 +513,10 @@ The compiler's codes:
 | `RB0212` | A `done` transition in a state with no child states, which can never be taken. | `state A { done -> B }` |
 | `RB0213` | A `send` to an invoked child where it is not running. | `entry send upload.Pause` in the invoking state, `on Cancel -> Idle  send upload.Stop` |
 | `RB0214` | `as` on an invoke of a task. | `invoke fetch() as f` |
+| `RB0215` | `retry` on the invoke of a state with child states. | `state A { invoke f() retry 2 { … }  initial B  state B {} }` |
+| `RB0216` | `retry` on an invoke with `as`. | `invoke Upload(file) as upload retry 2` |
+| `RB0217` | A `retry` that retries nothing, or names an error twice. | `retry 0`, `retry 2` of a task that declares no errors, `retry 2 on Busy \| Busy` |
+| `RB0218` | A retried error handled by a `fail *` that also handles an error not retried. | `retry 2 on Busy` with only `fail * -> Failed` for `! Busy \| Gone` |
 | `RB0301` | A value of the wrong type. | `var ratio: float = 1` |
 | `RB0302` | The wrong number of arguments. | `retryDelay(1, 2)` |
 | `RB0303` | An operator on operands it is not defined on. | `attempts + 1.5`, `order == other` |
@@ -509,7 +577,8 @@ emitsDecl   = "emits" Upper [ fields ] ;
 stateDecl   = [ "final" | "parallel" ] "state" Upper "{" { stateItem } "}" ;
 stateItem   = commonItem
             | "done" branches
-            | "invoke" name "(" [ expr { "," expr } ] ")" [ "as" lower ] "{" outcome { outcome } "}"
+            | "invoke" name "(" [ expr { "," expr } ] ")" [ "as" lower ] [ retry ]
+              "{" outcome { outcome } "}"
             | "output" expr
             | "fail" expr ;
 commonItem  = "initial" Upper
@@ -519,6 +588,7 @@ commonItem  = "initial" Upper
             | "on" ( Upper | "*" | lower "." Upper ) branches
             | "after" expr branches
             | "always" branches ;
+retry       = "retry" int [ "on" Upper { "|" Upper } ] [ "after" expr ] ;
 outcome     = "done" branches
             | "fail" ( Upper | "*" ) branches ;
 
@@ -564,9 +634,9 @@ comment     = "//" … end of line ;        doc comment = "///" … end of line 
 Rules the grammar does not express:
 
 - Every comma-separated list accepts a trailing comma.
-- All keywords are reserved: `import type enum error extern fn action task machine var event emits initial state final parallel entry exit on after always done invoke output fail if else set do send emit and or not true false`. `from`, `as`, `ref` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments, and at the start of a type. `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters.
+- All keywords are reserved: `import type enum error extern fn action task machine var event emits initial state final parallel entry exit on after always done invoke output fail if else set do send emit and or not true false`. `from`, `as`, `retry`, `ref` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`), and at the start of a type. `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters.
 - A `///` comment documents the declaration, machine, state, event or variable that follows it. A `///` anywhere else is an error: use `//`.
-- A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust. A `{` after the event of a `send` or `emit` is always its record body.
+- A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust, and so must one in a retry's delay, which the invoke's `{` follows. A `{` after the event of a `send` or `emit` is always its record body.
 - `on name.Event` is told from `on Event` by the lower-case name and the `.` after it.
 - In a final state, `fail expr` is the machine's failure. Inside `invoke { }`, `fail Upper` is an outcome. The two never appear in the same position.
 - Two `after` transitions in one state are the same trigger only if their delays are the same expression, written the same way once formatted: `after 1s` and `after 1000ms` are different triggers.
@@ -592,4 +662,3 @@ Each of these has a planned shape, and the grammar leaves room for it.
 - **Keyed `spawn`.** A dynamic number of children, sketched on the [actors and messaging](actors.md#many-children) page. `send`, `emit`, `ref` and `invoke … as` are in the language (see [messages between machines](#messages-between-machines)); the TypeScript runtime runs them, the Rust runtime not yet.
 - **History states.** `history` and `deep history` pseudo-states, as in SCXML.
 - **Generic types and maps.** `map<string, T>` and user-defined generics.
-- **Retry sugar.** `invoke chargeCard(order) retry 3` as shorthand for the `Backoff` pattern above. The explicit states stay available and are what the diagram shows either way.

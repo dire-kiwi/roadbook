@@ -97,7 +97,11 @@ Progress is recorded on each milestone below as it finishes.
 
 *Done.* The tree-sitter grammar (`editors/tree-sitter-roadbook`) parses every chart in the repository, with highlight, locals, fold and indent queries for Neovim, Helix and Zed; `scripts/check-all.sh` checks it. The language server (`roadbook lsp`, `crates/roadbook-lsp`, on a symbol index added to the compiler without changing its output) gives diagnostics with the compiler's fixes as quick fixes, go to definition, references, hover, rename that refuses to capture or clash, formatting and an outline, across files and packages and for unsaved and untitled documents. The VS Code extension (`editors/vscode`) adds the language, highlighting, the server and a live preview that compiles through the server, so it sees every unsaved buffer; its integration test passed in a real VS Code (headless). An independent review found edge cases with packages under `node_modules`, the preview's compilation, rename scoping and workspace trust; all are fixed.
 
-**Later.** History states, keyed `spawn`, retry sugar, a durable driver, generated Rust state machines for hot paths.
+**Retry sugar.** `invoke … retry N [on E | …] [after delay]`, with `attempt` in the delay, as the [language page](language.md#retrying-an-invoke) describes.
+
+*Done.* The compiler writes a retry out as explicit states (the invoking state becomes compound, with `Attempt` and `Backoff`), a counter variable and guarded `invoke.fail` branches, so the IR (still 0.2), both runtimes, the viewer and the exporters are unchanged, and the sugar and the same states written by hand have the same machine hash. Conformance cases run the written-out form in both runtimes; the formatter, the diagnostics (`RB0118`, `RB0215`–`RB0218`), the tree-sitter grammar and the language server know the clause.
+
+**Later.** History states, keyed `spawn`, a durable driver, generated Rust state machines for hot paths.
 
 M3 and M4 are independent once M1 is done and can run in parallel. M2 depends only on M1.
 

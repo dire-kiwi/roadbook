@@ -1263,6 +1263,11 @@ impl Parser<'_> {
         } else {
             None
         };
+        let retry = if self.at(T::Lower) && self.text(self.tok()) == "retry" {
+            Some(self.retry()?)
+        } else {
+            None
+        };
         let open = self.expect_p(P::LBrace, " and the invoke's outcomes (`done`, `fail`)")?;
         let mut outcomes = Vec::new();
         let errors_before = self.diags.len();
@@ -1298,7 +1303,39 @@ impl Parser<'_> {
             callee,
             args,
             alias,
+            retry,
             outcomes,
+            span: self.since(start),
+        })
+    }
+
+    /// `retry N [on E | …] [after delay]`, at `retry`.
+    fn retry(&mut self) -> PResult<Retry> {
+        let start = self.bump().span;
+        if !self.at(T::Int) {
+            return Err(self.unexpected("the number of retries after `retry`"));
+        }
+        let t = self.bump();
+        let count = self.text(t).parse().unwrap_or(i64::MAX);
+        let mut errors = Vec::new();
+        if self.eat_kw(K::On).is_some() {
+            errors.push(self.upper("an error name")?);
+            while self.eat_p(P::Pipe).is_some() {
+                errors.push(self.upper("an error name")?);
+            }
+        }
+        let delay = if self.eat_kw(K::After).is_some() {
+            let delay = self.expr(true)?;
+            self.check_record_after(&delay)?;
+            Some(delay)
+        } else {
+            None
+        };
+        Ok(Retry {
+            count,
+            count_span: t.span,
+            errors,
+            delay,
             span: self.since(start),
         })
     }

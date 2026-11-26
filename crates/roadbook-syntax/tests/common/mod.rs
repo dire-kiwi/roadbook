@@ -51,6 +51,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  state A {\n    invoke charge(order, user) {\n      done -> B  set r = result\n      fail CardDeclined -> C  set d = error\n      fail * -> D\n      fail Gateway {\n        if attempts < 3 -> Backoff\n        else -> GaveUp\n      }\n    }\n  }\n  state B {\n    invoke Checkout() {\n      done -> A\n    }\n  }\n}\n",
     ),
     (
+        "retry",
+        "machine M() {\n  state A {\n    invoke charge(order) retry 3 on Gateway | Timeout after backoff(attempt) {\n      done -> B\n      fail * -> C\n    }\n  }\n  state B {\n    invoke Checkout() retry 1 {\n      done -> A\n    }\n  }\n  state C {\n    invoke fetch() retry 2 after (Cfg { ms: 5 }) {\n      done -> A\n    }\n  }\n}\n",
+    ),
+    (
         "messaging",
         "machine M(peer: ref Peer, peers: ref Peer[]?) {\n  emits Progress { percent: int }\n  emits Done\n  state A {\n    invoke Upload(file) as upload {\n      done -> B  emit Done\n    }\n    on Pause send upload.Pause\n    on upload.Progress set p = event.percent  emit Progress { percent: p, }\n    on peer.Reserved -> B  send peer.Ack { id: 1 }  do log()\n    entry send peer.Hello {}\n  }\n}\n",
     ),
