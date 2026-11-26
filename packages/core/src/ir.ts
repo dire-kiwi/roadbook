@@ -1,11 +1,11 @@
 /**
- * The Roadbook IR, version 0.1, as `spec/ir.md` describes it. The types mirror the JSON;
+ * The Roadbook IR, version 0.2, as `spec/ir.md` describes it. The types mirror the JSON;
  * {@link loadIr} checks the version before anything else.
  */
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.1"
+export const IR_VERSION = "0.2"
 
 export interface Span {
   readonly file: number
@@ -18,7 +18,7 @@ export interface Span {
 /** A field of a record, error or event, or a parameter. */
 export interface Field {
   readonly name: string
-  /** A type reference in canonical source form: `LineItem[]`, `string?`. */
+  /** A type reference in canonical source form: `LineItem[]`, `string?`, `ref Inventory`. */
   readonly type: string
   readonly doc: string
 }
@@ -73,6 +73,7 @@ export interface Machine {
   readonly errors: ReadonlyArray<string>
   readonly vars: ReadonlyArray<Variable>
   readonly events: Readonly<Record<string, EventDecl>>
+  readonly emits: Readonly<Record<string, EventDecl>>
   readonly root: State
   readonly hash: string
 }
@@ -98,12 +99,22 @@ export interface State {
 export interface Invoke {
   readonly kind: "task" | "machine"
   readonly src: string
+  readonly as: string | null
   readonly args: ReadonlyArray<Expr>
   readonly span: Span
 }
 
+/** Another running machine: an invoked child by its `as` name, or a `ref` parameter or variable. */
+export interface Address {
+  readonly kind: "child" | "ref"
+  readonly name: string
+  readonly machine: string
+  readonly state: string | null
+}
+
 export type Trigger =
   | { readonly kind: "event"; readonly event: string }
+  | { readonly kind: "emitted"; readonly from: Address; readonly event: string }
   | { readonly kind: "any" }
   | { readonly kind: "after"; readonly delay: Expr }
   | { readonly kind: "always" }
@@ -123,6 +134,8 @@ export interface Transition {
 export type Effect =
   | { readonly kind: "set"; readonly var: string; readonly value: Expr }
   | { readonly kind: "do"; readonly action: string; readonly args: ReadonlyArray<Expr> }
+  | { readonly kind: "send"; readonly to: Address; readonly event: string; readonly value: Expr }
+  | { readonly kind: "emit"; readonly event: string; readonly value: Expr }
 
 interface ExprBase {
   readonly type: string
@@ -145,7 +158,7 @@ export type Op = "==" | "!=" | "<" | "<=" | ">" | ">=" | "+" | "-" | "*" | "and"
 
 export interface Ir {
   readonly irVersion: string
-  readonly sources: ReadonlyArray<{ readonly path: string }>
+  readonly sources: ReadonlyArray<{ readonly path: string; readonly package: string | null }>
   readonly types: Readonly<Record<string, TypeDecl>>
   readonly functions: Readonly<Record<string, FunctionDecl>>
   readonly actions: Readonly<Record<string, ActionDecl>>
@@ -178,7 +191,8 @@ export const loadIr = (json: unknown): Ir => {
 
 /**
  * The machine `name` of `ir`, checked to be one this version of the runtime can run. Parallel
- * states are milestone 6 and are refused here, before any run starts.
+ * states (milestone 6) and messaging between machines (milestone 5: `emits`, `ref`,
+ * `invoke … as`, `on name.Event`, `send`, `emit`) are refused here, before any run starts.
  */
 export const getMachine = (ir: Ir, name: string): Machine => {
   const machine = Object.hasOwn(ir.machines, name) ? ir.machines[name] : undefined
@@ -191,7 +205,50 @@ export const getMachine = (ir: Ir, name: string): Machine => {
       `machine ${name}: state ${parallel} is a parallel state, which this runtime does not run yet (milestone 6)`
     )
   }
+  const messaging = findMessaging(machine)
+  if (messaging !== undefined) {
+    throw new IrError(
+      `machine ${name} uses ${messaging}: messaging between machines is not supported by this runtime yet (milestone 5)`
+    )
+  }
   return machine
+}
+
+/** The first messaging construct in a machine, described, or `undefined` if it uses none. */
+const findMessaging = (machine: Machine): string | undefined => {
+  const emitted = Object.keys(machine.emits)[0]
+  if (emitted !== undefined) return `emits ${emitted}`
+  const isRef = (type: string) => type.startsWith("ref ")
+  const param = machine.params.find((p) => isRef(p.type))
+  if (param !== undefined) return `the parameter ${param.name}: ${param.type}`
+  const variable = machine.vars.find((v) => isRef(v.type))
+  if (variable !== undefined) return `the variable ${variable.name}: ${variable.type}`
+  return stateMessaging(machine.root)
+}
+
+const stateMessaging = (state: State): string | undefined => {
+  const effect = (effects: ReadonlyArray<Effect>): string | undefined => {
+    for (const e of effects) {
+      if (e.kind === "send") return `send ${e.to.name}.${e.event}`
+      if (e.kind === "emit") return `emit ${e.event}`
+    }
+    return undefined
+  }
+  const own = effect(state.entry) ?? effect(state.exit)
+  if (own !== undefined) return `${own} in state ${state.id}`
+  if (state.invoke !== null && state.invoke.as !== null) {
+    return `invoke ${state.invoke.src}(…) as ${state.invoke.as} in state ${state.id}`
+  }
+  for (const t of state.transitions) {
+    if (t.trigger.kind === "emitted") return `on ${t.trigger.from.name}.${t.trigger.event} in state ${state.id}`
+    const found = effect(t.effects)
+    if (found !== undefined) return `${found} in state ${state.id}`
+  }
+  for (const child of state.states) {
+    const found = stateMessaging(child)
+    if (found !== undefined) return found
+  }
+  return undefined
 }
 
 const findParallel = (state: State): string | undefined => {
