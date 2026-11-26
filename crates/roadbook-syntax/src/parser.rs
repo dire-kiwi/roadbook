@@ -1043,7 +1043,9 @@ impl Parser<'_> {
             } else {
                 None
             };
-            return Ok(Branches::Single(self.action(start, guard, trigger, ignore)?));
+            return Ok(Branches::Single(
+                self.action(start, guard, trigger, ignore)?,
+            ));
         }
         let open = self.bump();
         let mut branches: Vec<Branch> = Vec::new();
@@ -1142,7 +1144,12 @@ impl Parser<'_> {
                 self.error(d);
                 return Err(Fail);
             }
-            if self.at_p(P::Arrow) || self.at_kw(K::Set) || self.at_kw(K::Do) || self.at_kw(K::Send) || self.at_kw(K::Emit) {
+            if self.at_p(P::Arrow)
+                || self.at_kw(K::Set)
+                || self.at_kw(K::Do)
+                || self.at_kw(K::Send)
+                || self.at_kw(K::Emit)
+            {
                 let d = Diagnostic::error(
                     codes::MISPLACED_IGNORE,
                     kw.span.to(self.tok().span),
@@ -1178,9 +1185,15 @@ impl Parser<'_> {
         }
         if target.is_none() && effects.is_empty() {
             let (expected, help) = if ignore {
-                ("`-> Target`, `set`, `do`, `send`, `emit` or `ignore`", "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`) or messages (`send child.Event`, `emit Event`), or write `ignore` to take the event and do nothing")
+                (
+                    "`-> Target`, `set`, `do`, `send`, `emit` or `ignore`",
+                    "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`) or messages (`send child.Event`, `emit Event`), or write `ignore` to take the event and do nothing",
+                )
             } else {
-                ("`-> Target`, `set`, `do`, `send` or `emit`", "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`) or messages (`send child.Event`, `emit Event`)")
+                (
+                    "`-> Target`, `set`, `do`, `send` or `emit`",
+                    "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`) or messages (`send child.Event`, `emit Event`)",
+                )
             };
             let msg = format!(
                 "a transition must do something: expected {expected}, found {}",

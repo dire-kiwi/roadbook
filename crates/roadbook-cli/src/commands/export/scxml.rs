@@ -15,7 +15,8 @@
 //! - **Data model.** `datamodel="roadbook"`: every `cond`, `expr`, `delayexpr`, `targetexpr`
 //!   and `location` is the canonical text of a Roadbook expression, which reads `event`,
 //!   `result` and `error` as the IR says. Parameters and variables are `<data>`, with their
-//!   types, and the machine's result type and errors, in attributes of the `rb:` namespace.
+//!   types, and the machine's result type, errors and `strict`, in attributes of the `rb:`
+//!   namespace.
 //! - **The machine** is the `<scxml>` element, unless its body has `entry`, `exit`, an invoke
 //!   or transitions: then a `<state>` with the machine's id inside it holds them, and its
 //!   transitions with a target inside it are `type="internal"`, so they do not leave the
@@ -177,6 +178,9 @@ pub fn document(ir: &Ir, name: &str, m: &Machine) -> String {
     }
     if !m.errors.is_empty() {
         attrs.push(("rb:errors", m.errors.join(" ")));
+    }
+    if m.strict {
+        attrs.push(("rb:strict", "true".into()));
     }
     w.open(0, "scxml", &attrs, false);
     if !m.params.is_empty() || !m.vars.is_empty() {

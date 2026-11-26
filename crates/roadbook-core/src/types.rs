@@ -95,10 +95,7 @@ impl fmt::Display for Defect {
                         .unwrap_or("an event"),
                     _ => "an input",
                 };
-                write!(
-                    f,
-                    "`{tag}` enabled no transition in a strict machine"
-                )
+                write!(f, "`{tag}` enabled no transition in a strict machine")
             }
         }
     }

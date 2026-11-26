@@ -297,9 +297,10 @@ export function stateRows(state: State, collapsed = false): Row[] {
     const base: Partial<Row> = { transition: index, cls: triggerKind(t.trigger) }
     const guard = guardText(state, index)
     const items: [string, Partial<Row>][] = []
-    if (guard) items.push([guard, {}])
+    // No target and no effects: `ignore`, which takes the event and does nothing.
+    if (!t.effects.length) items.push([guard ? `${guard} ignore` : 'ignore', {}])
+    else if (guard) items.push([guard, {}])
     for (const e of t.effects) items.push([effectText(e), effectExtra(e)])
-    if (!items.length) items.push(['', {}])
     items.forEach(([text, extra], i) => {
       add(kw, text, { ...base, ...extra, ...(i === 0 && from ? { kwEvent: from } : {}) }, i === 0)
     })
@@ -350,9 +351,9 @@ export function paramsText(params: Field[]): string {
   return params.map((p) => `${p.name}: ${p.type}`).join(', ')
 }
 
-/** `machine Checkout(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUnavailable` */
-export function signatureText(kind: string, name: string, decl: { params: Field[]; returns?: string | null; errors?: string[] }): string {
-  let s = `${kind} ${name}(${paramsText(decl.params)})`
+/** `[strict] machine Checkout(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUnavailable` */
+export function signatureText(kind: string, name: string, decl: { params: Field[]; returns?: string | null; errors?: string[]; strict?: boolean }): string {
+  let s = `${decl.strict ? 'strict ' : ''}${kind} ${name}(${paramsText(decl.params)})`
   if (decl.returns) s += ` -> ${decl.returns}`
   if (decl.errors && decl.errors.length) s += ` ! ${decl.errors.join(' | ')}`
   return s

@@ -171,7 +171,11 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
     if (c.events.length) {
       h += '<h4>Send an event</h4>'
       for (const e of c.events) {
-        const note = e.handled ? '' : '<span class="rb-cnote">no <code>on</code> for it here: it would be dropped</span>'
+        const note = e.handled
+          ? ''
+          : m.strict
+            ? '<span class="rb-cnote">no <code>on</code> for it here: this machine is strict, so the run would end with a defect</span>'
+            : '<span class="rb-cnote">no <code>on</code> for it here: it would be dropped</span>'
         h += tagged(k(`event:${e.name}`), `send ${e.name}`, e.name, e.fields, (v) => s.send(v), note)
       }
     }

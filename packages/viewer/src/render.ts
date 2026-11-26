@@ -395,8 +395,8 @@ export function typeHtml(ir: Ir, type: string): string {
 }
 
 /** `machine Order(id: string, inventory: ref Inventory) -> Receipt ! E` as HTML, refs linked. */
-export function signatureHtml(ir: Ir, kind: string, name: string, decl: { params: { name: string; type: string }[]; returns?: string | null; errors?: string[] }): string {
-  let s = `${esc(kind)} ${esc(name)}(${paramsHtml(ir, decl.params)})`
+export function signatureHtml(ir: Ir, kind: string, name: string, decl: { params: { name: string; type: string }[]; returns?: string | null; errors?: string[]; strict?: boolean }): string {
+  let s = `${decl.strict ? 'strict ' : ''}${esc(kind)} ${esc(name)}(${paramsHtml(ir, decl.params)})`
   if (decl.returns) s += ` -&gt; ${esc(decl.returns)}`
   if (decl.errors && decl.errors.length) s += ` ! ${esc(decl.errors.join(' | '))}`
   return s

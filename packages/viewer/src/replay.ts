@@ -462,8 +462,11 @@ export function recordText(r: { kind: string; [member: string]: unknown }): stri
       return `failed in ${stateName(r.state)}: ${jsonText(r.error, 100)}`
     case 'cancelled':
       return 'cancelled'
-    case 'defect':
+    case 'defect': {
+      const d = r.defect as { kind?: unknown; event?: { value?: { _tag?: unknown } } } | null
+      if (d?.kind === 'unhandled') return `defect: ${String(d.event?.value?._tag)} enabled no transition in this strict machine`
       return `defect ${jsonText(r.defect, 100)}`
+    }
     default:
       return jsonText(r, 120)
   }

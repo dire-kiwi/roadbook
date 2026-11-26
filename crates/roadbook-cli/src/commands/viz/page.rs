@@ -320,14 +320,15 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
     json!({ "title": title, "pages": pages, "machines": machines })
 }
 
-/// `machine Name(p: T) -> R ! E | F`
+/// `[strict] machine Name(p: T) -> R ! E | F`
 pub fn signature(name: &str, m: &Machine) -> String {
     let params: Vec<String> = m
         .params
         .iter()
         .map(|p| format!("{}: {}", p.name, p.ty))
         .collect();
-    let mut s = format!("machine {name}({})", params.join(", "));
+    let strict = if m.strict { "strict " } else { "" };
+    let mut s = format!("{strict}machine {name}({})", params.join(", "));
     if let Some(r) = &m.returns {
         s.push_str(&format!(" -> {r}"));
     }

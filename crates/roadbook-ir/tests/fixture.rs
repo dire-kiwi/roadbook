@@ -38,7 +38,9 @@ fn bless_or_check_hashes() {
         let mut ir = stored.clone();
         fill_hashes(&mut ir).unwrap();
         if std::env::var_os("ROADBOOK_BLESS").is_some() {
-            let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data").join(file);
+            let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/data")
+                .join(file);
             std::fs::write(path, ir.to_json()).unwrap();
             continue;
         }

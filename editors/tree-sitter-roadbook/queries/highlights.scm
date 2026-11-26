@@ -55,7 +55,10 @@
 [
   "final"
   "parallel"
+  "strict"
 ] @keyword.modifier
+
+(ignore) @keyword
 
 [
   "if"

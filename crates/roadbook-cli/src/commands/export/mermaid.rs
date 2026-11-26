@@ -384,7 +384,9 @@ fn description(s: &State) -> Vec<String> {
         };
         let rest = label(s, t);
         let rest = rest.strip_prefix(&trigger(&t.trigger)).unwrap_or(&rest);
-        out.push(format!("{head}{rest}"));
+        // No target and no effects: an `ignore`.
+        let ignore = if t.effects.is_empty() { " ignore" } else { "" };
+        out.push(format!("{head}{rest}{ignore}"));
     }
     if let Some(e) = &s.output {
         out.push(format!("output {}", e.text));

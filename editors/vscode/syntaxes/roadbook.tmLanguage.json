@@ -71,10 +71,11 @@
 
     "machine-signature": {
       "name": "meta.declaration.machine.roadbook",
-      "begin": "\\b(machine)\\s+([A-Z][A-Za-z0-9]*)",
+      "begin": "\\b(?:(strict)\\s+)?(machine)\\s+([A-Z][A-Za-z0-9]*)",
       "beginCaptures": {
-        "1": { "name": "storage.type.machine.roadbook" },
-        "2": { "name": "entity.name.type.machine.roadbook" }
+        "1": { "name": "storage.modifier.strict.roadbook" },
+        "2": { "name": "storage.type.machine.roadbook" },
+        "3": { "name": "entity.name.type.machine.roadbook" }
       },
       "end": "(?=[{}])|$",
       "patterns": [{ "include": "#signature-rest" }]
@@ -240,7 +241,7 @@
     "keywords": {
       "patterns": [
         {
-          "match": "\\b(initial|entry|exit|on|after|always|done|invoke|output|fail|if|else)\\b",
+          "match": "\\b(initial|entry|exit|on|after|always|done|invoke|output|fail|if|else|ignore)\\b",
           "name": "keyword.control.$1.roadbook"
         },
         { "match": "\\b(set|do|send|emit)\\b", "name": "keyword.other.effect.roadbook" },
@@ -248,7 +249,7 @@
           "match": "\\b(type|enum|extern|fn|action|task|machine|var|emits|state)\\b",
           "name": "storage.type.$1.roadbook"
         },
-        { "match": "\\b(final|parallel)\\b", "name": "storage.modifier.$1.roadbook" },
+        { "match": "\\b(final|parallel|strict)\\b", "name": "storage.modifier.$1.roadbook" },
         { "match": "\\b(and|or|not)\\b", "name": "keyword.operator.logical.roadbook" },
         { "match": "\\b(true|false)\\b", "name": "constant.language.boolean.roadbook" },
         { "match": "\\b(event|error|result)\\b", "name": "variable.language.roadbook" }
