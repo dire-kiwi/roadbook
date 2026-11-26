@@ -3,11 +3,13 @@
 // (app/simulate.ts) draws it, and the tests drive it with a conformance case's script.
 //
 // It is a small driver (spec/execution.md, "The driver") for a single run on a virtual clock:
-// the reader is the host. Tasks, and machine invokes (treated as tasks: the child run is not
-// started), end when the reader gives their outcome; timers fire when the reader lets them or
-// advances the clock; functions are answered by the reader when the core calls them; actions
-// do nothing. `send` and `emit` are carried out as their records only: there is no other run to
-// deliver to. A child invoked with `as` can be made to emit one of its events by hand.
+// the reader is the host. Tasks, machine invokes (treated as tasks: the child run is not
+// started) and call invokes (the callee is not run either) end when the reader gives their
+// outcome; timers fire when the reader lets them or advances the clock; functions are answered
+// by the reader when the core calls them; actions do nothing. `send` and `emit` are carried out
+// as their records only: there is no other run to deliver to. A child invoked with `as` can be
+// made to emit one of its events by hand, and the machine's own calls can be made to it by a
+// simulated caller, whose answer (`reply`) shows as its `replied` record only.
 
 import { canonicalJson, getMachine, IrError, start as coreStart, step as coreStep } from '@roadbook/core'
 import type { Command, Fns, FnResult, Input, Ir as CoreIr, Json, Snapshot, Stepped, Tagged, TraceRecord } from '@roadbook/core'
@@ -44,6 +46,8 @@ export interface Frame {
   due: Readonly<Record<number, number>>
   /** For each running child invoke with `as`, the id its next emitted event gets. */
   childMessages: Readonly<Record<number, number>>
+  /** How many calls simulated callers have made: the next comes from run `r{callers + 2}`. */
+  callers: number
   /** The records this choice wrote, in order. */
   records: TraceRecord[]
   /** The transitions this choice took, in order. */
@@ -65,10 +69,12 @@ export interface InvokeChoice {
   id: number
   state: string
   src: string
-  srcKind: 'task' | 'machine'
-  /** The result type, or null for a task or machine that returns nothing. */
+  srcKind: 'task' | 'machine' | 'call'
+  /** For a call, the callee: the machine, the parameter or variable that holds the ref, and the run id it holds. */
+  callee: { machine: string; name: string; run: Json } | null
+  /** The result type, or null for a task, machine or call that returns nothing. */
   returns: string | null
-  /** The declared errors, with their fields. */
+  /** The declared errors, with their fields; for a call, the built-in `Unanswered` last. */
   errors: { name: string; fields: Field[] }[]
   /** The `as` name of a machine invoke, through which the child's emitted events reach this run. */
   as: string | null
@@ -91,8 +97,28 @@ export interface EventChoice {
   handled: boolean
 }
 
+/** A call of the machine a simulated caller can make. */
+export interface CallChoice {
+  name: string
+  params: Field[]
+  returns: string | null
+  errors: string[]
+  /** Whether an active state has an `on` for it; otherwise it would be dropped and answered `Unanswered`, unless a guard decides. */
+  handled: boolean
+}
+
+/** A call the run has taken and not answered yet. */
+export interface PendingCall {
+  from: string
+  invoke: number
+  call: string
+}
+
 export interface Choices {
   events: EventChoice[]
+  calls: CallChoice[]
+  /** The calls taken and not yet answered, oldest first. */
+  pending: PendingCall[]
   invokes: InvokeChoice[]
   timers: TimerChoice[]
 }
@@ -109,6 +135,7 @@ interface Work {
   now: number
   due: Record<number, number>
   childMessages: Record<number, number>
+  callers: number
   records: TraceRecord[]
 }
 
@@ -176,6 +203,7 @@ export class Simulation {
           ? { kind: 'invoke.fail', invoke, error: outcome.fail }
           : { kind: 'invoke.defect', invoke, defect: { kind: 'host', message: outcome.defect } }
     const what = 'done' in outcome ? 'done' : 'fail' in outcome ? `fail ${outcome.fail._tag}` : 'defect'
+    // A call's label names its address, `inventory.reserve`, as the snapshot's src does.
     return this.choose(`${inv.src} ${what}`, (w) => this.step(w, input))
   }
 
@@ -209,6 +237,19 @@ export class Simulation {
         this.step(w, { kind: 'after', timer: next.id })
       }
       w.now = Math.max(w.now, end)
+    })
+  }
+
+  /**
+   * Makes a call of the machine's `calls` to the run, from a simulated caller: by default a new
+   * run each time (`r2`, `r3`, …) through its invoke 1, as separate callers would.
+   */
+  call(name: string, args: { [param: string]: Json }, caller?: { from: string; invoke: number }): Outcome {
+    if (!own(this.def.calls, name)) return { kind: 'error', message: `${this.machine} has no call ${name}` }
+    return this.choose(`call ${name}`, (w) => {
+      const from = caller ?? { from: `r${w.callers + 2}`, invoke: 1 }
+      w.callers += 1
+      this.step(w, { kind: 'call', from: from.from, invoke: from.invoke, call: name, args })
     })
   }
 
@@ -273,7 +314,7 @@ export class Simulation {
   /** What the reader can do in the frame shown. */
   choices(): Choices {
     const f = this.current
-    if (!f || f.snapshot.status !== 'running') return { events: [], invokes: [], timers: [] }
+    if (!f || f.snapshot.status !== 'running') return { events: [], calls: [], pending: [], invokes: [], timers: [] }
     const m = this.def
     const active = f.snapshot.active.map((id) => findState(m, id)).filter((s) => s !== null)
     const events = Object.entries(m.events).map(([name, decl]) => ({
@@ -281,36 +322,48 @@ export class Simulation {
       fields: decl.fields,
       handled: active.some((s) => s.transitions.some((t) => (t.trigger.kind === 'event' && t.trigger.event === name) || t.trigger.kind === 'any')),
     }))
+    const calls = Object.entries(m.calls).map(([name, decl]) => ({
+      name,
+      params: decl.params,
+      returns: decl.returns,
+      errors: decl.errors,
+      handled: active.some((s) => s.transitions.some((t) => t.trigger.kind === 'call' && t.trigger.call === name)),
+    }))
+    const pending = f.snapshot.calls.map((c) => ({ from: c.from, invoke: c.invoke, call: c.call }))
     const invokes = f.snapshot.invokes.map((inv): InvokeChoice => {
-      const state = findState(m, inv.state)
-      // A call is simulated like a task, answered from its declaration.
-      const kind = state?.invoke?.kind ?? 'task'
-      const srcKind = kind === 'machine' ? 'machine' : 'task'
-      const to = state?.invoke?.to
+      const invoke = findState(m, inv.state)?.invoke
+      // A call is simulated like a task, answered from its declaration. The snapshot's src
+      // names its address (`inventory.reserve`); the invoke's, the call.
+      const srcKind = invoke?.kind ?? 'task'
+      const to = invoke?.to
       const decl =
-        kind === 'call' && to
-          ? own(own(this.ir.machines, to.machine)?.calls ?? {}, inv.src)
+        srcKind === 'call'
+          ? to && own(own(this.ir.machines, to.machine)?.calls ?? {}, invoke!.src)
           : srcKind === 'machine'
             ? own(this.ir.machines, inv.src)
             : own(this.ir.tasks, inv.src)
-      const as = state?.invoke?.as ?? null
+      const as = invoke?.as ?? null
       const child = srcKind === 'machine' ? own(this.ir.machines, inv.src) : undefined
+      const errors = (decl?.errors ?? []).map((name) => {
+        const t = own(this.ir.types, name)
+        return { name, fields: t && t.kind === 'error' ? t.fields : [] }
+      })
+      if (srcKind === 'call') errors.push({ name: 'Unanswered', fields: [] })
+      const held = to ? (Object.prototype.hasOwnProperty.call(f.snapshot.vars, to.name) ? f.snapshot.vars[to.name] : f.snapshot.input[to.name]) : undefined
       return {
         id: inv.id,
         state: inv.state,
         src: inv.src,
         srcKind,
+        callee: srcKind === 'call' && to ? { machine: to.machine, name: to.name, run: held ?? null } : null,
         returns: decl?.returns ?? null,
-        errors: (decl?.errors ?? []).map((name) => {
-          const t = own(this.ir.types, name)
-          return { name, fields: t && t.kind === 'error' ? t.fields : [] }
-        }),
+        errors,
         as,
         emits: as && child ? Object.entries(child.emits).map(([name, d]) => ({ name, fields: d.fields })) : [],
       }
     })
     const timers = f.snapshot.timers.map((t) => ({ id: t.id, state: t.state, index: t.index, delay: t.delay, due: f.due[t.id] ?? f.now + t.delay }))
-    return { events, invokes, timers }
+    return { events, calls, pending, invokes, timers }
   }
 
   // ───────────── the driver ─────────────
@@ -326,8 +379,8 @@ export class Simulation {
   private attempt(label: string, from: number, act: (w: Work) => void): Outcome {
     const base = this.frames[from]
     const w: Work = base
-      ? { snapshot: base.snapshot, now: base.now, due: { ...base.due }, childMessages: { ...base.childMessages }, records: [] }
-      : { snapshot: undefined as unknown as Snapshot, now: 0, due: {}, childMessages: {}, records: [] }
+      ? { snapshot: base.snapshot, now: base.now, due: { ...base.due }, childMessages: { ...base.childMessages }, callers: base.callers, records: [] }
+      : { snapshot: undefined as unknown as Snapshot, now: 0, due: {}, childMessages: {}, callers: 0, records: [] }
     try {
       act(w)
     } catch (e) {
@@ -343,7 +396,7 @@ export class Simulation {
     const taken = w.records.flatMap((r) => (r.kind === 'transition' ? [{ state: r.from, index: r.index }] : []))
     for (const id of Object.keys(w.due).map(Number)) if (!w.snapshot.timers.some((t) => t.id === id)) delete w.due[id]
     for (const id of Object.keys(w.childMessages).map(Number)) if (!w.snapshot.invokes.some((i) => i.id === id)) delete w.childMessages[id]
-    const frame: Frame = { label, snapshot: w.snapshot, now: w.now, due: w.due, childMessages: w.childMessages, records: w.records, taken }
+    const frame: Frame = { label, snapshot: w.snapshot, now: w.now, due: w.due, childMessages: w.childMessages, callers: w.callers, records: w.records, taken }
     this.frames = [...this.frames.slice(0, from + 1), frame]
     this.at = this.frames.length - 1
     return { kind: 'ok' }
@@ -399,7 +452,8 @@ export class Simulation {
       case 'send':
       case 'emit':
       case 'reply':
-        // The invoke waits for the reader; messages and replies have no other run to go to.
+        // The invoke waits for the reader, a call's too; messages, and the replies to simulated
+        // callers, have no other run to go to: their records are all there is of them.
         return null
       case 'timer.fire':
         // Only `restore` emits it, and simulate mode never restores a run.

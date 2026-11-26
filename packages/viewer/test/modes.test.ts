@@ -34,8 +34,6 @@ interface Case {
 const readCase = (name: string) => JSON.parse(fs.readFileSync(path.join(conformance, 'cases', name, 'case.json'), 'utf8')) as Case
 const readTrace = (name: string) => fs.readFileSync(path.join(conformance, 'cases', name, 'trace.jsonl'), 'utf8')
 const caseIr = (c: Case) => JSON.parse(fs.readFileSync(path.join(conformance, c.chart.replace(/\.road$/, '.ir.json')), 'utf8')) as Ir
-/** The cases whose traces the viewer reads: not yet those with calls between runs. */
-const replayable = cases.filter((name) => !readCase(name).requires.includes('calls'))
 
 /**
  * Why the page cannot play a case's script at all, or null: simulate mode runs one run and
@@ -248,7 +246,7 @@ describe('values', () => {
 })
 
 describe('replay', () => {
-  it.each(replayable)('%s: the expected trace replays against its chart', (name) => {
+  it.each(cases)('%s: the expected trace replays against its chart', (name) => {
     const c = readCase(name)
     const ir = caseIr(c)
     const text = readTrace(name)

@@ -12,7 +12,7 @@ stateDiagram-v2
   state "Inventory" as Inventory_machine
   state Inventory_machine {
     Reserving: invoke reserveStock(warehouse, orderId, items)
-    Reserving: reserve / reply call fail OutOfStock { reason#58; "busy" }
+    Reserving: on reserve / reply call fail OutOfStock { reason#58; "busy" }
     Reserving: on Twice / reply pending fail OutOfStock { reason#58; "first" }, reply pending fail OutOfStock { reason#58; "second" }
     [*] --> Ready
     Ready --> Reserving: reserve / set pending = call, set orderId = event.orderId, set items = event.items
@@ -25,7 +25,7 @@ stateDiagram-v2
     Closed --> [*]
   }
   note right of Inventory_machine
-    count / reply call done held
+    on count / reply call done held
   end note
 ```
 

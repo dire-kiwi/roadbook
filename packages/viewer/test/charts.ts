@@ -32,6 +32,11 @@ export function chart(name: string): Ir {
   return loadIr(path.join(here, 'charts', `${name}.ir.json`))
 }
 
+/** The IR of a conformance chart, `spec/conformance/charts/<name>.ir.json` (kept fresh by the conformance tests). */
+export function conformanceChart(name: string): Ir {
+  return loadIr(path.join(repo, 'spec/conformance/charts', `${name}.ir.json`))
+}
+
 const require = createRequire(import.meta.url)
 const ElkBundled = require('elkjs/lib/elk.bundled.js') as new () => ElkLike
 

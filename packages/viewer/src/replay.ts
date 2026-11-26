@@ -4,7 +4,8 @@
 // against the chart as it goes, and warns when a run was recorded from another version of its
 // machine (the `ir` of `started` differs from the machine's hash). A run restored from a saved
 // snapshot begins with `restored` instead, and goes on from the snapshot's configuration,
-// variables and work; a suspended run ends with `suspended`. Pure and DOM-free.
+// variables and work; a suspended run ends with `suspended`. A callee's view keeps the calls it
+// has taken and not yet answered (`replied`). Pure and DOM-free.
 
 import type { Json } from '@roadbook/core'
 import type { Ir, Machine, State } from './ir.ts'
@@ -16,7 +17,7 @@ export type Rec = { kind: string; run: string; t: number; parent?: string } & { 
 
 const KINDS = new Set([
   'started', 'restored', 'suspended', 'entered', 'exited', 'event', 'dropped', 'stale', 'transition', 'set', 'action', 'sent', 'emitted', 'undelivered',
-  'invoke.started', 'invoke.cancelled', 'timer.started', 'timer.cancelled', 'done', 'failed', 'cancelled', 'defect',
+  'invoke.started', 'invoke.cancelled', 'replied', 'timer.started', 'timer.cancelled', 'done', 'failed', 'cancelled', 'defect',
 ])
 /** The records after which a run writes nothing more. */
 const ENDS = new Set(['done', 'failed', 'cancelled', 'defect', 'suspended'])
@@ -86,6 +87,8 @@ export interface RunView {
   /** The output, error or defect of the record that ended it. */
   result: Json
   invokes: { id: number; state: string; src: string }[]
+  /** The calls taken and not answered yet, oldest first: the caller's run, its invoke, the call. */
+  calls: { from: string; invoke: number; call: string }[]
   timers: { id: number; state: string; index: number; delay: number }[]
   /** The last transition the run took. */
   taken: { state: string; index: number } | null
@@ -239,7 +242,15 @@ export class Replay {
             break
           case 'invoke.started': {
             const s = state(r.state)
-            if (!s?.invoke || s.invoke.src !== r.src) out.push(`${at}: ${str(r.state)} does not invoke ${str(r.src)}`)
+            // A call's src names its address too: `inventory.reserve`.
+            const src = s?.invoke ? (s.invoke.kind === 'call' && s.invoke.to ? `${s.invoke.to.name}.${s.invoke.src}` : s.invoke.src) : null
+            if (src !== r.src) out.push(`${at}: ${str(r.state)} does not invoke ${str(r.src)}`)
+            break
+          }
+          case 'event':
+          case 'dropped': {
+            const input = r.event as { kind?: string; call?: unknown } | undefined
+            if (input?.kind === 'call' && !own(m.calls, str(input.call))) out.push(`${at}: ${view.machine} has no call ${str(input.call)}`)
             break
           }
           case 'timer.started': {
@@ -251,6 +262,14 @@ export class Replay {
       }
       if (r.kind === 'invoke.cancelled' && !view.invokes.some((x) => x.id === r.invoke)) out.push(`${at}: invoke ${String(r.invoke)} is not running`)
       if (r.kind === 'timer.cancelled' && !view.timers.some((x) => x.id === r.timer)) out.push(`${at}: timer ${String(r.timer)} is not running`)
+      if (r.kind === 'replied') {
+        // A reply answers a pending call, or the call dropped by the record just before it.
+        const prev = this.records.slice(0, i).reverse().find((x) => x.run === r.run)
+        const dropped = prev?.kind === 'dropped' ? (prev.event as { kind?: string; from?: unknown; invoke?: unknown } | undefined) : undefined
+        const answersDropped = dropped?.kind === 'call' && dropped.from === r.to && dropped.invoke === r.invoke
+        if (!answersDropped && !view.calls.some((c) => c.from === r.to && c.invoke === r.invoke && c.call === r.call))
+          out.push(`${at}: no pending call ${str(r.call)} from ${str(r.to)}'s invoke ${String(r.invoke)}`)
+      }
       if (r.kind === 'event') {
         const input = r.event as { kind?: string; invoke?: number; timer?: number } | undefined
         if (input?.kind === 'after' && !view.timers.some((x) => x.id === input.timer)) out.push(`${at}: timer ${String(input.timer)} is not running`)
@@ -273,6 +292,7 @@ const emptyView = (run: string, machine: string): RunView => ({
   suspended: false,
   result: null,
   invokes: [],
+  calls: [],
   timers: [],
   taken: null,
 })
@@ -283,6 +303,7 @@ interface SavedView {
   input?: { [param: string]: Json }
   vars?: { [name: string]: Json }
   timers?: { id: number; state: string; index: number; delay: number }[]
+  calls?: { from: string; invoke: number; call: string }[]
 }
 
 /** Follows one record of a run. */
@@ -302,6 +323,7 @@ function apply(view: RunView, r: Rec) {
       view.input = saved.input ?? {}
       view.vars = saved.vars ?? {}
       view.timers = (saved.timers ?? []).map(({ id, state, index, delay }) => ({ id, state, index, delay }))
+      view.calls = (saved.calls ?? []).map(({ from, invoke, call }) => ({ from, invoke, call }))
       break
     }
     case 'suspended':
@@ -338,30 +360,40 @@ function apply(view: RunView, r: Rec) {
     case 'event':
     case 'dropped': {
       // An outcome or an expiry is consumed whether or not it enabled a transition.
-      const input = r.event as { kind?: string; invoke?: number; timer?: number } | undefined
+      const input = r.event as { kind?: string; invoke?: number; timer?: number; from?: unknown; call?: unknown } | undefined
       if (input?.kind === 'after') view.timers = view.timers.filter((x) => x.id !== input.timer)
       if (input?.kind?.startsWith('invoke.')) view.invokes = view.invokes.filter((x) => x.id !== input.invoke)
+      // A call taken is pending until a reply answers it; a dropped one is answered at once.
+      if (input?.kind === 'call' && r.kind === 'event') view.calls = [...view.calls, { from: str(input.from), invoke: num(input.invoke), call: str(input.call) }]
       break
     }
+    case 'replied':
+      view.calls = view.calls.filter((c) => !(c.from === r.to && c.invoke === r.invoke))
+      break
+    // A run that ends leaves no call pending: its driver answers each one Unanswered, writing nothing.
     case 'done':
       view.status = 'done'
       view.result = (r.output ?? null) as Json
       view.active = []
+      view.calls = []
       break
     case 'failed':
       view.status = 'failed'
       view.result = (r.error ?? null) as Json
       view.active = []
+      view.calls = []
       break
     case 'cancelled':
       view.status = 'cancelled'
       view.active = []
+      view.calls = []
       break
     case 'defect':
       view.status = 'defect'
       view.result = (r.defect ?? null) as Json
       view.invokes = []
       view.timers = []
+      view.calls = []
       break
   }
 }
@@ -386,15 +418,18 @@ export const stateName = (id: unknown): string => {
   return dot < 0 ? s : s.slice(dot + 1)
 }
 
+/** The fields of a tagged value besides `_tag`, as ` {"reason":"busy"}`, or nothing. */
+function jsonFields(v: unknown): string {
+  const { _tag, ...rest } = (v ?? {}) as { [k: string]: unknown }
+  void _tag
+  return Object.keys(rest).length ? ' ' + jsonText(rest, 100) : ''
+}
+
 /** An input as an `event`, `dropped` or `stale` record holds it, in words. */
 export function inputText(input: unknown): string {
   const i = (input ?? {}) as { [k: string]: unknown }
   const tag = (v: unknown) => str((v as { _tag?: unknown } | null)?._tag)
-  const fields = (v: unknown) => {
-    const { _tag, ...rest } = (v ?? {}) as { [k: string]: unknown }
-    void _tag
-    return Object.keys(rest).length ? ' ' + jsonText(rest, 100) : ''
-  }
+  const fields = jsonFields
   switch (i.kind) {
     case 'event':
       return `${tag(i.value)}${fields(i.value)}`
@@ -402,6 +437,10 @@ export function inputText(input: unknown): string {
       return `message ${String(i.message)} from ${str(i.from)}: ${tag(i.value)}${fields(i.value)}`
     case 'emitted':
       return `${tag(i.value)} emitted by ${str(i.from)}${fields(i.value)}`
+    case 'call': {
+      const args = (i.args ?? {}) as { [k: string]: unknown }
+      return `call ${str(i.call)} from ${str(i.from)} (its invoke ${String(i.invoke)})${Object.keys(args).length ? ' ' + jsonText(args, 100) : ''}`
+    }
     case 'invoke.done':
       return `invoke ${String(i.invoke)} done ${jsonText(i.value, 100)}`
     case 'invoke.fail':
@@ -434,9 +473,17 @@ export function recordText(r: { kind: string; [member: string]: unknown }): stri
     case 'exited':
       return `${r.kind} ${stateName(r.state)}`
     case 'event':
-    case 'dropped':
     case 'stale':
       return `${r.kind} ${inputText(r.event)}`
+    case 'dropped': {
+      const call = (r.event as { kind?: unknown } | null)?.kind === 'call'
+      // The `replied` record that follows answers it.
+      return `dropped ${inputText(r.event)}${call ? ': no transition takes it, so it is answered Unanswered' : ''}`
+    }
+    case 'replied': {
+      const value = r.outcome === 'fail' ? `${str((r.value as { _tag?: unknown } | null)?._tag)}${jsonFields(r.value)}` : r.value === null ? '' : jsonText(r.value, 100)
+      return `replied ${str(r.outcome)}${value ? ` ${value}` : ''} to ${str(r.to)}'s call ${str(r.call)} (its invoke ${String(r.invoke)})`
+    }
     case 'transition':
       return `transition ${stateName(r.from)} #${String(r.index)} → ${r.to === null ? '(internal)' : stateName(r.to)}`
     case 'set':
