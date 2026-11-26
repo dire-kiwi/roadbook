@@ -1,0 +1,135 @@
+================================================================================
+Set and do lists, trailing commas
+================================================================================
+
+machine M() {
+  initial A
+  state A {
+    entry set a = 1, b = 2,
+    exit do f(), g(a, b,),
+    on X set a = 1  do f(a)  set b = 2
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (entry
+            (set
+              (assignment
+                (identifier)
+                (integer))
+              (assignment
+                (identifier)
+                (integer))))
+          (exit
+            (do
+              (call
+                (identifier)
+                (arguments))
+              (call
+                (identifier)
+                (arguments
+                  (identifier)
+                  (identifier)))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (set
+              (assignment
+                (identifier)
+                (integer)))
+            (do
+              (call
+                (identifier)
+                (arguments
+                  (identifier))))
+            (set
+              (assignment
+                (identifier)
+                (integer)))))))))
+
+================================================================================
+Send and emit
+================================================================================
+
+machine M() {
+  initial A
+  state A {
+    on PauseClicked    send upload.Pause
+    on ResumeClicked   send upload.Resume {}
+    on Order           send stock.Reserve { sku: event.sku, qty: 1, }
+    on Tick            emit Progress { percent: percentOf(file, offset) }
+    on Done            -> B  emit Finished
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (send
+              (identifier)
+              (type_identifier)))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (send
+              (identifier)
+              (type_identifier)
+              (record_body)))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (send
+              (identifier)
+              (type_identifier)
+              (record_body
+                (field_value
+                  (identifier)
+                  (field_expression
+                    (implicit_name)
+                    (identifier)))
+                (field_value
+                  (identifier)
+                  (integer)))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (emit
+              (type_identifier)
+              (record_body
+                (field_value
+                  (identifier)
+                  (call
+                    (identifier)
+                    (arguments
+                      (identifier)
+                      (identifier)))))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (target
+              (type_identifier))
+            (emit
+              (type_identifier))))))))

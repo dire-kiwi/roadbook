@@ -1,0 +1,60 @@
+================================================================================
+Line and doc comments
+================================================================================
+
+// A line comment.
+//// Four slashes are a line comment too.
+///
+/// Documents the type.
+type T { a: int } // after code
+
+/// Documents the machine.
+machine M() {
+  /// Documents the variable.
+  var x: int = 0 // trailing
+  initial A // c
+  /// Documents the state.
+  state A {
+    // inside
+    on X -> A
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (comment)
+  (comment)
+  (doc_comment)
+  (doc_comment)
+  (type_declaration
+    (type_identifier)
+    (fields
+      (field_declaration
+        (identifier)
+        (builtin_type))))
+  (comment)
+  (doc_comment)
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (doc_comment)
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (integer))
+      (comment)
+      (initial
+        (type_identifier))
+      (comment)
+      (doc_comment)
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (comment)
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (target
+              (type_identifier))))))))

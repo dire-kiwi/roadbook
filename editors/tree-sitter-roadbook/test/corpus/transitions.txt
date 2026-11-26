@@ -1,0 +1,329 @@
+================================================================================
+Triggers: events, any event and emitted events
+================================================================================
+
+machine M() {
+  initial A
+  state A {
+    on Submit -> B
+    on * -> C
+    on upload.Progress set percent = event.percent
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (target
+              (type_identifier)))
+          (on_transition
+            (wildcard)
+            (target
+              (type_identifier)))
+          (on_transition
+            (received_event
+              (identifier)
+              (type_identifier))
+            (set
+              (assignment
+                (identifier)
+                (field_expression
+                  (implicit_name)
+                  (identifier))))))))))
+
+================================================================================
+Guards, targets and internal transitions
+================================================================================
+
+machine M() {
+  initial A
+  state A {
+    on Submit if isValid(order) -> Paying  set attempts = 0  do audit("submitted", order)
+    on Retry if attempts < 3 -> Processing.Paying.Card
+    on Tick set ticks = ticks + 1
+    on Ping do pong()
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (guard
+              (call
+                (identifier)
+                (arguments
+                  (identifier))))
+            (target
+              (type_identifier))
+            (set
+              (assignment
+                (identifier)
+                (integer)))
+            (do
+              (call
+                (identifier)
+                (arguments
+                  (string
+                    (string_content))
+                  (identifier)))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (guard
+              (binary_expression
+                (identifier)
+                (integer)))
+            (target
+              (type_identifier)
+              (type_identifier)
+              (type_identifier)))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (set
+              (assignment
+                (identifier)
+                (binary_expression
+                  (identifier)
+                  (integer)))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (do
+              (call
+                (identifier)
+                (arguments)))))))))
+
+================================================================================
+Blocks of branches
+================================================================================
+
+machine M() {
+  initial A
+  state A {
+    on Submit {
+      if a        -> B
+      if b and c  -> C  set x = 1
+      else        do log("no")
+    }
+    always {
+      if ready -> D
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (branches
+              (branch
+                (guard
+                  (identifier))
+                (target
+                  (type_identifier)))
+              (branch
+                (guard
+                  (binary_expression
+                    (identifier)
+                    (identifier)))
+                (target
+                  (type_identifier))
+                (set
+                  (assignment
+                    (identifier)
+                    (integer))))
+              (else_branch
+                (do
+                  (call
+                    (identifier)
+                    (arguments
+                      (string
+                        (string_content))))))))
+          (always_transition
+            (branches
+              (branch
+                (guard
+                  (identifier))
+                (target
+                  (type_identifier))))))))))
+
+================================================================================
+After: durations, expressions and parenthesised records
+================================================================================
+
+machine M() {
+  initial A
+  state A {
+    after 30s -> B
+    after 200ms -> B
+    after 5m set x = 1
+    after retryDelay(attempts) -> B
+    after (Cfg { ms: 5 }) -> B
+    after delayFor(Cfg { ms: 5 }) -> B
+    after Cfg.Slow -> B
+    after Cfg {
+      if x -> B
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (after_transition
+            (duration)
+            (target
+              (type_identifier)))
+          (after_transition
+            (duration)
+            (target
+              (type_identifier)))
+          (after_transition
+            (duration)
+            (set
+              (assignment
+                (identifier)
+                (integer))))
+          (after_transition
+            (call
+              (identifier)
+              (arguments
+                (identifier)))
+            (target
+              (type_identifier)))
+          (after_transition
+            (parenthesized_expression
+              (record_value
+                (type_identifier)
+                (record_body
+                  (field_value
+                    (identifier)
+                    (integer)))))
+            (target
+              (type_identifier)))
+          (after_transition
+            (call
+              (identifier)
+              (arguments
+                (record_value
+                  (type_identifier)
+                  (record_body
+                    (field_value
+                      (identifier)
+                      (integer))))))
+            (target
+              (type_identifier)))
+          (after_transition
+            (enum_value
+              (type_identifier)
+              (type_identifier))
+            (target
+              (type_identifier)))
+          (after_transition
+            (record_value
+              (type_identifier))
+            (branches
+              (branch
+                (guard
+                  (identifier))
+                (target
+                  (type_identifier))))))))))
+
+================================================================================
+Always and done
+================================================================================
+
+machine M() {
+  initial A
+  state A {
+    initial B
+    state B {}
+    always if isEmpty(problems) -> Accept
+    done -> C
+    done { if ok -> C else -> D }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (initial
+            (type_identifier))
+          (state_declaration
+            (type_identifier)
+            (state_body))
+          (always_transition
+            (guard
+              (call
+                (identifier)
+                (arguments
+                  (identifier))))
+            (target
+              (type_identifier)))
+          (done_transition
+            (target
+              (type_identifier)))
+          (done_transition
+            (branches
+              (branch
+                (guard
+                  (identifier))
+                (target
+                  (type_identifier)))
+              (else_branch
+                (target
+                  (type_identifier))))))))))

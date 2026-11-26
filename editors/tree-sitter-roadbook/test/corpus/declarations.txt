@@ -1,0 +1,243 @@
+================================================================================
+Imports: relative, package and scoped package paths
+================================================================================
+
+import { Order, chargeCard } from "./types.road"
+import { Inventory } from "inventory/inventory.road"
+import {
+  Stock,
+  reserve,
+} from "@shop/inventory/charts/inventory.road"
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (import
+    (type_identifier)
+    (identifier)
+    (string
+      (string_content)))
+  (import
+    (type_identifier)
+    (string
+      (string_content)))
+  (import
+    (type_identifier)
+    (identifier)
+    (string
+      (string_content))))
+
+================================================================================
+Records, aliases, enums, errors and extern types
+================================================================================
+
+type User { id: string, role: Role }
+type UserId = string
+type Empty {}
+enum Role { Customer, Admin, }
+error CardDeclined { reason: string }
+error GatewayUnavailable
+error Gone {}
+extern type Money
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (type_declaration
+    (type_identifier)
+    (fields
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (type_identifier))))
+  (type_declaration
+    (type_identifier)
+    (builtin_type))
+  (type_declaration
+    (type_identifier)
+    (fields))
+  (enum_declaration
+    (type_identifier)
+    (type_identifier)
+    (type_identifier))
+  (error_declaration
+    (type_identifier)
+    (fields
+      (field_declaration
+        (identifier)
+        (builtin_type))))
+  (error_declaration
+    (type_identifier))
+  (error_declaration
+    (type_identifier)
+    (fields))
+  (extern_declaration
+    (type_identifier)))
+
+================================================================================
+Functions, actions and tasks
+================================================================================
+
+fn retryDelay(attempt: int) -> duration
+fn isEmpty(items: json[]) -> bool
+action audit(what: string, order: Order,)
+action ping()
+task chargeCard(order: Order) -> Receipt ! CardDeclined | GatewayUnavailable
+task wait(d: duration)
+task find(id: string) ! NotFound
+task load() -> Data
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (function_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type)))
+    (builtin_type))
+  (function_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (list_type
+          (builtin_type))))
+    (builtin_type))
+  (action_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type))
+      (parameter
+        (identifier)
+        (type_identifier))))
+  (action_declaration
+    (identifier)
+    (parameters))
+  (task_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (type_identifier)))
+    (type_identifier)
+    (errors
+      (type_identifier)
+      (type_identifier)))
+  (task_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type))))
+  (task_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type)))
+    (errors
+      (type_identifier)))
+  (task_declaration
+    (identifier)
+    (parameters)
+    (type_identifier)))
+
+================================================================================
+Types: built-in, lists, optionals and refs
+================================================================================
+
+type T {
+  a: string,
+  b: int,
+  c: float,
+  d: bool,
+  e: duration,
+  f: json,
+  g: Money[],
+  h: string?,
+  i: int[]?[],
+  j: ref Upload,
+  k: ref Upload?
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (type_declaration
+    (type_identifier)
+    (fields
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (list_type
+          (type_identifier)))
+      (field_declaration
+        (identifier)
+        (optional_type
+          (builtin_type)))
+      (field_declaration
+        (identifier)
+        (list_type
+          (optional_type
+            (list_type
+              (builtin_type)))))
+      (field_declaration
+        (identifier)
+        (ref_type
+          (type_identifier)))
+      (field_declaration
+        (identifier)
+        (optional_type
+          (ref_type
+            (type_identifier)))))))
+
+================================================================================
+Unreserved words as names
+================================================================================
+
+type T { from: string, as: int, ref: bool, string: json, result: int }
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (type_declaration
+    (type_identifier)
+    (fields
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type)))))

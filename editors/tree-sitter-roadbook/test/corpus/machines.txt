@@ -1,0 +1,247 @@
+================================================================================
+A machine's signature and items
+================================================================================
+
+machine Checkout(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUnavailable {
+  var attempts: int = 0
+  var receipt:  Receipt
+  var upload:   ref Upload?
+
+  event Pause
+  event Submit { sku: string, qty: int }
+  emits Progress { percent: int }
+
+  initial Charging
+
+  state Charging {}
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (type_identifier))
+      (parameter
+        (identifier)
+        (type_identifier)))
+    (type_identifier)
+    (errors
+      (type_identifier)
+      (type_identifier))
+    (machine_body
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (integer))
+      (variable_declaration
+        (identifier)
+        (type_identifier))
+      (variable_declaration
+        (identifier)
+        (optional_type
+          (ref_type
+            (type_identifier))))
+      (event_declaration
+        (type_identifier))
+      (event_declaration
+        (type_identifier)
+        (fields
+          (field_declaration
+            (identifier)
+            (builtin_type))
+          (field_declaration
+            (identifier)
+            (builtin_type))))
+      (emits_declaration
+        (type_identifier)
+        (fields
+          (field_declaration
+            (identifier)
+            (builtin_type))))
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body)))))
+
+================================================================================
+A machine with no return type and no errors
+================================================================================
+
+machine Ping() {
+  initial Done
+  final state Done {}
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body)))))
+
+================================================================================
+Final, parallel and nested states
+================================================================================
+
+machine M() {
+  initial Running
+
+  parallel state Running {
+    state Left {
+      initial A
+      state A { on Go -> B }
+      final state B {}
+    }
+    state Right {
+      initial C
+      state C {
+        initial D
+        state D {}
+      }
+    }
+    done -> Finished
+  }
+
+  final state Finished { output 1 }
+  final state Failed   { fail Broken }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (state_declaration
+            (type_identifier)
+            (state_body
+              (initial
+                (type_identifier))
+              (state_declaration
+                (type_identifier)
+                (state_body
+                  (on_transition
+                    (event_pattern
+                      (type_identifier))
+                    (target
+                      (type_identifier)))))
+              (state_declaration
+                (type_identifier)
+                (state_body))))
+          (state_declaration
+            (type_identifier)
+            (state_body
+              (initial
+                (type_identifier))
+              (state_declaration
+                (type_identifier)
+                (state_body
+                  (initial
+                    (type_identifier))
+                  (state_declaration
+                    (type_identifier)
+                    (state_body))))))
+          (done_transition
+            (target
+              (type_identifier)))))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (output
+            (integer))))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (fail
+            (record_value
+              (type_identifier))))))))
+
+================================================================================
+Entry, exit and transitions in the machine body
+================================================================================
+
+machine M() {
+  entry set started = true
+  exit do audit("left")
+  on Cancel -> Cancelled
+  after 1h -> TimedOut
+  always if isDone(x) -> Finished
+  initial A
+  state A {
+    entry send child.Start  emit Started
+    exit set a = 1, b = 2
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (entry
+        (set
+          (assignment
+            (identifier)
+            (boolean))))
+      (exit
+        (do
+          (call
+            (identifier)
+            (arguments
+              (string
+                (string_content))))))
+      (on_transition
+        (event_pattern
+          (type_identifier))
+        (target
+          (type_identifier)))
+      (after_transition
+        (duration)
+        (target
+          (type_identifier)))
+      (always_transition
+        (guard
+          (call
+            (identifier)
+            (arguments
+              (identifier))))
+        (target
+          (type_identifier)))
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (entry
+            (send
+              (identifier)
+              (type_identifier))
+            (emit
+              (type_identifier)))
+          (exit
+            (set
+              (assignment
+                (identifier)
+                (integer))
+              (assignment
+                (identifier)
+                (integer)))))))))
