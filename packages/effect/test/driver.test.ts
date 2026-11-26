@@ -6,7 +6,7 @@ import { TestClock } from "effect/testing"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import * as Roadbook from "../src/index.ts"
-import { Early, Go, Leftover, Overflow, Settle } from "./charts/runtime.road.ts"
+import { Early, Go, Leftover, Overflow, Payload, Settle } from "./charts/runtime.road.ts"
 
 const charts = path.resolve(import.meta.dirname, "../../../spec/conformance/charts")
 const readIr = (file: string): unknown => JSON.parse(fs.readFileSync(path.join(charts, file), "utf8"))
@@ -378,4 +378,46 @@ describe("defects the conformance cases leave out", () => {
       yield* actor.send(Go.make({}))
       assert.isTrue(Exit.hasDies(yield* Effect.exit(actor.result)))
     }).pipe(Effect.scoped))
+})
+
+describe("json values from host code", () => {
+  const runWith = (value: unknown) => {
+    const { records, sink } = collect()
+    return Payload.implement({ fns: { payload: () => value as Core.Json } }).run({}).pipe(
+      Effect.provideService(Roadbook.TraceSink, sink),
+      Effect.exit,
+      Effect.map((exit) => ({ exit, records }))
+    )
+  }
+  const cyclic: Record<string, unknown> = {}
+  cyclic["self"] = cyclic
+
+  for (const [name, value] of [
+    ["NaN", { total: NaN }],
+    ["Infinity", [1, Infinity]],
+    ["undefined", { a: undefined }],
+    ["a function", { f: () => 1 }],
+    ["a Date", new Date(0)],
+    ["a cycle", cyclic]
+  ] as const) {
+    it.effect(`${name} is a host defect`, () =>
+      Effect.gen(function*() {
+        const { exit, records } = yield* runWith(value)
+        const die = Exit.isFailure(exit) ? exit.cause.reasons.find((r) => r._tag === "Die") : undefined
+        const defect = (die as { defect: Roadbook.Defect } | undefined)?.defect.defect
+        assert.strictEqual(defect?.kind, "host")
+        assert.match((defect as { message: string }).message, /not JSON/)
+        // The trace still has a canonical form.
+        for (const record of records) Core.canonicalJson(record)
+      }))
+  }
+
+  it.effect("a JSON value passes as a copy", () =>
+    Effect.gen(function*() {
+      const value = { a: [1, "two", null, true, { b: -0 }], ["__proto__"]: 1 }
+      const { exit } = yield* runWith(JSON.parse(JSON.stringify(value)))
+      assert.isTrue(Exit.isSuccess(exit))
+      const output = Exit.isSuccess(exit) ? exit.value : undefined
+      assert.strictEqual(Core.canonicalJson(output), '{"__proto__":1,"a":[1,"two",null,true,{"b":0}]}')
+    }))
 })

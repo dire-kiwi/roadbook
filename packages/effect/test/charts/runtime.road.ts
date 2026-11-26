@@ -26,7 +26,20 @@ const ir: unknown = {
     }
   ],
   "types": {},
-  "functions": {},
+  "functions": {
+    "payload": {
+      "params": [],
+      "returns": "json",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 33
+      }
+    }
+  },
   "actions": {
     "log": {
       "params": [
@@ -39,9 +52,9 @@ const ir: unknown = {
       "doc": "",
       "span": {
         "file": 0,
-        "line": 4,
+        "line": 6,
         "col": 1,
-        "endLine": 4,
+        "endLine": 6,
         "endCol": 25
       }
     }
@@ -54,9 +67,9 @@ const ir: unknown = {
       "doc": "",
       "span": {
         "file": 0,
-        "line": 5,
+        "line": 7,
         "col": 1,
-        "endLine": 5,
+        "endLine": 7,
         "endCol": 32
       }
     }
@@ -66,9 +79,9 @@ const ir: unknown = {
       "doc": "`int` overflows the TypeScript runtime's range ±(2^53 - 1) in its output.",
       "span": {
         "file": 0,
-        "line": 8,
+        "line": 10,
         "col": 1,
-        "endLine": 14,
+        "endLine": 16,
         "endCol": 2
       },
       "params": [],
@@ -87,9 +100,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 9,
+            "line": 11,
             "col": 3,
-            "endLine": 9,
+            "endLine": 11,
             "endCol": 32
           }
         }
@@ -102,9 +115,9 @@ const ir: unknown = {
         "doc": "`int` overflows the TypeScript runtime's range ±(2^53 - 1) in its output.",
         "span": {
           "file": 0,
-          "line": 8,
+          "line": 10,
           "col": 1,
-          "endLine": 14,
+          "endLine": 16,
           "endCol": 2
         },
         "initial": "Overflow.Over",
@@ -116,9 +129,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 13,
+              "line": 15,
               "col": 3,
-              "endLine": 13,
+              "endLine": 15,
               "endCol": 36
             },
             "initial": null,
@@ -165,9 +178,9 @@ const ir: unknown = {
       "doc": "Settles forever: every microstep takes the `always` again.",
       "span": {
         "file": 0,
-        "line": 17,
+        "line": 19,
         "col": 1,
-        "endLine": 27,
+        "endLine": 29,
         "endCol": 2
       },
       "params": [],
@@ -186,9 +199,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 18,
+            "line": 20,
             "col": 3,
-            "endLine": 18,
+            "endLine": 20,
             "endCol": 17
           }
         }
@@ -201,9 +214,9 @@ const ir: unknown = {
         "doc": "Settles forever: every microstep takes the `always` again.",
         "span": {
           "file": 0,
-          "line": 17,
+          "line": 19,
           "col": 1,
-          "endLine": 27,
+          "endLine": 29,
           "endCol": 2
         },
         "initial": "Settle.Spin",
@@ -215,9 +228,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 22,
+              "line": 24,
               "col": 3,
-              "endLine": 26,
+              "endLine": 28,
               "endCol": 4
             },
             "initial": null,
@@ -284,9 +297,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 24,
+                  "line": 26,
                   "col": 7,
-                  "endLine": 24,
+                  "endLine": 26,
                   "endCol": 39
                 }
               }
@@ -308,9 +321,9 @@ const ir: unknown = {
       "doc": "Reads `a` before it has a value, in `b`'s initial value.",
       "span": {
         "file": 0,
-        "line": 30,
+        "line": 32,
         "col": 1,
-        "endLine": 37,
+        "endLine": 39,
         "endCol": 2
       },
       "params": [],
@@ -324,9 +337,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 31,
+            "line": 33,
             "col": 3,
-            "endLine": 31,
+            "endLine": 33,
             "endCol": 13
           }
         },
@@ -358,9 +371,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 32,
+            "line": 34,
             "col": 3,
-            "endLine": 32,
+            "endLine": 34,
             "endCol": 21
           }
         }
@@ -373,9 +386,9 @@ const ir: unknown = {
         "doc": "Reads `a` before it has a value, in `b`'s initial value.",
         "span": {
           "file": 0,
-          "line": 30,
+          "line": 32,
           "col": 1,
-          "endLine": 37,
+          "endLine": 39,
           "endCol": 2
         },
         "initial": "Early.Over",
@@ -387,9 +400,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 36,
+              "line": 38,
               "col": 3,
-              "endLine": 36,
+              "endLine": 38,
               "endCol": 32
             },
             "initial": null,
@@ -422,9 +435,9 @@ const ir: unknown = {
       "doc": "Outer's work is cancelled after Inner's exit effect, so a defect there leaves it running.",
       "span": {
         "file": 0,
-        "line": 40,
+        "line": 42,
         "col": 1,
-        "endLine": 57,
+        "endLine": 59,
         "endCol": 2
       },
       "params": [],
@@ -437,9 +450,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 41,
+            "line": 43,
             "col": 3,
-            "endLine": 41,
+            "endLine": 43,
             "endCol": 11
           }
         }
@@ -451,9 +464,9 @@ const ir: unknown = {
         "doc": "Outer's work is cancelled after Inner's exit effect, so a defect there leaves it running.",
         "span": {
           "file": 0,
-          "line": 40,
+          "line": 42,
           "col": 1,
-          "endLine": 57,
+          "endLine": 59,
           "endCol": 2
         },
         "initial": "Leftover.Outer",
@@ -465,9 +478,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 45,
+              "line": 47,
               "col": 3,
-              "endLine": 54,
+              "endLine": 56,
               "endCol": 4
             },
             "initial": "Leftover.Outer.Inner",
@@ -479,9 +492,9 @@ const ir: unknown = {
                 "doc": "",
                 "span": {
                   "file": 0,
-                  "line": 53,
+                  "line": 55,
                   "col": 5,
-                  "endLine": 53,
+                  "endLine": 55,
                   "endCol": 46
                 },
                 "initial": null,
@@ -515,9 +528,9 @@ const ir: unknown = {
               "args": [],
               "span": {
                 "file": 0,
-                "line": 46,
+                "line": 48,
                 "col": 5,
-                "endLine": 48,
+                "endLine": 50,
                 "endCol": 6
               }
             },
@@ -532,9 +545,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 47,
+                  "line": 49,
                   "col": 7,
-                  "endLine": 47,
+                  "endLine": 49,
                   "endCol": 19
                 }
               },
@@ -549,9 +562,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 49,
+                  "line": 51,
                   "col": 5,
-                  "endLine": 49,
+                  "endLine": 51,
                   "endCol": 18
                 }
               }
@@ -566,9 +579,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 56,
+              "line": 58,
               "col": 3,
-              "endLine": 56,
+              "endLine": 58,
               "endCol": 22
             },
             "initial": null,
@@ -589,6 +602,71 @@ const ir: unknown = {
         "fail": null
       },
       "hash": "sha256:0481e78a354e2459f214dbb5067278d6d32ceba90a63af3d770bd7997693b10c"
+    },
+    "Payload": {
+      "doc": "Ends with whatever the host's `payload` returns, which must be JSON.",
+      "span": {
+        "file": 0,
+        "line": 62,
+        "col": 1,
+        "endLine": 66,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": "json",
+      "errors": [],
+      "vars": [],
+      "events": {},
+      "root": {
+        "id": "Payload",
+        "name": "Payload",
+        "kind": "compound",
+        "doc": "Ends with whatever the host's `payload` returns, which must be JSON.",
+        "span": {
+          "file": 0,
+          "line": 62,
+          "col": 1,
+          "endLine": 66,
+          "endCol": 2
+        },
+        "initial": "Payload.Over",
+        "states": [
+          {
+            "id": "Payload.Over",
+            "name": "Over",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 65,
+              "col": 3,
+              "endLine": 65,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "payload",
+              "args": [],
+              "type": "json",
+              "text": "payload()"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:b7cdb60126ee47e0840dbeed1c48b9d3defe81f2a47176c0cc067674de5f5458"
     }
   }
 }
@@ -656,3 +734,21 @@ export interface LeftoverDef extends Roadbook.MachineDef {
 
 /** Outer's work is cancelled after Inner's exit effect, so a defect there leaves it running. */
 export const Leftover = Roadbook.make<LeftoverDef>(ir, "Leftover", errors)
+
+// ---- machine: Payload ----
+
+export interface PayloadDef extends Roadbook.MachineDef {
+  readonly name: "Payload"
+  readonly input: {}
+  readonly output: Schema.Json
+  readonly error: never
+  readonly event: never
+  readonly state: "Payload" | "Payload.Over"
+  readonly fns: { readonly payload: { readonly args: {}; readonly returns: Schema.Json } }
+  readonly actions: {}
+  readonly tasks: {}
+  readonly machines: {}
+}
+
+/** Ends with whatever the host's `payload` returns, which must be JSON. */
+export const Payload = Roadbook.make<PayloadDef>(ir, "Payload", errors)

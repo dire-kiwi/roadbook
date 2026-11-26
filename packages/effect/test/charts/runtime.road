@@ -1,6 +1,8 @@
 // Charts for the driver's tests (test/driver.test.ts): the defects the core raises and the
-// conformance cases leave out, and work left over when a step is cut short.
+// conformance cases leave out, work left over when a step is cut short, and `json` values
+// from host code.
 
+fn payload()             -> json
 action log(what: string)
 task work()              -> int
 
@@ -54,4 +56,11 @@ machine Leftover() {
   }
 
   final state Over {}
+}
+
+/// Ends with whatever the host's `payload` returns, which must be JSON.
+machine Payload() -> json {
+  initial Over
+
+  final state Over { output payload() }
 }

@@ -67,7 +67,7 @@ export const PlaceOrderLive = PlaceOrder.implement({
 
 Each implementation receives the arguments the chart passes, as one object with the declared parameter names. It does not receive the machine's variables or the current event.
 
-Values cross the boundary in their host form: records as plain objects, errors as instances of their tagged error classes, enums as string literals, `duration` as an Effect `Duration`, an optional value as `null`, `int` and `float` as `number`, a machine or task that returns nothing as `void`. The driver converts them to and from the core's JSON form by the IR's types, and a value that is not of its declared type (a negative `Duration`, an `int` outside ±(2^53 − 1), a missing field) is a `host` defect.
+Values cross the boundary in their host form: records as plain objects, errors as instances of their tagged error classes, enums as string literals, `duration` as an Effect `Duration`, an optional value as `null`, `int` and `float` as `number`, a machine or task that returns nothing as `void`. The driver converts them to and from the core's JSON form by the IR's types, and a value that is not of its declared type (a negative `Duration`, an `int` outside ±(2^53 − 1), a missing field) is a `host` defect. A `json` or `extern type` value is copied and must be JSON: `null`, a boolean, a finite number, a string, an array or a plain object of JSON values; `NaN`, `Infinity`, `undefined`, a function, a class instance such as a `Date`, or a cycle is a `host` defect.
 
 The types enforce the contract in both directions:
 
