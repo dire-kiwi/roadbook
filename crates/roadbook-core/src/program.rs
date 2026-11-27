@@ -1,9 +1,9 @@
 //! An IR document made ready to run: every machine's states indexed in document order.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use roadbook_ir::{Ir, Machine, State, TypeDef, TypeRef};
+use roadbook_ir::{Ir, Machine, State, Trigger, TypeDef, TypeRef};
 
 /// An IR document, checked and indexed for the interpreter.
 ///
@@ -26,6 +26,9 @@ pub(crate) struct MachineIndex {
     /// For each state, its children's indices.
     pub children: Vec<Vec<usize>>,
     pub by_id: HashMap<String, usize>,
+    /// The emitted events the machine has an `on x.E` for, anywhere in it, by the sender's
+    /// machine. A run receives no others.
+    hears: HashMap<String, HashSet<String>>,
 }
 
 /// Why an IR cannot be run.
@@ -55,6 +58,7 @@ impl Program {
                 parents: Vec::new(),
                 children: Vec::new(),
                 by_id: HashMap::new(),
+                hears: HashMap::new(),
             };
             walk(&m.root, None, &mut Vec::new(), &mut idx);
             machines.insert(name.clone(), idx);
@@ -112,6 +116,14 @@ fn walk(s: &State, parent: Option<usize>, path: &mut Vec<usize>, idx: &mut Machi
     idx.parents.push(parent);
     idx.children.push(Vec::new());
     idx.by_id.insert(s.id.clone(), me);
+    for t in &s.transitions {
+        if let Trigger::Emitted { from, event } = &t.trigger {
+            idx.hears
+                .entry(from.machine.clone())
+                .or_default()
+                .insert(event.clone());
+        }
+    }
     for (i, c) in s.states.iter().enumerate() {
         path.push(i);
         let ci = walk(c, Some(me), path, idx);
@@ -155,5 +167,16 @@ impl Program {
                 .is_some_and(|&i| idx.state(m, i).kind == roadbook_ir::StateKind::Parallel)
         });
         parallel.or(active.last()).map(String::as_str)
+    }
+
+    /// The events of a run of machine `sender` that a run of `machine` receives when the
+    /// sender emits them: those `machine` has an `on x.E` for, where `x` is a run of
+    /// `sender`, in any state (execution.md, "Messages between runs").
+    pub fn heard(&self, machine: &str, sender: &str) -> HashSet<String> {
+        self.machines
+            .get(machine)
+            .and_then(|idx| idx.hears.get(sender))
+            .cloned()
+            .unwrap_or_default()
     }
 }

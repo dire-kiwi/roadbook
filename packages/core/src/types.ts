@@ -229,7 +229,10 @@ export type Command =
     readonly message: number
     readonly value: Tagged
   }
-  /** Queue the emitted event for this run's invoker (if it used `as`) and its subscribers. */
+  /**
+   * Queue the emitted event for this run's invoker (if it used `as`) and its subscribers, those of
+   * them whose machine has an `on` for it (`heard`).
+   */
   | { readonly kind: "emit"; readonly message: number; readonly value: Tagged }
 
 /** What the host's function `name` gave: its value, or a host defect. */

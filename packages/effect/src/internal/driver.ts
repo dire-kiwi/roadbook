@@ -46,8 +46,11 @@ export interface InvokeContext {
   readonly parentRun: string
   readonly invoke: number
   readonly token: CancelToken
-  /** The parent's port, when it invoked the child with `as`: where the child's emitted events go. */
-  readonly invoker: Port | undefined
+  /**
+   * The parent's port, when it invoked the child with `as`: where the child's emitted events go,
+   * those in `heard`, which the parent's machine has an `on` for.
+   */
+  readonly invoker: { readonly port: Port; readonly heard: ReadonlySet<string> } | undefined
 }
 
 export const CurrentInvoke: Context.Reference<InvokeContext | undefined> = Context.Reference<
@@ -132,8 +135,13 @@ interface Env {
   readonly observer: RunObserver
   /** The token this run claimed, if it is a child run. */
   readonly token: CancelToken | undefined
-  /** For a child run invoked with `as`: its invoke id and the parent's port, for what it emits. */
-  readonly invoker: { readonly invoke: number; readonly port: Port } | undefined
+  /**
+   * For a child run invoked with `as`: its invoke id, the parent's port, and which of the events
+   * it emits the parent receives.
+   */
+  readonly invoker:
+    | { readonly invoke: number; readonly port: Port; readonly heard: ReadonlySet<string> }
+    | undefined
 }
 
 /**
@@ -174,7 +182,7 @@ const claimEnv: Effect.Effect<Env> = Effect.flatMap(CurrentInvoke, (ctx) => {
     timer: ctx.timer,
     observer: ctx.observer,
     token: ctx.token,
-    invoker: ctx.invoker === undefined ? undefined : { invoke: ctx.invoke, port: ctx.invoker }
+    invoker: ctx.invoker === undefined ? undefined : { invoke: ctx.invoke, ...ctx.invoker }
   })
 })
 
@@ -216,7 +224,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       }
     }
     const queue = yield* Queue.unbounded<Core.Input | Wake>()
-    const port: Port = { id: env.runId, machine: name, hash: machine.hash, queue, open: true, subscribers: new Set() }
+    const port: Port = { id: env.runId, machine: name, hash: machine.hash, queue, open: true, subscribers: new Map() }
     if (env.token !== undefined) {
       // A child run's queue starts with what its parent sent before it claimed the invoke;
       // from now on the parent's sends go straight to it.
@@ -388,7 +396,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             parentRun: env.runId,
             invoke: command.invoke,
             token,
-            invoker: command.as === null ? undefined : port
+            invoker: command.as === null ? undefined : { port, heard: Core.heard(ir, name, src) }
           }
           : undefined
         const fiber = work.pipe(
@@ -487,11 +495,12 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             return Effect.sync(() => {
               const { message, value } = command
               const from = env.runId
-              if (env.invoker !== undefined) {
+              const event = value._tag
+              if (env.invoker !== undefined && env.invoker.heard.has(event)) {
                 push(env.invoker.port, { kind: "emitted", from, invoke: env.invoker.invoke, message, value })
               }
-              for (const subscriber of port.subscribers) {
-                push(subscriber, { kind: "emitted", from, invoke: null, message, value })
+              for (const [subscriber, heard] of port.subscribers) {
+                if (heard.has(event)) push(subscriber, { kind: "emitted", from, invoke: null, message, value })
               }
               return undefined
             })
@@ -570,7 +579,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       const steps = Effect.uninterruptibleMask((restore) =>
         Effect.gen(function*() {
           // Subscribed to the peers' emitted events before `start`, until the run closes.
-          for (const peer of peers) peer.subscribers.add(port)
+          for (const peer of peers) peer.subscribers.set(port, Core.heard(ir, name, peer.machine))
           yield* carryOut(yield* begun)
           yield* Deferred.succeed(started, undefined)
           while (snapshot.status === "running") {

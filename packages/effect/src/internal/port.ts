@@ -17,8 +17,11 @@ export interface Port {
   readonly queue: Queue.Queue<Core.Input | Wake>
   /** From just before `start` until the core returns a snapshot that is not `running`. */
   open: boolean
-  /** The runs that hold a `ref` to this one and are open: they receive what it emits. */
-  readonly subscribers: Set<Port>
+  /**
+   * The runs that hold a `ref` to this one and are open, each with the events it emits that they
+   * receive: those their machine has an `on` for.
+   */
+  readonly subscribers: Map<Port, ReadonlySet<string>>
 }
 
 /**

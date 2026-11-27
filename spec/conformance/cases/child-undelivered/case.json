@@ -1,5 +1,5 @@
 {
-  "description": "A send to a child that is not running is undelivered, with `to` null and no `sent` record: from the entry of a state inside the invoking state, in the step that enters it, before the child starts; and after the child's outcome was taken by a transition with no target. Message ids are taken all the same. The child's Progress, which the parent has no `on` for, is dropped.",
+  "description": "A send to a child that is not running is undelivered, with `to` null and no `sent` record: from the entry of a state inside the invoking state, in the step that enters it, before the child starts; and after the child's outcome was taken by a transition with no target. Message ids are taken all the same. The child's Progress, which the parent has no `on` for, is not delivered to it, so it has no `dropped` record.",
   "requires": [
     "messaging"
   ],

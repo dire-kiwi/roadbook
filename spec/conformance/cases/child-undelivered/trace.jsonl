@@ -4,7 +4,6 @@
 {"kind":"entered","run":"r1","state":"Eager.Uploading.Starting","t":0}
 {"kind":"undelivered","message":1,"run":"r1","t":0,"to":null,"value":{"_tag":"Pause"}}
 {"args":{"size":100},"invoke":1,"kind":"invoke.started","run":"r1","src":"Upload","state":"Eager.Uploading","t":0}
-{"event":{"from":"r1.1","invoke":1,"kind":"emitted","message":1,"value":{"_tag":"Progress","offset":100}},"kind":"dropped","run":"r1","t":0}
 {"event":{"invoke":1,"kind":"invoke.done","value":100},"kind":"event","run":"r1","t":0}
 {"from":"Eager.Uploading","index":0,"kind":"transition","run":"r1","t":0,"to":null}
 {"kind":"set","run":"r1","t":0,"value":100,"var":"uploaded"}

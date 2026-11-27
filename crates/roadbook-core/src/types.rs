@@ -406,7 +406,8 @@ pub enum Command {
         value: Value,
     },
     /// Queue the emitted event for this run's invoker (if it invoked this run with `as`) and
-    /// for every run that holds a `ref` to this run, without waiting for them.
+    /// for every run that holds a `ref` to this run, of those whose machine has an `on` for it
+    /// ([`Program::heard`](crate::Program::heard)), without waiting for them.
     #[serde(rename = "emit")]
     Emit {
         /// The message's id in this run.

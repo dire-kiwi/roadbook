@@ -248,7 +248,14 @@ describe('the project index of the send-and-emit orders chart', () => {
     expect(order.receives).toEqual([{ from: at('Inventory'), events: ['Reserved', 'Rejected'] }])
     expect(order.calls).toEqual([])
     const edges = indexEdges(index).map((e) => `${e.kind} ${index.machines[e.from]!.name} -> ${index.machines[e.to]!.name}: ${e.lines.join(' / ')}`)
-    expect(edges).toEqual(['ref Order -> Inventory: ref inventory', 'send Order -> Inventory: sends Reserve, Release', 'emit Inventory -> Order: emits Reserved, Rejected'])
+    // The Supplier only sends to the Inventory: it hears none of its emitted events, so no emit edge reaches it.
+    expect(edges).toEqual([
+      'ref Order -> Inventory: ref inventory',
+      'ref Supplier -> Inventory: ref inventory',
+      'send Order -> Inventory: sends Reserve, Release',
+      'send Supplier -> Inventory: sends Restock',
+      'emit Inventory -> Order: emits Reserved, Rejected',
+    ])
     const svg = renderIndexSvg(index, await layoutIndex(index, newElk()))
     expect(svg).toContain('<tspan class="rb-ikw">emits</tspan> Reserved, Rejected')
     expect(renderIndexTable(index)).toContain(
