@@ -1,9 +1,10 @@
 // Charts for the driver's tests (test/driver.test.ts): the defects the core raises and the
-// conformance cases leave out, work left over when a step is cut short, and `json` values
-// from host code, and maps and generic records through the codec.
+// conformance cases leave out, work left over when a step is cut short, `json` values from
+// host code, maps and generic records through the codec, and calls a callee cannot answer.
 
 fn payload()             -> json
 action log(what: string)
+action hold(n: int)
 task work()              -> int
 
 /// `int` overflows the TypeScript runtime's range ±(2^53 - 1) in its output.
@@ -77,4 +78,37 @@ machine Generic(boxes: Boxes<duration>) -> Boxes<duration> {
   initial Over
 
   final state Over { output withLongest(boxes) }
+}
+
+/// Answers `ask` with its argument once `hold` has run for it, one call at a time.
+machine Desk() {
+  call ask(n: int) -> int
+
+  event Close
+
+  initial Open
+
+  state Open {
+    on ask              do hold(event.n)  reply call done event.n
+    on Close -> Closed
+  }
+
+  final state Closed {}
+}
+
+/// Asks the desk for `n`; 0 when the desk does not answer.
+machine Asker(desk: ref Desk, n: int) -> int {
+  var got: int
+
+  initial Asking
+
+  state Asking {
+    invoke desk.ask(n) {
+      done            -> Got   set got = result
+      fail Unanswered -> Gave
+    }
+  }
+
+  final state Got  { output got }
+  final state Gave { output 0 }
 }

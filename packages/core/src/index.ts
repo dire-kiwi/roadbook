@@ -1,14 +1,14 @@
 /**
- * `@roadbook/core`: the Roadbook interpreter. Pure, synchronous and dependency-free, so it runs
+ * `@dire-kiwi/roadbook-core`: the Roadbook interpreter. Pure, synchronous and dependency-free, so it runs
  * in Node and in the browser alike. `start`, `step` and `restore` implement
- * `spec/execution.md`; a driver (such as `@roadbook/effect`) carries out the commands they return.
+ * `spec/execution.md`; a driver (such as `@dire-kiwi/roadbook-effect`) carries out the commands they return.
  */
 export * from "./ir.ts"
 export * from "./json.ts"
 export { REDACTED } from "./redact.ts"
 export * from "./typeref.ts"
 export * from "./types.ts"
-export { compareCodePoints, restore, SETTLE_LIMIT, start, step } from "./interpreter.ts"
+export { compareCodePoints, heard, restore, SETTLE_LIMIT, start, step } from "./interpreter.ts"
 export {
   checkSaved,
   type Checked,

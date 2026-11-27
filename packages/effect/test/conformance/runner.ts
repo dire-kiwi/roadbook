@@ -24,7 +24,7 @@
  * promises settle (the runner's WebCrypto resolves at once); it skips the cases with `suspend`
  * steps, since a durable run parks instead of suspending.
  */
-import * as Core from "@roadbook/core"
+import * as Core from "@dire-kiwi/roadbook-core"
 import { Cause, Context, Effect, Exit, type Fiber, Layer, References, Scheduler, Scope } from "effect"
 import { WebCrypto } from "effect/crypto"
 import { WorkflowEngine } from "effect/workflow"
@@ -84,7 +84,7 @@ export const conformanceDir = path.resolve(import.meta.dirname, "../../../../spe
  * The features of case.schema.json's `requires` this runtime implements. A case that requires
  * another is skipped, not failed.
  */
-export const supported: ReadonlyArray<string> = ["messaging", "parallel", "snapshots", "history", "spawn"]
+export const supported: ReadonlyArray<string> = ["messaging", "parallel", "snapshots", "history", "spawn", "calls"]
 
 /** Whether this runtime implements everything case `name` requires. */
 export const isSupported = (name: string): boolean => {

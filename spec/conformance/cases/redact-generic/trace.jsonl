@@ -1,4 +1,4 @@
-{"input":{"users":{"__proto__":{"password":"<redacted>","user":"root"},"ada":{"password":"<redacted>","user":"ada"}},"vault":{"label":"pins","secret":"<redacted>"}},"ir":"sha256:141de166ba992bc30d35798ae14212aad1ec23689435104a69bd44ba3d5d5f2d","kind":"started","machine":"Keep","run":"r1","t":0}
+{"input":{"users":{"__proto__":{"password":"<redacted>","user":"root"},"ada":{"password":"<redacted>","user":"ada"}},"vault":{"label":"pins","secret":"<redacted>"}},"ir":"sha256:69bf79febe1630645b241499ca8a5c8bab738cf0b38c351283cb869da878ce68","kind":"started","machine":"Keep","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Keep","t":0}
 {"kind":"entered","run":"r1","state":"Keep.Fetching","t":0}
 {"args":{"users":{"__proto__":{"password":"<redacted>","user":"root"},"ada":{"password":"<redacted>","user":"ada"}}},"invoke":1,"kind":"invoke.started","run":"r1","src":"fetch","state":"Keep.Fetching","t":0}

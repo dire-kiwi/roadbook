@@ -1,0 +1,53 @@
+{
+  "description": "A callee with a pending call: saving it gives `calls` and the pending-call value in `vars`; suspend waits, since a run with a pending call is not idle, until the reply is given, and the snapshot it gives has no `calls`; the first snapshot is refused on restoring (`calls`), the second restored.",
+  "requires": [
+    "messaging",
+    "calls",
+    "snapshots"
+  ],
+  "chart": "charts/calls.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Order",
+      "run": "r2",
+      "input": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "s1",
+            "qty": 2
+          }
+        ],
+        "inventory": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "snapshot": "pending"
+    },
+    {
+      "suspend": "suspended"
+    },
+    {
+      "task": "reserveStock",
+      "done": 2
+    },
+    {
+      "restore": "pending",
+      "refused": "calls"
+    },
+    {
+      "restore": "suspended",
+      "run": "r3",
+      "status": "running"
+    }
+  ],
+  "status": "running"
+}

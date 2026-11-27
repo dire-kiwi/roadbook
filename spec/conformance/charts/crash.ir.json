@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/crash.road",
@@ -53,6 +53,7 @@
         "endLine": 32,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -60,6 +61,7 @@
       "events": {},
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Crash",
         "name": "Crash",
@@ -107,6 +109,7 @@
                 "invoke": {
                   "kind": "machine",
                   "src": "Child",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -164,6 +167,7 @@
                 "invoke": {
                   "kind": "machine",
                   "src": "Child",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -221,6 +225,7 @@
                 "invoke": {
                   "kind": "task",
                   "src": "crash",
+                  "to": null,
                   "as": null,
                   "args": [],
                   "span": {
@@ -289,7 +294,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:cc06b1198cd0e16680f1447e14355ff9679581bf725284f80af1d002db61b32d"
+      "hash": "sha256:890f4644b9e9c7f546ec52d95122a4a070dfd1923e8b3e52910d3add8a05133e"
     },
     "Child": {
       "doc": "Waits for Stop, which never comes, logging its exit.",
@@ -300,6 +305,7 @@
         "endLine": 47,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "name",
@@ -326,6 +332,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Child",
         "name": "Child",
@@ -423,7 +430,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:15b778f27b21412cfb7482423212d528973b52fc295512a99f859a752bb9a33e"
+      "hash": "sha256:fdf0ffc5101f4679031ca6a36584ccc515eeedb030bc6578fc62b0c6c1725a85"
     }
   }
 }

@@ -22,7 +22,7 @@ An abridged IR for `Checkout` (`/* … */` marks what is left out):
 
 ```jsonc
 {
-  "irVersion": "0.3",
+  "irVersion": "0.7",
   "sources": [{ "path": "examples/shop/checkout.road", "package": null },
               { "path": "examples/shop/types.road", "package": null }],
   "types": {
@@ -90,7 +90,7 @@ Roadbook machines are statecharts with the semantics of SCXML, the W3C standard 
 1. **One event at a time.** A machine has a queue. It takes one event, does everything that event causes, and only then takes the next (run to completion).
 2. **A step.** Find the active states that have a transition for the event, innermost first. Evaluate guards in document order and take the first that holds. Exit states from the innermost outward, run the transition's effects, enter states from the outermost inward. Within each: `set` assignments first, then `do` actions, in the order written. A transition with a target always leaves its source state and enters its target, even when the target is the source itself or one of its children (an external transition, in SCXML's terms), so the states it re-enters restart their work. The one exception is a transition written in the machine body, which does not leave the machine itself. A transition with no target is internal: nothing is left, entered or restarted.
 3. **Settling.** After a step, `always` transitions and `done` transitions are taken until none applies, an enabled `always` before any `done`. The machine is then stable and takes the next event.
-4. **Unhandled events are dropped and recorded.** An event with no enabled transition changes nothing. It appears in the trace as dropped, so it is visible. A machine can opt into `strict`, which turns a dropped event into a failure.
+4. **Unhandled events are dropped and recorded.** An event with no enabled transition changes nothing. It appears in the trace as dropped, so it is visible. A `strict machine` turns an event, message or call of its own that enables no transition into a defect instead, and says where it ignores one on purpose with `on Event ignore`; emitted events, invoke outcomes and timer expiries are still dropped ([strict machines](language.md#strict-machines)).
 5. **Parallel states** are active in all regions at once. Entering one enters every region, in the order they are written; leaving it exits them all, the last region first. Each region looks for a transition for the event on its own, from its innermost state outward, and the transitions found are taken together, in one step: all their exits, then all their effects in region order, then all their entries. If two would exit the same state, the one in the earlier region wins, unless the other belongs to a state inside the first one's, which wins as the inner state always does. A transition from one region into another leaves the parallel state and enters it again. `always` transitions in several regions are likewise taken together, and the parallel state is done (its `done` is enabled) when every region is in a final state.
 6. **Final.** Reaching a final child completes the parent, which enables the parent's `done` transition. Reaching a top-level final state ends the machine with its `output` or `fail`, evaluated on entering it; then every active state is exited, so the machine's own `exit` effects run last.
 7. **History states.** A transition to a `history` state of a compound or parallel state enters the child that state was in when a transition last left it; to a `deep history` state, every state it was in down to the leaves. Before the state has been left, it is entered as usual, at its `initial`. Restoring enters states again, with their entry effects and fresh work; it does not resume what ran in them. Which states the transition leaves is decided as for an ordinary target, never by what was recorded.
@@ -106,6 +106,14 @@ This is where Roadbook is stricter than xstate, and it is the part that matters 
 - **Actions are awaited.** Each `do` action finishes before the next thing happens, and actions cannot fail. Long or fallible work belongs in a task, where its failure has a visible branch.
 - **Defects are not flow.** A bug in host code (a thrown exception, a panic) is not one of the declared errors. It fails the whole machine run, cancels everything it started, and propagates to whoever ran it: the parent machine's invoke, or the HTTP adapter. No `exit` effect runs. Runtime errors in the chart's own expressions (integer overflow, and reading an unassigned variable where the compile-time check `RB0403` is skipped, as for files listed in `allow-unassigned`) are defects too.
 
+### Cancelling from outside
+
+A machine cancelled from outside (a cancel from host code, or a parent leaving the state that invoked it) exits every active state, innermost first: each state's work is cancelled and its exit effects run, and the run ends `cancelled`. Exit effects are the only cleanup hook a chart has, and one cancel step serves both cases, so this stays as it is ([`spec/execution.md`](../../spec/execution.md#cancelling-from-outside)).
+
+Exit effects then run while the machine is being interrupted, so they must be quick. Slow or fallible cleanup belongs in a task in a state of its own, or in the flow that leads to a final state; business cancellation is an event (`on Cancel -> Cancelled`), not a cancel from outside. Nothing enforces "quick": the TypeScript driver runs the cancel step uninterruptibly, so an exit action that hangs hangs the cancel, while in Rust host code can stop waiting and drop the run.
+
+Three paths already end a run without exit effects: a defect, `suspend`, and dropping a Rust run or actor. TypeScript has no such hard stop; one can be added when someone needs it.
+
 ### Child machines
 
 `invoke Checkout(order, user)` starts a child instance with those arguments. Its `output` arrives as `done` and its `fail` as the matching `fail` branch. Leaving the invoking state cancels the child and everything the child started; the child's exit effects run, and the parent waits for them before it carries on leaving the state. From the parent's chart a child machine and a task are indistinguishable, which is what lets a test replace an entire sub-machine with a single function. Only the driver tells them apart, because a child run claims the invoke context its parent's driver provides ([child runs](../../spec/execution.md#child-runs)).
@@ -114,9 +122,10 @@ This is where Roadbook is stricter than xstate, and it is the part that matters 
 
 Machines that exchange messages while they run, rather than only arguments and a result, are designed on the [actors and messaging](actors.md) page and specified in [`spec/execution.md`](../../spec/execution.md#messages-between-runs). In terms of the rules above:
 
-- **A message is an input like any other.** `send` queues an event for another machine and carries on; the receiver takes it from its own queue by rule 1. `emit` queues one for the invoker (if it named the child with `as`) and for every machine holding a reference. Each is one more source pushing onto the receiver's single queue, so a message waits behind what arrived before it, and two from one sender arrive in the order sent.
+- **A message is an input like any other.** `send` queues an event for another machine and carries on; the receiver takes it from its own queue by rule 1. `emit` queues one for the invoker (if it named the child with `as`) and for every machine holding a reference, of those that have an `on` for it. Each is one more source pushing onto the receiver's single queue, so a message waits behind what arrived before it, and two from one sender arrive in the order sent.
 - **A child's emitted events are tied to its invoke**, as its outcome is: once the invoking state is left, what the child emitted is stale. Leaving the state still cancels the child and waits for its exit effects, which may send and emit.
 - **A send that reaches nothing is recorded**, as an unhandled event is: a message to a machine that has ended, or to a child that is not running, is `undelivered` in the trace.
+- **A call is an invoke on one side and an input on the other.** The caller's `invoke inventory.reserve(…)` is work tied to its state, like a task (rule 3): leaving the state abandons it, and its answer is an outcome. The callee takes the call from its queue by rule 1 and answers it with `reply`, then or later; until it does, it is not idle. A callee that has ended, or that has no transition for the call, answers `Unanswered` ([calls between runs](../../spec/execution.md#calls-between-runs)).
 - **The core stays pure.** A `send` or `emit` is a command, like starting a task; the driver delivers it. The core knows only its own run id and the ids its arguments hold, so it needs no registry of machines.
 
 ## Definitions and instances
@@ -147,7 +156,7 @@ const next = yield* OrderLive.resume(snapshot, { _tag: "PaymentReceived", amount
 yield* store.save(orderId, next)
 ```
 
-`resume` restores the run from the snapshot, gives it the event, and runs it until it is **idle**: its queue is empty and none of the tasks or child machines it started is still running. Then it stops the run, without running any exit effect, and returns the new snapshot. So the request waits for the work the event started (the shipping task a payment starts, say), but not for timers: those are saved with their deadlines, and a timer whose deadline passed while the run was saved fires as soon as it is restored, before the event. The first request of an entity spawns it and suspends it the same way (`actor.suspend`); a run that reaches a final state is returned with that status and its result. The precise rules, and the JSON Schema of the saved form, are in [`spec/execution.md`](../../spec/execution.md#saving-and-restoring).
+`resume` restores the run from the snapshot, gives it the event, and runs it until it is **idle**: its queue is empty, none of the tasks or child machines it started (spawned children included) is still running, and it has answered every call it took. Then it stops the run, without running any exit effect, and returns the new snapshot. So the request waits for the work the event started (the shipping task a payment starts, say), but not for timers: those are saved with their deadlines, and a timer whose deadline passed while the run was saved fires as soon as it is restored, before the event. The first request of an entity spawns it and suspends it the same way (`actor.suspend`); a run that reaches a final state is returned with that status and its result. The precise rules, and the JSON Schema of the saved form, are in [`spec/execution.md`](../../spec/execution.md#saving-and-restoring).
 
 xstate offers the same pattern, with `actor.getPersistedSnapshot()` and `createActor(machine, { snapshot })`, and with the pure `transition(machine, snapshot, event)` for servers that keep no actors at all.
 
@@ -155,7 +164,7 @@ Three rules make this safe.
 
 - **A snapshot records the IR hash it was taken with**, and restoring it into a changed chart is refused unless a migration is supplied: a host function from the old snapshot to the new one, as plain data. Snapshots are the same JSON in both runtimes, so one saved by a TypeScript service restores in a Rust one.
 - **A snapshot taken while a task is running restarts that task on restore**, with its arguments evaluated again, and a child machine running then starts again from the beginning. So a machine meant to be saved should wait in states that have no `invoke`, or use tasks that are safe to repeat; `resume` itself never saves a running task, since it waits for them. Surviving a crash in the middle of a task without repeating it is durable execution: the TypeScript runtime's [durable runs](typescript.md#durable-runs), on `effect/workflow`, journal every input a run takes and replay it after a crash, so that a task that finished is not run again.
-- **A restored run is a new run.** It gets a new run id, and what was queued for the old one is not in the snapshot. A machine that holds a `ref` to a peer cannot be restored yet, since the peer's id belongs to the process that saved it.
+- **A restored run is a new run.** It gets a new run id, and what was queued for the old one is not in the snapshot. A machine that holds a `ref` to a peer cannot be restored yet, since the peer's id belongs to the process that saved it. Nor can one saved with calls pending, since its callers belong to that process too.
 
 ## A pure core and a driver
 

@@ -1,0 +1,41 @@
+{
+  "description": "Calls with sensitive values: the caller's `invoke.started` and the callee's `call` input redact the arguments by the call's parameters (`pin`), the `replied` record and the caller's `invoke.done` redact the answer by the call's result type (`Key.code`), and a `fail` answer by its error's declared fields (`Refused.reason`).",
+  "requires": [
+    "messaging",
+    "calls"
+  ],
+  "chart": "charts/locksmith.road",
+  "machine": "Locksmith",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Client",
+      "run": "r2",
+      "input": {
+        "locksmith": "r1",
+        "pin": "1234",
+        "label": "front"
+      },
+      "status": "done"
+    },
+    {
+      "start": "Client",
+      "run": "r3",
+      "input": {
+        "locksmith": "r1",
+        "pin": "9876",
+        "label": ""
+      },
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    }
+  ],
+  "status": "done"
+}

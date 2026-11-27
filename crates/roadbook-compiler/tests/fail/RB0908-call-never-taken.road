@@ -1,0 +1,9 @@
+machine M() {
+  call ask() -> int
+  event Go
+  initial A
+  state A { on Go -> B }
+  final state B {}
+}
+
+// expect: RB0908 at 2:8

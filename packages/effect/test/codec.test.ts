@@ -4,7 +4,7 @@
  * a generic record or alias is its declaration with the arguments substituted.
  */
 import { assert, describe, it } from "@effect/vitest"
-import * as Core from "@roadbook/core"
+import * as Core from "@dire-kiwi/roadbook-core"
 import { Duration, Effect, Queue } from "effect"
 import { Codec, CodecError } from "../src/internal/codec.ts"
 import { registerHandle, type Wake } from "../src/internal/port.ts"
@@ -40,7 +40,7 @@ const handle = (id: string) =>
     hash,
     queue: Effect.runSync(Queue.unbounded<Core.Input | Wake>()),
     open: true,
-    subscribers: new Set()
+    subscribers: new Map()
   })
 
 /** An object with an own member named `__proto__`, as JSON.parse makes one. */

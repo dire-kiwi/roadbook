@@ -1,11 +1,11 @@
-import * as Core from "@roadbook/core"
+import * as Core from "@dire-kiwi/roadbook-core"
 import type { Effect, Scope } from "effect"
 import { Codec, type ErrorClass } from "./internal/codec.ts"
 import { type AnyHandlers, Program, restore, resume, run, spawn } from "./internal/driver.ts"
 import type { Actor, Implemented, Machine, MachineDef } from "./Machine.ts"
 
 /** Where an implemented machine keeps its bound program, for `Durable.workflow`. */
-export const ProgramOf: unique symbol = Symbol.for("@roadbook/effect/Program") as never
+export const ProgramOf: unique symbol = Symbol.for("@dire-kiwi/roadbook-effect/Program") as never
 
 /**
  * The typed handle for machine `name` of the compiled chart `ir`. The generated `.road.ts`

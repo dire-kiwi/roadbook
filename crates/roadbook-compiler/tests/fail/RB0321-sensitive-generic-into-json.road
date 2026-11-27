@@ -1,0 +1,21 @@
+// A map or an instance of a generic type that carries sensitive fields, going where `json` is
+// expected, directly or as a type argument or a map's value.
+type Login   { user: string, sensitive password: string }
+type Page<T> { items: T[] }
+
+action show(v: json)
+action shown(p: Page<json>)
+action keys(m: map<string, json>)
+action fine(p: Page<Login>, m: map<string, Login>)
+
+machine M(logins: map<string, Login>, page: Page<Login>) {
+  initial Done
+  final state Done {
+    entry do show(logins), show(page), shown(page), keys(logins), fine(page, logins)
+  }
+}
+
+// expect: RB0321 at 14:19
+// expect: RB0321 at 14:33
+// expect: RB0321 at 14:46
+// expect: RB0321 at 14:58

@@ -4,8 +4,10 @@
 //! the Rust macro never do.
 //!
 //! The graph keeps free what the chart does not decide (guards, which timer expires first,
-//! what other machines do and whether they act first: [`statespace::Assumption`]), so a check can be proved, refuted, or
-//! hold on conditions ([`Verdict`]):
+//! what other machines do and whether they act first: children and spawned children ending,
+//! peers emitting, a peer answering a call the machine made, another run calling it;
+//! [`statespace::Assumption`]), so a check can be proved, refuted, or hold on conditions
+//! ([`Verdict`]):
 //!
 //! - `never S1 and … Sn` fails if some configuration, a transient one of settling or a final
 //!   one included, has every `Si` active; otherwise it is proved.
@@ -18,7 +20,8 @@
 //! - `can finish` fails if some configuration cannot reach a top-level final state. It is
 //!   proved if from every configuration the host can bring the run to a final state whatever
 //!   the guards decide and whatever other machines do first: by choosing its events, task
-//!   outcomes and timers sure to expire first ([`Eval::sure`]). Otherwise it is conditional: a path exists, but something the chart
+//!   outcomes and timers sure to expire first ([`Eval::sure`]). A call's answer and a call
+//!   from another run are other machines' moves, not the host's. Otherwise it is conditional: a path exists, but something the chart
 //!   does not decide could block it.
 //!
 //! A failure is an error at the check, `RB0501` to `RB0504`, with the counterexample that
@@ -26,7 +29,7 @@
 //! per guard it assumes of a transition it did not take, at their spans, numbered in path
 //! order, and the whole path as text in the help, with the assumptions it relies on, since
 //! the data, the timers' delays or the other machines may block it at run time. A machine
-//! that is too large to explore gets the warning `RB0910` at each of its checks.
+//! that is too large to explore gets the warning `RB0912` at each of its checks.
 //!
 //! The graph covers runs started from the chart: a run restored from a snapshot made by an
 //! earlier version of the chart may be in a configuration this one cannot reach, and a
@@ -57,7 +60,7 @@ pub enum Verdict {
     Conditional,
     /// It does not hold, even with every guard free: an error.
     Failed,
-    /// The machine has too many configurations to explore (`RB0910`).
+    /// The machine has too many configurations to explore (`RB0912`).
     Unchecked,
 }
 
@@ -126,7 +129,7 @@ pub struct CheckResult {
 }
 
 /// Evaluates the checks written in the compilation's entry file (file 0), exploring each
-/// machine that has one once, with at most `budget` configurations. Failures and `RB0910` go
+/// machine that has one once, with at most `budget` configurations. Failures and `RB0912` go
 /// to `diags`.
 pub(crate) fn evaluate(
     ir: &ir::Ir,
@@ -673,10 +676,20 @@ impl<'a> Eval<'a> {
                 self.relative(self.graph.state_id(*state))
             ),
             Assumption::Machine(input) => match input {
-                Input::InvokeDone { state } => format!("{} ends `done`", invoked(state)),
-                Input::InvokeFail { state, error } => {
-                    format!("{} fails with `{error}`", invoked(state))
-                }
+                Input::InvokeDone { state } => match self.call(state) {
+                    Some((peer, call)) => format!("peer `{peer}` answers `{call}` with `done`"),
+                    None => format!("{} ends `done`", invoked(state)),
+                },
+                Input::InvokeFail { state, error } => match self.call(state) {
+                    Some((peer, call)) if error == ir::UNANSWERED => {
+                        format!("peer `{peer}` leaves `{call}` unanswered")
+                    }
+                    Some((peer, call)) => {
+                        format!("peer `{peer}` answers `{call}` with `fail {error}`")
+                    }
+                    None => format!("{} fails with `{error}`", invoked(state)),
+                },
+                Input::Call(c) => format!("another run calls `{c}`"),
                 Input::Emitted { from, event } => match from {
                     Sender::Child(s) => format!("{} emits `{event}`", invoked(s)),
                     Sender::Refs(names) => {
@@ -688,6 +701,7 @@ impl<'a> Eval<'a> {
                         }
                     }
                     Sender::Children(c) => format!("a child of `{c}` emits `{event}`"),
+                    Sender::Callers => format!("a caller emits `{event}`"),
                 },
                 Input::SpawnDone { children } => format!("a child of `{children}` ends `done`"),
                 Input::SpawnFail { children, error } => {
@@ -698,7 +712,15 @@ impl<'a> Eval<'a> {
             Assumption::Unpreempted { senders } => {
                 let names: Vec<String> = senders.iter().map(|x| self.sender(x)).collect();
                 let verb = if names.len() == 1 { "does" } else { "do" };
-                format!("{} {verb} not end or emit first", and_list(&names))
+                // A peer that answers a call, and a caller, act otherwise than by ending or
+                // emitting.
+                let calls = senders.iter().any(|x| match x {
+                    Sender::Callers => true,
+                    Sender::Refs(names) => self.is_callee(names),
+                    _ => false,
+                });
+                let act = if calls { "act" } else { "end or emit" };
+                format!("{} {verb} not {act} first", and_list(&names))
             }
         })
     }
@@ -727,7 +749,25 @@ impl<'a> Eval<'a> {
                 }
             }
             Sender::Children(c) => format!("the children of `{c}`"),
+            Sender::Callers => "the runs that call it".to_string(),
         }
+    }
+
+    /// For the invoke of `s`, if it is a call: the name its peer is held by, and the call.
+    fn call(&self, s: &StateIndex) -> Option<(&'a str, &'a str)> {
+        let inv = self.state(*s).invoke.as_ref()?;
+        let to = inv.to.as_ref()?;
+        Some((to.name.as_str(), inv.src.as_str()))
+    }
+
+    /// Whether some state's invoke calls the peer that one of `names` holds.
+    fn is_callee(&self, names: &[String]) -> bool {
+        self.states.values().any(|st| {
+            st.invoke
+                .as_ref()
+                .and_then(|i| i.to.as_ref())
+                .is_some_and(|to| names.contains(&to.name))
+        })
     }
 
     /// An IR span as a span of the compilation's files, with offsets.
@@ -1224,6 +1264,63 @@ machine M(peer: ref Kid) {
         );
     }
 
+    /// A call's answer, `Unanswered` included, and a call from another run are other
+    /// machines' moves: they are assumptions, they race the machine's own inputs, and the host
+    /// cannot count on them to finish.
+    #[test]
+    fn calls_are_moves_of_other_machines() {
+        let src = "\
+error Busy
+machine Desk() {
+  call take(n: int) -> int ! Busy
+  event Close
+  initial Open
+  state Open {
+    on take -> Taken  reply call done event.n
+    on Close -> Shut
+  }
+  state Taken {}
+  final state Shut {}
+  check reachable Taken
+  check can finish
+}
+machine Asker(desk: ref Desk) {
+  event Quit
+  initial Asking
+  state Asking {
+    invoke desk.take(1) {
+      done            -> Got
+      fail Busy       -> Busy
+      fail Unanswered -> Lost
+    }
+    on Quit -> Got
+  }
+  final state Got {}
+  final state Busy {}
+  final state Lost {}
+  check reachable Lost
+  check reachable Got
+  check can finish
+}
+";
+        let (r, rendered) = run(src);
+        assert_eq!(
+            verdicts(&r),
+            [
+                ("reachable Taken", Verdict::Conditional),
+                ("can finish", Verdict::Failed),
+                ("reachable Lost", Verdict::Conditional),
+                ("reachable Got", Verdict::Conditional),
+                ("can finish", Verdict::Proved)
+            ],
+            "{rendered}"
+        );
+        assert_eq!(r[0].assumptions, ["another run calls `take`"]);
+        assert_eq!(r[2].assumptions, ["peer `desk` leaves `take` unanswered"]);
+        // `Quit` is the host's, but the peer may answer first.
+        assert_eq!(r[3].assumptions, ["peer `desk` does not act first"]);
+    }
+
     #[test]
     fn can_finish_is_proved_when_every_outcome_of_a_guard_finishes() {
         let src = "\
@@ -1390,7 +1487,7 @@ machine M() {{
                 ("can finish", Verdict::Unchecked)
             ]
         );
-        assert_eq!(rendered.matches("warning[RB0910]").count(), 2, "{rendered}");
+        assert_eq!(rendered.matches("warning[RB0912]").count(), 2, "{rendered}");
         assert!(
             rendered.contains("not checked: `M` has more than 1 configurations"),
             "{rendered}"

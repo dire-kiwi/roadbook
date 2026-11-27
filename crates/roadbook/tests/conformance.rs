@@ -43,7 +43,14 @@ use serde_json::Value;
 
 /// The features of `spec/conformance/case.schema.json`'s `requires` this runtime
 /// implements.
-const SUPPORTED: &[&str] = &["messaging", "parallel", "snapshots", "history", "spawn"];
+const SUPPORTED: &[&str] = &[
+    "messaging",
+    "parallel",
+    "snapshots",
+    "history",
+    "spawn",
+    "calls",
+];
 
 // ---- the executor ------------------------------------------------------------------------
 
@@ -974,6 +981,10 @@ fn every_saved_snapshot_restores_and_goes_on() {
     let from = std::env::var_os("ROADBOOK_RESTORE_FROM").map(std::path::PathBuf::from);
     let (mut restored, mut refused, mut failures) = (0, 0, Vec::new());
     for c in &cases {
+        // A snapshot of a case this runtime skips may hold what it does not implement.
+        if c.case.needs_more_than(SUPPORTED) {
+            continue;
+        }
         let files: Vec<(String, String)> = match &from {
             None => c.snapshots.clone().into_iter().collect(),
             Some(dir) => match std::fs::read_dir(dir.join(&c.name)) {
@@ -1050,6 +1061,51 @@ fn the_saved_snapshot_check_agrees_with_the_schema() {
         ),
         ("invokes", serde_json::json!([{"id": 1, "state": "A"}])),
         (
+            "invokes",
+            serde_json::json!([{"id": 1, "state": "A", "src": "inventory.reserve"}]),
+        ),
+        (
+            "invokes",
+            serde_json::json!([{"id": 1, "state": "A", "src": "Inventory.reserve"}]),
+        ),
+        (
+            "invokes",
+            serde_json::json!([{"id": 1, "state": "A", "src": "a.b.c"}]),
+        ),
+        (
+            "calls",
+            serde_json::json!([{"from": "r2", "invoke": 1, "call": "reserve"}]),
+        ),
+        (
+            "calls",
+            serde_json::json!([{"from": "r2.3", "invoke": 9, "call": "count"}, {"from": "x", "invoke": 1, "call": "c"}]),
+        ),
+        ("calls", serde_json::json!([])),
+        ("calls", serde_json::json!({})),
+        ("calls", serde_json::json!(null)),
+        (
+            "calls",
+            serde_json::json!([{"from": "r2", "invoke": 0, "call": "reserve"}]),
+        ),
+        (
+            "calls",
+            serde_json::json!([{"from": "r2", "invoke": 1.5, "call": "reserve"}]),
+        ),
+        ("calls", serde_json::json!([{"from": "r2", "invoke": 1}])),
+        (
+            "calls",
+            serde_json::json!([{"from": "r2", "invoke": 1, "call": "reserve", "x": 1}]),
+        ),
+        (
+            "calls",
+            serde_json::json!([{"from": "r 2", "invoke": 1, "call": "reserve"}]),
+        ),
+        (
+            "calls",
+            serde_json::json!([{"from": "r2", "invoke": 1, "call": "Reserve"}]),
+        ),
+        ("calls", serde_json::json!(["r2"])),
+        (
             "timers",
             serde_json::json!([{"id": 1, "state": "A", "index": 0, "delay": 1}]),
         ),
@@ -1116,6 +1172,9 @@ fn the_saved_snapshot_check_agrees_with_the_schema() {
     ];
     let mut checked = 0;
     for c in &cases {
+        if c.case.needs_more_than(SUPPORTED) {
+            continue;
+        }
         for text in c.snapshots.values() {
             let base: Value = serde_json::from_str(text).unwrap();
             let mut docs = vec![base.clone()];

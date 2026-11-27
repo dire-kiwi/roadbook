@@ -5,11 +5,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { canonicalJson, REDACTED } from '@roadbook/core'
-import type { Json, Tagged } from '@roadbook/core'
+import { canonicalJson, REDACTED } from '@dire-kiwi/roadbook-core'
+import type { Json, Tagged } from '@dire-kiwi/roadbook-core'
 import { describe, expect, it } from 'vitest'
 import type { Ir } from '../src/ir.ts'
-import { Replay, parseTrace } from '../src/replay.ts'
+import { findState, signatureText, stateRows } from '../src/model.ts'
+import { panelHtml } from '../src/panel.ts'
+import { Replay, parseTrace, recordText } from '../src/replay.ts'
 import { variablesHtml } from '../src/app/modes.ts'
 import { Simulation, refusal } from '../src/sim.ts'
 import type { Outcome } from '../src/sim.ts'
@@ -29,6 +31,7 @@ interface Case {
   actions: { [action: string]: { args: Json; defect: string }[] }
   script: { [k: string]: Json }[]
   status: string
+  requires: string[]
 }
 
 const readCase = (name: string) => JSON.parse(fs.readFileSync(path.join(conformance, 'cases', name, 'case.json'), 'utf8')) as Case
@@ -304,7 +307,7 @@ describe('replay', () => {
 
   it('warns when the trace was recorded from another version of the chart', () => {
     const ir = chart('shop-place_order')
-    const text = readTrace('place-order-checkout').replace(`"ir":"${ir.machines.Checkout!.hash}"`, '"ir":"sha256:0000"')
+    const text = readTrace('place-order-checkout').replace(/"ir":"sha256:[0-9a-f]{4}([0-9a-f]*","kind":"started","machine":"Checkout")/, '"ir":"sha256:0000$1')
     const replay = new Replay(ir, text)
     expect(replay.warnings).toHaveLength(1)
     expect(replay.warnings[0]).toMatch(/^Run r1\.4 was recorded from another version of Checkout: the trace has IR sha256:0000/)
@@ -320,5 +323,34 @@ describe('replay', () => {
     const ir = chart('shop-place_order')
     const text = readTrace('place-order-checkout').replace('"state":"PlaceOrder.Processing.Paying"', '"state":"PlaceOrder.Nowhere"')
     expect(new Replay(ir, text).problems[0]).toMatch(/no state PlaceOrder\.Nowhere in PlaceOrder/)
+  })
+})
+
+describe('strict machines', () => {
+  const ir = caseIr(readCase('strict-ignore'))
+  const lock = ir.machines['Lock']!
+
+  it('says strict in the signature and the panel, and shows ignore inside states', () => {
+    expect(signatureText('machine', 'Lock', lock)).toBe('strict machine Lock()')
+    expect(panelHtml({ ir, machine: 'Lock', collapsed: new Set<string>() }, null)).toContain('Strict: one of these events')
+    expect(stateRows(lock.root).map((r) => `${r.kw}|${r.text}`)).toContain('on Knock|[event.loud] ignore')
+    expect(stateRows(findState(lock, 'Lock.Closed')!).map((r) => `${r.kw}|${r.text}`)).toContain('on Close|ignore')
+    const panel = panelHtml({ ir, machine: 'Lock', collapsed: new Set<string>() }, { type: 'state', id: 'Lock.Closed' })
+    expect(panel).toContain('ignores it (internal)')
+  })
+
+  it('writes the unhandled defect in words', () => {
+    const record = { kind: 'defect', defect: { kind: 'unhandled', event: { kind: 'event', value: { _tag: 'Knock', loud: false } } } }
+    expect(recordText(record)).toBe('defect: Knock enabled no transition in this strict machine')
+  })
+
+  it('warns in simulate mode that an unhandled event would end the run', () => {
+    const sim = new Simulation(ir, 'Lock')
+    expect(sim.start({})).toEqual({ kind: 'ok' })
+    expect(sim.choices().events.map((e) => [e.name, e.handled])).toEqual([['Open', true], ['Close', true], ['Knock', true]])
+    expect(sim.send({ _tag: 'Open' })).toEqual({ kind: 'ok' })
+    expect(sim.send({ _tag: 'Close' })).toEqual({ kind: 'ok' })
+    expect(sim.send({ _tag: 'Knock', loud: false })).toEqual({ kind: 'ok' })
+    expect(sim.current!.snapshot.status).toBe('defect')
   })
 })

@@ -24,6 +24,9 @@
 //! Wherever a run waits for an input (before one, when it is suspended or cancelled, and at
 //! the end of its trace) it has settled, so the nodes it may be at must include a stable one.
 //!
+//! A call another run makes of the machine is its `on c` input, and the outcome of a call the
+//! machine made is its invoke's, as for a task. A `replied` record is not a microstep.
+//!
 //! An event a peer emits is matched by the `ref` names that hold the sender: the run's
 //! arguments (`started`'s `input`, a restored snapshot's `input` and `vars`) and the `set`
 //! records of its variables say which name holds which run id, and the event's `from` names
@@ -379,6 +382,8 @@ impl<'g> Replay<'g> {
         };
         Ok(match event["kind"].as_str().unwrap_or("") {
             "event" | "message" => Input::Event(tag()),
+            // A call from another run, taken among the `on c` transitions.
+            "call" => Input::Call(event["call"].as_str().unwrap_or("").to_string()),
             "invoke.done" => Input::InvokeDone {
                 state: invoke("invoke")?,
             },

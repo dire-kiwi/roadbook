@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/root.road",
@@ -39,6 +39,7 @@
         "endLine": 31,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "int",
       "errors": [],
@@ -89,6 +90,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Top",
         "name": "Top",
@@ -353,7 +355,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:290dea8a971a0388c077ffed7c81c2bc3ed4a4b2fd2ddfa1a04acdb40ac7a312"
+      "hash": "sha256:8006ac1fb30be094fb377c39ab282780ca4e40488eea65560165c02ccd41c33e"
     }
   }
 }

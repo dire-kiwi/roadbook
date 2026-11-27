@@ -21,11 +21,14 @@ export type TypeRef =
   | { readonly kind: "named"; readonly name: string; readonly args: ReadonlyArray<TypeRef> }
   | { readonly kind: "event"; readonly machine: string; readonly event: string }
   | { readonly kind: "ref"; readonly machine: string }
+  /** A pending call of the machine, `call reserve`: what a reply answers. */
+  | { readonly kind: "call"; readonly call: string }
   | { readonly kind: "map"; readonly key: TypeRef; readonly value: TypeRef }
   | { readonly kind: "list"; readonly of: TypeRef }
   | { readonly kind: "optional"; readonly of: TypeRef }
 
 const UPPER = /^[A-Z][A-Za-z0-9]*$/
+const LOWER = /^[a-z][A-Za-z0-9]*$/
 
 /** The deepest nesting read, so that a hostile IR cannot exhaust the stack. */
 const MAX_DEPTH = 128
@@ -36,7 +39,7 @@ const MAX_PARSED = 10_000
 
 /**
  * Read a type reference in canonical form (spec/ir.md): a base (a builtin, an upper-case name
- * with optional type arguments, `Machine.Event`, `ref Machine` or `map<K, V>`, arguments
+ * with optional type arguments, `Machine.Event`, `ref Machine`, `call name` or `map<K, V>`, arguments
  * separated by `, `) and any number of `[]` and `?`. Throws an `IrError` for anything else.
  */
 export const parseTypeRef = (text: string): TypeRef => {
@@ -63,6 +66,10 @@ export const parseTypeRef = (text: string): TypeRef => {
       const machine = word()
       if (!UPPER.test(machine)) fail()
       t = { kind: "ref", machine }
+    } else if (eat("call ")) {
+      const call = word()
+      if (!LOWER.test(call)) fail()
+      t = { kind: "call", call }
     } else {
       const base = word()
       if (base === "map" && eat("<")) {
@@ -115,6 +122,8 @@ export const typeRefText = (t: TypeRef): string => {
       return `${t.machine}.${t.event}`
     case "ref":
       return `ref ${t.machine}`
+    case "call":
+      return `call ${t.call}`
     case "map":
       return `map<${typeRefText(t.key)}, ${typeRefText(t.value)}>`
     case "list":
@@ -127,12 +136,13 @@ export const typeRefText = (t: TypeRef): string => {
 /**
  * Every name `t` mentions as a declared type (or a type parameter, or an event type, dotted),
  * outermost first: `map<UserId, Page<Order>>` gives `UserId`, `Page` and `Order`. The machine of
- * a `ref` is not a type and is not given.
+ * a `ref` and the name of a `call` are not types and are not given.
  */
 export const typeNames = (t: TypeRef): Array<string> => {
   switch (t.kind) {
     case "builtin":
     case "ref":
+    case "call":
       return []
     case "named":
       return [t.name, ...t.args.flatMap(typeNames)]

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "examples/import-job/import.road",
@@ -280,6 +280,7 @@
         "endLine": 73,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "upload",
@@ -456,6 +457,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "ImportJob",
         "name": "ImportJob",
@@ -489,6 +491,7 @@
             "invoke": {
               "kind": "task",
               "src": "validateUpload",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -605,6 +608,7 @@
                 "invoke": {
                   "kind": "task",
                   "src": "processBatch",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -1369,7 +1373,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:8fbf987d33a63ffc2c013875c0ea07b544c9ac464c2297688f65fd82e4b7b4a8"
+      "hash": "sha256:21d82553ffea4015cfbb74de7733947daccb26206e16967959d6cd7cd6294172"
     }
   }
 }

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/history.road",
@@ -53,6 +53,7 @@
         "endLine": 63,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -149,6 +150,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Editor",
         "name": "Editor",
@@ -373,6 +375,7 @@
                     "invoke": {
                       "kind": "task",
                       "src": "fetch",
+                      "to": null,
                       "as": null,
                       "args": [],
                       "span": {
@@ -611,7 +614,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:e3214dc83df18e56295753fd9fd004d705a2385336e96db90639fe5a0531f391"
+      "hash": "sha256:3c9c0073b41e6dac8a5722d66c35f14e9951e7306070790b80848db00df0b781"
     },
     "Steps": {
       "doc": "A deep history state that restores a final state, completing its parent.",
@@ -622,6 +625,7 @@
         "endLine": 93,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -694,6 +698,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Steps",
         "name": "Steps",
@@ -948,7 +953,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:f8c04d16fc7ccb7ce7ce84af6840177314298584af7bc5e82b1ad54fd20ed0e5"
+      "hash": "sha256:46ede2216fcd7425d7786e9fa6a097f02ad58fe02cca8316cd895ee7b5531293"
     },
     "Bounce": {
       "doc": "A parent left and returned to through its history state while settling.",
@@ -959,6 +964,7 @@
         "endLine": 112,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -998,6 +1004,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Bounce",
         "name": "Bounce",
@@ -1223,7 +1230,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:a2fad9d0612503465e8cbdb139bcd289b0b018fd63df24da09726c05cbc22615"
+      "hash": "sha256:da5ed95ca7c19eb7d55e49196363bef4bf29949c0c7306e56108d1fb889635b5"
     }
   }
 }

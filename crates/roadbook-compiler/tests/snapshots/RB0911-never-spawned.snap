@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0911]: no `spawn` fills the collection `kids`
+ --> RB0911-never-spawned.road:8:12
+  |
+8 |   children kids: Child by string
+  |            ^^^^
+  |
+  = help: start its children with `spawn kids[key] = Machine(…)`, or remove it

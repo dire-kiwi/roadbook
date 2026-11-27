@@ -1,0 +1,34 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0324]: type parameter `T` takes no type arguments
+ --> RB0324-type-argument-count.road:4:23
+  |
+4 | type Wrap<T> { inner: T<int>, all: Pair<T> }
+  |                       ^
+
+error[RB0324]: `Pair` takes 2 type arguments, not 1
+ --> RB0324-type-argument-count.road:4:36
+  |
+4 | type Wrap<T> { inner: T<int>, all: Pair<T> }
+  |                                    ^^^^^^^
+
+error[RB0324]: `Page` is generic: it takes 1 type argument
+ --> RB0324-type-argument-count.road:6:17
+  |
+6 | machine M(page: Page, two: Page<int, int>, order: Order<int>) {
+  |                 ^^^^
+  |
+  = help: write `Page<T>` with a type for each
+
+error[RB0324]: `Page` takes 1 type argument, not 2
+ --> RB0324-type-argument-count.road:6:28
+  |
+6 | machine M(page: Page, two: Page<int, int>, order: Order<int>) {
+  |                            ^^^^^^^^^^^^^^
+
+error[RB0324]: `Order` is not generic: it takes no type arguments
+ --> RB0324-type-argument-count.road:6:51
+  |
+6 | machine M(page: Page, two: Page<int, int>, order: Order<int>) {
+  |                                                   ^^^^^^^^^^

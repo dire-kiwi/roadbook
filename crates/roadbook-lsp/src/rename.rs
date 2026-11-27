@@ -259,7 +259,12 @@ fn clash(index: &SymbolIndex, id: SymbolId, new: &str) -> Option<String> {
             None => return None,
         }
     };
+    // A call's parameters are named apart from the machine's parameters and variables.
+    let of_call =
+        |x: &roadbook_compiler::Symbol| x.parent.is_some_and(|p| index.symbol(p).kind == K::Call);
     let conflicts = |o: &roadbook_compiler::Symbol, oid: SymbolId| match s.kind {
+        K::Call => o.kind == K::Call && o.parent == s.parent,
+        K::Parameter if of_call(s) => o.kind == K::Parameter && o.parent == s.parent,
         K::Event | K::EmittedEvent => {
             (matches!(o.kind, K::Event | K::EmittedEvent) && o.parent == s.parent)
                 || typeish(o.kind)
@@ -275,7 +280,8 @@ fn clash(index: &SymbolIndex, id: SymbolId, new: &str) -> Option<String> {
             matches!(
                 o.kind,
                 K::Parameter | K::Variable | K::InvokeName | K::Children
-            ) && machine_of(oid) == machine_of(id)
+            ) && !of_call(o)
+                && machine_of(oid) == machine_of(id)
         }
         _ => false,
     };

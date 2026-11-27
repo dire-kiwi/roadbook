@@ -68,6 +68,12 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M(p: ref  P) {\n  emits Progress{percent:int}\n  emits Done {}\n  event Go\n  state A {\n    invoke U( ) as   u { done -> B }\n    on u.Progress  emit Progress {percent: event.percent,} set n = 1\n    on Go do f() send p.Ping {} do g() do h() set x = 1 emit Done\n  }\n}\n",
         "machine M(p: ref P) {\n  emits Progress { percent: int }\n  emits Done\n  event Go\n  state A {\n    invoke U() as u {\n      done -> B\n    }\n    on u.Progress set n = 1  emit Progress { percent: event.percent }\n    on Go         set x = 1  do f()  send p.Ping  do g(), h()  emit Done\n  }\n}\n",
     ),
+    // Calls: a `call` is laid out like a task; `on name` takes it, `reply` is a clause of its
+    // own after every `set`, and a `done` with no value ends its line.
+    (
+        "machine M(inv: ref I) {\n  call reserve( orderId:string,items : Item[] )->Reservation!OutOfStock\n  call count( )\n  var pending : call  reserve\n  on count reply call done\n  state A {\n    on reserve reply call fail OutOfStock{reason:\"busy\"} set n = 1\n    on reserve2 -> B set pending = call\n    invoke inv.reserve( id, items ) { done -> B reply pending done result }\n  }\n}\n",
+        "machine M(inv: ref I) {\n  call reserve(orderId: string, items: Item[]) -> Reservation ! OutOfStock\n  call count()\n  var pending: call reserve\n  on count reply call done\n  state A {\n    on reserve        set n = 1  reply call fail OutOfStock { reason: \"busy\" }\n    on reserve2 -> B  set pending = call\n    invoke inv.reserve(id, items) {\n      done -> B  reply pending done result\n    }\n  }\n}\n",
+    ),
     // A record value as an `after` delay keeps its parentheses.
     (
         "machine M() {\n  after (Cfg { ms: 1 }) -> A\n  after (d) -> A\n}\n",

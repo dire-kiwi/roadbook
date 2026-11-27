@@ -1,4 +1,4 @@
-{"input":{"draft":{"coupon":null,"items":[{"qty":2,"sku":"apple"}]},"token":"tok-1"},"ir":"sha256:e9442abf4d05e2cb7cb47b28121e0405c98d6c34249d674ae595af3b32ce701b","kind":"started","machine":"PlaceOrder","run":"r1","t":0}
+{"input":{"draft":{"coupon":null,"items":[{"qty":2,"sku":"apple"}]},"token":"tok-1"},"ir":"sha256:291c63fa77ecad4cc703ef56d0616449de529e0fbd0cc7a76b2b4d8ba2f0c1c9","kind":"started","machine":"PlaceOrder","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"PlaceOrder","t":0}
 {"kind":"entered","run":"r1","state":"PlaceOrder.Authenticating","t":0}
 {"args":{"token":"tok-1"},"invoke":1,"kind":"invoke.started","run":"r1","src":"authenticate","state":"PlaceOrder.Authenticating","t":0}

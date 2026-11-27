@@ -218,7 +218,7 @@ importers:
 
   examples/import-job:
     dependencies:
-      '@roadbook/effect':
+      '@dire-kiwi/roadbook-effect':
         specifier: workspace:*
         version: link:../../packages/effect
       effect:
@@ -240,7 +240,7 @@ importers:
 
   examples/shop:
     dependencies:
-      '@roadbook/effect':
+      '@dire-kiwi/roadbook-effect':
         specifier: workspace:*
         version: link:../../packages/effect
       effect:
@@ -295,7 +295,7 @@ importers:
 
   packages/effect:
     dependencies:
-      '@roadbook/core':
+      '@dire-kiwi/roadbook-core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
@@ -317,7 +317,7 @@ importers:
 
   packages/viewer:
     dependencies:
-      '@roadbook/core':
+      '@dire-kiwi/roadbook-core':
         specifier: workspace:*
         version: link:../core
       elkjs:

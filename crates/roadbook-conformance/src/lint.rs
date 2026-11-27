@@ -54,6 +54,22 @@ struct Run {
     messages: HashMap<u64, (String, Value, Value)>,
     /// The `sent` record just written, which an `undelivered` may follow.
     last_sent: Option<(u64, Value, Value)>,
+    /// The calls the run has taken and not answered: (caller, invoke, call).
+    calls: Vec<(String, u64, String)>,
+    /// A call just dropped, which a `replied` with `Unanswered` must follow.
+    dropped_call: Option<(String, u64, String)>,
+}
+
+/// A call one run took, or an answer it gave, for checking against the
+/// caller's records.
+struct CallRecord {
+    line: usize,
+    callee: String,
+    caller: String,
+    invoke: u64,
+    call: String,
+    /// For a `replied` record: the input the caller is to take.
+    answer: Option<(String, Value)>,
 }
 
 fn is_top_level(id: &str) -> bool {
@@ -102,6 +118,7 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
     let mut runs: HashMap<String, Run> = HashMap::new();
     let mut order: Vec<String> = Vec::new();
     let mut received: Vec<Received> = Vec::new();
+    let mut calls_taken: Vec<CallRecord> = Vec::new();
 
     if arrange(records.to_vec()) != records {
         problems.push("records are not grouped by run in run order".to_owned());
@@ -225,6 +242,14 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
             }
         }
         let last_sent = run.last_sent.take();
+        let dropped_call = run.dropped_call.take();
+        if let Some((caller, n, _)) = &dropped_call {
+            if kind != "replied" {
+                bad(format!(
+                    "the dropped call of {caller}'s invoke {n} is not answered at once"
+                ));
+            }
+        }
         let machine = ir.and_then(|ir| ir.machines.get(&run.machine));
         let state_in_ir = |s: &str| machine.is_none_or(|m| find_state(&m.root, s).is_some());
 
@@ -293,7 +318,29 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                         value: e.get("value").cloned().unwrap_or(Value::Null),
                     });
                 }
-                if ekind == "message" {
+                if ekind == "call" {
+                    let caller = str_of(&e, "from").to_owned();
+                    let n = u64_of(&e, "invoke");
+                    let call = str_of(&e, "call").to_owned();
+                    if let Some(m) = machine {
+                        if !m.calls.contains_key(&call) {
+                            bad(format!("{} has no call {call}", run.machine));
+                        }
+                    }
+                    calls_taken.push(CallRecord {
+                        line,
+                        callee: id.clone(),
+                        caller: caller.clone(),
+                        invoke: n,
+                        call: call.clone(),
+                        answer: None,
+                    });
+                    match kind {
+                        "stale" => bad("a call is never stale".to_owned()),
+                        "dropped" => run.dropped_call = Some((caller, n, call)),
+                        _ => run.calls.push((caller, n, call)),
+                    }
+                } else if ekind == "message" {
                     if kind == "stale" {
                         bad("a message is never stale".to_owned());
                     }
@@ -392,6 +439,41 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 }
             }
             "set" | "action" => {}
+            "replied" => {
+                let to = str_of(r, "to").to_owned();
+                let n = u64_of(r, "invoke");
+                let call = str_of(r, "call").to_owned();
+                let key = (to.clone(), n, call.clone());
+                let outcome = str_of(r, "outcome");
+                let value = r.get("value").cloned().unwrap_or(Value::Null);
+                if dropped_call.as_ref() == Some(&key) {
+                    if outcome != "fail" || value != serde_json::json!({"_tag": "Unanswered"}) {
+                        bad("a dropped call is answered other than `Unanswered`".to_owned());
+                    }
+                } else if let Some(i) = run.calls.iter().position(|c| *c == key) {
+                    run.calls.remove(i);
+                } else {
+                    bad(format!(
+                        "reply to {to}'s invoke {n}, which is not a pending {call} call"
+                    ));
+                }
+                let answer = match outcome {
+                    "done" => ("invoke.done".to_owned(), value),
+                    "fail" => ("invoke.fail".to_owned(), value),
+                    o => {
+                        bad(format!("unknown outcome `{o}`"));
+                        ("".to_owned(), value)
+                    }
+                };
+                calls_taken.push(CallRecord {
+                    line,
+                    callee: id.clone(),
+                    caller: to,
+                    invoke: n,
+                    call,
+                    answer: Some(answer),
+                });
+            }
             "sent" | "emitted" => {
                 let n = u64_of(r, "message");
                 if n != run.next_message {
@@ -439,7 +521,11 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     bad(format!("invoke started in {s}, which is not active"));
                 }
                 if let Some(st) = machine.and_then(|m| find_state(&m.root, &s)) {
-                    if st.invoke.as_ref().map(|inv| inv.src.as_str()) != Some(src.as_str()) {
+                    let want = st.invoke.as_ref().map(|inv| match &inv.to {
+                        Some(to) => format!("{}.{}", to.name, inv.src),
+                        None => inv.src.clone(),
+                    });
+                    if want.as_deref() != Some(src.as_str()) {
                         bad(format!("{s} does not invoke {src}"));
                     }
                 }
@@ -546,6 +632,9 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     bad(format!(
                         "run {id} is suspended with an invoke or a spawned child running"
                     ));
+                }
+                if !run.calls.is_empty() {
+                    bad(format!("run {id} is suspended with a call pending"));
                 }
                 run.end = Some(r.clone());
             }
@@ -726,8 +815,61 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
             ));
         }
     }
+    // Every call taken was made by its caller's invoke of a call, and every
+    // answer a caller took as a call's outcome was given by a `replied`
+    // record, unless it is `Unanswered`, which a driver gives without one.
+    for c in &calls_taken {
+        let line = c.line;
+        let made = runs
+            .get(&c.caller)
+            .and_then(|r| r.started_invokes.get(&c.invoke));
+        match made {
+            Some((_, src)) if src.rsplit_once('.').is_some_and(|(_, k)| k == c.call) => {}
+            _ => problems.push(format!(
+                "line {line}: {} made no call {} with invoke {}",
+                c.caller, c.call, c.invoke
+            )),
+        }
+        if let Some(answer) = &c.answer {
+            let caller_end = runs
+                .get(&c.caller)
+                .and_then(|r| r.invoke_ends.get(&c.invoke));
+            if let Some(have) = caller_end {
+                if have.0 != "cancelled" && have != answer {
+                    problems.push(format!(
+                        "line {line}: {} took {have:?} for its call, not the reply {answer:?}",
+                        c.caller
+                    ));
+                }
+            }
+        }
+        let _ = &c.callee;
+    }
+    for (id, run) in &runs {
+        for (n, (k, v)) in &run.invoke_ends {
+            let Some((_, src)) = run.started_invokes.get(n) else {
+                continue;
+            };
+            let is_call = src.contains('.');
+            if !is_call || k == "cancelled" {
+                continue;
+            }
+            let replied = calls_taken.iter().any(|c| {
+                c.caller == *id
+                    && c.invoke == *n
+                    && c.answer.as_ref() == Some(&(k.clone(), v.clone()))
+            });
+            let unanswered = k == "invoke.fail" && *v == serde_json::json!({"_tag": "Unanswered"});
+            if !replied && !unanswered {
+                problems.push(format!(
+                    "run {id} took {k} for its call invoke {n}, which no reply gave"
+                ));
+            }
+        }
+    }
     let mut sorted = order.clone();
     sorted.sort_by(|a, b| compare_run_ids(a, b));
+
     if sorted != order {
         problems.push("runs are not in run order".to_owned());
     }

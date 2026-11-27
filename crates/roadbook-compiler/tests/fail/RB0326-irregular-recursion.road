@@ -1,0 +1,13 @@
+type Nested<T> { inner: Nested<T[]>? }
+type Swap<A, B> { next: Swap<B, A>? }
+type Tree<T> { value: T, children: Tree<T>[] }
+type Even<T> { odd: Odd<T>? }
+type Odd<T> { even: Even<T>? }
+
+machine M(n: Nested<int>, s: Swap<int, string>, t: Tree<int>, e: Even<int>) {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0326 at 1:25
+// expect: RB0326 at 2:25

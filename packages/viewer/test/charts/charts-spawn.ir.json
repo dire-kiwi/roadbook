@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "packages/viewer/test/charts/spawn.road",
@@ -123,6 +123,7 @@
         "endLine": 31,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "id",
@@ -215,6 +216,7 @@
         }
       },
       "children": {},
+      "calls": {},
       "root": {
         "id": "Session",
         "name": "Session",
@@ -429,7 +431,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:1074e49b1f2bba0f657e1ffe300cab2d56e93edb8222c2bb6b6396ff303af144"
+      "hash": "sha256:606c3dd2435ecfecb305423c1c8397282c2b9977f41de0410d58fe48e591df6e"
     },
     "Job": {
       "doc": "A job with no result.",
@@ -440,6 +442,7 @@
         "endLine": 38,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "lane",
@@ -454,6 +457,7 @@
       "events": {},
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Job",
         "name": "Job",
@@ -541,7 +545,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:54bbde9511b5b0d343d7b77c5fbd0a50f89ea747bc9d1eec054e953f808c71c1"
+      "hash": "sha256:15882197add1b2f7faf55c3430d413244b2fc8f11c0d21011d5e4fc81499f354"
     },
     "Hub": {
       "doc": "Many sessions, one per connection.",
@@ -552,6 +556,7 @@
         "endLine": 71,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "int",
       "errors": [],
@@ -700,6 +705,7 @@
           }
         }
       },
+      "calls": {},
       "root": {
         "id": "Hub",
         "name": "Hub",
@@ -1318,7 +1324,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:9c7d1ad3e521329e0d1adbea0ec9b54b3225e9d43c9270fb4e48a3c251b9f79f"
+      "hash": "sha256:38664265751c74ba5700383fe857e880281d33db4a11292520facfa040bfcbba"
     }
   }
 }

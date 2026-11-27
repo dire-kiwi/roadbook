@@ -332,7 +332,7 @@ machine Pay() {
             .replace("check can finish", "check never Both.Left.H and Idel\n  check reachable Pay.Idle\n  check reachable Done.X")
             .replace("check reachable Paying.Backoff", "check reachable Paying.Attempt");
         let (found, codes) = checks(&bad);
-        assert_eq!(codes, ["RB0121", "RB0121", "RB0121", "RB0121"]);
+        assert_eq!(codes, ["RB0123", "RB0123", "RB0123", "RB0123"]);
         // The good ones are kept, the others left out.
         let texts: Vec<&str> = found.iter().map(|c| c.text.as_str()).collect();
         assert_eq!(

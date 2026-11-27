@@ -65,7 +65,7 @@ pub struct Options {
     /// might not be assigned yet (`RB0403`): fixtures for a runtime's `unassigned` defect,
     /// which a chart can reach only this way. `roadbook.toml`'s `allow-unassigned`.
     pub allow_unassigned: Vec<String>,
-    /// The most configurations a machine's checks may explore; past that each gets `RB0910`
+    /// The most configurations a machine's checks may explore; past that each gets `RB0912`
     /// and is not checked. `None` for [`statespace::DEFAULT_MAX_NODES`]. Not in
     /// `roadbook.toml`: tests use it to reach the limit cheaply.
     pub max_configurations: Option<usize>,

@@ -2,8 +2,8 @@
 // sample value of a type, to prefill a form, and a check that a value the reader typed is of
 // the type, so the core is only ever given well-formed inputs. Pure and DOM-free.
 
-import { expandType, fieldsOf, typeRefText } from '@roadbook/core'
-import type { Json, TypeRef } from '@roadbook/core'
+import { expandType, fieldsOf, typeRefText } from '@dire-kiwi/roadbook-core'
+import type { Json, TypeRef } from '@dire-kiwi/roadbook-core'
 import type { Field, Ir } from './ir.ts'
 import { own } from './ir.ts'
 
@@ -33,6 +33,8 @@ export function sampleValue(ir: Ir, type: TypeRef | string, depth = 0): Json {
       return t.name === 'string' ? '' : t.name === 'bool' ? false : t.name === 'json' ? null : 0
     case 'ref':
       return 'r2'
+    case 'call':
+      return null // a pending call: only a run that took the call holds one
   }
   if (depth > 8) return null // a recursive type: leave the rest to the reader
   if (t.kind === 'event') {
@@ -101,6 +103,10 @@ export function checkValue(ir: Ir, type: TypeRef | string, value: unknown, path 
       }
     case 'ref':
       return typeof value === 'string' ? [] : bad(`the id of a run of ${t.machine}, a string such as "r2"`)
+    case 'call':
+      return isObject(value) && typeof value['from'] === 'string' && Number.isInteger(value['invoke'])
+        ? []
+        : bad(`a pending call of ${t.call}: an object with from and invoke`)
     case 'event': {
       const ev = eventFields(ir, t.machine, t.event)
       return ev ? checkTagged(ir, t.event, ev, value, path) : []

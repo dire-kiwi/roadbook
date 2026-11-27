@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/parallel.road",
@@ -90,6 +90,7 @@
         "endLine": 58,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -120,6 +121,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Regions",
         "name": "Regions",
@@ -519,7 +521,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:15b5df5849dd77b1892fbb416e945028eed318d3a9e7c39af9aea3684bdb1dad"
+      "hash": "sha256:39021f3aad74283d24a4a96704104da7dd24e881eb008e7c523c6b0d16ceb0a8"
     },
     "Fork": {
       "doc": "One event taken in two regions, and `always` transitions in two regions\ntaken in one microstep.",
@@ -530,6 +532,7 @@
         "endLine": 93,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -580,6 +583,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Fork",
         "name": "Fork",
@@ -1104,7 +1108,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:fe0781a2aa36f50a5dc9656fd767df98f3b9144cd823e67fd98412acda0b1cd6"
+      "hash": "sha256:19d9d98d1e87d6133ff4aa3a4bb267bfb3d2936c6051c7f350a08c192c346192"
     },
     "Clash": {
       "doc": "Two regions' transitions for one event that would exit the same state.",
@@ -1115,6 +1119,7 @@
         "endLine": 125,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -1156,6 +1161,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Clash",
         "name": "Clash",
@@ -1469,7 +1475,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d86ed947d60e42d1c3200ade7bff0e52874726dfecb725c83bc25351128cd59a"
+      "hash": "sha256:dcc5be06cf9d86d791a006ed274c7f3e7dd7ff54aac8e881c74078e6fc91de91"
     },
     "Escape": {
       "doc": "Transitions from inside a region: into another region, and out of the\nparallel state.",
@@ -1480,6 +1486,7 @@
         "endLine": 161,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -1510,6 +1517,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Escape",
         "name": "Escape",
@@ -1792,7 +1800,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:27802c025ad47352aedf43ea2b487da9aaf6df0afa463c95826015ba643c728e"
+      "hash": "sha256:138a20fb297d5512eca971a5c1335c85fcafec03132aa5d58c78f35fb63b8ebb"
     },
     "Finish": {
       "doc": "A parallel state completes when every region is in a final state.",
@@ -1803,6 +1811,7 @@
         "endLine": 195,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "string",
       "errors": [],
@@ -1833,6 +1842,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Finish",
         "name": "Finish",
@@ -2148,7 +2158,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:cd62aa118f08d64ec65f103b00300d3f0d17f8a6a76b41ba971df9041f25ca06"
+      "hash": "sha256:f0873818b411bdf123a5dabd353e98063a8587785a41577df777bfade40ceb51"
     },
     "Jobs": {
       "doc": "Invokes and timers in two regions and on the parallel state itself.",
@@ -2159,6 +2169,7 @@
         "endLine": 239,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -2178,6 +2189,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Jobs",
         "name": "Jobs",
@@ -2239,6 +2251,7 @@
                     "invoke": {
                       "kind": "task",
                       "src": "upload",
+                      "to": null,
                       "as": null,
                       "args": [],
                       "span": {
@@ -2354,6 +2367,7 @@
                     "invoke": {
                       "kind": "task",
                       "src": "download",
+                      "to": null,
                       "as": null,
                       "args": [],
                       "span": {
@@ -2534,7 +2548,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:78ce9931fd166973750863cb1b8d71c63c1f02efabfec90995f5f00f74a1e0f6"
+      "hash": "sha256:96c44bcd84d19cac7bcf5e6d5bb1c6adb786f38c384c4510e26cf190835bc2a3"
     },
     "Shell": {
       "doc": "A parallel state inside a compound state, left by the compound state's\ntransition.",
@@ -2545,6 +2559,7 @@
         "endLine": 275,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -2564,6 +2579,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Shell",
         "name": "Shell",
@@ -2842,7 +2858,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:abec30042208c4e75ed23634f37b2080e904e92ca7fd0d399a6622dec3cbac07"
+      "hash": "sha256:e803e155f37037857c962b6be125317dcf9073345cbc23f8b89bf4ddc64cc7cd"
     }
   }
 }

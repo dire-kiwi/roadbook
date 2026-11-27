@@ -1,13 +1,14 @@
 //! What a run shares with the outside: its inbox, its cancel flag, whether it is open, the
-//! runs subscribed to what it emits, how it finished, and the state it is in. For a child run
-//! this is also the cancel token of the invoke context.
+//! runs subscribed to what it emits, the calls it waits for and those it was given, how it
+//! finished, and the state it is in. For a child run this is also the cancel token of the
+//! invoke context.
 
 use std::cell::RefCell;
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::task::Waker;
 
-use roadbook_core::{Defect, Input, Program, Saved, Snapshot};
+use roadbook_core::{Defect, Input, Program, ReplyOutcome, Saved, Snapshot};
 use serde_json::Value;
 
 use crate::env::Config;
@@ -35,13 +36,63 @@ struct Inner {
     /// The run's core has returned a snapshot that is not `running`: nothing more is
     /// delivered to it.
     closed: bool,
-    /// The open runs that hold a `ref` to this run, which receive what it emits.
-    subscribers: Vec<Arc<Shared>>,
+    /// The open runs that hold a `ref` to this run, each with the events it emits that they
+    /// receive: those their machine has an `on` for.
+    subscribers: Vec<(Arc<Shared>, HashSet<String>)>,
     /// Host code asked to suspend the run once it is idle.
     suspend: bool,
     /// The run's saved snapshot as its last step left it, once it has one.
     saved: Option<Published>,
     saved_wakers: Vec<Waker>,
+    /// The invokes of this run that made a call and still wait for its answer: an answer to
+    /// one that is not here (cancelled, or answered already) is not pushed.
+    calling: BTreeSet<u64>,
+    /// The calls other runs made of this run that it has not answered yet, queued or taken,
+    /// in the order they arrived: each caller's run id, its invoke, and the way to answer.
+    answers: Vec<(String, u64, Answer)>,
+}
+
+/// The way to answer a call (`spec/execution.md#carrying-out-calls`): push an outcome for the
+/// caller's invoke onto the caller's queue, while the caller is open and that invoke still
+/// waits for it.
+pub(crate) struct Answer {
+    caller: Arc<Shared>,
+    invoke: u64,
+}
+
+impl Answer {
+    /// Answers the call with `invoke.done` and `value`, or `invoke.fail` and the error
+    /// `value`. Pushes nothing if the caller has closed or no longer waits for the invoke
+    /// (it cancelled it); the check and the push are one operation.
+    pub fn answer(self, outcome: ReplyOutcome, value: Value) {
+        let invoke = self.invoke;
+        let input = match outcome {
+            ReplyOutcome::Done => Input::InvokeDone { invoke, value },
+            ReplyOutcome::Fail => Input::InvokeFail {
+                invoke,
+                error: value,
+            },
+        };
+        let waker = {
+            let mut g = self.caller.lock();
+            if g.closed || g.finished.is_some() || !g.calling.remove(&invoke) {
+                return;
+            }
+            g.inbox.push_back(input);
+            g.waker.take()
+        };
+        if let Some(w) = waker {
+            w.wake();
+        }
+    }
+
+    /// Answers the call `fail` with `{"_tag": "Unanswered"}`.
+    pub fn unanswered(self) {
+        self.answer(
+            ReplyOutcome::Fail,
+            serde_json::json!({ "_tag": roadbook_ir::UNANSWERED }),
+        );
+    }
 }
 
 /// A published saved snapshot. The driver publishes one after every step, and few are ever
@@ -139,6 +190,68 @@ impl Shared {
         true
     }
 
+    /// Makes a call with this run's invoke `invoke`: from now until it is answered or
+    /// [`Shared::forget_call`], an answer is pushed onto this run's queue.
+    pub fn make_call(self: &Arc<Self>, invoke: u64) -> Answer {
+        self.lock().calling.insert(invoke);
+        Answer {
+            caller: self.clone(),
+            invoke,
+        }
+    }
+
+    /// This run cancelled its call invoke `invoke`, or took its outcome: an answer that comes
+    /// now is not pushed.
+    pub fn forget_call(&self, invoke: u64) {
+        self.lock().calling.remove(&invoke);
+    }
+
+    /// Delivers the call `input` (an [`Input::Call`]) to this run, keeping `answer` with it
+    /// until the run answers it, and gives `Ok` if the run is open; else gives the way to
+    /// answer back. The check and the push are one operation with respect to
+    /// [`Shared::close`], as for a message.
+    pub fn deliver_call(&self, input: Input, answer: Answer) -> Result<(), Answer> {
+        let Input::Call { from, invoke, .. } = &input else {
+            return Err(answer);
+        };
+        let key = (from.clone(), *invoke);
+        let waker = {
+            let mut g = self.lock();
+            if g.closed || g.finished.is_some() {
+                return Err(answer);
+            }
+            g.answers.push((key.0, key.1, answer));
+            g.inbox.push_back(input);
+            g.waker.take()
+        };
+        if let Some(w) = waker {
+            w.wake();
+        }
+        Ok(())
+    }
+
+    /// The way to answer the call that run `from` made with its invoke `invoke`, which this
+    /// run then forgets, if it has it.
+    pub fn take_answer(&self, from: &str, invoke: u64) -> Option<Answer> {
+        let mut g = self.lock();
+        let i = g
+            .answers
+            .iter()
+            .position(|(f, i, _)| f == from && *i == invoke)?;
+        Some(g.answers.remove(i).2)
+    }
+
+    /// Answers `Unanswered` every call this run was given and has not answered, in the order
+    /// they arrived: those it took first (pending, or taken by a step a defect cut short),
+    /// then those still queued. It forgets them all. For a run that has ended, after its last
+    /// step's commands.
+    pub fn answer_unanswered(&self) {
+        let answers = std::mem::take(&mut self.lock().answers);
+        for (_, _, answer) in answers {
+            answer.unanswered();
+        }
+    }
+
     /// Closes the run for good: nothing more is delivered to it, and what its inbox holds is
     /// discarded.
     pub fn close(&self) {
@@ -159,30 +272,33 @@ impl Shared {
         true
     }
 
-    /// Subscribes `run` to what this run emits.
-    pub fn subscribe(&self, run: Arc<Shared>) {
-        self.lock().subscribers.push(run);
+    /// Subscribes `run` to the events in `events` that this run emits.
+    pub fn subscribe(&self, run: Arc<Shared>, events: HashSet<String>) {
+        self.lock().subscribers.push((run, events));
     }
 
     /// Ends the subscription of `run`.
     pub fn unsubscribe(&self, run: &Arc<Shared>) {
-        self.lock().subscribers.retain(|s| !Arc::ptr_eq(s, run));
+        self.lock()
+            .subscribers
+            .retain(|(s, _)| !Arc::ptr_eq(s, run));
     }
 
-    /// The runs subscribed to what this run emits. Runs that have closed without
+    /// The runs subscribed to `event` when this run emits it. Runs that have closed without
     /// unsubscribing (one stopped before its driver was first polled) are forgotten here.
-    pub fn subscribers(&self) -> Vec<Arc<Shared>> {
+    pub fn subscribers(&self, event: &str) -> Vec<Arc<Shared>> {
         // Not holding this run's lock while taking theirs.
         let (open, gone): (Vec<_>, Vec<_>) = self
             .lock()
             .subscribers
-            .clone()
-            .into_iter()
+            .iter()
+            .filter(|(_, events)| events.contains(event))
+            .map(|(s, _)| s.clone())
             .partition(|s| s.is_open());
         if !gone.is_empty() {
             self.lock()
                 .subscribers
-                .retain(|s| !gone.iter().any(|g| Arc::ptr_eq(g, s)));
+                .retain(|(s, _)| !gone.iter().any(|g| Arc::ptr_eq(g, s)));
         }
         open
     }
@@ -450,7 +566,7 @@ impl RunHandle {
     }
 
     /// Asks a top-level run to suspend: once it is idle (between steps, nothing queued, no
-    /// running invoke) it stops without exit effects, writes `suspended`, and its future
+    /// running invoke, no pending call) it stops without exit effects, writes `suspended`, and its future
     /// ends with [`crate::RunEnd::Suspended`]. A run that ends first ends as it would have.
     /// A child run ignores the request.
     pub fn suspend(&self) {
@@ -485,10 +601,11 @@ pub(crate) struct InvokeContext {
     /// The child run's [`Shared`], once a run claims it. Until then its inbox holds the
     /// messages the parent sends to the invoke.
     pub token: Arc<Shared>,
-    /// The parent's own, which the child pushes what it emits onto when `alias` is set.
+    /// The parent's own, which the child pushes what it emits onto when the parent receives it.
     pub parent_queue: Arc<Shared>,
-    /// The invoke's `as` name.
-    pub alias: Option<String>,
+    /// The child's emitted events that the parent receives: those its machine has an `on`
+    /// for, and none when the invoke has no `as` name.
+    pub heard: HashSet<String>,
 }
 
 thread_local! {

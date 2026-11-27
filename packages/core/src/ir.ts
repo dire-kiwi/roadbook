@@ -1,12 +1,12 @@
 /**
- * The Roadbook IR, version 0.6, as `spec/ir.md` describes it. The types mirror the JSON;
+ * The Roadbook IR, version 0.7, as `spec/ir.md` describes it. The types mirror the JSON;
  * {@link loadIr} checks the version before anything else.
  */
 import { aliasCycle } from "./typeref.ts"
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.6"
+export const IR_VERSION = "0.7"
 
 export interface Span {
   readonly file: number
@@ -89,9 +89,22 @@ export interface EventDecl {
   readonly span: Span
 }
 
+/** A call the machine answers, `call name(params) -> T ! E`: the members of a task. */
+export interface CallDecl {
+  readonly params: ReadonlyArray<Field>
+  readonly returns: string | null
+  readonly errors: ReadonlyArray<string>
+  readonly doc: string
+  readonly span: Span
+}
+
+/** The built-in error every call can fail with besides its declared ones. */
+export const UNANSWERED = "Unanswered"
+
 export interface Machine {
   readonly doc: string
   readonly span: Span
+  readonly strict: boolean
   readonly params: ReadonlyArray<Field>
   readonly returns: string | null
   readonly errors: ReadonlyArray<string>
@@ -99,6 +112,7 @@ export interface Machine {
   readonly events: Readonly<Record<string, EventDecl>>
   readonly emits: Readonly<Record<string, EventDecl>>
   readonly children: Readonly<Record<string, ChildrenDecl>>
+  readonly calls: Readonly<Record<string, CallDecl>>
   readonly root: State
   readonly hash: string
 }
@@ -132,8 +146,11 @@ export interface State {
 }
 
 export interface Invoke {
-  readonly kind: "task" | "machine"
+  readonly kind: "task" | "machine" | "call"
+  /** The task's or machine's name, or the call's. */
   readonly src: string
+  /** For a call, the callee: an address of kind `ref`. `null` for a task or a machine. */
+  readonly to: Address | null
   readonly as: string | null
   readonly args: ReadonlyArray<Expr>
   readonly span: Span
@@ -161,6 +178,7 @@ export type Trigger =
   | { readonly kind: "invoke.fail"; readonly error: string }
   | { readonly kind: "spawn.done"; readonly children: string }
   | { readonly kind: "spawn.fail"; readonly children: string; readonly error: string }
+  | { readonly kind: "call"; readonly call: string }
 
 export interface Transition {
   readonly trigger: Trigger
@@ -191,6 +209,13 @@ export type Effect =
     readonly args: ReadonlyArray<Expr>
   }
   | { readonly kind: "stop"; readonly children: string; readonly key: Expr }
+  | {
+    readonly kind: "reply"
+    /** A `ref` expression of type `call c`: the implicit `call` or a variable. */
+    readonly call: Expr
+    readonly outcome: "done" | "fail"
+    readonly value: Expr | null
+  }
 
 interface ExprBase {
   readonly type: string
@@ -266,4 +291,3 @@ export const getMachine = (ir: Ir, name: string): Machine => {
   }
   return machine
 }
-

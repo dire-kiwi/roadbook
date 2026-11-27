@@ -135,7 +135,7 @@ fn export_ir_writes_the_fixture() {
     let out = roadbook(&dir, &["export", "ir", "m.road", "-o", "m.ir.json"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let written = std::fs::read_to_string(dir.join("m.ir.json")).unwrap();
-    assert!(written.contains("\"irVersion\": \"0.6\""));
+    assert!(written.contains("\"irVersion\": \"0.7\""));
 }
 
 #[test]
@@ -784,11 +784,12 @@ fn viz_names_pages_after_their_entries_and_reports_errors() {
     );
     assert_eq!(
         order["sends"],
-        serde_json::json!([{ "to": inventory, "events": ["Reserve", "Release"] }])
+        serde_json::json!([{ "to": inventory, "events": ["Release"] }])
     );
+    assert_eq!(order["receives"], serde_json::json!([]));
     assert_eq!(
-        order["receives"],
-        serde_json::json!([{ "from": inventory, "events": ["Reserved", "Rejected"] }])
+        order["calls"],
+        serde_json::json!([{ "to": inventory, "calls": ["reserve"] }])
     );
     let (publish, upload) = (&machines[at("Publish")], at("Upload"));
     assert_eq!(publish["invokes"], serde_json::json!([upload]));
@@ -817,11 +818,14 @@ fn viz_names_pages_after_their_entries_and_reports_errors() {
         serde_json::json!([{ "from": upload, "events": ["Progress"] }])
     );
     // A machine of another package is named by its package and its path in it.
-    assert_eq!(machines[inventory]["source"], "inventory/inventory.road:19");
+    assert_eq!(machines[inventory]["source"], "inventory/inventory.road:18");
     for m in machines {
         if m["name"] != "Order" && m["name"] != "Publish" && m["name"] != "Batch" {
             assert_eq!(m["sends"], serde_json::json!([]), "{m}");
             assert_eq!(m["receives"], serde_json::json!([]), "{m}");
+        }
+        if m["name"] != "Order" {
+            assert_eq!(m["calls"], serde_json::json!([]), "{m}");
         }
     }
 
@@ -998,6 +1002,16 @@ fn export_mermaid_snapshots_the_shop() {
 }
 
 #[test]
+fn export_mermaid_snapshots_calls() {
+    let out = roadbook(
+        &repo(),
+        &["export", "mermaid", "spec/conformance/charts/calls.road"],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    insta::assert_snapshot!("calls_mermaid", text(&out.stdout));
+}
+
+#[test]
 fn export_mermaid_nests_and_splits_regions() {
     let out = roadbook(
         &repo(),
@@ -1115,7 +1129,7 @@ fn viewer_asset_is_fresh() {
 
     let asset = include_str!("../assets/roadbook-viewer.js");
     let (header, body) = asset.split_once('\n').unwrap();
-    let stale = "crates/roadbook-cli/assets/roadbook-viewer.js is stale: run `pnpm --filter @roadbook/viewer build` and commit it";
+    let stale = "crates/roadbook-cli/assets/roadbook-viewer.js is stale: run `pnpm --filter @dire-kiwi/roadbook-viewer build` and commit it";
     assert!(
         header.contains(&format!("sources sha256:{sources} ")),
         "{stale} (the sources changed)\n{header}"
@@ -1497,7 +1511,7 @@ machine Order(item: Item, i: ref Inv, s: ref Stock, f: ref Far, a: ref A) {
 }
 
 /// Resolves what the generated modules import when Node runs them in a test project: `effect`
-/// and `@roadbook/effect` as `packages/effect` does, and `./x.road.js` to `./x.road.ts`.
+/// and `@dire-kiwi/roadbook-effect` as `packages/effect` does, and `./x.road.js` to `./x.road.ts`.
 const NODE_HOOKS: &str = r#"
 import { registerHooks } from "node:module"
 import { existsSync } from "node:fs"
@@ -1505,7 +1519,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 const effect = pathToFileURL(process.env.ROADBOOK_EFFECT_PACKAGE).href
 registerHooks({
   resolve(specifier, context, next) {
-    if (specifier === "effect" || specifier === "@roadbook/effect") {
+    if (specifier === "effect" || specifier === "@dire-kiwi/roadbook-effect") {
       return next(specifier, { ...context, parentURL: effect })
     }
     if (specifier.endsWith(".road.js") && context.parentURL !== undefined) {

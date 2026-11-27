@@ -50,12 +50,16 @@ impl Sig {
 }
 
 /// What other machines see of a machine: the events it accepts and the events it emits, with
-/// their fields' types.
+/// their fields' types, and the calls it answers.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Interface {
     pub events: IndexMap<String, Vec<(String, Ty)>>,
     pub emits: IndexMap<String, Vec<(String, Ty)>>,
+    pub calls: IndexMap<String, Sig>,
 }
+
+/// The built-in error every call can fail with besides its declared ones.
+pub(crate) const UNANSWERED: &str = roadbook_ir::UNANSWERED;
 
 pub(crate) struct Checker<'p> {
     pub names: Names<'p>,
@@ -142,7 +146,8 @@ fn names_written<'a>(t: &'a ast::TypeRef, out: &mut HashSet<&'a str>) {
             names_written(v, out);
         }
         ast::TypeKind::List(e) | ast::TypeKind::Optional(e) => names_written(e, out),
-        ast::TypeKind::Builtin(_) => {}
+        // A pending call names a call of the machine, not a type.
+        ast::TypeKind::Builtin(_) | ast::TypeKind::Call(_) => {}
     }
 }
 
@@ -286,6 +291,37 @@ impl<'p> Checker<'p> {
                         let ev = self.member(id, kind, &e.name, e.span, &e.doc, signature);
                         self.index_fields(ev, &e.fields);
                     }
+                    for c in m.body.calls() {
+                        let signature = format!(
+                            "call {}({}){}",
+                            c.name.name,
+                            index::list(&c.params),
+                            index::result_text(c.returns.as_ref(), &c.errors)
+                        );
+                        let cid = self.define(
+                            SymbolKind::Call,
+                            &c.name,
+                            c.span,
+                            Some(id),
+                            &c.doc,
+                            signature,
+                        );
+                        // Calls have names of their own, apart from the parameters and variables.
+                        self.members
+                            .entry((id, format!("call {}", c.name.name)))
+                            .or_insert(cid);
+                        for p in &c.params {
+                            let signature = index::field_text(p);
+                            self.member(
+                                cid,
+                                SymbolKind::Parameter,
+                                &p.name,
+                                p.span,
+                                &None,
+                                signature,
+                            );
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -336,6 +372,13 @@ impl<'p> Checker<'p> {
         let id = self.define(kind, name, decl_span, Some(owner), doc, signature);
         self.members.entry((owner, name.name.clone())).or_insert(id);
         id
+    }
+
+    /// The call `name` of the machine whose symbol is `machine`, if it has one.
+    pub(crate) fn call_symbol(&self, machine: Option<SymbolId>, name: &str) -> Option<SymbolId> {
+        self.members
+            .get(&(machine?, format!("call {name}")))
+            .copied()
     }
 
     /// The member of `owner` named `name`, if it has one.
@@ -443,6 +486,20 @@ impl<'p> Checker<'p> {
                     &mut iface.events
                 };
                 map.insert(e.name.name.clone(), fields);
+            }
+            self.unique(m.body.calls().map(|c| &c.name), "call");
+            for c in m.body.calls() {
+                if iface.calls.contains_key(&c.name.name) {
+                    continue;
+                }
+                let sig = self.signature(file, &c.name, &c.params, c.returns.as_ref(), &c.errors);
+                // A call's arguments arrive like an event's fields, so they cannot carry a
+                // `ref` either: the runs a machine holds are fixed when it starts.
+                for (p, (_, t)) in c.params.iter().zip(&sig.params) {
+                    let what = format!("parameter `{}` of call `{}`", p.name.name, c.name.name);
+                    self.no_ref(file, &p.ty, t, &what);
+                }
+                iface.calls.insert(c.name.name.clone(), sig);
             }
             self.interfaces.insert(d.name.name.clone(), iface);
         }
@@ -568,6 +625,14 @@ impl<'p> Checker<'p> {
                     self.deferred.push(Deferred::MapKey(k.span, key.clone()));
                 }
                 Ty::Map(Box::new(key), Box::new(value))
+            }
+            ast::TypeKind::Call(n) => {
+                // A machine variable's own type is resolved by the machine, which knows its
+                // calls; anywhere else, this is reached.
+                if !self.is_compiled(file) {
+                    self.diags.push(call_type_not_allowed(t, n));
+                }
+                Ty::Unknown
             }
             ast::TypeKind::Ref(n) => {
                 self.refer_decl(file, n);
@@ -882,7 +947,15 @@ impl<'p> Checker<'p> {
 
     /// A declared type named in `file`.
     fn named_type(&mut self, file: usize, n: &Ident) -> Ty {
-        match self.names.lookup(file, &n.name) {
+        let found = self.names.lookup(file, &n.name);
+        if n.name == UNANSWERED && matches!(found, Found::Missing) {
+            self.diags.push(unanswered_misused(
+                n.span,
+                "`Unanswered` is not a type: it is the built-in error of a call that is not answered",
+            ));
+            return Ty::Unknown;
+        }
+        match found {
             Found::Decl(id) if is_type(&self.names.decl(id).kind) => Ty::Named(n.name.clone()),
             Found::Decl(id) => {
                 let mut d = self.names.wrong_kind(n, id, "a type");
@@ -936,7 +1009,15 @@ impl<'p> Checker<'p> {
     pub fn resolve_error(&mut self, file: usize, n: &Ident) -> bool {
         self.refer_decl(file, n);
         let is_error = |k: &DeclKind| matches!(k, DeclKind::Error { .. });
-        match self.names.lookup(file, &n.name) {
+        let found = self.names.lookup(file, &n.name);
+        if n.name == UNANSWERED && matches!(found, Found::Missing) {
+            self.diags.push(unanswered_misused(
+                n.span,
+                "`Unanswered` cannot be declared: every call can fail with it, besides its declared errors",
+            ));
+            return false;
+        }
+        match found {
             Found::Decl(id) if is_error(&self.names.decl(id).kind) => true,
             Found::Decl(id) => {
                 let d = self.names.wrong_kind(n, id, "an error");
@@ -1124,30 +1205,40 @@ impl<'p> Checker<'p> {
                 DeclKind::Machine(m) => (&m.params, m.returns.as_ref(), &m.errors),
                 _ => continue,
             };
-            let params = self.fields(file, params, "parameter");
-            let returns = returns.map(|r| {
-                let t = self.resolve(file, r);
-                let what = format!("what `{}` returns", d.name.name);
-                self.no_ref(file, r, &t, &what);
-                t
-            });
-            self.unique(errors.iter(), "error");
-            let mut errs = Vec::new();
-            for e in errors {
-                self.resolve_error(file, e);
-                if !errs.contains(&e.name) {
-                    errs.push(e.name.clone());
-                }
+            let sig = self.signature(file, &d.name, params, returns, errors);
+            self.sigs.insert(d.name.name.clone(), sig);
+        }
+    }
+
+    /// The resolved signature of a function, action, task, machine or call `name`.
+    fn signature(
+        &mut self,
+        file: usize,
+        name: &Ident,
+        params: &[Field],
+        returns: Option<&ast::TypeRef>,
+        errors: &[Ident],
+    ) -> Sig {
+        let params = self.fields(file, params, "parameter");
+        let returns = returns.map(|r| {
+            let t = self.resolve(file, r);
+            let what = format!("what `{}` returns", name.name);
+            self.no_ref(file, r, &t, &what);
+            t
+        });
+        self.unique(errors.iter(), "error");
+        let mut errs = Vec::new();
+        for e in errors {
+            self.resolve_error(file, e);
+            if !errs.contains(&e.name) {
+                errs.push(e.name.clone());
             }
-            self.sigs.insert(
-                d.name.name.clone(),
-                Sig {
-                    params,
-                    returns,
-                    errors: errs,
-                    name_span: d.name.span,
-                },
-            );
+        }
+        Sig {
+            params,
+            returns,
+            errors: errs,
+            name_span: name.span,
         }
     }
 
@@ -1257,4 +1348,25 @@ impl<'p> Checker<'p> {
         }
         out
     }
+}
+
+/// "`call reserve` is only the type of a machine variable", for a pending call type anywhere
+/// else, including inside `?`, `[]` or an alias in a variable's type.
+pub(crate) fn call_type_not_allowed(t: &ast::TypeRef, n: &Ident) -> Diagnostic {
+    Diagnostic::error(
+        codes::CALL_TYPE_NOT_ALLOWED,
+        t.span,
+        format!(
+            "`call {}` is the type of a pending call, which only a machine variable can hold",
+            n.name
+        ),
+    )
+    .with_help("a pending call never leaves its run: keep it in a `var` of type `call <name>` (not optional, not a list, not through an alias) and answer it with `reply`")
+}
+
+/// The built-in error `Unanswered` where it cannot be.
+pub(crate) fn unanswered_misused(span: Span, message: &str) -> Diagnostic {
+    Diagnostic::error(codes::UNANSWERED_MISUSED, span, message.to_string()).with_help(
+        "`Unanswered` is the error a call fails with when it is not answered; it is handled only in the `fail Unanswered` (or `fail *`) outcome of an `invoke x.call(…)`",
+    )
 }

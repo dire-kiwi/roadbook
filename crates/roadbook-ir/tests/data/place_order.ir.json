@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "examples/shop/place_order.road",
@@ -512,6 +512,7 @@
         "endLine": 78,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "token",
@@ -601,6 +602,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "PlaceOrder",
         "name": "PlaceOrder",
@@ -634,6 +636,7 @@
             "invoke": {
               "kind": "task",
               "src": "authenticate",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -737,6 +740,7 @@
                 "invoke": {
                   "kind": "task",
                   "src": "validateOrder",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -840,6 +844,7 @@
                 "invoke": {
                   "kind": "task",
                   "src": "priceOrder",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -920,6 +925,7 @@
                 "invoke": {
                   "kind": "machine",
                   "src": "Checkout",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -1422,7 +1428,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:e9442abf4d05e2cb7cb47b28121e0405c98d6c34249d674ae595af3b32ce701b"
+      "hash": "sha256:291c63fa77ecad4cc703ef56d0616449de529e0fbd0cc7a76b2b4d8ba2f0c1c9"
     },
     "Checkout": {
       "doc": "Charge the customer's card, retrying while the payment gateway is down.",
@@ -1433,6 +1439,7 @@
         "endLine": 32,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "order",
@@ -1504,6 +1511,7 @@
       "events": {},
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Checkout",
         "name": "Checkout",
@@ -1537,6 +1545,7 @@
             "invoke": {
               "kind": "task",
               "src": "chargeCard",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1854,7 +1863,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4549a2211c30e8dcc753fc13a57e8f7cfae5f89b018c94545bcbafdc7e6b3aa6"
+      "hash": "sha256:fa80e6f614f8898e91e52357e8d5aefe10d597e5daa33a587c6510b20c174521"
     }
   }
 }

@@ -1,0 +1,71 @@
+{
+  "description": "The three ways a call fails with the built-in `Unanswered`: r2's call reaches the Inventory in a state with no `on reserve`, where it is dropped and answered at once (a `replied` record after `dropped`); r3's call is pending when the Inventory ends, and its driver answers it as it ends, writing nothing; r4 calls the ended Inventory, and its own driver answers at once. `fail Unanswered` and `fail *` take it.",
+  "requires": [
+    "messaging",
+    "calls"
+  ],
+  "chart": "charts/calls.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Pause"
+      }
+    },
+    {
+      "start": "Order",
+      "run": "r2",
+      "input": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "s1",
+            "qty": 2
+          }
+        ],
+        "inventory": "r1"
+      },
+      "status": "failed"
+    },
+    {
+      "event": {
+        "_tag": "Resume"
+      }
+    },
+    {
+      "start": "Order",
+      "run": "r3",
+      "input": {
+        "id": "o2",
+        "items": [
+          {
+            "sku": "s2",
+            "qty": 1
+          }
+        ],
+        "inventory": "r1"
+      },
+      "status": "failed"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    },
+    {
+      "start": "Counter",
+      "run": "r4",
+      "input": {
+        "inventory": "r1"
+      },
+      "status": "done"
+    }
+  ],
+  "status": "done"
+}

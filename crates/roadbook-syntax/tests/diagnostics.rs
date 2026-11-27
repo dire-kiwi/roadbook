@@ -98,6 +98,14 @@ fn each_syntax_error_has_its_code() {
         (m("  check 1"), "RB0010"),
         (s("    on Go\n    on Stop -> S"), "RB0017"),
         (s("    on Go if ready"), "RB0017"),
+        (s("    after 5s ignore"), "RB0026"),
+        (s("    always ignore"), "RB0026"),
+        (s("    on reserve ignore"), "RB0026"),
+        (s("    on Go ignore -> A"), "RB0026"),
+        (s("    on Go -> A ignore"), "RB0026"),
+        (s("    on Go set n = 1 ignore"), "RB0026"),
+        (s("    on Go { if ready ignore -> A }"), "RB0026"),
+        ("strict type T {}\n".to_string(), "RB0010"),
         (s("    after Cfg { ms: 5 } -> S"), "RB0018"),
         (s("    fail CardDeclined -> S"), "RB0019"),
         (s("    fail * -> S"), "RB0019"),
@@ -270,7 +278,7 @@ fn rendered_syntax_error() {
         source: &src,
     });
     let expected = "\
-error[RB0017]: a transition must do something: expected `-> Target`, `set`, `do`, `send`, `emit`, `spawn` or `stop`, found `}`
+error[RB0017]: a transition must do something: expected `-> Target`, `set`, `do`, `send`, `emit`, `spawn`, `stop`, `reply` or `ignore`, found `}`
  --> m.road:4:3
   |
 3 |     on Go if ready
@@ -278,7 +286,7 @@ error[RB0017]: a transition must do something: expected `-> Target`, `set`, `do`
 4 |   }
   |   ^
   |
-  = help: give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`) or messages (`send child.Event`, `emit Event`)
+  = help: give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`), children (`spawn name[key] = M(…)`, `stop name[key]`) or a reply (`reply call done`), or write `ignore` to take the event and do nothing
 ";
     assert_eq!(out, expected);
 }

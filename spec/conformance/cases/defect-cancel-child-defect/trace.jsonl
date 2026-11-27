@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:cc06b1198cd0e16680f1447e14355ff9679581bf725284f80af1d002db61b32d","kind":"started","machine":"Crash","run":"r1","t":0}
+{"input":{},"ir":"sha256:890f4644b9e9c7f546ec52d95122a4a070dfd1923e8b3e52910d3add8a05133e","kind":"started","machine":"Crash","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Crash","t":0}
 {"kind":"entered","run":"r1","state":"Crash.Busy","t":0}
 {"kind":"entered","run":"r1","state":"Crash.Busy.A","t":0}
@@ -9,12 +9,12 @@
 {"args":{},"invoke":3,"kind":"invoke.started","run":"r1","src":"crash","state":"Crash.Busy.C","t":0}
 {"event":{"defect":{"kind":"host","message":"worker died"},"invoke":3,"kind":"invoke.defect"},"kind":"event","run":"r1","t":0}
 {"defect":{"kind":"host","message":"worker died"},"kind":"defect","run":"r1","t":0}
-{"input":{"name":"A"},"ir":"sha256:15b778f27b21412cfb7482423212d528973b52fc295512a99f859a752bb9a33e","kind":"started","machine":"Child","parent":"r1","run":"r1.1","t":0}
+{"input":{"name":"A"},"ir":"sha256:fdf0ffc5101f4679031ca6a36584ccc515eeedb030bc6578fc62b0c6c1725a85","kind":"started","machine":"Child","parent":"r1","run":"r1.1","t":0}
 {"kind":"entered","parent":"r1","run":"r1.1","state":"Child","t":0}
 {"kind":"entered","parent":"r1","run":"r1.1","state":"Child.Waiting","t":0}
 {"action":"log","args":{"what":"A"},"kind":"action","parent":"r1","run":"r1.1","t":0}
 {"defect":{"kind":"host","message":"flush failed"},"kind":"defect","parent":"r1","run":"r1.1","t":0}
-{"input":{"name":"B"},"ir":"sha256:15b778f27b21412cfb7482423212d528973b52fc295512a99f859a752bb9a33e","kind":"started","machine":"Child","parent":"r1","run":"r1.2","t":0}
+{"input":{"name":"B"},"ir":"sha256:fdf0ffc5101f4679031ca6a36584ccc515eeedb030bc6578fc62b0c6c1725a85","kind":"started","machine":"Child","parent":"r1","run":"r1.2","t":0}
 {"kind":"entered","parent":"r1","run":"r1.2","state":"Child","t":0}
 {"kind":"entered","parent":"r1","run":"r1.2","state":"Child.Waiting","t":0}
 {"action":"log","args":{"what":"B"},"kind":"action","parent":"r1","run":"r1.2","t":0}

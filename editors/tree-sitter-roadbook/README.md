@@ -41,7 +41,7 @@ The grammar accepts a little more than the compiler does. It applies the rules t
 where an editor benefits:
 
 - a parameter or variable named `result` or `key` parses. The compiler rejects it
-  (`RB0013`, `RB0119`). In an expression, `result` and `key` are read as the implicit names.
+  (`RB0013`, `RB0122`). In an expression, `result` and `key` are read as the implicit names.
 - a `///` comment parses anywhere, not only before something it documents.
 - a final state may hold any state item, and `output`/`fail` may appear in any state.
 - there is no limit on nesting depth or on the size of a number, and `T??` parses.

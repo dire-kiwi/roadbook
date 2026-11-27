@@ -1,0 +1,25 @@
+/// A call's arguments show in `invoke.started` and in the callee's `call` input, by the call's
+/// parameters, and its answer in `replied`, by the call's result type.
+machine Vault() {
+  call open(sensitive pin: string, note: string) -> string
+  call peek(note: string) -> string
+  initial Ready
+  state Ready {
+    on open reply call done event.pin
+    on peek reply call done event.note
+  }
+}
+
+machine Client(vault: ref Vault, sensitive pin: string) {
+  initial Asking
+  state Asking {
+    invoke vault.open(pin, pin) {
+      done            -> Done
+      fail Unanswered -> Done
+    }
+  }
+  final state Done {}
+}
+
+// expect: RB0320 at 8:29
+// expect: RB0320 at 16:28

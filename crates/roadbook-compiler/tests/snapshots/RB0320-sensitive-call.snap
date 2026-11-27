@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0320]: `event.pin` is sensitive, and the result of call `open` is not
+ --> RB0320-sensitive-call.road:8:29
+  |
+8 |     on open reply call done event.pin
+  |                             ^^^^^^^^^ a trace would show this value
+  |
+  = help: traces show the result of call `open` as it is: carry the value in a field marked `sensitive`, or derive what may be shown with a `fn`
+
+error[RB0320]: `pin` is sensitive, and argument `note` of `open` is not
+  --> RB0320-sensitive-call.road:16:28
+   |
+16 |     invoke vault.open(pin, pin) {
+   |                            ^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark parameter `note` of `open` `sensitive` too, or derive what may be shown with a `fn`

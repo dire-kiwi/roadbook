@@ -1,0 +1,82 @@
+{
+  "description": "Orders and a Counter call an Inventory peer through a `ref`. r2's reserve call is taken by `on reserve`, kept in the `pending` variable while the task runs, and answered `done` in a later step; r3's call meanwhile is answered `fail` in the step that took it; r4's `count` call is taken by the machine body's `on count` and answered at once; r5's call is answered with the declared error the task failed with. Each answer reaches only its caller, as the outcome of its invoke.",
+  "requires": [
+    "messaging",
+    "calls"
+  ],
+  "chart": "charts/calls.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Order",
+      "run": "r2",
+      "input": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "s1",
+            "qty": 2
+          }
+        ],
+        "inventory": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "start": "Order",
+      "run": "r3",
+      "input": {
+        "id": "o2",
+        "items": [
+          {
+            "sku": "s2",
+            "qty": 1
+          }
+        ],
+        "inventory": "r1"
+      },
+      "status": "failed"
+    },
+    {
+      "start": "Counter",
+      "run": "r4",
+      "input": {
+        "inventory": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "task": "reserveStock",
+      "done": 2
+    },
+    {
+      "start": "Order",
+      "run": "r5",
+      "input": {
+        "id": "o3",
+        "items": [
+          {
+            "sku": "s3",
+            "qty": 9
+          }
+        ],
+        "inventory": "r1"
+      },
+      "status": "failed"
+    },
+    {
+      "task": "reserveStock",
+      "fail": {
+        "_tag": "OutOfStock",
+        "reason": "none left"
+      }
+    }
+  ],
+  "status": "running"
+}

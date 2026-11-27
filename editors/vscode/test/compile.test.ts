@@ -71,7 +71,7 @@ describe('helpers', () => {
   })
 
   it('reads what the language server answers to roadbook/ir', async () => {
-    const ir = { irVersion: '0.6', sources: [{ path: 'c.road', package: null }], machines: {} }
+    const ir = { irVersion: '0.7', sources: [{ path: 'c.road', package: null }], machines: {} }
     const ok = fromServer({ uri: 'file:///p/c.road', version: 3, root: '/p', entry: 'c.road', ir: JSON.stringify(ir), diagnostics: [] })
     expect(ok).toEqual({ kind: 'ok', ir, irText: JSON.stringify(ir), root: '/p', entry: 'c.road' })
     const warning = { code: 'RB0903', severity: 'warning', message: 'w', file: 'c.road', line: 1, col: 1, endLine: 1, endCol: 2, help: null }
@@ -121,7 +121,7 @@ describe('helpers', () => {
   it('finds the span of a state or a transition', () => {
     const span = (line: number, file = 0) => ({ file, line, col: 3, endLine: line, endCol: 9 })
     const ir: Ir = {
-      irVersion: '0.6',
+      irVersion: '0.7',
       sources: [{ path: 'c.road', package: null }, { path: 'x.road', package: 'pkg' }],
       machines: {
         M: {

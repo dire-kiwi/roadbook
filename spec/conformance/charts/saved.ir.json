@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/saved.road",
@@ -148,6 +148,7 @@
         "endLine": 27,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "start",
@@ -214,6 +215,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Counter",
         "name": "Counter",
@@ -370,7 +372,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:1fa81f452da00ee2767aeec05233a81ed2e52266bd1c14968a8ba72f0fa0cede"
+      "hash": "sha256:5da1c120a6f28f381771715a4441e9dd466f233a6ae4f8fa4ead219a026c112b"
     },
     "Shop": {
       "doc": "Pays through a child machine.",
@@ -381,6 +383,7 @@
         "endLine": 42,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "amount",
@@ -415,6 +418,7 @@
       "events": {},
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Shop",
         "name": "Shop",
@@ -448,6 +452,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Pay",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -537,7 +542,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d88779f5271ef7275d837f47134eeb23f06425b2d5de61cc65b73d6ee6a335cc"
+      "hash": "sha256:e29e9077eacce2156048301eee4906c8530fa6106462f6dbd8fbb656ddd7ed89"
     },
     "Pay": {
       "doc": "Quotes a price, then charges it.",
@@ -548,6 +553,7 @@
         "endLine": 64,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "amount",
@@ -601,6 +607,7 @@
       "events": {},
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Pay",
         "name": "Pay",
@@ -634,6 +641,7 @@
             "invoke": {
               "kind": "task",
               "src": "quote",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -706,6 +714,7 @@
             "invoke": {
               "kind": "task",
               "src": "charge",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -795,7 +804,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d57f6abb799593153fc90494c80b262900698880e21da1047a14f5988a31e8ea"
+      "hash": "sha256:6cee8b8413746e1be7009557a83e123067b83615da4159ae06c44ce60e2ffcdd"
     },
     "Reminder": {
       "doc": "Rings a second after it starts waiting.",
@@ -806,6 +815,7 @@
         "endLine": 79,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -825,6 +835,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Reminder",
         "name": "Reminder",
@@ -943,7 +954,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:b26b68226ae24916fb82b7a9bd55153deb0f87ba39cf990c75abacc7fca343d6"
+      "hash": "sha256:21fae7191d5a4c3d50e3006203feb5e386e3599be0b939befc085920b1215afb"
     },
     "Order": {
       "doc": "An order kept as a snapshot between requests: it waits three days for\npayment, ships, and waits for delivery.",
@@ -954,6 +965,7 @@
         "endLine": 109,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "id",
@@ -1037,6 +1049,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -1145,6 +1158,7 @@
             "invoke": {
               "kind": "task",
               "src": "ship",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1329,7 +1343,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:6ae1c132e34692919ad8977d8619a1c8414fb382b9cd13dc7ff5f32d85d9ec6c"
+      "hash": "sha256:ae13a1cbfd0628710d70f5579e435045fa1e3e70a5dcd27f7eda5f97d52a8792"
     }
   }
 }

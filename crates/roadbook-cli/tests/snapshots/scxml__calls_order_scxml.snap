@@ -1,0 +1,45 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Reserve the items with the warehouse, giving up after 5s. -->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Order" datamodel="roadbook" initial="Order_Reserving" rb:returns="Reservation" rb:errors="OutOfStock">
+  <datamodel>
+    <data id="id" rb:type="string" rb:param="true"/>
+    <data id="items" rb:type="Item[]" rb:param="true"/>
+    <data id="inventory" rb:type="ref Inventory" rb:param="true"/>
+    <data id="reservation" rb:type="Reservation"/>
+    <data id="problem" rb:type="OutOfStock"/>
+  </datamodel>
+  <state id="Order_Reserving">
+    <onentry>
+      <send id="Order_Reserving_after_3" event="roadbook.after.Order_Reserving.3" delay="5000ms"/>
+    </onentry>
+    <onexit>
+      <cancel sendid="Order_Reserving_after_3"/>
+    </onexit>
+    <invoke id="Order_Reserving_invoke" type="urn:roadbook:call" src="inventory.reserve">
+      <param name="orderId" expr="id"/>
+      <param name="items" expr="items"/>
+    </invoke>
+    <transition event="done.invoke.Order_Reserving_invoke" target="Order_Reserved">
+      <assign location="reservation" expr="result"/>
+    </transition>
+    <transition event="error.OutOfStock.Order_Reserving_invoke" target="Order_Failed">
+      <assign location="problem" expr="error"/>
+    </transition>
+    <transition event="error.Unanswered.Order_Reserving_invoke" target="Order_Failed">
+      <assign location="problem" expr="OutOfStock { reason: &quot;unanswered&quot; }"/>
+    </transition>
+    <transition event="roadbook.after.Order_Reserving.3" target="Order_Failed">
+      <assign location="problem" expr="OutOfStock { reason: &quot;timed out&quot; }"/>
+    </transition>
+  </state>
+  <final id="Order_Reserved">
+    <donedata>
+      <content expr="reservation"/>
+    </donedata>
+  </final>
+  <final id="Order_Failed" rb:fail="problem"/>
+</scxml>

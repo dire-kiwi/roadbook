@@ -43,7 +43,8 @@
 //!   that is one): a shallow history state, the position of the child that was active, entered
 //!   from its start; a deep one, the position itself. History inside a parallel position needs
 //!   no record: whatever it restores, the position is the parallel state.
-//! - Child machines are not entered: an invoke's `done` and `fail` are ordinary steps.
+//! - Child machines are not entered: an invoke's `done` and `fail` are ordinary steps, and so
+//!   are a call's (`fail Unanswered` among them) and a callee's `on c`, labelled `c`.
 //! - The search is depth-first in that order, so the output is deterministic. It stops after
 //!   `--max` paths (1000 by default) or [`BUDGET`] steps searched, prints what it found and
 //!   says on standard error that it stopped; the exit code is still 0.

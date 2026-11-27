@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0912]: not checked: `Lights` has more than 4 configurations
+  --> RB0912-not-checked.road:29:3
+   |
+29 |   check reachable On.First.Lit
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: a check explores every configuration the machine can be in, and gives up past this many; regions and history multiply them
+
+warning[RB0912]: not checked: `Lights` has more than 4 configurations
+  --> RB0912-not-checked.road:30:3
+   |
+30 |   check never On.First.Lit and On.Second.Lit
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: a check explores every configuration the machine can be in, and gives up past this many; regions and history multiply them

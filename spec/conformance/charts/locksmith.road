@@ -1,0 +1,48 @@
+// Conformance chart: redaction of calls between runs. A Locksmith answers
+// `cut` calls whose pin is sensitive with a Key whose code is sensitive, or
+// refuses them with an error whose reason is sensitive. Clients call it
+// through a `ref`.
+
+/// A cut key: its label shows, its code does not.
+type Key { label: string, sensitive code: string }
+
+/// The locksmith would not cut the key.
+error Refused { sensitive reason: string }
+
+/// Cuts keys for its callers.
+machine Locksmith() {
+  /// Cut a key for `pin`, labelled `label`.
+  call cut(sensitive pin: string, label: string) -> Key ! Refused
+
+  event Close
+
+  initial Open
+
+  state Open {
+    on cut {
+      if event.label == ""            reply call fail Refused { reason: event.pin }
+      else                            reply call done Key { label: event.label, code: event.pin }
+    }
+    on Close               -> Closed
+  }
+
+  final state Closed {}
+}
+
+/// Ask the locksmith for a key; give its label, or "" if it refused.
+machine Client(locksmith: ref Locksmith, sensitive pin: string, label: string) -> string {
+  var cut: Key
+
+  initial Asking
+
+  state Asking {
+    invoke locksmith.cut(pin, label) {
+      done            -> Got   set cut = result
+      fail Refused    -> Gave
+      fail Unanswered -> Gave
+    }
+  }
+
+  final state Got  { output cut.label }
+  final state Gave { output "" }
+}

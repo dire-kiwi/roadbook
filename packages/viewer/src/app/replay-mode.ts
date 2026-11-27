@@ -113,6 +113,11 @@ export function replayMode(host: Host, el: HTMLElement, embedded: { name: string
           .map((t) => `<li>timer ${t.id}: ${t.delay} ms <span class="rb-cnote">in ${esc(stateName(t.state))}</span></li>`)
           .join('')}</ul>`
       }
+      if (view.calls.length) {
+        h += `<h3>Pending calls</h3><ul class="rb-list">${view.calls
+          .map((c) => `<li><code>${esc(c.call)}</code> from ${esc(c.from)} <span class="rb-cnote">its invoke ${c.invoke}; taken, not answered yet</span></li>`)
+          .join('')}</ul>`
+      }
       const children = replay.runs.filter((x) => x.parent === run)
       if (children.length)
         h += `<h3>Child runs</h3><ul class="rb-list">${children.map((c) => `<li><button class="rb-link rb-mono" type="button" data-m-record="${c.first}">${esc(c.id)} ${esc(c.machine)}</button></li>`).join('')}</ul>`

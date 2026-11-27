@@ -2,7 +2,7 @@
 
 import { Schema } from "effect"
 import type { Duration } from "effect"
-import * as Roadbook from "@roadbook/effect"
+import * as Roadbook from "@dire-kiwi/roadbook-effect"
 
 // ---- machine: Pipeline ----
 
@@ -36,7 +36,7 @@ export interface PipelineDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable.road",
@@ -122,6 +122,7 @@ const ir: unknown = {
         "endLine": 49,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "id",
@@ -175,6 +176,7 @@ const ir: unknown = {
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Pipeline",
         "name": "Pipeline",
@@ -221,6 +223,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "step",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -307,6 +310,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "step",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -485,6 +489,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "step",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -601,7 +606,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4c798ec2db2f29e980351d6f04c9cff1195c35037adc9bc4759fac48963e1e81"
+      "hash": "sha256:50275810d68f5505a15a1911ce1e3dc9e624fd2d29e7e40e4f40636510f13c13"
     },
     "Parent": {
       "doc": "Runs a Pipeline as a child and passes nudges on to it. Past its deadline it cancels the\nPipeline and does a fourth step instead.",
@@ -612,6 +617,7 @@ const ir: unknown = {
         "endLine": 76,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "id",
@@ -665,6 +671,7 @@ const ir: unknown = {
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Parent",
         "name": "Parent",
@@ -698,6 +705,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "machine",
               "src": "Pipeline",
+              "to": null,
               "as": "pipeline",
               "args": [
                 {
@@ -841,6 +849,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "step",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -949,7 +958,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d6853328d54468a9882b59e064f653fa327e7d27138cbf581087eafdea74e96c"
+      "hash": "sha256:5adc24b7447c62f0ea3a325f554274bde86b8c91e4d709dbafb0d36f9200da31"
     },
     "Counter": {
       "doc": "Adds what it is sent, and emits each new total to the runs holding a `ref` to it.",
@@ -960,6 +969,7 @@ const ir: unknown = {
         "endLine": 94,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -1036,6 +1046,7 @@ const ir: unknown = {
         }
       },
       "children": {},
+      "calls": {},
       "root": {
         "id": "Counter",
         "name": "Counter",
@@ -1187,7 +1198,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:b37d2a6ac3d92d509fb64b11bb0f09c0679fc8457793e1b5dcd03d3cb919edba"
+      "hash": "sha256:eaa26824b4a55040fcdb9d4d7d8c4093c97ad031a38455a7fc73e5721b9fb624"
     },
     "Adder": {
       "doc": "Works out an amount, sends it to a Counter, and ends once the Counter's total reaches `goal`.",
@@ -1198,6 +1209,7 @@ const ir: unknown = {
         "endLine": 109,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "counter",
@@ -1218,6 +1230,7 @@ const ir: unknown = {
       "events": {},
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Adder",
         "name": "Adder",
@@ -1251,6 +1264,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "step",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1424,7 +1438,532 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:49a323146478f5b045fd063f194b48af9cbf95a8f87cf92099ec28259c85280d"
+      "hash": "sha256:a1034460ab3d99a18fb7baecb633331228624a96bf595c44cadaec0b1bc103d8"
+    },
+    "Teller": {
+      "doc": "Answers `take` with what its step for `n` gives, once that step has run, one call at a time.",
+      "span": {
+        "file": 0,
+        "line": 112,
+        "col": 1,
+        "endLine": 134,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "pending",
+          "type": "call take",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 115,
+            "col": 3,
+            "endLine": 115,
+            "endCol": 25
+          }
+        },
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 116,
+            "col": 3,
+            "endLine": 116,
+            "endCol": 23
+          }
+        }
+      ],
+      "events": {
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 118,
+            "col": 3,
+            "endLine": 118,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "children": {},
+      "calls": {
+        "take": {
+          "params": [
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "returns": "int",
+          "errors": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 113,
+            "col": 3,
+            "endLine": 113,
+            "endCol": 27
+          }
+        }
+      },
+      "root": {
+        "id": "Teller",
+        "name": "Teller",
+        "kind": "compound",
+        "doc": "Answers `take` with what its step for `n` gives, once that step has run, one call at a time.",
+        "span": {
+          "file": 0,
+          "line": 112,
+          "col": 1,
+          "endLine": 134,
+          "endCol": 2
+        },
+        "initial": "Teller.Open",
+        "states": [
+          {
+            "id": "Teller.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 122,
+              "col": 3,
+              "endLine": 125,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "call",
+                  "call": "take"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Teller.Busy",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "pending",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "call"
+                      ],
+                      "type": "call take",
+                      "text": "call"
+                    }
+                  },
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "n"
+                      ],
+                      "type": "int",
+                      "text": "event.n"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 123,
+                  "col": 5,
+                  "endLine": 123,
+                  "endCol": 54
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Teller.Closed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 124,
+                  "col": 5,
+                  "endLine": 124,
+                  "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Teller.Busy",
+            "name": "Busy",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 127,
+              "col": 3,
+              "endLine": 131,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "step",
+              "to": null,
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "n"
+                  ],
+                  "type": "int",
+                  "text": "n"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 128,
+                "col": 5,
+                "endLine": 130,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Teller.Open",
+                "effects": [
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "pending"
+                      ],
+                      "type": "call take",
+                      "text": "pending"
+                    },
+                    "outcome": "done",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 129,
+                  "col": 7,
+                  "endLine": 129,
+                  "endCol": 46
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Teller.Closed",
+            "name": "Closed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 133,
+              "col": 3,
+              "endLine": 133,
+              "endCol": 24
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:e95b7125b962df6831410f3b4c31133adced6bd8f623f5cd2f83ada1a7726cc8"
+    },
+    "Caller": {
+      "doc": "Asks the teller to take `n`; gives its answer, or -1 if it gave none.",
+      "span": {
+        "file": 0,
+        "line": 137,
+        "col": 1,
+        "endLine": 151,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "teller",
+          "type": "ref Teller",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "got",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 138,
+            "col": 3,
+            "endLine": 138,
+            "endCol": 19
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "children": {},
+      "calls": {},
+      "root": {
+        "id": "Caller",
+        "name": "Caller",
+        "kind": "compound",
+        "doc": "Asks the teller to take `n`; gives its answer, or -1 if it gave none.",
+        "span": {
+          "file": 0,
+          "line": 137,
+          "col": 1,
+          "endLine": 151,
+          "endCol": 2
+        },
+        "initial": "Caller.Asking",
+        "states": [
+          {
+            "id": "Caller.Asking",
+            "name": "Asking",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 142,
+              "col": 3,
+              "endLine": 147,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "call",
+              "src": "take",
+              "to": {
+                "kind": "ref",
+                "name": "teller",
+                "machine": "Teller",
+                "state": null
+              },
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "n"
+                  ],
+                  "type": "int",
+                  "text": "n"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 143,
+                "col": 5,
+                "endLine": 146,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Caller.Got",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "got",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 144,
+                  "col": 7,
+                  "endLine": 144,
+                  "endCol": 48
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "Unanswered"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Caller.Gave",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 145,
+                  "col": 7,
+                  "endLine": 145,
+                  "endCol": 30
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Caller.Got",
+            "name": "Got",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 149,
+              "col": 3,
+              "endLine": 149,
+              "endCol": 34
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "got"
+              ],
+              "type": "int",
+              "text": "got"
+            },
+            "fail": null
+          },
+          {
+            "id": "Caller.Gave",
+            "name": "Gave",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 150,
+              "col": 3,
+              "endLine": 150,
+              "endCol": 33
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "op",
+              "op": "neg",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": 1,
+                  "type": "int",
+                  "text": "1"
+                }
+              ],
+              "type": "int",
+              "text": "-1"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:d473e7047c561aaaa8536bb8932fbdd775fc82a0e0a1c7b38474f3c4bb0e4078"
     }
   }
 }
@@ -1476,8 +2015,8 @@ export const Parent = Roadbook.make<ParentDef>(ir, "Parent", errors)
 export const Add = Schema.TaggedStruct("Add", { by: Schema.Int })
 export type Add = typeof Add.Type
 
-export const Close = Schema.TaggedStruct("Close", {})
-export type Close = typeof Close.Type
+export const CounterClose = Schema.TaggedStruct("Close", {})
+export type CounterClose = typeof CounterClose.Type
 
 export const Total = Schema.TaggedStruct("Total", { n: Schema.Int })
 export type Total = typeof Total.Type
@@ -1487,7 +2026,7 @@ export interface CounterDef extends Roadbook.MachineDef {
   readonly input: {}
   readonly output: void
   readonly error: never
-  readonly event: Add | Close
+  readonly event: Add | CounterClose
   readonly emits: Total
   readonly state: "Counter" | "Counter.Counting" | "Counter.Closed"
   readonly fns: {}
@@ -1523,3 +2062,50 @@ export interface AdderDef extends Roadbook.MachineDef {
 
 /** Works out an amount, sends it to a Counter, and ends once the Counter's total reaches `goal`. */
 export const Adder = Roadbook.make<AdderDef>(ir, "Adder", errors)
+
+// ---- machine: Teller ----
+
+export const TellerClose = Schema.TaggedStruct("Close", {})
+export type TellerClose = typeof TellerClose.Type
+
+export interface TellerDef extends Roadbook.MachineDef {
+  readonly name: "Teller"
+  readonly input: {}
+  readonly output: void
+  readonly error: never
+  readonly event: TellerClose
+  readonly emits: never
+  readonly state: "Teller" | "Teller.Open" | "Teller.Busy" | "Teller.Closed"
+  readonly fns: {}
+  readonly actions: {}
+  readonly tasks: {
+    readonly step: {
+      readonly args: { readonly n: number }
+      readonly success: number
+      readonly error: never
+    }
+  }
+  readonly machines: {}
+}
+
+/** Answers `take` with what its step for `n` gives, once that step has run, one call at a time. */
+export const Teller = Roadbook.make<TellerDef>(ir, "Teller", errors)
+
+// ---- machine: Caller ----
+
+export interface CallerDef extends Roadbook.MachineDef {
+  readonly name: "Caller"
+  readonly input: { readonly teller: Roadbook.Handle<TellerDef>; readonly n: number }
+  readonly output: number
+  readonly error: never
+  readonly event: never
+  readonly emits: never
+  readonly state: "Caller" | "Caller.Asking" | "Caller.Got" | "Caller.Gave"
+  readonly fns: {}
+  readonly actions: {}
+  readonly tasks: {}
+  readonly machines: {}
+}
+
+/** Asks the teller to take `n`; gives its answer, or -1 if it gave none. */
+export const Caller = Roadbook.make<CallerDef>(ir, "Caller", errors)

@@ -50,6 +50,7 @@
   "emit"
   "spawn"
   "stop"
+  "reply"
   "ref"
 ] @keyword
 
@@ -57,6 +58,7 @@
   "fn"
   "action"
   "task"
+  "call"
 ] @keyword.function
 
 [
@@ -68,9 +70,12 @@
   "final"
   "parallel"
   "deep"
+  "strict"
 ] @keyword.modifier
 
 (sensitive) @keyword.modifier
+
+(ignore) @keyword
 
 [
   "if"
@@ -150,11 +155,20 @@
 (machine_declaration
   return_type: (type_identifier) @type)
 
+(call_declaration
+  return_type: (type_identifier) @type)
+
 (errors
   error: (type_identifier) @type)
 
 (fail_transition
-  error: (type_identifier) @type)
+  error: (type_identifier) @type
+  (#not-eq? @type "Unanswered"))
+
+; The error a call fails with when its peer does not answer.
+(fail_transition
+  error: (type_identifier) @type.builtin
+  (#eq? @type.builtin "Unanswered"))
 
 (child_fail
   error: (type_identifier) @type)
@@ -250,6 +264,16 @@
 (task_declaration
   name: (identifier) @function)
 
+(call_declaration
+  name: (identifier) @function)
+
+; The call a pending-call value answers, and the call an `on` takes.
+(call_type
+  call: (identifier) @function)
+
+(call_pattern
+  call: (identifier) @function)
+
 (call
   function: (identifier) @function.call)
 
@@ -302,6 +326,12 @@
 
 (child_fail
   from: (identifier) @variable)
+
+(invoke
+  peer: (identifier) @variable)
+
+(reply
+  call: (identifier) @variable)
 
 ; A name read in an expression.
 (_

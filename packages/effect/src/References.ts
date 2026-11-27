@@ -2,7 +2,7 @@
  * The services a run reads from its context. Each is a `Context.Reference` with a default, so a
  * machine runs with no setup; provide one to trace, to control time, or to name runs.
  */
-import type * as Core from "@roadbook/core"
+import type * as Core from "@dire-kiwi/roadbook-core"
 import { Clock, Context, Duration, Effect } from "effect"
 
 /** Where trace records go. The default drops them. */
@@ -10,7 +10,7 @@ export interface TraceSink {
   readonly write: (record: Core.TraceRecord) => void
 }
 
-export const TraceSink: Context.Reference<TraceSink> = Context.Reference<TraceSink>("@roadbook/effect/TraceSink", {
+export const TraceSink: Context.Reference<TraceSink> = Context.Reference<TraceSink>("@dire-kiwi/roadbook-effect/TraceSink", {
   defaultValue: () => ({ write: () => {} })
 })
 
@@ -39,7 +39,7 @@ export const ClockTimer: Timer = {
   sleep: ({ delay }) => Effect.sleep(Duration.millis(delay))
 }
 
-export const Timer: Context.Reference<Timer> = Context.Reference<Timer>("@roadbook/effect/Timer", {
+export const Timer: Context.Reference<Timer> = Context.Reference<Timer>("@dire-kiwi/roadbook-effect/Timer", {
   defaultValue: () => ClockTimer
 })
 
@@ -56,7 +56,7 @@ let lastRootRun = 0
  * `restore` refuses as `invalid`. Check an id from outside with `Core.isRunId` first.
  */
 export const RootRunId: Context.Reference<() => string> = Context.Reference<() => string>(
-  "@roadbook/effect/RootRunId",
+  "@dire-kiwi/roadbook-effect/RootRunId",
   { defaultValue: () => () => `r${++lastRootRun}` }
 )
 
@@ -84,6 +84,6 @@ export interface RunObserver {
 }
 
 export const RunObserver: Context.Reference<RunObserver> = Context.Reference<RunObserver>(
-  "@roadbook/effect/RunObserver",
+  "@dire-kiwi/roadbook-effect/RunObserver",
   { defaultValue: () => ({ started: () => {} }) }
 )

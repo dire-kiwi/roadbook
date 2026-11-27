@@ -539,3 +539,51 @@ fn map_keys_and_hidden_names() {
         "b.road",
     ));
 }
+
+const DESK: &str = r#"
+/// What a ticket asks for, only ever a call's argument.
+type Ask { n: int }
+
+error Busy {}
+
+machine Desk() {
+  call take(ask: Ask) -> int ! Busy
+  initial Open
+  state Open {
+    on take reply call done event.ask.n
+  }
+}
+"#;
+
+const ASKER: &str = r#"
+import { Ask, Busy, Desk } from "./desk.road"
+
+machine Asker(desk: ref Desk) -> int {
+  var got: int
+  initial Asking
+  state Asking {
+    invoke desk.take(Ask { n: 1 }) {
+      done            -> Got  set got = result
+      fail Busy       -> Gave
+      fail Unanswered -> Gave
+    }
+  }
+  final state Got { output got }
+  final state Gave { output 0 }
+}
+"#;
+
+/// A call is no host code: the caller's definition has no task for it, and neither module
+/// names the pending-call type. The callee's module has the types of its calls.
+#[test]
+fn calls_need_no_implementation() {
+    let loader = MemoryLoader::new()
+        .with("desk.road", DESK)
+        .with("asker.road", ASKER);
+    let asker = ir(&mut loader.clone(), "asker.road");
+    snapshot("calls", &asker);
+    let code = gen_ok(&asker);
+    assert!(code.contains("readonly tasks: {}"), "{code}");
+    let desk = gen_ok(&ir(&mut loader.clone(), "desk.road"));
+    assert!(desk.contains("export const Ask = "), "{desk}");
+}

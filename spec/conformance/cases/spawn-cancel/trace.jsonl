@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:93e999cafd03194cfabbfb19d6c1fdcfd679b30e52153ddff96e0d7f308b40dc","kind":"started","machine":"Pool","run":"r1","t":0}
+{"input":{},"ir":"sha256:62f3e25845e36f9cc96e878155dff792cd5a49185e3722509a2d88b566f4734d","kind":"started","machine":"Pool","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Pool","t":0}
 {"kind":"entered","run":"r1","state":"Pool.Running","t":0}
 {"event":{"kind":"event","value":{"_tag":"Open","n":1,"name":"x"}},"kind":"event","run":"r1","t":0}
@@ -10,13 +10,12 @@
 {"event":{"kind":"event","value":{"_tag":"Drop","n":1}},"kind":"event","run":"r1","t":0}
 {"from":"Pool.Running","index":3,"kind":"transition","run":"r1","t":0,"to":null}
 {"kind":"sent","message":1,"run":"r1","t":0,"to":"r1.1","value":{"_tag":"Drop"}}
-{"event":{"from":"r1.1","invoke":1,"kind":"emitted","message":1,"value":{"_tag":"Said","text":"bye"}},"kind":"dropped","run":"r1","t":0}
 {"event":{"error":{"_tag":"Lost","reason":"x"},"kind":"spawn.fail","spawn":1},"kind":"dropped","run":"r1","t":0}
 {"kind":"exited","run":"r1","state":"Pool.Running","t":0}
 {"kind":"exited","run":"r1","state":"Pool","t":0}
 {"children":"slots","key":2,"kind":"spawn.stopped","run":"r1","spawn":2,"t":0}
 {"kind":"cancelled","run":"r1","t":0}
-{"input":{"name":"x"},"ir":"sha256:e949a901fb8fc6f67493f8d9403dec4bb1bc89e0dafc83685977eae330f5586b","kind":"started","machine":"Session","parent":"r1","run":"r1.1","t":0}
+{"input":{"name":"x"},"ir":"sha256:05a64e242e0fa61eb7ffbe2a5d68deb71aeb38aa8a270690a3fa0edb4a858527","kind":"started","machine":"Session","parent":"r1","run":"r1.1","t":0}
 {"kind":"entered","parent":"r1","run":"r1.1","state":"Session","t":0}
 {"kind":"entered","parent":"r1","run":"r1.1","state":"Session.Open","t":0}
 {"event":{"from":"r1","kind":"message","message":1,"value":{"_tag":"Drop"}},"kind":"event","parent":"r1","run":"r1.1","t":0}
@@ -27,7 +26,7 @@
 {"kind":"emitted","message":1,"parent":"r1","run":"r1.1","t":0,"value":{"_tag":"Said","text":"bye"}}
 {"kind":"exited","parent":"r1","run":"r1.1","state":"Session","t":0}
 {"error":{"_tag":"Lost","reason":"x"},"kind":"failed","parent":"r1","run":"r1.1","state":"Session.Dropped","t":0}
-{"input":{"name":"y"},"ir":"sha256:e949a901fb8fc6f67493f8d9403dec4bb1bc89e0dafc83685977eae330f5586b","kind":"started","machine":"Session","parent":"r1","run":"r1.2","t":0}
+{"input":{"name":"y"},"ir":"sha256:05a64e242e0fa61eb7ffbe2a5d68deb71aeb38aa8a270690a3fa0edb4a858527","kind":"started","machine":"Session","parent":"r1","run":"r1.2","t":0}
 {"kind":"entered","parent":"r1","run":"r1.2","state":"Session","t":0}
 {"kind":"entered","parent":"r1","run":"r1.2","state":"Session.Open","t":0}
 {"kind":"exited","parent":"r1","run":"r1.2","state":"Session.Open","t":0}

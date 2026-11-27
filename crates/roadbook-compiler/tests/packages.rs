@@ -685,9 +685,9 @@ fn sensitive_marks_cross_packages() {
         assert_eq!(
             found,
             [
-                ("RB0317".to_string(), 12, 70),
-                ("RB0318".to_string(), 12, 91),
-                ("RB0317".to_string(), 17, 35),
+                ("RB0320".to_string(), 12, 70),
+                ("RB0321".to_string(), 12, 91),
+                ("RB0320".to_string(), 17, 35),
             ],
             "{}",
             out.render()

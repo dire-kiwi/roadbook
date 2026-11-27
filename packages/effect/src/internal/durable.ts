@@ -5,11 +5,11 @@
  * registry of the durable runs of one engine in this process, through which their handles,
  * `send`, `cancel` and other runs reach them whether they are live, parked, recovering or ended.
  */
-import type * as Core from "@roadbook/core"
+import type * as Core from "@dire-kiwi/roadbook-core"
 import { Deferred, Effect, Exit, Option, Queue, Schema } from "effect"
 import { Activity, DurableClock, DurableDeferred, type Workflow, WorkflowEngine } from "effect/workflow"
 import { Defect, hostDefect } from "../Defect.ts"
-import { type Port, registerHandle, type Wake } from "./port.ts"
+import { type Answer, type Port, registerHandle, type Wake } from "./port.ts"
 
 // ---- one execution ------------------------------------------------------------------------------
 
@@ -182,8 +182,20 @@ export class Entry {
   /** The largest message id this run has emitted, and what it emitted, for later subscribers. */
   emitted = 0
   readonly log: Array<{ readonly message: number; readonly value: Core.Tagged }> = []
-  /** The durable runs holding a `ref` to this one, from which message id each receives. */
-  readonly subscribers = new Map<string, { readonly entry: Entry; readonly from: number }>()
+  /**
+   * The durable runs holding a `ref` to this one, from which message id each receives, and which
+   * of the events it emits: those their machine has an `on` for.
+   */
+  readonly subscribers = new Map<
+    string,
+    { readonly entry: Entry; readonly from: number; readonly heard: ReadonlySet<string> }
+  >()
+  /**
+   * The calls the run has taken in this process and not replied to, with their ways to answer:
+   * kept here, not in an attempt, so that the attempt that carries on after a park or a replay
+   * answers them.
+   */
+  readonly given = new Map<string, { readonly invoke: number; readonly answer: Answer }>()
   readonly port: Port
   readonly handle: { readonly id: string; readonly machine: string; send: (event: unknown) => Effect.Effect<void> }
   private resumed = false
@@ -206,7 +218,7 @@ export class Entry {
       get open() {
         return entry.state !== "ended"
       },
-      subscribers: new Set(),
+      subscribers: new Map(),
       deliver: (input) => entry.deliver(input)
     }
     // As `send` from host code always does, it queues and does not wait for the run.
@@ -391,17 +403,24 @@ export class Entry {
       this.emitted = message
       this.log.push({ message, value })
     }
-    for (const { entry, from } of this.subscribers.values()) {
-      if (message >= from) entry.deliver({ kind: "emitted", from: this.info.run, invoke: null, message, value })
+    for (const { entry, from, heard } of this.subscribers.values()) {
+      if (message >= from && heard.has(value._tag)) {
+        entry.deliver({ kind: "emitted", from: this.info.run, invoke: null, message, value })
+      }
     }
   }
 
-  /** `holder` receives what this run emits from message `from` on, what it already emitted too. */
-  subscribe(holder: Entry, from: number) {
+  /**
+   * `holder` receives what this run emits from message `from` on, what it already emitted too:
+   * the events in `heard`, which its machine has an `on` for.
+   */
+  subscribe(holder: Entry, from: number, heard: ReadonlySet<string>) {
     if (this.state === "ended") return
-    this.subscribers.set(holder.info.run, { entry: holder, from })
+    this.subscribers.set(holder.info.run, { entry: holder, from, heard })
     for (const { message, value } of this.log) {
-      if (message >= from) holder.deliver({ kind: "emitted", from: this.info.run, invoke: null, message, value })
+      if (message >= from && heard.has(value._tag)) {
+        holder.deliver({ kind: "emitted", from: this.info.run, invoke: null, message, value })
+      }
     }
   }
 

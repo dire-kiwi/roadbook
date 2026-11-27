@@ -85,7 +85,7 @@ export interface CompileResult extends Diagnostics {
 }
 
 export interface GenResult extends Diagnostics {
-  /** The text of the `<entry>.ts` module for `@roadbook/effect`, or `null`. */
+  /** The text of the `<entry>.ts` module for `@dire-kiwi/roadbook-effect`, or `null`. */
   code: string | null
   /** Why no module was generated, when it is not the diagnostics' errors, or `null`. */
   error: string | null

@@ -21,13 +21,15 @@ machine Order(id: string, draft: OrderDraft, inventory: ref Inventory) -> Receip
 
   initial Reserving
 
-  /// The warehouse answers every holder of a reference to it, so each order listens for its
-  /// own id.
+  /// The warehouse answers this order's call alone. `Unanswered` is the built-in error of a
+  /// warehouse that has closed, or closes before it answers.
   state Reserving {
-    entry send inventory.Reserve { orderId: id, items: draft.items }
-    on inventory.Reserved if event.orderId == id -> Paying
-    on inventory.Rejected if event.orderId == id -> Unavailable  set problem = OutOfStock { reason: event.reason }
-    after 5s                                     -> Unavailable  set problem = OutOfStock { reason: "the warehouse did not answer" }
+    invoke inventory.reserve(id, draft.items) {
+      done            -> Paying
+      fail OutOfStock -> Unavailable  set problem = error
+      fail Unanswered -> Unavailable  set problem = OutOfStock { reason: "the warehouse is closed" }
+    }
+    after 5s -> Unavailable  set problem = OutOfStock { reason: "the warehouse did not answer" }
   }
 
   state Paying {

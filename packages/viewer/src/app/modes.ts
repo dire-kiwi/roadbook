@@ -1,7 +1,7 @@
 // What simulate and replay share: the page they drive (Host), what they give it back
 // (Controller), and the HTML of their common parts: variables, records, active states.
 
-import { REDACTED } from '@roadbook/core'
+import { REDACTED } from '@dire-kiwi/roadbook-core'
 import type { Ir, Machine } from '../ir.ts'
 import type { Selection } from '../panel.ts'
 import { jsonText, recordText, stateName } from '../replay.ts'

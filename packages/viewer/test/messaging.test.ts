@@ -1,6 +1,7 @@
 // Messaging (IR 0.2): `ref` types, `emits`, `invoke … as`, `on name.Event`, `send` and `emit`,
 // in the model text, the diagram, the details panel, search and the project index, for
-// examples/upload and examples/orders (with examples/inventory).
+// examples/upload and spec/conformance/charts/orders.road (the send-and-emit version of
+// examples/orders, which now calls; calls are in calls.test.ts).
 
 import { describe, expect, it } from 'vitest'
 import { layoutMachine } from '../src/layout.ts'
@@ -11,10 +12,10 @@ import { panelHtml } from '../src/panel.ts'
 import { indexEdges, layoutIndex, projectIndex, renderIndexSvg, renderIndexTable } from '../src/project.ts'
 import { renderMachineHeader, renderSvg } from '../src/render.ts'
 import { buildSearchIndex, search } from '../src/search.ts'
-import { chart, newElk } from './charts.ts'
+import { chart, conformanceChart, newElk } from './charts.ts'
 
 const publish = chart('upload-publish')
-const orders = chart('orders-orders')
+const orders = conformanceChart('orders')
 const state = (m: Machine, id: string): State => {
   const s = findState(m, id)
   if (!s) throw new Error(`no state ${id}`)
@@ -68,6 +69,7 @@ describe('model text', () => {
       refs: [],
       sends: [{ machine: 'Upload', events: ['Pause', 'Resume'] }],
       receives: [{ machine: 'Upload', events: ['Progress'] }],
+      calls: [],
     })
     expect(talks(orders, 'Order')).toEqual({
       invokes: [],
@@ -75,8 +77,9 @@ describe('model text', () => {
       refs: [{ machine: 'Inventory', names: ['inventory'] }],
       sends: [{ machine: 'Inventory', events: ['Reserve', 'Release'] }],
       receives: [{ machine: 'Inventory', events: ['Reserved', 'Rejected'] }],
+      calls: [],
     })
-    expect(talks(orders, 'Inventory')).toEqual({ invokes: [], spawns: [], refs: [], sends: [], receives: [] })
+    expect(talks(orders, 'Inventory')).toEqual({ invokes: [], spawns: [], refs: [], sends: [], receives: [], calls: [] })
   })
 })
 
@@ -184,21 +187,23 @@ describe('the project index of examples/', () => {
   )
   const at = (n: string) => index.machines.findIndex((m) => m.name === n)
 
-  it('records refs, sends and handled emitted events, by machine', () => {
+  it('records refs, sends, calls and handled emitted events, by machine', () => {
     expect(index.machines).toHaveLength(11)
     const order = index.machines[at('Order')]!
     expect(order.refs).toEqual([{ to: at('Inventory'), names: ['inventory'] }])
-    expect(order.sends).toEqual([{ to: at('Inventory'), events: ['Reserve', 'Release'] }])
-    expect(order.receives).toEqual([{ from: at('Inventory'), events: ['Reserved', 'Rejected'] }])
+    expect(order.sends).toEqual([{ to: at('Inventory'), events: ['Release'] }])
+    expect(order.calls).toEqual([{ to: at('Inventory'), calls: ['reserve'] }])
+    expect(order.receives).toEqual([])
     const pub = index.machines[at('Publish')]!
     expect(pub.invokes).toEqual([at('Upload')])
     expect(pub.sends).toEqual([{ to: at('Upload'), events: ['Pause', 'Resume'] }])
     expect(pub.receives).toEqual([{ from: at('Upload'), events: ['Progress'] }])
+    expect(pub.calls).toEqual([])
     // A machine of another package is named by its package.
-    expect(index.machines[at('Inventory')]!.source).toBe('inventory/inventory.road:19')
+    expect(index.machines[at('Inventory')]!.source).toBe('inventory/inventory.road:18')
   })
 
-  it('draws an edge for each kind of relation, labelled with the events', () => {
+  it('draws an edge for each kind of relation, labelled with the events and calls', () => {
     const edges = indexEdges(index).map((e) => `${e.kind} ${index.machines[e.from]!.name} -> ${index.machines[e.to]!.name}: ${e.lines.join(' / ')}`)
     expect(edges).toEqual([
       'invoke PlaceOrder -> Checkout: ',
@@ -206,9 +211,9 @@ describe('the project index of examples/', () => {
       'invoke Publish -> Upload: ',
       'ref Order -> Inventory: ref inventory',
       'send Publish -> Upload: sends Pause, Resume',
-      'send Order -> Inventory: sends Reserve, Release',
+      'send Order -> Inventory: sends Release',
+      'call Order -> Inventory: calls reserve',
       'emit Upload -> Publish: emits Progress',
-      'emit Inventory -> Order: emits Reserved, Rejected',
     ])
   })
 
@@ -223,13 +228,40 @@ describe('the project index of examples/', () => {
     expect(found).toEqual([])
     for (const e of layout.edges) expect(e.points.length).toBeGreaterThanOrEqual(2)
     const svg = renderIndexSvg(index, layout)
-    for (const kind of ['invoke', 'ref', 'send', 'emit']) {
+    for (const kind of ['invoke', 'ref', 'send', 'call', 'emit']) {
       expect(svg).toContain(`class="rb-edge rb-iedge rb-i-${kind}"`)
       expect(svg).toContain(`marker-end="url(#rbi-arrow-${kind})"`)
     }
-    expect(svg).toContain('<tspan class="rb-ikw">emits</tspan> Reserved, Rejected')
+    expect(svg).toContain('<tspan class="rb-ikw">calls</tspan> reserve')
+    expect(svg).toContain('<title>Order calls Inventory and waits for the answer</title>')
     expect(svg).not.toMatch(/NaN|undefined/)
     const table = renderIndexTable(index)
-    expect(table).toContain('<code>ref Inventory (inventory)</code><br><code>sends Reserve, Release to Inventory</code><br><code>handles Reserved, Rejected from Inventory</code>')
+    expect(table).toContain('<code>ref Inventory (inventory)</code><br><code>sends Release to Inventory</code><br><code>calls reserve on Inventory</code>')
+  })
+})
+
+describe('the project index of the send-and-emit orders chart', () => {
+  const index = projectIndex('orders', [{ href: 'orders.html', entry: 'spec/conformance/charts/orders.road', ir: orders }])
+  const at = (n: string) => index.machines.findIndex((m) => m.name === n)
+
+  it('records and draws the sends and the emitted events handled', async () => {
+    const order = index.machines[at('Order')]!
+    expect(order.sends).toEqual([{ to: at('Inventory'), events: ['Reserve', 'Release'] }])
+    expect(order.receives).toEqual([{ from: at('Inventory'), events: ['Reserved', 'Rejected'] }])
+    expect(order.calls).toEqual([])
+    const edges = indexEdges(index).map((e) => `${e.kind} ${index.machines[e.from]!.name} -> ${index.machines[e.to]!.name}: ${e.lines.join(' / ')}`)
+    // The Supplier only sends to the Inventory: it hears none of its emitted events, so no emit edge reaches it.
+    expect(edges).toEqual([
+      'ref Order -> Inventory: ref inventory',
+      'ref Supplier -> Inventory: ref inventory',
+      'send Order -> Inventory: sends Reserve, Release',
+      'send Supplier -> Inventory: sends Restock',
+      'emit Inventory -> Order: emits Reserved, Rejected',
+    ])
+    const svg = renderIndexSvg(index, await layoutIndex(index, newElk()))
+    expect(svg).toContain('<tspan class="rb-ikw">emits</tspan> Reserved, Rejected')
+    expect(renderIndexTable(index)).toContain(
+      '<code>ref Inventory (inventory)</code><br><code>sends Reserve, Release to Inventory</code><br><code>handles Reserved, Rejected from Inventory</code>',
+    )
   })
 })

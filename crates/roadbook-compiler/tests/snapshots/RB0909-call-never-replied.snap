@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0909]: `pending` holds a pending call that no `reply` answers
+ --> RB0909-call-never-replied.road:3:7
+  |
+3 |   var pending: call ask
+  |       ^^^^^^^
+  |
+  = help: answer it with `reply pending done …` or `reply pending fail …`; a call left unanswered fails with `Unanswered` when `M` ends

@@ -31,6 +31,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine A() {}\nmachine B(x: int, y: User) -> Out ! E | F {}\nmachine C() ! E {}\n",
     ),
     (
+        "strict_and_ignore",
+        "strict machine M() {\n  event Go\n  on Go if ready ignore\n  state A {\n    on * ignore\n    on Go { if busy ignore else -> A }\n  }\n}\n",
+    ),
+    (
         "vars_and_events",
         "machine M() {\n  var a: int = 1\n  var b: string?\n  var c: Order[]\n  event Go\n  event Change { value: int, note: string }\n  initial S\n  state S {}\n}\n",
     ),

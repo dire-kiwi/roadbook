@@ -1,5 +1,5 @@
 {
-  "name": "@roadbook/effect",
+  "name": "@dire-kiwi/roadbook-effect",
   "version": "0.1.0",
   "private": true,
   "description": "The Roadbook driver and public API on Effect v4",
@@ -14,7 +14,7 @@
     "conformance": "node test/conformance/main.ts"
   },
   "dependencies": {
-    "@roadbook/core": "workspace:*"
+    "@dire-kiwi/roadbook-core": "workspace:*"
   },
   "peerDependencies": {
     "effect": "4.1.5"

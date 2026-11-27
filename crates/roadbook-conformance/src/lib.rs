@@ -42,7 +42,14 @@ pub const ROOT_RUN: &str = "r1";
 
 /// The features a case can require beyond the first version's: a runner
 /// skips a case that requires one it does not implement.
-pub const FEATURES: &[&str] = &["messaging", "parallel", "snapshots", "history", "spawn"];
+pub const FEATURES: &[&str] = &[
+    "messaging",
+    "parallel",
+    "snapshots",
+    "history",
+    "spawn",
+    "calls",
+];
 
 /// `spec/conformance` in this repository.
 pub fn conformance_dir() -> PathBuf {

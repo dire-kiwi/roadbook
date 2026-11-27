@@ -15,36 +15,42 @@
 //! - **Data model.** `datamodel="roadbook"`: every `cond`, `expr`, `delayexpr`, `targetexpr`
 //!   and `location` is the canonical text of a Roadbook expression, which reads `event`,
 //!   `result` and `error` as the IR says. Parameters and variables are `<data>`, with their
-//!   types, and the machine's result type and errors, in attributes of the `rb:` namespace.
+//!   types, and the machine's result type, errors and `strict`, in attributes of the `rb:`
+//!   namespace.
 //! - **The machine** is the `<scxml>` element, unless its body has `entry`, `exit`, an invoke
 //!   or transitions: then a `<state>` with the machine's id inside it holds them, and its
 //!   transitions with a target inside it are `type="internal"`, so they do not leave the
 //!   machine. Top-level final states stay children of `<scxml>`, so reaching one ends the run.
-//! - **Triggers** are event names: `on E` is `E`; `on x.E` is `x.E`; `on *` lists the machine's
-//!   events the state has no `on` for; `after d` is a `<send>` of `roadbook.after.<state>.<group>`
-//!   on entry, cancelled on exit; `always` has no event; `done` is `done.state.<state>`; an
-//!   invoke's `done` is `done.invoke.<invoke>` and its `fail E` is `error.E.<invoke>`, `fail *`
-//!   the declared errors no other branch lists.
+//! - **Triggers** are event names: `on E` is `E`; `on x.E` is `x.E`; `on c`, which takes a call,
+//!   is `call.c` (see [`call_event`]); `on *` lists the machine's events the state has no `on`
+//!   for, never a call; `after d` is a `<send>` of `roadbook.after.<state>.<group>` on entry,
+//!   cancelled on exit; `always` has no event; `done` is `done.state.<state>`; an invoke's `done`
+//!   is `done.invoke.<invoke>` and its `fail E` is `error.E.<invoke>`, `fail *` the declared
+//!   errors no other branch lists, and for a call `Unanswered` too.
 //! - **Effects** are executable content: `set` is `<assign>`; `send x.E` a `<send>` to the
 //!   child's invoke (`#_<invoke>`) or to the machine a `ref` holds (`targetexpr`); `emit E` a
-//!   `<send>` of type `urn:roadbook:emit`; `do f(…)` the extension element `<rb:do>`. Event
-//!   fields and arguments are `<param>`s.
+//!   `<send>` of type `urn:roadbook:emit`; `reply x done v` a `<send>` of type
+//!   `urn:roadbook:reply` to the pending call (`targetexpr="x"`) with the event `done`, and
+//!   `reply x fail e` the same with the event `error.E`, `E` the error's type; `do f(…)` the
+//!   extension element `<rb:do>`. Event fields, a record reply's fields and arguments are
+//!   `<param>`s; any other value is the `<content>`.
 //! - **Spawned children**, which SCXML has no word for: a `children` collection is a `<data>`
 //!   with `rb:children` (its machine) and `rb:key`; `spawn c[k] = M(…)` the element `<rb:spawn>`
 //!   and `stop c[k]` `<rb:stop>`, each with `children` and `key`; `send c[k].E` and
 //!   `send c.*.E` a `<send>` with `targetexpr` `c[k]` or `c.*`; `on c.done` is the event
 //!   `done.spawn.c`, `on c.fail E` is `error.E.spawn.c`, and `on c.E` is `c.E`.
 //! - **Invokes** of a task have type `urn:roadbook:task` and the task's name as `src`; of a
-//!   machine, SCXML's type and `src="<Machine>.scxml"`. A final state's `output` is its
-//!   `<donedata>`, its `fail` the attribute `rb:fail`.
+//!   machine, SCXML's type and `src="<Machine>.scxml"`; of a call, type `urn:roadbook:call` and
+//!   `src="x.c"`, the `ref` and the call as the invoke writes them. A final state's `output` is
+//!   its `<donedata>`, its `fail` the attribute `rb:fail`.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
 use roadbook_compiler::Ir;
 use roadbook_ir::{
-    AddressKind, Effect, Expr, ExprKind, Field, InvokeKind, Literal, Machine, State, StateKind,
-    Transition, Trigger,
+    AddressKind, Effect, Expr, ExprKind, Field, InvokeKind, Literal, Machine, ReplyOutcome, State,
+    StateKind, Transition, Trigger, TypeRef,
 };
 
 use crate::workspace::Workspace;
@@ -54,8 +60,14 @@ use crate::{Exit, report};
 pub const RB_NS: &str = "urn:roadbook:scxml";
 /// The `<invoke type>` of a task.
 pub const TASK_TYPE: &str = "urn:roadbook:task";
-/// The `<send type>` of `emit`: to the invoker and every holder of a `ref`.
+/// The `<send type>` of `emit`: to the invoker and every holder of a `ref`, those with an `on`
+/// for the event.
 pub const EMIT_TYPE: &str = "urn:roadbook:emit";
+/// The `<invoke type>` of a call of the run a `ref` holds.
+pub const CALL_TYPE: &str = "urn:roadbook:call";
+/// The `<send type>` of `reply`: to the caller of a pending call alone, whose invoke takes it
+/// as `done.invoke.<invoke>` or `error.E.<invoke>`.
+pub const REPLY_TYPE: &str = "urn:roadbook:reply";
 const SCXML_TYPE: &str = "http://www.w3.org/TR/scxml/";
 
 #[derive(clap::Args)]
@@ -143,6 +155,14 @@ fn invoke_id(state_id: &str) -> String {
     format!("{}_invoke", xml_id(state_id))
 }
 
+/// The event a callee takes a call `c` as: `call.c`. It is named like an emitted event, after
+/// the name the receiver knows the sender by, which in `on c` is the implicit `call`. `call` is
+/// a keyword, so no address is named `call` and `call.c` is no emitted event; an event's name
+/// is upper-case, and SCXML's own events start `done.` or `error.`, and timers `roadbook.`.
+pub fn call_event(call: &str) -> String {
+    format!("call.{call}")
+}
+
 /// One machine as an SCXML document.
 pub fn document(ir: &Ir, name: &str, m: &Machine) -> String {
     let mut w = Writer {
@@ -182,6 +202,9 @@ pub fn document(ir: &Ir, name: &str, m: &Machine) -> String {
     }
     if !m.errors.is_empty() {
         attrs.push(("rb:errors", m.errors.join(" ")));
+    }
+    if m.strict {
+        attrs.push(("rb:strict", "true".into()));
     }
     w.open(0, "scxml", &attrs, false);
     if !m.params.is_empty() || !m.vars.is_empty() || !m.children.is_empty() {
@@ -360,6 +383,15 @@ impl Writer<'_> {
                     format!("{}.scxml", inv.src),
                     self.ir.machines.get(&inv.src).map(|m| &m.params),
                 ),
+                InvokeKind::Call => (
+                    CALL_TYPE,
+                    inv.callee(),
+                    inv.to
+                        .as_ref()
+                        .and_then(|to| self.ir.machines.get(&to.machine))
+                        .and_then(|m| m.calls.get(&inv.src))
+                        .map(|c| &c.params),
+                ),
             };
             let mut attrs = vec![
                 ("id", invoke_id(&s.id)),
@@ -431,6 +463,7 @@ impl Writer<'_> {
         let event = match &t.trigger {
             Trigger::Event { event } => Some(event.clone()),
             Trigger::Emitted { from, event } => Some(format!("{}.{event}", from.name)),
+            Trigger::Call { call } => Some(call_event(call)),
             Trigger::Any => {
                 let handled: Vec<&str> = s
                     .transitions
@@ -514,11 +547,24 @@ impl Writer<'_> {
                     let declared = s.invoke.as_ref().and_then(|inv| match inv.kind {
                         InvokeKind::Task => self.ir.tasks.get(&inv.src).map(|t| &t.errors),
                         InvokeKind::Machine => self.ir.machines.get(&inv.src).map(|m| &m.errors),
+                        InvokeKind::Call => inv
+                            .to
+                            .as_ref()
+                            .and_then(|to| self.ir.machines.get(&to.machine))
+                            .and_then(|m| m.calls.get(&inv.src))
+                            .map(|c| &c.errors),
                     });
+                    // A call also fails with the built-in `Unanswered`, which `*` covers.
+                    let unanswered = s
+                        .invoke
+                        .as_ref()
+                        .filter(|inv| inv.kind == InvokeKind::Call)
+                        .map(|_| roadbook_ir::UNANSWERED);
                     declared
                         .into_iter()
                         .flatten()
                         .map(String::as_str)
+                        .chain(unanswered)
                         .filter(|e| !listed.contains(e))
                         .collect()
                 } else {
@@ -629,6 +675,28 @@ impl Writer<'_> {
                 Effect::Stop { children, key } => {
                     let attrs = [("children", children.clone()), ("key", key.text.clone())];
                     self.open(depth, "rb:stop", &attrs, true);
+                }
+                Effect::Reply {
+                    call,
+                    outcome,
+                    value,
+                } => {
+                    let event = match (outcome, value.as_ref().map(|v| &v.ty)) {
+                        (ReplyOutcome::Done, _) => "done".to_string(),
+                        (ReplyOutcome::Fail, Some(TypeRef::Named(error))) => {
+                            format!("error.{error}")
+                        }
+                        (ReplyOutcome::Fail, _) => "error".to_string(),
+                    };
+                    let attrs = vec![
+                        ("event", event),
+                        ("type", REPLY_TYPE.into()),
+                        ("targetexpr", call.text.clone()),
+                    ];
+                    match value {
+                        Some(value) => self.send(depth, attrs, value),
+                        None => self.open(depth, "send", &attrs, true),
+                    }
                 }
             }
         }

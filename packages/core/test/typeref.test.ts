@@ -53,6 +53,8 @@ describe("parseTypeRef", () => {
         "A1[][]",
         "ref Inventory",
         "ref Inventory[]?",
+        "call reserve",
+        "call reserve?",
         "Upload.Progress",
         "map<string, int>",
         "map<UserId, Order[]>?",
@@ -78,6 +80,7 @@ describe("parseTypeRef", () => {
     })
     expect(parseTypeRef("Upload.Progress")).toEqual({ kind: "event", machine: "Upload", event: "Progress" })
     expect(parseTypeRef("ref Inventory[]")).toEqual({ kind: "list", of: { kind: "ref", machine: "Inventory" } })
+    expect(parseTypeRef("call reserve")).toEqual({ kind: "call", call: "reserve" })
   })
 
   it("refuses what is not a type reference", () => {
@@ -93,6 +96,9 @@ describe("parseTypeRef", () => {
         "ref  Order",
         "ref int",
         "ref Order.Event",
+        "call Reserve",
+        "call  reserve",
+        "call",
         "Order.",
         "Order.event",
         "A.B.C",
@@ -118,6 +124,7 @@ describe("parseTypeRef", () => {
   it("lists the declared names a type mentions", () => {
     expect(typeNames(parseTypeRef("map<UserId, Page<Order>>"))).toEqual(["UserId", "Page", "Order"])
     expect(typeNames(parseTypeRef("ref M[]"))).toEqual([])
+    expect(typeNames(parseTypeRef("call reserve"))).toEqual([])
   })
 
   it("substitutes type parameters", () => {
@@ -162,6 +169,14 @@ describe("valueIssue", () => {
     expect(issue("map<string, int>?", null)).toBeUndefined()
     expect(issue("Dict<duration>", { a: -1 })).toBe(`v["a"] is not a duration in whole milliseconds`)
     expect(issue("map<string, ref M>", { a: "r1.2" })).toBeUndefined()
+  })
+
+  it("checks a pending-call value: the caller's run id and its invoke", () => {
+    expect(issue("call reserve", { from: "r2", invoke: 1 })).toBeUndefined()
+    expect(issue("call reserve?", null)).toBeUndefined()
+    expect(issue("call reserve", { from: "r2" })).toBe("v has no invoke")
+    expect(issue("call reserve", { from: "r2", invoke: 0 })).toBe("v is not a pending call")
+    expect(issue("call reserve", "r2")).toBe("v is not a pending call")
   })
 
   it("checks an instance of a generic record against its substituted fields", () => {
@@ -228,7 +243,7 @@ describe("hostile IR", () => {
     expect(aliasCycle({ types } as unknown as Ir)).toBe("Boom")
     expect(aliasCycle({ types: { Loop: alias([], "map<string, Twice>[]"), Twice: alias([], "Loop") } } as unknown as Ir)).toBeDefined()
     expect(aliasCycle({ types: { A: alias([], "int"), B: alias([], "A[]") } } as unknown as Ir)).toBeUndefined()
-    const doc = { irVersion: "0.6", sources: [], types, functions: {}, actions: {}, tasks: {}, machines: {} }
+    const doc = { irVersion: "0.7", sources: [], types, functions: {}, actions: {}, tasks: {}, machines: {} }
     expect(() => loadIr(doc)).toThrow(/refers to itself/)
   })
 })

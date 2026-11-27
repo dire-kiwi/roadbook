@@ -26,7 +26,7 @@ States are named by their ids in the IR, transitions by their state's id and the
 | `entered` | `state` | When a state is entered, before its entry effects. The root is entered first and exited last. |
 | `exited` | `state` | When a state is left, after its invoke and timers were cancelled and its exit effects ran. |
 | `event` | `event` | When the run takes an input that enables a transition, before anything it causes. `event` is the input as the core received it (below). |
-| `dropped` | `event` | Instead of `event`, when the input enables no transition. Nothing else happens. |
+| `dropped` | `event` | Instead of `event`, when the input enables no transition. Nothing else happens. In a strict machine an external event, a message or a call that enables no transition is an `unhandled` [defect](execution.md#defects) instead, and has no `dropped` record. |
 | `stale` | `event` | Instead of `event`, when the input is the outcome of an invoke or a spawned child, the expiry of a timer, or an event emitted by a child run, whose invoke, spawned child or timer is no longer running: it was cancelled, stopped or replaced after the input had been queued, or (for an emitted event) its outcome has been taken. Nothing else happens. |
 | `transition` | `from`, `index`, `to` | When a transition is taken, before the exits it causes. `to` is the target state's id (a history state's, for a transition to one: the `entered` records after it say which states it restored), or `null` for an internal transition. `always` and `done` transitions are traced the same way, with no `event` record before them. When one microstep takes transitions in several regions of a parallel state, their `transition` records come one after another, before all their exits ([a microstep](execution.md#a-microstep)). |
 | `set` | `var`, `value` | When an assignment runs, in an exit, transition or entry effect list. |
@@ -34,10 +34,11 @@ States are named by their ids in the IR, transitions by their state's id and the
 | `sent` | `message`, `to`, `value` | When a `send` effect runs, before the driver queues the message. `message` is the message's id in the sending run, from 1, shared with `emitted` and `undelivered`; `to` the receiving run's id; `value` the event, a tagged record. |
 | `emitted` | `message`, `value` | When an `emit` effect runs, before the driver queues the event for its receivers. Which runs received it is in their records, not here. |
 | `undelivered` | `message`, `to`, `value` | A `send` that reached no run. Written by the core in place of `sent`, with `to` `null`, when the state the child is addressed through has no running invoke (it has not started yet, or its outcome has been taken), or when the collection a `send name[key].E` goes through has no running child with that key. Written by the driver right after the `sent` record, with the same members, when the receiving run has ended. |
-| `invoke.started` | `invoke`, `state`, `src`, `args` | When a task or child machine is started. `invoke` is its id in the run, from 1. |
+| `invoke.started` | `invoke`, `state`, `src`, `args` | When a task or child machine is started, or a call is made. `invoke` is its id in the run, from 1. For a call, `src` is the address and the call, `inventory.reserve`, and `args` is keyed by the call's parameter names. |
 | `invoke.cancelled` | `invoke`, `state`, `src` | When a running invoke is cancelled because its state is left. An invoke whose outcome arrived is not cancelled. |
 | `spawn.started` | `spawn`, `children`, `key`, `src`, `args` | When a spawned child is started, after the step that spawned it has settled, or again on restoring. `spawn` is its id in the run, from the sequence invokes take theirs from; `children` the collection, `key` its key, `src` its machine, `args` its arguments keyed by parameter name. |
 | `spawn.stopped` | `spawn`, `children`, `key` | When a running spawned child is stopped: by `stop`, by a `spawn` with its key, or because its parent finished or was cancelled. A child whose outcome has been taken is not stopped; one that ended with its outcome still queued is, and that outcome is then stale. |
+| `replied` | `to`, `invoke`, `call`, `outcome`, `value` | When a `reply` effect runs, before the driver answers the caller, and right after the `dropped` record of a call that enabled no transition (in a machine that is not strict). `to` is the caller's run id and `invoke` the caller's invoke; `outcome` is `done` or `fail`, and `value` the result (`null` for a call that returns nothing) or the error. A dropped call is answered `fail` with `{"_tag": "Unanswered"}`. |
 | `timer.started` | `timer`, `state`, `index`, `delay` | When an `after` timer is started. `index` is the transition of its `after` block that comes first, and `delay` the evaluated delay in milliseconds. |
 | `timer.cancelled` | `timer`, `state`, `index` | When a running timer is cancelled because its state is left. |
 | `done` | `state`, `output` | Last, when the run reaches a top-level final state with an output. `output` is `null` for a machine that returns nothing. |
@@ -58,6 +59,7 @@ The `event` member of `event`, `dropped` and `stale` records is the input exactl
 | Message from another run | `{"kind": "message", "from": "r1", "message": 2, "value": {"_tag": "Pause"}}` |
 | Emitted by a child run | `{"kind": "emitted", "from": "r1.1", "invoke": 1, "message": 1, "value": {"_tag": "Progress", "offset": 100}}` (`invoke` is the id of the invoke or spawned child) |
 | Emitted by a peer | `{"kind": "emitted", "from": "r1", "invoke": null, "message": 3, "value": {"_tag": "Reserved", "orderId": "o1"}}` |
+| Call from another run | `{"kind": "call", "from": "r2", "invoke": 1, "call": "reserve", "args": {"orderId": "o1", "items": […]}}` |
 | Invoke succeeded | `{"kind": "invoke.done", "invoke": 1, "value": …}` |
 | Invoke failed | `{"kind": "invoke.fail", "invoke": 1, "error": {"_tag": "GatewayUnavailable"}}` |
 | Invoke ended with a defect | `{"kind": "invoke.defect", "invoke": 1, "defect": {"kind": "host", "message": "…"}}` |
@@ -72,11 +74,13 @@ The two other inputs, `cancel` and `defect`, are not written as `event` records:
 
 ### Defects
 
-`{"kind": "host", "message": …}`, `{"kind": "unassigned", "var": …}`, `{"kind": "overflow", "expr": …}`, `{"kind": "undeclared", "error": …}` or `{"kind": "limit"}`; see [execution.md](execution.md#defects).
+`{"kind": "host", "message": …}`, `{"kind": "unassigned", "var": …}`, `{"kind": "overflow", "expr": …}`, `{"kind": "undeclared", "error": …}`, `{"kind": "limit"}`, `{"kind": "unhandled", "event": …}` or `{"kind": "answered", "call": …}`; see [execution.md](execution.md#defects).
 
 ## Messages
 
 Records are enough to draw a sequence view across runs. A `send` is one `sent` record in the sender's group, with `to`, and one `event`, `dropped` or `stale` record in the receiver's, whose input has `from` and the same `message`; or `sent` followed by `undelivered` if the receiver had ended, or `undelivered` alone if there was no child to send to. An `emit` is one `emitted` record, and one input record in the group of each run it reached. A `sent` with no receiving record and no `undelivered` is a message that never reached a transition: it was still queued when the receiver ended and was discarded with the queue ([ending a run](execution.md#ending-a-run)), or it was kept for a child that never claimed its invoke (a stub) and discarded when the invoke ended.
+
+A **call** is an `invoke.started` record in the caller's group whose `src` names the address and the call, and an `event` or `dropped` record in the callee's whose input has `kind` `call`, `from` the caller and the same `invoke` (in a strict callee, a call that enables no transition is instead the `unhandled` defect that ends it). Its answer is a `replied` record in the callee's group with `to` the caller and that `invoke`, and the `invoke.done` or `invoke.fail` input record in the caller's (or `stale`, if the caller had left the state). A call to a callee that was not open, or that ended before answering, has only the caller's records: its `invoke.fail` input carries `Unanswered`, and the callee writes nothing about it.
 
 ## Order
 
@@ -145,17 +149,19 @@ The last two rules are for values a runtime is not meant to see at all: host cod
 | `restored` | `snapshot` | its `input` by the machine's parameters, its `vars` by its variables, each `spawned` child's `args` by the parameters of its collection's machine, a `result`'s `output` by the machine's result type and its `error` by its tag; nothing else in it is a value |
 | `set` | `value` | the variable (a variable the machine does not declare: `"<redacted>"`) |
 | `action` | `args` | each by its parameter of the action |
-| `invoke.started` | `args` | each by its parameter of the task or machine |
-| `spawn.started` | `args` | each by its parameter of the machine (`src`); `key` is shown as it is: the compiler rejects a sensitive key (`RB0317`) |
+| `invoke.started` | `args` | each by its parameter of the task or machine, or for a call invoke of the call (of the callee's machine, the address's) |
+| `spawn.started` | `args` | each by its parameter of the machine (`src`); `key` is shown as it is: the compiler rejects a sensitive key (`RB0320`) |
 | `sent`, `undelivered` | `value` | the receiving machine's event of its `_tag` (the address's machine) |
 | `emitted` | `value` | the run's own emitted event of its `_tag` |
+| `replied` | `value` | for `done`, the call's result type (for a call that returns nothing, anything but `null` is `"<redacted>"`); for `fail`, the error type its `_tag` names |
 | `done` | `output` | the machine's result type (for a machine that returns nothing, anything but `null` is `"<redacted>"`) |
 | `failed` | `error` | the error type its `_tag` names |
 | `event`, `dropped`, `stale` | `event` | by the input's kind, below |
+| `defect` | `defect` | an `unhandled` defect's `event` as the input it is, below; the other defects as they are |
 
 The `undelivered` record a driver writes repeats the value of the `sent` record before it, which the core has redacted.
 
-In an input, an `event` or `message` value is redacted as the run's own event of its `_tag`; an `invoke.fail` error as the error type its `_tag` names; an `invoke.done` value as the result type of the running invoke's task or machine (for one that returns nothing, anything but `null` is `"<redacted>"`); a `spawn.fail` error as the error type its `_tag` names, and a `spawn.done` value as the result type of the spawned child's machine (one whose child is no longer in the snapshot, a stale one, is `"<redacted>"` whole, as for `invoke.done`). A tagged value (an event, an error) is treated as a record of its declaration, if that holds a sensitive value. One of a `_tag` nothing declares has every member but `_tag` redacted, and one that is not an object with a string `_tag` is `"<redacted>"` whole. Two inputs come from something the receiving run cannot always name:
+In an input, an `event` or `message` value is redacted as the run's own event of its `_tag`; an `invoke.fail` error as the error type its `_tag` names; an `invoke.done` value as the result type of the running invoke's task, machine or call (for one that returns nothing, anything but `null` is `"<redacted>"`); a `call`'s `args` by the parameters of the run's own call it names; a `spawn.fail` error as the error type its `_tag` names, and a `spawn.done` value as the result type of the spawned child's machine (one whose child is no longer in the snapshot, a stale one, is `"<redacted>"` whole, as for `invoke.done`). A tagged value (an event, an error) is treated as a record of its declaration, if that holds a sensitive value. One of a `_tag` nothing declares has every member but `_tag` redacted, and one that is not an object with a string `_tag` is `"<redacted>"` whole. Two inputs come from something the receiving run cannot always name:
 
 - an `emitted` value is redacted under the emitted event of its `_tag` of **every** machine of the IR that emits one whose fields are exactly the value's members (but `_tag`), one after the other in IR order. A holder of a `ref` does not know which machine sent it, and a parent may have left the invoking state; the sender's own declaration is always among them, since a core builds the event with every field it declares. If none fits, every member but `_tag` is redacted.
 - a `stale` `invoke.done` value is `"<redacted>"` whole: its invoke has ended, and with it what it ran, so its type is not known. The run ignores it anyway.

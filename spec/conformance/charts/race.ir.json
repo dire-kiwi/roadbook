@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/race.road",
@@ -47,6 +47,7 @@
         "endLine": 28,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "int",
       "errors": [],
@@ -86,6 +87,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Race",
         "name": "Race",
@@ -119,6 +121,7 @@
             "invoke": {
               "kind": "task",
               "src": "slow",
+              "to": null,
               "as": null,
               "args": [],
               "span": {
@@ -199,6 +202,7 @@
             "invoke": {
               "kind": "task",
               "src": "quick",
+              "to": null,
               "as": null,
               "args": [],
               "span": {
@@ -279,7 +283,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:47f654efd81dd78fe1fc0c2dc5b879393ea7ebd3f98732d3be2cf0674e811cae"
+      "hash": "sha256:320a4a0fdf932886d5508c4514b8548adeac7e69426a1155fe5c7c8977744c63"
     }
   }
 }

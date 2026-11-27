@@ -40,7 +40,7 @@ const INDENT: usize = 2;
 enum Group {
     /// One-line `type`, `enum`, `error` and `extern type` declarations.
     Data,
-    /// One-line `fn`, `action` and `task` declarations.
+    /// One-line `fn`, `action` and `task` declarations, and a machine's `call`s.
     Callable,
     Var,
     Event,
@@ -496,6 +496,11 @@ impl Formatter<'_> {
             }
             DeclKind::Machine(m) => {
                 let header = (start, m.body.span.start.offset + 1);
+                let head = if m.strict {
+                    format!("strict {head}")
+                } else {
+                    head
+                };
                 let mut head = self.params(&d.name, &m.params, head, header, 0);
                 if let Some(t) = &m.returns {
                     head += &format!(" -> {}", ty(t));
@@ -584,6 +589,22 @@ impl Formatter<'_> {
                     self.row(whole, indent, vec![head, text], "", Some(Group::Event));
                 }
             }
+            Item::Call(c) => {
+                let head = format!("call {}", c.name.name);
+                let head = self.params(&c.name, &c.params, head, whole, indent);
+                let returns = c
+                    .returns
+                    .as_ref()
+                    .map_or(String::new(), |t| format!("-> {}", ty(t)));
+                let group = decl_group(&head);
+                self.row(
+                    whole,
+                    indent,
+                    vec![head, returns, error_list(&c.errors)],
+                    "",
+                    group,
+                );
+            }
             Item::State(s) => self.state(s, indent),
             Item::Invoke(inv) => {
                 let mut args_end = inv.callee.span.end.offset;
@@ -596,7 +617,11 @@ impl Formatter<'_> {
                     .as_ref()
                     .map_or(rparen.span.end.offset, |r| r.span.end.offset);
                 let open = self.find(head_end, Punct::LBrace);
-                let mut head = format!("invoke {}({})", inv.callee.name, exprs(&inv.args));
+                let to = inv
+                    .to
+                    .as_ref()
+                    .map_or(String::new(), |t| format!("{}.", t.name));
+                let mut head = format!("invoke {to}{}({})", inv.callee.name, exprs(&inv.args));
                 if let Some(a) = &inv.alias {
                     head += &format!(" as {}", a.name);
                 }
@@ -749,6 +774,7 @@ fn inline_item(item: &Item) -> Option<String> {
         | Item::Event(_)
         | Item::Emits(_)
         | Item::Children(_)
+        | Item::Call(_)
         | Item::State(_)
         | Item::Invoke(_)
         | Item::History(_)
@@ -783,6 +809,10 @@ pub fn property_text(p: &Property) -> String {
 
 /// `[head, target, effects]`, with the head left for the caller to fill in.
 fn branch_cells(b: &Branch) -> Vec<String> {
+    if b.ignore {
+        // In the target's column, so it lines up with the targets of the transitions around it.
+        return vec![String::new(), "ignore".into(), String::new()];
+    }
     let target = b.target.as_ref().map_or(String::new(), |t| {
         let path: Vec<_> = t.path.iter().map(|p| p.name.as_str()).collect();
         format!("-> {}", path.join("."))
@@ -800,6 +830,7 @@ fn trigger(t: &Trigger) -> String {
         Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
         Trigger::ChildDone { from } => format!("on {}.done", from.name),
         Trigger::ChildFail { from, error } => format!("on {}.fail {}", from.name, pattern(error)),
+        Trigger::Call(n) => format!("on {}", n.name),
         Trigger::After(e) if bare_record(e) => format!("after ({})", expr(e)),
         Trigger::After(e) => format!("after {}", expr(e)),
         Trigger::Always => "always".into(),
@@ -835,9 +866,9 @@ fn bare_record(e: &Expr) -> bool {
 }
 
 /// Consecutive `set`s, and consecutive `do`s, share a clause; clauses are separated by two
-/// spaces. Every `set` comes first, then the `do`, `send`, `emit`, `spawn` and `stop` effects,
-/// each in the order written: the order they run in. A `send`, `emit`, `spawn` or `stop` is a
-/// clause of its own.
+/// spaces. Every `set` comes first, then the `do`, `send`, `emit`, `spawn`, `stop` and `reply`
+/// effects, each in the order written: the order they run in. A `send`, `emit`, `spawn`, `stop`
+/// or `reply` is a clause of its own.
 fn effects(effects: &[Effect]) -> String {
     let mut out = String::new();
     let mut last: Option<&'static str> = None;
@@ -851,6 +882,7 @@ fn effects(effects: &[Effect]) -> String {
             Effect::Emit(_) => "emit",
             Effect::Spawn(_) => "spawn",
             Effect::Stop(_) => "stop",
+            Effect::Reply(_) => "reply",
         };
         if last == Some(kw) && matches!(kw, "set" | "do") {
             out.push_str(", ");
@@ -873,6 +905,13 @@ fn effects(effects: &[Effect]) -> String {
                 exprs(&sp.args)
             )),
             Effect::Stop(st) => out.push_str(&format!("{}[{}]", st.children.name, expr(&st.key))),
+            Effect::Reply(r) => {
+                out.push_str(&format!("{} {}", r.call.name, r.outcome.as_str()));
+                if let Some(v) = &r.value {
+                    out.push(' ');
+                    out.push_str(&expr(v));
+                }
+            }
         }
         last = Some(kw);
     }
@@ -929,6 +968,7 @@ fn ty(t: &TypeRef) -> String {
         TypeKind::List(t) => format!("{}[]", ty(t)),
         TypeKind::Optional(t) => format!("{}?", ty(t)),
         TypeKind::Ref(n) => format!("ref {}", n.name),
+        TypeKind::Call(n) => format!("call {}", n.name),
     }
 }
 

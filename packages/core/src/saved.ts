@@ -16,7 +16,7 @@ import type { Saved, Snapshot } from "./types.ts"
 export const SNAPSHOT_VERSION = 3
 
 /** Why a saved snapshot was refused. */
-export type RefusalReason = "invalid" | "machine" | "ir" | "migration" | "ended" | "ref"
+export type RefusalReason = "invalid" | "machine" | "ir" | "migration" | "ended" | "ref" | "calls"
 
 export interface Refusal {
   readonly reason: RefusalReason
@@ -33,7 +33,10 @@ export type Checked =
   | { readonly ok: true; readonly saved: Saved; readonly migrated: string | null }
   | ({ readonly ok: false } & Refusal)
 
-/** The saved form of `snapshot`: the version (always 2) added, and each timer's due time from `due`. */
+/**
+ * The saved form of `snapshot`: the version (always 3) added, each timer's due time from `due`,
+ * and `calls` only when the run has pending calls.
+ */
 export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Saved => ({
   snapshotVersion: SNAPSHOT_VERSION,
   machine: snapshot.machine,
@@ -45,6 +48,7 @@ export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Sav
   vars: snapshot.vars,
   invokes: snapshot.invokes,
   spawned: snapshot.spawned,
+  ...(snapshot.calls.length > 0 ? { calls: snapshot.calls } : {}),
   timers: snapshot.timers.map((t) => ({ ...t, due: due(t.id) })),
   nextInvoke: snapshot.nextInvoke,
   nextTimer: snapshot.nextTimer,
@@ -57,7 +61,8 @@ export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Sav
  * Check `json` as a saved snapshot of machine `machine` of `ir`, as `restore` does: its shape
  * and version (`invalid`), the machine (`machine`), the hash (`ir`, or `migration` when
  * `migrate` fails; its result is checked again from the top, never migrated twice), the status
- * (`ended`), `ref` parameters (`ref`), and whether it fits the machine (`invalid`).
+ * (`ended`), `ref` parameters (`ref`), pending calls (`calls`), and whether it fits the machine
+ * (`invalid`).
  */
 export const checkSaved = (ir: Ir, machine: string, json: unknown, migrate?: Migrate): Checked => {
   const refuse = (reason: RefusalReason, message: string): Checked => ({ ok: false, reason, message })
@@ -88,6 +93,9 @@ export const checkSaved = (ir: Ir, machine: string, json: unknown, migrate?: Mig
   if (ref !== undefined) {
     return refuse("ref", `${machine} holds a ref in parameter ${ref.name}, which cannot be restored yet`)
   }
+  if (saved.calls !== undefined && saved.calls.length > 0) {
+    return refuse("calls", `the run has ${saved.calls.length} pending calls, whose callers are gone`)
+  }
   const fit = fitIssue(ir, m, saved)
   if (fit !== undefined) return refuse("invalid", `the snapshot does not fit ${machine}: ${fit}`)
   // A copy: the run does not share anything with what the caller holds.
@@ -104,7 +112,8 @@ export const isSaved = (u: unknown): u is Saved => shapeIssue(u) === undefined
 
 const UPPER = /^[A-Z][A-Za-z0-9]*$/
 const LOWER = /^[a-z][A-Za-z0-9]*$/
-const NAME = /^[A-Za-z][A-Za-z0-9]*$/
+/** An invoke's `src`: a task or machine, or for a call the address and the call (`inventory.reserve`). */
+const SRC = /^([A-Za-z][A-Za-z0-9]*|[a-z][A-Za-z0-9]*\.[a-z][A-Za-z0-9]*)$/
 const STATE_ID = /^[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)*$/
 /**
  * The snapshot schema's pattern for a run id: the id of a root run, then the invoke ids of child
@@ -140,11 +149,16 @@ const isNatural = (u: unknown): u is number => Number.isSafeInteger(u) && (u as 
 const isId = (u: unknown): u is number => Number.isSafeInteger(u) && (u as number) >= 1
 const matches = (re: RegExp, u: unknown): boolean => typeof u === "string" && re.test(u)
 
-/** Members exactly `names`: none missing, none other. */
-const membersIssue = (value: { readonly [key: string]: unknown }, names: ReadonlyArray<string>, what: string) => {
+/** Members exactly `names`, and any of `optional`: none missing, none other. */
+const membersIssue = (
+  value: { readonly [key: string]: unknown },
+  names: ReadonlyArray<string>,
+  what: string,
+  optional: ReadonlyArray<string> = []
+) => {
   const missing = names.find((n) => !Object.hasOwn(value, n))
   if (missing !== undefined) return `${what} has no ${missing}`
-  const extra = Object.keys(value).find((k) => !names.includes(k))
+  const extra = Object.keys(value).find((k) => !names.includes(k) && !optional.includes(k))
   if (extra !== undefined) return `${what} has a member ${extra}, which a saved snapshot does not have`
   return undefined
 }
@@ -158,7 +172,8 @@ const shapeIssue = (json: unknown): string | undefined => {
     return `it is version ${JSON.stringify(version)} and has spawned, which version 3 added`
   }
   const expected = version === 1 ? MEMBERS : version === 2 ? [...MEMBERS, "history"] : [...MEMBERS, "history", "spawned"]
-  const members = membersIssue(json, expected, "it")
+  // `calls` is optional in every version: written only when the run has pending calls.
+  const members = membersIssue(json, expected, "it", ["calls"])
   if (members !== undefined) return members
   if (version !== 1 && version !== 2 && version !== SNAPSHOT_VERSION) {
     return `snapshotVersion is ${JSON.stringify(version)}, and this runtime reads 1, 2 and ${SNAPSHOT_VERSION}`
@@ -180,7 +195,18 @@ const shapeIssue = (json: unknown): string | undefined => {
     if (!isObject(inv)) return "an invoke is not an object"
     const issue = membersIssue(inv, ["id", "state", "src"], "an invoke")
     if (issue !== undefined) return issue
-    if (!isId(inv["id"]) || !matches(STATE_ID, inv["state"]) || !matches(NAME, inv["src"])) return "an invoke is malformed"
+    if (!isId(inv["id"]) || !matches(STATE_ID, inv["state"]) || !matches(SRC, inv["src"])) return "an invoke is malformed"
+  }
+  if (Object.hasOwn(json, "calls")) {
+    // Written only when not empty.
+    const calls = json["calls"]
+    if (!Array.isArray(calls) || calls.length === 0) return "calls is not a list of at least one call"
+    for (const call of calls) {
+      if (!isObject(call)) return "a call is not an object"
+      const issue = membersIssue(call, ["from", "invoke", "call"], "a call")
+      if (issue !== undefined) return issue
+      if (!isRunId(call["from"]) || !isId(call["invoke"]) || !matches(LOWER, call["call"])) return "a call is malformed"
+    }
   }
   const spawned = json["spawned"] ?? []
   if (!Array.isArray(spawned)) return "spawned is not a list"
@@ -279,7 +305,10 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
   for (const inv of saved.invokes) {
     const state = states.get(inv.state)?.state
     if (state === undefined || !active.has(inv.state)) return `invoke ${inv.id} is of ${inv.state}, which is not active`
-    if (state.invoke === null || state.invoke.src !== inv.src) return `${inv.state} has no invoke of ${inv.src}`
+    const src = state.invoke?.kind === "call" && state.invoke.to !== null
+      ? `${state.invoke.to.name}.${state.invoke.src}`
+      : state.invoke?.src
+    if (src !== inv.src) return `${inv.state} has no invoke of ${inv.src}`
     if (invokeStates.has(inv.state)) return `${inv.state} has two invokes`
     invokeStates.add(inv.state)
     if (invokeIds.has(inv.id)) return `invoke id ${inv.id} is repeated`
@@ -457,6 +486,13 @@ export const valueIssue = (ir: Ir, type: TypeRef | string, value: Json, what: st
       }
     case "ref":
       return typeof value === "string" ? undefined : fail("a run id")
+    case "call": {
+      // A pending-call value: the caller's run id and the id of its invoke.
+      if (!isObject(value)) return fail("a pending call")
+      const issue = membersIssue(value, ["from", "invoke"], what)
+      if (issue !== undefined) return issue
+      return isRunId(value["from"]) && isId(value["invoke"]) ? undefined : fail("a pending call")
+    }
     case "event": {
       // One the machine accepts or emits.
       const m = Object.hasOwn(ir.machines, t.machine) ? ir.machines[t.machine] : undefined

@@ -139,6 +139,14 @@ impl Outline<'_> {
                     c.name.span,
                     vec![],
                 )),
+                Item::Call(c) => out.push(self.symbol(
+                    &c.name.name,
+                    Kind::METHOD,
+                    Some("call".into()),
+                    c.span,
+                    c.name.span,
+                    self.fields(&c.params),
+                )),
                 Item::State(s) => out.push(self.state(s)),
                 // A pseudo-state, shown among the states it returns to.
                 Item::History(h) => out.push(self.symbol(

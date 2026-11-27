@@ -6,7 +6,7 @@
  * storage, which replays every execution that has not ended. Tasks wait on gates the test
  * opens, so it decides where each crash falls.
  */
-import * as Core from "@roadbook/core"
+import * as Core from "@dire-kiwi/roadbook-core"
 import { Context, Deferred, Duration, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
 import { MessageStorage, RunnerHealth, Runners, RunnerStorage, Sharding, ShardingConfig } from "effect/cluster"
 import { ClusterWorkflowEngine } from "effect/cluster"
@@ -14,7 +14,7 @@ import { DurableDeferred, WorkflowEngine } from "effect/workflow"
 import { describe, expect, it } from "vitest"
 import { Durable } from "../src/entry-durable.ts"
 import * as Roadbook from "../src/index.ts"
-import { Adder, Counter, Parent, Pipeline } from "./charts/durable.road.ts"
+import { Adder, Caller, Counter, Parent, Pipeline, Teller } from "./charts/durable.road.ts"
 
 const config = ShardingConfig.layer({
   entityTerminationTimeout: 0,
@@ -78,7 +78,9 @@ const machines = (world: World, options: Partial<Durable.Options<any>> = {}) => 
     adder: Durable.workflow(Adder.implement(world.handlers as never), {
       idempotencyKey: ({ goal }) => `adder-${goal}`,
       ...options
-    })
+    }),
+    teller: Durable.workflow(Teller.implement(world.handlers as never), { idempotencyKey: () => "teller", ...options }),
+    caller: Durable.workflow(Caller.implement({}), { idempotencyKey: ({ n }) => `caller-${n}`, ...options })
   }
 }
 type Machines = ReturnType<typeof machines>
@@ -109,7 +111,14 @@ const slowReads = (ms: number) =>
 const startProcess = (storage: Storage, world: World, flows: Machines, slow?: number) =>
   Effect.gen(function*() {
     const scope = yield* Scope.make()
-    const layer = Layer.mergeAll(flows.pipeline.layer, flows.parent.layer, flows.counter.layer, flows.adder.layer).pipe(
+    const layer = Layer.mergeAll(
+      flows.pipeline.layer,
+      flows.parent.layer,
+      flows.counter.layer,
+      flows.adder.layer,
+      flows.teller.layer,
+      flows.caller.layer
+    ).pipe(
       Layer.provideMerge(slow === undefined ? engineLayer : slowReads(slow))
     )
     const context = yield* Layer.buildWithScope(layer, scope).pipe(
@@ -307,6 +316,36 @@ describe("durable runs across a crash", () => {
           polled = yield* process.run(flows.counter.poll(counterId))
         }
         expect(Option.isSome(polled) && Exit.isSuccess(polled.value)).toBe(true)
+        yield* process.crash
+      })), 20_000)
+})
+
+describe("calls between durable runs", () => {
+  it("a call is answered once, and a crash while the callee works on it loses nothing", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        world.open(1)
+        let process = yield* start()
+        const tellerId = yield* process.run(flows.teller.start({}))
+        const teller = yield* process.run(flows.teller.handle(tellerId))
+        expect(yield* process.run(flows.caller.run({ teller, n: 1 }))).toBe(10)
+
+        // The teller takes the second call and works on it; the process crashes meanwhile.
+        yield* process.run(flows.caller.start({ teller, n: 2 }))
+        yield* until(() => world.count(2) === 1)
+        yield* process.crash
+
+        // Both replay: the caller makes its call again at its live edge, and the teller, which
+        // took it before the crash, answers it once its step has run again.
+        process = yield* start()
+        yield* until(() => world.count(2) === 2)
+        world.open(2)
+        expect(yield* process.run(flows.caller.run({ teller, n: 2 }))).toBe(20)
+        // The teller took each call once, and replied to each once.
+        const taken = world.records.filter((r) => r.kind === "event" && r.event.kind === "call")
+        expect(taken.length).toBe(2)
+        expect(world.records.filter((r) => r.kind === "replied").length).toBe(2)
+        yield* process.run(flows.teller.send(tellerId, { _tag: "Close" }))
         yield* process.crash
       })), 20_000)
 })

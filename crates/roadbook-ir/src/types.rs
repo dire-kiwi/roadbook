@@ -58,9 +58,14 @@ impl Builtin {
 /// is a list of `LineItem`; `string[]?` is an optional list of strings;
 /// `string?[]` is a list of optional strings. The base is a built-in keyword,
 /// a declared upper-case name with optional type arguments (`Page<Order>`),
-/// an event type `Machine.Event`, a handle `ref Machine`, or a map
-/// `map<string, Order>`. Type arguments are separated by `, `; there is no
-/// other whitespace, except the one space after `ref`.
+/// an event type `Machine.Event`, a handle `ref Machine`, a pending call
+/// `call name`, or a map `map<string, Order>`. Type arguments are separated
+/// by `, `; there is no other whitespace, except the one space after `ref`
+/// or `call`.
+///
+/// `call name` is a pending call of the machine's own call `name`: only the
+/// type of a machine variable and of the implicit `call` in `on name`, never
+/// with a suffix.
 ///
 /// `Display` and `FromStr` convert to and from that string, and
 /// `parse(display(t)) == t` for every `t`.
@@ -86,6 +91,9 @@ pub enum TypeRef {
     Map(Box<TypeRef>, Box<TypeRef>),
     /// `ref Name`: a handle to a running machine, a key of `machines`.
     Ref(String),
+    /// `call name`: a pending call of the machine's call `name`, a key of its
+    /// `calls`.
+    Call(String),
     /// `T[]`
     List(Box<TypeRef>),
     /// `T?`
@@ -135,11 +143,11 @@ impl TypeRef {
 
     /// Calls `f` with every name this type mentions as a declared type (or a
     /// type parameter, or an event type), outermost first: `map<UserId,
-    /// Page<Order>>` gives `UserId`, `Page` and `Order`. `ref` machines are
-    /// not names of types and are not given.
+    /// Page<Order>>` gives `UserId`, `Page` and `Order`. `ref` machines and
+    /// `call` names are not names of types and are not given.
     pub fn for_each_name<'a>(&'a self, f: &mut impl FnMut(&'a str)) {
         match self {
-            TypeRef::Builtin(_) | TypeRef::Ref(_) => {}
+            TypeRef::Builtin(_) | TypeRef::Ref(_) | TypeRef::Call(_) => {}
             TypeRef::Named(n) => f(n),
             TypeRef::Generic(n, args) => {
                 f(n);
@@ -159,7 +167,7 @@ impl TypeRef {
     pub fn mentions_ref(&self) -> bool {
         match self {
             TypeRef::Ref(_) => true,
-            TypeRef::Builtin(_) | TypeRef::Named(_) => false,
+            TypeRef::Builtin(_) | TypeRef::Named(_) | TypeRef::Call(_) => false,
             TypeRef::Generic(_, args) => args.iter().any(TypeRef::mentions_ref),
             TypeRef::Map(k, v) => k.mentions_ref() || v.mentions_ref(),
             TypeRef::List(t) | TypeRef::Optional(t) => t.mentions_ref(),
@@ -188,7 +196,7 @@ impl TypeRef {
             ),
             TypeRef::List(t) => t.substitute(params, args).list(),
             TypeRef::Optional(t) => t.substitute(params, args).optional(),
-            TypeRef::Builtin(_) | TypeRef::Ref(_) => self.clone(),
+            TypeRef::Builtin(_) | TypeRef::Ref(_) | TypeRef::Call(_) => self.clone(),
         }
     }
 }
@@ -216,6 +224,7 @@ impl fmt::Display for TypeRef {
             }
             TypeRef::Map(k, v) => write!(f, "map<{k}, {v}>"),
             TypeRef::Ref(n) => write!(f, "ref {n}"),
+            TypeRef::Call(n) => write!(f, "call {n}"),
             TypeRef::List(t) => write!(f, "{t}[]"),
             TypeRef::Optional(t) => write!(f, "{t}?"),
         }
@@ -234,7 +243,7 @@ impl fmt::Display for TypeRefError {
             f,
             "`{}` is not a type: expected a built-in (string, int, float, bool, duration, json), \
              an upper-case name with optional type arguments (`Page<Order>`), `Machine.Event`, \
-             `ref Machine` or `map<K, V>`, followed by any number of `[]` and `?`",
+             `ref Machine`, `call name` or `map<K, V>`, followed by any number of `[]` and `?`",
             self.input
         )
     }
@@ -290,6 +299,12 @@ impl TypeReader<'_> {
                 return None;
             }
             TypeRef::Ref(m.to_owned())
+        } else if self.eat("call ") {
+            let c = self.word();
+            if !is_lower_name(c) {
+                return None;
+            }
+            TypeRef::Call(c.to_owned())
         } else {
             let base = self.word().to_owned();
             if base == "map" && self.eat("<") {
@@ -344,6 +359,13 @@ impl TypeReader<'_> {
     }
 }
 
+/// True for `[a-z][A-Za-z0-9]*`, the grammar's `Lower`.
+fn is_lower_name(s: &str) -> bool {
+    let mut chars = s.chars();
+    matches!(chars.next(), Some(c) if c.is_ascii_lowercase())
+        && chars.all(|c| c.is_ascii_alphanumeric())
+}
+
 impl FromStr for TypeRef {
     type Err = TypeRefError;
 
@@ -395,6 +417,7 @@ mod tests {
             "Page<Order>",
             "Pair<string, map<string, Tree<int>>>[]",
             "Page<Order?>[]?",
+            "call reserve",
         ] {
             let t: TypeRef = s.parse().unwrap();
             assert_eq!(t.to_string(), s);
@@ -463,6 +486,9 @@ mod tests {
             "page<Order>",
             "ref Page<Order>",
             "Upload.Progress<int>",
+            "call Reserve",
+            "call  reserve",
+            "call re.serve",
         ] {
             assert!(s.parse::<TypeRef>().is_err(), "{s:?} should be rejected");
         }

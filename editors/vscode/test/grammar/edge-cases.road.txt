@@ -75,4 +75,30 @@ machine Checked(check: int) {
   check can finish
   on Go set check = never
 }
+
+machine Stock() {
+  /// A call this machine answers.
+  call reserve(orderId: string, items: Item[]) -> Reservation ! OutOfStock | Closed
+  call count() -> int
+  var pending: call reserve
+
+  on count reply call done held
+  state Ready {
+    on reserve -> Busy  set pending = call, orderId = event.orderId
+    on count if held > 0 reply call fail OutOfStock { reason: "busy" }
+  }
+  state Busy {
+    invoke reserveStock(orderId) {
+      done            -> Ready  reply pending done Reservation { orderId: orderId }
+      fail OutOfStock -> Ready  reply pending fail error
+    }
+  }
+  state Asking {
+    invoke peer.reserve(id, items) {
+      done            -> Ready  reply pending done
+      fail Unanswered -> Ready
+      fail *          -> Busy
+    }
+  }
+}
 "unterminated

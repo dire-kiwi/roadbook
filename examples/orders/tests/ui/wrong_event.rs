@@ -1,10 +1,11 @@
 // Host code sends to an `Inventory` run through its handle: only `inventory::Event` goes.
 
 async fn restock(stock: inventory::Ref) {
-    // What Inventory emits is not what it accepts.
+    // `reserve` is a call, not an event: an order makes it, a handle cannot send it.
     stock
-        .send(inventory::Emitted::Reserved {
+        .send(inventory::Event::Reserve {
             order_id: "o1".into(),
+            items: vec![],
         })
         .await;
     // Nor is an event it does not declare.

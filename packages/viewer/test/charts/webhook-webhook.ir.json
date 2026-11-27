@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "examples/webhook/webhook.road",
@@ -402,6 +402,7 @@
         "endLine": 103,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "body",
@@ -462,6 +463,7 @@
       "events": {},
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "PaymentWebhook",
         "name": "PaymentWebhook",
@@ -580,6 +582,7 @@
             "invoke": {
               "kind": "task",
               "src": "parsePayload",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -669,6 +672,7 @@
             "invoke": {
               "kind": "task",
               "src": "alreadyProcessed",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -880,6 +884,7 @@
                 "invoke": {
                   "kind": "task",
                   "src": "markOrderPaid",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -1148,6 +1153,7 @@
                 "invoke": {
                   "kind": "task",
                   "src": "recordRefund",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -1297,6 +1303,7 @@
             "invoke": {
               "kind": "task",
               "src": "markProcessed",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1493,7 +1500,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:18529eddddb4764970b483be2a6a44de41df28a3c85abe57f6832ac430983e36"
+      "hash": "sha256:2130a30ce44370e0ab1a82e4a5b7999dffe4b7e0ae79b732f56964ca0c85fe7a"
     }
   }
 }

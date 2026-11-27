@@ -4,7 +4,9 @@
  * classes, enums as string literals, `duration` as an Effect `Duration`, optional as `null`,
  * `int` as a `number`, a map as a plain object with a member per key, and a `ref` as a handle to
  * the run it refers to (its run id in the core). An instance of a generic record is a plain
- * object like any record. The conversion is driven by the IR's type references.
+ * object like any record. A pending call (`call c`) never leaves its run, so host code never
+ * sees one; it keeps its JSON form, `{from, invoke}`, both ways. The conversion is driven by the
+ * IR's type references.
  */
 import {
   type Builtin,
@@ -12,10 +14,11 @@ import {
   type Field,
   fieldsOf,
   type Ir,
+  isRunId,
   type Json,
   type Tagged,
   type TypeRef
-} from "@roadbook/core"
+} from "@dire-kiwi/roadbook-core"
 import { Duration, Predicate } from "effect"
 import { portOf } from "./port.ts"
 
@@ -144,6 +147,13 @@ export class Codec {
         this.refs?.set(port.id, value as object)
         return port.id
       }
+      case "call": {
+        const call = value as { readonly from?: unknown; readonly invoke?: unknown }
+        if (!Predicate.isObject(value) || !isRunId(call.from) || !Number.isSafeInteger(call.invoke) || (call.invoke as number) < 1) {
+          throw new CodecError(`${what} is not a pending call: {from: a run id, invoke: a positive int}`)
+        }
+        return { from: call.from as string, invoke: call.invoke as number }
+      }
       case "event":
         throw new CodecError(`${what} has unknown type ${t.machine}.${t.event}`)
       case "named":
@@ -221,6 +231,8 @@ export class Codec {
         if (handle === undefined) throw new CodecError(`no handle to the run ${JSON.stringify(value)}`)
         return handle
       }
+      // A pending call keeps its JSON form.
+      case "call":
       case "event":
         return value
       case "named":

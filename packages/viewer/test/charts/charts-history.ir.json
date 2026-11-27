@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "packages/viewer/test/charts/history.road",
@@ -39,6 +39,7 @@
         "endLine": 58,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -106,6 +107,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Histories",
         "name": "Histories",
@@ -767,7 +769,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:acc92e402f45f7988c25103e8727ca3992713f50103fc95c4093b2b01569ed8f"
+      "hash": "sha256:954c1fdc473b42782300d11b059fb7b3cd9da1a1c37c1247001ad54eb7cefcf0"
     }
   }
 }

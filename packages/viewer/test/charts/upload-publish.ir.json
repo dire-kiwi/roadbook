@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -282,6 +282,7 @@
         "endLine": 47,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "draft",
@@ -383,6 +384,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -416,6 +418,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Upload",
+              "to": null,
               "as": "upload",
               "args": [
                 {
@@ -641,6 +644,7 @@
             "invoke": {
               "kind": "task",
               "src": "publishPost",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -767,7 +771,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d1d0e2bc9f3843bd1d7999e4ed8e2ea44425dbe2e43b744d39ace5980bc112b1"
+      "hash": "sha256:0f70917f482e7c56064719dc934569eccc8aa852f40bdfae629acb551b2aa1b5"
     },
     "Upload": {
       "doc": "Upload a file in chunks. Can be paused, and reports its progress to whoever invoked it.",
@@ -778,6 +782,7 @@
         "endLine": 56,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "file",
@@ -884,6 +889,7 @@
         }
       },
       "children": {},
+      "calls": {},
       "root": {
         "id": "Upload",
         "name": "Upload",
@@ -917,6 +923,7 @@
             "invoke": {
               "kind": "task",
               "src": "sendChunk",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1160,6 +1167,7 @@
             "invoke": {
               "kind": "task",
               "src": "finishUpload",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1307,7 +1315,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d9b13cbae45df8b6769171b3ea54cb546fde4e60249c0cd986de4ea8b9ef7307"
+      "hash": "sha256:3f1d143c74a23ebc52ada9f3a2b99a0c4cb2c0e0183538cfae5a84a7862557fe"
     }
   }
 }

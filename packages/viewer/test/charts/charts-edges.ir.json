@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "packages/viewer/test/charts/edges.road",
@@ -60,6 +60,7 @@
         "endLine": 19,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -79,6 +80,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "OnlyRoot",
         "name": "OnlyRoot",
@@ -197,7 +199,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:5d921e35768548ccd8bc90fa1b926b61c59842db5f229a406805a3a880018d8e"
+      "hash": "sha256:7a35ae00ede685ce99a05b08743826c93226d319617fa1d0bdc0747f52765f9b"
     },
     "Note": {
       "doc": "States Mermaid would read as keywords.",
@@ -208,6 +210,7 @@
         "endLine": 38,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -227,6 +230,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Note",
         "name": "Note",
@@ -738,7 +742,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:8c034c6541160c3e8e0033968ddb0b8bc9731f3d760a7b1b7ee72b7d2f8b3ede"
+      "hash": "sha256:aa29595b81c85199e8632556b63b2256aecad2ab011352e1d0313439180bf37e"
     },
     "Same": {
       "doc": "A state named like its machine, which has transitions of its own.",
@@ -749,6 +753,7 @@
         "endLine": 47,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -768,6 +773,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Same",
         "name": "Same",
@@ -868,7 +874,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:833720a5b68648e8db2b9544d5fd67fb20d416b63d48da6f9fe7f6124133974a"
+      "hash": "sha256:925be136c068398774651cf6b0e5fafe7bb87e56969f323887d9039e4e297fdf"
     },
     "Rows": {
       "doc": "Containers with an invoke, entry, exit and internal transitions, and labels with syntax.",
@@ -879,6 +885,7 @@
         "endLine": 70,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -929,6 +936,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Rows",
         "name": "Rows",
@@ -1103,6 +1111,7 @@
             "invoke": {
               "kind": "task",
               "src": "work",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1202,7 +1211,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:5c270bc52d22586036fcf246f2ee8ae16b443d8f13f47c90510d3442ef7bc811"
+      "hash": "sha256:51cddb77634933146302bfaf8829f96e8cf76fad4ef6d79e6567ffaa3290cef1"
     }
   }
 }

@@ -1,7 +1,7 @@
 /**
  * Durable runs: a machine run as an `effect/workflow` execution, so that it survives a crash
  * in the middle of a task without repeating completed work (docs/design/typescript.md,
- * "Durable runs"). Imported from `@roadbook/effect/durable`:
+ * "Durable runs"). Imported from `@dire-kiwi/roadbook-effect/durable`:
  *
  * ```ts
  * const ImportFlow = Durable.workflow(ImportJobLive, { idempotencyKey: ({ upload }) => upload.jobId })
@@ -9,7 +9,7 @@
  * const summary = yield* ImportFlow.run({ upload })
  * ```
  */
-import * as Core from "@roadbook/core"
+import * as Core from "@dire-kiwi/roadbook-core"
 import { Cause, Duration, Effect, Exit, Layer, Option, Schema } from "effect"
 import { DurableClock, Workflow, WorkflowEngine } from "effect/workflow"
 import { Defect, hostDefect } from "./Defect.ts"

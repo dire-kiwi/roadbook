@@ -11,7 +11,7 @@
       "description": "Features the case needs beyond the first version's. A runner skips a case that requires a feature it does not implement.",
       "type": "array",
       "uniqueItems": true,
-      "items": { "enum": ["messaging", "parallel", "snapshots", "history", "spawn"] }
+      "items": { "enum": ["messaging", "parallel", "snapshots", "history", "spawn", "calls"] }
     },
     "chart": {
       "description": "The entry .road file, relative to spec/conformance. Its IR is the file next to it with .road replaced by .ir.json.",
@@ -137,7 +137,7 @@
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$"
     },
-    "refusal": { "enum": ["invalid", "machine", "ir", "migration", "ended", "ref"] },
+    "refusal": { "enum": ["invalid", "machine", "ir", "migration", "ended", "ref", "calls"] },
     "snapshot": {
       "description": "Save a top-level run (the root run, or the run named by run) as it is now, and compare the saved snapshot byte for byte with the file the name gives. The run carries on.",
       "type": "object",

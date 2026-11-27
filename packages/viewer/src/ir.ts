@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.6) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.7) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -77,8 +77,10 @@ export interface EventDecl {
 export type StateKind = 'atomic' | 'compound' | 'parallel' | 'final' | 'history' | 'deepHistory'
 
 export interface Invoke {
-  kind: 'task' | 'machine'
+  kind: 'task' | 'machine' | 'call'
   src: string
+  /** For a call, the callee: a `ref` address. Null for a task or a machine. */
+  to: Address | null
   /** `invoke Machine(…) as name`: the name the state sends to and receives from, or null. */
   as: string | null
   args: Expr[]
@@ -122,6 +124,7 @@ export type Trigger =
   | { kind: 'spawn.done'; children: string }
   /** `on name.fail E`: a spawned child of the collection failed with `error`, or `*`. */
   | { kind: 'spawn.fail'; children: string; error: string }
+  | { kind: 'call'; call: string }
 
 export type Effect =
   | { kind: 'set'; var: string; value: Expr }
@@ -133,6 +136,7 @@ export type Effect =
   | { kind: 'spawn'; children: string; machine: string; key: Expr; args: Expr[] }
   /** `stop name[key]` */
   | { kind: 'stop'; children: string; key: Expr }
+  | { kind: 'reply'; call: Expr; outcome: 'done' | 'fail'; value: Expr | null }
 
 export interface Transition {
   trigger: Trigger
@@ -159,9 +163,20 @@ export interface State {
   fail: Expr | null
 }
 
+/** `call name(params) [-> T] [! E]`: the members of a task. */
+export interface CallDecl {
+  params: Field[]
+  returns: string | null
+  errors: string[]
+  doc: string
+  span: Span
+}
+
 export interface Machine {
   doc: string
   span: Span
+  /** Written `strict machine`: an event of its own, a message or a call that enables no transition is an `unhandled` defect, not dropped. */
+  strict: boolean
   params: Field[]
   returns: string | null
   errors: string[]
@@ -171,6 +186,8 @@ export interface Machine {
   emits: Record<string, EventDecl>
   /** The collections of spawned children, keyed by name. */
   children: Record<string, ChildrenDecl>
+  /** Calls the machine answers (`call name(params) -> T ! E`). */
+  calls: Record<string, CallDecl>
   root: State
   hash: string
 }
@@ -196,4 +213,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.6'
+export const IR_VERSION = '0.7'

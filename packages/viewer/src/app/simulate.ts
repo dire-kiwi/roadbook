@@ -1,9 +1,10 @@
 // Simulate mode's panel: start the machine drawn with an input, then choose what happens next
-// (an event, an invoke's or a spawned child's outcome, a timer, the clock, a cancel), answer the functions the core
+// (an event, a call from a simulated caller, an invoke's or a spawned child's outcome, a timer,
+// the clock, a cancel), answer the functions the core
 // calls, and step back and forward through the choices. The model is src/sim.ts; this file
 // only draws it and wires up the forms.
 
-import type { Json, Tagged } from '@roadbook/core'
+import type { Json, Tagged } from '@dire-kiwi/roadbook-core'
 import type { Field } from '../ir.ts'
 import { own } from '../ir.ts'
 import { findState, triggerText } from '../model.ts'
@@ -83,7 +84,7 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
     const m = s.def
     const refused = refusal(ir, s.machine)
     let h = `<div class="rb-mode-head"><h2>Simulate <span class="rb-mono">${esc(s.machine)}</span></h2>${s.current ? `<span class="rb-chip rb-status-${esc(s.current.snapshot.status)}">${esc(s.current.snapshot.status)}</span>` : ''}</div>`
-    h += `<p class="rb-mode-note">Runs <code>@roadbook/core</code> in this page, on a virtual clock. You are the host: you give the input, events, the outcome of each task, child machine and spawned child, and the results of functions. Actions do nothing; <code>send</code> and <code>emit</code> show as records only.</p>`
+    h += `<p class="rb-mode-note">Runs <code>@dire-kiwi/roadbook-core</code> in this page, on a virtual clock. You are the host: you give the input, events, calls from other runs, the outcome of each task, child machine, spawned child and call it makes, and the results of functions. Actions do nothing; <code>send</code>, <code>emit</code> and <code>reply</code> show as records only.</p>`
     if (refused) {
       h += `<div class="rb-refusal" role="alert"><strong>Cannot simulate ${esc(s.machine)}.</strong> The core refused it: ${esc(refused)}. Explore and Replay still work for this chart.</div>`
       el.innerHTML = h
@@ -171,14 +172,43 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
     if (c.events.length) {
       h += '<h4>Send an event</h4>'
       for (const e of c.events) {
-        const note = e.handled ? '' : '<span class="rb-cnote">no <code>on</code> for it here: it would be dropped</span>'
+        const note = e.handled
+          ? ''
+          : m.strict
+            ? '<span class="rb-cnote">no <code>on</code> for it here: this machine is strict, so the run would end with a defect</span>'
+            : '<span class="rb-cnote">no <code>on</code> for it here: it would be dropped</span>'
         h += tagged(k(`event:${e.name}`), `send ${e.name}`, e.name, e.fields, (v) => s.send(v), note)
       }
+    }
+    if (c.calls.length) {
+      const from = `r${(s.current?.callers ?? 0) + 2}`
+      h += `<h4>Take a call <span class="rb-h-note">from ${esc(from)}, a simulated caller</span></h4>`
+      for (const call of c.calls) {
+        const note =
+          `<span class="rb-cnote">${call.handled ? '' : m.strict ? `no <code>on ${esc(call.name)}</code> here: this machine is strict, so the run would end with a defect and the call be answered <code>Unanswered</code>. ` : `no <code>on ${esc(call.name)}</code> here: it would be dropped and answered <code>Unanswered</code>. `}` +
+          `There is no real caller: the answer shows as a <code>replied</code> record.</span>`
+        const label = `call ${call.name}`
+        const key = k(`call:${call.name}`)
+        if (!call.params.length) h += `<div class="rb-choice">${button(key, label, () => s.call(call.name, {}))}${note}</div>`
+        else
+          h +=
+            `<details class="rb-choice"><summary>${esc(label)} …</summary>${note}` +
+            form(key, label, sampleFields(ir, call.params), (v) => checkFields(ir, call.params, v, 'args'), (v) => s.call(call.name, v as { [k: string]: Json })) +
+            `</details>`
+      }
+    }
+    if (c.pending.length) {
+      h += `<h4>Pending calls <span class="rb-h-note">taken, not answered yet</span></h4><ul class="rb-list">${c.pending
+        .map((p) => `<li><code>${esc(p.call)}</code> from ${esc(p.from)} <span class="rb-cnote">(its invoke ${p.invoke}); a <code>reply</code> answers it</span></li>`)
+        .join('')}</ul>`
     }
     for (const inv of c.invokes) {
       h += `<h4>invoke ${inv.id}: <code>${esc(inv.src)}</code> <span class="rb-h-note">in ${esc(stateName(inv.state))}</span></h4>`
       if (inv.srcKind === 'machine') {
         h += `<p class="rb-cnote rb-task-note">${esc(inv.src)} is a machine${own(ir.machines, inv.src) ? ' of this chart' : ''}. Here it is treated as a task: its run is not started, and you give its outcome by hand.${own(ir.machines, inv.src) ? ` To step through ${esc(inv.src)} itself, open its tab and simulate it there.` : ''}</p>`
+      } else if (inv.srcKind === 'call' && inv.callee) {
+        const callee = inv.callee
+        h += `<p class="rb-cnote rb-task-note">A call to ${esc(callee.machine)}, the run <code>${esc(callee.name)}</code> holds (${esc(JSON.stringify(callee.run))}). Here it is treated as a task: the callee is not run, and you give its answer by hand: done, one of its errors, or <code>Unanswered</code> (the callee dropped the call or ended first).${own(ir.machines, callee.machine) ? ` To step through ${esc(callee.machine)} taking the call, open its tab and simulate it there.` : ''}</p>`
       }
       const returns = inv.returns
       if (returns === null) h += `<div class="rb-choice">${button(k(`done:${inv.id}`), `${inv.src} done`, () => s.complete(inv.id, { done: null }))}</div>`
@@ -188,7 +218,9 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
           form(k(`done:${inv.id}`), `${inv.src} done`, sampleValue(ir, returns), (v) => checkValue(ir, returns, v, 'result'), (v) => s.complete(inv.id, { done: v })) +
           `</details>`
       for (const e of inv.errors) h += tagged(k(`fail:${inv.id}:${e.name}`), `${inv.src} fails ${e.name}`, e.name, e.fields, (v) => s.complete(inv.id, { fail: v }))
-      h += `<div class="rb-choice">${button(k(`defect:${inv.id}`), `${inv.src} has a defect`, () => s.complete(inv.id, { defect: `${inv.src} failed` }), 'End it with a host defect: the run ends with a defect too')}</div>`
+      // A callee's defect reaches its caller as Unanswered: a call has no defect of its own.
+      if (inv.srcKind !== 'call')
+        h += `<div class="rb-choice">${button(k(`defect:${inv.id}`), `${inv.src} has a defect`, () => s.complete(inv.id, { defect: `${inv.src} failed` }), 'End it with a host defect: the run ends with a defect too')}</div>`
       for (const e of inv.emits) h += tagged(k(`emit:${inv.id}:${e.name}`), `${inv.as ?? inv.src} emits ${e.name}`, e.name, e.fields, (v) => s.emitFromChild(inv.id, v))
     }
     for (const child of c.spawned) h += spawnedHtml(s, child, k)
@@ -206,7 +238,7 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
       return s.advance(ms)
     }, 'Move the clock on, firing the timers due on the way')}</div>`
     h += `<div class="rb-choice">${button(k('cancel'), 'Cancel the run', () => s.cancel(), 'Cancel from outside: every state is exited')}</div>`
-    if (!c.events.length && !c.invokes.length && !c.spawned.length && !c.timers.length) h += `<p class="rb-empty">${esc(m.root.name)} waits for nothing: no event, invoke or timer can move it.</p>`
+    if (!c.events.length && !c.calls.length && !c.invokes.length && !c.spawned.length && !c.timers.length) h += `<p class="rb-empty">${esc(m.root.name)} waits for nothing: no event, call, invoke or timer can move it.</p>`
     return h
   }
 

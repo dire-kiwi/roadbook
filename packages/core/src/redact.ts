@@ -10,7 +10,7 @@
  * generic type substituted. A member a type does not declare is left as it is. Values are never
  * changed in place: what is redacted is a copy.
  */
-import type { Field, Ir, Machine } from "./ir.ts"
+import type { CallDecl, Field, Ir, Machine, State } from "./ir.ts"
 import { expandType, fieldsOf, parseTypeRef, type TypeRef } from "./typeref.ts"
 import type { Json } from "./json.ts"
 import type { CoreRecord, Input, InvokeEntry, Saved, SpawnedEntry } from "./types.ts"
@@ -44,7 +44,8 @@ const marks = (ir: Ir): Marks => {
     Object.values(ir.tasks).some((t) => marked(t.params)) ||
     Object.values(ir.machines).some((m) =>
       marked(m.params) || m.vars.some((v) => v.sensitive) ||
-      [...Object.values(m.events), ...Object.values(m.emits)].some((e) => marked(e.fields))
+      [...Object.values(m.events), ...Object.values(m.emits)].some((e) => marked(e.fields)) ||
+      Object.values(m.calls).some((c) => marked(c.params))
     )
   const carries = new Map<string, boolean>()
   if (any) {
@@ -222,6 +223,21 @@ class Redactor {
     return this.tagged(decl?.kind === "error" || decl?.kind === "record" ? [decl.fields] : [], v)
   }
 
+  /** The call that the invoke of state `state` of `m` makes, if it is a call. */
+  private callOf(m: Machine, state: string): CallDecl | undefined {
+    const find = (s: State): State | undefined => s.id === state ? s : s.states.map(find).find((x) => x !== undefined)
+    const inv = find(m.root)?.invoke
+    if (inv === null || inv === undefined || inv.to === null) return undefined
+    const callee = own(this.ir.machines, inv.to.machine)
+    return callee === undefined ? undefined : own(callee.calls, inv.src)
+  }
+
+  /** What the invoke of state `state` of `m`, of `src`, returns: a call's result type, or the task's or machine's. */
+  private invokedReturns(m: Machine, state: string, src: string): string | null {
+    if (src.includes(".")) return this.callOf(m, state)?.returns ?? null
+    return this.returns(src)
+  }
+
   private returns(src: string): string | null {
     const task = own(this.ir.tasks, src)
     if (task !== undefined) return task.returns
@@ -268,9 +284,12 @@ class Redactor {
         // whose invoke has ended), so the event is redacted as each machine that emits an
         // event of its name would redact it.
         return { ...input, value: this.emitted(input.value) as typeof input.value }
+      case "call":
+        // A call's arguments, by the parameters of the machine's call.
+        return { ...input, args: this.object(own(m.calls, input.call)?.params ?? [], input.args) }
       case "invoke.done": {
         const inv = invokes.find((i) => i.id === input.invoke)
-        if (inv !== undefined) return { ...input, value: this.result(this.returns(inv.src), input.value) }
+        if (inv !== undefined) return { ...input, value: this.result(this.invokedReturns(m, inv.state, inv.src), input.value) }
         // A stale outcome: the invoke has ended, and with it what it ran, so the type of the
         // value is not known. Redacted whole: the run ignores it.
         return { ...input, value: REDACTED }
@@ -313,7 +332,13 @@ class Redactor {
       case "action":
         return { ...record, args: this.object(own(this.ir.actions, record.action)?.params ?? [], record.args) }
       case "invoke.started": {
-        const params = own(this.ir.tasks, record.src)?.params ?? own(this.ir.machines, record.src)?.params ?? []
+        const task = own(this.ir.tasks, record.src)
+        // A call's arguments go to the parameters of the callee's call.
+        const params = task !== undefined
+          ? task.params
+          : record.src.includes(".")
+          ? this.callOf(m, record.state)?.params ?? []
+          : own(this.ir.machines, record.src)?.params ?? []
         return { ...record, args: this.object(params, record.args) }
       }
       case "spawn.started":
@@ -324,6 +349,14 @@ class Redactor {
         return { ...record, output: this.result(m.returns, record.output) }
       case "failed":
         return { ...record, error: this.error(record.error) as typeof record.error }
+      case "replied":
+        // The answer to one of `m`'s calls: by the call's result type, or as an error.
+        return {
+          ...record,
+          value: record.outcome === "done"
+            ? this.result(own(m.calls, record.call)?.returns ?? null, record.value)
+            : this.error(record.value)
+        }
       default:
         return record
     }

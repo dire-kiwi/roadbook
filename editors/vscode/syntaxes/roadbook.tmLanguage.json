@@ -13,6 +13,7 @@
         { "include": "#check" },
         { "include": "#machine-signature" },
         { "include": "#function-signature" },
+        { "include": "#call-signature" },
         { "include": "#declarations" },
         { "include": "#messages" },
         { "include": "#target" },
@@ -72,10 +73,11 @@
 
     "machine-signature": {
       "name": "meta.declaration.machine.roadbook",
-      "begin": "\\b(machine)\\s+([A-Z][A-Za-z0-9]*)",
+      "begin": "\\b(?:(strict)\\s+)?(machine)\\s+([A-Z][A-Za-z0-9]*)",
       "beginCaptures": {
-        "1": { "name": "storage.type.machine.roadbook" },
-        "2": { "name": "entity.name.type.machine.roadbook" }
+        "1": { "name": "storage.modifier.strict.roadbook" },
+        "2": { "name": "storage.type.machine.roadbook" },
+        "3": { "name": "entity.name.type.machine.roadbook" }
       },
       "end": "(?=[{}])|$",
       "patterns": [{ "include": "#signature-rest" }]
@@ -86,6 +88,17 @@
       "begin": "\\b(fn|action|task)\\s+([a-z][A-Za-z0-9]*)",
       "beginCaptures": {
         "1": { "name": "storage.type.$1.roadbook" },
+        "2": { "name": "entity.name.function.roadbook" }
+      },
+      "end": "(?=[{}])|$",
+      "patterns": [{ "include": "#signature-rest" }]
+    },
+
+    "call-signature": {
+      "name": "meta.declaration.call.roadbook",
+      "begin": "\\b(call)\\s+([a-z][A-Za-z0-9]*)(?=\\s*\\()",
+      "beginCaptures": {
+        "1": { "name": "storage.type.call.roadbook" },
         "2": { "name": "entity.name.function.roadbook" }
       },
       "end": "(?=[{}])|$",
@@ -170,6 +183,14 @@
           }
         },
         {
+          "match": "(:)\\s*(call)\\s+([a-z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "punctuation.separator.colon.roadbook" },
+            "2": { "name": "storage.modifier.call.roadbook" },
+            "3": { "name": "entity.name.function.roadbook" }
+          }
+        },
+        {
           "match": "\\b(?:(sensitive)\\s+)?(var)\\s+([a-z][A-Za-z0-9]*)",
           "captures": {
             "1": { "name": "storage.modifier.sensitive.roadbook" },
@@ -206,7 +227,7 @@
     "messages": {
       "patterns": [
         {
-          "match": "\\b(on)\\s+(?:(\\*)|([a-z][A-Za-z0-9]*)(\\.)(?:([A-Z][A-Za-z0-9]*)|(done)\\b|(?=fail\\b))|([A-Z][A-Za-z0-9]*))",
+          "match": "\\b(on)\\s+(?:(\\*)|([a-z][A-Za-z0-9]*)(\\.)(?:([A-Z][A-Za-z0-9]*)|(done)\\b|(?=fail\\b))|([A-Z][A-Za-z0-9]*)|([a-z][A-Za-z0-9]*)\\b)",
           "captures": {
             "1": { "name": "keyword.control.trigger.roadbook" },
             "2": { "name": "keyword.operator.wildcard.roadbook" },
@@ -214,7 +235,26 @@
             "4": { "name": "punctuation.accessor.roadbook" },
             "5": { "name": "entity.name.type.event.roadbook" },
             "6": { "name": "keyword.control.done.roadbook" },
-            "7": { "name": "entity.name.type.event.roadbook" }
+            "7": { "name": "entity.name.type.event.roadbook" },
+            "8": { "name": "entity.name.function.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(invoke)\\s+([a-z][A-Za-z0-9]*)(\\.)([a-z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "keyword.control.invoke.roadbook" },
+            "2": { "name": "variable.other.roadbook" },
+            "3": { "name": "punctuation.accessor.roadbook" },
+            "4": { "name": "entity.name.function.call.roadbook" }
+          }
+        },
+        {
+          "match": "\\b(reply)\\s+(?:(call)|([a-z][A-Za-z0-9]*))\\s+(done|fail)\\b",
+          "captures": {
+            "1": { "name": "keyword.other.effect.roadbook" },
+            "2": { "name": "variable.language.roadbook" },
+            "3": { "name": "variable.other.roadbook" },
+            "4": { "name": "keyword.control.$4.roadbook" }
           }
         },
         {
@@ -250,11 +290,12 @@
           }
         },
         {
-          "match": "\\b(fail)\\s+(?:(\\*)|([A-Z][A-Za-z0-9]*))",
+          "match": "\\b(fail)\\s+(?:(\\*)|(Unanswered)\\b|([A-Z][A-Za-z0-9]*))",
           "captures": {
             "1": { "name": "keyword.control.fail.roadbook" },
             "2": { "name": "keyword.operator.wildcard.roadbook" },
-            "3": { "name": "entity.name.type.error.roadbook" }
+            "3": { "name": "support.type.builtin.error.roadbook" },
+            "4": { "name": "entity.name.type.error.roadbook" }
           }
         },
         {
@@ -313,18 +354,18 @@
       "patterns": [
         { "include": "#sensitive" },
         {
-          "match": "\\b(initial|entry|exit|on|after|always|done|invoke|output|fail|if|else)\\b",
+          "match": "\\b(initial|entry|exit|on|after|always|done|invoke|output|fail|if|else|ignore)\\b",
           "name": "keyword.control.$1.roadbook"
         },
-        { "match": "\\b(set|do|send|emit)\\b", "name": "keyword.other.effect.roadbook" },
+        { "match": "\\b(set|do|send|emit|reply)\\b", "name": "keyword.other.effect.roadbook" },
         {
           "match": "\\b(type|enum|extern|fn|action|task|machine|var|emits|state)\\b",
           "name": "storage.type.$1.roadbook"
         },
-        { "match": "\\b(final|parallel)\\b", "name": "storage.modifier.$1.roadbook" },
+        { "match": "\\b(final|parallel|strict)\\b", "name": "storage.modifier.$1.roadbook" },
         { "match": "\\b(and|or|not)\\b", "name": "keyword.operator.logical.roadbook" },
         { "match": "\\b(true|false)\\b", "name": "constant.language.boolean.roadbook" },
-        { "match": "\\b(event|error|result)\\b", "name": "variable.language.roadbook" },
+        { "match": "\\b(event|error|result|call)\\b", "name": "variable.language.roadbook" },
         { "match": "(?<!\\.)\\b(key)\\b(?!\\s*:)", "name": "variable.language.roadbook" }
       ]
     },

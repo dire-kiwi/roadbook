@@ -1,12 +1,12 @@
 /** The driver's behaviour beyond the conformance cases: the Effect-facing parts of the API. */
 import { assert, describe, it } from "@effect/vitest"
-import * as Core from "@roadbook/core"
-import { Duration, Effect, Exit, Fiber, Stream } from "effect"
+import * as Core from "@dire-kiwi/roadbook-core"
+import { Deferred, Duration, Effect, Exit, Fiber, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import * as Roadbook from "../src/index.ts"
-import { Early, Generic, Go, Leftover, Overflow, Payload, Settle } from "./charts/runtime.road.ts"
+import { Asker, Close, Desk, Early, Generic, Go, Leftover, Overflow, Payload, Settle } from "./charts/runtime.road.ts"
 
 const charts = path.resolve(import.meta.dirname, "../../../spec/conformance/charts")
 const readIr = (file: string): unknown => JSON.parse(fs.readFileSync(path.join(charts, file), "utf8"))
@@ -501,4 +501,64 @@ describe("maps and generic records", () => {
         `{"__proto__":{"value":2000},"a":{"value":5},"longest":{"value":2000}}`
       )
     }))
+})
+
+describe("calls", () => {
+  const AskerLive = Asker.implement({})
+
+  it.effect("a call needs no implementation: the callee's reply is the caller's outcome", () =>
+    Effect.gen(function*() {
+      const desk = yield* Desk.implement({ actions: { hold: () => Effect.void } }).spawn({})
+      assert.strictEqual(yield* AskerLive.run({ desk: desk.handle, n: 7 }), 7)
+    }).pipe(Effect.scoped))
+
+  it.effect("a callee that ends with a defect answers Unanswered the call it took and the calls queued", () =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      const gate = yield* Deferred.make<void>()
+      // `hold(1)` dies before the step's `reply`, while the second call waits in the queue.
+      const DeskLive = Desk.implement({
+        actions: { hold: ({ n }) => n === 1 ? Effect.andThen(Deferred.await(gate), Effect.die(new Error("boom"))) : Effect.void }
+      })
+      const desk = yield* DeskLive.spawn({}).pipe(Effect.provideService(Roadbook.TraceSink, sink))
+      const first = yield* AskerLive.spawn({ desk: desk.handle, n: 1 })
+      const second = yield* AskerLive.spawn({ desk: desk.handle, n: 2 })
+      yield* Deferred.succeed(gate, undefined)
+      assert.isTrue(Exit.hasDies(yield* Effect.exit(desk.result)))
+      assert.strictEqual(yield* first.result, 0)
+      assert.strictEqual(yield* second.result, 0)
+      // The reply never ran, and the queued call was never taken.
+      assert.deepStrictEqual(records.map((r) => r.kind), ["started", "entered", "entered", "event", "transition", "action", "defect"])
+    }).pipe(Effect.scoped))
+
+  it.effect("a callee cancelled from outside answers Unanswered the calls still queued, after its step", () =>
+    Effect.gen(function*() {
+      const holding = yield* Deferred.make<void>()
+      const gate = yield* Deferred.make<void>()
+      const DeskLive = Desk.implement({
+        actions: {
+          hold: ({ n }) => n === 1 ? Effect.andThen(Deferred.succeed(holding, undefined), Deferred.await(gate)) : Effect.void
+        }
+      })
+      const desk = yield* DeskLive.spawn({})
+      const first = yield* AskerLive.spawn({ desk: desk.handle, n: 1 })
+      yield* Deferred.await(holding)
+      const second = yield* AskerLive.spawn({ desk: desk.handle, n: 2 })
+      // The cancel waits for the step that is carrying out `hold(1)`, whose reply goes first.
+      const cancelling = yield* Effect.forkChild(desk.cancel, { startImmediately: true })
+      yield* Deferred.succeed(gate, undefined)
+      yield* Fiber.join(cancelling)
+      assert.strictEqual(yield* first.result, 1)
+      assert.strictEqual(yield* second.result, 0)
+      // The snapshot of the cancelled run has no pending call: the first was answered.
+      assert.deepStrictEqual((yield* desk.snapshot).core.calls, [])
+    }).pipe(Effect.scoped))
+
+  it.effect("a call to a callee that has ended fails Unanswered at once", () =>
+    Effect.gen(function*() {
+      const desk = yield* Desk.implement({ actions: { hold: () => Effect.void } }).spawn({})
+      yield* desk.send(Close.make({}))
+      yield* desk.result
+      assert.strictEqual(yield* AskerLive.run({ desk: desk.handle, n: 3 }), 0)
+    }).pipe(Effect.scoped))
 })

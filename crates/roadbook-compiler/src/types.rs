@@ -4,7 +4,7 @@
 //! `T` is assignable to `T?` but not the reverse; a list is assignable to a list whose element
 //! type its own element type is assignable to, a map to a map whose value type its own is, and
 //! an instance of a generic type to an instance of the same type whose arguments its own are;
-//! any value but a `ref` is assignable to `json`; aliases are transparent.
+//! any value but a `ref` or a pending call is assignable to `json`; aliases are transparent.
 
 use std::collections::HashMap;
 use std::fmt;
@@ -34,6 +34,8 @@ pub(crate) enum Ty {
     Event(String),
     /// `ref Machine`: a handle to a running machine.
     Ref(String),
+    /// `call name`: a pending call of the machine's own call `name`.
+    Call(String),
     Unknown,
 }
 
@@ -50,6 +52,7 @@ impl Ty {
             }
             Ty::Map(k, v) => TypeRef::Map(Box::new(k.to_ir()), Box::new(v.to_ir())),
             Ty::Ref(m) => TypeRef::Ref(m.clone()),
+            Ty::Call(c) => TypeRef::Call(c.clone()),
             Ty::List(t) => t.to_ir().list(),
             Ty::Optional(t) => t.to_ir().optional(),
             // Only reached when there are errors, and then the IR is not returned.
@@ -125,6 +128,7 @@ impl fmt::Display for Ty {
             Ty::Map(k, v) => write!(f, "map<{k}, {v}>"),
             Ty::Event(n) => write!(f, "event {n}"),
             Ty::Ref(m) => write!(f, "ref {m}"),
+            Ty::Call(c) => write!(f, "call {c}"),
             Ty::List(t) => write!(f, "{t}[]"),
             Ty::Optional(t) => write!(f, "{t}?"),
             Ty::Unknown => f.write_str("_"),
@@ -144,6 +148,7 @@ pub(crate) fn ir_type(t: &ast::TypeRef) -> TypeRef {
         ast::TypeKind::List(t) => ir_type(t).list(),
         ast::TypeKind::Optional(t) => ir_type(t).optional(),
         ast::TypeKind::Ref(m) => TypeRef::Ref(m.name.clone()),
+        ast::TypeKind::Call(c) => TypeRef::Call(c.name.clone()),
     }
 }
 
@@ -279,8 +284,8 @@ fn has_ref(t: &Ty) -> bool {
 fn assignable(from: &Ty, to: &Ty) -> bool {
     match (from, to) {
         (Ty::Unknown, _) | (_, Ty::Unknown) => true,
-        // A handle is not data: it has no JSON form.
-        (f, Ty::Builtin(Builtin::Json)) => !has_ref(f),
+        // A handle or a pending call is not data: it has no JSON form.
+        (f, Ty::Builtin(Builtin::Json)) => !has_ref(f) && !matches!(f, Ty::Call(_)),
         (Ty::Optional(f), Ty::Optional(t)) => assignable(f, t),
         (f, Ty::Optional(t)) => assignable(f, t),
         (Ty::List(f), Ty::List(t)) => assignable(f, t),
@@ -356,5 +361,10 @@ mod tests {
             env.fields(&page(&string)),
             Some(vec![("items".into(), list(&string))])
         );
+        let pending = Ty::Call("reserve".into());
+        assert!(env.assignable(&pending, &pending));
+        assert!(!env.assignable(&pending, &Ty::Call("count".into())));
+        assert!(!env.assignable(&pending, &json));
+        assert!(!env.is_equatable(&pending));
     }
 }

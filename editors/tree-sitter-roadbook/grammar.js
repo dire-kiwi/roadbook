@@ -27,10 +27,10 @@ module.exports = grammar({
   // they mean something only where no name can appear.
   reserved: {
     global: (_) => [
-      'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'var',
-      'event', 'emits', 'initial', 'state', 'final', 'parallel', 'entry', 'exit', 'on', 'after',
-      'always', 'done', 'invoke', 'output', 'fail', 'if', 'else', 'set', 'do', 'send', 'emit',
-      'and', 'or', 'not', 'true', 'false',
+      'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'strict',
+      'var', 'event', 'emits', 'initial', 'state', 'final', 'parallel', 'entry', 'exit', 'on',
+      'after', 'always', 'done', 'invoke', 'output', 'fail', 'if', 'else', 'set', 'do', 'send',
+      'emit', 'ignore', 'and', 'or', 'not', 'true', 'false', 'call', 'reply',
     ],
   },
 
@@ -38,6 +38,10 @@ module.exports = grammar({
     // `Role.Admin` (an enum value) against `Thing.field` (a field read of a record value):
     // told apart by the case of the name after the `.`, one token further on.
     [$.record_value, $.enum_value],
+    // `reply pending done` and what follows it: in a machine body, a `call` or `event`
+    // declaration starts with a keyword that is also an implicit name, so the parser reads on
+    // to the name after it, which no value can be followed by.
+    [$.reply],
   ],
 
   rules: {
@@ -141,6 +145,7 @@ module.exports = grammar({
         $.builtin_type,
         $.ref_type,
         $.map_type,
+        $.call_type,
         $.list_type,
         $.optional_type,
       ),
@@ -158,6 +163,9 @@ module.exports = grammar({
     map_type: ($) =>
       seq('map', '<', field('key', $._type), ',', field('value', $._type), optional(','), '>'),
 
+    // A pending call, kept until it is replied to: `var pending: call reserve`.
+    call_type: ($) => seq('call', field('call', $.identifier)),
+
     list_type: ($) => seq(field('element', $._type), '[', ']'),
 
     optional_type: ($) => seq(field('type', $._type), '?'),
@@ -166,6 +174,7 @@ module.exports = grammar({
 
     machine_declaration: ($) =>
       seq(
+        optional(field('modifier', 'strict')),
         'machine',
         field('name', $.type_identifier),
         field('parameters', $.parameters),
@@ -183,6 +192,7 @@ module.exports = grammar({
         $.emits_declaration,
         $.children_declaration,
         $.check,
+        $.call_declaration,
         $._common_item,
       ),
 
@@ -236,6 +246,16 @@ module.exports = grammar({
 
     state_path: ($) => seq(field('state', $.type_identifier), repeat(seq('.', field('state', $.type_identifier)))),
 
+    // A call the machine answers: `call reserve(orderId: string) -> Reservation ! OutOfStock`.
+    call_declaration: ($) =>
+      seq(
+        'call',
+        field('name', $.identifier),
+        field('parameters', $.parameters),
+        optional(seq('->', field('return_type', $._type))),
+        optional(field('errors', $.errors)),
+      ),
+
     // ───────────── states ─────────────
 
     state_declaration: ($) =>
@@ -275,9 +295,12 @@ module.exports = grammar({
     on_transition: ($) => seq('on', field('trigger', $._trigger), $._branches),
 
     _trigger: ($) =>
-      choice($.event_pattern, $._wildcard, $.received_event, $.child_done, $.child_fail),
+      choice($.event_pattern, $._wildcard, $.received_event, $.call_pattern, $.child_done, $.child_fail),
 
     event_pattern: ($) => field('event', $.type_identifier),
+
+    // `on reserve`: taking a call the machine declares. Lower case, and no `.` after it.
+    call_pattern: ($) => field('call', $.identifier),
 
     _wildcard: ($) => alias('*', $.wildcard),
 
@@ -304,7 +327,11 @@ module.exports = grammar({
     invoke: ($) =>
       seq(
         'invoke',
-        field('callee', $._name),
+        choice(
+          field('callee', $._name),
+          // `invoke inventory.reserve(…)`: a call to the peer a `ref` names.
+          seq(field('peer', $.identifier), '.', field('callee', $.identifier)),
+        ),
         field('arguments', $.arguments),
         optional(seq('as', field('alias', $.identifier))),
         optional(field('retry', $.retry)),
@@ -348,13 +375,19 @@ module.exports = grammar({
 
     else_branch: ($) => seq('else', $._action),
 
-    _action: ($) => choice(seq('->', field('target', $.target), optional($._effects)), $._effects),
+    // `ignore` takes an event and does nothing. The compiler accepts it only in an `on`
+    // transition (RB0026); the grammar accepts it in any branch, as it does other misplaced
+    // items the compiler rejects.
+    _action: ($) =>
+      choice(seq('->', field('target', $.target), optional($._effects)), $._effects, $.ignore),
+
+    ignore: (_) => 'ignore',
 
     target: ($) => seq(field('state', $.type_identifier), repeat(seq('.', field('state', $.type_identifier)))),
 
     _effects: ($) => repeat1(field('effect', $._effect)),
 
-    _effect: ($) => choice($.set, $.do, $.send, $.emit, $.spawn, $.stop),
+    _effect: ($) => choice($.set, $.do, $.send, $.emit, $.spawn, $.stop, $.reply),
 
     // After a comma in a `set` or `do` list, a lower-case name continues the list, as in the
     // compiler, even `spawn`, `stop` or `children`, which after a trailing comma could also
@@ -403,6 +436,18 @@ module.exports = grammar({
 
     stop: ($) =>
       seq('stop', field('collection', $.identifier), '[', field('key', $._expression), ']'),
+
+    // `reply pending done [value]` or `reply pending fail error`, to the pending call a
+    // variable holds or, in the step that takes it, to `call`.
+    reply: ($) =>
+      seq(
+        'reply',
+        field('call', choice($.identifier, alias('call', $.implicit_name))),
+        choice(
+          seq('done', optional(field('value', $._expression))),
+          seq('fail', field('value', $._expression)),
+        ),
+      ),
 
     record_body: ($) => seq('{', commaSep($.field_value), '}'),
 
@@ -475,14 +520,16 @@ module.exports = grammar({
       ),
 
     // The names in scope inside a transition: the current event, an invoke's result and its
-    // error, and a spawned child's key. `event` and `error` are keywords; `result` and `key`
-    // are not reserved, so outside an expression they are ordinary names.
+    // error, the call being taken, and a spawned child's key. `event`, `error` and `call` are
+    // keywords; `result` and `key` are not reserved, so outside an expression they are ordinary
+    // names.
     _implicit_name: ($) =>
       choice(
         alias('event', $.implicit_name),
         alias('error', $.implicit_name),
         alias('result', $.implicit_name),
         alias('key', $.implicit_name),
+        alias('call', $.implicit_name),
       ),
 
     // `CardDeclined { reason: "expired" }`, or a bare `GatewayUnavailable` with no fields.

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/alias.road",
@@ -151,6 +151,7 @@
         "endLine": 52,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "limit",
@@ -317,6 +318,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Aliases",
         "name": "Aliases",
@@ -1188,7 +1190,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:f96777d606ef98dcc52cd4d4593ee88865214de59731e0410a51fff2990698fd"
+      "hash": "sha256:74b987a0d40d55ce7b1b28e2cbd6420244961a45492708152150263ffa00533c"
     }
   }
 }

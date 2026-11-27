@@ -1,0 +1,9 @@
+machine M() {
+  call ask()
+  var pending: call ask
+  initial A
+  state A { on ask -> B  set pending = call }
+  final state B {}
+}
+
+// expect: RB0909 at 3:7

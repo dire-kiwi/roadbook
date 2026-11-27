@@ -13,6 +13,10 @@ export type Defect =
   | { readonly kind: "overflow"; readonly expr: string }
   | { readonly kind: "undeclared"; readonly error: string }
   | { readonly kind: "limit" }
+  /** A `strict` machine was given one of its own events, a message or a call that enabled no transition. */
+  | { readonly kind: "unhandled"; readonly event: Extract<Input, { readonly kind: "event" | "message" | "call" }> }
+  /** A `reply` was given a pending-call value whose call `call` is not pending. */
+  | { readonly kind: "answered"; readonly call: string }
 
 export interface InvokeEntry {
   readonly id: number
@@ -26,6 +30,16 @@ export interface SpawnedEntry {
   readonly children: string
   readonly key: Json
   readonly args: { readonly [param: string]: Json }
+}
+
+/** A call the run has taken and not answered yet: a pending call. */
+export interface CallEntry {
+  /** The caller's run id. */
+  readonly from: string
+  /** The id of the caller's invoke. */
+  readonly invoke: number
+  /** The call's name, a key of the machine's `calls`. */
+  readonly call: string
 }
 
 export interface TimerEntry {
@@ -53,6 +67,8 @@ export interface Snapshot {
   readonly vars: { readonly [name: string]: Json }
   readonly invokes: ReadonlyArray<InvokeEntry>
   readonly spawned: ReadonlyArray<SpawnedEntry>
+  /** The calls taken and not answered, in the order they were taken. */
+  readonly calls: ReadonlyArray<CallEntry>
   readonly timers: ReadonlyArray<TimerEntry>
   readonly nextInvoke: number
   readonly nextTimer: number
@@ -85,8 +101,10 @@ export interface SavedTimer extends TimerEntry {
  * restores with no children, and version 1, written before history states, has no `history`
  * either and restores as if it had `{}`.
  */
-export interface Saved extends Omit<Snapshot, "timers" | "history" | "spawned"> {
+export interface Saved extends Omit<Snapshot, "timers" | "history" | "spawned" | "calls"> {
   readonly snapshotVersion: 1 | 2 | 3
+  /** Written only when the run has pending calls, in any version; a snapshot without it has none. */
+  readonly calls?: ReadonlyArray<CallEntry>
   readonly timers: ReadonlyArray<SavedTimer>
   /** Set exactly in versions 2 and 3. */
   readonly history?: History
@@ -115,6 +133,14 @@ export type Input =
     readonly invoke: number | null
     readonly message: number
     readonly value: Tagged
+  }
+  /** Run `from` called this machine's call `call` with its invoke `invoke`. */
+  | {
+    readonly kind: "call"
+    readonly from: string
+    readonly invoke: number
+    readonly call: string
+    readonly args: { readonly [param: string]: Json }
   }
   | { readonly kind: "invoke.done"; readonly invoke: number; readonly value: Json }
   | { readonly kind: "invoke.fail"; readonly invoke: number; readonly error: Tagged }
@@ -158,6 +184,15 @@ export type CoreRecord =
     readonly args: { readonly [param: string]: Json }
   }
   | { readonly kind: "invoke.cancelled"; readonly invoke: number; readonly state: string; readonly src: string }
+  /** A call was answered: `to` is the caller's run id and `invoke` its invoke. */
+  | {
+    readonly kind: "replied"
+    readonly to: string
+    readonly invoke: number
+    readonly call: string
+    readonly outcome: "done" | "fail"
+    readonly value: Json
+  }
   | {
     readonly kind: "spawn.started"
     readonly spawn: number
@@ -197,10 +232,24 @@ export type Command =
     readonly invoke: number
     readonly state: string
     readonly src: string
-    readonly srcKind: "task" | "machine"
+    readonly srcKind: "task" | "machine" | "call"
+    /** For a call, the callee's run id; `null` for a task or a machine. */
+    readonly to: string | null
     /** The invoke's `as` name, or `null`. */
     readonly as: string | null
     readonly args: { readonly [param: string]: Json }
+  }
+  /**
+   * Answer the call run `to` made with its invoke `invoke`: `done` with the result `value`, or
+   * `fail` with the error `value`.
+   */
+  | {
+    readonly kind: "reply"
+    readonly to: string
+    readonly invoke: number
+    readonly call: string
+    readonly outcome: "done" | "fail"
+    readonly value: Json
   }
   | { readonly kind: "invoke.cancel"; readonly invoke: number }
   /**
@@ -233,7 +282,10 @@ export type Command =
     readonly message: number
     readonly value: Tagged
   }
-  /** Queue the emitted event for this run's parent (if it used `as` or spawned it) and its subscribers. */
+  /**
+   * Queue the emitted event for this run's parent (if it used `as` or spawned it) and its
+   * subscribers, those of them whose machine has an `on` for it (`heard`).
+   */
   | { readonly kind: "emit"; readonly message: number; readonly value: Tagged }
 
 /** What the host's function `name` gave: its value, or a host defect. */

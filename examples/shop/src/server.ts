@@ -1,4 +1,4 @@
-/** `pnpm --filter @roadbook/example-shop start`: serve the shop on `PORT` (default 3000). */
+/** `pnpm --filter @dire-kiwi/roadbook-example-shop start`: serve the shop on `PORT` (default 3000). */
 import { ManagedRuntime } from "effect"
 import { makeApp } from "./app.js"
 import { FakeServices } from "./services.js"

@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:ea114941b37d6ee259a772df819a88e87657553519fa6cb265ca9be61d45272e","kind":"started","machine":"Logbook","run":"r1","t":0}
+{"input":{},"ir":"sha256:6a411694b31e9bf5ed42460ec03007b197d495af9233130ceb212afa42b3a49c","kind":"started","machine":"Logbook","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Logbook","t":0}
 {"kind":"entered","run":"r1","state":"Logbook.Open","t":0}
 {"event":{"from":"r2.1","kind":"message","message":1,"value":{"_tag":"Note","text":"worker stopped"}},"kind":"event","run":"r1","t":0}
@@ -7,7 +7,7 @@
 {"event":{"from":"r2.2","kind":"message","message":1,"value":{"_tag":"Note","text":"worker stopped"}},"kind":"event","run":"r1","t":0}
 {"from":"Logbook.Open","index":0,"kind":"transition","run":"r1","t":0,"to":null}
 {"action":"log","args":{"text":"worker stopped"},"kind":"action","run":"r1","t":0}
-{"input":{"book":"r1"},"ir":"sha256:288f3620b17e185966dcf8f0c8f292c87cb375730ecb5d6811253623c1093c0c","kind":"started","machine":"Boss","run":"r2","t":0}
+{"input":{"book":"r1"},"ir":"sha256:6a2148ace642621faa59476c272a9966cd7b86feaaec99511b2f9a20930ea1fc","kind":"started","machine":"Boss","run":"r2","t":0}
 {"kind":"entered","run":"r2","state":"Boss","t":0}
 {"kind":"entered","run":"r2","state":"Boss.Watching","t":0}
 {"args":{"book":"r1"},"invoke":1,"kind":"invoke.started","run":"r2","src":"Worker","state":"Boss.Watching","t":0}
@@ -24,7 +24,7 @@
 {"kind":"exited","run":"r2","state":"Boss.Watching","t":0}
 {"kind":"entered","run":"r2","state":"Boss.Idle","t":0}
 {"event":{"from":"r2.2","invoke":2,"kind":"emitted","message":2,"value":{"_tag":"Stopping"}},"kind":"stale","run":"r2","t":0}
-{"input":{"book":"r1"},"ir":"sha256:0f33f9d20123fd2be3abb7c131970f3a164cbd82cfbbf443379c4440e4bf27e7","kind":"started","machine":"Worker","parent":"r2","run":"r2.1","t":0}
+{"input":{"book":"r1"},"ir":"sha256:1e2c3e5946c80834c532b27e75856bf017d25e72a64f92a9510ff875b733a6bb","kind":"started","machine":"Worker","parent":"r2","run":"r2.1","t":0}
 {"kind":"entered","parent":"r2","run":"r2.1","state":"Worker","t":0}
 {"kind":"entered","parent":"r2","run":"r2.1","state":"Worker.Working","t":0}
 {"kind":"exited","parent":"r2","run":"r2.1","state":"Worker.Working","t":0}
@@ -32,7 +32,7 @@
 {"kind":"emitted","message":2,"parent":"r2","run":"r2.1","t":0,"value":{"_tag":"Stopping"}}
 {"kind":"exited","parent":"r2","run":"r2.1","state":"Worker","t":0}
 {"kind":"cancelled","parent":"r2","run":"r2.1","t":0}
-{"input":{"book":"r1"},"ir":"sha256:0f33f9d20123fd2be3abb7c131970f3a164cbd82cfbbf443379c4440e4bf27e7","kind":"started","machine":"Worker","parent":"r2","run":"r2.2","t":0}
+{"input":{"book":"r1"},"ir":"sha256:1e2c3e5946c80834c532b27e75856bf017d25e72a64f92a9510ff875b733a6bb","kind":"started","machine":"Worker","parent":"r2","run":"r2.2","t":0}
 {"kind":"entered","parent":"r2","run":"r2.2","state":"Worker","t":0}
 {"kind":"entered","parent":"r2","run":"r2.2","state":"Worker.Working","t":0}
 {"kind":"exited","parent":"r2","run":"r2.2","state":"Worker.Working","t":0}

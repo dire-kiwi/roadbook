@@ -1,0 +1,53 @@
+{
+  "description": "A strict machine: `on Close ignore` and the machine body's guarded `on Knock … ignore` take their events and do nothing (an `event` record and a `transition` record with no target, not `dropped`); an invoke outcome and a timer expiry whose guards fail are dropped, as in any machine; `Opened`'s `on Knock ignore` is taken before the machine body's guarded one; and back in `Closed`, a quiet `Knock`, which enables no transition, ends the run with an `unhandled` defect naming the input, which cancels the new invoke and timer and writes no `dropped` record.",
+  "requires": [],
+  "chart": "charts/strict.road",
+  "machine": "Lock",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Knock",
+        "loud": true
+      }
+    },
+    {
+      "task": "fetch",
+      "done": 3
+    },
+    {
+      "advance": 1000
+    },
+    {
+      "event": {
+        "_tag": "Open"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Knock",
+        "loud": false
+      }
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Knock",
+        "loud": false
+      }
+    }
+  ],
+  "status": "defect"
+}

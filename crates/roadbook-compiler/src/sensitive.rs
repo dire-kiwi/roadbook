@@ -7,9 +7,10 @@
 //!
 //! - a value read from a sensitive place (`password`, `event.password`, `creds.user` for a
 //!   sensitive `creds`) going to a place that is not sensitive: a variable, a parameter of an
-//!   action, task or machine, a field, an `output`, a `fail` or an `after` delay (`RB0317`);
+//!   action, task, machine or call, a field, an `output`, a `fail`, a `reply … done` value or
+//!   an `after` delay (`RB0320`);
 //! - a value whose type has sensitive fields going where `json` is expected, which has no
-//!   fields to redact by (`RB0318`).
+//!   fields to redact by (`RB0321`).
 //!
 //! Function arguments and guards are exempt: function calls are not traced. An operator's result
 //! with a sensitive operand is sensitive; a function's result is not, since a `fn` is how a
@@ -28,8 +29,10 @@ use crate::types::{Ty, TypeDef};
 
 /// Every member marked `sensitive`, as `(owner, member)`: the owner is a record or error type
 /// (its fields), a function, action, task or machine (its parameters), a machine (its
-/// variables), or `Machine.Event` (the fields of an event or emitted event). Declaration names
-/// are unique in a compilation and event keys have a dot, so owners never collide.
+/// variables), `Machine.Event` (the fields of an event or emitted event), or `Machine.call`
+/// (the parameters of a call). Declaration names are unique in a compilation, and event and
+/// call keys have a dot (an event's name is upper-case, a call's lower-case), so owners never
+/// collide.
 #[derive(Default)]
 pub(crate) struct Sensitive {
     marked: HashSet<(String, String)>,
@@ -58,6 +61,9 @@ impl Sensitive {
                         match item {
                             ast::Item::Event(e) | ast::Item::Emits(e) => {
                                 fields(&mut s, &format!("{name}.{}", e.name.name), &e.fields)
+                            }
+                            ast::Item::Call(c) => {
+                                fields(&mut s, &format!("{name}.{}", c.name.name), &c.params)
                             }
                             _ => {}
                         }

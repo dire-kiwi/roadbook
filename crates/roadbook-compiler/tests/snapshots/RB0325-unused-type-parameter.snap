@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0325]: type parameter `Unused` of `Tagged` is not used
+ --> RB0325-unused-type-parameter.road:1:16
+  |
+1 | type Tagged<T, Unused> { value: T }
+  |                ^^^^^^
+  |
+  = help: use it in a field or the aliased type, or remove it
+
+error[RB0325]: type parameter `T` of `Id` is not used
+ --> RB0325-unused-type-parameter.road:2:9
+  |
+2 | type Id<T> = string
+  |         ^
+  |
+  = help: use it in a field or the aliased type, or remove it

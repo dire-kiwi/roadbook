@@ -1,5 +1,5 @@
 {
-  "description": "A pool keyed by `int`. Its children's emitted events and a failure it has no `on slots.fail` for are dropped. Cancelled from outside, it exits its states, then stops the child still running, then writes `cancelled`.",
+  "description": "A pool keyed by `int`. Its children's emitted events, which it has no `on slots.Said` for, are not sent to it, and a failure it has no `on slots.fail` for is dropped. Cancelled from outside, it exits its states, then stops the child still running, then writes `cancelled`.",
   "requires": [
     "messaging",
     "spawn"

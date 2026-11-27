@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/shop/checkout.road",
@@ -508,6 +508,7 @@
         "endLine": 32,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "order",
@@ -579,6 +580,7 @@
       "events": {},
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Checkout",
         "name": "Checkout",
@@ -612,6 +614,7 @@
             "invoke": {
               "kind": "task",
               "src": "chargeCard",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -929,7 +932,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4549a2211c30e8dcc753fc13a57e8f7cfae5f89b018c94545bcbafdc7e6b3aa6"
+      "hash": "sha256:fa80e6f614f8898e91e52357e8d5aefe10d597e5daa33a587c6510b20c174521"
     }
   }
 }

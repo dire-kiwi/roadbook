@@ -1,0 +1,28 @@
+import { Login, Session } from "./types.road"
+
+type Batch { logins: Login[]?, sensitive raw: json }
+action log(what: json)
+action logAll(what: json[])
+action keep(sensitive what: json)
+fn count(items: json[]) -> int
+
+machine M(login: Login, logins: Login[], batch: Batch, session: Session) {
+  event Submit { sensitive password: string }
+  var blob: json = login
+  var blobs: json[]? = logins
+  sensitive var kept: json = login
+  var fine: json = login.user
+  var n: int = count(logins)
+
+  initial A
+  state A {
+    on Submit -> A  do log(event), logAll(logins), keep(batch), log(batch), log(session)
+  }
+}
+
+// expect: RB0321 at 11:20
+// expect: RB0321 at 12:24
+// expect: RB0321 at 19:28
+// expect: RB0321 at 19:43
+// expect: RB0321 at 19:69
+// expect: RB0321 at 19:81

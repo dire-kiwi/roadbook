@@ -62,7 +62,26 @@
         "properties": {
           "id": { "$ref": "#/$defs/id" },
           "state": { "$ref": "#/$defs/stateId" },
-          "src": { "$ref": "#/$defs/name" }
+          "src": {
+            "description": "The task or machine, or for a call the address and the call's name (inventory.reserve).",
+            "type": "string",
+            "pattern": "^([A-Za-z][A-Za-z0-9]*|[a-z][A-Za-z0-9]*\\.[a-z][A-Za-z0-9]*)$"
+          }
+        }
+      }
+    },
+    "calls": {
+      "description": "The calls the run has taken and not answered, in the order it took them. Written only when not empty; a snapshot without it has none. A snapshot with pending calls cannot be restored (reason calls).",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "invoke", "call"],
+        "properties": {
+          "from": { "type": "string", "pattern": "^[A-Za-z0-9_-]+(\\.[1-9][0-9]*)*$" },
+          "invoke": { "$ref": "#/$defs/id" },
+          "call": { "$ref": "#/$defs/lowerName" }
         }
       }
     },

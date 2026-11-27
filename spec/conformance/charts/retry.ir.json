@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/retry.road",
@@ -138,6 +138,7 @@
         "endLine": 47,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "id",
@@ -239,6 +240,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Fetcher",
         "name": "Fetcher",
@@ -286,6 +288,7 @@
                 "invoke": {
                   "kind": "task",
                   "src": "fetch",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -645,6 +648,7 @@
                 "invoke": {
                   "kind": "task",
                   "src": "save",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -912,7 +916,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:2ab68675ec3c931080ecb28af40b37206d28a06001cf1b16630f8ce405f5625a"
+      "hash": "sha256:952bbad7b5fcfd22838d6cc23ad73420363373e9536ddda02501f833204b6d82"
     }
   }
 }

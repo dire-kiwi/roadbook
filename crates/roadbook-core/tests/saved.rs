@@ -593,3 +593,93 @@ fn a_version_1_snapshot_restores_and_is_saved_again_as_version_3() {
     assert_eq!(again["history"], json!({}));
     assert_eq!(again["spawned"], json!([]));
 }
+
+/// A callee that keeps its pending call in a variable, and a caller of it.
+const CALLS: &str = r#"
+machine S() {
+  call ask() -> int
+  var p: call ask
+  event Go
+  initial A
+  state A { on ask -> B  set p = call }
+  state B { on Go -> A  reply p done 1 }
+}
+
+machine C(s: ref S) {
+  initial W
+  state W { invoke s.ask() { done -> W  fail * -> W } }
+}
+"#;
+
+#[test]
+fn a_snapshot_with_pending_calls_is_refused_after_ref() {
+    let c = roadbook_compiler::compile_source("t.road", CALLS, &Default::default());
+    let p = Program::new(c.ir.expect("the chart compiles")).unwrap();
+    let (s, _) = p
+        .start("S", "r1", serde_json::Map::new(), &mut no_fns)
+        .unwrap();
+    // No pending call: no `calls` member.
+    assert!(
+        Saved::new(&s, |t| t.delay)
+            .to_value()
+            .get("calls")
+            .is_none()
+    );
+    let call = roadbook_core::Input::Call {
+        from: "r2".into(),
+        invoke: 1,
+        call: "ask".into(),
+        args: serde_json::Map::new(),
+    };
+    let (s, _) = p.step(&s, call, &mut no_fns);
+    let pending = Saved::new(&s, |t| t.delay).to_value();
+    assert_eq!(
+        pending["calls"],
+        json!([{"from": "r2", "invoke": 1, "call": "ask"}])
+    );
+    assert_eq!(Saved::from_value(pending.clone()).unwrap().calls.len(), 1);
+    assert_eq!(reason(&p, pending.clone()), "calls");
+    // Answered (as a later step would), the same snapshot is restored, the pending-call
+    // value in `p` and all: a later `reply` through it is `answered`.
+    let mut answered = pending.clone();
+    answered.as_object_mut().unwrap().remove("calls");
+    assert_eq!(reason(&p, answered.clone()), "ok");
+    let mut bad = answered.clone();
+    bad["vars"]["p"] = json!({"from": "r2"});
+    assert_eq!(reason(&p, bad), "invalid");
+    let mut bad = answered.clone();
+    bad["vars"]["p"] = json!({"from": "r2", "invoke": 0});
+    assert_eq!(reason(&p, bad), "invalid");
+    let (saved, _) = p.check_saved(answered, None, None).unwrap();
+    let (s, _) = p.restore(&saved, "r9", 0, None, &mut no_fns).unwrap();
+    assert!(s.calls.is_empty());
+    let (s, cmds) = p.step(
+        &s,
+        roadbook_core::Input::Event {
+            value: json!({"_tag": "Go"}),
+        },
+        &mut no_fns,
+    );
+    assert_eq!(s.status, Status::Defect);
+    assert!(matches!(
+        cmds.last(),
+        Some(Command::Trace {
+            record: Record::Defect {
+                defect: Defect::Answered { .. }
+            }
+        })
+    ));
+    // `ref` is checked first: a caller holds one.
+    let (s, _) = p
+        .start(
+            "C",
+            "r2",
+            json!({"s": "r1"}).as_object().unwrap().clone(),
+            &mut no_fns,
+        )
+        .unwrap();
+    let mut caller = Saved::new(&s, |t| t.delay).to_value();
+    assert_eq!(caller["invokes"][0]["src"], "s.ask");
+    caller["calls"] = pending["calls"].clone();
+    assert_eq!(reason(&p, caller), "ref");
+}

@@ -10,11 +10,14 @@
 //! - the outcome of each guard it relies on;
 //! - for a timer's expiry while another timer of the run is running, that it expires first,
 //!   since its delay might not be the shortest;
-//! - for an outcome of a child or spawned child machine, or an event that a child, a spawned
-//!   child or a peer emits, that the other machine does that;
+//! - for an outcome of a child or spawned child machine, the answer to a call the machine made
+//!   of a peer (`invoke peer.c(…)`: done, a declared error or `Unanswered`), a call another run
+//!   makes of it (`on c`), or an event that a child, a spawned child or a peer emits, that the
+//!   other machine does that;
 //! - for any step from a stable node where another machine can act (some edge from it is
-//!   that machine's move), that the step comes first: that machine does not end or emit
-//!   before it ([`Assumption::Unpreempted`]). A machine's own moves race only the others.
+//!   that machine's move), that the step comes first: that machine does not end, emit, answer
+//!   or call before it ([`Assumption::Unpreempted`]). A machine's own moves race only the
+//!   others.
 //!
 //! The machine's own events and the outcomes of tasks are the host's to give, and a timer
 //! that is the only one running expires whenever the run waits long enough, so where no
@@ -51,9 +54,16 @@
 //!   effect has run it may have children for the rest of the run (a `stop` never empties it).
 //!   So a spawned child's outcomes and emitted events may arrive at any stable node after it.
 //! - An emitted event from a peer may arrive at any time, from any run that any nonempty set
-//!   of the `ref` parameters and variables of its machine hold.
+//!   of the `ref` parameters and variables of its machine hold. Only the events some `on
+//!   name.Event` expects are inputs: a run is not sent the others (`spec/execution.md`,
+//!   "Messages between runs").
+//! - A call of each of the machine's `calls` may arrive at any stable node, from some caller;
+//!   which calls are pending is not part of a node, so a `reply` changes nothing in it.
 //! - A defect, a cancel and the `limit` on settling are not modelled: they end a run, and a
-//!   node's run only ever ends at a top-level final state.
+//!   node's run only ever ends at a top-level final state. So in a strict machine an input that
+//!   enables nothing, which is the `unhandled` defect, takes nothing here, as it does in a
+//!   machine that is not strict; an `on E ignore` is a transition with no target and no
+//!   effects, an edge back to the same configuration.
 
 use std::cell::{Cell, RefCell};
 use std::cmp::Reverse;
@@ -132,34 +142,20 @@ pub enum Assumption {
         index: usize,
     },
     /// Another machine does what the edge's input says: a child or spawned child machine ends
-    /// `done` or fails, or a child, a spawned child or a peer emits an event. Always the
-    /// edge's own input: [`Input::InvokeDone`] or [`Input::InvokeFail`] of a machine's invoke,
-    /// [`Input::Emitted`], [`Input::SpawnDone`] or [`Input::SpawnFail`].
+    /// `done` or fails, a peer answers a call (or leaves it `Unanswered`), another run calls
+    /// the machine, or a child, a spawned child or a peer emits an event. Always the edge's
+    /// own input: [`Input::InvokeDone`] or [`Input::InvokeFail`] of a machine's or a call's
+    /// invoke, [`Input::Call`], [`Input::Emitted`], [`Input::SpawnDone`] or
+    /// [`Input::SpawnFail`].
     Machine(Input),
     /// None of these other machines acts first: at a node where they can (an edge from it
-    /// assumes [`Assumption::Machine`] of them), the step happens before they end, fail or
-    /// emit. Given to every edge from such a node but those of the sender's own moves, which
+    /// assumes [`Assumption::Machine`] of them), the step happens before they end, fail, emit,
+    /// answer or call. Given to every edge from such a node but those of the sender's own moves, which
     /// name only the other senders.
     Unpreempted {
         /// The machines that could act first, sorted.
         senders: Vec<Sender>,
     },
-}
-
-impl Assumption {
-    /// The machine whose move a [`Assumption::Machine`] input is.
-    fn sender(input: &Input) -> Option<Sender> {
-        match input {
-            Input::InvokeDone { state } | Input::InvokeFail { state, .. } => {
-                Some(Sender::Child(*state))
-            }
-            Input::Emitted { from, .. } => Some(from.clone()),
-            Input::SpawnDone { children } | Input::SpawnFail { children, .. } => {
-                Some(Sender::Children(children.clone()))
-            }
-            _ => None,
-        }
-    }
 }
 
 /// Whether two senders may be the same machine: the same child or collection, or peers that
@@ -173,12 +169,12 @@ fn same_sender(a: &Sender, b: &Sender) -> bool {
 
 /// Gives each successor of a stable node the race it relies on: that the other machines
 /// that can act at the node (those some successor's input is a move of) do not act first.
-fn add_races(successors: &mut [Successor]) {
+fn add_races(chart: &Chart<'_>, successors: &mut [Successor]) {
     let mut live: Vec<Sender> = Vec::new();
     for s in successors.iter() {
         for a in &s.assumptions {
             if let Assumption::Machine(input) = a
-                && let Some(sender) = Assumption::sender(input)
+                && let Some(sender) = chart.sender(input)
                 && !live.contains(&sender)
             {
                 live.push(sender);
@@ -191,7 +187,7 @@ fn add_races(successors: &mut [Successor]) {
     live.sort();
     for s in successors.iter_mut() {
         let own = s.assumptions.iter().find_map(|a| match a {
-            Assumption::Machine(input) => Assumption::sender(input),
+            Assumption::Machine(input) => chart.sender(input),
             _ => None,
         });
         let senders: Vec<Sender> = live
@@ -217,6 +213,8 @@ pub enum Sender {
     Refs(Vec<String>),
     /// A spawned child of this `children` collection.
     Children(String),
+    /// A run that calls the machine (`on c`): any run that holds a `ref` to it.
+    Callers,
 }
 
 /// What an edge's microstep was for: its input, or the kind of eventless transition settling
@@ -225,12 +223,15 @@ pub enum Sender {
 pub enum Input {
     /// One of the machine's events, from host code or as a message (`on Name`, `on *`).
     Event(String),
+    /// A call of the machine's call `c` from another run (`on c`).
+    Call(String),
     /// The invoke of `state` succeeded.
     InvokeDone {
         /// The state that owns the invoke.
         state: StateIndex,
     },
-    /// The invoke of `state` failed with `error`, one its task or machine declares.
+    /// The invoke of `state` failed with `error`, one its task or machine declares, or for a
+    /// call, one the call declares or `Unanswered`.
     InvokeFail {
         /// The state that owns the invoke.
         state: StateIndex,
@@ -393,7 +394,7 @@ pub fn explore(ir: &ir::Ir, machine: &ir::Machine, max_nodes: usize) -> Result<G
         let cfg = b.configs[next].clone();
         let mut successors = chart.successors(&cfg);
         if !cfg.settling {
-            add_races(&mut successors);
+            add_races(&chart, &mut successors);
         }
         if chart.exhausted() {
             return Err(TooLarge::Combinations { budget });
@@ -576,6 +577,7 @@ impl Graph {
         let id = |s: &StateIndex| self.state_id(*s);
         match input {
             Input::Event(e) => e.clone(),
+            Input::Call(c) => format!("the call {c}"),
             Input::InvokeDone { state } => format!("done of the invoke in {}", id(state)),
             Input::InvokeFail { state, error } => {
                 format!("fail {error} of the invoke in {}", id(state))
@@ -585,6 +587,7 @@ impl Graph {
                 Sender::Child(s) => format!("{event} from the child of {}", id(s)),
                 Sender::Refs(names) => format!("{}.{event}", names.join(" = ")),
                 Sender::Children(c) => format!("{c}.{event}"),
+                Sender::Callers => format!("{event} from a caller"),
             },
             Input::SpawnDone { children } => format!("{children}.done"),
             Input::SpawnFail { children, error } => format!("{children}.fail {error}"),
@@ -666,11 +669,12 @@ impl Graph {
 }
 
 /// A transition's trigger as the viewer labels it (`triggerText` in
-/// `packages/viewer/src/model.ts`): `Go`, `after 5s`, `fail Declined`, `on *`. `roadbook
+/// `packages/viewer/src/model.ts`): `Go`, `reserve`, `after 5s`, `fail Declined`, `on *`. `roadbook
 /// paths` and the counterexamples of checks write triggers this way.
 pub fn trigger_text(t: &Trigger) -> String {
     match t {
         Trigger::Event { event } => event.clone(),
+        Trigger::Call { call } => call.clone(),
         Trigger::Emitted { from, event } => format!("{}.{event}", from.name),
         Trigger::Any => "on *".into(),
         Trigger::After { delay } => format!("after {}", delay.text),
@@ -1212,6 +1216,7 @@ impl<'a> Chart<'a> {
                     on
                 }
             }
+            Cand::Call(n) => pick(&|t| matches!(t, Trigger::Call { call } if call == n)),
             Cand::Emitted(sender, n) => pick(&|t| match t {
                 Trigger::Emitted { from, event } if event == n => match (sender, from.kind) {
                     (SenderRef::Child(st), AddressKind::Child) => {
@@ -1439,6 +1444,10 @@ impl<'a> Chart<'a> {
                 &mut out,
             );
         }
+        // Calls from other runs, selected among the `on c` transitions alone.
+        for name in self.machine.calls.keys() {
+            self.by_walks(cfg, Input::Call(name.clone()), &Cand::Call(name), &mut out);
+        }
         // Invoke outcomes, and what invoked children emit.
         for &s in &cfg.active {
             let state = self.states[s as usize];
@@ -1456,11 +1465,24 @@ impl<'a> Chart<'a> {
                 &Cand::InvokeDone,
                 &mut out,
             );
-            let errors: &[String] = match inv.kind {
+            let mut errors: Vec<&str> = match inv.kind {
                 InvokeKind::Task => self.ir.tasks.get(&inv.src).map(|t| &t.errors[..]),
                 InvokeKind::Machine => self.ir.machines.get(&inv.src).map(|m| &m.errors[..]),
+                InvokeKind::Call => inv
+                    .to
+                    .as_ref()
+                    .and_then(|to| self.ir.machines.get(&to.machine))
+                    .and_then(|m| m.calls.get(&inv.src))
+                    .map(|c| &c.errors[..]),
             }
-            .unwrap_or(&[]);
+            .unwrap_or(&[])
+            .iter()
+            .map(String::as_str)
+            .collect();
+            // Every call can fail with `Unanswered` besides its declared errors.
+            if inv.kind == InvokeKind::Call {
+                errors.push(ir::UNANSWERED);
+            }
             for e in errors {
                 self.one_state(
                     cfg,
@@ -1468,7 +1490,7 @@ impl<'a> Chart<'a> {
                     INVOKE,
                     Input::InvokeFail {
                         state: StateIndex(s),
-                        error: e.clone(),
+                        error: e.to_string(),
                     },
                     &Cand::InvokeFail(e),
                     &mut out,
@@ -1604,6 +1626,29 @@ impl<'a> Chart<'a> {
         a.0 == b.0 && a.1 < b.1 && matches!((delay(a), delay(b)), (Some(x), Some(y)) if x < y)
     }
 
+    /// The machine whose move a [`Assumption::Machine`] input is: for a call's outcome, the
+    /// peer its address names.
+    fn sender(&self, input: &Input) -> Option<Sender> {
+        match input {
+            Input::InvokeDone { state } | Input::InvokeFail { state, .. } => {
+                match self.states[state.index()]
+                    .invoke
+                    .as_ref()
+                    .and_then(|i| i.to.as_ref())
+                {
+                    Some(to) => Some(Sender::Refs(vec![to.name.clone()])),
+                    None => Some(Sender::Child(*state)),
+                }
+            }
+            Input::Call(_) => Some(Sender::Callers),
+            Input::Emitted { from, .. } => Some(from.clone()),
+            Input::SpawnDone { children } | Input::SpawnFail { children, .. } => {
+                Some(Sender::Children(children.clone()))
+            }
+            _ => None,
+        }
+    }
+
     /// Whether state `s` has a candidate for the search `c`.
     fn has_candidate(&self, s: u32, c: &Cand<'_>) -> bool {
         match c {
@@ -1618,11 +1663,12 @@ impl<'a> Chart<'a> {
         match input {
             Input::InvokeDone { state } | Input::InvokeFail { state, .. } => {
                 let invoke = self.states[state.index()].invoke.as_ref()?;
-                (invoke.kind == InvokeKind::Machine).then(|| Assumption::Machine(input.clone()))
+                (invoke.kind != InvokeKind::Task).then(|| Assumption::Machine(input.clone()))
             }
-            Input::Emitted { .. } | Input::SpawnDone { .. } | Input::SpawnFail { .. } => {
-                Some(Assumption::Machine(input.clone()))
-            }
+            Input::Call(_)
+            | Input::Emitted { .. }
+            | Input::SpawnDone { .. }
+            | Input::SpawnFail { .. } => Some(Assumption::Machine(input.clone())),
             Input::After { state, index } => {
                 let others = cfg.active.iter().any(|&s| {
                     self.after_blocks[s as usize].iter().any(|&(group, i)| {
@@ -1739,6 +1785,7 @@ impl<'a> Chart<'a> {
 /// The candidates a search tries.
 enum Cand<'s> {
     Event(&'s str),
+    Call(&'s str),
     Emitted(SenderRef<'s>, &'s str),
     Always,
     SpawnDone(&'s str),

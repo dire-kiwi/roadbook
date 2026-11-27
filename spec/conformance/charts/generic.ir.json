@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/generic.road",
@@ -198,6 +198,7 @@
         "endLine": 47,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "waits",
@@ -299,6 +300,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Gather",
         "name": "Gather",
@@ -486,6 +488,7 @@
             "invoke": {
               "kind": "task",
               "src": "fetch",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -621,7 +624,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:bb2036a69631bf4a90876f6d3600ec778b471a3acd9358d49854a7b81144cc53"
+      "hash": "sha256:d8cdcbe960fd3df5c3f32df517a5dc76c5b6a81016d6ffd9c5742ebfbd6abb70"
     }
   }
 }

@@ -86,7 +86,7 @@ Open this folder (`editors/vscode`) in VS Code and press `F5`: a second window o
 `build` bundles the extension with esbuild, with the language client inside, and copies the
 committed viewer bundle (`crates/roadbook-cli/assets/roadbook-viewer.js`) into `dist/`, so the
 preview shows exactly what `roadbook viz` does. After changing the viewer, rebuild it
-(`pnpm --filter @roadbook/viewer build`) and then this package.
+(`pnpm --filter @dire-kiwi/roadbook-viewer build`) and then this package.
 
 ## Tests
 

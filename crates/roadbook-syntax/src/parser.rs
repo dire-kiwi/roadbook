@@ -80,6 +80,7 @@ fn is_decl_start(k: T) -> bool {
                 | K::Action
                 | K::Task
                 | K::Machine
+                | K::Strict
         )
     )
 }
@@ -92,6 +93,7 @@ fn is_item_start(k: T) -> bool {
             K::Var
                 | K::Event
                 | K::Emits
+                | K::Call
                 | K::Initial
                 | K::State
                 | K::Final
@@ -464,7 +466,7 @@ impl Parser<'_> {
                     self.error(d);
                     Err(Fail)
                 }
-                _ => Err(self.unexpected("a declaration (`type`, `enum`, `error`, `extern`, `fn`, `action`, `task`, `machine`) or `import`")),
+                _ => Err(self.unexpected("a declaration (`type`, `enum`, `error`, `extern`, `fn`, `action`, `task`, `machine`, `strict machine`) or `import`")),
             };
             match item {
                 Ok(i) => items.push(i),
@@ -528,7 +530,33 @@ impl Parser<'_> {
         let T::Keyword(k) = kw.kind else {
             unreachable!("decl() is called at a declaration keyword")
         };
-        let (name, kind) = match k {
+        let (name, kind) = self.decl_kind(k)?;
+        self.not_unanswered(&name);
+        Ok(Decl {
+            doc,
+            name,
+            kind,
+            span: self.since(start),
+        })
+    }
+
+    /// Reports a declaration, event or emitted event named `Unanswered`, the built-in error
+    /// every call can fail with.
+    fn not_unanswered(&mut self, name: &Ident) {
+        if name.name == "Unanswered" {
+            let d = Diagnostic::error(
+                codes::RESERVED_NAME,
+                name.span,
+                "`Unanswered` is the built-in error of a call that is not answered, and cannot be declared",
+            )
+            .with_help("choose another name");
+            self.error(d);
+        }
+    }
+
+    /// The name and kind of the declaration after keyword `k`.
+    fn decl_kind(&mut self, k: K) -> PResult<(Ident, DeclKind)> {
+        Ok(match k {
             K::Type => {
                 let name = self.upper("a type name")?;
                 let params = if self.at_p(P::Lt) {
@@ -623,7 +651,11 @@ impl Parser<'_> {
                     },
                 )
             }
-            K::Machine => {
+            K::Machine | K::Strict => {
+                let strict = k == K::Strict;
+                if strict && self.eat_kw(K::Machine).is_none() {
+                    return Err(self.unexpected("`machine` after `strict`"));
+                }
                 let name = self.upper("a machine name")?;
                 let params = self.params()?;
                 let returns = if self.eat_p(P::Arrow).is_some() {
@@ -636,6 +668,7 @@ impl Parser<'_> {
                 (
                     name,
                     DeclKind::Machine(Machine {
+                        strict,
                         params,
                         returns,
                         errors,
@@ -645,12 +678,6 @@ impl Parser<'_> {
             }
             K::Import => unreachable!("imports are parsed by import()"),
             _ => unreachable!("decl() is called at a declaration keyword"),
-        };
-        Ok(Decl {
-            doc,
-            name,
-            kind,
-            span: self.since(start),
         })
     }
 
@@ -843,6 +870,14 @@ impl Parser<'_> {
                 self.bump();
                 return Err(self.unexpected("the name of a machine after `ref`"));
             }
+            T::Keyword(K::Call) if self.nth(1) == T::Lower => {
+                self.bump();
+                TypeKind::Call(self.bump_ident())
+            }
+            T::Keyword(K::Call) => {
+                self.bump();
+                return Err(self.unexpected("the name of one of the machine's calls after `call`"));
+            }
             T::Lower => {
                 self.bump();
                 let id = self.ident(t);
@@ -930,7 +965,21 @@ impl Parser<'_> {
 
     /// One body item. `Ok(None)` is a well-formed item in the wrong kind of body, reported and
     /// left out of the tree.
+    ///
+    /// A nested state is parsed here, and every other item in [`Self::other_item`], kept out
+    /// of line: states recurse through `body`, `item` and `state`, so this frame is paid once
+    /// per level of nesting and must stay small for `MAX_DEPTH` levels to fit a test thread's
+    /// stack in a debug build.
     fn item(&mut self, kind: BodyKind) -> PResult<Option<Item>> {
+        if let T::Keyword(K::State | K::Final | K::Parallel) = self.peek() {
+            return Ok(Some(Item::State(self.state()?)));
+        }
+        self.other_item(kind)
+    }
+
+    /// Any body item but a nested state: see [`Self::item`].
+    #[inline(never)]
+    fn other_item(&mut self, kind: BodyKind) -> PResult<Option<Item>> {
         if let Some(deep) = self.at_history() {
             let h = self.history(deep)?;
             if kind == BodyKind::Machine {
@@ -967,7 +1016,7 @@ impl Parser<'_> {
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
-                    "a machine item (`var`, `event`, `emits`, `children`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
+                    "a machine item (`var`, `event`, `emits`, `children`, `call`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
                 }
                 BodyKind::State => {
                     "a state item (`initial`, `state`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
@@ -975,12 +1024,13 @@ impl Parser<'_> {
             };
             return Err(self.unexpected(expected));
         };
-        let machine_only = matches!(k, K::Var | K::Event | K::Emits);
+        let machine_only = matches!(k, K::Var | K::Event | K::Emits | K::Call);
         let state_only = matches!(k, K::Done | K::Invoke | K::Output | K::Fail);
         let item = match k {
             K::Var => Item::Var(self.var()?),
             K::Event => Item::Event(self.event()?),
             K::Emits => Item::Emits(self.event()?),
+            K::Call => Item::Call(self.call_decl()?),
             K::Initial => {
                 self.bump();
                 Item::Initial(self.upper("the name of the initial state")?)
@@ -991,7 +1041,7 @@ impl Parser<'_> {
                 let effects = self.effects()?;
                 if effects.is_empty() {
                     let expected = format!(
-                        "`set`, `do`, `send`, `emit`, `spawn` or `stop` after `{}`",
+                        "`set`, `do`, `send`, `emit`, `spawn`, `stop` or `reply` after `{}`",
                         self.text(t)
                     );
                     return Err(self.unexpected(&expected));
@@ -1023,8 +1073,12 @@ impl Parser<'_> {
                         ))?;
                         Trigger::Receive { from, event }
                     }
+                } else if self.at(T::Lower) {
+                    Trigger::Call(self.bump_ident())
                 } else {
-                    Trigger::On(self.pattern("an event name, `*` or `name.Event`")?)
+                    Trigger::On(
+                        self.pattern("an event name, `*`, `name.Event` or the name of a call")?,
+                    )
                 };
                 Item::Transition(self.transition(t.span, trigger)?)
             }
@@ -1059,7 +1113,7 @@ impl Parser<'_> {
                         matches!(
                             self.nth(1),
                             T::Punct(P::Arrow)
-                                | T::Keyword(K::If | K::Set | K::Do | K::Send | K::Emit)
+                                | T::Keyword(K::If | K::Set | K::Do | K::Send | K::Emit | K::Reply)
                         ) || self.nth(1) == T::Punct(P::LBrace)
                             && matches!(self.nth(2), T::Keyword(K::If | K::Else))
                     }
@@ -1093,7 +1147,7 @@ impl Parser<'_> {
         let word = self.text(t).to_string();
         if kind == BodyKind::State && machine_only {
             let d = Diagnostic::error(codes::NOT_IN_STATE, t.span, format!("`{word}` is only allowed directly in a machine body"))
-                .with_help(format!("move the `{word}` to the top of the machine; a machine's variables and events belong to all its states"));
+                .with_help(format!("move the `{word}` to the top of the machine; a machine's variables, events and calls belong to all its states"));
             self.error(d);
             return Ok(None);
         }
@@ -1308,6 +1362,7 @@ impl Parser<'_> {
         let doc = self.take_doc();
         let start = self.bump().span;
         let name = self.upper("an event name")?;
+        self.not_unanswered(&name);
         let fields = if self.at_p(P::LBrace) {
             self.fields("the event's fields")?
         } else {
@@ -1373,7 +1428,8 @@ impl Parser<'_> {
 
     fn transition(&mut self, start: Span, trigger: Trigger) -> PResult<Transition> {
         let trigger_span = self.since(start);
-        let branches = self.branches(trigger_span)?;
+        let ignore = matches!(trigger, Trigger::On(_) | Trigger::Receive { .. });
+        let branches = self.branches(trigger_span, ignore)?;
         Ok(Transition {
             trigger,
             branches,
@@ -1382,7 +1438,8 @@ impl Parser<'_> {
         })
     }
 
-    fn branches(&mut self, trigger: Span) -> PResult<Branches> {
+    /// `ignore` says whether a branch may be `ignore`: only in an `on` transition.
+    fn branches(&mut self, trigger: Span, ignore: bool) -> PResult<Branches> {
         if !self.at_p(P::LBrace) {
             let start = self.tok().span;
             let guard = if self.eat_kw(K::If).is_some() {
@@ -1390,7 +1447,9 @@ impl Parser<'_> {
             } else {
                 None
             };
-            return Ok(Branches::Single(self.action(start, guard, trigger)?));
+            return Ok(Branches::Single(
+                self.action(start, guard, trigger, ignore)?,
+            ));
         }
         let open = self.bump();
         let mut branches: Vec<Branch> = Vec::new();
@@ -1417,7 +1476,7 @@ impl Parser<'_> {
                 T::Keyword(K::If) => {
                     self.bump();
                     match self.expr(false) {
-                        Ok(guard) => self.action(t.span, Some(guard), t.span),
+                        Ok(guard) => self.action(t.span, Some(guard), t.span, ignore),
                         Err(f) => Err(f),
                     }
                 }
@@ -1434,9 +1493,10 @@ impl Parser<'_> {
                 T::Keyword(K::Else) => {
                     self.bump();
                     seen_else = true;
-                    self.action(t.span, None, t.span)
+                    self.action(t.span, None, t.span, ignore)
                 }
-                T::Punct(P::Arrow) | T::Keyword(K::Set | K::Do | K::Send | K::Emit) => {
+                T::Punct(P::Arrow)
+                | T::Keyword(K::Set | K::Do | K::Send | K::Emit | K::Reply | K::Ignore) => {
                     let d = Diagnostic::error(
                         codes::MALFORMED_BRANCH_BLOCK,
                         t.span,
@@ -1470,21 +1530,83 @@ impl Parser<'_> {
         })
     }
 
-    fn action(&mut self, start: Span, guard: Option<Expr>, trigger: Span) -> PResult<Branch> {
+    fn action(
+        &mut self,
+        start: Span,
+        guard: Option<Expr>,
+        trigger: Span,
+        ignore: bool,
+    ) -> PResult<Branch> {
+        if let Some(kw) = self.eat_kw(K::Ignore) {
+            if !ignore {
+                let d = Diagnostic::error(
+                    codes::MISPLACED_IGNORE,
+                    kw.span,
+                    "only an event's `on` transition can `ignore` it",
+                )
+                .with_secondary(trigger, "this transition")
+                .with_help("`ignore` takes an event and does nothing; a call is answered with `reply`, and a timer, `always` or `done` with nothing to do can be removed");
+                self.error(d);
+                return Err(Fail);
+            }
+            if self.at_p(P::Arrow)
+                || self.at_kw(K::Set)
+                || self.at_kw(K::Do)
+                || self.at_kw(K::Send)
+                || self.at_kw(K::Emit)
+            {
+                let d = Diagnostic::error(
+                    codes::MISPLACED_IGNORE,
+                    kw.span.to(self.tok().span),
+                    "`ignore` stands alone: a branch that ignores its event has no target and no effects",
+                )
+                .with_help("remove `ignore`, or the target and effects");
+                self.error(d);
+                return Err(Fail);
+            }
+            return Ok(Branch {
+                guard,
+                target: None,
+                effects: Vec::new(),
+                ignore: true,
+                span: self.since(start),
+            });
+        }
         let target = if self.eat_p(P::Arrow).is_some() {
             Some(self.target()?)
         } else {
             None
         };
         let effects = self.effects()?;
+        if (target.is_some() || !effects.is_empty()) && self.at_kw(K::Ignore) {
+            let d = Diagnostic::error(
+                codes::MISPLACED_IGNORE,
+                self.tok().span,
+                "`ignore` stands alone: a branch that ignores its event has no target and no effects",
+            )
+            .with_help("remove `ignore`, or the target and effects");
+            self.error(d);
+            return Err(Fail);
+        }
         if target.is_none() && effects.is_empty() {
+            let (expected, help) = if ignore {
+                (
+                    "`-> Target`, `set`, `do`, `send`, `emit`, `spawn`, `stop`, `reply` or `ignore`",
+                    "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`), children (`spawn name[key] = M(…)`, `stop name[key]`) or a reply (`reply call done`), or write `ignore` to take the event and do nothing",
+                )
+            } else {
+                (
+                    "`-> Target`, `set`, `do`, `send`, `emit`, `spawn`, `stop` or `reply`",
+                    "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`), children (`spawn name[key] = M(…)`, `stop name[key]`) or a reply (`reply call done`)",
+                )
+            };
             let msg = format!(
-                "a transition must do something: expected `-> Target`, `set`, `do`, `send`, `emit`, `spawn` or `stop`, found {}",
+                "a transition must do something: expected {expected}, found {}",
                 self.found()
             );
             let d = Diagnostic::error(codes::TRANSITION_DOES_NOTHING, self.tok().span, msg)
                 .with_secondary(trigger, "this transition")
-                .with_help("give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`) or messages (`send child.Event`, `emit Event`)");
+                .with_help(help);
             self.error(d);
             return Err(Fail);
         }
@@ -1492,6 +1614,7 @@ impl Parser<'_> {
             guard,
             target,
             effects,
+            ignore: false,
             span: self.since(start),
         })
     }
@@ -1505,10 +1628,15 @@ impl Parser<'_> {
         Ok(Target { path, span })
     }
 
-    /// Zero or more `set …`, `do …`, `send …`, `emit …`, `spawn …` and `stop …` clauses.
+    /// Zero or more `set …`, `do …`, `send …`, `emit …`, `spawn …`, `stop …` and `reply …`
+    /// clauses.
     fn effects(&mut self) -> PResult<Vec<Effect>> {
         let mut out = Vec::new();
         loop {
+            if let Some(kw) = self.eat_kw(K::Reply) {
+                out.push(Effect::Reply(self.reply(kw.span)?));
+                continue;
+            }
             if let Some(kw) = self.eat_kw(K::Send) {
                 let to = self.lower("the name of the machine to send to")?;
                 let key = if self.at_p(P::LBracket) {
@@ -1626,6 +1754,65 @@ impl Parser<'_> {
         Ok(key)
     }
 
+    /// The rest of `reply name done [value]` or `reply name fail error`. The value after
+    /// `done` is optional, so it is parsed only if it starts on the same line as `done`:
+    /// `reply pending done` at the end of a line is followed by the next item, not a value.
+    fn reply(&mut self, start: Span) -> PResult<Reply> {
+        let call = match self.peek() {
+            T::Keyword(K::Call) => {
+                let t = self.bump();
+                self.ident(t)
+            }
+            T::Lower => self.bump_ident(),
+            _ => {
+                return Err(
+                    self.unexpected("the call to reply to: `call` or a variable holding one")
+                );
+            }
+        };
+        let (outcome, value) = if let Some(done) = self.eat_kw(K::Done) {
+            let next = self.tok();
+            let value = if next.span.start.line == done.span.end.line && starts_expr(next.kind) {
+                Some(self.expr(false)?)
+            } else {
+                None
+            };
+            (ReplyOutcome::Done, value)
+        } else if self.eat_kw(K::Fail).is_some() {
+            (ReplyOutcome::Fail, Some(self.expr(false)?))
+        } else {
+            return Err(self.unexpected(&format!("`done` or `fail` after `reply {}`", call.name)));
+        };
+        Ok(Reply {
+            call,
+            outcome,
+            value,
+            span: self.since(start),
+        })
+    }
+
+    /// `call name(params) [-> T] [! E | F]` in a machine body.
+    fn call_decl(&mut self) -> PResult<CallDecl> {
+        let doc = self.take_doc();
+        let start = self.bump().span;
+        let name = self.lower("a call name")?;
+        let params = self.params()?;
+        let returns = if self.eat_p(P::Arrow).is_some() {
+            Some(self.type_ref()?)
+        } else {
+            None
+        };
+        let errors = self.errors()?;
+        Ok(CallDecl {
+            doc,
+            name,
+            params,
+            returns,
+            errors,
+            span: self.since(start),
+        })
+    }
+
     /// The rest of a `send` or `emit`: the optional record body after the event's name.
     fn message(&mut self, start: Span, to: Option<Ident>, event: Ident) -> PResult<Message> {
         let mut fields = Vec::new();
@@ -1678,11 +1865,28 @@ impl Parser<'_> {
 
     fn invoke(&mut self) -> PResult<Invoke> {
         let start = self.bump().span;
+        let to = if self.at(T::Lower) && self.nth(1) == T::Punct(P::Dot) {
+            let to = self.bump_ident();
+            self.bump();
+            Some(to)
+        } else {
+            None
+        };
+        if let Some(to) = &to {
+            let what = format!("the name of a call of the machine `{}` holds", to.name);
+            let callee = self.lower(&what)?;
+            return self.invoke_rest(start, Some(to.clone()), callee);
+        }
         let callee = match self.peek() {
             T::Upper | T::Lower => self.bump_ident(),
             T::Keyword(_) => self.keyword_as_name("the task or machine to invoke")?,
             _ => return Err(self.unexpected("the task or machine to invoke")),
         };
+        self.invoke_rest(start, None, callee)
+    }
+
+    /// An invoke after its callee: the arguments, `as`, and the outcomes.
+    fn invoke_rest(&mut self, start: Span, to: Option<Ident>, callee: Ident) -> PResult<Invoke> {
         if !self.at_p(P::LParen) {
             return Err(self.unexpected(&format!("`(` and the arguments of `{}`", callee.name)));
         }
@@ -1730,6 +1934,7 @@ impl Parser<'_> {
             self.error(d);
         }
         Ok(Invoke {
+            to,
             callee,
             args,
             alias,
@@ -1947,8 +2152,8 @@ impl Parser<'_> {
             T::String => ExprKind::String(unescape(text)),
             T::Keyword(K::True) => ExprKind::Bool(true),
             T::Keyword(K::False) => ExprKind::Bool(false),
-            // `event` and `error` are declaration keywords and also implicit names.
-            T::Keyword(K::Event | K::Error) => ExprKind::Var(self.ident(t)),
+            // `event`, `error` and `call` are declaration keywords and also implicit names.
+            T::Keyword(K::Event | K::Error | K::Call) => ExprKind::Var(self.ident(t)),
             T::Lower if self.nth(1) == T::Punct(P::LParen) => {
                 let c = self.call("a function name")?;
                 return Ok(Expr {
@@ -2012,6 +2217,21 @@ impl Parser<'_> {
         self.bump();
         Ok(Expr { kind, span: t.span })
     }
+}
+
+/// Whether a token can start an expression.
+fn starts_expr(k: T) -> bool {
+    matches!(
+        k,
+        T::Int
+            | T::Float
+            | T::Duration
+            | T::String
+            | T::Lower
+            | T::Upper
+            | T::Punct(P::LParen | P::Minus)
+            | T::Keyword(K::True | K::False | K::Not | K::Event | K::Error | K::Call)
+    )
 }
 
 fn binary(op: BinaryOp, a: Expr, b: Expr) -> Expr {

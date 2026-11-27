@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0326]: `Nested<T[]>` refers back to `Nested` with other type arguments than its parameters `<T>`
+ --> RB0326-irregular-recursion.road:1:25
+  |
+1 | type Nested<T> { inner: Nested<T[]>? }
+  |                         ^^^^^^^^^^^
+  |
+  = help: a generic type can refer to itself, directly or through other types, only with its own parameters, in order, so that it has finitely many instances
+
+error[RB0326]: `Swap<B, A>` refers back to `Swap` with other type arguments than its parameters `<A, B>`
+ --> RB0326-irregular-recursion.road:2:25
+  |
+2 | type Swap<A, B> { next: Swap<B, A>? }
+  |                         ^^^^^^^^^^
+  |
+  = help: a generic type can refer to itself, directly or through other types, only with its own parameters, in order, so that it has finitely many instances

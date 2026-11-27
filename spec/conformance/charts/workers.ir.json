@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/workers.road",
@@ -39,6 +39,7 @@
         "endLine": 20,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -76,6 +77,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Logbook",
         "name": "Logbook",
@@ -191,7 +193,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ea114941b37d6ee259a772df819a88e87657553519fa6cb265ca9be61d45272e"
+      "hash": "sha256:6a411694b31e9bf5ed42460ec03007b197d495af9233130ceb212afa42b3a49c"
     },
     "Worker": {
       "doc": "Works until it is cancelled, then says so to the logbook and to its parent.",
@@ -202,6 +204,7 @@
         "endLine": 34,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "book",
@@ -240,6 +243,7 @@
         }
       },
       "children": {},
+      "calls": {},
       "root": {
         "id": "Worker",
         "name": "Worker",
@@ -360,7 +364,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:0f33f9d20123fd2be3abb7c131970f3a164cbd82cfbbf443379c4440e4bf27e7"
+      "hash": "sha256:1e2c3e5946c80834c532b27e75856bf017d25e72a64f92a9510ff875b733a6bb"
     },
     "Boss": {
       "doc": "Watches a Worker, which it can restart or leave.",
@@ -371,6 +375,7 @@
         "endLine": 55,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "book",
@@ -408,6 +413,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Boss",
         "name": "Boss",
@@ -441,6 +447,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Worker",
+              "to": null,
               "as": "worker",
               "args": [
                 {
@@ -626,7 +633,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:288f3620b17e185966dcf8f0c8f292c87cb375730ecb5d6811253623c1093c0c"
+      "hash": "sha256:6a2148ace642621faa59476c272a9966cd7b86feaaec99511b2f9a20930ea1fc"
     }
   }
 }

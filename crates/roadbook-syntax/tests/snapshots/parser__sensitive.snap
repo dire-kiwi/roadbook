@@ -43,6 +43,7 @@ items:
       name: M
       kind:
         machine:
+          strict: false
           params:
             - sensitive: true
               name: key

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/upload.road",
@@ -60,6 +60,7 @@
         "endLine": 31,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "size",
@@ -136,6 +137,7 @@
         }
       },
       "children": {},
+      "calls": {},
       "root": {
         "id": "Upload",
         "name": "Upload",
@@ -169,6 +171,7 @@
             "invoke": {
               "kind": "task",
               "src": "sendChunk",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -375,7 +378,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:1588792051fa7eb110030f9ee2c0e854b30c0bdad6167347d22fdbcd29ba9e12"
+      "hash": "sha256:dbbadd166c6213015466d47cf8230d57476fcdf432ec907b31767ad30f9b7084"
     },
     "Publish": {
       "doc": "Uploads, pausing and resuming the child when asked, and shows its progress.",
@@ -386,6 +389,7 @@
         "endLine": 53,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "size",
@@ -457,6 +461,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -490,6 +495,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Upload",
+              "to": null,
               "as": "upload",
               "args": [
                 {
@@ -701,7 +707,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:19c6cfdf0a7bf5ae3be5cc4c27352858fccc08a244e85f1966b6b9ff1e137cc1"
+      "hash": "sha256:8357a1821f15b6922a67d30c66289624992b0d4acab4f40c8e4b9b9345fcd91e"
     },
     "Quiet": {
       "doc": "Invokes Upload without `as`, so it receives nothing the child emits.",
@@ -712,6 +718,7 @@
         "endLine": 68,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "size",
@@ -741,6 +748,7 @@
       "events": {},
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Quiet",
         "name": "Quiet",
@@ -774,6 +782,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Upload",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -863,7 +872,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:56b06b4a67a26e3150ee35f1d5197c1751f9ce89daf71d91cedc1d32272d1d50"
+      "hash": "sha256:cf12fdea599da564ae0f2d8d6e095541849af4cb6db6666f9a325e8a72bd0896"
     },
     "Eager": {
       "doc": "Sends to its child before the child has started, and after its outcome was taken.",
@@ -874,6 +883,7 @@
         "endLine": 93,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "size",
@@ -931,6 +941,7 @@
       },
       "emits": {},
       "children": {},
+      "calls": {},
       "root": {
         "id": "Eager",
         "name": "Eager",
@@ -1004,6 +1015,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Upload",
+              "to": null,
               "as": "upload",
               "args": [
                 {
@@ -1145,7 +1157,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:17afb401c77b51ab73549262c9d469f5061d126e13d401117704e54778b10127"
+      "hash": "sha256:cb3a8cf5290eb8674c41d0bd593d9e81d1e715331fac79758b870a1cef3400f5"
     }
   }
 }
