@@ -1,6 +1,6 @@
 [package]
 name = "roadbook-wasm"
-description = "The Roadbook compiler as WebAssembly, for the npm package `@roadbook/cli`"
+description = "The Roadbook compiler as WebAssembly, for the npm package `@dire-kiwi/roadbook-cli`"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

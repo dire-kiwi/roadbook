@@ -1,4 +1,4 @@
-/** `pnpm --filter @roadbook/effect conformance [case…]`: run the cases and print a line per case. */
+/** `pnpm --filter @dire-kiwi/roadbook-effect conformance [case…]`: run the cases and print a line per case. */
 import { caseNames, isSupported, runCase } from "./runner.ts"
 
 const names = process.argv.length > 2 ? process.argv.slice(2) : caseNames()

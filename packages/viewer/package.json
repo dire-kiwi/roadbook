@@ -1,5 +1,5 @@
 {
-  "name": "@roadbook/viewer",
+  "name": "@dire-kiwi/roadbook-viewer",
   "version": "0.1.0",
   "private": true,
   "description": "The Roadbook diagram viewer: IR -> ELK layout -> SVG, and the browser app `roadbook viz` embeds",
@@ -13,7 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@roadbook/core": "workspace:*",
+    "@dire-kiwi/roadbook-core": "workspace:*",
     "elkjs": "^0.12.2"
   },
   "devDependencies": {

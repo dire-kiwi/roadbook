@@ -952,7 +952,7 @@ fn viewer_asset_is_fresh() {
 
     let asset = include_str!("../assets/roadbook-viewer.js");
     let (header, body) = asset.split_once('\n').unwrap();
-    let stale = "crates/roadbook-cli/assets/roadbook-viewer.js is stale: run `pnpm --filter @roadbook/viewer build` and commit it";
+    let stale = "crates/roadbook-cli/assets/roadbook-viewer.js is stale: run `pnpm --filter @dire-kiwi/roadbook-viewer build` and commit it";
     assert!(
         header.contains(&format!("sources sha256:{sources} ")),
         "{stale} (the sources changed)\n{header}"
@@ -1332,7 +1332,7 @@ machine Order(item: Item, i: ref Inv, s: ref Stock, f: ref Far, a: ref A) {
 }
 
 /// Resolves what the generated modules import when Node runs them in a test project: `effect`
-/// and `@roadbook/effect` as `packages/effect` does, and `./x.road.js` to `./x.road.ts`.
+/// and `@dire-kiwi/roadbook-effect` as `packages/effect` does, and `./x.road.js` to `./x.road.ts`.
 const NODE_HOOKS: &str = r#"
 import { registerHooks } from "node:module"
 import { existsSync } from "node:fs"
@@ -1340,7 +1340,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 const effect = pathToFileURL(process.env.ROADBOOK_EFFECT_PACKAGE).href
 registerHooks({
   resolve(specifier, context, next) {
-    if (specifier === "effect" || specifier === "@roadbook/effect") {
+    if (specifier === "effect" || specifier === "@dire-kiwi/roadbook-effect") {
       return next(specifier, { ...context, parentURL: effect })
     }
     if (specifier.endsWith(".road.js") && context.parentURL !== undefined) {

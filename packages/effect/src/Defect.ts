@@ -1,4 +1,4 @@
-import type * as Core from "@roadbook/core"
+import type * as Core from "@dire-kiwi/roadbook-core"
 
 const describe = (defect: Core.Defect): string => {
   switch (defect.kind) {

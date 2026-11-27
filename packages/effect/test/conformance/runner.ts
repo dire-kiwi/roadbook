@@ -16,7 +16,7 @@
  * runner drains the scheduler after each action, synchronously, and that is "wait until
  * quiescent".
  */
-import * as Core from "@roadbook/core"
+import * as Core from "@dire-kiwi/roadbook-core"
 import { Cause, Effect, Exit, type Fiber, References, Scheduler, Scope } from "effect"
 import * as fs from "node:fs"
 import * as path from "node:path"

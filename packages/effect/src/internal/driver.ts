@@ -7,7 +7,7 @@
  * step runs in `Effect.onInterrupt`. A run starts from its input (`start`) or from a saved
  * snapshot (`restore`), and can be saved at any time and suspended once idle.
  */
-import * as Core from "@roadbook/core"
+import * as Core from "@dire-kiwi/roadbook-core"
 import { Cause, Context, Deferred, Effect, Exit, Fiber, FiberMap, Predicate, Queue, Stream, SubscriptionRef } from "effect"
 import { Defect, hostDefect } from "../Defect.ts"
 import type { Actor, Handle, MachineDef, RestoreOptions, Snapshot } from "../Machine.ts"
@@ -50,7 +50,7 @@ export interface InvokeContext {
 
 export const CurrentInvoke: Context.Reference<InvokeContext | undefined> = Context.Reference<
   InvokeContext | undefined
->("@roadbook/effect/InvokeContext", { defaultValue: () => undefined })
+>("@dire-kiwi/roadbook-effect/InvokeContext", { defaultValue: () => undefined })
 
 // ---- a machine bound to its implementations ----------------------------------------------------
 

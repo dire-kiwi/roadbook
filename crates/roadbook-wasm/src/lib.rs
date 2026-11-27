@@ -1,5 +1,5 @@
 //! The Roadbook compiler as WebAssembly (`wasm32-unknown-unknown`, through `wasm-bindgen`),
-//! for the npm package `@roadbook/cli` (`packages/cli`), which commits the built module.
+//! for the npm package `@dire-kiwi/roadbook-cli` (`packages/cli`), which commits the built module.
 //!
 //! The module has no file system. It reads files through `FsLoader` (the same loader the
 //! command line uses, so packages, `node_modules` and `exports` are found the same way) over
