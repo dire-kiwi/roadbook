@@ -17,6 +17,7 @@ import {
 } from "./ir.ts"
 import type { Json } from "./json.ts"
 import { redactor } from "./redact.ts"
+import { withoutChildren } from "./saved.ts"
 import { expandType, isOptionalType, parseTypeRef } from "./typeref.ts"
 import type {
   CallEntry,
@@ -161,7 +162,8 @@ export const restore = (
       machine: saved.machine,
       ir: index.machine.hash,
       migrated,
-      snapshot: saved
+      // Without the snapshots of child runs nested in it: each child run writes its own.
+      snapshot: withoutChildren(saved)
     })
   }
   try {
@@ -1020,11 +1022,11 @@ class Macrostep {
     this.pending = []
   }
 
-  /** Trace and start spawned child `ch`. */
-  private startChild(ch: SpawnedEntry) {
+  /** Trace and start spawned child `ch`, restoring it from `saved` if it has one. */
+  private startChild(ch: SpawnedEntry, saved: Saved | null = null) {
     const src = this.collectionMachine(ch.children)
     this.trace({ kind: "spawn.started", spawn: ch.id, children: ch.children, key: ch.key, src, args: ch.args })
-    this.commands.push({ kind: "spawn.start", spawn: ch.id, src, args: ch.args })
+    this.commands.push({ kind: "spawn.start", spawn: ch.id, src, args: ch.args, saved })
   }
 
   // ---- settling, work, finishing ----
@@ -1076,8 +1078,11 @@ class Macrostep {
     }
   }
 
-  /** Trace and start invoke `invokeId` of `state`, its arguments evaluated now. */
-  private startInvoke(state: State, invokeId: number) {
+  /**
+   * Trace and start invoke `invokeId` of `state`, its arguments evaluated now, its child run
+   * restored from `saved` if it has one.
+   */
+  private startInvoke(state: State, invokeId: number, saved: Saved | null = null) {
     const invoke = state.invoke!
     // A call's peer is read before its arguments are evaluated, as a `send`'s address is.
     const to = invoke.kind === "call" && invoke.to !== null ? this.readName(invoke.to.name) as string : null
@@ -1099,7 +1104,8 @@ class Macrostep {
       srcKind: invoke.kind,
       to,
       as: invoke.as,
-      args
+      args,
+      saved
     })
   }
 
@@ -1109,11 +1115,11 @@ class Macrostep {
    * already due, the earliest first.
    */
   restartWork(saved: Saved, now: number) {
-    for (const ch of this.spawned) this.startChild(ch)
+    for (const ch of this.spawned) this.startChild(ch, saved.spawned?.find((c) => c.id === ch.id)?.child ?? null)
     for (const id of this.active) {
       const state = this.index.state(id)
       const inv = this.invokes.find((i) => i.state === id)
-      if (inv !== undefined) this.startInvoke(state, inv.id)
+      if (inv !== undefined) this.startInvoke(state, inv.id, saved.invokes.find((i) => i.id === inv.id)?.child ?? null)
       const timers = saved.timers.filter((t) => t.state === id && t.due > now).sort((a, b) => a.id - b.id)
       for (const tm of timers) {
         const delay = tm.due - now

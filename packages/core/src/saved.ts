@@ -9,11 +9,11 @@ import { expandType, fieldsOf, isOptionalType, type TypeRef } from "./typeref.ts
 import type { Saved, Snapshot } from "./types.ts"
 
 /**
- * The `snapshotVersion` this runtime saves. It restores this one, version 2, written before
- * keyed spawn, which has no `spawned`, and version 1, written before history states, which has
- * no `history` either.
+ * The `snapshotVersion` this runtime saves. It restores this one, version 3, written before
+ * child runs were saved, which has no `child`, version 2, written before keyed spawn, which has
+ * no `spawned`, and version 1, written before history states, which has no `history` either.
  */
-export const SNAPSHOT_VERSION = 3
+export const SNAPSHOT_VERSION = 4
 
 /** Why a saved snapshot was refused. */
 export type RefusalReason = "invalid" | "machine" | "ir" | "migration" | "ended" | "ref" | "calls"
@@ -34,8 +34,9 @@ export type Checked =
   | ({ readonly ok: false } & Refusal)
 
 /**
- * The saved form of `snapshot`: the version (always 3) added, each timer's due time from `due`,
- * and `calls` only when the run has pending calls.
+ * The saved form of `snapshot`: the version (always 4) added, each timer's due time from `due`,
+ * and `calls` only when the run has pending calls. No child run is nested in it: see
+ * `withChildren`.
  */
 export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Saved => ({
   snapshotVersion: SNAPSHOT_VERSION,
@@ -58,11 +59,88 @@ export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Sav
 })
 
 /**
- * Check `json` as a saved snapshot of machine `machine` of `ir`, as `restore` does: its shape
- * and version (`invalid`), the machine (`machine`), the hash (`ir`, or `migration` when
- * `migrate` fails; its result is checked again from the top, never migrated twice), the status
- * (`ended`), `ref` parameters (`ref`), pending calls (`calls`), and whether it fits the machine
- * (`invalid`).
+ * `saved` (version 4) with the saved snapshot `child(id)` of each of its invokes and spawned
+ * children that has one nested as its `child` (execution.md, "Saved child runs"): those whose
+ * work is a child run that has claimed its invoke and is open.
+ */
+export const withChildren = (saved: Saved, child: (id: number) => Saved | undefined): Saved => {
+  const nest = <E extends { readonly id: number }>(entry: E): E => {
+    const c = child(entry.id)
+    return c === undefined ? entry : { ...entry, child: c }
+  }
+  return saved.spawned === undefined
+    ? { ...saved, invokes: saved.invokes.map(nest) }
+    : { ...saved, invokes: saved.invokes.map(nest), spawned: saved.spawned.map(nest) }
+}
+
+/**
+ * `saved` without the snapshots of child runs nested in it, as a `restored` record holds it;
+ * `saved` itself when it has none (a version 1 to 3 snapshot is held as it was given).
+ */
+export const withoutChildren = (saved: Saved): Saved => {
+  const has = (e: { readonly child?: Saved }) => e.child !== undefined
+  if (!saved.invokes.some(has) && !(saved.spawned ?? []).some(has)) return saved
+  const strip = <E extends { readonly child?: Saved }>({ child: _, ...rest }: E): Omit<E, "child"> => rest
+  return saved.spawned === undefined
+    ? { ...saved, invokes: saved.invokes.map(strip) }
+    : { ...saved, invokes: saved.invokes.map(strip), spawned: saved.spawned.map(strip) }
+}
+
+/** Each snapshot nested in `saved` (not deeper), with its entry and the machine the entry starts. */
+const nestedOf = (ir: Ir, m: Machine | undefined, saved: Saved) => {
+  const found: Array<{ readonly what: string; readonly id: number; readonly machine: string | undefined; readonly child: Saved }> = []
+  for (const inv of saved.invokes) {
+    if (inv.child === undefined) continue
+    // A machine invoke's `src` is the machine; a task's or a call's is not one.
+    const machine = Object.hasOwn(ir.machines, inv.src) ? inv.src : undefined
+    found.push({ what: `invoke ${inv.id}`, id: inv.id, machine, child: inv.child })
+  }
+  for (const ch of saved.spawned ?? []) {
+    if (ch.child === undefined) continue
+    const decl = m !== undefined && Object.hasOwn(m.children, ch.children) ? m.children[ch.children] : undefined
+    const machine = decl !== undefined && Object.hasOwn(ir.machines, decl.machine) ? decl.machine : undefined
+    found.push({ what: `spawned child ${ch.id}`, id: ch.id, machine, child: ch.child })
+  }
+  return found
+}
+
+/**
+ * Whether a hash in the tree of `saved`, a snapshot of `m`, is not the hash of its machine: its
+ * own, or a nested snapshot's against the machine its entry starts. Gives what differs.
+ */
+const hashIssue = (ir: Ir, name: string, saved: Saved, what = "the snapshot"): string | undefined => {
+  const m = ir.machines[name]!
+  if (saved.ir !== m.hash) return `${what} was saved with ${saved.ir}, and ${name} is now ${m.hash}`
+  for (const nested of nestedOf(ir, m, saved)) {
+    if (nested.machine === undefined) continue
+    const issue = hashIssue(ir, nested.machine, nested.child, `the child run of ${nested.what} of ${what}`)
+    if (issue !== undefined) return issue
+  }
+  return undefined
+}
+
+/** A machine of the tree of `saved`, a snapshot of `m`, that has a `ref` parameter, and which. */
+const refIssue = (ir: Ir, name: string, saved: Saved): string | undefined => {
+  const m = ir.machines[name]!
+  const ref = m.params.find((p) => holdsRef(ir, p.type))
+  if (ref !== undefined) return `${name} holds a ref in parameter ${ref.name}, which cannot be restored yet`
+  for (const nested of nestedOf(ir, m, saved)) {
+    // The machine its entry starts; a child on another entry (a task's or a call's) is refused
+    // as `invalid` after this.
+    if (nested.machine === undefined) continue
+    const issue = refIssue(ir, nested.machine, nested.child)
+    if (issue !== undefined) return issue
+  }
+  return undefined
+}
+
+/**
+ * Check `json` as a saved snapshot of machine `machine` of `ir`, as `restore` does, for the
+ * whole tree (the snapshot and every one nested in it), each reason for the whole tree before
+ * the next: its shape and version (`invalid`), the machine (`machine`), the hashes (`ir`, or
+ * `migration` when `migrate` fails; called once for the whole tree, and its result is checked
+ * again from the top, never migrated twice), the status (`ended`), `ref` parameters (`ref`),
+ * pending calls (`calls`), and whether it fits the machine (`invalid`).
  */
 export const checkSaved = (ir: Ir, machine: string, json: unknown, migrate?: Migrate): Checked => {
   const refuse = (reason: RefusalReason, message: string): Checked => ({ ok: false, reason, message })
@@ -73,30 +151,27 @@ export const checkSaved = (ir: Ir, machine: string, json: unknown, migrate?: Mig
     return refuse("machine", `the snapshot is of machine ${saved.machine}, not ${machine}`)
   }
   const m = ir.machines[machine]!
-  if (saved.ir !== m.hash) {
-    if (migrate === undefined) {
-      return refuse("ir", `the snapshot was saved with ${saved.ir}, and ${machine} is now ${m.hash}; give a migration`)
-    }
+  const stale = hashIssue(ir, machine, saved)
+  if (stale !== undefined) {
+    if (migrate === undefined) return refuse("ir", `${stale}; give a migration`)
     const result = migrate(saved as unknown as Json)
     if ("error" in result) return refuse("migration", `the migration failed: ${result.error}`)
     // The result is checked from the top, and never migrated again.
     const again = checkSaved(ir, machine, result.value)
     if (!again.ok) {
       return again.reason === "ir"
-        ? refuse("ir", `the migration gave a snapshot with ${(result.value as { ir: string }).ir}, not ${m.hash}`)
+        ? refuse("ir", `the migration gave a snapshot in which ${hashIssue(ir, machine, result.value as unknown as Saved)}`)
         : again
     }
     return { ok: true, saved: again.saved, migrated: saved.ir }
   }
   if (saved.status !== "running") return refuse("ended", `the run has already ended (${saved.status})`)
-  const ref = m.params.find((p) => holdsRef(ir, p.type))
-  if (ref !== undefined) {
-    return refuse("ref", `${machine} holds a ref in parameter ${ref.name}, which cannot be restored yet`)
-  }
+  const ref = refIssue(ir, machine, saved)
+  if (ref !== undefined) return refuse("ref", ref)
   if (saved.calls !== undefined && saved.calls.length > 0) {
     return refuse("calls", `the run has ${saved.calls.length} pending calls, whose callers are gone`)
   }
-  const fit = fitIssue(ir, m, saved)
+  const fit = treeFitIssue(ir, m, saved)
   if (fit !== undefined) return refuse("invalid", `the snapshot does not fit ${machine}: ${fit}`)
   // A copy: the run does not share anything with what the caller holds.
   return { ok: true, saved: copyJson(saved), migrated: null }
@@ -105,8 +180,9 @@ export const checkSaved = (ir: Ir, machine: string, json: unknown, migrate?: Mig
 // ---- the shape: snapshot.schema.json --------------------------------------------------------
 
 /**
- * Whether `u` matches `snapshot.schema.json`: version 3 with `history` and `spawned`, version 2
- * with `history` only, or version 1 with neither. Its values are not checked.
+ * Whether `u` matches `snapshot.schema.json`: version 4 with `history` and `spawned` and maybe
+ * nested child snapshots (`child`, each of version 4), version 3 with `history` and `spawned`,
+ * version 2 with `history` only, or version 1 with neither. Its values are not checked.
  */
 export const isSaved = (u: unknown): u is Saved => shapeIssue(u) === undefined
 
@@ -168,15 +244,26 @@ const shapeIssue = (json: unknown): string | undefined => {
   if (!isObject(json)) return "not a JSON object"
   const version = json["snapshotVersion"]
   if (version === 1 && Object.hasOwn(json, "history")) return "it is version 1 and has history, which version 2 added"
-  if (version !== SNAPSHOT_VERSION && Object.hasOwn(json, "spawned")) {
+  if (version !== 3 && version !== 4 && Object.hasOwn(json, "spawned")) {
     return `it is version ${JSON.stringify(version)} and has spawned, which version 3 added`
   }
   const expected = version === 1 ? MEMBERS : version === 2 ? [...MEMBERS, "history"] : [...MEMBERS, "history", "spawned"]
   // `calls` is written only when the run has pending calls, in any version.
   const members = membersIssue(json, expected, "it", ["calls"])
   if (members !== undefined) return members
-  if (version !== 1 && version !== 2 && version !== SNAPSHOT_VERSION) {
-    return `snapshotVersion is ${JSON.stringify(version)}, and this runtime reads 1, 2 and ${SNAPSHOT_VERSION}`
+  if (version !== 1 && version !== 2 && version !== 3 && version !== SNAPSHOT_VERSION) {
+    return `snapshotVersion is ${JSON.stringify(version)}, and this runtime reads 1 to ${SNAPSHOT_VERSION}`
+  }
+  // A child run's saved snapshot, nested in its entry: version 4 only, and itself version 4.
+  const childIssue = (entry: { readonly [key: string]: unknown }, what: string): string | undefined => {
+    if (!Object.hasOwn(entry, "child")) return undefined
+    if (version !== SNAPSHOT_VERSION) {
+      return `it is version ${JSON.stringify(version)} and ${what} has a child, which version 4 added`
+    }
+    const issue = shapeIssue(entry["child"])
+    if (issue !== undefined) return `the child of ${what}: ${issue}`
+    const nested = (entry["child"] as { readonly [key: string]: unknown })["snapshotVersion"]
+    return nested === SNAPSHOT_VERSION ? undefined : `the child of ${what} is version ${JSON.stringify(nested)}, not 4`
   }
   if (!matches(UPPER, json["machine"])) return "machine is not a machine name"
   if (!isRunId(json["run"])) return "run is not a run id"
@@ -193,9 +280,11 @@ const shapeIssue = (json: unknown): string | undefined => {
   if (!Array.isArray(invokes)) return "invokes is not a list"
   for (const inv of invokes) {
     if (!isObject(inv)) return "an invoke is not an object"
-    const issue = membersIssue(inv, ["id", "state", "src"], "an invoke")
+    const issue = membersIssue(inv, ["id", "state", "src"], "an invoke", ["child"])
     if (issue !== undefined) return issue
     if (!isId(inv["id"]) || !matches(STATE_ID, inv["state"]) || !matches(SRC, inv["src"])) return "an invoke is malformed"
+    const child = childIssue(inv, `invoke ${inv["id"]}`)
+    if (child !== undefined) return child
   }
   if (Object.hasOwn(json, "calls")) {
     // Written only when not empty.
@@ -212,13 +301,15 @@ const shapeIssue = (json: unknown): string | undefined => {
   if (!Array.isArray(spawned)) return "spawned is not a list"
   for (const ch of spawned) {
     if (!isObject(ch)) return "a spawned child is not an object"
-    const issue = membersIssue(ch, ["id", "children", "key", "args"], "a spawned child")
+    const issue = membersIssue(ch, ["id", "children", "key", "args"], "a spawned child", ["child"])
     if (issue !== undefined) return issue
     const key = ch["key"]
     if (
       !isId(ch["id"]) || !matches(LOWER, ch["children"]) || !(typeof key === "string" || Number.isInteger(key)) ||
       !isObject(ch["args"]) || !Object.keys(ch["args"]).every((k) => LOWER.test(k))
     ) return "a spawned child is malformed"
+    const child = childIssue(ch, `spawned child ${ch["id"]}`)
+    if (child !== undefined) return child
   }
   const timers = json["timers"]
   if (!Array.isArray(timers)) return "timers is not a list"
@@ -259,6 +350,52 @@ const shapeIssue = (json: unknown): string | undefined => {
 }
 
 // ---- fitting the machine ------------------------------------------------------------------
+
+/**
+ * What makes `saved` not fit machine `m`, or a snapshot nested in it not fit its entry and its
+ * own machine, to any depth; or `undefined`.
+ */
+const treeFitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
+  const own = fitIssue(ir, m, saved)
+  if (own !== undefined) return own
+  for (const nested of nestedOf(ir, m, saved)) {
+    const issue = nestedIssue(ir, m, saved, nested)
+    if (issue !== undefined) return `the child run of ${nested.what}: ${issue}`
+  }
+  return undefined
+}
+
+/** What makes snapshot `nested.child`, nested in `saved` (which fits `m`), not fit, or `undefined`. */
+const nestedIssue = (
+  ir: Ir,
+  m: Machine,
+  saved: Saved,
+  nested: ReturnType<typeof nestedOf>[number]
+): string | undefined => {
+  const { child } = nested
+  if (nested.what.startsWith("invoke")) {
+    // `saved` fits `m`, so the entry's state has an invoke of its `src`.
+    const inv = saved.invokes.find((i) => i.id === nested.id)!
+    const kind = findState(m.root, inv.state)?.invoke?.kind
+    if (kind !== "machine") return `it is nested in the invoke of a ${kind ?? "task"}, which is not a child run`
+  }
+  if (nested.machine === undefined) return `its entry starts no machine of the IR`
+  if (child.machine !== nested.machine) return `it is of machine ${child.machine}, not ${nested.machine}`
+  const run = `${saved.run}.${nested.id}`
+  if (child.run !== run) return `its run is ${child.run}, not ${run}`
+  if (child.status !== "running") return `it has ended (${child.status}), and only a running child run is saved`
+  if (child.calls !== undefined) return "it has calls, which a child run never takes"
+  return treeFitIssue(ir, ir.machines[nested.machine]!, child)
+}
+
+const findState = (state: State, id: string): State | undefined => {
+  if (state.id === id) return state
+  for (const child of state.states) {
+    const found = findState(child, id)
+    if (found !== undefined) return found
+  }
+  return undefined
+}
 
 /** What makes `saved` not fit machine `m`, or `undefined`. */
 const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {

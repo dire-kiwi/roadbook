@@ -20,5 +20,7 @@ export {
   RUN_ID_PATTERN,
   SNAPSHOT_VERSION,
   toSaved,
-  valueIssue
+  valueIssue,
+  withChildren,
+  withoutChildren
 } from "./saved.ts"
