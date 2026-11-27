@@ -127,7 +127,7 @@ Below, "Roadbook" means `main`, and a feature from one of these tasks is marked 
 | --- | --- | --- | --- | --- |
 | Persist and restore | `getPersistedSnapshot`, `createActor(m, { snapshot })` | `restoreActor` | `save`, `restore`, `suspend`, `resume` | ✅ |
 | Pure step function | `transition`, `initialTransition` | Same | `start` and `step` in a pure core, specified in `spec/execution.md` | ✅ |
-| Child machines in a snapshot | Persisted recursively | Restored | Restarted from the beginning on restore, as are running tasks | — |
+| Child machines in a snapshot | Persisted recursively | Restored | Saved inside the parent's snapshot, each checked by its own hash, and restored where it was (SM-27); running tasks restart | ✅ |
 | Timers in a snapshot | — | Saved, resumed towards their deadline | Saved with their deadlines; one that passed fires as soon as the run is restored | ✅ |
 | A snapshot from a different chart | Restored as is | `version` and `machineVersions()` migrations | Refused unless a migration is given, by the IR hash, which changes with any change in behaviour | ≈ |
 | One snapshot format for two languages | — | — | The same JSON in TypeScript and Rust | ➕ |
@@ -159,7 +159,7 @@ Ordered from most to least likely to matter for program flow, which is what Road
 7. **A guard on the configuration.** XState's `stateIn` and `matches()` let a guard in one region ask what another region is doing. Roadbook has no form for it, and a chart keeps a variable in step instead.
 8. **Several targets in one transition**, to set more than one region of a parallel state at once.
 9. **Data local to a state.** XState v6's state `input` is passed on the transition into a state and is gone when it is left. In Roadbook every variable belongs to the machine; definite assignment makes this safe, but the variable outlives the state that needed it.
-10. **Child machines in snapshots.** XState persists a child machine's snapshot with its parent's. Roadbook restarts a child from the beginning when it restores a snapshot saved while the child ran, and `suspend` waits until no child is running, so a parent with long-lived children cannot be suspended between events. Saving a child run is listed as not yet specified.
+10. **Child machines in snapshots.** XState persists a child machine's snapshot with its parent's. Roadbook restarted a child from the beginning when it restored a snapshot saved while the child ran, and `suspend` waited until no child was running, so a parent with long-lived children could not be suspended between events. Closed by SM-27: snapshot version 4 nests each running child run's snapshot in its parent's, restore puts it back where it was, and `suspend` waits for the whole tree to be idle.
 11. **Smaller things:** partial wildcards (`mouse.*`), tags and `meta`, a default target for a history state, route states (for UI navigation, not much use here), reducer actors, and equality on records, lists and maps.
 
 ## What Roadbook does differently
