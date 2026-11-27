@@ -1149,8 +1149,9 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
               const earliest = dues.size === 0 ? undefined : Math.min(...dues.values())
               const delay = earliest === undefined ? undefined : earliest - now
               if (delay === undefined || delay > exec.park) {
-                // An answer recorded while this run was not told of it (it was not live here)
-                // is taken instead; the park also wakes for one recorded while it is parked.
+                // An answer already recorded is taken instead of parking, and the park races the
+                // answers still to come: the engine wakes a parked run for a record written while
+                // it was parking only if the park awaits it.
                 const answers = [...liveCalls].map((invoke) => answerRecord(env.runId, invoke))
                 for (const invoke of liveCalls) {
                   if ((yield* peek(exec, answerRecord(env.runId, invoke))) !== undefined) heard(invoke)
