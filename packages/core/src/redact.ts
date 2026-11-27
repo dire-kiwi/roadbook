@@ -13,7 +13,7 @@
 import type { CallDecl, Field, Ir, Machine } from "./ir.ts"
 import { expandType, fieldsOf, parseTypeRef, type TypeRef } from "./typeref.ts"
 import type { Json } from "./json.ts"
-import type { CoreRecord, Input, InvokeEntry, Saved, SpawnedEntry } from "./types.ts"
+import type { CoreRecord, Defect, Input, InvokeEntry, Saved, SpawnedEntry } from "./types.ts"
 
 /** What a redacted value is written as. */
 export const REDACTED = "<redacted>"
@@ -360,9 +360,19 @@ class Redactor {
         return { ...record, output: this.result(m.returns, record.output) }
       case "failed":
         return { ...record, error: this.error(record.error) as typeof record.error }
+      case "defect":
+        return { ...record, defect: this.defect(m, record.defect) }
       default:
         return record
     }
+  }
+
+  /**
+   * `defect` of a run of `m`, redacted: a strict machine's `unhandled` input as an `event` or
+   * `dropped` record shows it (an event, a message or a call, which need no invoke or child).
+   */
+  private defect(m: Machine, defect: Defect): Defect {
+    return defect.kind === "unhandled" ? { ...defect, event: this.anyInput(m, [], [], defect.event) as typeof defect.event } : defect
   }
 
   /** `value`, an event sent to a run of machine `to`, redacted. */

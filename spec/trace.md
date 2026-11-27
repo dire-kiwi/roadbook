@@ -149,17 +149,19 @@ The last two rules are for values a runtime is not meant to see at all: host cod
 | `restored` | `snapshot` | its `input` by the machine's parameters, its `vars` by its variables, each `spawned` child's `args` by the parameters of its collection's machine, a `result`'s `output` by the machine's result type and its `error` by its tag; nothing else in it is a value |
 | `set` | `value` | the variable (a variable the machine does not declare: `"<redacted>"`) |
 | `action` | `args` | each by its parameter of the action |
-| `invoke.started` | `args` | each by its parameter of the task or machine |
+| `invoke.started` | `args` | each by its parameter of the task or machine, or for a call invoke (`src` `inventory.reserve`) of the call on the `ref`'s machine |
 | `spawn.started` | `args` | each by its parameter of the machine (`src`); `key` is shown as it is: the compiler rejects a sensitive key (`RB0320`) |
 | `sent`, `undelivered` | `value` | the receiving machine's event of its `_tag` (the address's machine) |
 | `emitted` | `value` | the run's own emitted event of its `_tag` |
 | `done` | `output` | the machine's result type (for a machine that returns nothing, anything but `null` is `"<redacted>"`) |
 | `failed` | `error` | the error type its `_tag` names |
+| `replied` | `value` | for `done`, the call's result type (for a call that returns nothing, anything but `null` is `"<redacted>"`); for `fail`, the error type its `_tag` names |
 | `event`, `dropped`, `stale` | `event` | by the input's kind, below |
+| `defect` | `defect` | an `unhandled` defect's `event` as an `event` record's input, below; nothing else in a defect is a value |
 
 The `undelivered` record a driver writes repeats the value of the `sent` record before it, which the core has redacted.
 
-In an input, an `event` or `message` value is redacted as the run's own event of its `_tag`; an `invoke.fail` error as the error type its `_tag` names; an `invoke.done` value as the result type of the running invoke's task or machine (for one that returns nothing, anything but `null` is `"<redacted>"`); a `spawn.fail` error as the error type its `_tag` names, and a `spawn.done` value as the result type of the spawned child's machine (one whose child is no longer in the snapshot, a stale one, is `"<redacted>"` whole, as for `invoke.done`). A tagged value (an event, an error) is treated as a record of its declaration, if that holds a sensitive value. One of a `_tag` nothing declares has every member but `_tag` redacted, and one that is not an object with a string `_tag` is `"<redacted>"` whole. Two inputs come from something the receiving run cannot always name:
+In an input, an `event` or `message` value is redacted as the run's own event of its `_tag`; a `call`'s `args` each by its parameter of the run's own call of that name; an `invoke.fail` error as the error type its `_tag` names; an `invoke.done` value as the result type of the running invoke's task, machine or call (for one that returns nothing, anything but `null` is `"<redacted>"`); a `spawn.fail` error as the error type its `_tag` names, and a `spawn.done` value as the result type of the spawned child's machine (one whose child is no longer in the snapshot, a stale one, is `"<redacted>"` whole, as for `invoke.done`). A tagged value (an event, an error) is treated as a record of its declaration, if that holds a sensitive value. One of a `_tag` nothing declares has every member but `_tag` redacted, and one that is not an object with a string `_tag` is `"<redacted>"` whole. Two inputs come from something the receiving run cannot always name:
 
 - an `emitted` value is redacted under the emitted event of its `_tag` of **every** machine of the IR that emits one whose fields are exactly the value's members (but `_tag`), one after the other in IR order. A holder of a `ref` does not know which machine sent it, and a parent may have left the invoking state; the sender's own declaration is always among them, since a core builds the event with every field it declares. If none fits, every member but `_tag` is redacted.
 - a `stale` `invoke.done` value is `"<redacted>"` whole: its invoke has ended, and with it what it ran, so its type is not known. The run ignores it anyway.

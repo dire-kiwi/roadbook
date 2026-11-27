@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use roadbook_ir::{Call, Field, Ir, Machine, TypeDef, TypeRef};
 use serde_json::Value;
 
-use crate::{Input, InvokeEntry, Object, Record, Saved, SpawnedEntry};
+use crate::{Defect, Input, InvokeEntry, Object, Record, Saved, SpawnedEntry};
 
 /// What a redacted value is written as.
 pub const REDACTED: &str = "<redacted>";
@@ -382,6 +382,11 @@ impl Redactor<'_> {
             // known (`Redactor::sent`).
             Record::Sent { .. } | Record::Undelivered { .. } => {}
             Record::Event { .. } | Record::Dropped { .. } | Record::Stale { .. } => {}
+            // A strict machine's `unhandled` input as an `event` or `dropped` record shows it:
+            // an event, a message or a call, which need no invoke or spawned child.
+            Record::Defect {
+                defect: Defect::Unhandled { event },
+            } => self.input(m, &[], &[], event),
             Record::Entered { .. }
             | Record::Exited { .. }
             | Record::Transition { .. }

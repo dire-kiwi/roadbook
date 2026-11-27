@@ -1,0 +1,41 @@
+{
+  "description": "Redaction in calls (`redact-call.road`). Client r2 calls strict Issuer r1's `issue` with a sensitive `pin`: it is redacted in r2's `started` and `invoke.started` and in r1's `call` input, and the sensitive `secret` of the `Token` r1 replies with is redacted in r1's `replied`, r2's `invoke.done` input and its `set`. After `Close`, r1 has no `on issue`, so Client r3's call ends r1 with an `unhandled` defect, whose call input has `pin` redacted as an `event` record's would; r3 takes `fail Unanswered`.",
+  "requires": [
+    "messaging",
+    "calls"
+  ],
+  "chart": "charts/redact-call.road",
+  "machine": "Issuer",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Client",
+      "run": "r2",
+      "input": {
+        "issuer": "r1",
+        "user": "ada",
+        "pin": "1234"
+      },
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    },
+    {
+      "start": "Client",
+      "run": "r3",
+      "input": {
+        "issuer": "r1",
+        "user": "bob",
+        "pin": "5678"
+      },
+      "status": "done"
+    }
+  ],
+  "status": "defect"
+}

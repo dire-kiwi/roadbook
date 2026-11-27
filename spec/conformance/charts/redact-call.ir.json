@@ -1,0 +1,506 @@
+{
+  "irVersion": "0.7",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/redact-call.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Token": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "user",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "secret",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "doc": "What the issuer gives: the token's secret is never shown.",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 54
+      }
+    }
+  },
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Issuer": {
+      "doc": "Issues tokens while it is open; strict, so a call while closed is a defect.",
+      "span": {
+        "file": 0,
+        "line": 11,
+        "col": 1,
+        "endLine": 27,
+        "endCol": 2
+      },
+      "strict": true,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 14
+          }
+        },
+        "Reopen": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {},
+      "calls": {
+        "issue": {
+          "params": [
+            {
+              "name": "user",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            },
+            {
+              "name": "pin",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            }
+          ],
+          "returns": "Token",
+          "errors": [],
+          "doc": "A token for `user`, who gave `pin`.",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 59
+          }
+        }
+      },
+      "children": {},
+      "root": {
+        "id": "Issuer",
+        "name": "Issuer",
+        "kind": "compound",
+        "doc": "Issues tokens while it is open; strict, so a call while closed is a defect.",
+        "span": {
+          "file": 0,
+          "line": 11,
+          "col": 1,
+          "endLine": 27,
+          "endCol": 2
+        },
+        "initial": "Issuer.Open",
+        "states": [
+          {
+            "id": "Issuer.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 20,
+              "col": 3,
+              "endLine": 23,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "call",
+                  "call": "issue"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "call"
+                      ],
+                      "type": "call issue",
+                      "text": "call"
+                    },
+                    "outcome": "done",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "user",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "user"
+                            ],
+                            "type": "string",
+                            "text": "event.user"
+                          }
+                        },
+                        {
+                          "name": "secret",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "pin"
+                            ],
+                            "type": "string",
+                            "text": "event.pin"
+                          }
+                        }
+                      ],
+                      "type": "Token",
+                      "text": "Token { user: event.user, secret: event.pin }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 5,
+                  "endLine": 21,
+                  "endCol": 84
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Issuer.Shut",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Issuer.Shut",
+            "name": "Shut",
+            "kind": "atomic",
+            "doc": "No `on issue`: a call here ends the run with an `unhandled` defect.",
+            "span": {
+              "file": 0,
+              "line": 26,
+              "col": 3,
+              "endLine": 26,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Reopen"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Issuer.Open",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 16,
+                  "endLine": 26,
+                  "endCol": 33
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:49d1196e54faa143f084e705154f4a6a0f50d2194045ce45f662f9d17a3a0e67"
+    },
+    "Client": {
+      "doc": "Asks the issuer for a token; gives the user it was issued to, or \"\".",
+      "span": {
+        "file": 0,
+        "line": 30,
+        "col": 1,
+        "endLine": 44,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "issuer",
+          "type": "ref Issuer",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "user",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "pin",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [],
+      "vars": [
+        {
+          "name": "token",
+          "type": "Token?",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 31,
+            "col": 3,
+            "endLine": 31,
+            "endCol": 20
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Client",
+        "name": "Client",
+        "kind": "compound",
+        "doc": "Asks the issuer for a token; gives the user it was issued to, or \"\".",
+        "span": {
+          "file": 0,
+          "line": 30,
+          "col": 1,
+          "endLine": 44,
+          "endCol": 2
+        },
+        "initial": "Client.Asking",
+        "states": [
+          {
+            "id": "Client.Asking",
+            "name": "Asking",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 35,
+              "col": 3,
+              "endLine": 40,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "call",
+              "src": "issue",
+              "to": {
+                "kind": "ref",
+                "name": "issuer",
+                "machine": "Issuer",
+                "state": null
+              },
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "user"
+                  ],
+                  "type": "string",
+                  "text": "user"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "pin"
+                  ],
+                  "type": "string",
+                  "text": "pin"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 36,
+                "col": 5,
+                "endLine": 39,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Client.Got",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "token",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "Token",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 7,
+                  "endLine": 37,
+                  "endCol": 50
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "Unanswered"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Client.Gave",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 38,
+                  "col": 7,
+                  "endLine": 38,
+                  "endCol": 30
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Client.Got",
+            "name": "Got",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 42,
+              "col": 3,
+              "endLine": 42,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "user"
+              ],
+              "type": "string",
+              "text": "user"
+            },
+            "fail": null
+          },
+          {
+            "id": "Client.Gave",
+            "name": "Gave",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 43,
+              "col": 3,
+              "endLine": 43,
+              "endCol": 33
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": "",
+              "type": "string",
+              "text": "\"\""
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:019afc754b1f23fc4485d50a6fd481d4f90806e1d5bc50a6c04c93ebb634ca69"
+    }
+  }
+}
