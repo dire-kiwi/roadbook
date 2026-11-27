@@ -343,6 +343,46 @@ describe("durable runs across a crash", () => {
       })), 20_000)
 })
 
+describe("durable runs restored with their child runs", () => {
+  it("a run restored from a version 4 snapshot recovers its child where the snapshot left it, across a crash mid-task", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const id = yield* process.run(flows.parent.start({ id: "s" }))
+        yield* until(() => world.count(1) === 1)
+        world.open(1)
+        // The Pipeline has done its first step and runs its second.
+        yield* until(() => world.count(2) === 1)
+        const saved = yield* process.run(flows.parent.snapshot(id))
+        expect(saved.snapshotVersion).toBe(4)
+        const child = saved.invokes[0]!.child!
+        expect(child.active).toEqual(["Pipeline", "Pipeline.Two"])
+        expect(child.vars).toEqual({ total: 10 })
+        expect(child.invokes.map((inv) => inv.src)).toEqual(["step"])
+        // Restored as another execution (its key is its input's id), with the child in it.
+        const restored = yield* process.run(flows.parent.restore({ ...saved, input: { id: "t" } }))
+        yield* until(() => world.count(2) === 2)
+        expect(world.count(1)).toBe(1)
+        yield* process.crash
+
+        // Both runs replay, and each child runs its second step again, not its first.
+        process = yield* start()
+        yield* until(() => world.count(2) === 4)
+        expect(world.count(1)).toBe(1)
+        expect(world.logged).toEqual(["one"])
+        world.open(2)
+        yield* process.run(flows.parent.send(restored, { _tag: "Push", by: 5 }))
+        yield* until(() => world.count(3) === 1)
+        world.open(3)
+        expect(yield* process.run(flows.parent.run({ id: "t" }))).toBe(10 + 20 + 5 + 30)
+        expect(world.count(1)).toBe(1)
+        // The restored child run began with its own `restored` record, once: the replay wrote none.
+        const childRestored = world.records.filter((r) => r.kind === "restored" && r.parent !== undefined)
+        expect(childRestored.map((r) => r.run)).toEqual([`${childRestored[0]!.parent}.1`])
+        yield* process.crash
+      })), 20_000)
+})
+
 describe("host listeners of durable runs", () => {
   it("hear each emitted event once, though a run that parks replays the steps that emitted it", () =>
     scenario(({ flows, start, world }) =>
