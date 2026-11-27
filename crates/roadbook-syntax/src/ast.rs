@@ -234,9 +234,13 @@ impl Builtin {
     }
 }
 
-/// `machine Name(params) [-> T] [! E | F] { body }`. The name and doc are on the [`Decl`].
+/// `[strict] machine Name(params) [-> T] [! E | F] { body }`. The name and doc are on the
+/// [`Decl`].
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Machine {
+    /// Written `strict machine`: an event or message of its own that enables no transition is a
+    /// defect instead of being dropped.
+    pub strict: bool,
     pub params: Vec<Field>,
     pub returns: Option<TypeRef>,
     pub errors: Vec<Ident>,
@@ -530,12 +534,16 @@ impl Branches {
     }
 }
 
-/// `[if guard] [-> Target] [effects]`, at least one of the target and the effects.
+/// `[if guard] [-> Target] [effects]`, at least one of the target and the effects, or
+/// `[if guard] ignore`, which has neither.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Branch {
     pub guard: Option<Expr>,
     pub target: Option<Target>,
     pub effects: Vec<Effect>,
+    /// Written `ignore`: the branch takes the event and does nothing. Only in an `on`
+    /// transition; it has no target and no effects.
+    pub ignore: bool,
     #[serde(skip)]
     pub span: Span,
 }

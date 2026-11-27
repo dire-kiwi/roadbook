@@ -370,7 +370,8 @@ pub fn declaration(d: &Decl) -> (SymbolKind, String) {
         DeclKind::Machine(m) => (
             SymbolKind::Machine,
             format!(
-                "machine {n}({}){}",
+                "{}machine {n}({}){}",
+                if m.strict { "strict " } else { "" },
                 list(&m.params),
                 result_text(m.returns.as_ref(), &m.errors)
             ),

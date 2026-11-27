@@ -53,7 +53,7 @@ export interface InventoryDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/inventory/inventory.road",
@@ -198,6 +198,7 @@ const ir: unknown = {
         "endLine": 51,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "warehouse",
@@ -733,7 +734,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:071b55fcb74b074e5997afbc4d27a6e378d7343c9ba62389f4c30f67d51e184f"
+      "hash": "sha256:f1433a899791969b810833991a77a34e053bb6c358ea72a6acd57c8cd06ffab1"
     }
   }
 }

@@ -137,7 +137,7 @@ function transitionSummary(ctx: PanelContext, state: State, index: number, withS
   const g = guardText(state, index)
   const kind = triggerKind(t.trigger)
   const cls = kind === 'done' ? 'rb-t-done' : kind === 'fail' ? 'rb-t-fail' : ''
-  const target = t.target ? shortId(ctx, t.target) : 'stays (internal)'
+  const target = t.target ? shortId(ctx, t.target) : t.effects.length ? 'stays (internal)' : 'ignores it (internal)'
   return (
     `<button class="rb-tlink" type="button" data-select-transition="${esc(JSON.stringify([state.id, index]))}">` +
     (withSource ? `<span class="rb-arrow-text">${esc(shortId(ctx, state.id))}: </span>` : '') +
@@ -264,7 +264,13 @@ export function machinePanel(ctx: PanelContext): string {
       'Variables',
       list(m.vars.map((v) => `${esc(v.name)}: ${typeHtml(ir, v.type)}${v.init ? ` = ${esc(v.init.text)}` : ' <span class="rb-note">(assigned later)</span>'}${v.doc ? `<span class="rb-sub rb-note">${esc(v.doc)}</span>` : ''}`)),
     ) +
-    section('Events it accepts', eventItems(ctx.machine, m.events)) +
+    section(
+      'Events it accepts',
+      eventItems(ctx.machine, m.events) +
+        (m.strict
+          ? '<p class="rb-cnote">Strict: one of these events, a message or a call that no active state handles ends the run with a defect instead of being dropped.</p>'
+          : ''),
+    ) +
     section('Events it emits', eventItems(ctx.machine, m.emits)) +
     section('Calls it answers', callItems(ctx.machine, m.calls)) +
     section('Talks to', talksToSection(ctx)) +

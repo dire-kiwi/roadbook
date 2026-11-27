@@ -50,7 +50,7 @@ export interface OrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/orders/orders.road",
@@ -283,6 +283,7 @@ const ir: unknown = {
         "endLine": 45,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "id",
@@ -752,7 +753,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:82ce3caf828588c1646252c911596b4d6834da1667ce78848aa5f3594403f8bb"
+      "hash": "sha256:122c63bc978a1aa9cecfa061f136a5723d04525fe9065f0001924517ad77f9e4"
     },
     "Inventory": {
       "doc": "The stock of one warehouse, shared by every order. An order calls `reserve`, and the answer\ngoes to that order alone.",
@@ -763,6 +764,7 @@ const ir: unknown = {
         "endLine": 51,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "warehouse",
@@ -1298,7 +1300,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:071b55fcb74b074e5997afbc4d27a6e378d7343c9ba62389f4c30f67d51e184f"
+      "hash": "sha256:f1433a899791969b810833991a77a34e053bb6c358ea72a6acd57c8cd06ffab1"
     }
   }
 }

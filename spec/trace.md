@@ -26,7 +26,7 @@ States are named by their ids in the IR, transitions by their state's id and the
 | `entered` | `state` | When a state is entered, before its entry effects. The root is entered first and exited last. |
 | `exited` | `state` | When a state is left, after its invoke and timers were cancelled and its exit effects ran. |
 | `event` | `event` | When the run takes an input that enables a transition, before anything it causes. `event` is the input as the core received it (below). |
-| `dropped` | `event` | Instead of `event`, when the input enables no transition. Nothing else happens. |
+| `dropped` | `event` | Instead of `event`, when the input enables no transition. Nothing else happens. In a strict machine an external event or a message that enables no transition is an `unhandled` [defect](execution.md#defects) instead, and has no `dropped` record. |
 | `stale` | `event` | Instead of `event`, when the input is the outcome of an invoke, the expiry of a timer, or an event emitted by a child run, whose invoke or timer is no longer running: it was cancelled after the input had been queued. Nothing else happens. |
 | `transition` | `from`, `index`, `to` | When a transition is taken, before the exits it causes. `to` is the target state's id, or `null` for an internal transition. `always` and `done` transitions are traced the same way, with no `event` record before them. When one microstep takes transitions in several regions of a parallel state, their `transition` records come one after another, before all their exits ([a microstep](execution.md#a-microstep)). |
 | `set` | `var`, `value` | When an assignment runs, in an exit, transition or entry effect list. |
@@ -69,7 +69,7 @@ The two other inputs, `cancel` and `defect`, are not written as `event` records:
 
 ### Defects
 
-`{"kind": "host", "message": …}`, `{"kind": "unassigned", "var": …}`, `{"kind": "overflow", "expr": …}`, `{"kind": "undeclared", "error": …}`, `{"kind": "limit"}` or `{"kind": "answered", "call": …}`; see [execution.md](execution.md#defects).
+`{"kind": "host", "message": …}`, `{"kind": "unassigned", "var": …}`, `{"kind": "overflow", "expr": …}`, `{"kind": "undeclared", "error": …}`, `{"kind": "limit"}`, `{"kind": "unhandled", "event": …}` or `{"kind": "answered", "call": …}`; see [execution.md](execution.md#defects).
 
 ## Messages
 

@@ -1,4 +1,4 @@
-# The Roadbook IR, version 0.4
+# The Roadbook IR, version 0.5
 
 The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with a call to a peer, a message to it and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
@@ -22,7 +22,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 ```jsonc
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources":   [{ "path": "examples/shop/place_order.road", "package": null },
                 { "path": "examples/shop/types.road", "package": null }],
   "types":     { /* Name: type declaration */ },
@@ -123,6 +123,7 @@ Spans cover the whole declaration.
 "Checkout": {
   "doc": "Charge the customer's card, retrying while the payment gateway is down.",
   "span": { "file": 2, "line": 4, "col": 1, "endLine": 32, "endCol": 2 },
+  "strict": false,
   "params": [ /* fields */ ],
   "returns": "Receipt",
   "errors": ["CardDeclined", "GatewayUnavailable"],
@@ -137,7 +138,8 @@ Spans cover the whole declaration.
 
 | Member | Meaning |
 | --- | --- |
-| `doc`, `span` | The span runs from `machine` to the closing brace. |
+| `doc`, `span` | The span runs from `machine` (or `strict`) to the closing brace. |
+| `strict` | `true` for a `strict machine`: an external event, a message or a call that enables no transition is an `unhandled` defect instead of being dropped ([execution](execution.md#taking-an-input)). |
 | `params` | Parameters, in order. They are read-only variables. |
 | `returns` | Result type, or `null` if the machine returns nothing. |
 | `errors` | Declared errors, in source order. |
@@ -243,7 +245,7 @@ A child is addressed only from its invoking state and that state's descendants, 
 | `trigger` | What enables it. See below. |
 | `group` | The index, from 0, of the trigger block the transition was written in, among the blocks of its state. A single-line trigger is a block with one branch. The branches of one block are consecutive and share `group`; guards within a group are tried in order. |
 | `guard` | Boolean expression, or `null` for an unguarded branch (including `else`). |
-| `target` | Id of the target state, or `null` for an internal transition (the state is not left). |
+| `target` | Id of the target state, or `null` for an internal transition (the state is not left). A transition with no target and no effects is an `ignore`: it takes its event and does nothing. Only an `on` transition (`event`, `emitted` or `any`) is ever one. |
 | `effects` | [Effects](#effects) run when the transition is taken: all `set` assignments, then all `do` actions, each in the order written. |
 | `span` | For a single-branch trigger, from the trigger keyword to the end of the branch. For a branch in a block, from its `if` or `else` to the end of the branch. |
 
@@ -349,12 +351,19 @@ So comments, formatting, source positions, file names, packages, declaration ord
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.4`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.5`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
+
+## Changes in 0.5
+
+Version 0.5 adds [strict machines](../docs/design/language.md#strict-machines). Every machine has the new member `strict`, so every hash changed, and a snapshot saved under 0.4 is refused as `ir` unless the host gives a migration ([restoring](execution.md#restoring-a-snapshot)). There is no version 0.3: strict machines were built under that number while calls were built under 0.4, and calls landed first.
+
+- Machines have `strict`.
+- A transition may have no target and no effects: `on E ignore`, which 0.4 could not express.
 
 ## Changes in 0.4
 

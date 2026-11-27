@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/many.road",
@@ -20,6 +20,7 @@
         "endLine": 20,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -204,7 +205,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:3f24f908f7d8b59b8a0bb9b362212c94af029ff18bee30feda36b5f73985d95a"
+      "hash": "sha256:9a0fd607f955f56f2c004a1e2ef0f71a248a673c3635780de12b71a4b97b7b54"
     },
     "Leaf": {
       "doc": "Ends as soon as it starts.",
@@ -215,6 +216,7 @@
         "endLine": 27,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -265,7 +267,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:034927bb0acecd6e5fba3598e260c9cc89eae76f78ec221bd1b45d55b0c2a59f"
+      "hash": "sha256:9f2b29d13ec0829614b3928f1ce6a331cba2eb6895e61a6272345038a58e34be"
     }
   }
 }

@@ -363,6 +363,20 @@
           "additionalProperties": false
         },
         {
+          "description": "A strict machine was given one of its own events, a message or a call that enabled no transition. event is the input, of kind event, message or call.",
+          "properties": {
+            "kind": { "const": "unhandled" },
+            "event": {
+              "allOf": [
+                { "$ref": "#/$defs/event" },
+                { "properties": { "kind": { "enum": ["event", "message", "call"] } } }
+              ]
+            }
+          },
+          "required": ["kind", "event"],
+          "additionalProperties": false
+        },
+        {
           "description": "A reply was given a pending-call value whose call is not pending.",
           "properties": { "kind": { "const": "answered" }, "call": { "$ref": "#/$defs/lowerName" } },
           "required": ["kind", "call"],

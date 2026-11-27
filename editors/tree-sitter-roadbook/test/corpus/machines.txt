@@ -245,3 +245,57 @@ machine M() {
               (assignment
                 (identifier)
                 (integer)))))))))
+
+================================================================================
+A strict machine that ignores events on purpose
+================================================================================
+
+strict machine Lock() {
+  event Knock { loud: bool }
+  initial Closed
+  on Knock if event.loud ignore
+  state Closed {
+    on Knock {
+      if busy ignore
+      else    -> Closed
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (event_declaration
+        (type_identifier)
+        (fields
+          (field_declaration
+            (identifier)
+            (builtin_type))))
+      (initial
+        (type_identifier))
+      (on_transition
+        (event_pattern
+          (type_identifier))
+        (guard
+          (field_expression
+            (implicit_name)
+            (identifier)))
+        (ignore))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (branches
+              (branch
+                (guard
+                  (identifier))
+                (ignore))
+              (else_branch
+                (target
+                  (type_identifier))))))))))

@@ -432,6 +432,13 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 ];
                 chosen = self.select_call(call, &bound)?;
                 if chosen.is_empty() {
+                    // A strict machine fails on a call it does not handle; its driver answers
+                    // the call `Unanswered` as the run ends.
+                    if self.m.strict {
+                        return Err(Defect::Unhandled {
+                            event: Box::new(input.clone()),
+                        });
+                    }
                     // Dropped, and answered at once, so that its caller does not wait.
                     self.trace(Record::Dropped { event: input });
                     self.answer(pending, ReplyOutcome::Fail, unanswered());
@@ -460,6 +467,13 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             Input::Defect { .. } => unreachable!("handled by step"),
         }
         if chosen.is_empty() {
+            // A strict machine fails on one of its own events, or a message, that it does not
+            // handle (a call is above).
+            if self.m.strict && matches!(input, Input::Event { .. } | Input::Message { .. }) {
+                return Err(Defect::Unhandled {
+                    event: Box::new(input.clone()),
+                });
+            }
             self.trace(Record::Dropped { event: input });
             return Ok(());
         }

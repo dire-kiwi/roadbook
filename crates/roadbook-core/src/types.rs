@@ -27,7 +27,7 @@ pub enum Status {
 }
 
 /// Why a run ended with a defect. In JSON, `{"kind": "host", "message": …}` and so on.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
 pub enum Defect {
     /// Host code failed: a function, action or task threw or panicked, or returned a value
@@ -53,6 +53,12 @@ pub enum Defect {
     },
     /// Settling took more than [`crate::SETTLE_LIMIT`] microsteps.
     Limit,
+    /// A `strict` machine was given one of its own events, a message or a call that enabled no
+    /// transition.
+    Unhandled {
+        /// The input, an `event`, a `message` or a `call`, as an `event` record would show it.
+        event: Box<Input>,
+    },
     /// A `reply` was given a pending-call value whose call is not pending: it was answered
     /// already, or the run was restored.
     Answered {
@@ -88,6 +94,22 @@ impl fmt::Display for Defect {
                 )
             }
             Defect::Limit => write!(f, "settling took more than 1000 microsteps"),
+            Defect::Unhandled { event } => {
+                let tag = match &**event {
+                    Input::Event { value } | Input::Message { value, .. } => value
+                        .get("_tag")
+                        .and_then(Value::as_str)
+                        .unwrap_or("an event"),
+                    Input::Call { call, .. } => {
+                        return write!(
+                            f,
+                            "a `{call}` call enabled no transition in a strict machine"
+                        );
+                    }
+                    _ => "an input",
+                };
+                write!(f, "`{tag}` enabled no transition in a strict machine")
+            }
             Defect::Answered { call } => {
                 write!(f, "a `reply` answered a `{call}` call that is not pending")
             }
@@ -192,7 +214,7 @@ pub struct Snapshot {
 }
 
 /// What the driver gives the core.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
 pub enum Input {
     /// An external event, a tagged record: `{"_tag": "Cancel", …}`.

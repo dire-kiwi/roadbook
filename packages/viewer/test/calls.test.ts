@@ -1,4 +1,4 @@
-// Calls between runs (IR 0.4): `call` declarations, call invokes (`invoke inventory.reserve(…)`),
+// Calls between runs (IR 0.4 and later): `call` declarations, call invokes (`invoke inventory.reserve(…)`),
 // `on reserve`, `reply` and `Unanswered`, in the model text, the diagram, the details panel,
 // search, simulate and replay, for examples/orders (with examples/inventory) and
 // spec/conformance/charts/calls.road.

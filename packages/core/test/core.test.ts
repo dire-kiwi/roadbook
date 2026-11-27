@@ -55,7 +55,7 @@ describe("compareCodePoints", () => {
 
 describe("loadIr", () => {
   it("refuses another IR version, naming both", () => {
-    expect(() => loadIr({ irVersion: "0.1" })).toThrow(/"0\.1".*0\.4/)
+    expect(() => loadIr({ irVersion: "0.1" })).toThrow(/"0\.1".*0\.5/)
     expect(() => loadIr([])).toThrow(IrError)
   })
   it("refuses a machine the IR does not have", () => {

@@ -35,7 +35,7 @@ export interface BeaconDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "packages/effect/test/charts/beacon.road",
@@ -74,6 +74,7 @@ const ir: unknown = {
         "endLine": 29,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -401,7 +402,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:73e383011c00e5d22339cd4f3a1dd05bb151e9b1d7cbf40fc4901583a8838117"
+      "hash": "sha256:be8f0ce4e7c2fa61a63f0e7ab033fc3f4976bbcbaed19951e1ef6e55a528ce41"
     }
   }
 }

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/workers.road",
@@ -38,6 +38,7 @@
         "endLine": 20,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -189,7 +190,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d5d9c6308eb110562154ceca728dd75ec7d9b9fe9e9a499cbbdfdd47ffc8588d"
+      "hash": "sha256:6a411694b31e9bf5ed42460ec03007b197d495af9233130ceb212afa42b3a49c"
     },
     "Worker": {
       "doc": "Works until it is cancelled, then says so to the logbook and to its parent.",
@@ -200,6 +201,7 @@
         "endLine": 34,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "book",
@@ -356,7 +358,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:0dcdbeac028144d3712739a11aab22b9271153742363e198e434750cdc0169bf"
+      "hash": "sha256:1e2c3e5946c80834c532b27e75856bf017d25e72a64f92a9510ff875b733a6bb"
     },
     "Boss": {
       "doc": "Watches a Worker, which it can restart or leave.",
@@ -367,6 +369,7 @@
         "endLine": 55,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "book",
@@ -621,7 +624,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:5f338b46dda334c72c4ff8134e576ba89d48d1453428c8702c39789560b51f51"
+      "hash": "sha256:6a2148ace642621faa59476c272a9966cd7b86feaaec99511b2f9a20930ea1fc"
     }
   }
 }

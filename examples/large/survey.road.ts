@@ -45,7 +45,7 @@ export interface SatisfactionSurveyDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/large/survey.road",
@@ -726,6 +726,7 @@ const ir: unknown = {
         "endLine": 33,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "ticket",
@@ -1192,7 +1193,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:8a187ad1e1c904789981af62fae9381f227c0ca24ce4b6bd35ac3ddab730a887"
+      "hash": "sha256:4bad4fa37e01fef6c65c4fc357c92569cc91e8a5408308502e395824537f44d6"
     }
   }
 }

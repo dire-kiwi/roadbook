@@ -1,11 +1,11 @@
 /**
- * The Roadbook IR, version 0.4, as `spec/ir.md` describes it. The types mirror the JSON;
+ * The Roadbook IR, version 0.5, as `spec/ir.md` describes it. The types mirror the JSON;
  * {@link loadIr} checks the version before anything else.
  */
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.4"
+export const IR_VERSION = "0.5"
 
 export interface Span {
   readonly file: number
@@ -80,6 +80,7 @@ export const UNANSWERED = "Unanswered"
 export interface Machine {
   readonly doc: string
   readonly span: Span
+  readonly strict: boolean
   readonly params: ReadonlyArray<Field>
   readonly returns: string | null
   readonly errors: ReadonlyArray<string>

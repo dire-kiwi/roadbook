@@ -1,0 +1,360 @@
+{
+  "irVersion": "0.5",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/strict.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {
+    "fetch": {
+      "params": [],
+      "returns": "int",
+      "errors": [],
+      "doc": "Looks something up; the case only ever gives it small numbers.",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 20
+      }
+    }
+  },
+  "machines": {
+    "Lock": {
+      "doc": "Opens and closes, and takes a loud knock anywhere and a quiet one only while open.",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 35,
+        "endCol": 2
+      },
+      "strict": true,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "tries",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "Never set: the guarded timer below is never enabled.",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Open": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 13
+          }
+        },
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 14
+          }
+        },
+        "Knock": {
+          "fields": [
+            {
+              "name": "loud",
+              "type": "bool",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 29
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "root": {
+        "id": "Lock",
+        "name": "Lock",
+        "kind": "compound",
+        "doc": "Opens and closes, and takes a loud knock anywhere and a quiet one only while open.",
+        "span": {
+          "file": 0,
+          "line": 9,
+          "col": 1,
+          "endLine": 35,
+          "endCol": 2
+        },
+        "initial": "Lock.Closed",
+        "states": [
+          {
+            "id": "Lock.Closed",
+            "name": "Closed",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 21,
+              "col": 3,
+              "endLine": 29,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "fetch",
+              "to": null,
+              "as": null,
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 26,
+                "col": 5,
+                "endLine": 28,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Open"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Lock.Opened",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 36
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 5,
+                  "endLine": 23,
+                  "endCol": 33
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                },
+                "group": 2,
+                "guard": {
+                  "kind": "op",
+                  "op": ">",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "tries"
+                      ],
+                      "type": "int",
+                      "text": "tries"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 0,
+                      "type": "int",
+                      "text": "0"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "tries > 0"
+                },
+                "target": "Lock.Opened",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 24,
+                  "col": 5,
+                  "endLine": 24,
+                  "endCol": 36
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 3,
+                "guard": {
+                  "kind": "op",
+                  "op": ">",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 10,
+                      "type": "int",
+                      "text": "10"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "result > 10"
+                },
+                "target": "Lock.Opened",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 7,
+                  "endLine": 27,
+                  "endCol": 36
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Lock.Opened",
+            "name": "Opened",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 31,
+              "col": 3,
+              "endLine": 34,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Lock.Closed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 32,
+                  "col": 5,
+                  "endLine": 32,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Knock"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 5,
+                  "endLine": 33,
+                  "endCol": 20
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Knock"
+            },
+            "group": 0,
+            "guard": {
+              "kind": "ref",
+              "path": [
+                "event",
+                "loud"
+              ],
+              "type": "bool",
+              "text": "event.loud"
+            },
+            "target": null,
+            "effects": [],
+            "span": {
+              "file": 0,
+              "line": 19,
+              "col": 3,
+              "endLine": 19,
+              "endCol": 32
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:a6a3387aea9b17127994dd91b9a7ee3b5bfceedbad780e71b70434db73877d37"
+    }
+  }
+}

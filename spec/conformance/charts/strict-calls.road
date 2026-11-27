@@ -1,0 +1,68 @@
+// Conformance chart: a strict machine that answers calls. A call that no
+// `on name` takes is an `unhandled` defect, and the callee's driver answers
+// every call it was given and had not answered with `Unanswered`.
+
+/// A help desk that answers questions while it is open.
+strict machine Desk() {
+  /// How many questions it has answered.
+  call ask() -> int
+
+  /// Hold a place in the queue until the desk releases it.
+  call hold() -> int
+
+  var pending:  call hold
+  var answered: int = 0
+
+  event Close
+  event Release
+  event Reopen
+
+  initial Staffed
+
+  state Staffed {
+    initial Free
+
+    on ask            set answered = answered + 1  reply call done answered
+    on Close -> Shut
+
+    state Free { on hold -> Held  set pending = call }
+    state Held { on Release -> Free  reply pending done answered }
+  }
+
+  /// No `on ask` or `on hold`: in a strict machine, a call here is a defect.
+  state Shut { on Reopen -> Staffed }
+}
+
+/// Ask the desk a question; 0 if it does not answer.
+machine Asker(desk: ref Desk) -> int {
+  var n: int
+
+  initial Asking
+
+  state Asking {
+    invoke desk.ask() {
+      done            -> Got   set n = result
+      fail Unanswered -> Gave
+    }
+  }
+
+  final state Got  { output n }
+  final state Gave { output 0 }
+}
+
+/// Hold a place with the desk; 0 if it does not answer.
+machine Holder(desk: ref Desk) -> int {
+  var n: int
+
+  initial Holding
+
+  state Holding {
+    invoke desk.hold() {
+      done            -> Got   set n = result
+      fail Unanswered -> Gave
+    }
+  }
+
+  final state Got  { output n }
+  final state Gave { output 0 }
+}

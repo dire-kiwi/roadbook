@@ -416,6 +416,11 @@ class Macrostep {
       }
     }
     if (selected.length === 0) {
+      // A strict machine fails on one of its own events, a message or a call that it does not
+      // handle. Its driver answers the call `Unanswered` as the run ends.
+      if (this.index.machine.strict && (input.kind === "event" || input.kind === "message" || input.kind === "call")) {
+        throw new Abort({ kind: "unhandled", event: input })
+      }
       this.trace({ kind: "dropped", event: input })
       // A dropped call is answered at once, so its caller does not wait for it.
       if (input.kind === "call") this.answer(input.from, input.invoke, input.call, "fail", { _tag: UNANSWERED })

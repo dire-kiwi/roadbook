@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Roadbook IR 0.4",
+  "title": "Roadbook IR 0.5",
   "description": "The compiled form of a Roadbook project: one document per entry file. See spec/ir.md for what each member means. Every member listed is required; absent values are null, missing docs are \"\", and empty lists and maps are [] and {}.",
   "type": "object",
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.4" },
+    "irVersion": { "const": "0.5" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -222,10 +222,11 @@
     "machine": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["doc", "span", "params", "returns", "errors", "vars", "events", "emits", "calls", "root", "hash"],
+      "required": ["doc", "span", "strict", "params", "returns", "errors", "vars", "events", "emits", "calls", "root", "hash"],
       "properties": {
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" },
+        "strict": { "type": "boolean", "description": "Written strict machine: an event of its own, a message or a call that enables no transition is an unhandled defect instead of being dropped." },
         "params": { "$ref": "#/$defs/fields" },
         "returns": { "oneOf": [{ "$ref": "#/$defs/typeRef" }, { "type": "null" }] },
         "errors": { "$ref": "#/$defs/errors" },
