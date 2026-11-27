@@ -1,0 +1,74 @@
+{
+  "description": "A call whose parameters and result are a `map<string, int>` and a `Page<Item>` (`catalog.road`). Shopper r2's `search` reaches Catalog r1 with both arguments in their JSON forms, an object and a record, in `invoke.started` and the `call` input; r1 replies with what the function `inStock` returns for them, which r2 takes as its outcome and outputs.",
+  "requires": [
+    "messaging",
+    "calls"
+  ],
+  "chart": "charts/catalog.road",
+  "machine": "Catalog",
+  "input": {},
+  "stub": [],
+  "fns": {
+    "inStock": [
+      {
+        "args": [
+          {
+            "a1": 3,
+            "b2": 0
+          },
+          {
+            "items": [
+              {
+                "sku": "a1",
+                "qty": 2
+              },
+              {
+                "sku": "b2",
+                "qty": 1
+              }
+            ],
+            "next": "p2"
+          }
+        ],
+        "returns": {
+          "items": [
+            {
+              "sku": "a1",
+              "qty": 2
+            }
+          ],
+          "next": "p2"
+        }
+      }
+    ]
+  },
+  "actions": {},
+  "script": [
+    {
+      "start": "Shopper",
+      "run": "r2",
+      "input": {
+        "catalog": "r1",
+        "stock": {
+          "a1": 3,
+          "b2": 0
+        },
+        "wanted": {
+          "items": [
+            {
+              "sku": "a1",
+              "qty": 2
+            },
+            {
+              "sku": "b2",
+              "qty": 1
+            }
+          ],
+          "next": "p2"
+        }
+      },
+      "status": "done"
+    }
+  ],
+  "status": "running"
+}

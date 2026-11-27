@@ -77,3 +77,32 @@ fn the_hash_covers_collections_of_any_name() {
     assert_ne!(base, hash("string", "C"));
     assert_ne!(base, hash("int", "D"));
 }
+
+/// The interface of a peer, its `calls` included, names the types inside a call's parameters
+/// and result: a map's value type, a generic type's arguments. So a machine that only holds a
+/// `ref` to the peer, and one that calls it, change hash when such a type does, and neither
+/// changes when the peer's own states do.
+#[test]
+fn the_hash_covers_the_types_inside_a_peers_calls() {
+    let hash = |item: &str, count: &str, reply: &str, machine: &str| {
+        let src = format!(
+            "type Item {item}\ntype Count = {count}\ntype Page<T> {{ items: T[], next: string? }}\n\n\
+             machine Catalog() {{\n  call search(stock: map<string, Count>, page: Page<Item>) -> Page<Item>\n  event Ping\n  initial Open\n  state Open {{\n    on search reply call done {reply}\n    on Ping -> Open\n  }}\n}}\n\n\
+             machine Watcher(catalog: ref Catalog) {{\n  event Go\n  initial A\n  state A {{ on Go send catalog.Ping }}\n}}\n\n\
+             machine Shopper(catalog: ref Catalog, stock: map<string, Count>, page: Page<Item>) {{\n  initial A\n  state A {{\n    invoke catalog.search(stock, page) {{\n      done            -> B\n      fail Unanswered -> B\n    }}\n  }}\n  final state B {{}}\n}}\n"
+        );
+        let mut loader = roadbook_compiler::MemoryLoader::new().with("m.road", src);
+        let out = compile(&mut loader, "m.road", &Options::default()).unwrap();
+        assert!(!out.has_errors(), "{}", out.render());
+        out.ir.unwrap().machines[machine].hash.clone()
+    };
+    let item = "{ sku: string }";
+    let page = "event.page";
+    for m in ["Watcher", "Shopper"] {
+        let base = hash(item, "int", page, m);
+        assert_ne!(base, hash("{ sku: string, qty: int }", "int", page, m), "{m}: Item");
+        assert_ne!(base, hash(item, "float", page, m), "{m}: Count");
+        let empty = "Page { items: event.page.items, next: \"\" }";
+        assert_eq!(base, hash(item, "int", empty, m), "{m}: the peer's states");
+    }
+}
