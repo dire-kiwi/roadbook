@@ -1,0 +1,37 @@
+// Conformance chart: what spawned children emit, and who hears it. A parent
+// is sent only the emitted events its machine has an `on children.E` for.
+
+/// Says two things when told to, and ends when told to quit.
+machine Speaker(name: string) {
+  event Speak
+  event Quit
+  emits Ping  { n: int }
+  emits Pong  { n: int }
+
+  initial Talking
+
+  state Talking {
+    on Speak          emit Ping { n: 1 }  emit Pong { n: 2 }
+    on Quit  -> Gone
+  }
+
+  final state Gone {}
+}
+
+/// Hears its speakers' `Ping`, from every key but "quiet", and never their `Pong`.
+machine Listener() {
+  event Add  { id: string }
+  event Tell { id: string }
+
+  children speakers: Speaker by string
+
+  var heard: int = 0
+
+  initial Listening
+
+  state Listening {
+    on Add                             spawn speakers[event.id] = Speaker(event.id)
+    on Tell                            send speakers[event.id].Speak
+    on speakers.Ping if key != "quiet" set heard = heard + event.n
+  }
+}

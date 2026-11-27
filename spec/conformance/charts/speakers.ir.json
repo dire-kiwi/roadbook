@@ -1,0 +1,536 @@
+{
+  "irVersion": "0.7",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/speakers.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Speaker": {
+      "doc": "Says two things when told to, and ends when told to quit.",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 19,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Speak": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 6,
+            "col": 3,
+            "endLine": 6,
+            "endCol": 14
+          }
+        },
+        "Quit": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 7,
+            "col": 3,
+            "endLine": 7,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {
+        "Ping": {
+          "fields": [
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 25
+          }
+        },
+        "Pong": {
+          "fields": [
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 25
+          }
+        }
+      },
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Speaker",
+        "name": "Speaker",
+        "kind": "compound",
+        "doc": "Says two things when told to, and ends when told to quit.",
+        "span": {
+          "file": 0,
+          "line": 5,
+          "col": 1,
+          "endLine": 19,
+          "endCol": 2
+        },
+        "initial": "Speaker.Talking",
+        "states": [
+          {
+            "id": "Speaker.Talking",
+            "name": "Talking",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 13,
+              "col": 3,
+              "endLine": 16,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Speak"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "emit",
+                    "event": "Ping",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "n",
+                          "value": {
+                            "kind": "lit",
+                            "value": 1,
+                            "type": "int",
+                            "text": "1"
+                          }
+                        }
+                      ],
+                      "type": "Ping",
+                      "text": "Ping { n: 1 }"
+                    }
+                  },
+                  {
+                    "kind": "emit",
+                    "event": "Pong",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "n",
+                          "value": {
+                            "kind": "lit",
+                            "value": 2,
+                            "type": "int",
+                            "text": "2"
+                          }
+                        }
+                      ],
+                      "type": "Pong",
+                      "text": "Pong { n: 2 }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 14,
+                  "col": 5,
+                  "endLine": 14,
+                  "endCol": 61
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Quit"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Speaker.Gone",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 15,
+                  "col": 5,
+                  "endLine": 15,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Speaker.Gone",
+            "name": "Gone",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 18,
+              "col": 3,
+              "endLine": 18,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:874575f45768c9e1da2d3365df148d94a469d60ea3e0b35f8a6817142b6e479e"
+    },
+    "Listener": {
+      "doc": "Hears its speakers' `Ping`, from every key but \"quiet\", and never their `Pong`.",
+      "span": {
+        "file": 0,
+        "line": 22,
+        "col": 1,
+        "endLine": 37,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "heard",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 28,
+            "col": 3,
+            "endLine": 28,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Add": {
+          "fields": [
+            {
+              "name": "id",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 23,
+            "col": 3,
+            "endLine": 23,
+            "endCol": 28
+          }
+        },
+        "Tell": {
+          "fields": [
+            {
+              "name": "id",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 24,
+            "col": 3,
+            "endLine": 24,
+            "endCol": 28
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {
+        "speakers": {
+          "machine": "Speaker",
+          "key": "string",
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 26,
+            "col": 3,
+            "endLine": 26,
+            "endCol": 39
+          }
+        }
+      },
+      "root": {
+        "id": "Listener",
+        "name": "Listener",
+        "kind": "compound",
+        "doc": "Hears its speakers' `Ping`, from every key but \"quiet\", and never their `Pong`.",
+        "span": {
+          "file": 0,
+          "line": 22,
+          "col": 1,
+          "endLine": 37,
+          "endCol": 2
+        },
+        "initial": "Listener.Listening",
+        "states": [
+          {
+            "id": "Listener.Listening",
+            "name": "Listening",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 32,
+              "col": 3,
+              "endLine": 36,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Add"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "spawn",
+                    "children": "speakers",
+                    "machine": "Speaker",
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "id"
+                      ],
+                      "type": "string",
+                      "text": "event.id"
+                    },
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "id"
+                        ],
+                        "type": "string",
+                        "text": "event.id"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 5,
+                  "endLine": 33,
+                  "endCol": 84
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Tell"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "children",
+                      "name": "speakers",
+                      "machine": "Speaker",
+                      "state": null
+                    },
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "id"
+                      ],
+                      "type": "string",
+                      "text": "event.id"
+                    },
+                    "event": "Speak",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Speaker.Speak",
+                      "text": "Speak"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 34,
+                  "col": 5,
+                  "endLine": 34,
+                  "endCol": 69
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "children",
+                    "name": "speakers",
+                    "machine": "Speaker",
+                    "state": null
+                  },
+                  "event": "Ping"
+                },
+                "group": 2,
+                "guard": {
+                  "kind": "op",
+                  "op": "!=",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "key"
+                      ],
+                      "type": "string",
+                      "text": "key"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": "quiet",
+                      "type": "string",
+                      "text": "\"quiet\""
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "key != \"quiet\""
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "heard",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "heard"
+                          ],
+                          "type": "int",
+                          "text": "heard"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "event.n"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "heard + event.n"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 35,
+                  "col": 5,
+                  "endLine": 35,
+                  "endCol": 67
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:93616ecb25b4d305187887123975ebf732374299e9efc51568be6e68e67cce76"
+    }
+  }
+}

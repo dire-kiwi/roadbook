@@ -1,0 +1,40 @@
+{
+  "description": "Who hears a spawned child's emitted events (`speakers.road`). Each `Speaker` emits `Ping` and then `Pong` when told to speak. The Listener has an `on speakers.Ping` and nothing for `Pong`, so it is sent only `Ping`: from child `a` it takes it, with `key` `a`, and `Pong` writes nothing in its trace; from child `quiet` the guard `key != \"quiet\"` fails, so `Ping` is `dropped`, and `Pong` again writes nothing.",
+  "requires": [
+    "messaging",
+    "spawn"
+  ],
+  "chart": "charts/speakers.road",
+  "machine": "Listener",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Add",
+        "id": "a"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Tell",
+        "id": "a"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Add",
+        "id": "quiet"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Tell",
+        "id": "quiet"
+      }
+    }
+  ],
+  "status": "running"
+}
