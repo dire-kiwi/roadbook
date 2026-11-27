@@ -1,5 +1,5 @@
 {
-  "description": "A run saved while its child machine runs (the child has finished its first task and runs its second). The snapshot holds the parent's running invoke but nothing of the child. Restoring starts the invoke again with the same id and its arguments evaluated anew, so the child is a new child run of the restored run that starts from the beginning and runs its first task again. The original run and its child carry on untouched.",
+  "description": "A run saved while its child machine runs (the child has finished its first task and runs its second). The snapshot holds the parent's running invoke with the child's own snapshot in it, whose running invoke is a task and has none. Restoring starts the invoke again with the same id, and the child, a new child run of the restored run, is restored where it was: it starts its second task again and never runs its first. The original run and its child carry on untouched.",
   "requires": [
     "snapshots"
   ],
@@ -23,11 +23,6 @@
       "restore": "paying",
       "run": "r2",
       "status": "done"
-    },
-    {
-      "task": "quote",
-      "run": "r2.1",
-      "done": 12
     },
     {
       "task": "charge",

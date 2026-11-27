@@ -1,0 +1,146 @@
+// Conformance chart: child runs saved inside their parent's snapshot and restored where they
+// were (snapshot version 4). A counter kept by a desk, a desk kept by an office, an errand whose
+// child waits for a task, and a child with a sensitive parameter and variable.
+
+action log(what: string)
+task fetch(n: int)       -> int
+
+/// Counts what its parent sends it, and naps after five seconds without news.
+machine Tally(start: int) -> int {
+  event Add    { by: int }
+  event Finish
+  emits Added  { n: int }
+
+  var n: int = start
+
+  initial Counting
+
+  state Counting {
+    after 5s -> Napping
+
+    on Add             set n = n + event.by  emit Added { n: n }
+    on Finish -> Done
+  }
+
+  state Napping {
+    entry do log("nap")
+
+    on Add    -> Counting  set n = n + event.by  emit Added { n: n }
+    on Finish -> Done
+  }
+
+  final state Done { output n }
+}
+
+/// Keeps a Tally, passes on what it is told, and hears what it counts.
+machine Desk(start: int) -> int {
+  event Bump  { by: int }
+  event Close
+
+  var heard: int = 0
+
+  initial Open
+
+  state Open {
+    invoke Tally(start) as tally {
+      done -> Closed  set heard = result
+    }
+
+    on Bump        send tally.Add { by: event.by }
+    on Close       send tally.Finish
+    on tally.Added set heard = event.n
+  }
+
+  final state Closed { output heard }
+}
+
+/// Keeps a Desk: two levels of child runs.
+machine Office() {
+  event Bump  { by: int }
+  event Close
+
+  initial Working
+
+  state Working {
+    invoke Desk(1) as desk {
+      done -> Shut  do log("shut")
+    }
+
+    on Bump  send desk.Bump { by: event.by }
+    on Close send desk.Close
+  }
+
+  final state Shut {}
+}
+
+/// Fetches a number, then holds it until it is released.
+machine Fetcher(n: int) -> int {
+  event Release
+
+  var got: int = 0
+
+  initial Fetching
+
+  state Fetching {
+    invoke fetch(n) {
+      done -> Holding  set got = result
+    }
+  }
+
+  state Holding { on Release -> Done }
+
+  final state Done { output got }
+}
+
+/// Keeps a Fetcher, and releases it when told.
+machine Errand() {
+  event Release
+
+  initial Waiting
+
+  state Waiting {
+    invoke Fetcher(3) as fetcher {
+      done -> Finished
+    }
+
+    on Release send fetcher.Release
+  }
+
+  final state Finished {}
+}
+
+/// Keeps a secret given to it, and what it was last told.
+machine Safe(sensitive code: string) {
+  event Tell { sensitive note: string }
+  event Shut
+
+  sensitive var last: string = ""
+
+  initial Locked
+
+  state Locked {
+    on Tell          set last = event.note
+    on Shut -> Gone
+  }
+
+  final state Gone {}
+}
+
+/// Keeps a Safe, and passes on what it is told.
+machine Vault(sensitive code: string) {
+  event Tell { sensitive note: string }
+  event Shut
+
+  initial Holding
+
+  state Holding {
+    invoke Safe(code) as safe {
+      done -> Empty
+    }
+
+    on Tell send safe.Tell { note: event.note }
+    on Shut send safe.Shut
+  }
+
+  final state Empty {}
+}

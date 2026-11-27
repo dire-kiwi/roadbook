@@ -1,0 +1,37 @@
+{
+  "description": "A stubbed child machine never claims its invoke, so it is not a child run: the saved snapshot's invoke has no `child`, restoring starts the stub again, and suspend waits for it as for a task, here until the run has ended.",
+  "requires": [
+    "messaging",
+    "snapshots"
+  ],
+  "chart": "charts/kept.road",
+  "machine": "Desk",
+  "input": {
+    "start": 1
+  },
+  "stub": [
+    "Tally"
+  ],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "snapshot": "stubbed"
+    },
+    {
+      "restore": "stubbed",
+      "run": "r2",
+      "status": "done"
+    },
+    {
+      "suspend": "ended",
+      "run": "r2"
+    },
+    {
+      "task": "Tally",
+      "run": "r2",
+      "done": 4
+    }
+  ],
+  "status": "running"
+}

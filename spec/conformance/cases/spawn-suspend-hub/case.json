@@ -1,0 +1,50 @@
+{
+  "description": "A pool whose spawned sessions wait for events is idle: suspend stops the pool and both sessions, each writing `suspended`, and the snapshot nests each session's in its `spawned` entry. Resumed, one session leaves (its outcome taken as `slots.done`), and the pool suspends again with the other still kept.",
+  "requires": [
+    "messaging",
+    "spawn",
+    "snapshots"
+  ],
+  "chart": "charts/hub.road",
+  "machine": "Pool",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Open",
+        "n": 1,
+        "name": "x"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Open",
+        "n": 2,
+        "name": "y"
+      }
+    },
+    {
+      "suspend": "hub"
+    },
+    {
+      "restore": "hub",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Leave",
+        "n": 1
+      },
+      "run": "r2"
+    },
+    {
+      "suspend": "rest",
+      "run": "r2"
+    }
+  ],
+  "status": "running"
+}

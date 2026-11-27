@@ -1,0 +1,39 @@
+{
+  "description": "An office saved with its desk and the desk's tally running, two levels of child runs: each snapshot is nested in its parent's, and each run keeps its own ids. Restored after the tally's timer was due, the grandchild `r2.1.1` queues its expiry at once with `timer.fire` and naps first; closing the restored office closes the whole tree.",
+  "requires": [
+    "messaging",
+    "snapshots"
+  ],
+  "chart": "charts/kept.road",
+  "machine": "Office",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Bump",
+        "by": 1
+      }
+    },
+    {
+      "snapshot": "deep"
+    },
+    {
+      "advance": 6000
+    },
+    {
+      "restore": "deep",
+      "run": "r2",
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "running"
+}

@@ -1,0 +1,39 @@
+{
+  "description": "A saved snapshot keeps the real values of a child run's sensitive parameter and variable. Restored, the parent's `restored` record shows its own snapshot redacted and without the nested child, and the child's own `restored` record shows the child's snapshot redacted.",
+  "requires": [
+    "messaging",
+    "snapshots"
+  ],
+  "chart": "charts/kept.road",
+  "machine": "Vault",
+  "input": {
+    "code": "s3cret"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Tell",
+        "note": "first"
+      }
+    },
+    {
+      "snapshot": "kept"
+    },
+    {
+      "restore": "kept",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Tell",
+        "note": "second"
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "running"
+}
