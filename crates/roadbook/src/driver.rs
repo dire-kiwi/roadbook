@@ -469,6 +469,7 @@ impl<'a> Driver<'a> {
         .unwrap_or_else(|e| panic!("{e}"));
         self.set_snapshot(snap);
         self.carry_out(commands).await;
+        self.shared.listeners_started();
         self.publish();
         while self.snap.status == Status::Running {
             let input = match self.take().await {
@@ -835,6 +836,8 @@ impl<'a> Driver<'a> {
                         });
                     }
                 }
+                // Host listeners: no filter, no record.
+                self.shared.tell_listeners(&value);
                 Ok(())
             }
             Command::TimerStart { timer, delay } => {

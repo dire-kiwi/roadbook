@@ -13,7 +13,7 @@
 import type { CallDecl, Field, Ir, Machine } from "./ir.ts"
 import { expandType, fieldsOf, parseTypeRef, type TypeRef } from "./typeref.ts"
 import type { Json } from "./json.ts"
-import type { CoreRecord, Defect, Input, InvokeEntry, Saved, SpawnedEntry } from "./types.ts"
+import type { CoreRecord, Defect, Input, InvokeEntry, Saved, SpawnedEntry, Tagged } from "./types.ts"
 
 /** What a redacted value is written as. */
 export const REDACTED = "<redacted>"
@@ -417,4 +417,15 @@ export const redactor = (ir: Ir): Redactor => {
     redactors.set(ir, r)
   }
   return r
+}
+
+/**
+ * `value`, an event a run of machine `machine` emits, redacted as its `emitted` record shows it:
+ * what a host listener hears, which is not redacted, compared with the trace.
+ */
+export const redactEmitted = (ir: Ir, machine: string, value: Tagged): Tagged => {
+  const m = own(ir.machines, machine)
+  if (m === undefined) return value
+  const record = redactor(ir).record(m, { kind: "emitted", message: 0, value })
+  return record.kind === "emitted" ? record.value : value
 }

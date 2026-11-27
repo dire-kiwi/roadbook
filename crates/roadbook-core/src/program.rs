@@ -7,6 +7,8 @@ use std::borrow::Cow;
 
 use roadbook_ir::{Ir, Machine, State, Trigger, TypeRef};
 
+use serde_json::Value;
+
 use crate::redact::{Marks, Redactor};
 
 /// An IR document, checked and indexed for the interpreter.
@@ -127,6 +129,27 @@ impl Program {
     /// The IR.
     pub fn ir(&self) -> &Ir {
         &self.ir
+    }
+
+    /// `value`, an event a run of `machine` emits, redacted as its `emitted` record shows it:
+    /// what a host listener hears, which is not redacted, as the trace shows it. A machine the
+    /// IR does not have leaves it as it is.
+    pub fn redact_emitted(&self, machine: &str, value: &mut Value) {
+        let r = self.redactor();
+        let Some(m) = self.ir.machines.get(machine) else {
+            return;
+        };
+        if !r.active() {
+            return;
+        }
+        let mut record = crate::Record::Emitted {
+            message: 0,
+            value: std::mem::take(value),
+        };
+        r.record(m, &mut record);
+        if let crate::Record::Emitted { value: v, .. } = record {
+            *value = v;
+        }
     }
 
     pub(crate) fn redactor(&self) -> Redactor<'_> {

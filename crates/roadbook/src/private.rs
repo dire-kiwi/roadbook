@@ -96,6 +96,16 @@ pub fn expect<T: DeserializeOwned>(value: Value) -> T {
     serde_json::from_value(value).unwrap_or_else(|e| result_defect(e.to_string()))
 }
 
+/// An emitted event, decoded for a [`crate::Subscription`]: as [`expect`], a host type that
+/// refuses it is a host defect.
+pub fn emitted<T: DeserializeOwned>(value: Value) -> T {
+    serde_json::from_value(value).unwrap_or_else(|e| {
+        std::panic::resume_unwind(Box::new(Defect::host(format!(
+            "an emitted event does not decode: {e}"
+        ))))
+    })
+}
+
 /// [`expect`] for a [`wire::Wire`] type.
 pub fn expect_wire<T: wire::Wire>(value: Value) -> T {
     T::from_wire(value).unwrap_or_else(|e| result_defect(e))
