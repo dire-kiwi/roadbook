@@ -1,0 +1,32 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0124]: `uploads` is a children collection, not a `ref`, so it has no `ended`
+ --> RB0124-ended-not-a-peer.road:9:6
+  |
+9 |   on uploads.ended -> A
+  |      ^^^^^^^
+  |
+  = help: a spawned child's end is its outcome: take it with `on uploads.done` and `on uploads.fail E` (or `on uploads.fail *`)
+
+error[RB0124]: `upload` names the machine `M.A` invokes, not a `ref`, so it has no `ended`
+  --> RB0124-ended-not-a-peer.road:14:8
+   |
+11 |     invoke Upload() as upload {
+   |                        ------ invoked here
+...
+14 |     on upload.ended -> B
+   |        ^^^^^^
+   |
+   = help: an invoked child's end is its invoke's outcome: handle it with `done` and `fail` inside the `invoke { }` of `M.A`
+
+error[RB0124]: `upload` names the machine `M.A` invokes, not a `ref`, so it has no `ended`
+  --> RB0124-ended-not-a-peer.road:17:8
+   |
+11 |     invoke Upload() as upload {
+   |                        ------ invoked here
+...
+17 |     on upload.ended -> A
+   |        ^^^^^^
+   |
+   = help: an invoked child's end is its invoke's outcome: handle it with `done` and `fail` inside the `invoke { }` of `M.A`

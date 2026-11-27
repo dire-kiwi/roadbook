@@ -39,7 +39,8 @@ pub(crate) struct MachineIndex {
     /// For each state, its initial child's index, if it names one.
     pub initial: Vec<Option<usize>>,
     /// The emitted events the machine has an `on x.E` for, anywhere in it, by the sender's
-    /// machine. A run receives no others.
+    /// machine, and `ended` for a machine it has an `on x.ended` for. A run receives no
+    /// others.
     hears: HashMap<String, HashSet<String>>,
 }
 
@@ -60,7 +61,14 @@ impl fmt::Display for ProgramError {
 
 impl std::error::Error for ProgramError {}
 
+/// The name a peer's end has in [`Program::heard`].
+const ENDED_INPUT: &str = "ended";
+
 impl Program {
+    /// The name in [`Program::heard`] that says a run hears the end of a run of the sender's
+    /// machine: `"ended"`, which is never an event's name.
+    pub const ENDED: &'static str = ENDED_INPUT;
+
     /// Indexes `ir`. An IR whose transition targets or initial states name states their
     /// machine does not have is refused.
     pub fn new(ir: Ir) -> Result<Program, ProgramError> {
@@ -198,6 +206,12 @@ fn walk(s: &State, parent: Option<usize>, path: &mut Vec<usize>, idx: &mut Machi
                 .or_default()
                 .insert(event.clone());
         }
+        if let Trigger::Ended { from } = &t.trigger {
+            idx.hears
+                .entry(from.machine.clone())
+                .or_default()
+                .insert(ENDED_INPUT.to_owned());
+        }
     }
     for (i, c) in s.states.iter().enumerate() {
         path.push(i);
@@ -248,7 +262,10 @@ impl Program {
 
     /// The events of a run of machine `sender` that a run of `machine` receives when the
     /// sender emits them: those `machine` has an `on x.E` for, where `x` is a run of
-    /// `sender`, in any state (execution.md, "Messages between runs").
+    /// `sender`, in any state (execution.md, "Messages between runs"). It has
+    /// [`Program::ENDED`] too when `machine` has an `on x.ended` for a run of `sender`: a
+    /// run of `machine` hears the end of a run of `sender`. Event names are upper case, so
+    /// `ended` is never one.
     pub fn heard(&self, machine: &str, sender: &str) -> HashSet<String> {
         self.machines
             .get(machine)

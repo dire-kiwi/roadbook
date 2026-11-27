@@ -1,10 +1,11 @@
 /**
  * Ports: how a run is reached from outside its own fiber (execution.md, "Delivering
- * messages"). A port is a run's queue with its open flag and the runs subscribed to what it
- * emits. Pushing checks the flag and offers synchronously, so it is one operation with respect
- * to the run's closing, which also happens synchronously in the run's own fiber.
+ * messages"). A port is a run's queue with its open flag, the runs subscribed to what it emits
+ * and to its end, and how it closed. Pushing checks the flag and offers synchronously, so it is
+ * one operation with respect to the run's closing, which also happens synchronously in the
+ * run's own fiber; subscribing is one with respect to its end in the same way.
  */
-import type * as Core from "@dire-kiwi/roadbook-core"
+import * as Core from "@dire-kiwi/roadbook-core"
 import { Queue } from "effect"
 
 export interface Port {
@@ -19,9 +20,14 @@ export interface Port {
   open: boolean
   /**
    * The runs that hold a `ref` to this one and are open, each with the events it emits that they
-   * receive: those their machine has an `on` for.
+   * receive: those their machine has an `on` for, and `ended` if it has an `on x.ended`.
    */
   readonly subscribers: Map<Port, ReadonlySet<string>>
+  /**
+   * How the run closed, once its driver has ended it (after its last step's commands): kept for
+   * as long as the port, so that a run that subscribes later is told.
+   */
+  closedAs: Core.EndedStatus | undefined
   /**
    * For a durable run's handle, whose run may be live in this process, parked, recovering or
    * ended: how an input reaches it. Returns whether the run will take it (false once it ended).
@@ -35,6 +41,49 @@ export interface Port {
  */
 export interface Wake {
   readonly kind: "wake"
+}
+
+/**
+ * Subscribe `holder` to what `peer` emits and to its end, those of them in `heard`, as one
+ * operation with respect to the peer's end: unless the peer has ended already, which gives how
+ * it closed, and then `holder`'s own driver tells it (after its start step), if it hears that.
+ * A peer that has closed and not ended yet (it carries out its last step) still takes the
+ * subscription, and tells it as it ends.
+ */
+export const subscribe = (peer: Port, holder: Port, heard: ReadonlySet<string>): Core.EndedStatus | undefined => {
+  if (peer.closedAs !== undefined) return peer.closedAs
+  peer.subscribers.set(holder, heard)
+  return undefined
+}
+
+/** The `ended` input that tells a holder run `from` closed as `status`. */
+export const endedInput = (from: string, status: Core.EndedStatus): Core.Input => ({ kind: "ended", from, status })
+
+/**
+ * Tell the open subscribers of the run behind `port` that hear its end that it closed as
+ * `status`, and drop them all (execution.md, "Ending a run").
+ */
+export const tellEnded = (port: Port, status: Core.EndedStatus) => {
+  for (const [subscriber, heard] of port.subscribers) {
+    if (heard.has(Core.ENDED_INPUT)) push(subscriber, endedInput(port.id, status))
+  }
+  port.subscribers.clear()
+}
+
+/** How a run with status `status` closed, as its holders are told; `undefined` while it runs. */
+export const endedStatus = (status: Core.Status): Core.EndedStatus | undefined => {
+  switch (status) {
+    case "done":
+      return "Done"
+    case "failed":
+      return "Failed"
+    case "cancelled":
+      return "Cancelled"
+    case "defect":
+      return "Defect"
+    default:
+      return undefined
+  }
 }
 
 /**

@@ -26,6 +26,10 @@ export interface Tree<T> {
   readonly parent: Tree<T> | null
 }
 
+/** How a peer's run ended: the type of `event.status` in `on name.ended`. Built in. */
+export const Ended = Schema.Literals(["Done", "Failed", "Cancelled", "Defect", "Suspended"])
+export type Ended = typeof Ended.Type
+
 // ---- machine: Overflow ----
 
 export interface OverflowDef extends Roadbook.MachineDef {
@@ -43,7 +47,7 @@ export interface OverflowDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.7",
+  "irVersion": "0.8",
   "sources": [
     {
       "path": "packages/effect/test/charts/runtime.road",
@@ -67,9 +71,9 @@ const ir: unknown = {
       "doc": "",
       "span": {
         "file": 0,
-        "line": 102,
+        "line": 118,
         "col": 1,
-        "endLine": 102,
+        "endLine": 118,
         "endCol": 27
       }
     },
@@ -82,9 +86,9 @@ const ir: unknown = {
       "doc": "",
       "span": {
         "file": 0,
-        "line": 103,
+        "line": 119,
         "col": 1,
-        "endLine": 103,
+        "endLine": 119,
         "endCol": 36
       }
     },
@@ -116,10 +120,28 @@ const ir: unknown = {
       "doc": "",
       "span": {
         "file": 0,
-        "line": 105,
+        "line": 121,
         "col": 1,
-        "endLine": 105,
+        "endLine": 121,
         "endCol": 65
+      }
+    },
+    "Ended": {
+      "kind": "enum",
+      "variants": [
+        "Done",
+        "Failed",
+        "Cancelled",
+        "Defect",
+        "Suspended"
+      ],
+      "doc": "How a peer's run ended: the type of `event.status` in `on name.ended`. Built in.",
+      "span": {
+        "file": 0,
+        "line": 1,
+        "col": 1,
+        "endLine": 1,
+        "endCol": 1
       }
     }
   },
@@ -149,9 +171,9 @@ const ir: unknown = {
       "doc": "",
       "span": {
         "file": 0,
-        "line": 107,
+        "line": 123,
         "col": 1,
-        "endLine": 107,
+        "endLine": 123,
         "endCol": 58
       }
     }
@@ -191,6 +213,24 @@ const ir: unknown = {
         "col": 1,
         "endLine": 7,
         "endCol": 20
+      }
+    },
+    "noted": {
+      "params": [
+        {
+          "name": "status",
+          "type": "Ended",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "Record how a peer ended.",
+      "span": {
+        "file": 0,
+        "line": 103,
+        "col": 1,
+        "endLine": 103,
+        "endCol": 28
       }
     }
   },
@@ -1237,13 +1277,187 @@ const ir: unknown = {
       },
       "hash": "sha256:f4b9343856abd75c9e05030e6a7a0e2177d49e2473bc07dd4c7de2021dd1e1b9"
     },
+    "Monitor": {
+      "doc": "Hears the end of each Desk of `desks` and of `spare`, noting how each ended, and ends with\nthe spare's.",
+      "span": {
+        "file": 0,
+        "line": 107,
+        "col": 1,
+        "endLine": 116,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "desks",
+          "type": "ref Desk[]",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "spare",
+          "type": "ref Desk?",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Monitor",
+        "name": "Monitor",
+        "kind": "compound",
+        "doc": "Hears the end of each Desk of `desks` and of `spare`, noting how each ended, and ends with\nthe spare's.",
+        "span": {
+          "file": 0,
+          "line": 107,
+          "col": 1,
+          "endLine": 116,
+          "endCol": 2
+        },
+        "initial": "Monitor.Watching",
+        "states": [
+          {
+            "id": "Monitor.Watching",
+            "name": "Watching",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 110,
+              "col": 3,
+              "endLine": 113,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "ended",
+                  "from": {
+                    "kind": "ref",
+                    "name": "desks",
+                    "machine": "Desk",
+                    "state": null
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "noted",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "status"
+                        ],
+                        "type": "Ended",
+                        "text": "event.status"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 111,
+                  "col": 5,
+                  "endLine": 111,
+                  "endCol": 51
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "ended",
+                  "from": {
+                    "kind": "ref",
+                    "name": "spare",
+                    "machine": "Desk",
+                    "state": null
+                  }
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Monitor.Over",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "noted",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "status"
+                        ],
+                        "type": "Ended",
+                        "text": "event.status"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 112,
+                  "col": 5,
+                  "endLine": 112,
+                  "endCol": 51
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Monitor.Over",
+            "name": "Over",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 115,
+              "col": 3,
+              "endLine": 115,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:89ccdc99673ad0469c04e945369a88d1539d61b9e3e92a944c7b297807272d92"
+    },
     "Generic": {
       "doc": "Ends with what the host's `withLongest` makes of its map of generic records of durations.",
       "span": {
         "file": 0,
-        "line": 110,
+        "line": 126,
         "col": 1,
-        "endLine": 114,
+        "endLine": 130,
         "endCol": 2
       },
       "strict": false,
@@ -1269,9 +1483,9 @@ const ir: unknown = {
         "doc": "Ends with what the host's `withLongest` makes of its map of generic records of durations.",
         "span": {
           "file": 0,
-          "line": 110,
+          "line": 126,
           "col": 1,
-          "endLine": 114,
+          "endLine": 130,
           "endCol": 2
         },
         "initial": "Generic.Over",
@@ -1283,9 +1497,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 113,
+              "line": 129,
               "col": 3,
-              "endLine": 113,
+              "endLine": 129,
               "endCol": 49
             },
             "initial": null,
@@ -1451,6 +1665,31 @@ export interface AskerDef extends Roadbook.MachineDef {
 
 /** Asks the desk for `n`; 0 when the desk does not answer. */
 export const Asker = Roadbook.make<AskerDef>(ir, "Asker", errors)
+
+// ---- machine: Monitor ----
+
+export interface MonitorDef extends Roadbook.MachineDef {
+  readonly name: "Monitor"
+  readonly input: {
+    readonly desks: ReadonlyArray<Roadbook.Handle<DeskDef>>
+    readonly spare: Roadbook.Handle<DeskDef> | null
+  }
+  readonly output: void
+  readonly error: never
+  readonly event: never
+  readonly emits: never
+  readonly state: "Monitor" | "Monitor.Watching" | "Monitor.Over"
+  readonly fns: {}
+  readonly actions: { readonly noted: { readonly status: Ended } }
+  readonly tasks: {}
+  readonly machines: {}
+}
+
+/**
+ * Hears the end of each Desk of `desks` and of `spare`, noting how each ended, and ends with
+ * the spare's.
+ */
+export const Monitor = Roadbook.make<MonitorDef>(ir, "Monitor", errors)
 
 // ---- machine: Generic ----
 

@@ -133,6 +133,9 @@ pub(crate) enum Implicit {
     /// `event` in `on name` for the machine's call `name`: its arguments, read only through
     /// their fields.
     CallArgs(String),
+    /// `event` in `on name.ended`: read only through its field `status`, of the built-in enum
+    /// `Ended`.
+    Ended,
 }
 
 #[derive(Clone, Debug)]
@@ -597,6 +600,7 @@ fn trigger_key(t: &Trigger) -> String {
         Trigger::Call(n) => format!("on {}", n.name),
         Trigger::ChildDone { from } => format!("on {}.done", from.name),
         Trigger::ChildFail { from, error } => format!("on {}.fail {}", from.name, pattern(error)),
+        Trigger::Ended { from } => format!("on {}.ended", from.name),
         Trigger::After(e) => format!("after {}", expr_text(e)),
         Trigger::Always => "always".into(),
         Trigger::Done => "done".into(),
@@ -1123,6 +1127,141 @@ impl<'p> Cx<'_, 'p> {
                 d = d.with_help("name an invoked machine with `invoke Machine(…) as name`, or take a parameter of type `ref Machine`");
             }
         }
+        self.ck.diags.push(d);
+        None
+    }
+
+    /// Resolves the `name` of `on name.ended` written in `node`: a parameter or variable of type
+    /// `ref M`, `ref M?` or `ref M[]`, through aliases, as an address of kind `ref`. Reports an
+    /// invoked child or a collection, whose ends are their outcomes, and every other name.
+    fn peer(&mut self, node: usize, name: &Ident) -> Option<ir::Address> {
+        let child = |state: &str| {
+            format!(
+                "an invoked child's end is its invoke's outcome: handle it with `done` and `fail` inside the `invoke {{ }}` of `{state}`"
+            )
+        };
+        let mut up = Some(node);
+        while let Some(a) = up {
+            if let Some((alias, _)) = &self.nodes[a].alias
+                && alias.name == name.name
+            {
+                let (span, state) = (alias.span, self.nodes[a].id.clone());
+                if let Some(symbol) = self.nodes[a].alias_symbol {
+                    self.ck.index.refer(symbol, name.span);
+                }
+                self.ck.diags.push(
+                    Diagnostic::error(
+                        codes::ENDED_NOT_A_PEER,
+                        name.span,
+                        format!(
+                            "`{}` names the machine `{state}` invokes, not a `ref`, so it has no `ended`",
+                            name.name
+                        ),
+                    )
+                    .with_secondary(span, "invoked here")
+                    .with_help(child(&state)),
+                );
+                return None;
+            }
+            up = self.nodes[a].parent;
+        }
+        if let Some(c) = self.collections.get(&name.name).cloned() {
+            if let Some(symbol) = c.symbol {
+                self.ck.index.refer(symbol, name.span);
+            }
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::ENDED_NOT_A_PEER,
+                    name.span,
+                    format!(
+                        "`{}` is a children collection, not a `ref`, so it has no `ended`",
+                        name.name
+                    ),
+                )
+                .with_help(format!(
+                    "a spawned child's end is its outcome: take it with `on {0}.done` and `on {0}.fail E` (or `on {0}.fail *`)",
+                    name.name
+                )),
+            );
+            return None;
+        }
+        if let Some(v) = self.vars.get(&name.name) {
+            let t = v.ty.clone();
+            self.ck.refer_member(self.file, self.symbol, name);
+            let machine = match self.ck.env.expand(&t) {
+                Ty::Ref(m) => Some(m),
+                Ty::Optional(e) | Ty::List(e) => match *e {
+                    Ty::Ref(m) => Some(m),
+                    _ => None,
+                },
+                Ty::Unknown => return None,
+                _ => None,
+            };
+            if let Some(machine) = machine {
+                return Some(ir::Address {
+                    kind: ir::AddressKind::Ref,
+                    name: name.name.clone(),
+                    machine,
+                    state: None,
+                });
+            }
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::NOT_A_REF,
+                    name.span,
+                    format!("`{}` is `{t}`, not a `ref`", name.name),
+                )
+                .with_help("`on name.ended` is taken when the run that a parameter or variable of type `ref Machine`, `ref Machine?` or `ref Machine[]` holds ends"),
+            );
+            return None;
+        }
+        let elsewhere = self
+            .nodes
+            .iter()
+            .find(|n| n.alias.as_ref().is_some_and(|(a, _)| a.name == name.name))
+            .map(|n| (n.id.clone(), n.alias.as_ref().map(|(a, _)| a.span)));
+        if let Some((state, span)) = elsewhere {
+            let mut d = Diagnostic::error(
+                codes::ENDED_NOT_A_PEER,
+                name.span,
+                format!(
+                    "`{}` names the machine `{state}` invokes, not a `ref`, so it has no `ended`",
+                    name.name
+                ),
+            )
+            .with_help(child(&state));
+            if let Some(span) = span {
+                d = d.with_secondary(span, "invoked here");
+            }
+            self.ck.diags.push(d);
+            return None;
+        }
+        let candidates: Vec<String> = self
+            .vars
+            .iter()
+            .filter(|(_, v)| {
+                matches!(
+                    self.ck.env.expand(&v.ty),
+                    Ty::Ref(_) | Ty::Optional(_) | Ty::List(_)
+                ) && self.ck.env.has_ref(&v.ty)
+            })
+            .map(|(n, _)| n.clone())
+            .collect();
+        let mut d = Diagnostic::error(
+            codes::UNKNOWN_ADDRESS,
+            name.span,
+            format!("unknown run `{}` to watch", name.name),
+        );
+        d = match suggest(&name.name, candidates.iter().map(String::as_str)) {
+            Some(s) => d.with_help(format!("did you mean `{s}`?")).with_fix(
+                format!("replace with `{s}`"),
+                name.span,
+                s,
+            ),
+            None => d.with_help(
+                "`on name.ended` watches the run that a parameter or variable of type `ref Machine` holds",
+            ),
+        };
         self.ck.diags.push(d);
         None
     }
@@ -1975,6 +2114,16 @@ impl<'p> Cx<'_, 'p> {
                 }
                 ir::Trigger::Event {
                     event: n.name.clone(),
+                }
+            }
+            Trigger::Ended { from } => {
+                scope.event = Implicit::Ended;
+                match self.peer(idx, from) {
+                    Some(address) => ir::Trigger::Ended { from: address },
+                    // Reported; the trigger is not lowered further.
+                    None => ir::Trigger::Event {
+                        event: from.name.clone(),
+                    },
                 }
             }
             Trigger::Call(n) => {

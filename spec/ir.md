@@ -1,4 +1,4 @@
-# The Roadbook IR, version 0.7
+# The Roadbook IR, version 0.8
 
 The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with a call to a peer, a message to it and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
@@ -22,7 +22,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 ```jsonc
 {
-  "irVersion": "0.7",
+  "irVersion": "0.8",
   "sources":   [{ "path": "examples/shop/place_order.road", "package": null },
                 { "path": "examples/shop/types.road", "package": null }],
   "types":     { /* Name: type declaration */ },
@@ -37,7 +37,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 | --- | --- |
 | `irVersion` | `"MAJOR.MINOR"`. See [versioning](#versioning). |
 | `sources` | Every file the IR was compiled from, the entry file first, then in load order (see [order](#conventions)). See [sources](#sources). |
-| `types` | Records, aliases, enums, errors and extern types. |
+| `types` | Records, aliases, enums, errors and extern types, and the built-in enum [`Ended`](#type-references) when the document names it. |
 | `functions`, `actions`, `tasks` | The host declarations. |
 | `machines` | Every machine declared in the entry file and its imports. |
 
@@ -61,7 +61,7 @@ Wherever the IR names a type it uses a string in canonical source form: a base f
 | Base | Meaning |
 | --- | --- |
 | `string`, `int`, `float`, `bool`, `duration`, `json` | A built-in. |
-| `Name` | A key of `types`; inside a generic declaration, one of its `params`; or, inside a machine, one of that machine's own events, a key of its `events` or `emits` (see below). |
+| `Name` | A key of `types` (the built-in `Ended` among them); inside a generic declaration, one of its `params`; or, inside a machine, one of that machine's own events, a key of its `events` or `emits` (see below). |
 | `Name<A, B>` | An instance of the generic record or alias `Name`, a key of `types` with as many `params` as there are arguments, each a type reference. See [generic types](#generic-types). |
 | `map<K, V>` | A map from keys of type `K` to values of type `V`. `K` is `string` once aliases are expanded: `string`, `UserId` after `type UserId = string`. |
 | `Machine.Name` | Event `Name` of machine `Machine`: a key of `machines`, then of that machine's `events` or `emits`. |
@@ -83,6 +83,19 @@ base  = builtin | Upper [ "<" type { ", " type } ">" ] | Upper "." Upper | "ref 
 **Where a pending call can be.** A `call name` is the type of a machine variable of the machine that declares `name`, and of the implicit `call` in its `on name` transitions; nowhere else, not even inside an alias, an optional, a list, a map or a type argument. It is never a literal, never compared, never passed where `json` is expected, and never leaves the run: no parameter, field, result or event has the type ([calls](execution.md#calls-between-runs)).
 
 **`Unanswered`.** The error name `Unanswered` is built in: the error every call can fail with besides its declared ones, `{"_tag": "Unanswered"}`, with no fields. It is not a key of `types`, and the only places the IR names it are an `invoke.fail` trigger of a call invoke, and the `type` of `error` in such a transition.
+
+**`Ended`.** The enum name `Ended` is built in too: how a peer's run ended, the type of `event.status` in an [`ended`](#triggers) transition. Unlike `Unanswered` it is an ordinary entry of `types` whenever any type reference of the document names it (an expression's `type`, a variable's, a parameter's of a function, action or task, anywhere in a type), and is absent otherwise, so a reader resolves it as it resolves any enum:
+
+```json
+"Ended": {
+  "kind": "enum",
+  "variants": ["Done", "Failed", "Cancelled", "Defect", "Suspended"],
+  "doc": "How a peer's run ended: the type of `event.status` in `on name.ended`. Built in.",
+  "span": { "file": 0, "line": 1, "col": 1, "endLine": 1, "endCol": 1 }
+}
+```
+
+It comes after every declared type. It is declared in no file, so its `doc` is always the text above and its span is empty, at the start of the entry file (file 0): a reader that takes a declaration's file to be where it is defined (a code generator deciding which module to import it from) finds it in the entry file's own module. No declaration, event or emitted event can be named `Ended`, so the name never means two things. A declaration copied from another package's compiled IR that names it keeps naming it, and the compiler writes `Ended` into the document it builds, never the package's copy. The machine hash sees it like any type (below): through [strip](#the-machine-hash), as `{"kind": "enum", "variants": [...]}`.
 
 ## Declarations
 
@@ -245,7 +258,7 @@ The outcomes written inside `invoke { … }` are transitions of the state, with 
 
 ## Addresses
 
-An address names another running machine: the receiver of a `send`, the sender of the events an `emitted` trigger takes, or the callee of a call invoke.
+An address names another running machine: the receiver of a `send`, the sender of the events an `emitted` trigger takes, the peer whose end an `ended` trigger takes, or the callee of a call invoke.
 
 ```json
 { "kind": "child", "name": "upload", "machine": "Upload", "state": "Publish.Uploading" }
@@ -254,12 +267,12 @@ An address names another running machine: the receiver of a `send`, the sender o
 
 | Member | Meaning |
 | --- | --- |
-| `kind` | `child`: the machine invoked with `invoke Machine(…) as name`. `ref`: the machine held by a parameter or variable of type `ref Machine`. `children`: the spawned children of the collection `name`; which of them is given by the item (a `send`'s `key`, or any of them for an `emitted` trigger). |
+| `kind` | `child`: the machine invoked with `invoke Machine(…) as name`. `ref`: the machine held by a parameter or variable of type `ref Machine` (for an `ended` trigger also `ref Machine?` or `ref Machine[]`). `children`: the spawned children of the collection `name`; which of them is given by the item (a `send`'s `key`, or any of them for an `emitted` trigger). |
 | `name` | The `as` name, the parameter or variable, or the collection. |
 | `machine` | The machine at the other end, a key of `machines`: the invoked machine, or the `ref`'s. Its `events` are what can be sent to it, its `emits` what can be received from it. |
 | `state` | For `child`, the id of the state whose invoke has the `as` name: the innermost state with that name that contains, or is, the state the item is written in. `null` for `ref` and `children`. |
 
-A child is addressed only from its invoking state and that state's descendants, which is while it runs: the compiler rejects a `send` to it from the invoking state's own `entry`, `exit` or invoke outcomes, and from a transition that leaves the invoking state (that would reach it after it was stopped). A send the compiler cannot rule out, made while the state has no running invoke, is undelivered at run time ([execution](execution.md#exiting-and-entering-a-state)). A `ref` variable addresses whichever machine it holds when the item runs.
+A child is addressed only from its invoking state and that state's descendants, which is while it runs: the compiler rejects a `send` to it from the invoking state's own `entry`, `exit` or invoke outcomes, and from a transition that leaves the invoking state (that would reach it after it was stopped). A send the compiler cannot rule out, made while the state has no running invoke, is undelivered at run time ([execution](execution.md#exiting-and-entering-a-state)). A `ref` variable addresses whichever machine it holds when the item runs. The address of an `ended` trigger is always of kind `ref`, and its `machine` is the machine of the run the parameter or variable holds, or of the runs a list of them holds.
 
 ## Transitions
 
@@ -279,7 +292,7 @@ A child is addressed only from its invoking state and that state's descendants, 
 | `trigger` | What enables it. See below. |
 | `group` | The index, from 0, of the trigger block the transition was written in, among the blocks of its state. A single-line trigger is a block with one branch. The branches of one block are consecutive and share `group`; guards within a group are tried in order. |
 | `guard` | Boolean expression, or `null` for an unguarded branch (including `else`). |
-| `target` | Id of the target state, a history state among them, or `null` for an internal transition (the state is not left). A transition with no target and no effects is an `ignore`: it takes its event and does nothing. Only an `on` transition (`event`, `emitted` or `any`) is ever one. |
+| `target` | Id of the target state, a history state among them, or `null` for an internal transition (the state is not left). A transition with no target and no effects is an `ignore`: it takes its event and does nothing. Only an `on` transition (`event`, `emitted`, `ended` or `any`) is ever one. |
 | `effects` | [Effects](#effects) run when the transition is taken: all `set` assignments, then all `do` actions, each in the order written. |
 | `span` | For a single-branch trigger, from the trigger keyword to the end of the branch. For a branch in a block, from its `if` or `else` to the end of the branch. |
 
@@ -300,6 +313,7 @@ A child is addressed only from its invoking state and that state's descendants, 
 | `call` | `on name` | `call`: a key of the machine's own `calls`. Taken for a call of it from another run. `event` is in scope, a record of the call's parameters read through its fields (`event.items`), and so is `call`, of type `call name`. |
 | `spawn.done` | `on name.done` | `children`: the collection. A spawned child of it ended `done`. `result` and `key` are in scope. |
 | `spawn.fail` | `on name.fail E` | `children`: the collection. `error`: the error's name, a declared error of the collection's machine, or `"*"` for every declared error the state has no `on name.fail` for. A spawned child of it ended `failed`. `error` and `key` are in scope. |
+| `ended` | `on name.ended` | `from`: the [address](#addresses) of the peer, always of kind `ref`. Taken once, when the run it names closes, however it closes ([a peer's end](execution.md#messages-between-runs)). `event` is in scope, read only through its field `status`, of type `Ended`. |
 
 ## Effects
 
@@ -342,7 +356,7 @@ Every expression node is an object with `kind`, the kind's own members, then two
 | `bool` | `true` or `false`. |
 | `duration` | A non-negative JSON integer of milliseconds: `30s` is `30000`, `5m` is `300000`. |
 
-**Types of the implicit names.** `result` in an `invoke.done` transition has the invoked task's or machine's `returns` type, and in a `spawn.done` transition the collection's machine's. `error` in an `invoke.fail` or `spawn.fail` transition for error `E` has type `E`. `key`, in a `spawn.done`, `spawn.fail` or `emitted` transition through a `children` address, has the collection's key type. `event` in an `on Name` transition has type `Name` (the event, see [type references](#type-references)), in an `emitted` transition type `Machine.Name`, and `event.field` has the field's type. In a `call` transition `event` is read only through its fields, and `call` has type `call name`. For a call invoke, `result` has the call's `returns` type, and `error` for `Unanswered` the type `Unanswered`.
+**Types of the implicit names.** `result` in an `invoke.done` transition has the invoked task's or machine's `returns` type, and in a `spawn.done` transition the collection's machine's. `error` in an `invoke.fail` or `spawn.fail` transition for error `E` has type `E`. `key`, in a `spawn.done`, `spawn.fail` or `emitted` transition through a `children` address, has the collection's key type. `event` in an `on Name` transition has type `Name` (the event, see [type references](#type-references)), in an `emitted` transition type `Machine.Name`, and `event.field` has the field's type. In an `ended` transition `event` has no type a chart can write: it is read only as `event.status`, a `ref` expression with `path` `["event", "status"]` and type `Ended`. In a `call` transition `event` is read only through its fields, and `call` has type `call name`. For a call invoke, `result` has the call's `returns` type, and `error` for `Unanswered` the type `Unanswered`.
 
 ```json
 {
@@ -381,7 +395,7 @@ A machine's `hash` is `"sha256:"` followed by the 64 lowercase hexadecimal digit
 
 - **M** is the machine itself and every machine it invokes or spawns (the `machine` of its `children` collections), directly or through other machines. A machine that invokes itself is included once. (Including the whole set, rather than each child's hash, is what makes the hash defined for recursive machines.)
 - **F**, **A** and **K** are the functions called (`call`), the actions run (`do`) and the tasks invoked by the machines in M.
-- **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send`, an `emitted` trigger or a call invoke), or by an event type `Machine.Name`. Only its interface, its `events`, `emits` and `calls`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts, emits or answers changes, and not when how the peer works inside does. (A child addressed with `as` is invoked, and a collection's machine is spawned, so they are in M whole.)
+- **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send`, an `emitted` or `ended` trigger or a call invoke), or by an event type `Machine.Name`. Only its interface, its `events`, `emits` and `calls`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts, emits or answers changes, and not when how the peer works inside does. An `ended` trigger adds nothing to it: how a peer can end is the same for every machine, and the peer's output and errors are not part of what its holders get. (A child addressed with `as` is invoked, and a collection's machine is spawned, so they are in M whole.)
 - **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`) whose base, type arguments or map key or value names it, at any depth, by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"` and `Unanswered`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, or `Machine.Name`), a type parameter inside its declaration, and the machine of a `ref`, are not part of T.
 - **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `calls` and `children` maps, which are kept whatever they are, and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed: a call named `text` keeps its entry (its value is stripped), and `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that uses no `sensitive` mark, keyed spawn or generic type has the hash it had in 0.5. `strict` and `calls` are always part of the view, `calls` even when it is empty.
 
@@ -389,12 +403,23 @@ So comments, formatting, source positions, file names, packages, declaration ord
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.7`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.8`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
+
+## Changes in 0.8
+
+Version 0.8 adds a peer's end, `on name.ended` ([when a peer ends](../docs/design/language.md#when-a-peer-ends)). Nothing else changes shape, so a 0.7 document differs from the same chart's 0.8 document only in `irVersion`, and the [machine hash](#the-machine-hash), which does not see `irVersion`, is the same: a machine that has no `ended` trigger and names no `Ended` has the hash it had in 0.7, and its saved snapshots still restore. A reader of 0.8 still refuses a 0.7 document, as it refuses any other version.
+
+- The trigger kind [`ended`](#triggers), whose `from` is an [address](#addresses) of kind `ref`; for it, that address may name a parameter or variable of type `ref M?` or `ref M[]`.
+- The built-in enum [`Ended`](#type-references), `Done`, `Failed`, `Cancelled`, `Defect` and `Suspended`, an entry of `types` whenever the document names it, with an empty span at the start of the entry file.
+- `ref` paths `["event", "status"]` in `ended` transitions.
+- In the [semantic view](#the-machine-hash), an `ended` trigger's address names its machine in R, which the `ref` it goes through already does, so `interfaces` do not change.
+
+What a runtime does with them (the `ended` input, who is sent it and when, its order after a peer's last messages and `Unanswered` answers, a peer that had ended before its holder started) is in [`execution.md`](execution.md#messages-between-runs) and [`trace.md`](trace.md#inputs-in-records). An `ended` trigger is messaging: a runtime that does not implement messaging refuses a machine that has one (in Rust, `Machine::messaging` names it), and a conformance case with one requires `messaging` and `ended`.
 
 ## Changes in 0.7
 

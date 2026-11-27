@@ -169,3 +169,50 @@ fn the_hash_covers_the_types_inside_a_peers_calls() {
         assert_eq!(base, hash(item, "int", empty, m), "{m}: the peer's states");
     }
 }
+
+/// `on name.ended` puts the built-in enum `Ended` in `types` only when something names it,
+/// after the declared types and with an empty span at the start of the entry file, and adds
+/// nothing of the peer to its holder's hash but the interface the `ref` already brings.
+#[test]
+fn ended_brings_the_builtin_enum_and_only_the_peers_interface() {
+    let ir = |peer_state: &str, on: &str| {
+        let src = format!(
+            "type T {{ x: int }}\n\nmachine Peer() {{\n  event Stop\n  initial A\n  state A {{\n    on Stop -> {peer_state}\n  }}\n  final state B {{}}\n  final state C {{}}\n}}\n\nmachine M(peer: ref Peer) {{\n  initial A\n  state A {{\n    {on}\n  }}\n  final state Z {{}}\n}}\n"
+        );
+        let mut loader = roadbook_compiler::MemoryLoader::new().with("m.road", src);
+        let out = compile(&mut loader, "m.road", &Options::default()).unwrap();
+        // The peer's other final state is unreachable: a warning.
+        assert!(!out.has_errors(), "{}", out.render());
+        out.ir.unwrap()
+    };
+    let bare = ir("B", "on peer.ended -> Z");
+    assert!(!bare.types.contains_key(roadbook_ir::ENDED));
+    let read = ir("B", "on peer.ended if event.status == Ended.Done -> Z");
+    let types: Vec<&str> = read.types.keys().map(String::as_str).collect();
+    assert_eq!(types, ["T", roadbook_ir::ENDED]);
+    let ended = &read.types[roadbook_ir::ENDED];
+    let roadbook_ir::TypeDef::Enum { variants } = &ended.def else {
+        panic!("not an enum: {ended:?}")
+    };
+    assert_eq!(variants, &roadbook_ir::ENDED_VARIANTS);
+    assert_eq!(
+        (ended.span.file, ended.span.line, ended.span.col),
+        (0, 1, 1)
+    );
+    assert_eq!((ended.span.end_line, ended.span.end_col), (1, 1));
+    // How the peer works inside is not part of the holder's hash; what it reads is.
+    assert_eq!(
+        bare.machines["M"].hash,
+        ir("C", "on peer.ended -> Z").machines["M"].hash
+    );
+    assert_ne!(bare.machines["M"].hash, read.machines["M"].hash);
+    let view = roadbook_ir::semantic_view(&read, "M").unwrap();
+    assert_eq!(
+        view["interfaces"]["Peer"],
+        serde_json::json!({ "events": { "Stop": { "fields": [] } }, "emits": {}, "calls": {} })
+    );
+    assert_eq!(
+        view["types"][roadbook_ir::ENDED],
+        serde_json::json!({ "kind": "enum", "variants": roadbook_ir::ENDED_VARIANTS })
+    );
+}

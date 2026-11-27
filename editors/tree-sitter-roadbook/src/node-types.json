@@ -2646,6 +2646,10 @@
             "named": true
           },
           {
+            "type": "peer_ended",
+            "named": true
+          },
+          {
             "type": "received_event",
             "named": true
           },
@@ -2957,6 +2961,22 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "peer_ended",
+    "named": true,
+    "fields": {
+      "from": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -4256,6 +4276,10 @@
   },
   {
     "type": "emits",
+    "named": false
+  },
+  {
+    "type": "ended",
     "named": false
   },
   {

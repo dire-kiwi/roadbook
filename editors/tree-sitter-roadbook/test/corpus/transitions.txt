@@ -327,3 +327,133 @@ machine M() {
               (else_branch
                 (target
                   (type_identifier))))))))))
+
+================================================================================
+A peer's end: on name.ended, with ended still a name elsewhere
+================================================================================
+
+machine M(inventory: ref Inventory) {
+  var ended: int = 0
+  initial Waiting
+  on inventory.ended if event.status == Ended.Defect -> Alarm
+  state Waiting {
+    on inventory.ended set ended = ended + 1
+  }
+  state Alarm {}
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (ref_type
+          (type_identifier))))
+    (machine_body
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (integer))
+      (initial
+        (type_identifier))
+      (on_transition
+        (peer_ended
+          (identifier))
+        (guard
+          (binary_expression
+            (field_expression
+              (implicit_name)
+              (identifier))
+            (enum_value
+              (type_identifier)
+              (type_identifier))))
+        (target
+          (type_identifier)))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (peer_ended
+              (identifier))
+            (set
+              (assignment
+                (identifier)
+                (binary_expression
+                  (identifier)
+                  (integer)))))))
+      (state_declaration
+        (type_identifier)
+        (state_body)))))
+
+================================================================================
+A peer's end in a block of branches on event.status, through a ref variable
+================================================================================
+
+machine M(a: ref Inventory) {
+  var current: ref Inventory = a
+  initial Waiting
+  state Waiting {
+    on current.ended {
+      if event.status == Ended.Done -> Closed
+      else                          -> Gone   do note(event.status)
+    }
+  }
+  final state Closed {}
+  final state Gone {}
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (ref_type
+          (type_identifier))))
+    (machine_body
+      (variable_declaration
+        (identifier)
+        (ref_type
+          (type_identifier))
+        (identifier))
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (peer_ended
+              (identifier))
+            (branches
+              (branch
+                (guard
+                  (binary_expression
+                    (field_expression
+                      (implicit_name)
+                      (identifier))
+                    (enum_value
+                      (type_identifier)
+                      (type_identifier))))
+                (target
+                  (type_identifier)))
+              (else_branch
+                (target
+                  (type_identifier))
+                (do
+                  (call
+                    (identifier)
+                    (arguments
+                      (field_expression
+                        (implicit_name)
+                        (identifier))))))))))
+      (state_declaration
+        (type_identifier)
+        (state_body))
+      (state_declaration
+        (type_identifier)
+        (state_body)))))

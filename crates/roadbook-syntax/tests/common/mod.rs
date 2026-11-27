@@ -75,6 +75,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  /// The sessions.\n  children sessions: Session by string\n  children children: Job by int\n  on Connected spawn sessions[event.id] = Session(event.socket, 1)\n  on Gone stop sessions[event.id]  stop children[2]\n  on All send sessions.*.Notify { text: \"hi\" }\n  on One send sessions[event.id].Notify { text: event.text, }\n  on sessions.Typing do log(key)\n  on sessions.done -> A  set n = n - 1\n  on sessions.fail Lost do log(key)\n  on children.fail * do log(error)\n  state A {}\n}\n",
     ),
     (
+        "ended",
+        "machine M(peer: ref Peer) {\n  var ended: int = 0\n  on peer.ended if event.status == Ended.Defect -> A\n  state A {\n    on peer.ended {\n      if event.status == Ended.Done -> A  set ended = ended + 1\n      else -> A\n    }\n  }\n}\n",
+    ),
+    (
         "final_states",
         "machine M() -> R ! E {\n  final state Ok { output R { value: 1 } }\n  final state Bad { fail E }\n  final state Worse { fail E { reason: \"x\" } }\n  final state Plain { output receipt }\n}\n",
     ),

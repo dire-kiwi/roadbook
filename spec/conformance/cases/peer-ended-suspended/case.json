@@ -1,0 +1,31 @@
+{
+  "description": "A suspended run is closed for good: the Inventory (r1) is idle, so suspending it stops it (`suspended`, snapshot `parked`), and its driver tells the Order (r2) that holds it with `ended` and `Suspended`. The Order's `else` branch takes it (Gone, `note` with Suspended). A run restored from the snapshot would have a new id, which the Order does not hold.",
+  "requires": [
+    "messaging",
+    "snapshots",
+    "ended"
+  ],
+  "chart": "charts/ended.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Order",
+      "run": "r2",
+      "input": {
+        "id": "o1",
+        "inventory": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "suspend": "parked"
+    }
+  ],
+  "status": "running"
+}

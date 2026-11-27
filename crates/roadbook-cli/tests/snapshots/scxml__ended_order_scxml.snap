@@ -1,0 +1,42 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Asks the warehouse for stock and waits for it, until it ends or 5s pass.
+  How the warehouse ended decides where the order goes.
+-->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Order" datamodel="roadbook" initial="Order_Waiting">
+  <datamodel>
+    <data id="id" rb:type="string" rb:param="true"/>
+    <data id="inventory" rb:type="ref Inventory" rb:param="true"/>
+  </datamodel>
+  <state id="Order_Waiting">
+    <onentry>
+      <send event="Reserve" targetexpr="inventory">
+        <param name="orderId" expr="id"/>
+      </send>
+      <send id="Order_Waiting_after_1" event="roadbook.after.Order_Waiting.1" delay="5000ms"/>
+    </onentry>
+    <onexit>
+      <cancel sendid="Order_Waiting_after_1"/>
+    </onexit>
+    <transition event="inventory.ended" cond="event.status == Ended.Done" target="Order_Closed"/>
+    <transition event="inventory.ended" cond="event.status == Ended.Defect" target="Order_Alarm">
+      <rb:do action="note">
+        <param name="status" expr="event.status"/>
+      </rb:do>
+    </transition>
+    <transition event="inventory.ended" target="Order_Gone">
+      <rb:do action="note">
+        <param name="status" expr="event.status"/>
+      </rb:do>
+    </transition>
+    <transition event="roadbook.after.Order_Waiting.1" target="Order_TimedOut"/>
+  </state>
+  <final id="Order_Closed"/>
+  <final id="Order_Alarm"/>
+  <final id="Order_Gone"/>
+  <final id="Order_TimedOut"/>
+</scxml>

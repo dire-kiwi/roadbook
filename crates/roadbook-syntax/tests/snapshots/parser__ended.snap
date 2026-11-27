@@ -1,0 +1,79 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          strict: false
+          params:
+            - name: peer
+              ty:
+                ref: Peer
+          returns: ~
+          errors: []
+          body:
+            - var:
+                name: ended
+                ty:
+                  builtin: int
+                init:
+                  int: 0
+            - transition:
+                trigger:
+                  ended:
+                    from: peer
+                branches:
+                  single:
+                    guard:
+                      binary:
+                        - "=="
+                        - field:
+                            - var: event
+                            - status
+                        - enum:
+                            - Ended
+                            - Defect
+                    target:
+                      - A
+                    effects: []
+                    ignore: false
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - transition:
+                      trigger:
+                        ended:
+                          from: peer
+                      branches:
+                        block:
+                          branches:
+                            - guard:
+                                binary:
+                                  - "=="
+                                  - field:
+                                      - var: event
+                                      - status
+                                  - enum:
+                                      - Ended
+                                      - Done
+                              target:
+                                - A
+                              effects:
+                                - set:
+                                    var: ended
+                                    value:
+                                      binary:
+                                        - +
+                                        - var: ended
+                                        - int: 1
+                              ignore: false
+                            - guard: ~
+                              target:
+                                - A
+                              effects: []
+                              ignore: false
+comments: []

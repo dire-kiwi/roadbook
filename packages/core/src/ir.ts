@@ -1,12 +1,12 @@
 /**
- * The Roadbook IR, version 0.7, as `spec/ir.md` describes it. The types mirror the JSON;
+ * The Roadbook IR, version 0.8, as `spec/ir.md` describes it. The types mirror the JSON;
  * {@link loadIr} checks the version before anything else.
  */
 import { aliasCycle } from "./typeref.ts"
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.7"
+export const IR_VERSION = "0.8"
 
 export interface Span {
   readonly file: number
@@ -101,6 +101,13 @@ export interface CallDecl {
 /** The built-in error every call can fail with besides its declared ones. */
 export const UNANSWERED = "Unanswered"
 
+/**
+ * The built-in enum of how a peer's run ended, the type of `event.status` in `on name.ended`.
+ * Whenever a document names it, it is in `types` as an ordinary `enum` with these variants.
+ */
+export const ENDED = "Ended"
+export const ENDED_VARIANTS = ["Done", "Failed", "Cancelled", "Defect", "Suspended"] as const
+
 export interface Machine {
   readonly doc: string
   readonly span: Span
@@ -179,6 +186,7 @@ export type Trigger =
   | { readonly kind: "call"; readonly call: string }
   | { readonly kind: "spawn.done"; readonly children: string }
   | { readonly kind: "spawn.fail"; readonly children: string; readonly error: string }
+  | { readonly kind: "ended"; readonly from: Address }
 
 export interface Transition {
   readonly trigger: Trigger

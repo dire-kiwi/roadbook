@@ -42,6 +42,13 @@ crate is the library behind it.
 - **Hover**: the declaration's signature (`task chargeCard(order: Order, user: User) ->
   Receipt ! CardDeclined | GatewayUnavailable`, `var attempts: int = 0`, `final state
   Checkout.Charged`), what it belongs to or which file declares it, and its `///` comment.
+  The built-in names have one too, read from the syntax tree: the enum `Ended` and its
+  variants, and in an `on name.ended` transition the word `ended`, `event` and
+  `event.status`.
+- **Completion** after a dot, also while the file does not parse: `ended` and the peer's
+  emitted events after `on name.` for a `ref` parameter or variable (`ref M`, `ref M?`,
+  `ref M[]` or an alias of one), the variants after `Ended.`, and `status` after `event.` in
+  an `on name.ended` transition.
 - **Formatting** with the canonical formatter (`roadbook fmt`). A file with syntax errors is
   left alone.
 - **Document symbols**: declarations, and in a machine its parameters, variables, events and

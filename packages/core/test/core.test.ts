@@ -61,7 +61,7 @@ describe("compareCodePoints", () => {
 
 describe("loadIr", () => {
   it("refuses another IR version, naming both", () => {
-    expect(() => loadIr({ irVersion: "0.6" })).toThrow(/"0\.6".*0\.7/)
+    expect(() => loadIr({ irVersion: "0.7" })).toThrow(/"0\.7".*0\.8/)
     expect(() => loadIr([])).toThrow(IrError)
   })
   it("refuses a machine the IR does not have", () => {
@@ -159,6 +159,36 @@ describe("heard", () => {
     // A Supplier holds a `ref Inventory` only to send to it.
     expect(heard(ir, "Supplier", "Inventory").size).toBe(0)
     expect(heard(ir, "Inventory", "Order").size).toBe(0)
+  })
+})
+
+describe("a peer's end", () => {
+  const ir = readIr("ended.ir.json")
+  const kinds = (commands: ReadonlyArray<Command>) => commands.flatMap((c) => (c.kind === "trace" ? [c.record.kind] : []))
+
+  it("is heard by a machine with an `on x.ended` for a run of the peer's machine, in any state", () => {
+    expect([...heard(ir, "Order", "Inventory")]).toEqual(["ended"])
+    expect([...heard(ir, "Picker", "Inventory")]).toEqual(["ended"])
+    expect(heard(ir, "Clerk", "Inventory").size).toBe(0)
+  })
+
+  it("is taken through the run an address names when it is taken, with `event.status`, and never stale", () => {
+    const started = start(ir, "Switcher", "r3", { a: "r1", b: "r2" }, noFns)
+    const ended = (from: string): Input => ({ kind: "ended", from, status: "Failed" })
+    expect(kinds(step(ir, started.snapshot, ended("r9"), noFns).commands)).toEqual(["dropped"])
+    const taken = step(ir, started.snapshot, ended("r1"), noFns)
+    expect(taken.commands).toContainEqual({ kind: "action", action: "note", args: { status: "Failed" } })
+    expect(taken.snapshot.status).toBe("done")
+    const swapped = step(ir, started.snapshot, { kind: "event", value: { _tag: "Swap" } }, noFns)
+    expect(kinds(step(ir, swapped.snapshot, ended("r1"), noFns).commands)).toEqual(["dropped"])
+    expect(kinds(step(ir, swapped.snapshot, ended("r2"), noFns).commands)).toContain("event")
+  })
+
+  it("is dropped, not unhandled, by a strict machine with no transition for it", () => {
+    const started = start(ir, "Guard", "r2", { inventory: "r1" }, noFns)
+    const dropped = step(ir, started.snapshot, { kind: "ended", from: "r1", status: "Defect" }, noFns)
+    expect(dropped.snapshot.status).toBe("running")
+    expect(kinds(dropped.commands)).toEqual(["dropped"])
   })
 })
 

@@ -227,7 +227,7 @@
     "messages": {
       "patterns": [
         {
-          "match": "\\b(on)\\s+(?:(\\*)|([a-z][A-Za-z0-9]*)(\\.)(?:([A-Z][A-Za-z0-9]*)|(done)\\b|(?=fail\\b))|([A-Z][A-Za-z0-9]*)|([a-z][A-Za-z0-9]*)\\b)",
+          "match": "\\b(on)\\s+(?:(\\*)|([a-z][A-Za-z0-9]*)(\\.)(?:([A-Z][A-Za-z0-9]*)|(done)\\b|(ended)\\b|(?=fail\\b))|([A-Z][A-Za-z0-9]*)|([a-z][A-Za-z0-9]*)\\b)",
           "captures": {
             "1": { "name": "keyword.control.trigger.roadbook" },
             "2": { "name": "keyword.operator.wildcard.roadbook" },
@@ -235,8 +235,9 @@
             "4": { "name": "punctuation.accessor.roadbook" },
             "5": { "name": "entity.name.type.event.roadbook" },
             "6": { "name": "keyword.control.done.roadbook" },
-            "7": { "name": "entity.name.type.event.roadbook" },
-            "8": { "name": "entity.name.function.roadbook" }
+            "7": { "name": "keyword.control.ended.roadbook" },
+            "8": { "name": "entity.name.type.event.roadbook" },
+            "9": { "name": "entity.name.function.roadbook" }
           }
         },
         {

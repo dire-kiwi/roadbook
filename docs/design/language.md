@@ -98,6 +98,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | `on Event ...` | Transition on an external event. `on *` matches any of the machine's own events this state has no `on` for. |
 | `on name.Event ...` | Transition on an event emitted by the machine `name` addresses: an invoked child (`invoke … as name`), a `ref` parameter or variable, or any child of a `children` collection. |
 | `on name.done ...` / `on name.fail Err ...` | Transition when a spawned child of the collection `name` ends (see [many children](#many-children)). |
+| `on name.ended ...` | Transition when the run a `ref` parameter or variable `name` holds ends (see [when a peer ends](#when-a-peer-ends)). |
 | `on Event ignore` | Take the event and do nothing. See [strict machines](#strict-machines). |
 | `on name ...` | Transition taking a call of the machine's own `call name`, from another machine. |
 | `after 30s ...` | Transition after the state has been active for a duration. The delay is an expression. |
@@ -116,7 +117,7 @@ on Submit if isValid(order) -> Paying  set attempts = 0  do audit("submitted", o
 
 With no `-> Target` the transition is internal: the state is not left and re-entered. The effects are `set` assignments, `do` actions, the messages `send name.Event { … }` and `emit Event { … }` (see [messages between machines](#messages-between-machines)), `reply name done [value]` and `reply name fail error`, which answer a call (see [calls between machines](#calls-between-machines)), and `spawn` and `stop` (see [many children](#many-children)). `set` assignments run first: every `set`, in the order written, then the `do`, `send`, `emit`, `reply`, `spawn` and `stop` effects, in the order written among themselves, wherever they are written, so an action or a message sees the values its transition's `set`s assign. The same goes for `entry` and `exit`. The formatter writes every `set` clause before the others, so the source shows the order they run in.
 
-Inside a transition, these names are in scope besides the machine's variables: `event` (in `on`, also `on name.Event` and `on name`), `result` (in an invoke's `done` and in `on name.done`), `error` (in an invoke's `fail` and in `on name.fail`), `call` (in `on name`, the call being taken) and `key` (in `on name.Event`, `on name.done` and `on name.fail` through a `children` collection).
+Inside a transition, these names are in scope besides the machine's variables: `event` (in `on`, also `on name.Event`, `on name` and `on name.ended`), `result` (in an invoke's `done` and in `on name.done`), `error` (in an invoke's `fail` and in `on name.fail`), `call` (in `on name`, the call being taken) and `key` (in `on name.Event`, `on name.done` and `on name.fail` through a `children` collection).
 
 A target is resolved like a name in a block-structured language: first among the siblings of the state the transition is written in, then among its parent's siblings, and so on outward. A dotted path such as `Processing.Paying` then descends into a nested state, which is also how a state targets one of its own children. A transition written at machine level resolves among the top-level states. An unknown target is a compile error, and so is a duplicate state name among siblings.
 
@@ -230,6 +231,7 @@ The implicit names have these types:
 - `result`, in an invoke's `done`, has the return type of the task or machine. If it returns nothing, `result` cannot be used.
 - `error`, in an invoke's `fail E`, has type `E`. In `fail *` it has a type only if exactly one declared error is left for `*` to cover. For a call, `Unanswered` is among the errors `fail *` covers.
 - `event`, in `on name` for a call, is the call's arguments, read only through their fields: `event.items` has the type of the parameter `items`, and `event` alone is an error (`RB0309`). `call` has the type `call name`.
+- `event`, in `on name.ended`, is read only through its one field: `event.status` has the built-in enum type `Ended`, and `event` alone is an error (`RB0309`), as is any other field (`RB0304`).
 
 Outside those transitions these names are not in scope.
 
@@ -430,7 +432,7 @@ A state is written as a path from the machine body, as a target written at machi
 
 ### How checks are decided
 
-The compiler explores every configuration the machine can be in, following [the execution rules](../../spec/execution.md) exactly: the walks that select transitions in each region, conflicts, exit and entry sets, history recorded on exit, settling (`always` before `done`, completions in order), timers and invokes started on entry and consumed by their expiry or outcome, events emitted by children and peers, calls the machine makes and those it takes, spawned children's outcomes, and the transitions written in the machine body. In a strict machine, `ignore` transitions are explored like any other. A configuration passed through while settling counts: a state entered by an `always` and left at once was still active. What it does not know is data. Every guard may hold or fail each time it is evaluated, every declared event may arrive at any time, a task may finish or fail with any of its declared errors, a call it makes may be answered `done`, with any of its declared errors or with `Unanswered`, a call of its own may arrive at any time, a child machine may do anything its declaration allows, and any running timer may expire.
+The compiler explores every configuration the machine can be in, following [the execution rules](../../spec/execution.md) exactly: the walks that select transitions in each region, conflicts, exit and entry sets, history recorded on exit, settling (`always` before `done`, completions in order), timers and invokes started on entry and consumed by their expiry or outcome, events emitted by children and peers, peers' ends (`on name.ended`), calls the machine makes and those it takes, spawned children's outcomes, and the transitions written in the machine body. In a strict machine, `ignore` transitions are explored like any other. A configuration passed through while settling counts: a state entered by an `always` and left at once was still active. What it does not know is data. Every guard may hold or fail each time it is evaluated, every declared event may arrive at any time, a task may finish or fail with any of its declared errors, a call it makes may be answered `done`, with any of its declared errors or with `Unanswered`, a call of its own may arrive at any time, a peer may end at any time (and more than once, since the compiler does not follow which runs a `ref` holds), a child machine may do anything its declaration allows, and any running timer may expire.
 
 That set of paths includes every path a real run can take, and more. So:
 
@@ -545,6 +547,41 @@ state Reserving {
 - **`Unanswered`** is a built-in error with no fields: the callee was not running, ended before answering, or had no transition for the call. It is reserved: nothing can be declared with its name, and it appears only in a call invoke's `fail Unanswered` outcome, never in a `!` list, as a type or as a value (`RB0119`).
 
 What a runtime does with a call is in [execution](../../spec/execution.md#calls-between-runs).
+
+## When a peer ends
+
+A machine that holds a `ref` can be told when the run it holds ends, however it ends, with `on name.ended`:
+
+```
+machine Order(id: string, draft: OrderDraft, inventory: ref Inventory) -> Receipt ! OutOfStock {
+  initial Reserving
+
+  // In the machine body, like any `on`: it is taken in whatever state the order is in.
+  on inventory.ended {
+    if event.status == Ended.Defect -> Alarm
+    else                            -> Unavailable
+  }
+
+  state Reserving {
+    invoke inventory.reserve(id, draft.items) {
+      done            -> Paying
+      fail Unanswered -> Unavailable
+    }
+    after 5s -> Unavailable
+  }
+  // …
+}
+```
+
+- **`on name.ended`** is taken once, when the run that `name` holds ends: it finished, failed, was cancelled, ended with a defect, or was suspended. It is written in a state or the machine body, with guards and branches, like any `on`, and searched from the active states like an event: a state with no `on name.ended` lets an outer one take it, and if no active state has one it is dropped. `on name.ended ignore` takes it and does nothing, which keeps an outer `on name.ended` from taking it.
+- **`event.status`** says how the run ended, a variant of the built-in enum **`Ended { Done, Failed, Cancelled, Defect, Suspended }`**. Nothing else comes with it: not the peer's output, its error or its defect, which stay its own, so the holder depends only on what the peer accepts, emits and answers. `Ended` is a type like any enum: `Ended.Defect` is a value, `==` compares it, and a variable, a function or an action can take one (`action log(status: Ended)`). It is built in, so nothing can be declared with its name (`RB0013`).
+- **`name`** is a parameter or variable of type `ref M`, `ref M?` or `ref M[]`, or an alias of one (`RB0315` otherwise, `RB0115` for an unknown name). For an optional one, it names the run it holds, if any; for a list, any run in it. A variable names whichever run it holds when the end arrives, so the end of a run it held before is dropped.
+- **Only peers.** An invoked child's end is its invoke's outcome, which `done` and `fail` inside its `invoke { }` handle, and a spawned child's is `on name.done` or `on name.fail E` (`RB0124` for `on upload.ended` or `on sessions.ended`). After `name.`, a lower-case word other than `done`, `fail` and `ended` is an error, with the likely word suggested (`RB0027`): `ended` means something only there, and stays a name everywhere else.
+- **Who is told.** Only a holder whose machine has an `on name.ended` for a `ref` to the peer's machine, in any state: writing it is the subscription. Others are not told and their traces show nothing. A holder that is told while none of its active states has an `on` for it writes `dropped`, also in a [strict machine](#strict-machines), which is not required to handle a peer's end. A run held under two names is told once.
+- **When.** After everything else the peer sends it: what the peer's last step sends and emits, then the `Unanswered` answers to the holder's pending calls, then the end. A holder that starts after its peer has ended is told right after its own first step. Each holder is told once per peer: a variable later pointed at a run whose end was already taken is not told again.
+
+The rules at run time are in [execution](../../spec/execution.md#messages-between-runs).
+
 ## Strict machines
 
 By default an input that enables no transition is dropped and written as `dropped` in the trace, and that stays the default: the events real charts get race with their state (a `Cancel` while an order authenticates, a `Pause` while an import validates), every example machine that accepts events has states where some event is not handled, and a holder of a reference keeps only its own replies by a guard. A machine can opt into failing instead, and say where it ignores an event on purpose:
@@ -572,8 +609,8 @@ strict machine Lock() {
 ```
 
 - **What is strict.** In a `strict machine`, one of its own events (from host code, or a `send` from another machine) that enables no transition ends the run with an `unhandled` defect instead of being dropped. The defect names the input, with its sender for a message ([`spec/execution.md`](../../spec/execution.md#defects)). Above, a quiet `Knock` while `Closed` is a defect: the machine body's `on Knock` takes only a loud one. A [call](#calls-between-machines) that no `on name` takes is the same defect, and the callee's caller gets `Unanswered` as the callee ends.
-- **What is not.** Emitted events from other machines (a spawned child's among them), invoke outcomes whose guarded branches all fail, a spawned child's outcome that no `on name.done` or `on name.fail` takes, and guarded `after` expiries are still dropped and traced. They arrive when another machine or the clock decides, so failing on them would make an ordinary race fatal. A `send` from a strict machine that reaches no running machine is [undelivered](actors.md#semantics), as from any machine: strict is about what a machine receives, and a peer that has ended is the same kind of race as an emitted event.
-- **`ignore`.** `on Event ignore` takes the event and does nothing: nothing is left or entered, and no effect runs. It can have a guard (`on Knock if event.loud ignore`) and be a branch of a block (`if busy ignore`), and it stands alone: a branch with `ignore` has no target and no effects. It is a transition like any other, so the trace shows the event as taken, with a `transition` record that goes nowhere, and an inner state's `ignore` is taken before an outer state's `on` for the same event, as `Opened`'s `on Knock ignore` is above. Only an event's `on` transition can ignore (`RB0026`): a timer, `always` or `done` with nothing to do can be removed, and a call is answered with `reply`, so `on reserve ignore` is an error too. `ignore` is allowed in any machine, not only a strict one; elsewhere it documents that an event is meant to be ignored, and turns a `dropped` record into a taken one.
+- **What is not.** Emitted events from other machines (a spawned child's among them), a peer's end that no `on name.ended` takes, invoke outcomes whose guarded branches all fail, a spawned child's outcome that no `on name.done` or `on name.fail` takes, and guarded `after` expiries are still dropped and traced. They arrive when another machine or the clock decides, so failing on them would make an ordinary race fatal. A `send` from a strict machine that reaches no running machine is [undelivered](actors.md#semantics), as from any machine: strict is about what a machine receives, and a peer that has ended is the same kind of race as an emitted event.
+- **`ignore`.** `on Event ignore` takes the event and does nothing: nothing is left or entered, and no effect runs. It can have a guard (`on Knock if event.loud ignore`) and be a branch of a block (`if busy ignore`), and it stands alone: a branch with `ignore` has no target and no effects. It is a transition like any other, so the trace shows the event as taken, with a `transition` record that goes nowhere, and an inner state's `ignore` is taken before an outer state's `on` for the same event, as `Opened`'s `on Knock ignore` is above. Only an event's `on` transition (an emitted event's and a [peer's end](#when-a-peer-ends) among them) can ignore (`RB0026`): a timer, `always` or `done` with nothing to do can be removed, and a call is answered with `reply`, so `on reserve ignore` is an error too. `ignore` is allowed in any machine, not only a strict one; elsewhere it documents that an event is meant to be ignored, and turns a `dropped` record into a taken one.
 - **The viewer** writes `strict` in the machine's signature, shows an `ignore` inside its state like any internal transition, and in simulate mode says of an event no active state handles that the run would end with a defect rather than drop it.
 
 Decided on 27 November 2026 and built in IR 0.5: `strict` is the machine's `strict` member in the [IR](../../spec/ir.md#machines), so adding or removing it changes the machine's hash, and an `ignore` is a transition with no target and no effects.
@@ -640,6 +677,7 @@ Errors (the build fails):
 - An unguarded cycle of `always` transitions: states each with an `always` whose first branch has no `if` (an `else` counts as guarded, since it runs only when the guards before it fail), each leading to the next, where entering a state also enters its `initial` chain (and every region of a parallel state), and a transition to a state's own ancestor leaves and re-enters it. A transition to a history state counts as entering any state it could restore: every child of its parent with that child's default entry for a shallow one, every state below the parent for a deep one. An unguarded `always` with no target is the shortest such cycle. So is an unguarded `always` written in the machine body, whatever its target, unless that target is a top-level final state: the machine itself is never left, so its `always` would be taken again after every step.
 - `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` and `on name.fail` through a name that is not a `children` collection, and a `send name.E` to a collection with no `[key]` or `.*`; a `spawn` of a machine other than the collection's; a key of the wrong type; a collection whose key type is not `string`, `int` or an enum, or whose machine is not a machine; `key` as the name of a parameter, variable, `as` or collection; `on name.fail E` for an error the collection's machine does not declare.
 - `send`, `emit` and `on name.Event` that do not match a declaration: an unknown or out-of-scope `name`, or one that is not a `ref` (a `ref` that is optional or a list cannot be sent to); an event the receiver does not declare with `event`, or the sender with `emits`; a missing, extra or wrongly typed field. A `send` to an invoked child where it is not running. An `as` on a task, or one that clashes with a variable, parameter or enclosing `as`. A `ref` to something that is not a machine, or in a field or a result.
+- `on name.ended` through a name that is not a parameter or variable of type `ref M`, `ref M?` or `ref M[]` (an invoked child or a collection among them), and a lower-case word after `name.` other than `done`, `fail` and `ended`; `event` read in it other than as `event.status`; a declaration or event named `Ended`.
 - Calls that do not match their declaration: an `invoke x.name` whose `x` is not a `ref` or whose machine has no call `name`; an `on name` or a `call name` type naming no call of the machine; arguments, `done` and `fail` outcomes checked as for a task, with `Unanswered` one more error to handle; a `reply` to something that is not a pending call, or that answers otherwise than its call is declared. A `call name` type anywhere but a machine variable's, `Unanswered` anywhere but a call invoke's `fail`, and `call` outside an `on name`.
 - A sensitive value going where a trace would show it as it is, and a value with sensitive fields going where `json` is expected (see [sensitive values](#sensitive-values)).
 - A machine that invokes itself, directly or through other machines, without an `after` or event in between (unbounded recursion). Precisely: machine `M` *starts* machine `N` if a state of `M` that invokes `N` can be entered from `M`'s initial states by taking only `always`, `done` and invoke outcome transitions, whatever their guards; or if a `spawn` of `N` is in the `entry` of such a state, in the effects of such a transition taken in such a state, or in the `exit` of the state such a transition is written in or of a state around it that the transition leaves (a transition to a top-level final state ends the run, so what it spawns never starts). An `on name.done` or `on name.fail` is an `on`, and counts as waiting: a supervisor that spawns a child again when it fails is fine. Only `on` and `after` transitions count as waiting; an invoke's outcome does not, since a task can finish at once. A transition to a history state counts as entering its parent's default entry: what a history state restores was entered before. A cycle of *starts* is an error.
@@ -803,7 +841,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0010` | An unexpected token. | `type A { x int }` |
 | `RB0011` | A `{` or `(` that is never closed. | `state A {` at the end of the file |
 | `RB0012` | A name of the wrong case. | `type order`, `state idle` |
-| `RB0013` | A keyword, or `result`, used as a name, or a declaration or event named `Unanswered`. | `var on: int`, `var result: int`, `type Evt { type: string }`, `error Unanswered` |
+| `RB0013` | A keyword, or `result`, used as a name, or a declaration or event named `Unanswered` or `Ended`. | `var on: int`, `var result: int`, `type Evt { type: string }`, `error Unanswered`, `enum Ended { A }` |
 | `RB0014` | `done`, `invoke`, `output`, `fail` or a history state directly in a machine body. | `machine M() { done -> A }`, `machine M() { history H }` |
 | `RB0015` | `var`, `event`, `emits`, `call`, `children` or `check` inside a state. | `state A { var x: int }`, `state A { check can finish }` |
 | `RB0016` | A machine item at the top level of a file. | `state A {}` or `check can finish` outside a machine |
@@ -817,6 +855,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0024` | A lower-case type name that is not a built-in type. | `x: integer` |
 | `RB0025` | Nesting more than 64 levels deep. | 65 nested states, or `((((…))))` |
 | `RB0026` | `ignore` outside an event's `on` transition (a call's too), or with a target or effects. | `after 5s ignore`, `on Go ignore -> A` |
+| `RB0027` | `on name.word` with a lower-case `word` other than `done`, `fail` and `ended`. | `on inventory.end`, `on peer.reserved` |
 
 The compiler's codes:
 
@@ -836,7 +875,7 @@ The compiler's codes:
 | `RB0112` | An import of a name the file does not declare. | `import { Ordr } from "./types.road"` |
 | `RB0113` | An enum variant that does not exist. | `Role.Admn` |
 | `RB0114` | A `set` of a machine parameter. | `set token = ""` |
-| `RB0115` | A `send name.E` or `on name.E` whose `name` is not an `invoke … as name` in scope or a parameter or variable, or an `invoke name.call(…)` whose `name` is not a parameter or variable. | `send uplod.Pause`, `upload` outside its invoking state, `invoke invntory.reserve()` |
+| `RB0115` | A `send name.E` or `on name.E` whose `name` is not an `invoke … as name` in scope or a parameter or variable, or an `invoke name.call(…)` or `on name.ended` whose `name` is not a parameter or variable. | `send uplod.Pause`, `upload` outside its invoking state, `invoke invntory.reserve()`, `on invntory.ended` |
 | `RB0116` | A `send` of an event the receiving machine does not declare with `event`. | `send upload.Stop` |
 | `RB0117` | An `emit` of an event the machine does not declare with `emits`, or an `on name.E` of one its sender does not. | `emit Progres`, `on upload.Pause` |
 | `RB0118` | A call the machine does not declare: in `invoke x.name`, `on name` or a `call name` type. | `invoke inventory.reserv(id)`, `on reserv` |
@@ -845,6 +884,7 @@ The compiler's codes:
 | `RB0121` | A `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` or `on name.fail` through a name that is not a `children` collection, or a `send name.E` to a collection without a key or `*`. | `stop upload[1]`, `send sessions.Notify` |
 | `RB0122` | `key` as the name of a machine parameter, variable, `as` name or collection. | `var key: string` |
 | `RB0123` | A state path in a `check` that names no state of the machine, or names a history state. | `check reachable Applyng`, `check never Work.Last` for `history Last` |
+| `RB0124` | `on name.ended` through an `invoke … as name` child or a `children` collection, whose end is its outcome. | `on upload.ended`, `on sessions.ended` |
 | `RB0201` | A transition target that does not resolve, or a path through a history state. | `-> Dne`, `-> Working.Previous.Editing` |
 | `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }`, `machine M() { initial A }` |
 | `RB0203` | An `initial` that is not a child state, is written twice, or is in a state without children. | `initial Strat`, `initial Previous` for `history Previous` |
@@ -873,13 +913,13 @@ The compiler's codes:
 | `RB0306` | A field read from a value that has none, or that is optional. | `attempts.size`, `draft.coupon.code`, `event.x` in `on Cancel` where `event Cancel` has no fields |
 | `RB0307` | `result` after a task or machine that returns nothing. | `done set n = result` |
 | `RB0308` | `error` in a `fail *` that covers several errors, or none. | `fail * set why = error.reason` |
-| `RB0309` | `event` in `on *`, or used whole in an `on name` that takes a call. | `on * do log(event)`, `on reserve do log(event)` |
+| `RB0309` | `event` in `on *`, or used whole in an `on name` that takes a call or an `on name.ended`. | `on * do log(event)`, `on reserve do log(event)`, `on peer.ended do log(event)` |
 | `RB0310` | `output` in a machine that returns nothing. | `machine M() { … output 1 }` |
 | `RB0311` | A `fail` value that is not a declared error of the machine. | `fail "late"` |
 | `RB0312` | An `int` or `duration` literal beyond ±(2^53 − 1). | `9007199254740992` |
 | `RB0313` | A type alias that refers to itself. | `type A = A[]` |
 | `RB0314` | A type made optional twice. | `note: string??` |
-| `RB0315` | A `send`, `on name.E` or `invoke name.call(…)` through a value that is not a `ref`, or a `ref` that is optional or a list. | `send count.Ping` for `count: int` |
+| `RB0315` | A `send`, `on name.E` or `invoke name.call(…)` through a value that is not a `ref`, or a `ref` that is optional or a list; an `on name.ended` through one that is not a `ref M`, `ref M?` or `ref M[]`. | `send count.Ping` for `count: int` |
 | `RB0316` | A `ref` in a field of a record, error or event, in a parameter of a `call`, in what a function, task or machine returns, or in a type argument. | `type Holder { peer: ref Peer }`, `Box<ref Peer>` |
 | `RB0317` | A `call name` type anywhere but a machine variable's, or a variable of it with an initial value. | `var p: call reserve?`, `fn f(p: call reserve) -> int` |
 | `RB0318` | A `reply` to something that is not a pending call. | `reply count done` for `count: int` |
@@ -964,7 +1004,7 @@ commonItem  = "initial" Upper
             | stateDecl
             | "entry" effects
             | "exit" effects
-            | "on" ( Upper | "*" | lower "." ( Upper | "done" | "fail" ( Upper | "*" ) ) | lower ) branches
+            | "on" ( Upper | "*" | lower "." ( Upper | "done" | "fail" ( Upper | "*" ) | "ended" ) | lower ) branches
             | "after" expr branches
             | "always" branches ;
 retry       = "retry" int [ "on" Upper { "|" Upper } ] [ "after" expr ] ;

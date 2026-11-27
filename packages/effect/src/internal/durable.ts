@@ -9,7 +9,7 @@ import * as Core from "@dire-kiwi/roadbook-core"
 import { Deferred, Effect, Exit, Option, Queue, Schema } from "effect"
 import { Activity, DurableClock, DurableDeferred, type Workflow, WorkflowEngine } from "effect/workflow"
 import { Defect, hostDefect } from "../Defect.ts"
-import { type Item, type Port, registerHandle, type Wake } from "./port.ts"
+import { endedInput, endedStatus, type Item, type Port, registerHandle, tellEnded, type Wake } from "./port.ts"
 
 // ---- one execution ------------------------------------------------------------------------------
 
@@ -241,6 +241,11 @@ export class Entry {
   /** Completed when the run ends. */
   readonly ended = Deferred.makeUnsafe<void>()
   /**
+   * How the run ended, once it has: from its last attempt here, or from the engine's result for
+   * one that ended in an earlier process. What a holder that subscribes later is told.
+   */
+  endedAs: Core.EndedStatus | undefined = undefined
+  /**
    * Completed once an attempt of the run in this process has replayed its journal: from then on
    * `emitted` is the run's, not only what this process has seen of it.
    */
@@ -283,6 +288,10 @@ export class Entry {
       get open() {
         return entry.state !== "ended"
       },
+      get closedAs() {
+        return entry.endedAs
+      },
+      set closedAs(_) {},
       subscribers: new Map(),
       deliver: (input) => entry.deliver(input)
     }
@@ -324,10 +333,12 @@ export class Entry {
     if (this.resumed || workflow === undefined) return
     this.resumed = true
     const executionId = this.info.executionId
-    this.fork(Effect.flatMap(workflow.poll(executionId), (found) =>
-      Option.isSome(found) && found.value._tag === "Complete"
-        ? Effect.sync(() => this.finish())
-        : workflow.resume(executionId)) as Effect.Effect<void, never, WorkflowEngine.WorkflowEngine>)
+    this.fork(Effect.flatMap(workflow.poll(executionId), (found) => {
+      const result = Option.getOrUndefined(found)
+      return result?._tag === "Complete"
+        ? Effect.sync(() => this.finish(outcomeStatus(result.exit as Exit.Exit<unknown, unknown>)))
+        : workflow.resume(executionId)
+    }) as Effect.Effect<void, never, WorkflowEngine.WorkflowEngine>)
   }
 
   /** Wait until `emitted` is the run's: an attempt here has replayed it, or the run has ended. */
@@ -458,11 +469,13 @@ export class Entry {
     this.drain()
   }
 
-  /** The run's last step ended it: nothing more reaches it. */
+  /**
+   * The run's last step ended it: nothing more reaches it. Its subscribers stay until it has
+   * carried out that step's commands, and are told its end then (`finish`).
+   */
   close() {
     this.state = "ended"
     this.mailbox = []
-    this.subscribers.clear()
     this.log.length = 0
   }
 
@@ -482,8 +495,19 @@ export class Entry {
     }
   }
 
-  /** The run has ended: whoever waits for it stops waiting. */
-  finish() {
+  /**
+   * The run has ended, as `status`: its holders that hear its end are told, after everything
+   * else it pushed onto their queues, and whoever waits for it stops waiting.
+   */
+  finish(status: Core.EndedStatus) {
+    if (this.endedAs === undefined) {
+      this.endedAs = status
+      for (const { entry, heard } of this.subscribers.values()) {
+        if (heard.has(Core.ENDED_INPUT)) entry.deliver(endedInput(this.info.run, status))
+      }
+      tellEnded(this.port, status)
+    }
+    this.subscribers.clear()
     this.close()
     for (const listener of this.listeners) listener.end()
     this.listeners.clear()
@@ -498,7 +522,8 @@ export class Entry {
     // A snapshot from the middle of a replay is older than the run: keep the last whole one.
     if (attempt.live()) this.saved = attempt.save()
     this.attempt = undefined
-    if (attempt.snapshot().status !== "running") this.finish()
+    const status = endedStatus(attempt.snapshot().status)
+    if (status !== undefined) this.finish(status)
     else if (this.state === "live") this.state = "pending"
   }
 
@@ -522,21 +547,34 @@ export class Entry {
 
   /**
    * `holder` receives what this run emits from message `from` on, what it already emitted too:
-   * the events in `heard`.
+   * the events in `heard`, and its end if `heard` has `ended`. Unless the run has ended: that
+   * gives how, which the holder's own driver tells it after its start step if it hears it.
    */
-  subscribe(holder: Entry, from: number, heard: ReadonlySet<string>) {
-    if (this.state === "ended") return
+  subscribe(holder: Entry, from: number, heard: ReadonlySet<string>): Core.EndedStatus | undefined {
+    if (this.endedAs !== undefined) return this.endedAs
     this.subscribers.set(holder.info.run, { entry: holder, from, heard })
+    // Closed and not ended yet: it is carrying out its last step, and tells its end as it ends.
+    if (this.state === "ended") return undefined
     for (const { message, value } of this.log) {
       if (message >= from && heard.has(value._tag)) {
         holder.deliver({ kind: "emitted", from: this.info.run, invoke: null, message, value })
       }
     }
+    return undefined
   }
 
   unsubscribe(holder: string) {
     this.subscribers.delete(holder)
   }
+}
+
+/**
+ * How a run whose workflow execution completed with `exit` ended: the status its body gives
+ * (`Outcome`); a failure of the execution itself, which no body gives, as a defect.
+ */
+const outcomeStatus = (exit: Exit.Exit<unknown, unknown>): Core.EndedStatus => {
+  const status = Exit.isSuccess(exit) ? (exit.value as { readonly status?: Core.Status } | null)?.status : undefined
+  return (status === undefined ? undefined : endedStatus(status)) ?? "Defect"
 }
 
 /** The entry of a durable run, made the first time this process hears of it. */

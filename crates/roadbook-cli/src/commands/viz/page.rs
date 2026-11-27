@@ -263,6 +263,7 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
                 "sends": [],
                 "receives": [],
                 "calls": [],
+                "ends": [],
             }));
         }
     }
@@ -321,6 +322,11 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
             for (machine, calls) in t.calls {
                 if let Some(to) = at(&machine) {
                     push(entry, "calls", json!({ "to": to, "calls": calls }));
+                }
+            }
+            for (machine, names) in t.ends {
+                if let Some(to) = at(&machine) {
+                    push(entry, "ends", json!({ "to": to, "names": names }));
                 }
             }
         }
@@ -388,6 +394,9 @@ struct Talks {
     receives: Grouped,
     /// Calls it makes, by called machine.
     calls: Grouped,
+    /// Peers whose end it hears (`on name.ended`), by peer machine, with the names it watches
+    /// them through.
+    ends: Grouped,
 }
 
 fn talks(ir: &Ir, m: &Machine) -> Talks {
@@ -397,6 +406,7 @@ fn talks(ir: &Ir, m: &Machine) -> Talks {
         sends: Vec::new(),
         receives: Vec::new(),
         calls: Vec::new(),
+        ends: Vec::new(),
     };
     for (name, c) in &m.children {
         group(&mut t.spawns, &c.machine, name);
@@ -428,8 +438,9 @@ fn ref_machine(ir: &Ir, ty: &TypeRef) -> Option<String> {
     None
 }
 
-/// The sends, handled emitted events and calls of `s` and the states inside it, in document
-/// order: each state's call invoke, `entry`, `exit`, then each transition's trigger and effects.
+/// The sends, handled emitted events, calls and peers' ends heard of `s` and the states inside
+/// it, in document order: each state's call invoke, `entry`, `exit`, then each transition's
+/// trigger and effects.
 fn messages(s: &State, t: &mut Talks) {
     fn effects(list: &[Effect], t: &mut Talks) {
         for e in list {
@@ -447,8 +458,10 @@ fn messages(s: &State, t: &mut Talks) {
     effects(&s.entry, t);
     effects(&s.exit, t);
     for tr in &s.transitions {
-        if let Trigger::Emitted { from, event } = &tr.trigger {
-            group(&mut t.receives, &from.machine, event);
+        match &tr.trigger {
+            Trigger::Emitted { from, event } => group(&mut t.receives, &from.machine, event),
+            Trigger::Ended { from } => group(&mut t.ends, &from.machine, &from.name),
+            _ => {}
         }
         effects(&tr.effects, t);
     }
@@ -547,6 +560,45 @@ mod tests {
         assert_eq!(
             machines[1]["refs"],
             json!([{ "to": 0, "names": ["inventory"] }])
+        );
+    }
+
+    /// A peer's end heard (`on name.ended`) is an edge from the holder to the peer, with the
+    /// names it watches it through: `ends` beside `refs` (`IndexMachine` in
+    /// `packages/viewer/src/project.ts`). A holder with no `on name.ended` has none.
+    #[test]
+    fn the_index_lists_the_peers_whose_end_each_machine_hears() {
+        let src = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../spec/conformance/charts/ended.road"),
+        )
+        .unwrap();
+        let out = roadbook_compiler::compile_source("ended.road", &src, &Default::default());
+        assert!(!out.has_errors(), "{}", out.render());
+        let ir = out.ir.unwrap();
+        let index = project_index("t", &[("ended.road", &ir)], &["ended.html".into()]);
+        let machines = index["machines"].as_array().unwrap();
+        let at = |name: &str| machines.iter().position(|m| m["name"] == name).unwrap();
+        let inventory = at("Inventory");
+        let ends = |name: &str| machines[at(name)]["ends"].clone();
+        assert_eq!(
+            ends("Order"),
+            json!([{ "to": inventory, "names": ["inventory"] }])
+        );
+        assert_eq!(
+            ends("Picker"),
+            json!([{ "to": inventory, "names": ["inventory"] }])
+        );
+        assert_eq!(
+            ends("Switcher"),
+            json!([{ "to": inventory, "names": ["current"] }])
+        );
+        assert_eq!(ends("Clerk"), json!([]));
+        assert_eq!(ends("Inventory"), json!([]));
+        // It holds the ref all the same.
+        assert_eq!(
+            machines[at("Clerk")]["refs"],
+            json!([{ "to": inventory, "names": ["inventory"] }])
         );
     }
 

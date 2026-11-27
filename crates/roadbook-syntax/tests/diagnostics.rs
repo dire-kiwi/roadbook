@@ -105,6 +105,11 @@ fn each_syntax_error_has_its_code() {
         (s("    on Go -> A ignore"), "RB0026"),
         (s("    on Go set n = 1 ignore"), "RB0026"),
         (s("    on Go { if ready ignore -> A }"), "RB0026"),
+        (s("    on peer.end -> S"), "RB0027"),
+        (s("    on peer.stopped -> S"), "RB0027"),
+        (s("    on peer.reserved -> S"), "RB0027"),
+        ("enum Ended { A }".into(), "RB0013"),
+        (m("  event Ended"), "RB0013"),
         ("strict type T {}\n".to_string(), "RB0010"),
         (s("    after Cfg { ms: 5 } -> S"), "RB0018"),
         (s("    fail CardDeclined -> S"), "RB0019"),
@@ -303,4 +308,27 @@ fn json_form() {
         serde_json::json!({ "file": 2, "start": 5, "end": 10, "line": 1, "col": 6, "endLine": 1, "endCol": 11 })
     );
     assert_eq!(json["fixes"][0]["edits"][0]["text"], "Order");
+}
+
+#[test]
+fn a_lower_case_word_after_the_dot_suggests_a_lifecycle_trigger_or_an_event() {
+    let fix = |word: &str| {
+        let (_, diags) = parse_file(FileId(0), &s(&format!("    on peer.{word} -> S")));
+        assert_eq!(diags.len(), 1, "{word}: {diags:#?}");
+        assert_eq!(diags[0].code.to_string(), "RB0027");
+        diags[0].fixes.first().map(|f| f.edits[0].text.clone())
+    };
+    assert_eq!(fix("end").as_deref(), Some("ended"));
+    assert_eq!(fix("ends").as_deref(), Some("ended"));
+    assert_eq!(fix("closed").as_deref(), Some("ended"));
+    assert_eq!(fix("ende").as_deref(), Some("ended"));
+    assert_eq!(fix("don").as_deref(), Some("done"));
+    assert_eq!(fix("fial").as_deref(), Some("fail"));
+    assert_eq!(fix("reserved").as_deref(), Some("Reserved"));
+    // `ended` is a name everywhere but after the dot.
+    let (_, diags) = parse_file(
+        FileId(0),
+        &m("  var ended: int = 0\n  on peer.ended set ended = ended + 1"),
+    );
+    assert!(diags.is_empty(), "{diags:#?}");
 }

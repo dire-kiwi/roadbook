@@ -74,6 +74,20 @@ fn export_scxml_snapshots_calls() {
     }
 }
 
+/// A peer's end, `on x.ended`, is the event `x.ended`, its guards `cond`s as for any event.
+#[test]
+fn export_scxml_snapshots_a_peer_s_end() {
+    let chart = "spec/conformance/charts/ended.road";
+    for (machine, snapshot) in [
+        ("Order", "ended_order_scxml"),
+        ("Switcher", "ended_switcher_scxml"),
+    ] {
+        let out = roadbook(&repo(), &["export", "scxml", chart, "--machine", machine]);
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        insta::assert_snapshot!(snapshot, text(&out.stdout));
+    }
+}
+
 /// History states are `<history type="shallow|deep">` in their parent, with the default
 /// transition SCXML requires: the parent's default entry, its `initial` or every region.
 #[test]

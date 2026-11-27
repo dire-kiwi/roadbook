@@ -20,7 +20,7 @@ const field = (name: string, type: string) => ({ name, type, sensitive: false, d
 
 /** The declarations of crates/roadbook-compiler/tests/pass/generics.road, and an error. */
 const ir = {
-  irVersion: "0.7",
+  irVersion: "0.8",
   sources: [],
   types: {
     UserId: { kind: "alias", params: [], type: "string", doc: "", span },
@@ -229,7 +229,7 @@ describe("hostile IR", () => {
     expect(aliasCycle({ types } as unknown as Ir)).toBe("Boom")
     expect(aliasCycle({ types: { Loop: alias([], "map<string, Twice>[]"), Twice: alias([], "Loop") } } as unknown as Ir)).toBeDefined()
     expect(aliasCycle({ types: { A: alias([], "int"), B: alias([], "A[]") } } as unknown as Ir)).toBeUndefined()
-    const doc = { irVersion: "0.7", sources: [], types, functions: {}, actions: {}, tasks: {}, machines: {} }
+    const doc = { irVersion: "0.8", sources: [], types, functions: {}, actions: {}, tasks: {}, machines: {} }
     expect(() => loadIr(doc)).toThrow(/refers to itself/)
   })
 })

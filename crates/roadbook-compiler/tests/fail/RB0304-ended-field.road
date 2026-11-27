@@ -1,0 +1,20 @@
+action log(what: json)
+
+machine Peer() -> int {
+  initial A
+  final state A { output 1 }
+}
+
+machine M(peer: ref Peer) {
+  initial A
+  state A {
+    on peer.ended -> B  do log(event.value)
+  }
+  state B {
+    on peer.ended if event.statu == Ended.Done -> C
+  }
+  final state C {}
+}
+
+// expect: RB0304 at 11:38
+// expect: RB0304 at 14:28

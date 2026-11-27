@@ -1,0 +1,35 @@
+{
+  "description": "Like peer-stopped, but the Order hears the end: the Inventory (r1) has ended before the Order (r2) starts. Subscribing finds it closed, so the Order's own driver pushes `ended` with `Done` right after carrying out the Order's start step, after the `sent` and `undelivered` of its Reserve and its timer's start. The Order takes it at once and leaves for Closed without waiting for its timeout.",
+  "requires": [
+    "messaging",
+    "ended"
+  ],
+  "chart": "charts/ended.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    },
+    {
+      "start": "Order",
+      "run": "r2",
+      "input": {
+        "id": "o1",
+        "inventory": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "advance": 5000
+    }
+  ],
+  "status": "done"
+}

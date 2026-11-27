@@ -111,6 +111,15 @@ describe('scopes', () => {
     expect(await scopesAt('on upload.Progress -> A', 'upload')).toContain('variable.other.roadbook')
   })
 
+  it('marks a peer’s end, and ended as a name elsewhere', async () => {
+    const line = '    on inventory.ended if event.status == Ended.Defect -> Alarm'
+    expect(await scopesAt(line, 'inventory')).toContain('variable.other.roadbook')
+    expect(await scopesAt(line, 'ended')).toContain('keyword.control.ended.roadbook')
+    expect(await scopesAt(line, 'Alarm')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt('    on current.ended -> Gone', 'ended')).toContain('keyword.control.ended.roadbook')
+    expect(await scopesAt('    always set ended = ended + 1', 'ended')).not.toContain('keyword.control.ended.roadbook')
+  })
+
   it('marks calls, the triggers that take them and replies', async () => {
     expect(await scopesAt('  call reserve(orderId: string) -> Reservation', 'call')).toContain('storage.type.call.roadbook')
     expect(await scopesAt('  call reserve(orderId: string) -> Reservation', 'reserve')).toContain('entity.name.function.roadbook')

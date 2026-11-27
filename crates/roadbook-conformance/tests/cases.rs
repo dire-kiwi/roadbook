@@ -264,6 +264,22 @@ fn top_level_runs_are_started_in_order() {
                 "{}: `requires` must list `history` exactly when its chart has a history state",
                 c.name
             );
+            fn has_ended(s: &roadbook_ir::State) -> bool {
+                s.transitions
+                    .iter()
+                    .any(|t| matches!(t.trigger, roadbook_ir::Trigger::Ended { .. }))
+                    || s.states.iter().any(has_ended)
+            }
+            let ended = ir.machines.values().any(|m| has_ended(&m.root));
+            assert_eq!(
+                ended,
+                requires("ended"),
+                "{}: `requires` must list `ended` exactly when a machine of its chart has an `on name.ended`",
+                c.name
+            );
+            if ended {
+                assert!(messaging, "{}: `ended` needs `messaging` too", c.name);
+            }
         }
     }
 }
@@ -492,6 +508,58 @@ fn lint_catches_mistakes() {
                "state": "Checkout.Charging", "src": "chargeCard"}),
     );
     assert!(!lint(&twice, Status::Done, None).is_empty());
+}
+
+#[test]
+fn lint_catches_peer_end_mistakes() {
+    let c = cases()
+        .into_iter()
+        .find(|c| c.name == "peer-ended-order")
+        .unwrap();
+    let st = statuses(&c);
+    assert!(lint_runs(&c.records, &st, None).is_empty());
+    let finds = |recs: &[Value], what: &str| {
+        let problems = lint_runs(recs, &st, None);
+        assert!(
+            problems.iter().any(|p| p.contains(what)),
+            "no problem with {what:?} in {problems:#?}"
+        );
+    };
+    let i = c
+        .records
+        .iter()
+        .position(|r| r["event"]["kind"] == "ended")
+        .unwrap();
+    // A status that is not how the peer ended, or not one at all.
+    let mut wrong = c.records.clone();
+    wrong[i]["event"]["status"] = json!("Failed");
+    finds(&wrong, "but r2 was told Failed");
+    wrong[i]["event"]["status"] = json!("Gone");
+    finds(&wrong, "not a variant of Ended");
+    // An end that is stale, and one from a run that is not top-level.
+    let mut stale = c.records.clone();
+    stale[i]["kind"] = json!("stale");
+    finds(&stale, "never stale");
+    let mut child = c.records.clone();
+    child[i]["event"]["from"] = json!("r1.1");
+    finds(&child, "not a top-level run");
+    // Told twice: the same end dropped again.
+    let mut twice = c.records.clone();
+    let mut again = c.records[i].clone();
+    again["kind"] = json!("dropped");
+    twice.insert(i, again);
+    finds(&twice, "told the end of r1 twice");
+    // The emitted event taken after the end.
+    let mut late = c.records.clone();
+    let e = late
+        .iter()
+        .position(|r| r["event"]["kind"] == "emitted")
+        .unwrap();
+    let mut emitted = late[e].clone();
+    emitted["kind"] = json!("dropped");
+    late.insert(i, emitted);
+    late.swap(i, i + 1);
+    finds(&late, "after its end");
 }
 
 #[test]

@@ -483,6 +483,15 @@ pub struct Call {
 /// key of [`Ir::types`].
 pub const UNANSWERED: &str = "Unanswered";
 
+/// The built-in enum of how a peer's run ended, the type of `event.status`
+/// in an `on name.ended` transition. Unlike [`UNANSWERED`] it is a key of
+/// [`Ir::types`], an ordinary `enum` with [`ENDED_VARIANTS`], whenever the
+/// document names it, so readers need nothing special for it.
+pub const ENDED: &str = "Ended";
+
+/// The variants of [`ENDED`], in order.
+pub const ENDED_VARIANTS: [&str; 5] = ["Done", "Failed", "Cancelled", "Defect", "Suspended"];
+
 /// `children name: Machine by Key`: a keyed collection of spawned children.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -721,6 +730,13 @@ pub enum Trigger {
         /// no `on name.fail` for.
         error: String,
     },
+    /// `on name.ended`: the run a `ref` parameter or variable holds closed.
+    /// `event.status` is in scope, of the built-in enum [`ENDED`].
+    #[serde(rename = "ended")]
+    Ended {
+        /// The peer, an address of kind `ref`.
+        from: Address,
+    },
 }
 
 /// An effect, run by an `entry`, an `exit` or a transition.
@@ -853,6 +869,9 @@ fn state_messaging(s: &State) -> Option<String> {
     for t in &s.transitions {
         if let Trigger::Emitted { from, event } = &t.trigger {
             return Some(format!("`on {}.{event}` in state `{}`", from.name, s.id));
+        }
+        if let Trigger::Ended { from } = &t.trigger {
+            return Some(format!("`on {}.ended` in state `{}`", from.name, s.id));
         }
         if let Some(found) = effects(&t.effects) {
             return Some(format!("{found} in state `{}`", s.id));

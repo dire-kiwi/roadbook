@@ -184,6 +184,17 @@ impl Cx<'_, '_> {
                         );
                         Ty::Unknown
                     }
+                    Some((Implicit::Ended, _)) => {
+                        self.ck.diags.push(
+                            Diagnostic::error(
+                                codes::UNTYPED_EVENT,
+                                n.span,
+                                "`event` in `on name.ended` is read only through its field `status`",
+                            )
+                            .with_help("read how the peer's run ended: `event.status`, an `Ended`"),
+                        );
+                        Ty::Unknown
+                    }
                     None => match self.vars.get(&n.name) {
                         Some(v) => {
                             self.sens = v.sensitive;
@@ -215,6 +226,37 @@ impl Cx<'_, '_> {
                     .ck
                     .sensitive
                     .is(&Sensitive::call(&self.machine, c), &f.name);
+                let path = vec!["event".to_string(), f.name.clone()];
+                (node(K::Ref { path }, &ty, e), ty)
+            }
+            ExprKind::Field(base, f)
+                if matches!(&base.kind, ExprKind::Var(n) if n.name == "event")
+                    && matches!(scope.event, Implicit::Ended) =>
+            {
+                let ty = if f.name == "status" {
+                    self.ck.uses_ended = true;
+                    Ty::Named(crate::check::ENDED.to_string())
+                } else {
+                    let mut d = Diagnostic::error(
+                        codes::UNKNOWN_FIELD,
+                        f.span,
+                        format!(
+                            "`event` in `on name.ended` has no field `{}`: only `status`",
+                            f.name
+                        ),
+                    );
+                    if suggest(&f.name, ["status"].into_iter()).is_some() {
+                        d = d.with_help("did you mean `status`?").with_fix(
+                            "replace with `status`",
+                            f.span,
+                            "status",
+                        );
+                    } else {
+                        d = d.with_help("a peer's end carries only how it ended, `event.status`: not its output, error or defect");
+                    }
+                    self.ck.diags.push(d);
+                    Ty::Unknown
+                };
                 let path = vec!["event".to_string(), f.name.clone()];
                 (node(K::Ref { path }, &ty, e), ty)
             }
@@ -911,6 +953,11 @@ impl Cx<'_, '_> {
                 None
             }
             Found::Poisoned => None,
+            Found::Missing if t.name == crate::check::ENDED => {
+                self.ck.uses_ended = true;
+                let def = self.ck.env.defs.get(crate::check::ENDED).cloned()?;
+                Some((t.name.clone(), def, None))
+            }
             Found::Missing if t.name == crate::check::UNANSWERED => {
                 self.ck.diags.push(crate::check::unanswered_misused(
                     t.span,

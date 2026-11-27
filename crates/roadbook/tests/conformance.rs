@@ -51,6 +51,7 @@ const SUPPORTED: &[&str] = &[
     "calls",
     "history",
     "spawn",
+    "ended",
 ];
 
 // ---- the executor ------------------------------------------------------------------------

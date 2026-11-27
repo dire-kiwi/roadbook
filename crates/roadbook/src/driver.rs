@@ -8,8 +8,8 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use roadbook_core::{
-    Command, Defect, Input, Object, Program, Record, RestoreError, RunResult, Saved, Snapshot,
-    SrcKind, Status,
+    Command, Defect, Ended, Input, Object, Program, Record, RestoreError, RunResult, Saved,
+    Snapshot, SrcKind, Status,
 };
 use roadbook_ir::{Field, TypeRef};
 use serde_json::{Map, Value};
@@ -79,6 +79,9 @@ pub(crate) struct Driver<'a> {
     /// that checking its handles met.
     peers: Arc<Peers>,
     bad_ref: Option<Defect>,
+    /// The ends of the peers that had closed before this run subscribed to them, which it
+    /// hears: pushed onto its own queue once its start step's commands are carried out.
+    late_ends: Vec<Input>,
     queue: VecDeque<Input>,
     invokes: BTreeMap<u64, Slot<'a>>,
     /// The context of every machine invoke whose outcome the core has not taken and that
@@ -155,21 +158,29 @@ fn drop_caught<T>(x: T) -> Result<(), Defect> {
     catch_unwind(AssertUnwindSafe(move || drop(x))).map_err(defect_from_panic)
 }
 
+/// A run that [`open`] has opened: the runs it holds a `ref` to, and the ends of those that
+/// had closed already, which it hears.
+#[derive(Default)]
+pub(crate) struct Opened {
+    peers: Arc<Peers>,
+    late_ends: Vec<Input>,
+}
+
 /// Opens a run of `machine` with arguments `input` on `shared`: finds the handles of the runs
 /// that `input` names in `ref` arguments among `refs`, and subscribes the run to what each of
-/// them emits, before anything else can happen (`spawn` returns only after this). A run id
-/// with no handle there, a handle to a run of another machine (by name or machine hash) and
-/// a child run's handle are host defects before the run starts, as an argument that does not
-/// encode is; the run then subscribes to nothing.
+/// them emits and to its end, once per run, before anything else can happen (`spawn` returns
+/// only after this). A run id with no handle there, a handle to a run of another machine (by
+/// name or machine hash) and a child run's handle are host defects before the run starts, as
+/// an argument that does not encode is; the run then subscribes to nothing.
 pub(crate) fn open(
     program: &Program,
     machine: &str,
     input: &Object,
     refs: &[RunHandle],
     shared: &Arc<Shared>,
-) -> Result<Arc<Peers>, Defect> {
+) -> Result<Opened, Defect> {
     let Some(m) = program.ir().machines.get(machine) else {
-        return Ok(Arc::default());
+        return Ok(Opened::default());
     };
     let mut peers = Peers::new();
     for (id, of) in arg_ref_ids(program, &m.params, input) {
@@ -201,11 +212,24 @@ pub(crate) fn open(
         }
         peers.insert(id, h.clone());
     }
-    for peer in peers.values() {
+    let mut late_ends = Vec::new();
+    for (id, peer) in &peers {
         let events = program.heard(machine, &peer.machine);
-        peer.shared.subscribe(shared.clone(), events);
+        let hears_end = events.contains(Program::ENDED);
+        // A peer that has told its end already is told here instead, by this run's driver.
+        if let Some(status) = peer.shared.subscribe(shared.clone(), events)
+            && hears_end
+        {
+            late_ends.push(Input::Ended {
+                from: id.clone(),
+                status,
+            });
+        }
     }
-    Ok(Arc::new(peers))
+    Ok(Opened {
+        peers: Arc::new(peers),
+        late_ends,
+    })
 }
 
 /// The saved snapshot of a run that ended with `defect` before it started (a `ref` argument
@@ -302,7 +326,7 @@ impl<'a> Driver<'a> {
         program: &'a Program,
         machine: &'a str,
         input: Object,
-        peers: Result<Arc<Peers>, Defect>,
+        peers: Result<Opened, Defect>,
         host: &'a dyn Host,
         config: &Config,
         id: String,
@@ -334,7 +358,7 @@ impl<'a> Driver<'a> {
         Self::new(
             program,
             Begin::Restore(Box::new(saved), migrated),
-            Ok(Arc::default()),
+            Ok(Opened::default()),
             host,
             config.clone(),
             id,
@@ -371,7 +395,7 @@ impl<'a> Driver<'a> {
     fn new(
         program: &'a Program,
         begin: Begin<'a>,
-        peers: Result<Arc<Peers>, Defect>,
+        peers: Result<Opened, Defect>,
         host: &'a dyn Host,
         config: Config,
         id: String,
@@ -379,9 +403,9 @@ impl<'a> Driver<'a> {
         shared: Arc<Shared>,
         ctx: Option<Arc<InvokeContext>>,
     ) -> Self {
-        let (peers, bad_ref) = match peers {
-            Ok(p) => (p, None),
-            Err(d) => (Arc::default(), Some(d)),
+        let (Opened { peers, late_ends }, bad_ref) = match peers {
+            Ok(opened) => (opened, None),
+            Err(d) => (Opened::default(), Some(d)),
         };
         Driver {
             program,
@@ -394,6 +418,7 @@ impl<'a> Driver<'a> {
             ctx,
             peers,
             bad_ref,
+            late_ends,
             queue: VecDeque::new(),
             invokes: BTreeMap::new(),
             contexts: BTreeMap::new(),
@@ -442,6 +467,7 @@ impl<'a> Driver<'a> {
             }
             self.close();
             self.shared.answer_unanswered();
+            self.shared.tell_ended(&self.id, Ended::Defect);
             self.shared.finish(Finished::Ok);
             return (RunEnd::Defect(defect), false);
         }
@@ -469,6 +495,12 @@ impl<'a> Driver<'a> {
         .unwrap_or_else(|e| panic!("{e}"));
         self.set_snapshot(snap);
         self.carry_out(commands).await;
+        // The ends of peers that had closed before this run subscribed, behind what its start
+        // step's commands pushed (`Unanswered` answers to calls to them among it). Nothing is
+        // pushed onto a run that start step closed.
+        for input in std::mem::take(&mut self.late_ends) {
+            self.shared.deliver(input);
+        }
         self.shared.listeners_started();
         self.publish();
         while self.snap.status == Status::Running {
@@ -576,8 +608,8 @@ impl<'a> Driver<'a> {
     }
 
     /// Stops an idle run that was asked to suspend: closes it, cancels its timers through the
-    /// timer without records (they are in the snapshot), writes `suspended`, and gives the
-    /// saved snapshot. No exit effect runs.
+    /// timer without records (they are in the snapshot), writes `suspended`, tells its holders
+    /// that hear its end with `Suspended`, and gives the saved snapshot. No exit effect runs.
     async fn suspend(mut self) -> (RunEnd, bool) {
         self.close();
         // An idle run has no pending call, and nothing queued.
@@ -592,6 +624,7 @@ impl<'a> Driver<'a> {
             self.config.timer.cancel(&self.id, timer);
         }
         self.write(Record::Suspended);
+        self.shared.tell_ended(&self.id, Ended::Suspended);
         let saved = self
             .shared
             .saved()
@@ -1005,11 +1038,14 @@ impl<'a> Driver<'a> {
         self.config.sink.record(&record);
     }
 
-    /// Ends the run: discards the queue, stops whatever it still holds (a child run is
-    /// cancelled through its token first), and reports through the token.
+    /// Ends the run: answers its calls `Unanswered`, tells its holders that hear its end how
+    /// it closed, discards the queue, stops whatever it still holds (a child run is cancelled
+    /// through its token first), and reports through the token.
     async fn end(mut self) -> (RunEnd, bool) {
         self.close();
         self.shared.answer_unanswered();
+        let status = Ended::of(self.snap.status).unwrap_or(Ended::Cancelled);
+        self.shared.tell_ended(&self.id, status);
         self.queue.clear();
         self.contexts.clear();
         for (_, slot) in std::mem::take(&mut self.invokes) {
@@ -1039,9 +1075,11 @@ impl<'a> Driver<'a> {
 impl Drop for Driver<'_> {
     fn drop(&mut self) {
         self.close();
-        // A hard stop answers the calls it was given, so that their callers do not wait for
-        // a run that is gone.
+        // A hard stop answers the calls it was given, and tells its holders it was
+        // cancelled, so that they do not wait for a run that is gone. A run that ended has
+        // told them already.
         self.shared.answer_unanswered();
+        self.shared.tell_ended(&self.id, Ended::Cancelled);
         for (_, slot) in std::mem::take(&mut self.invokes) {
             let _ = drop_caught(slot);
         }

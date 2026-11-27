@@ -541,17 +541,67 @@ impl Parser<'_> {
     }
 
     /// Reports a declaration, event or emitted event named `Unanswered`, the built-in error
-    /// every call can fail with.
+    /// every call can fail with, or `Ended`, the built-in enum of how a peer's run ended.
     fn not_unanswered(&mut self, name: &Ident) {
-        if name.name == "Unanswered" {
-            let d = Diagnostic::error(
-                codes::RESERVED_NAME,
-                name.span,
-                "`Unanswered` is the built-in error of a call that is not answered, and cannot be declared",
-            )
-            .with_help("choose another name");
-            self.error(d);
-        }
+        let what = match name.name.as_str() {
+            "Unanswered" => "the built-in error of a call that is not answered",
+            "Ended" => {
+                "the built-in enum of how a peer's run ended (`event.status` in `on name.ended`)"
+            }
+            _ => return,
+        };
+        let d = Diagnostic::error(
+            codes::RESERVED_NAME,
+            name.span,
+            format!("`{}` is {what}, and cannot be declared", name.name),
+        )
+        .with_help("choose another name");
+        self.error(d);
+    }
+
+    /// Reports `on from.word` with a lower-case `word` that is none of `done`, `fail` and
+    /// `ended`: after the dot comes an event, which is upper-case, or one of those.
+    fn unknown_lifecycle(&mut self, from: &Ident, word: &Ident) {
+        let mut d = Diagnostic::error(
+            codes::UNKNOWN_LIFECYCLE_TRIGGER,
+            word.span,
+            format!(
+                "`on {}.{}`: `{}` is not an event name, `done`, `fail` or `ended`",
+                from.name, word.name, word.name
+            ),
+        );
+        // A misspelling, or a word for a run's end.
+        let ends = [
+            "closed",
+            "stopped",
+            "finished",
+            "exited",
+            "terminated",
+            "died",
+        ];
+        let close = if word.name.starts_with("end") || ends.contains(&word.name.as_str()) {
+            Some("ended")
+        } else {
+            ["done", "fail", "ended"]
+                .into_iter()
+                .find(|c| edits(&word.name, c) <= 1)
+        };
+        d = match close {
+            Some(c) => d.with_help(format!("did you mean `{c}`?")).with_fix(
+                format!("replace with `{c}`"),
+                word.span,
+                c,
+            ),
+            None => {
+                let fixed = capitalize(&word.name, true);
+                d.with_help(format!(
+                    "events are upper-case: `on {}.{fixed}` is taken for an event `{}` emits; `done` and `fail` take a spawned child's outcome, and `ended` the end of the run a `ref` holds",
+                    from.name, from.name
+                ))
+                .with_fix(format!("rename to `{fixed}`"), word.span, fixed)
+            }
+        };
+        self.error(d);
     }
 
     /// The name and kind of the declaration after keyword `k`.
@@ -1064,9 +1114,16 @@ impl Parser<'_> {
                     } else if self.eat_kw(K::Fail).is_some() {
                         let error = self.pattern("an error name or `*`")?;
                         Trigger::ChildFail { from, error }
+                    } else if self.at(T::Lower) && self.text(self.tok()) == "ended" {
+                        self.bump();
+                        Trigger::Ended { from }
+                    } else if self.at(T::Lower) {
+                        let word = self.bump_ident();
+                        self.unknown_lifecycle(&from, &word);
+                        Trigger::Receive { from, event: word }
                     } else {
                         let event = self.upper(&format!(
-                            "the name of an event `{}` emits, `done` or `fail`",
+                            "the name of an event `{}` emits, `done`, `fail` or `ended`",
                             from.name
                         ))?;
                         Trigger::Receive { from, event }
@@ -1426,7 +1483,10 @@ impl Parser<'_> {
 
     fn transition(&mut self, start: Span, trigger: Trigger) -> PResult<Transition> {
         let trigger_span = self.since(start);
-        let ignore = matches!(trigger, Trigger::On(_) | Trigger::Receive { .. });
+        let ignore = matches!(
+            trigger,
+            Trigger::On(_) | Trigger::Receive { .. } | Trigger::Ended { .. }
+        );
         let branches = self.branches(trigger_span, ignore)?;
         Ok(Transition {
             trigger,
@@ -2246,4 +2306,31 @@ fn capitalize(name: &str, upper: bool) -> String {
         Some(f) => f.to_lowercase().chain(c).collect(),
         None => String::new(),
     }
+}
+
+/// Levenshtein distance between two short words, counting a swap of two adjacent characters as
+/// one edit.
+fn edits(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    let mut d = vec![vec![0usize; b.len() + 1]; a.len() + 1];
+    for (i, row) in d.iter_mut().enumerate() {
+        row[0] = i;
+    }
+    for (j, cell) in d[0].iter_mut().enumerate() {
+        *cell = j;
+    }
+    for i in 1..=a.len() {
+        for j in 1..=b.len() {
+            let cost = usize::from(a[i - 1] != b[j - 1]);
+            let mut v = (d[i - 1][j] + 1)
+                .min(d[i][j - 1] + 1)
+                .min(d[i - 1][j - 1] + cost);
+            if i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1] {
+                v = v.min(d[i - 2][j - 2] + 1);
+            }
+            d[i][j] = v;
+        }
+    }
+    d[a.len()][b.len()]
 }

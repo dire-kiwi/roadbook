@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0304]: `event` in `on name.ended` has no field `value`: only `status`
+  --> RB0304-ended-field.road:11:38
+   |
+11 |     on peer.ended -> B  do log(event.value)
+   |                                      ^^^^^
+   |
+   = help: a peer's end carries only how it ended, `event.status`: not its output, error or defect
+
+error[RB0304]: `event` in `on name.ended` has no field `statu`: only `status`
+  --> RB0304-ended-field.road:14:28
+   |
+14 |     on peer.ended if event.statu == Ended.Done -> C
+   |                            ^^^^^
+   |
+   = help: did you mean `status`?

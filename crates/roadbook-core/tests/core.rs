@@ -258,6 +258,95 @@ fn a_machine_hears_the_emitted_events_it_has_an_on_for_anywhere() {
     assert!(heard("Missing", "P").is_empty());
 }
 
+fn ended(from: &str, status: roadbook_core::Ended) -> Input {
+    Input::Ended {
+        from: from.into(),
+        status,
+    }
+}
+
+/// A holder of peers through every kind of name an `on name.ended` can go through.
+const ENDS: &str = "machine P() {\n  initial S\n  state S {}\n}\n\
+action note(status: Ended, by: string)\n\
+strict machine H(one: ref P, maybe: ref P?, all: ref P[]) {\n  var later: ref P\n  event Go\n  \
+initial W\n  state W {\n    on later.ended do note(event.status, \"later\")\n    \
+on one.ended   do note(event.status, \"one\")\n    \
+on maybe.ended do note(event.status, \"maybe\")\n    on all.ended   do note(event.status, \"all\")\n    \
+on Go set later = one\n  }\n}\n";
+
+/// The `note` actions of `commands`: each one's `by`.
+fn notes(commands: &[Command]) -> Vec<String> {
+    commands
+        .iter()
+        .filter_map(|c| match c {
+            Command::Action { action, args } if action == "note" => Some(format!(
+                "{}:{}",
+                args["by"].as_str()?,
+                args["status"].as_str()?
+            )),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn a_peers_end_is_taken_through_whichever_name_holds_it_when_it_arrives() {
+    use roadbook_core::Ended;
+    let p = program(ENDS);
+    let mut heard: Vec<_> = p.heard("H", "P").into_iter().collect();
+    heard.sort();
+    assert_eq!(heard, [Program::ENDED]);
+    assert!(p.heard("P", "H").is_empty());
+    let start = |maybe: Value| {
+        let input = json!({"one": "r1", "maybe": maybe, "all": ["r3", "r4"]});
+        p.start("H", "h", input.as_object().unwrap().clone(), &mut no_fns)
+            .unwrap()
+            .0
+    };
+    let s = start(json!("r2"));
+    let take = |s: &roadbook_core::Snapshot, input: Input| {
+        let (s, cmds) = p.step(s, input, &mut no_fns);
+        let kind = match records(&cmds).first() {
+            Some(Record::Event { .. }) => "event",
+            Some(Record::Dropped { .. }) => "dropped",
+            other => panic!("{other:?}"),
+        };
+        (s, kind, notes(&cmds))
+    };
+    // A `ref M`, a `ref M?` and each item of a `ref M[]`; `event.status` is the status.
+    // `later` has no value yet, so it names no run, with no `unassigned` defect.
+    let (_, kind, n) = take(&s, ended("r1", Ended::Done));
+    assert_eq!((kind, n), ("event", vec!["one:Done".to_owned()]));
+    let (_, _, n) = take(&s, ended("r2", Ended::Suspended));
+    assert_eq!(n, ["maybe:Suspended"]);
+    let (_, _, n) = take(&s, ended("r4", Ended::Defect));
+    assert_eq!(n, ["all:Defect"]);
+    // A run no name holds is dropped, also in a strict machine, and so is the end through a
+    // `null`.
+    let (s2, kind, _) = take(&s, ended("r9", Ended::Failed));
+    assert_eq!((kind, s2.status), ("dropped", Status::Running));
+    let s = start(Value::Null);
+    let (s2, kind, _) = take(&s, ended("r2", Ended::Cancelled));
+    assert_eq!((kind, s2.status), ("dropped", Status::Running));
+    // A variable names the run it holds when the end is taken.
+    let (s, _, _) = take(&s, go());
+    assert_eq!(s.vars["later"], json!("r1"));
+    let (_, _, n) = take(&s, ended("r1", Ended::Done));
+    assert_eq!(n, ["later:Done"]);
+    // The input's JSON form.
+    assert_eq!(
+        serde_json::to_value(ended("r1", Ended::Cancelled)).unwrap(),
+        json!({"kind": "ended", "from": "r1", "status": "Cancelled"})
+    );
+    let back: Input =
+        serde_json::from_value(json!({"kind": "ended", "from": "r1", "status": "Done"})).unwrap();
+    assert_eq!(back, ended("r1", Ended::Done));
+    assert!(
+        serde_json::from_value::<Input>(json!({"kind": "ended", "from": "r1", "status": "done"}))
+            .is_err()
+    );
+}
+
 /// A callee that keeps a pending call in a variable, and a caller.
 const CALLS: &str = "error Nope {}\n\
 machine S() {\n  call ask(n: int) -> int ! Nope\n  var p: call ask\n  var m: int = 0\n  event Go\n  event Again\n  \

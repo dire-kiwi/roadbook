@@ -1,0 +1,50 @@
+// Conformance chart: the order in which a holder gets what a peer pushes as it
+// ends. The Desk's last step emits Closing; it ends with a call pending, which
+// its driver answers Unanswered; then the Booker that holds it is told it ended.
+
+/// Record that the desk said it was closing.
+action heard()
+
+/// Takes a reservation and keeps the call pending until Answer.
+machine Desk() {
+  call reserve(orderId: string) -> string
+
+  var pending: call reserve
+
+  event Answer
+  event Close
+  emits Closing
+
+  initial Open
+
+  state Open {
+    on reserve -> Holding  set pending = call
+    on Close   -> Closed   emit Closing
+  }
+
+  /// A reservation is pending, until Answer replies to it.
+  state Holding {
+    on Answer -> Open    reply pending done "ok"
+    on Close  -> Closed  emit Closing
+  }
+
+  final state Closed {}
+}
+
+/// Asks the desk for a reservation and waits for the desk to end.
+machine Booker(desk: ref Desk) {
+  initial Asking
+
+  state Asking {
+    invoke desk.reserve("o1") {
+      done            -> Booked
+      fail Unanswered -> Waiting
+    }
+    on desk.Closing do heard()
+  }
+
+  state Waiting { on desk.ended -> Gone }
+
+  final state Booked {}
+  final state Gone   {}
+}

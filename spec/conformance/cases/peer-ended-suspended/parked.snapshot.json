@@ -1,0 +1,1 @@
+{"active":["Inventory","Inventory.Open"],"history":{},"input":{"warehouse":"w1"},"invokes":[],"ir":"sha256:56c76773b5b13bad099e73ff5ab21303959dda9d9e8be2a05daebd38665bd907","machine":"Inventory","nextInvoke":1,"nextMessage":1,"nextTimer":1,"result":null,"run":"r1","snapshotVersion":3,"spawned":[],"status":"running","timers":[],"vars":{}}

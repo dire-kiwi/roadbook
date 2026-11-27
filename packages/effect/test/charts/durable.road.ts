@@ -36,7 +36,7 @@ export interface PipelineDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.7",
+  "irVersion": "0.8",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable.road",
@@ -1439,6 +1439,211 @@ const ir: unknown = {
         "fail": null
       },
       "hash": "sha256:a1034460ab3d99a18fb7baecb633331228624a96bf595c44cadaec0b1bc103d8"
+    },
+    "Watcher": {
+      "doc": "Counts the ends of its Counter it takes, while it works: once, however the processes\nrunning it crash.",
+      "span": {
+        "file": 0,
+        "line": 113,
+        "col": 1,
+        "endLine": 127,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "counter",
+          "type": "ref Counter",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "seen",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 114,
+            "col": 3,
+            "endLine": 114,
+            "endCol": 20
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Watcher",
+        "name": "Watcher",
+        "kind": "compound",
+        "doc": "Counts the ends of its Counter it takes, while it works: once, however the processes\nrunning it crash.",
+        "span": {
+          "file": 0,
+          "line": 113,
+          "col": 1,
+          "endLine": 127,
+          "endCol": 2
+        },
+        "initial": "Watcher.Working",
+        "states": [
+          {
+            "id": "Watcher.Working",
+            "name": "Working",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 120,
+              "col": 3,
+              "endLine": 124,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "step",
+              "to": null,
+              "as": null,
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": 1,
+                  "type": "int",
+                  "text": "1"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 121,
+                "col": 5,
+                "endLine": 123,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Watcher.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 122,
+                  "col": 7,
+                  "endLine": 122,
+                  "endCol": 19
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Watcher.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 126,
+              "col": 3,
+              "endLine": 126,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "seen"
+              ],
+              "type": "int",
+              "text": "seen"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "ended",
+              "from": {
+                "kind": "ref",
+                "name": "counter",
+                "machine": "Counter",
+                "state": null
+              }
+            },
+            "group": 0,
+            "guard": null,
+            "target": null,
+            "effects": [
+              {
+                "kind": "set",
+                "var": "seen",
+                "value": {
+                  "kind": "op",
+                  "op": "+",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "seen"
+                      ],
+                      "type": "int",
+                      "text": "seen"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 1,
+                      "type": "int",
+                      "text": "1"
+                    }
+                  ],
+                  "type": "int",
+                  "text": "seen + 1"
+                }
+              }
+            ],
+            "span": {
+              "file": 0,
+              "line": 116,
+              "col": 3,
+              "endLine": 116,
+              "endCol": 39
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:6240d39ddb464367c293a9566b91c6c1ed94646d2b37d9a5020a36b49a86520e"
     }
   }
 }
@@ -1537,3 +1742,31 @@ export interface AdderDef extends Roadbook.MachineDef {
 
 /** Works out an amount, sends it to a Counter, and ends once the Counter's total reaches `goal`. */
 export const Adder = Roadbook.make<AdderDef>(ir, "Adder", errors)
+
+// ---- machine: Watcher ----
+
+export interface WatcherDef extends Roadbook.MachineDef {
+  readonly name: "Watcher"
+  readonly input: { readonly counter: Roadbook.Handle<CounterDef> }
+  readonly output: number
+  readonly error: never
+  readonly event: never
+  readonly emits: never
+  readonly state: "Watcher" | "Watcher.Working" | "Watcher.Done"
+  readonly fns: {}
+  readonly actions: {}
+  readonly tasks: {
+    readonly step: {
+      readonly args: { readonly n: number }
+      readonly success: number
+      readonly error: never
+    }
+  }
+  readonly machines: {}
+}
+
+/**
+ * Counts the ends of its Counter it takes, while it works: once, however the processes
+ * running it crash.
+ */
+export const Watcher = Roadbook.make<WatcherDef>(ir, "Watcher", errors)

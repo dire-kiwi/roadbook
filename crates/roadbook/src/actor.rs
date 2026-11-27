@@ -237,15 +237,17 @@ impl<Event, State, Output, Error, Emitted> Drop for Actor<Event, State, Output, 
     }
 }
 
-/// Closes and finishes a run when dropped (idempotent).
+/// Closes and finishes a run when dropped, telling its holders it was cancelled if its driver
+/// has not told them how it ended (idempotent). The run's id is the second member.
 #[cfg(feature = "tokio")]
-struct Closer(Arc<Shared>);
+struct Closer(Arc<Shared>, String);
 
 #[cfg(feature = "tokio")]
 impl Drop for Closer {
     fn drop(&mut self) {
         self.0.close();
         self.0.answer_unanswered();
+        self.0.tell_ended(&self.1, roadbook_core::Ended::Cancelled);
         self.0.finish(crate::shared::Finished::Ok);
     }
 }
@@ -287,7 +289,7 @@ pub fn spawn_restored<Event, State, Output, Error, Emitted>(
     {
         let run_shared = shared.clone();
         let run_id = id.clone();
-        let guard = Closer(run_shared.clone());
+        let guard = Closer(run_shared.clone(), run_id.clone());
         let task = tokio::spawn(async move {
             let _guard = guard;
             let host = host;
@@ -341,7 +343,7 @@ pub fn spawn<Event, State, Output, Error, Emitted>(
             Ok(input) => {
                 let peers = crate::driver::open(program, machine, &input, &refs, &run_shared);
                 // Closes the run if the task is stopped before its driver exists.
-                let guard = Closer(run_shared.clone());
+                let guard = Closer(run_shared.clone(), run_id.clone());
                 tokio::spawn(async move {
                     let _guard = guard;
                     let host = host;
@@ -361,6 +363,7 @@ pub fn spawn<Event, State, Output, Error, Emitted>(
                     defect.clone(),
                 ));
                 run_shared.close();
+                run_shared.tell_ended(&id, roadbook_core::Ended::Defect);
                 run_shared.finish(crate::shared::Finished::Ok);
                 tokio::spawn(async move { RunEnd::Defect(defect) })
             }

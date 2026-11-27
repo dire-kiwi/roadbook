@@ -40,8 +40,8 @@ pub const UNKNOWN_VARIANT: Code = Code(113);
 pub const ASSIGN_TO_PARAMETER: Code = Code(114);
 
 /// A `send name.E` or `on name.E` whose `name` is neither an `invoke … as name` in scope nor a
-/// parameter or variable, or an `invoke name.call(…)` whose `name` is not a parameter or
-/// variable.
+/// parameter or variable, or an `invoke name.call(…)` or `on name.ended` whose `name` is not a
+/// parameter or variable.
 pub const UNKNOWN_ADDRESS: Code = Code(115);
 
 /// A `send name.E` of an event the receiving machine does not declare with `event`.
@@ -68,6 +68,9 @@ pub const NOT_A_COLLECTION: Code = Code(121);
 pub const KEY_AS_NAME: Code = Code(122);
 /// A state path in a `check` that names no state of the machine, or names a history state.
 pub const UNKNOWN_CHECK_STATE: Code = Code(123);
+/// An `on name.ended` through an `invoke … as name` child or a `children` collection, whose
+/// ends are their outcomes, not through a `ref`.
+pub const ENDED_NOT_A_PEER: Code = Code(124);
 
 // ───────────── structure ─────────────
 
@@ -161,7 +164,8 @@ pub const ALIAS_CYCLE: Code = Code(313);
 pub const DOUBLE_OPTIONAL: Code = Code(314);
 
 /// A `send name.E`, `on name.E` or `invoke name.call(…)` through a value that is not a `ref`:
-/// another type, or a `ref` that is optional or a list.
+/// another type, or a `ref` that is optional or a list; or an `on name.ended` through one that
+/// is none of `ref M`, `ref M?` and `ref M[]`.
 pub const NOT_A_REF: Code = Code(315);
 
 /// A `ref` in a field of a record, error or event, in a parameter of a `call`, or in what a
@@ -288,6 +292,7 @@ pub const ALL: &[Code] = &[
     NOT_A_COLLECTION,
     KEY_AS_NAME,
     UNKNOWN_CHECK_STATE,
+    ENDED_NOT_A_PEER,
     UNKNOWN_TARGET,
     MISSING_INITIAL,
     BAD_INITIAL,

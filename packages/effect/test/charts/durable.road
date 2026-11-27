@@ -107,3 +107,21 @@ machine Adder(counter: ref Counter, goal: int) -> int {
 
   final state Reached { output goal }
 }
+
+/// Counts the ends of its Counter it takes, while it works: once, however the processes
+/// running it crash.
+machine Watcher(counter: ref Counter) -> int {
+  var seen: int = 0
+
+  on counter.ended set seen = seen + 1
+
+  initial Working
+
+  state Working {
+    invoke step(1) {
+      done -> Done
+    }
+  }
+
+  final state Done { output seen }
+}

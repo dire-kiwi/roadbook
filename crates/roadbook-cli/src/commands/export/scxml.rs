@@ -26,7 +26,8 @@
 //!   for, never a call; `after d` is a `<send>` of `roadbook.after.<state>.<group>` on entry,
 //!   cancelled on exit; `always` has no event; `done` is `done.state.<state>`; an invoke's `done`
 //!   is `done.invoke.<invoke>` and its `fail E` is `error.E.<invoke>`, `fail *` the declared
-//!   errors no other branch lists, and for a call `Unanswered` too.
+//!   errors no other branch lists, and for a call `Unanswered` too; `on x.ended`, a peer's end,
+//!   is `x.ended`.
 //! - **Effects** are executable content: `set` is `<assign>`; `send x.E` a `<send>` to the
 //!   child's invoke (`#_<invoke>`) or to the machine a `ref` holds (`targetexpr`); `emit E` a
 //!   `<send>` of type `urn:roadbook:emit`; `reply x done v` a `<send>` of type
@@ -494,6 +495,7 @@ impl Writer<'_> {
             Trigger::Done => Some(format!("done.state.{}", xml_id(&s.id))),
             Trigger::InvokeDone => Some(format!("done.invoke.{}", invoke_id(&s.id))),
             Trigger::SpawnDone { children } => Some(format!("done.spawn.{children}")),
+            Trigger::Ended { from } => Some(format!("{}.ended", from.name)),
             Trigger::SpawnFail { children, error } => {
                 let errors: Vec<&str> = if error == "*" {
                     let listed: Vec<&str> = s

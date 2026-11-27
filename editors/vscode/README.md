@@ -13,8 +13,10 @@ it is not published to the Marketplace.
   auto-closing, indentation after `{` and `(`, `// region` folding markers, and `///`
   continued on Enter.
 - **The language server.** The extension runs `roadbook lsp` over standard input and output, so
-  diagnostics, go to definition, references, rename, hover, formatting, document symbols and
-  code actions (the compiler's fixes) come from the compiler itself, in saved files and in
+  diagnostics, go to definition, references, rename, hover, completion after a dot (`ended`
+  and a peer's events after `on name.`, the variants after `Ended.`, `status` after `event.`
+  in `on name.ended`), formatting, document symbols and code actions (the compiler's fixes)
+  come from the compiler itself, in saved files and in
   untitled editors (compiled on their own, with no project). **Roadbook: Restart Language
   Server** restarts it; so does changing `roadbook.path`, and a restart asked for while the
   server is still starting waits for it and then starts one with the new setting. If the

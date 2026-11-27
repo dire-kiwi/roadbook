@@ -403,6 +403,21 @@ impl<'g> Replay<'g> {
                 children: spawn("spawn")?,
                 error: error(),
             },
+            // A peer's end: a peer's input named `ended`, from the names known to hold it.
+            "ended" => {
+                let sender = event["from"].as_str().unwrap_or("");
+                let mut names: Vec<String> = self
+                    .holders
+                    .iter()
+                    .filter(|(_, id)| *id == sender)
+                    .map(|(n, _)| n.clone())
+                    .collect();
+                names.sort();
+                Input::Emitted {
+                    from: Sender::Refs(names),
+                    event: statespace::ENDED.to_string(),
+                }
+            }
             "emitted" => {
                 let from = match event["invoke"].as_u64() {
                     // The names known to hold the sender, if any.

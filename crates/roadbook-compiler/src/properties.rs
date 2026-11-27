@@ -694,7 +694,14 @@ impl<'a> Eval<'a> {
                     Sender::Child(s) => format!("{} emits `{event}`", invoked(s)),
                     Sender::Refs(names) => {
                         let names: Vec<String> = names.iter().map(|n| format!("`{n}`")).collect();
-                        if names.len() == 1 {
+                        if event == crate::statespace::ENDED {
+                            // A peer's end (`on name.ended`), not an emitted event.
+                            if names.len() == 1 {
+                                format!("peer {} ends", names[0])
+                            } else {
+                                format!("the peer that {} hold ends", and_list(&names))
+                            }
+                        } else if names.len() == 1 {
                             format!("peer {} emits `{event}`", names[0])
                         } else {
                             format!("the peer that {} hold emits `{event}`", and_list(&names))

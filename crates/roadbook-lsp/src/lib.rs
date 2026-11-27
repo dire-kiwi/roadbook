@@ -7,7 +7,10 @@
 //!   the compiler's fixes as quick fixes;
 //! - go to definition, find references, rename (checked: case, reserved words, clashes, and
 //!   a recompilation that must resolve every use as before) and hover, for every kind of
-//!   name, across files;
+//!   name, across files, and hover for the built-in `Ended`, its variants and `event.status`
+//!   in `on name.ended`;
+//! - completion after a dot: `ended` and a peer's emitted events after `on name.` for a `ref`,
+//!   the variants after `Ended.`, `status` after `event.` in `on name.ended`;
 //! - document formatting with the canonical formatter, and the outline of a file;
 //! - `roadbook/ir`, a request of its own: a document compiled as an entry, as `roadbook
 //!   export ir` would, with the unsaved buffers (see the README).
@@ -24,6 +27,7 @@
 //! Which project a file belongs to, its packages and options, come from the caller as a
 //! [`ProjectConfig`]: the command line finds them as its other commands do.
 
+mod builtin;
 mod outline;
 mod rename;
 mod server;

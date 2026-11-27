@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0027]: `on peer.end`: `end` is not an event name, `done`, `fail` or `ended`
+ --> RB0027-unknown-lifecycle.road:9:13
+  |
+9 |     on peer.end -> B
+  |             ^^^
+  |
+  = help: did you mean `ended`?
+
+error[RB0027]: `on peer.closed`: `closed` is not an event name, `done`, `fail` or `ended`
+  --> RB0027-unknown-lifecycle.road:10:13
+   |
+10 |     on peer.closed -> B
+   |             ^^^^^^
+   |
+   = help: did you mean `ended`?
+
+error[RB0027]: `on peer.reserved`: `reserved` is not an event name, `done`, `fail` or `ended`
+  --> RB0027-unknown-lifecycle.road:11:13
+   |
+11 |     on peer.reserved -> B
+   |             ^^^^^^^^
+   |
+   = help: events are upper-case: `on peer.Reserved` is taken for an event `peer` emits; `done` and `fail` take a spawned child's outcome, and `ended` the end of the run a `ref` holds

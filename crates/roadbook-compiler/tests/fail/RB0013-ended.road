@@ -1,0 +1,10 @@
+enum Ended { Closed, Open }
+
+machine M() {
+  emits Ended
+  initial A
+  final state A {}
+}
+
+// expect: RB0013 at 1:6
+// expect: RB0013 at 4:9

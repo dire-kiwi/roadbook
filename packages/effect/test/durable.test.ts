@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest"
 import { Durable } from "../src/entry-durable.ts"
 import * as Roadbook from "../src/index.ts"
 import { Asker, Desk, Host } from "./charts/durable-calls.road.ts"
-import { Adder, Counter, Parent, Pipeline } from "./charts/durable.road.ts"
+import { Adder, Counter, Parent, Pipeline, Watcher } from "./charts/durable.road.ts"
 
 const config = ShardingConfig.layer({
   entityTerminationTimeout: 0,
@@ -91,7 +91,8 @@ const machines = (world: World, options: Partial<Durable.Options<any>> = {}) => 
     adder: Durable.workflow(Adder.implement(world.handlers as never), {
       idempotencyKey: ({ goal }) => `adder-${goal}`,
       ...options
-    })
+    }),
+    watcher: Durable.workflow(Watcher.implement(world.handlers as never), { idempotencyKey: () => "watcher", ...options })
   }
 }
 type Machines = ReturnType<typeof machines>
@@ -135,18 +136,12 @@ const slowWrites = (delayed: RegExp, ms: number) =>
 /** A process's engine: as it is, with slow reads (`slow` ms each), or another one. */
 type EngineChoice = number | Layer.Layer<WorkflowEngine.WorkflowEngine, never, any> | undefined
 
-const startProcess = (storage: Storage, world: World, flows: Machines, slow?: EngineChoice) =>
+/** One process, which registers the durable machines `only` names (default: all of them). */
+const startProcess = (storage: Storage, world: World, flows: Machines, slow?: EngineChoice, only?: ReadonlyArray<keyof Machines>) =>
   Effect.gen(function*() {
     const scope = yield* Scope.make()
-    const layer = Layer.mergeAll(
-      flows.pipeline.layer,
-      flows.parent.layer,
-      flows.counter.layer,
-      flows.adder.layer,
-      flows.desk.layer,
-      flows.asker.layer,
-      flows.host.layer
-    ).pipe(
+    const layers = (only ?? (Object.keys(flows) as Array<keyof Machines>)).map((name) => flows[name].layer)
+    const layer = Layer.mergeAll(...(layers as [Layer.Layer<never, never, WorkflowEngine.WorkflowEngine>])).pipe(
       Layer.provideMerge(slow === undefined ? engineLayer : typeof slow === "number" ? slowReads(slow) : slow)
     )
     const context = yield* Layer.buildWithScope(layer, scope).pipe(
@@ -165,7 +160,7 @@ const startProcess = (storage: Storage, world: World, flows: Machines, slow?: En
 const scenario = <A>(
   body: (t: {
     world: World
-    start: (flows?: Machines, slow?: EngineChoice) => ReturnType<typeof startProcess>
+    start: (flows?: Machines, slow?: EngineChoice, only?: ReadonlyArray<keyof Machines>) => ReturnType<typeof startProcess>
     flows: Machines
     storage: Storage
   }) => Effect.Effect<A, unknown, Scope.Scope>,
@@ -179,7 +174,7 @@ const scenario = <A>(
       world,
       flows,
       storage,
-      start: (given, slow) => startProcess(storage, world, given ?? flows, slow)
+      start: (given, slow, only) => startProcess(storage, world, given ?? flows, slow, only)
     })
   })))
 
@@ -564,6 +559,68 @@ describe("durable runs that have ended", () => {
         expect(heard.map((r) => (r as { event: { message: number } }).event.message)).toEqual([2])
         yield* process.crash
       }), { park: { after: 100 } }), 20_000)
+})
+
+describe("durable holders of a peer that ends", () => {
+  /** The `ended` inputs the Watcher (run `watcher`) took, as its records show them. */
+  const ends = (world: World, watcher: string) =>
+    world.records.filter((r) =>
+      r.run === watcher && (r.kind === "event" || r.kind === "dropped") && r.event.kind === "ended"
+    )
+
+  it("a holder that was down while its peer ended hears it once it recovers", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const counterId = yield* process.run(flows.counter.start({}))
+        const counter = yield* process.run(flows.counter.handle(counterId))
+        const watcher = yield* process.run(flows.watcher.start({ counter }))
+        yield* until(() => world.count(1) === 1)
+        yield* process.crash
+
+        // Only the Counter runs in this process: it ends while the Watcher is down.
+        process = yield* start(undefined, undefined, ["counter"])
+        yield* process.run(flows.counter.send(counterId, { _tag: "Close" }))
+        let polled = yield* process.run(flows.counter.poll(counterId))
+        for (let i = 0; i < 100 && Option.isNone(polled); i++) {
+          yield* Effect.sleep(20)
+          polled = yield* process.run(flows.counter.poll(counterId))
+        }
+        expect(Option.isSome(polled)).toBe(true)
+        yield* process.crash
+
+        // The Watcher recovers, subscribes again, and is told by the rule for a peer that had
+        // ended before it subscribed: from the engine's result, how it ended.
+        process = yield* start()
+        yield* until(() => world.count(1) === 2)
+        world.open(1)
+        expect(yield* process.run(flows.watcher.run({ counter }))).toBe(1)
+        expect(ends(world, watcher).map((r) => r.kind === "event" && r.event)).toEqual([
+          { kind: "ended", from: counterId, status: "Done" }
+        ])
+        yield* process.crash
+      })), 20_000)
+
+  it("a holder that took its peer's end before a crash does not take it again", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const counterId = yield* process.run(flows.counter.start({}))
+        const counter = yield* process.run(flows.counter.handle(counterId))
+        const watcher = yield* process.run(flows.watcher.start({ counter }))
+        yield* until(() => world.count(1) === 1)
+        yield* process.run(flows.counter.send(counterId, { _tag: "Close" }))
+        yield* until(() => ends(world, watcher).length === 1)
+        yield* process.crash
+
+        // Replayed from its journal, which has the end, and told again on subscribing: once.
+        process = yield* start()
+        yield* until(() => world.count(1) === 2)
+        world.open(1)
+        expect(yield* process.run(flows.watcher.run({ counter }))).toBe(1)
+        expect(ends(world, watcher)).toHaveLength(1)
+        yield* process.crash
+      })), 20_000)
 })
 
 describe("calls between durable runs", () => {

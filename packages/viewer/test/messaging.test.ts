@@ -70,6 +70,7 @@ describe('model text', () => {
       sends: [{ machine: 'Upload', events: ['Pause', 'Resume'] }],
       receives: [{ machine: 'Upload', events: ['Progress'] }],
       calls: [],
+      ends: [],
     })
     expect(talks(orders, 'Order')).toEqual({
       invokes: [],
@@ -78,8 +79,9 @@ describe('model text', () => {
       sends: [{ machine: 'Inventory', events: ['Reserve', 'Release'] }],
       receives: [{ machine: 'Inventory', events: ['Reserved', 'Rejected'] }],
       calls: [],
+      ends: [],
     })
-    expect(talks(orders, 'Inventory')).toEqual({ invokes: [], spawns: [], refs: [], sends: [], receives: [], calls: [] })
+    expect(talks(orders, 'Inventory')).toEqual({ invokes: [], spawns: [], refs: [], sends: [], receives: [], calls: [], ends: [] })
   })
 })
 

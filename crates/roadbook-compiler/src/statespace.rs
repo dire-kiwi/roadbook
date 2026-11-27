@@ -56,7 +56,8 @@
 //! - An emitted event from a peer may arrive at any time, from any run that any nonempty set
 //!   of the `ref` parameters and variables of its machine hold. Only the events some `on
 //!   name.Event` expects are inputs: a run is not sent the others (`spec/execution.md`,
-//!   "Messages between runs").
+//!   "Messages between runs"). A peer's end (`on name.ended`) is such an input too, named
+//!   `ended`, and may likewise arrive at any time, more than once.
 //! - A call of each of the machine's `calls` may arrive at any stable node, from some caller;
 //!   which calls are pending is not part of a node, so a `reply` changes nothing in it.
 //! - A defect, a cancel and the `limit` on settling are not modelled: they end a run, and a
@@ -377,6 +378,10 @@ pub const MAX_SENDER_NAMES: usize = 8;
 pub const COMBINATIONS_PER_NODE: usize = 16;
 
 impl std::error::Error for TooLarge {}
+
+/// The name a peer's end (`on name.ended`) has among the peers' inputs: [`Input::Emitted`]
+/// with this event, which no emitted event can have.
+pub const ENDED: &str = "ended";
 
 /// The default budget for [`explore`].
 pub const DEFAULT_MAX_NODES: usize = 100_000;
@@ -707,6 +712,7 @@ pub fn trigger_text(t: &Trigger) -> String {
         Trigger::InvokeFail { error } => format!("fail {error}"),
         Trigger::SpawnDone { children } => format!("{children}.done"),
         Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
+        Trigger::Ended { from } => format!("{}.ended", from.name),
     }
 }
 
@@ -897,6 +903,16 @@ impl<'a> Chart<'a> {
                                     names.push(from.name.as_str());
                                 }
                             }
+                        }
+                    }
+                    // A peer's end is an input from the peer like its emitted events, named
+                    // `ended`, which no emitted event can be (event names are capitalised).
+                    Trigger::Ended { from } => {
+                        let names = ref_events
+                            .entry((from.machine.as_str(), ENDED))
+                            .or_default();
+                        if !names.contains(&from.name.as_str()) {
+                            names.push(from.name.as_str());
                         }
                     }
                     _ => {}
@@ -1250,6 +1266,10 @@ impl<'a> Chart<'a> {
                         names.contains(&from.name.as_str())
                     }
                     (SenderRef::Children(k), AddressKind::Children) => from.name == *k,
+                    _ => false,
+                },
+                Trigger::Ended { from } if *n == ENDED => match sender {
+                    SenderRef::Refs(names) => names.contains(&from.name.as_str()),
                     _ => false,
                 },
                 _ => false,

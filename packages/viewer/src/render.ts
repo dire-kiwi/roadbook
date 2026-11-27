@@ -419,6 +419,7 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
     item(line('event'), { text: 'Cancel' }, 'event') +
     item(line('message'), { text: 'upload.Progress', cls: 'rb-t-msg' }, opts.interactive ? 'event emitted by upload, another machine; click the name to open it' : 'event emitted by upload, another machine') +
     item(line('message'), { text: 'reserve', cls: 'rb-t-msg' }, 'a call of this machine another run made; reply answers it') +
+    item(line('message'), { text: 'inventory.ended', cls: 'rb-t-msg' }, 'the run the ref inventory holds ended, however it ended; event.status says how') +
     item(line('done'), { text: 'done', cls: 'rb-t-done' }, 'invoke, spawned child or nested states finished') +
     item(line('fail'), { text: 'fail X', cls: 'rb-t-fail' }, 'invoke or spawned child failed with error X') +
     item(line('after'), { text: 'after 30s' }, 'time in the state (dashed)') +

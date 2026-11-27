@@ -392,6 +392,34 @@ fn calls_are_steps_of_the_caller_and_of_the_callee() {
     );
 }
 
+/// A peer's end, `on x.ended`, is a step labelled `x.ended` with its guards, as an emitted event
+/// would be; through a variable it names the variable.
+#[test]
+fn a_peer_s_end_is_a_step() {
+    let chart = "spec/conformance/charts/ended.road";
+    let out = roadbook(&repo(), &["paths", "Order", chart]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(
+        text(&out.stdout),
+        "Order: 4 paths
+1. Waiting --inventory.ended [event.status == Ended.Done]--> Closed (final)
+2. Waiting --inventory.ended [event.status == Ended.Defect]--> Alarm (final)
+3. Waiting --inventory.ended [else]--> Gone (final)
+4. Waiting --after 5s--> TimedOut (final)
+"
+    );
+    let v = json_of(&roadbook(&repo(), &["paths", "Switcher", chart, "--json"]));
+    assert_eq!(
+        v["paths"],
+        json!([{
+            "end": "final",
+            "state": "Switcher.Gone",
+            "steps": [{ "from": "Switcher.Watching", "index": 1, "trigger": "current.ended",
+                        "guard": null, "to": "Switcher.Gone" }]
+        }])
+    );
+}
+
 #[test]
 fn a_machine_with_no_final_or_stuck_state_lists_its_loops() {
     let chart = "machine AB() {\n  event Go\n  event Back\n  initial A\n  state A { on Go -> B }\n  state B {\n    on Go   -> A\n    on Back -> A\n  }\n}\n";

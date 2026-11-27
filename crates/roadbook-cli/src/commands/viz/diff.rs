@@ -264,10 +264,14 @@ pub fn diff(before: Option<&Ir>, after: Option<&Ir>, before_label: &str) -> Char
     let shift = |span: &mut roadbook_ir::Span| span.file += offset;
 
     let mut decls = Vec::new();
+    // The built-in enum `Ended` is in `types` whenever a chart names it: it comes and goes with
+    // its uses, which the machines' changes show, and is never a declaration added or removed.
+    let builtin = |name: &str| name == "Ended";
     macro_rules! decls {
         ($map:ident, $text:expr) => {
             for (name, a) in &a_ir.$map {
                 match b_ir.$map.get(name) {
+                    None if builtin(name) => {}
                     None => decls.push((name.clone(), added())),
                     Some(b) => {
                         let (tb, ta) = ($text(name, b), $text(name, a));
@@ -289,7 +293,9 @@ pub fn diff(before: Option<&Ir>, after: Option<&Ir>, before_label: &str) -> Char
                     let mut b = b.clone();
                     shift(&mut b.span);
                     ir.$map.insert(name.clone(), b);
-                    decls.push((name.clone(), removed()));
+                    if !builtin(name) {
+                        decls.push((name.clone(), removed()));
+                    }
                 }
             }
         };
@@ -785,6 +791,7 @@ pub fn trigger_text(t: &Trigger) -> String {
         Trigger::InvokeFail { error } => format!("fail {error}"),
         Trigger::SpawnDone { children } => format!("{children}.done"),
         Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
+        Trigger::Ended { from } => format!("{}.ended", from.name),
         Trigger::Done | Trigger::InvokeDone => "done".into(),
     }
 }
@@ -1623,6 +1630,92 @@ machine Q(p: ref P) {
             .map(|(n, e)| (n.as_str(), e.status))
             .collect();
         assert_eq!(names, [("charge", Status::Changed)]);
+    }
+
+    const PEERS: &str = r#"
+action note(status: Ended)
+
+machine Peer() {
+  event Stop
+  initial A
+  state A { on Stop -> B }
+  final state B {}
+}
+
+machine Holder(peer: ref Peer, other: ref Peer, third: ref Peer) {
+  initial Watching
+  state Watching {
+    on peer.ended if event.status == Ended.Done -> Gone
+    on other.ended -> Gone
+  }
+  final state Gone {}
+}
+"#;
+
+    /// `on x.ended` is matched by its trigger, peer included, like `on x.E`: a changed guard is
+    /// a change of the transition, another peer another transition. The built-in `Ended`,
+    /// which comes into `types` with its first use, is no declaration of the chart's.
+    #[test]
+    fn a_peer_s_end() {
+        let after = PEERS
+            .replace("Ended.Done -> Gone", "Ended.Defect -> Gone")
+            .replace("on other.ended -> Gone", "on third.ended -> Gone");
+        let d = diff(Some(&ir(PEERS)), Some(&ir(&after)), "main");
+        let at = |i| {
+            d.machines
+                .iter()
+                .find(|(n, _)| n == "Holder")
+                .unwrap()
+                .1
+                .transitions
+                .iter()
+                .find(|((s, j), _)| s == "Holder.Watching" && *j == i)
+                .map(|(_, e)| e)
+        };
+        let guarded = at(0).unwrap();
+        assert_eq!(whats(guarded), ["guard"]);
+        assert_eq!(
+            guarded.changes[0].after.as_deref(),
+            Some("[event.status == Ended.Defect]")
+        );
+        assert_eq!(
+            trigger_text(&d.ir.machines["Holder"].root.states[0].transitions[1].trigger),
+            "third.ended"
+        );
+        assert_eq!(at(1).unwrap().status, Status::Added);
+        // The removed one is put back after it, in the merged IR.
+        assert_eq!(at(2).unwrap().status, Status::Removed);
+        assert_eq!(
+            trigger_text(&d.ir.machines["Holder"].root.states[0].transitions[2].trigger),
+            "other.ended"
+        );
+        assert!(d.decls.is_empty(), "{:?}", d.decls);
+
+        // A chart that starts naming `Ended`, and one that stops.
+        let none = PEERS
+            .replace("action note(status: Ended)\n", "")
+            .replace(" if event.status == Ended.Done", "");
+        let d = diff(Some(&ir(&none)), Some(&ir(PEERS)), "main");
+        assert!(d.ir.types.contains_key("Ended"));
+        assert_eq!(
+            d.decls
+                .iter()
+                .map(|(n, e)| (n.as_str(), e.status))
+                .collect::<Vec<_>>(),
+            [("note", Status::Added)]
+        );
+        let d = diff(Some(&ir(PEERS)), Some(&ir(&none)), "main");
+        assert!(
+            d.ir.types.contains_key("Ended"),
+            "the removed guard still reads it"
+        );
+        assert_eq!(
+            d.decls
+                .iter()
+                .map(|(n, e)| (n.as_str(), e.status))
+                .collect::<Vec<_>>(),
+            [("note", Status::Removed)]
+        );
     }
 
     #[test]

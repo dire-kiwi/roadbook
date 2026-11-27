@@ -1,0 +1,13 @@
+machine Peer() {
+  initial A
+  final state A {}
+}
+
+machine M(peer: ref Peer) {
+  initial A
+  on peer.ended if event.status == Ended.Defect -> A
+  on peer.ended -> A
+  state A {}
+}
+
+// expect: RB0205 at 9:3

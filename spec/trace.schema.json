@@ -381,6 +381,16 @@
           "properties": { "kind": { "const": "after" }, "timer": { "$ref": "#/$defs/id" } },
           "required": ["kind", "timer"],
           "additionalProperties": false
+        },
+        {
+          "description": "A peer's end: run `from`, which this run holds a ref to, closed, and `status` says how.",
+          "properties": {
+            "kind": { "const": "ended" },
+            "from": { "$ref": "#/$defs/runId" },
+            "status": { "enum": ["Done", "Failed", "Cancelled", "Defect", "Suspended"] }
+          },
+          "required": ["kind", "from", "status"],
+          "additionalProperties": false
         }
       ]
     },

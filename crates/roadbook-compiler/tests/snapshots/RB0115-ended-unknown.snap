@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0115]: unknown run `inventry` to watch
+ --> RB0115-ended-unknown.road:9:8
+  |
+9 |     on inventry.ended -> B
+  |        ^^^^^^^^
+  |
+  = help: did you mean `inventory`?
+
+error[RB0115]: unknown run `nobody` to watch
+  --> RB0115-ended-unknown.road:10:8
+   |
+10 |     on nobody.ended -> B
+   |        ^^^^^^
+   |
+   = help: `on name.ended` watches the run that a parameter or variable of type `ref Machine` holds

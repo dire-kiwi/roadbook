@@ -62,7 +62,7 @@ export interface ImportJobDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.7",
+  "irVersion": "0.8",
   "sources": [
     {
       "path": "examples/import-job/import.road",

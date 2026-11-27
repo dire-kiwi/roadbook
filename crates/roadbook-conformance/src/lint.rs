@@ -14,6 +14,14 @@ use serde_json::Value;
 
 use crate::{ROOT_RUN, Status, arrange, compare_run_ids};
 
+/// A peer's end a run took or dropped: its line, the holder, the peer and the status.
+struct EndTaken {
+    line: usize,
+    run: String,
+    from: String,
+    status: String,
+}
+
 /// A message or emitted event a run took, for checking against its sender.
 struct Received {
     line: usize,
@@ -119,6 +127,7 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
     let mut order: Vec<String> = Vec::new();
     let mut received: Vec<Received> = Vec::new();
     let mut calls_taken: Vec<CallRecord> = Vec::new();
+    let mut ends: Vec<EndTaken> = Vec::new();
 
     if arrange(records.to_vec()) != records {
         problems.push("records are not grouped by run in run order".to_owned());
@@ -316,6 +325,17 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                         from: str_of(&e, "from").to_owned(),
                         message: u64_of(&e, "message"),
                         value: e.get("value").cloned().unwrap_or(Value::Null),
+                    });
+                }
+                if ekind == "ended" {
+                    if kind == "stale" {
+                        bad("a peer's end is never stale".to_owned());
+                    }
+                    ends.push(EndTaken {
+                        line,
+                        run: id.clone(),
+                        from: str_of(&e, "from").to_owned(),
+                        status: str_of(&e, "status").to_owned(),
                     });
                 }
                 if ekind == "call" {
@@ -812,6 +832,56 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
             problems.push(format!(
                 "line {line}: message {} of {} is taken twice",
                 m.message, m.from
+            ));
+        }
+    }
+    // Every peer's end taken names a top-level run whose group ends with the
+    // record its status names; it is the holder's last input from that peer,
+    // and the holder takes it once.
+    let mut told: Vec<(&str, &str)> = Vec::new();
+    for end in &ends {
+        let line = end.line;
+        let want = match end.status.as_str() {
+            "Done" => "done",
+            "Failed" => "failed",
+            "Cancelled" => "cancelled",
+            "Defect" => "defect",
+            "Suspended" => "suspended",
+            other => {
+                problems.push(format!("line {line}: `{other}` is not a variant of Ended"));
+                continue;
+            }
+        };
+        if !is_top_level(&end.from) {
+            problems.push(format!(
+                "line {line}: {} is not a top-level run, so it has no holders",
+                end.from
+            ));
+        }
+        let got = runs
+            .get(&end.from)
+            .and_then(|r| r.end.as_ref())
+            .map(|e| str_of(e, "kind"));
+        if got != Some(want) {
+            problems.push(format!(
+                "line {line}: the end of {} is {:?}, but {} was told {}",
+                end.from, got, end.run, end.status
+            ));
+        }
+        if told.contains(&(end.run.as_str(), end.from.as_str())) {
+            problems.push(format!(
+                "line {line}: {} is told the end of {} twice",
+                end.run, end.from
+            ));
+        }
+        told.push((&end.run, &end.from));
+        if received
+            .iter()
+            .any(|m| m.run == end.run && m.from == end.from && m.line > line)
+        {
+            problems.push(format!(
+                "line {line}: {} takes an input from {} after its end",
+                end.run, end.from
             ));
         }
     }

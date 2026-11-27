@@ -14,7 +14,7 @@ const field = (name: string, type: string) => ({ name, type, sensitive: false, d
 const hash = `sha256:${"1".repeat(64)}`
 
 const ir = {
-  irVersion: "0.7",
+  irVersion: "0.8",
   sources: [],
   types: {
     UserId: { kind: "alias", params: [], type: "string", doc: "", span },
@@ -40,7 +40,8 @@ const handle = (id: string) =>
     hash,
     queue: Effect.runSync(Queue.unbounded<Item>()),
     open: true,
-    subscribers: new Map()
+    subscribers: new Map(),
+    closedAs: undefined
   })
 
 /** An object with an own member named `__proto__`, as JSON.parse makes one. */

@@ -118,6 +118,9 @@ export interface Tagged {
   readonly [field: string]: Json
 }
 
+/** How a peer's run closed: a variant of the built-in enum `Ended`. */
+export type EndedStatus = "Done" | "Failed" | "Cancelled" | "Defect" | "Suspended"
+
 export type Input =
   | { readonly kind: "event"; readonly value: Tagged }
   /** Run `from` sent one of this machine's events as its message `message`. */
@@ -142,6 +145,11 @@ export type Input =
     readonly call: string
     readonly args: { readonly [param: string]: Json }
   }
+  /**
+   * Run `from`, which this run holds a `ref` to, has closed; `status` says how. Given only to a
+   * run whose machine hears `ended` from `from`'s machine, at most once per peer.
+   */
+  | { readonly kind: "ended"; readonly from: string; readonly status: EndedStatus }
   | { readonly kind: "invoke.done"; readonly invoke: number; readonly value: Json }
   | { readonly kind: "invoke.fail"; readonly invoke: number; readonly error: Tagged }
   | { readonly kind: "invoke.defect"; readonly invoke: number; readonly defect: Defect }

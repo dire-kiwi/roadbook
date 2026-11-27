@@ -17,8 +17,10 @@
 //!
 //! Messages between runs are commands and inputs like the rest: a `send` or `emit` effect
 //! gives the driver a [`Command::Send`] or [`Command::Emit`], and what other runs send and
-//! emit comes back as [`Input::Message`] and [`Input::Emitted`]. A `ref` is the id of the run
-//! it refers to; delivering is the driver's business.
+//! emit comes back as [`Input::Message`] and [`Input::Emitted`]. A peer's end, which the
+//! driver tells the runs that hold a `ref` to it and have an `on name.ended` for it, is an
+//! [`Input::Ended`]. A `ref` is the id of the run it refers to; delivering is the driver's
+//! business.
 //!
 //! Calls between runs are commands and inputs too: a call invoke's [`Command::InvokeStart`]
 //! has [`SrcKind::Call`] and the callee's run id, the callee takes the call as an
@@ -65,7 +67,7 @@ pub use redact::REDACTED;
 pub use run::{StepResult, UnknownMachine};
 pub use saved::{Migration, RUN_ID_PATTERN, Refusal, RestoreError, is_run_id};
 pub use types::{
-    CallEntry, Command, Defect, History, Input, InvokeEntry, Object, Record, ReplyOutcome,
+    CallEntry, Command, Defect, Ended, History, Input, InvokeEntry, Object, Record, ReplyOutcome,
     RunResult, Saved, SavedTimer, Snapshot, SpawnedEntry, SrcKind, Status, TimerEntry,
 };
 

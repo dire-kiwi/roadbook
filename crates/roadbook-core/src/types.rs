@@ -30,6 +30,53 @@ pub enum Status {
     Defect,
 }
 
+/// How a peer's run closed: the built-in enum `Ended`, the `status` of an [`Input::Ended`]
+/// and the type of `event.status` in an `on name.ended` transition. In JSON, its variant's
+/// name: `"Done"`, `"Failed"`, `"Cancelled"`, `"Defect"` or `"Suspended"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Ended {
+    /// It ended `done`.
+    Done,
+    /// It ended `failed`.
+    Failed,
+    /// It was cancelled, or (in Rust) its future was dropped.
+    Cancelled,
+    /// It ended with a defect.
+    Defect,
+    /// It was suspended: closed for good, its snapshot restored, if ever, as another run.
+    Suspended,
+}
+
+impl Ended {
+    /// The variant's name, the enum value in JSON.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Ended::Done => "Done",
+            Ended::Failed => "Failed",
+            Ended::Cancelled => "Cancelled",
+            Ended::Defect => "Defect",
+            Ended::Suspended => "Suspended",
+        }
+    }
+
+    /// The end of a run that closed with `status`, which is not `running`.
+    pub fn of(status: Status) -> Option<Ended> {
+        match status {
+            Status::Running => None,
+            Status::Done => Some(Ended::Done),
+            Status::Failed => Some(Ended::Failed),
+            Status::Cancelled => Some(Ended::Cancelled),
+            Status::Defect => Some(Ended::Defect),
+        }
+    }
+}
+
+impl fmt::Display for Ended {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Why a run ended with a defect. In JSON, `{"kind": "host", "message": …}` and so on.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
@@ -279,6 +326,15 @@ pub enum Input {
         call: String,
         /// Its arguments, keyed by the call's parameter names.
         args: Object,
+    },
+    /// A peer's end: run `from`, which this run holds a `ref` to, has closed. Given only to
+    /// a run whose machine hears `ended` from `from`'s machine, at most once per peer.
+    #[serde(rename = "ended")]
+    Ended {
+        /// The peer's run id.
+        from: String,
+        /// How it closed.
+        status: Ended,
     },
     /// An invoke succeeded.
     #[serde(rename = "invoke.done")]
