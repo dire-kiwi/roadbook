@@ -263,6 +263,7 @@ fn check_counts_the_verdicts_of_checks_and_lists_them_with_checks() {
 1 error
 pay.road:17: Pay: check reachable Idle: proved
 pay.road:19: Pay: check reachable Charged: conditional
+    /// Charging needs the payment approved.
     if `ok()` holds on the way
     Idle --Go [ok()]--> Paying --always--> Charged
 pay.road:20: Pay: check never Charged: failed

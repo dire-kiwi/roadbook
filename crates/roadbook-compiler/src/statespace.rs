@@ -52,7 +52,7 @@
 //! - A defect, a cancel and the `limit` on settling are not modelled: they end a run, and a
 //!   node's run only ever ends at a top-level final state.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::fmt;
@@ -316,6 +316,7 @@ pub fn explore(ir: &ir::Ir, machine: &ir::Machine, max_nodes: usize) -> Result<G
     chart.enter_states(&mut start, &entries);
     let start = chart.normalize(start);
     b.intern(start)?;
+    let mut idle: Vec<Vec<Input>> = Vec::new();
     let mut next = 0;
     while next < b.configs.len() {
         let cfg = b.configs[next].clone();
@@ -323,6 +324,7 @@ pub fn explore(ir: &ir::Ir, machine: &ir::Machine, max_nodes: usize) -> Result<G
         if chart.exhausted() {
             return Err(TooLarge::Combinations { budget });
         }
+        idle.push(std::mem::take(&mut *chart.idle.borrow_mut()));
         for s in successors {
             let to = b.intern(s.config)?;
             b.edges.push(Edge {
@@ -370,6 +372,7 @@ pub fn explore(ir: &ir::Ir, machine: &ir::Machine, max_nodes: usize) -> Result<G
         edges,
         out,
         inc,
+        idle,
     })
 }
 
@@ -382,6 +385,8 @@ pub struct Graph {
     edges: Vec<Edge>,
     out: Vec<Vec<EdgeId>>,
     inc: Vec<Vec<EdgeId>>,
+    /// By node, the inputs that may take nothing there.
+    idle: Vec<Vec<Input>>,
 }
 
 #[derive(Clone, Debug)]
@@ -454,6 +459,15 @@ impl Graph {
     /// The edges leaving the node.
     pub fn outgoing(&self, n: NodeId) -> &[EdgeId] {
         &self.out[n.index()]
+    }
+
+    /// Whether `input` may take no transition at the node, leaving it as it is: an event, an
+    /// emitted event or a spawned child's outcome that some active state has a candidate for,
+    /// when every walk's candidates are guarded or absent, so every guard may fail. Such an
+    /// outcome has no edge. (An invoke outcome or a timer expiry that takes nothing consumes
+    /// its work, so it has an edge of its own.)
+    pub fn takes_nothing(&self, n: NodeId, input: &Input) -> bool {
+        self.idle[n.index()].contains(input)
     }
 
     /// The edges reaching the node.
@@ -530,17 +544,16 @@ impl Graph {
         None
     }
 
-    /// A path from `from` to a node for which `to` holds that relies on as few guard outcomes
-    /// as it can: the fewest edges with [`Edge::assumptions`], then the fewest edges. A path
-    /// with no such edge happens whatever the data, so a counterexample found this way is real
-    /// whenever one is. `None` if no such node is reachable.
+    /// A path from `from` to a node for which `to` holds that relies on as few assumptions as
+    /// it can: the fewest [`Edge::assumptions`] in all, then the fewest edges. A path with no
+    /// assumption happens whatever the data and the other machines, so a counterexample found
+    /// this way is real whenever one is. `None` if no such node is reachable.
     pub fn fewest_assumptions_path(
         &self,
         from: NodeId,
         to: impl Fn(NodeId) -> bool,
     ) -> Option<Vec<EdgeId>> {
-        // Dijkstra on (edges with assumptions, edges), which compares lexicographically: a
-        // 0-1 breadth-first search would find the first number but not break ties by length.
+        // Dijkstra on (assumptions, edges), which compares lexicographically.
         let mut best: Vec<Option<(u32, u32)>> = vec![None; self.nodes.len()];
         let mut prev: Vec<Option<EdgeId>> = vec![None; self.nodes.len()];
         let mut heap = BinaryHeap::from([Reverse(((0u32, 0u32), from))]);
@@ -554,7 +567,7 @@ impl Graph {
             }
             for &e in self.outgoing(n) {
                 let edge = &self.edges[e.index()];
-                let step = u32::from(!edge.assumptions.is_empty());
+                let step = edge.assumptions.len() as u32;
                 let next = (cost.0 + step, cost.1 + 1);
                 let m = edge.to;
                 if best[m.index()].is_none_or(|b| next < b) {
@@ -659,6 +672,8 @@ struct Chart<'a> {
     on_any: Vec<bool>,
     /// How many more combinations of the walks' outcomes may be tried.
     combinations: Cell<usize>,
+    /// The inputs of the node being expanded that may take nothing.
+    idle: RefCell<Vec<Input>>,
 }
 
 impl<'a> Chart<'a> {
@@ -691,6 +706,7 @@ impl<'a> Chart<'a> {
                 })
                 .collect(),
             has_always: Vec::new(),
+            idle: RefCell::new(Vec::new()),
             on_events: Vec::new(),
             on_any: Vec::new(),
             combinations: Cell::new(combinations),
@@ -1484,6 +1500,7 @@ impl<'a> Chart<'a> {
         let extra = self.input_assumption(cfg, &input);
         for (ts, assumed) in self.select_by_walks(cfg, c) {
             if ts.is_empty() {
+                self.idle.borrow_mut().push(input.clone());
                 continue;
             }
             let mut next = cfg.clone();
@@ -2258,6 +2275,37 @@ mod tests {
         ));
         assert_eq!(g.fewest_assumptions_path(g.start(), |_| true), Some(vec![]));
         assert_eq!(g.fewest_assumptions_path(g.start(), |_| false), None);
+    }
+
+    #[test]
+    fn an_input_whose_guards_may_all_fail_may_take_nothing() {
+        let g = graph(
+            "fn ok() -> bool\nmachine M() {\n  event Go\n  event Stop\n  event Both\n  initial P\n  parallel state P {\n    state L {\n      initial L1\n      state L1 {\n        on Go if ok() -> L2\n        on Both if ok() -> L2\n      }\n      state L2 {}\n    }\n    state R {\n      initial R1\n      state R1 {\n        on Stop -> R2\n        on Both -> R2\n      }\n      state R2 {}\n    }\n  }\n}\n",
+        );
+        let start = g.start();
+        // `Go`'s only candidate is guarded; `Stop`'s is not; `Both` has an unguarded one in R.
+        assert!(g.takes_nothing(start, &Input::Event("Go".into())));
+        assert!(!g.takes_nothing(start, &Input::Event("Stop".into())));
+        assert!(!g.takes_nothing(start, &Input::Event("Both".into())));
+        // An event no active state has a candidate for has no outcome at all.
+        let l2 = g.state_index("M.P.L.L2").unwrap();
+        let moved = g.nodes().find(|&n| g.is_active(n, l2)).unwrap();
+        assert!(!g.takes_nothing(moved, &Input::Event("Go".into())));
+        assert!(!g.takes_nothing(moved, &Input::Event("Stop".into())));
+    }
+
+    #[test]
+    fn the_cost_of_a_path_is_its_number_of_assumptions() {
+        // One step to T relies on three guards; two steps rely on one each.
+        let g = graph(
+            "fn a() -> bool\nfn b() -> bool\nfn c() -> bool\nfn d() -> bool\nfn e() -> bool\nmachine M() {\n  event Go\n  event Next\n  initial A\n  state A {\n    on Go {\n      if a() -> Z\n      if b() -> Z\n      if c() -> T\n    }\n    on Next if d() -> B\n  }\n  state B { on Next if e() -> T }\n  state Z {}\n  state T {}\n}\n",
+        );
+        let t = g.state_index("M.T").unwrap();
+        let path = g
+            .fewest_assumptions_path(g.start(), |n| g.is_active(n, t))
+            .unwrap();
+        let inputs: Vec<String> = path.iter().map(|&e| g.describe(&g.edge(e).input)).collect();
+        assert_eq!(inputs, ["Next", "Next"]);
     }
 
     #[test]

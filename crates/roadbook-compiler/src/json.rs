@@ -33,8 +33,9 @@
 //! the transitions of that path from the initial configuration, shaped as the steps of
 //! `roadbook paths --json`: the counterexample of a failed check, the witness of a
 //! `reachable` that holds, and for a conditional `can finish`, the way to the first
-//! configuration that cannot finish unconditionally and on to a final state; `[]` when there
-//! is none. Checks cover runs started from the chart, not runs restored from a snapshot of an
+//! configuration from which the host cannot force the end and on to a final state; `[]` when
+//! there is none. It lists the transitions taken, leaving out the steps that take none. The
+//! checks of an entry with compile errors are not evaluated, so not listed. Checks cover runs started from the chart, not runs restored from a snapshot of an
 //! earlier version of it.
 
 use roadbook_syntax::diagnostic::Files;

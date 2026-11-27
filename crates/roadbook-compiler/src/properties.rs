@@ -16,14 +16,17 @@
 //!   passed through one with `T` active: `T` active in the same configuration counts, and so
 //!   does the initial one. Otherwise it is proved.
 //! - `can finish` fails if some configuration cannot reach a top-level final state. It is
-//!   proved if every configuration can reach one through steps that rely on no assumption,
-//!   and conditional otherwise.
+//!   proved if from every configuration the host can bring the run to a final state whatever
+//!   the guards decide: by choosing its events, task outcomes and timers sure to expire first
+//!   ([`Eval::sure`]). Otherwise it is conditional: a path exists, but something the chart
+//!   does not decide could block it.
 //!
 //! A failure is an error at the check, `RB0501` to `RB0504`, with the counterexample that
-//! relies on the fewest assumptions (then the shortest): one label per transition, at its
-//! span, and the whole path as text in the help, with the assumptions it relies on, since the
-//! data, the timers' delays or the other machines may block it at run time. A machine that is
-//! too large to explore gets the warning `RB0910` at each of its checks.
+//! relies on the fewest assumptions (then the shortest): one label per transition, and one
+//! per guard it assumes of a transition it did not take, at their spans, numbered in path
+//! order, and the whole path as text in the help, with the assumptions it relies on, since
+//! the data, the timers' delays or the other machines may block it at run time. A machine
+//! that is too large to explore gets the warning `RB0910` at each of its checks.
 //!
 //! The graph covers runs started from the chart: a run restored from a snapshot made by an
 //! earlier version of the chart may be in a configuration this one cannot reach, and a
@@ -110,11 +113,11 @@ pub struct CheckResult {
     /// What the path relies on, in path order, each once: "`approved()` holds", "`after 5s` in
     /// `A` expires before the other running timers", "peer `inventory` emits `Reserved`".
     /// For `can finish`, those of the part of the path from the first configuration that
-    /// cannot finish unconditionally.
+    /// the host cannot bring to a final state whatever the guards decide.
     pub assumptions: Vec<String>,
     /// The transitions of the path from the initial configuration: the counterexample of a
     /// failed check, the witness of a `reachable` that holds, and for a `can finish` that is
-    /// conditional, the way to the first configuration that cannot finish unconditionally and
+    /// conditional, the way to the first configuration from which the host cannot force the end and
     /// on to a final state. Empty when there is none.
     pub path: Vec<Step>,
     /// The path as text, each configuration as its active leaves below the machine:
@@ -299,7 +302,7 @@ impl<'a> Eval<'a> {
                 self.fail(codes::ACTIVE_BEFORE, c, message, &path, "", diags)
             }
             Property::CanFinish => {
-                let can = self.reaches_final(false);
+                let can = self.reaches_final();
                 if let Some(path) = g.fewest_assumptions_path(start, |n| !can[n.index()]) {
                     let name = self.root;
                     if !g.nodes().any(|n| g.is_final(n)) {
@@ -321,7 +324,7 @@ impl<'a> Eval<'a> {
                     );
                     return self.fail(codes::CANNOT_FINISH, c, message, &path, &tail, diags);
                 }
-                let sure = self.reaches_final(true);
+                let sure = self.sure();
                 let Some(mut path) = g.fewest_assumptions_path(start, |n| !sure[n.index()]) else {
                     return result(c, Verdict::Proved, Vec::new(), None);
                 };
@@ -398,7 +401,7 @@ impl<'a> Eval<'a> {
                 let edge = g.edge(e);
                 let m = edge.to;
                 let now = seen || g.is_active(m, t);
-                let next = (cost.0 + u32::from(!edge.assumptions.is_empty()), cost.1 + 1);
+                let next = (cost.0 + edge.assumptions.len() as u32, cost.1 + 1);
                 let j = key(m, now);
                 if best[j].is_none_or(|b| next < b) {
                     best[j] = Some(next);
@@ -410,9 +413,8 @@ impl<'a> Eval<'a> {
         None
     }
 
-    /// For each node, whether a final node can be reached from it: through any steps, or,
-    /// with `sure`, only through steps that rely on no guard outcome.
-    fn reaches_final(&self, sure: bool) -> Vec<bool> {
+    /// For each node, whether a final node can be reached from it, through any steps.
+    fn reaches_final(&self) -> Vec<bool> {
         let g = self.graph;
         let mut ok = vec![false; g.node_count()];
         let mut queue: VecDeque<NodeId> = g.nodes().filter(|&n| g.is_final(n)).collect();
@@ -422,14 +424,68 @@ impl<'a> Eval<'a> {
         while let Some(n) = queue.pop_front() {
             for &e in g.incoming(n) {
                 let edge = g.edge(e);
-                if (sure && !edge.assumptions.is_empty()) || ok[edge.from.index()] {
-                    continue;
+                if !ok[edge.from.index()] {
+                    ok[edge.from.index()] = true;
+                    queue.push_back(edge.from);
                 }
-                ok[edge.from.index()] = true;
-                queue.push_back(edge.from);
             }
         }
         ok
+    }
+
+    /// For each node, whether the host can bring the run from it to a final state whatever the
+    /// guards decide: the attractor of the final nodes in a game where the host picks the
+    /// input and the data the guard outcomes. A final node is sure. A settling node, where
+    /// nobody chooses, is sure if every step from it leads to a sure node. A stable node is
+    /// sure if some input the host controls (one whose steps assume only guard outcomes: the
+    /// machine's own events, task outcomes, a timer sure to expire first) leads to a sure node
+    /// whatever its guards decide, including when they all fail and it takes nothing.
+    fn sure(&self) -> Vec<bool> {
+        let g = self.graph;
+        let mut sure = vec![false; g.node_count()];
+        let mut queue: VecDeque<NodeId> = g.nodes().filter(|&n| g.is_final(n)).collect();
+        for n in &queue {
+            sure[n.index()] = true;
+        }
+        while let Some(n) = queue.pop_front() {
+            for &e in g.incoming(n) {
+                let p = g.edge(e).from;
+                if !sure[p.index()] && self.wins(p, &sure) {
+                    sure[p.index()] = true;
+                    queue.push_back(p);
+                }
+            }
+        }
+        sure
+    }
+
+    /// Whether node `n` is sure, given the nodes known to be (see [`Eval::sure`]).
+    fn wins(&self, n: NodeId, sure: &[bool]) -> bool {
+        let g = self.graph;
+        let out = g.outgoing(n);
+        let to_sure = |e: &EdgeId| sure[g.edge(*e).to.index()];
+        if g.is_settling(n) {
+            return !out.is_empty() && out.iter().all(to_sure);
+        }
+        let mut tried: Vec<&Input> = Vec::new();
+        for &e in out {
+            let input = &g.edge(e).input;
+            if tried.contains(&input) {
+                continue;
+            }
+            tried.push(input);
+            let edges: Vec<&EdgeId> = out.iter().filter(|x| g.edge(**x).input == *input).collect();
+            let controlled = edges.iter().all(|x| {
+                g.edge(**x)
+                    .assumptions
+                    .iter()
+                    .all(|a| matches!(a, Assumption::Guard { .. }))
+            });
+            if controlled && !g.takes_nothing(n, input) && edges.iter().all(|x| to_sure(x)) {
+                return true;
+            }
+        }
+        false
     }
 
     /// The id below the machine: `Processing.Paying`.
@@ -527,7 +583,26 @@ impl<'a> Eval<'a> {
     fn labels(&self, path: &[EdgeId]) -> Vec<(Span, String)> {
         let mut out = Vec::new();
         for &e in path {
-            for t in &self.graph.edge(e).transitions {
+            let edge = self.graph.edge(e);
+            // The guards of transitions it did not take that it relies on: skipped on the way
+            // to what it took, or, for a step that takes nothing, all of them.
+            for a in &edge.assumptions {
+                let Assumption::Guard { transition, holds } = a else {
+                    continue;
+                };
+                if edge.transitions.contains(transition) {
+                    continue;
+                }
+                let tr = &self.state(transition.state).transitions[transition.index];
+                let label = format!(
+                    "{}. {}: assumed to {}",
+                    out.len() + 1,
+                    self.step_text(transition.state, transition.index),
+                    if *holds { "hold" } else { "fail" }
+                );
+                out.push((self.span(&tr.span), label));
+            }
+            for t in &edge.transitions {
                 let tr = &self.state(t.state).transitions[t.index];
                 let to = match &tr.target {
                     Some(id) => format!(" -> {}", self.relative(id)),
@@ -677,8 +752,9 @@ pub fn summary(results: &[CheckResult]) -> Option<String> {
     Some(format!("checks: {}", parts.join(", ")))
 }
 
-/// Every check, one line each: `examples/pay.road:12: Pay: check never A and B: proved`. A
-/// conditional check has what it relies on and its path beneath, indented.
+/// Every check, one line each: `examples/pay.road:12: Pay: check never A and B: proved`.
+/// Beneath it, indented: its doc comment, as `/// …` lines, and for a conditional check what it
+/// relies on and its path.
 pub fn list(results: &[CheckResult], files: &[(String, String)]) -> String {
     let mut out = String::new();
     for r in results {
@@ -692,6 +768,10 @@ pub fn list(results: &[CheckResult], files: &[(String, String)]) -> String {
             r.check,
             r.verdict.text()
         ));
+        for line in r.doc.lines() {
+            out.push_str(format!("    /// {line}").trim_end());
+            out.push('\n');
+        }
         if r.verdict == Verdict::Conditional {
             out.push_str(&format!("    {}\n", assumption_phrase(&r.assumptions)));
             out.push_str(&format!("    {}\n", r.path_text));
@@ -1098,6 +1178,74 @@ machine M(peer: ref Kid) {
     }
 
     #[test]
+    fn can_finish_is_proved_when_every_outcome_of_a_guard_finishes() {
+        let src = "\
+fn approved() -> bool
+machine M() {
+  event Pay
+  initial Idle
+  state Idle {
+    on Pay {
+      if approved() -> Charged
+      else          -> Declined
+    }
+  }
+  final state Charged {}
+  final state Declined {}
+  check can finish
+}
+";
+        let (r, rendered) = run(src);
+        assert_eq!(
+            verdicts(&r),
+            [("can finish", Verdict::Proved)],
+            "{rendered}"
+        );
+        // With no `else`, the guard may fail and leave the run where it is: the host cannot
+        // force the end.
+        let (r, _) = run(&src.replace("      else          -> Declined\n", ""));
+        assert_eq!(r[0].verdict, Verdict::Conditional);
+        assert_eq!(r[0].assumptions, ["`approved()` holds"]);
+        // A child machine's outcome is not the host's to give.
+        let child = "machine Kid() {\n  initial A\n  final state A {}\n}\nmachine M() {\n  initial A\n  state A {\n    invoke Kid() {\n      done -> B\n    }\n  }\n  final state B {}\n  check can finish\n}\n";
+        let (r, _) = run(child);
+        assert_eq!(r[0].verdict, Verdict::Conditional);
+        assert_eq!(r[0].assumptions, ["`Kid` (invoked in `A`) ends `done`"]);
+    }
+
+    #[test]
+    fn a_guard_assumed_of_a_step_that_takes_nothing_has_a_label() {
+        let src = "fn ok() -> bool\nmachine M() {\n  initial A\n  state A { after 1s if ok() -> Done }\n  final state Done {}\n  check can finish\n}\n";
+        let (r, rendered) = run(src);
+        assert_eq!(r[0].verdict, Verdict::Failed);
+        assert!(r[0].path.is_empty());
+        assert_eq!(r[0].assumptions, ["`ok()` fails"]);
+        assert!(
+            rendered.contains("1. after 1s [ok()]: assumed to fail"),
+            "{rendered}"
+        );
+        assert!(
+            rendered.contains("help: A --after 1s (no transition)--> A, if `ok()` fails on the way; from `A`, no final state can be reached"),
+            "{rendered}"
+        );
+        // A skipped `always` before an event is taken.
+        let src = "fn ok() -> bool\nmachine M() {\n  event Go\n  initial A\n  state A {\n    always if ok() -> Done\n    on Go -> B\n  }\n  state B {}\n  final state Done {}\n  check never B\n}\n";
+        let (_, rendered) = run(src);
+        assert!(
+            rendered.contains("1. always [ok()]: assumed to fail")
+                && rendered.contains("2. Go -> B"),
+            "{rendered}"
+        );
+    }
+
+    #[test]
+    fn never_reports_the_path_with_the_fewest_assumptions_in_all() {
+        let src = "fn a() -> bool\nfn b() -> bool\nfn c() -> bool\nfn d() -> bool\nfn e() -> bool\nmachine M() {\n  event Go\n  event Next\n  initial A\n  state A {\n    on Go {\n      if a() -> Z\n      if b() -> Z\n      if c() -> T\n    }\n    on Next if d() -> B\n  }\n  state B { on Next if e() -> T }\n  state Z {}\n  state T {}\n  check never T\n}\n";
+        let (r, _) = run(src);
+        assert_eq!(r[0].assumptions, ["`d()` holds", "`e()` holds"]);
+    }
+
+    #[test]
     fn past_the_budget_checks_are_not_checked() {
         let src = "machine M() {\n  event Go\n  initial A\n  state A { on Go -> B }\n  state B { on Go -> A }\n  check reachable B\n  check can finish\n}\n";
         let options = Options {
@@ -1167,7 +1315,7 @@ machine M(peer: ref Kid) {
     #[test]
     fn the_summary_and_the_list() {
         let (r, _) = run(&chart(
-            "  check reachable Idle\n  check reachable Charged\n  check never Refunded\n  check never Charged\n",
+            "  check reachable Idle\n  /// Charged, if approved.\n  check reachable Charged\n  check never Refunded\n  check never Charged\n",
         ));
         assert_eq!(
             summary(&r).unwrap(),
@@ -1180,12 +1328,12 @@ machine M(peer: ref Kid) {
             list(&r, &files),
             format!(
                 "m.road:{line}: M: check reachable Idle: proved\n\
-                 m.road:{}: M: check reachable Charged: conditional\n    if `ok()` holds on the way\n    Idle --Go [ok()]--> Paying --always--> Charged\n\
+                 m.road:{}: M: check reachable Charged: conditional\n    /// Charged, if approved.\n    if `ok()` holds on the way\n    Idle --Go [ok()]--> Paying --always--> Charged\n\
                  m.road:{}: M: check never Refunded: proved\n\
                  m.road:{}: M: check never Charged: failed\n",
-                line + 1,
                 line + 2,
-                line + 3
+                line + 3,
+                line + 4
             )
         );
     }
