@@ -1,4 +1,9 @@
-//! `roadbook check [--json] [--warn invoke-timeout] [paths…]`
+//! `roadbook check [--json] [--checks] [--warn invoke-timeout] [paths…]`
+//!
+//! Compiles each file as an entry and reports the diagnostics, then evaluates the `check`
+//! lines of the files it checked: a failing one is an error (`RB0501`–`RB0504`). After the
+//! diagnostics, one line on standard error counts the verdicts, if any check was evaluated;
+//! `--checks` lists every check above it. `--json` gives them in `checks`.
 
 use std::path::PathBuf;
 
@@ -13,6 +18,10 @@ pub struct Args {
     /// Print the diagnostics as JSON on standard output.
     #[arg(long)]
     json: bool,
+    /// List every `check` line with its verdict, and the guards and path of each that holds
+    /// only if guards allow.
+    #[arg(long)]
+    checks: bool,
     /// Turn on a warning that is off by default.
     #[arg(long = "warn", value_name = "WARNING")]
     warn: Vec<Warning>,
@@ -40,7 +49,7 @@ pub fn run(args: Args) -> Exit {
         ..ws.options()
     };
     match roadbook_compiler::check(&mut ws.loader(), &files, &options) {
-        Ok(out) => report::diagnostics(&out, args.json),
+        Ok(out) => report::checked(&out, args.json, args.checks),
         Err(e) => report::fatal_json(e, args.json),
     }
 }

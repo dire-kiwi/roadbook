@@ -212,6 +212,151 @@ fn check_json_is_one_object() {
     assert_eq!(text(&out.stderr), "");
 }
 
+/// A chart with a check of each verdict but `unchecked`.
+const CHECKED: &str = "\
+fn ok() -> bool
+
+machine Pay() {
+  event Go
+  event Back
+
+  initial Idle
+
+  state Idle    { on Go if ok() -> Paying }
+  state Paying {
+    on Back -> Idle
+    always -> Charged
+  }
+  state Charged { on Go -> Done }
+  final state Done {}
+
+  check reachable Idle
+  /// Charging needs the payment approved.
+  check reachable Charged
+  check never Charged
+  check Charged only after Paying
+  check can finish
+}
+";
+
+#[test]
+fn check_counts_the_verdicts_of_checks_and_lists_them_with_checks() {
+    let dir = project("checks", &[("pay.road", CHECKED), ("ok.road", OK)]);
+    let out = roadbook(&dir, &["check"]);
+    // The failing `never` is an error.
+    assert_eq!(out.status.code(), Some(1));
+    let stderr = text(&out.stderr);
+    assert!(
+        stderr
+            .starts_with("error[RB0501]: `never Charged` does not hold: `Charged` can be active\n"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.ends_with("\n1 error\nchecks: 2 proved, 2 if guards allow, 1 failed\n"),
+        "{stderr}"
+    );
+    let out = roadbook(&dir, &["check", "--checks"]);
+    assert_eq!(out.status.code(), Some(1));
+    let stderr = text(&out.stderr);
+    let list = "\
+1 error
+pay.road:17: Pay: check reachable Idle: proved
+pay.road:19: Pay: check reachable Charged: if guards allow
+    if `ok()` holds on the way
+    Idle --Go [ok()]--> Paying --always--> Charged
+pay.road:20: Pay: check never Charged: failed
+pay.road:21: Pay: check Charged only after Paying: proved
+pay.road:22: Pay: check can finish: if guards allow
+    if `ok()` holds on the way
+    Idle --Go [ok()]--> Paying --always--> Charged --Go--> Done
+checks: 2 proved, 2 if guards allow, 1 failed
+";
+    assert!(stderr.ends_with(list), "{stderr}");
+    // With no diagnostics, the summary line alone.
+    let passing = CHECKED.replace("  check never Charged\n", "");
+    let dir = project("checks-pass", &[("pay.road", &passing)]);
+    let out = roadbook(&dir, &["check"]);
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(text(&out.stderr), "checks: 2 proved, 2 if guards allow\n");
+    // No checks, no line.
+    let dir = project("checks-none", &[("ok.road", OK)]);
+    let out = roadbook(&dir, &["check", "--checks"]);
+    assert_eq!(out.status.code(), Some(0));
+    assert_eq!(text(&out.stderr), "");
+}
+
+#[test]
+fn check_json_lists_every_check_with_its_verdict() {
+    let dir = project("checks-json", &[("pay.road", CHECKED)]);
+    let out = roadbook(&dir, &["check", "--json", "--checks"]);
+    assert_eq!(out.status.code(), Some(1));
+    assert_eq!(text(&out.stderr), "");
+    let stdout = text(&out.stdout);
+    // `checks` comes last, after `fatal`.
+    assert!(
+        stdout.contains("\n  \"fatal\": null,\n  \"checks\": [\n"),
+        "{stdout}"
+    );
+    let v: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(v["diagnostics"][0]["code"], "RB0501");
+    let checks = v["checks"].as_array().unwrap();
+    let verdicts: Vec<(&str, &str)> = checks
+        .iter()
+        .map(|c| (c["check"].as_str().unwrap(), c["verdict"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        verdicts,
+        [
+            ("reachable Idle", "proved"),
+            ("reachable Charged", "ifGuardsAllow"),
+            ("never Charged", "failed"),
+            ("Charged only after Paying", "proved"),
+            ("can finish", "ifGuardsAllow"),
+        ]
+    );
+    assert_eq!(
+        checks[1],
+        serde_json::json!({
+            "machine": "Pay", "check": "reachable Charged",
+            "doc": "Charging needs the payment approved.",
+            "file": "pay.road", "line": 19, "col": 3, "endLine": 19, "endCol": 26,
+            "verdict": "ifGuardsAllow",
+            "guards": ["ok() holds"],
+            "path": [
+                { "from": "Pay.Idle", "index": 0, "trigger": "Go", "guard": "ok()", "to": "Pay.Paying" },
+                { "from": "Pay.Paying", "index": 1, "trigger": "always", "guard": null, "to": "Pay.Charged" }
+            ]
+        })
+    );
+    // A proved `reachable` has its witness; a proved `never` none; a failed one its
+    // counterexample.
+    assert_eq!(checks[0]["path"], serde_json::json!([]));
+    assert_eq!(checks[0]["doc"], serde_json::Value::Null);
+    assert_eq!(checks[3]["path"], serde_json::json!([]));
+    assert_eq!(checks[2]["guards"], serde_json::json!(["ok() holds"]));
+    assert_eq!(checks[2]["path"].as_array().unwrap().len(), 2);
+    // `unchecked`: an option the command line does not have, so from the compiler.
+    let options = roadbook_compiler::Options {
+        max_configurations: Some(1),
+        ..Default::default()
+    };
+    let mut loader = roadbook_compiler::MemoryLoader::new().with("pay.road", CHECKED);
+    let out = roadbook_compiler::check(&mut loader, &["pay.road".to_string()], &options).unwrap();
+    let v: serde_json::Value = serde_json::from_str(&out.to_json()).unwrap();
+    assert!(
+        v["checks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|c| c["verdict"] == "unchecked" && c["path"] == serde_json::json!([]))
+    );
+    assert_eq!(v["warnings"], 5);
+    // A usage error: no checks.
+    let out = roadbook(&dir, &["check", "--json", "nope.road"]);
+    let v: serde_json::Value = serde_json::from_str(&text(&out.stdout)).unwrap();
+    assert_eq!(v["checks"], serde_json::json!([]));
+}
+
 #[test]
 fn warn_invoke_timeout_is_opt_in() {
     let src = "task t()\n\nmachine M() {\n  initial A\n  state A {\n    invoke t() {\n      done -> Done\n    }\n  }\n  final state Done {}\n}\n";

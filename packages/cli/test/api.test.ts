@@ -18,7 +18,7 @@ describe('on disk', () => {
 
   it('checks the examples', () => {
     const out = check(['examples'], { cwd: repo })
-    expect(out.report).toEqual({ diagnostics: [], errors: 0, warnings: 0, fatal: null })
+    expect(out.report).toEqual({ diagnostics: [], errors: 0, warnings: 0, fatal: null, checks: [] })
     expect(out.json).toBe(JSON.stringify(out.report, null, 2))
   })
 

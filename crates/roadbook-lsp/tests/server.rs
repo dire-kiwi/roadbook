@@ -91,6 +91,28 @@ fn diagnostics_are_published_and_cleared() {
 }
 
 #[test]
+fn a_failing_check_is_a_diagnostic_with_its_path() {
+    let src = "machine M() {\n  event Go\n  initial A\n  state A { on Go -> B }\n  final state B {}\n  check never B\n}\n";
+    let p = Project::new("checks", &[("m.road", src)]);
+    let uri = p.uri("m.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, src);
+    let diags = c.diagnostics(&uri);
+    assert_eq!(diags.len(), 1, "{diags:#?}");
+    assert_eq!(diags[0]["code"], "RB0501");
+    assert_eq!(diags[0]["severity"], 1);
+    assert_eq!(slice(src, &diags[0]["range"]), "check never B");
+    // The counterexample's transition, as related information.
+    let related = &diags[0]["relatedInformation"][0];
+    assert_eq!(related["message"], "1. Go -> B");
+    assert_eq!(slice(src, &related["location"]["range"]), "on Go -> B");
+    let fixed = src.replace("check never B", "check reachable B");
+    c.change(&uri, 2, &fixed);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+    c.shutdown();
+}
+
+#[test]
 fn a_change_rechecks_the_files_that_import_it() {
     let types = "type Order { id: string }\n";
     let a = "import { Order } from \"./types.road\"\n\nmachine A(o: Order) -> Order {\n  initial Done\n  final state Done { output o }\n}\n";

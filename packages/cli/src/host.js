@@ -113,6 +113,8 @@ export const nodeHost = {
  * @property {string} rendered The human-readable diagnostics.
  * @property {number} errors
  * @property {number} warnings
+ * @property {string | null} checksSummary The line counting the verdicts of the checks, or `null` if none was evaluated.
+ * @property {string} checksList Every check with its verdict, as `--checks` lists them.
  */
 
 /**

@@ -38,13 +38,19 @@ export function summary(errors, warnings) {
 }
 
 /**
- * Prints the diagnostics of a compilation and returns the exit code they call for.
+ * Prints the diagnostics of a compilation, then, if it evaluated checks, the line counting
+ * their verdicts, with every check listed before it if `list`. Returns the exit code the
+ * diagnostics call for.
  * @param {import('./host.js').Diagnostics} d
  * @param {boolean} json
+ * @param {boolean} [list]
  */
-function diagnostics(d, json) {
+function diagnostics(d, json, list = false) {
   if (json) out(`${d.report}\n`)
-  else if (d.errors + d.warnings > 0) err(`${d.rendered}\n${summary(d.errors, d.warnings)}\n`)
+  else {
+    if (d.errors + d.warnings > 0) err(`${d.rendered}\n${summary(d.errors, d.warnings)}\n`)
+    if (d.checksSummary !== null) err(`${list ? d.checksList : ''}${d.checksSummary}\n`)
+  }
   return d.errors > 0 ? ERRORS : OK
 }
 
@@ -103,7 +109,7 @@ Commands:
   gen         Write the TypeScript module for each \`.road\` file next to it: \`<file>.road.ts\`
   export ir   Write a chart's IR as JSON, in the committed-file form
 
-  check [--json] [--warn invoke-timeout] [PATHS]...
+  check [--json] [--checks] [--warn invoke-timeout] [PATHS]...
   fmt [--check] [PATHS]...
   gen [--check] [PATHS]...
   export ir <FILE> [-o <FILE>]
@@ -165,11 +171,12 @@ export function main(argv) {
 
 const HELP_FLAG = { '-h': { name: 'help', value: false }, '--help': { name: 'help', value: false } }
 
-/** `roadbook check [--json] [--warn invoke-timeout] [paths…]` @param {string[]} args */
+/** `roadbook check [--json] [--checks] [--warn invoke-timeout] [paths…]` @param {string[]} args */
 function check(args) {
   const { values, positional: paths } = parse(args, {
     ...HELP_FLAG,
     '--json': { name: 'json', value: false },
+    '--checks': { name: 'checks', value: false },
     '--warn': { name: 'warn', value: true },
   })
   if (values.help) return help()
@@ -188,7 +195,7 @@ function check(args) {
   const config = ws.config({ warnInvokeTimeout: values.warn !== undefined })
   const result = wasm.check(nodeHost, config, files)
   if (result.fatal !== undefined) return fatalJson(result.fatal, json)
-  return diagnostics(result, json)
+  return diagnostics(result, json, values.checks !== undefined)
 }
 
 /** `roadbook fmt [--check] [paths…]` @param {string[]} args */

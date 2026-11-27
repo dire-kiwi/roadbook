@@ -502,11 +502,23 @@ error[RB0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
   ],
   "errors": 1,
   "warnings": 0,
-  "fatal": null                                  // or the message of a usage or I/O error
+  "fatal": null,                                 // or the message of a usage or I/O error
+  "checks": [
+    {
+      "machine": "Pay",
+      "check": "reachable Charged",              // the property, as formatted after `check`
+      "doc": "A card can be charged.",           // its doc comment, or null
+      "file": "examples/pay.road",
+      "line": 30, "col": 3, "endLine": 30, "endCol": 26,
+      "verdict": "ifGuardsAllow",                // "proved", "ifGuardsAllow", "failed" or "unchecked"
+      "guards": ["ok() holds"],                  // the guard outcomes the path relies on
+      "path": [ { "from": "Pay.Idle", "index": 0, "trigger": "Go", "guard": "ok()", "to": "Pay.Charged" } ]
+    }
+  ]
 }
 ```
 
-Ranges are as in the IR: lines and columns are 1-based, columns count Unicode scalar values, and the end is exclusive. A fix is a set of edits that together resolve the diagnostic: replace each range with its `text` (an empty range inserts). The command exits with 0 when there are no errors (warnings allowed), 1 when there are errors and 2 on a usage or I/O error, such as a file that does not exist. In that last case the object has no diagnostics and `fatal` holds the error's message, which is also printed on standard error.
+Ranges are as in the IR: lines and columns are 1-based, columns count Unicode scalar values, and the end is exclusive. A fix is a set of edits that together resolve the diagnostic: replace each range with its `text` (an empty range inserts). The command exits with 0 when there are no errors (warnings allowed), 1 when there are errors and 2 on a usage or I/O error, such as a file that does not exist. In that last case the object has no diagnostics and `fatal` holds the error's message, which is also printed on standard error. `checks` lists every `check` line of the checked files with its verdict, whether it passed or not: a `failed` one is also an error among the diagnostics (`RB0501`–`RB0504`), and an `unchecked` one a warning (`RB0910`). `path` is the path the verdict rests on, from the initial configuration, as the transitions it takes, shaped as the steps of `roadbook paths --json` (`to` is `null` for an internal transition): the counterexample of a failed check, the witness of a `reachable` that holds, and for a `can finish` that holds only if guards allow, the way to the first configuration that cannot finish whatever the guards and on from there to a final state. It is `[]` when there is none, as for a proved `never`. `guards` are the guard outcomes that path relies on (for `can finish`, the part from that configuration), `"… holds"` or `"… fails"`.
 
 ### Definite assignment
 

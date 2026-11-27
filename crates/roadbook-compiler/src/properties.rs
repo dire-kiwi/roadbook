@@ -995,6 +995,7 @@ machine M() {
             rendered.contains("not checked: `M` has more than 1 configurations"),
             "{rendered}"
         );
+        assert_eq!(summary(&r).unwrap(), "checks: 2 not checked");
     }
 
     #[test]

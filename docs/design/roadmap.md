@@ -39,7 +39,7 @@ editors/
 
 | Command | Does |
 | --- | --- |
-| `roadbook check [--json]` | Compile and report diagnostics. |
+| `roadbook check [--json] [--checks]` | Compile and report diagnostics, and evaluate the charts' `check` lines: a summary line of their verdicts, and with `--checks` one line per check. |
 | `roadbook fmt [--check]` | Canonical formatting. |
 | `roadbook gen [--check]` | Write the `.road.ts` files. |
 | `roadbook viz [paths…] [-o dir] [--self-contained] [--watch]` | Write the HTML viewer, a page per entry chart, plus an index. |

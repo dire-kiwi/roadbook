@@ -53,13 +53,17 @@ impl Config {
 }
 
 /// The diagnostics of a compilation: the documented JSON (`report`, as `roadbook check
-/// --json` prints it), the human-readable form (`rendered`) and the counts.
+/// --json` prints it), the human-readable form (`rendered`) and the counts; and the checks
+/// evaluated, as `roadbook check` prints them: the line counting their verdicts
+/// (`checksSummary`, `null` if none was) and the list `--checks` prints (`checksList`).
 fn diagnostics(out: &Compilation) -> serde_json::Map<String, Value> {
     let mut m = serde_json::Map::new();
     m.insert("report".into(), out.to_json().into());
     m.insert("rendered".into(), out.render().into());
     m.insert("errors".into(), out.error_count().into());
     m.insert("warnings".into(), out.warning_count().into());
+    m.insert("checksSummary".into(), out.checks_summary().into());
+    m.insert("checksList".into(), out.render_checks().into());
     m
 }
 

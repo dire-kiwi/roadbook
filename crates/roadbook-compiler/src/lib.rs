@@ -114,7 +114,7 @@ impl Compilation {
     /// The machine-readable form printed by `roadbook check --json`, as text with members in
     /// the documented order. See [`json`].
     pub fn to_json(&self) -> String {
-        json::diagnostics_string(&self.diagnostics, &self.files)
+        json::diagnostics_string(&self.diagnostics, &self.checks, &self.files)
     }
 
     /// `checks: 6 proved, 2 if guards allow, 1 failed`, as `roadbook check` prints it after

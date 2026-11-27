@@ -112,6 +112,47 @@ describe.skipIf(!rust)('the npm command line prints what the Rust one does', () 
     same(['check', '--json', 'examples/shop', 'examples/orders/orders.road'])
   })
 
+  it('checks: the summary line, --checks and --json, for each verdict', () => {
+    const dir = path.join(tmp, 'checks')
+    const pay = [
+      'fn ok() -> bool',
+      '',
+      'machine Pay() {',
+      '  event Go',
+      '  event Back',
+      '',
+      '  initial Idle',
+      '',
+      '  state Idle    { on Go if ok() -> Paying }',
+      '  state Paying {',
+      '    on Back -> Idle',
+      '    always -> Charged',
+      '  }',
+      '  state Charged { on Go -> Done }',
+      '  final state Done {}',
+      '',
+      '  check reachable Idle',
+      '  /// Charging needs the payment approved.',
+      '  check reachable Charged',
+      '  check never Charged',
+      '  check Charged only after Paying',
+      '  check can finish',
+      '}',
+      '',
+    ].join('\n')
+    write(dir, { 'roadbook.toml': '', 'pay.road': pay, 'passing.road': pay.replace('machine Pay', 'machine Passing').replace('  check never Charged\n', '') })
+    for (const args of [['check'], ['check', '--checks'], ['check', '--json'], ['check', '--json', '--checks'], ['check', '--checks', 'passing.road']]) {
+      same(args, dir)
+    }
+    const listed = same(['check', '--checks'], dir)
+    expect(listed.status).toBe(1)
+    expect(listed.stderr).toContain('checks: 4 proved, 4 if guards allow, 1 failed\n')
+    expect(same(['check', 'passing.road'], dir).status).toBe(0)
+    // The repository's own checks.
+    same(['check', '--checks'])
+    same(['check', '--json', 'crates/roadbook-compiler/tests/pass'])
+  })
+
   it('gen and fmt write the same files', () => {
     const copies = ['rust', 'node'].map((name) => {
       const dir = path.join(tmp, 'write', name)

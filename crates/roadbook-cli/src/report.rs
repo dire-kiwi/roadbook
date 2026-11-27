@@ -1,4 +1,5 @@
-//! Printing diagnostics: rendered to standard error, or as JSON to standard output.
+//! Printing diagnostics and the verdicts of checks: rendered to standard error, or as JSON
+//! to standard output.
 
 use roadbook_compiler::Compilation;
 
@@ -6,12 +7,31 @@ use crate::Exit;
 
 /// Prints the diagnostics of a compilation and returns the exit code they call for.
 pub fn diagnostics(out: &Compilation, json: bool) -> Exit {
+    report(out, json, None)
+}
+
+/// Prints the diagnostics of a compilation as `roadbook check` does: then, if it evaluated
+/// checks, a line counting their verdicts (`checks: 6 proved, 1 failed`), with every check
+/// listed before it if `list`. Returns the exit code the diagnostics call for.
+pub fn checked(out: &Compilation, json: bool, list: bool) -> Exit {
+    report(out, json, Some(list))
+}
+
+fn report(out: &Compilation, json: bool, checks: Option<bool>) -> Exit {
     if json {
         println!("{}", out.to_json());
-    } else if !out.diagnostics.is_empty() {
-        eprint!("{}", out.render());
-        eprintln!();
-        eprintln!("{}", summary(out.error_count(), out.warning_count()));
+    } else {
+        if !out.diagnostics.is_empty() {
+            eprint!("{}", out.render());
+            eprintln!();
+            eprintln!("{}", summary(out.error_count(), out.warning_count()));
+        }
+        if let (Some(list), Some(line)) = (checks, out.checks_summary()) {
+            if list {
+                eprint!("{}", out.render_checks());
+            }
+            eprintln!("{line}");
+        }
     }
     if out.has_errors() {
         Exit::Errors
