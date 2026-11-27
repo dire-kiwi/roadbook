@@ -1,0 +1,47 @@
+// A peer's end for include_ended.rs: the built-in enum `Ended` as the parameter of an action
+// and a function, given `event.status`, and as a machine's parameter and output.
+
+/// Record how a peer ended.
+action note(status: Ended)
+
+/// Whether a peer ended well.
+fn clean(status: Ended) -> bool
+
+/// Ends when asked to: done on Stop, failed on Fail.
+machine Peer() ! Broke {
+  event Stop
+  event Fail
+  initial Open
+  state Open {
+    on Stop -> Closed
+    on Fail -> Broken
+  }
+  final state Closed {}
+  final state Broken { fail Broke }
+}
+
+error Broke
+
+/// Hears how its peer ended, and tells the host.
+machine Watcher(peer: ref Peer) -> Ended {
+  var how: Ended = Ended.Cancelled
+  initial Waiting
+  state Waiting {
+    on peer.ended {
+      if clean(event.status) -> Clean  set how = event.status  do note(event.status)
+      else                   -> Dirty  set how = event.status  do note(event.status)
+    }
+  }
+  final state Clean { output how }
+  final state Dirty { output how }
+}
+
+/// Takes an `Ended` and gives it back.
+machine Echo(status: Ended) -> Ended {
+  initial Noting
+  state Noting {
+    entry do note(status)
+    always -> Done
+  }
+  final state Done { output status }
+}
