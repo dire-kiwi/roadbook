@@ -1651,6 +1651,10 @@
         {
           "type": "SYMBOL",
           "name": "child_fail"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "peer_ended"
         }
       ]
     },
@@ -1760,6 +1764,27 @@
               }
             ]
           }
+        }
+      ]
+    },
+    "peer_ended": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "from",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "STRING",
+          "value": "."
+        },
+        {
+          "type": "STRING",
+          "value": "ended"
         }
       ]
     },

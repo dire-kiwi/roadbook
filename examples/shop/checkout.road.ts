@@ -46,7 +46,7 @@ export interface CheckoutDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.7",
+  "irVersion": "0.8",
   "sources": [
     {
       "path": "examples/shop/checkout.road",
