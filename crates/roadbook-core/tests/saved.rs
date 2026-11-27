@@ -83,7 +83,7 @@ fn refusals_come_in_the_spec_order() {
     // The schema and the version first, even for a snapshot of no machine.
     assert_eq!(reason(&p, with(&|v| v["extra"] = json!(1))), "invalid");
     assert_eq!(
-        reason(&p, with(&|v| v["snapshotVersion"] = json!(2))),
+        reason(&p, with(&|v| v["snapshotVersion"] = json!(4))),
         "invalid"
     );
     assert_eq!(
@@ -367,9 +367,9 @@ fn a_migration_cannot_turn_the_snapshot_into_another_machines() {
     // A valid snapshot of `Peer` (whose `ref` would otherwise be refused later, as `ref`).
     let peer_hash = p.ir().machines["Peer"].hash.clone();
     let peer = json!({
-        "snapshotVersion": 1, "machine": "Peer", "run": "r9", "ir": peer_hash,
+        "snapshotVersion": 3, "machine": "Peer", "run": "r9", "ir": peer_hash,
         "status": "running", "active": ["Peer", "Peer.X"], "input": {"other": "r1"},
-        "vars": {}, "invokes": [], "timers": [], "nextInvoke": 1, "nextTimer": 1,
+        "vars": {}, "invokes": [], "history": {}, "spawned": [], "timers": [], "nextInvoke": 1, "nextTimer": 1,
         "nextMessage": 1, "result": null
     });
     for machine in [None, Some("M")] {
@@ -385,7 +385,7 @@ fn a_migration_cannot_turn_the_snapshot_into_another_machines() {
 fn a_number_s_form_does_not_matter() {
     let p = program();
     let mut v = saved(&p);
-    v["snapshotVersion"] = json!(1.0);
+    v["snapshotVersion"] = json!(3.0);
     v["nextTimer"] = json!(3.0);
     v["timers"][0]["due"] = json!(1000.0);
     v["timers"][0]["index"] = json!(0.0);
@@ -543,4 +543,143 @@ fn a_snapshot_with_pending_calls_is_refused_after_ref() {
     assert_eq!(caller["invokes"][0]["src"], "s.ask");
     caller["calls"] = pending["calls"].clone();
     assert_eq!(reason(&p, caller), "ref");
+}
+
+const HISTORY: &str = r#"
+machine H() {
+  event Go
+  event Out
+
+  initial P
+
+  state P {
+    initial A
+    history S
+    deep history D
+
+    state A { on Go -> B }
+    state B {
+      initial B1
+      state B1 {}
+      state B2 {}
+    }
+
+    on Out -> Q
+  }
+
+  parallel state Q {
+    history S
+    deep history D
+
+    state X {
+      initial X1
+      state X1 {}
+      state X2 {}
+    }
+    state Y {
+      initial Y1
+      state Y1 {}
+    }
+  }
+}
+"#;
+
+/// A saved snapshot of a fresh run of `H`, in `P.A`, with nothing recorded.
+fn history_saved(p: &Program) -> Value {
+    let (snap, _) = p.start("H", "r1", Default::default(), &mut no_fns).unwrap();
+    Saved::new(&snap, |t| t.delay).to_value()
+}
+
+#[test]
+fn history_is_checked_against_the_history_states() {
+    let c = roadbook_compiler::compile_source("h.road", HISTORY, &Default::default());
+    let p = Program::new(c.ir.expect("the chart compiles")).unwrap();
+    let base = history_saved(&p);
+    assert_eq!(base["snapshotVersion"], 3);
+    assert_eq!(base["history"], json!({}));
+    let with = |history: Value| {
+        let mut v = base.clone();
+        v["history"] = history;
+        reason(&p, v)
+    };
+    let cases = [
+        // Keys: only history states.
+        (json!({"H.P.A": ["H.P.B"]}), "invalid"),
+        (json!({"H.P.Nope": ["H.P.B"]}), "invalid"),
+        // Shallow, of a compound parent: one child.
+        (json!({"H.P.S": ["H.P.B"]}), "ok"),
+        (json!({"H.P.S": ["H.P.A", "H.P.B"]}), "invalid"),
+        (json!({"H.P.S": ["H.P.B.B1"]}), "invalid"),
+        (json!({"H.P.S": ["H.Q"]}), "invalid"),
+        (json!({"H.P.S": ["H.P.Nope"]}), "invalid"),
+        (json!({"H.P.S": []}), "invalid"),
+        // Shallow, of a parallel parent: every region, in document order.
+        (json!({"H.Q.S": ["H.Q.X", "H.Q.Y"]}), "ok"),
+        (json!({"H.Q.S": ["H.Q.Y", "H.Q.X"]}), "invalid"),
+        (json!({"H.Q.S": ["H.Q.Y"]}), "invalid"),
+        // Deep: the leaves of a configuration below the parent.
+        (json!({"H.P.D": ["H.P.A"]}), "ok"),
+        (json!({"H.P.D": ["H.P.B.B2"]}), "ok"),
+        (json!({"H.P.D": ["H.P.B"]}), "invalid"),
+        (json!({"H.P.D": ["H.P.A", "H.P.B.B1"]}), "invalid"),
+        (json!({"H.P.D": ["H.P.B.B1", "H.P.B.B2"]}), "invalid"),
+        (json!({"H.P.D": ["H.Q.X.X1"]}), "invalid"),
+        (json!({"H.Q.D": ["H.Q.X.X2", "H.Q.Y.Y1"]}), "ok"),
+        (json!({"H.Q.D": ["H.Q.Y.Y1", "H.Q.X.X2"]}), "invalid"),
+        (json!({"H.Q.D": ["H.Q.X.X2"]}), "invalid"),
+        (
+            json!({"H.Q.D": ["H.Q.X.X1", "H.Q.X.X2", "H.Q.Y.Y1"]}),
+            "invalid",
+        ),
+        (
+            json!({"H.P.S": ["H.P.B"], "H.P.D": ["H.P.B.B1"], "H.Q.S": ["H.Q.X", "H.Q.Y"]}),
+            "ok",
+        ),
+    ];
+    for (history, want) in cases {
+        assert_eq!(with(history.clone()), want, "{history}");
+    }
+
+    // Version 1 has no `history` and no `spawned`, version 2 has `history`, version 3 both.
+    let mut v1 = base.clone();
+    v1["snapshotVersion"] = json!(1);
+    assert_eq!(reason(&p, v1.clone()), "invalid");
+    v1.as_object_mut().unwrap().remove("history");
+    assert_eq!(reason(&p, v1.clone()), "invalid");
+    v1.as_object_mut().unwrap().remove("spawned");
+    assert_eq!(reason(&p, v1), "ok");
+    let mut v2 = base.clone();
+    v2["snapshotVersion"] = json!(2);
+    assert_eq!(reason(&p, v2.clone()), "invalid");
+    v2.as_object_mut().unwrap().remove("spawned");
+    assert_eq!(reason(&p, v2), "ok");
+    let mut v3 = base.clone();
+    v3.as_object_mut().unwrap().remove("history");
+    assert_eq!(reason(&p, v3), "invalid");
+}
+
+#[test]
+fn a_version_1_snapshot_restores_and_is_saved_again_as_version_3() {
+    let c = roadbook_compiler::compile_source("h.road", HISTORY, &Default::default());
+    let p = Program::new(c.ir.expect("the chart compiles")).unwrap();
+    let mut v1 = history_saved(&p);
+    v1["snapshotVersion"] = json!(1);
+    v1.as_object_mut().unwrap().remove("history");
+    v1.as_object_mut().unwrap().remove("spawned");
+    let (saved, _) = p.check_saved(v1.clone(), None, None).unwrap();
+    assert_eq!((saved.snapshot_version, &saved.history), (1, &None));
+    let (snap, commands) = p.restore(&saved, "r2", 0, None, &mut no_fns).unwrap();
+    // The `restored` record holds the snapshot as it was given.
+    let Some(Command::Trace {
+        record: Record::Restored { snapshot, .. },
+    }) = commands.first()
+    else {
+        panic!("no restored record first: {commands:?}");
+    };
+    assert_eq!(snapshot.to_value(), v1);
+    assert!(snap.history.is_empty());
+    let again = Saved::new(&snap, |t| t.delay).to_value();
+    assert_eq!(again["snapshotVersion"], 3);
+    assert_eq!(again["history"], json!({}));
+    assert_eq!(again["spawned"], json!([]));
 }

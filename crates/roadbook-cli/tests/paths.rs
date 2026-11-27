@@ -513,6 +513,45 @@ fn a_transition_in_a_region_that_leaves_the_parallel_state_is_a_step_from_it() {
 }
 
 #[test]
+fn a_history_state_returns_to_where_its_parent_was_on_the_path() {
+    // The conformance chart's `Bounce` leaves `P` from `B` while settling and goes back to it
+    // through `P.H`; `Region` goes back into a parallel state through a region's history state.
+    let chart = "spec/conformance/charts/history.road";
+    let out = roadbook(&repo(), &["paths", "Bounce", chart]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(
+        text(&out.stdout),
+        "Bounce: 1 path\n1. P.A --Go--> P.B --always [n == 0]--> Q --always--> P.B (history P.H) (loops)\n"
+    );
+    let v = json_of(&roadbook(&repo(), &["paths", "Bounce", chart, "--json"]));
+    // A step's `to` is the history state, as a trace's `transition` record names it.
+    assert_eq!(
+        v["paths"][0]["steps"][2],
+        json!({ "from": "Bounce.Q", "index": 0, "trigger": "always", "guard": null, "to": "Bounce.P.H" })
+    );
+    // `Steps`: paused in `S1`, the deep history state restores `S1`.
+    let out = roadbook(&repo(), &["paths", "Steps", chart]);
+    assert!(
+        text(&out.stdout)
+            .contains("--Pause--> Paused\n     --Resume--> Flow.S1 (deep history Flow.H)\n"),
+        "{}",
+        text(&out.stdout)
+    );
+    let out = roadbook(
+        &repo(),
+        &[
+            "paths",
+            "Region",
+            "spec/conformance/charts/history-regions.road",
+        ],
+    );
+    assert_eq!(
+        text(&out.stdout),
+        "Region: 1 path\n1. P --Out--> Away --Back--> P (deep history P.A.H) (loops)\n"
+    );
+}
+
+#[test]
 fn max_stops_the_listing_and_says_so() {
     let chart = "machine Many() {
   event A

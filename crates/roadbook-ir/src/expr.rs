@@ -406,7 +406,10 @@ impl<'de> Deserialize<'de> for Expr {
                 }
             }
             ExprDe::Record { fields, ty, text } => {
-                named(&ty, "record")?;
+                // A value of a generic record has the instance as its type.
+                if !matches!(ty, TypeRef::Generic(..)) {
+                    named(&ty, "record")?;
+                }
                 Expr {
                     kind: ExprKind::Record { fields },
                     ty,

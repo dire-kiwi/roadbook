@@ -1,0 +1,13 @@
+{"input":{"users":{"__proto__":{"password":"<redacted>","user":"root"},"ada":{"password":"<redacted>","user":"ada"}},"vault":{"label":"pins","secret":"<redacted>"}},"ir":"sha256:69bf79febe1630645b241499ca8a5c8bab738cf0b38c351283cb869da878ce68","kind":"started","machine":"Keep","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Keep","t":0}
+{"kind":"entered","run":"r1","state":"Keep.Fetching","t":0}
+{"args":{"users":{"__proto__":{"password":"<redacted>","user":"root"},"ada":{"password":"<redacted>","user":"ada"}}},"invoke":1,"kind":"invoke.started","run":"r1","src":"fetch","state":"Keep.Fetching","t":0}
+{"event":{"invoke":1,"kind":"invoke.done","value":{"items":[{"first":"ada","second":{"password":"<redacted>","user":"ada"}}],"next":null}},"kind":"event","run":"r1","t":0}
+{"from":"Keep.Fetching","index":0,"kind":"transition","run":"r1","t":0,"to":"Keep.Done"}
+{"kind":"exited","run":"r1","state":"Keep.Fetching","t":0}
+{"kind":"set","run":"r1","t":0,"value":{"items":[{"first":"ada","second":{"password":"<redacted>","user":"ada"}}],"next":null},"var":"page"}
+{"action":"log","args":{"page":{"items":[{"first":"ada","second":{"password":"<redacted>","user":"ada"}}],"next":null}},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Keep.Done","t":0}
+{"kind":"exited","run":"r1","state":"Keep.Done","t":0}
+{"kind":"exited","run":"r1","state":"Keep","t":0}
+{"kind":"done","output":{"items":[{"first":"ada","second":{"password":"<redacted>","user":"ada"}}],"next":null},"run":"r1","state":"Keep.Done","t":0}

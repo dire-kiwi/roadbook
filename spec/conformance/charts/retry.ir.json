@@ -1,0 +1,922 @@
+{
+  "irVersion": "0.7",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/retry.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Busy": {
+      "kind": "error",
+      "fields": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 3,
+        "col": 1,
+        "endLine": 3,
+        "endCol": 11
+      }
+    },
+    "Gone": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "reason",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 4,
+        "col": 1,
+        "endLine": 4,
+        "endCol": 30
+      }
+    }
+  },
+  "functions": {
+    "backoff": {
+      "params": [
+        {
+          "name": "attempt",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "duration",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 37
+      }
+    }
+  },
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {
+    "fetch": {
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [
+        "Busy",
+        "Gone"
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 51
+      }
+    },
+    "save": {
+      "params": [
+        {
+          "name": "body",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [
+        "Busy",
+        "Gone"
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 51
+      }
+    }
+  },
+  "machines": {
+    "Fetcher": {
+      "doc": "Fetch a document with retries, then save it.",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 47,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [
+        "Busy",
+        "Gone"
+      ],
+      "vars": [
+        {
+          "name": "body",
+          "type": "string",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 19
+          }
+        },
+        {
+          "name": "why",
+          "type": "string",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 24
+          }
+        },
+        {
+          "name": "loadingAttempt",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 25,
+            "col": 22,
+            "endLine": 25,
+            "endCol": 60
+          }
+        },
+        {
+          "name": "savingAttempt",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 37,
+            "col": 23,
+            "endLine": 37,
+            "endCol": 30
+          }
+        }
+      ],
+      "events": {
+        "Again": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Fetcher",
+        "name": "Fetcher",
+        "kind": "compound",
+        "doc": "Fetch a document with retries, then save it.",
+        "span": {
+          "file": 0,
+          "line": 12,
+          "col": 1,
+          "endLine": 47,
+          "endCol": 2
+        },
+        "initial": "Fetcher.Loading",
+        "states": [
+          {
+            "id": "Fetcher.Loading",
+            "name": "Loading",
+            "kind": "compound",
+            "doc": "Busy is retried twice with a growing delay, Gone is not. The deadline covers every\nattempt and every wait.",
+            "span": {
+              "file": 0,
+              "line": 22,
+              "col": 3,
+              "endLine": 31,
+              "endCol": 4
+            },
+            "initial": "Fetcher.Loading.Attempt",
+            "states": [
+              {
+                "id": "Fetcher.Loading.Attempt",
+                "name": "Attempt",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 5,
+                  "endLine": 29,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "task",
+                  "src": "fetch",
+                  "to": null,
+                  "as": null,
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "id"
+                      ],
+                      "type": "string",
+                      "text": "id"
+                    }
+                  ],
+                  "span": {
+                    "file": 0,
+                    "line": 25,
+                    "col": 5,
+                    "endLine": 29,
+                    "endCol": 6
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Fetcher.Saving",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "body",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "result"
+                          ],
+                          "type": "string",
+                          "text": "result"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 26,
+                      "col": 7,
+                      "endLine": 26,
+                      "endCol": 46
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "Busy"
+                    },
+                    "group": 1,
+                    "guard": {
+                      "kind": "op",
+                      "op": "<",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "loadingAttempt"
+                          ],
+                          "type": "int",
+                          "text": "loadingAttempt"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 2,
+                          "type": "int",
+                          "text": "2"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "loadingAttempt < 2"
+                    },
+                    "target": "Fetcher.Loading.Backoff",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "loadingAttempt",
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "loadingAttempt"
+                              ],
+                              "type": "int",
+                              "text": "loadingAttempt"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "loadingAttempt + 1"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 25,
+                      "col": 22,
+                      "endLine": 25,
+                      "endCol": 60
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "Busy"
+                    },
+                    "group": 1,
+                    "guard": null,
+                    "target": "Fetcher.Waiting",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 27,
+                      "col": 7,
+                      "endLine": 27,
+                      "endCol": 27
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "Gone"
+                    },
+                    "group": 2,
+                    "guard": null,
+                    "target": "Fetcher.Missing",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "why",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "error",
+                            "reason"
+                          ],
+                          "type": "string",
+                          "text": "error.reason"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 28,
+                      "col": 7,
+                      "endLine": 28,
+                      "endCol": 51
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Fetcher.Loading.Backoff",
+                "name": "Backoff",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 22,
+                  "endLine": 25,
+                  "endCol": 60
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "after",
+                      "delay": {
+                        "kind": "call",
+                        "fn": "backoff",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "loadingAttempt"
+                            ],
+                            "type": "int",
+                            "text": "loadingAttempt"
+                          }
+                        ],
+                        "type": "duration",
+                        "text": "backoff(loadingAttempt)"
+                      }
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Fetcher.Loading.Attempt",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 25,
+                      "col": 22,
+                      "endLine": 25,
+                      "endCol": 60
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [
+              {
+                "kind": "set",
+                "var": "loadingAttempt",
+                "value": {
+                  "kind": "lit",
+                  "value": 0,
+                  "type": "int",
+                  "text": "0"
+                }
+              },
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "loading",
+                    "type": "string",
+                    "text": "\"loading\""
+                  }
+                ]
+              }
+            ],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "left loading",
+                    "type": "string",
+                    "text": "\"left loading\""
+                  }
+                ]
+              }
+            ],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 10000,
+                    "type": "duration",
+                    "text": "10s"
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Fetcher.TimedOut",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 30,
+                  "endCol": 26
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Fetcher.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 33,
+              "col": 3,
+              "endLine": 33,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Again"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Fetcher.Loading",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 19,
+                  "endLine": 33,
+                  "endCol": 38
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Fetcher.Saving",
+            "name": "Saving",
+            "kind": "compound",
+            "doc": "Every error is retried once, at once.",
+            "span": {
+              "file": 0,
+              "line": 36,
+              "col": 3,
+              "endLine": 41,
+              "endCol": 4
+            },
+            "initial": "Fetcher.Saving.Attempt",
+            "states": [
+              {
+                "id": "Fetcher.Saving.Attempt",
+                "name": "Attempt",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 40,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "task",
+                  "src": "save",
+                  "to": null,
+                  "as": null,
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "body"
+                      ],
+                      "type": "string",
+                      "text": "body"
+                    }
+                  ],
+                  "span": {
+                    "file": 0,
+                    "line": 37,
+                    "col": 5,
+                    "endLine": 40,
+                    "endCol": 6
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Fetcher.Saved",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 38,
+                      "col": 7,
+                      "endLine": 38,
+                      "endCol": 22
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "*"
+                    },
+                    "group": 1,
+                    "guard": {
+                      "kind": "op",
+                      "op": "<",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "savingAttempt"
+                          ],
+                          "type": "int",
+                          "text": "savingAttempt"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "savingAttempt < 1"
+                    },
+                    "target": "Fetcher.Saving.Attempt",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "savingAttempt",
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "savingAttempt"
+                              ],
+                              "type": "int",
+                              "text": "savingAttempt"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "savingAttempt + 1"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 37,
+                      "col": 23,
+                      "endLine": 37,
+                      "endCol": 30
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "*"
+                    },
+                    "group": 1,
+                    "guard": null,
+                    "target": "Fetcher.Unsaved",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 39,
+                      "col": 7,
+                      "endLine": 39,
+                      "endCol": 24
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [
+              {
+                "kind": "set",
+                "var": "savingAttempt",
+                "value": {
+                  "kind": "lit",
+                  "value": 0,
+                  "type": "int",
+                  "text": "0"
+                }
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Fetcher.Saved",
+            "name": "Saved",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 43,
+              "col": 3,
+              "endLine": 43,
+              "endCol": 39
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "body"
+              ],
+              "type": "string",
+              "text": "body"
+            },
+            "fail": null
+          },
+          {
+            "id": "Fetcher.Unsaved",
+            "name": "Unsaved",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 44,
+              "col": 3,
+              "endLine": 44,
+              "endCol": 37
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "record",
+              "fields": [],
+              "type": "Busy",
+              "text": "Busy"
+            }
+          },
+          {
+            "id": "Fetcher.Missing",
+            "name": "Missing",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 45,
+              "col": 3,
+              "endLine": 45,
+              "endCol": 53
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "record",
+              "fields": [
+                {
+                  "name": "reason",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "why"
+                    ],
+                    "type": "string",
+                    "text": "why"
+                  }
+                }
+              ],
+              "type": "Gone",
+              "text": "Gone { reason: why }"
+            }
+          },
+          {
+            "id": "Fetcher.TimedOut",
+            "name": "TimedOut",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 46,
+              "col": 3,
+              "endLine": 46,
+              "endCol": 37
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "record",
+              "fields": [],
+              "type": "Busy",
+              "text": "Busy"
+            }
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:952bbad7b5fcfd22838d6cc23ad73420363373e9536ddda02501f833204b6d82"
+    }
+  }
+}

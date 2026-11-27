@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use roadbook_compiler::Ir;
-use roadbook_ir::{Effect, InvokeKind, Machine, Source, State, Trigger, TypeDef, TypeRef};
+use roadbook_ir::{Effect, InvokeKind, Machine, Source, State, Trigger, TypeRef};
 use serde_json::{Value, json};
 
 /// The project index's file name.
@@ -232,9 +232,9 @@ fn source_path(src: Option<&Source>) -> String {
 
 /// The data of the project index (`ProjectIndex` in `packages/viewer/src/project.ts`, which
 /// builds the same from IRs): every machine once, identified by its name and source file,
-/// with the first page that draws it, which machines it invokes, and which it talks to: the
-/// machines it holds a `ref` to, the events it sends, the emitted events it handles, and the
-/// calls it makes (`invoke inventory.reserve(…)`), each as `{"to": i, "calls": ["reserve"]}`.
+/// with the first page that draws it, which machines it invokes and spawns, and which it talks
+/// to: the machines it holds a `ref` to, the events it sends, the emitted events it handles, and
+/// the calls it makes (`invoke inventory.reserve(…)`), each as `{"to": i, "calls": ["reserve"]}`.
 pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> Value {
     let key = |ir: &Ir, name: &str, m: &Machine| {
         let file = source_path(ir.sources.get(m.span.file as usize));
@@ -258,6 +258,7 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
                 "states": count(&m.root),
                 "page": page,
                 "invokes": [],
+                "spawns": [],
                 "refs": [],
                 "sends": [],
                 "receives": [],
@@ -293,6 +294,11 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
             };
             let t = talks(ir, m);
             let entry = &mut machines[from];
+            for (machine, names) in t.spawns {
+                if let Some(to) = at(&machine) {
+                    push(entry, "spawns", json!({ "to": to, "names": names }));
+                }
+            }
             for (machine, names) in t.refs {
                 if let Some(to) = at(&machine) {
                     push(entry, "refs", json!({ "to": to, "names": names }));
@@ -327,13 +333,15 @@ pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> V
     json!({ "title": title, "pages": pages, "machines": machines })
 }
 
+/// `name: T`, or `sensitive name: T`: a field or parameter as written.
+pub fn field_text(f: &roadbook_ir::Field) -> String {
+    let sensitive = if f.sensitive { "sensitive " } else { "" };
+    format!("{sensitive}{}: {}", f.name, f.ty)
+}
+
 /// `[strict] machine Name(p: T) -> R ! E | F`
 pub fn signature(name: &str, m: &Machine) -> String {
-    let params: Vec<String> = m
-        .params
-        .iter()
-        .map(|p| format!("{}: {}", p.name, p.ty))
-        .collect();
+    let params: Vec<String> = m.params.iter().map(field_text).collect();
     let strict = if m.strict { "strict " } else { "" };
     let mut s = format!("{strict}machine {name}({})", params.join(", "));
     if let Some(r) = &m.returns {
@@ -370,6 +378,8 @@ fn group(list: &mut Grouped, machine: &str, value: &str) {
 
 /// Which machines a machine talks to (`talks` in `packages/viewer/src/model.ts`).
 struct Talks {
+    /// Machines it spawns, with the collections of children holding them.
+    spawns: Grouped,
     /// Machines it holds a `ref` to, with the parameters and variables holding one.
     refs: Grouped,
     /// Events it sends, by receiving machine.
@@ -382,11 +392,15 @@ struct Talks {
 
 fn talks(ir: &Ir, m: &Machine) -> Talks {
     let mut t = Talks {
+        spawns: Vec::new(),
         refs: Vec::new(),
         sends: Vec::new(),
         receives: Vec::new(),
         calls: Vec::new(),
     };
+    for (name, c) in &m.children {
+        group(&mut t.spawns, &c.machine, name);
+    }
     for (name, ty) in m
         .params
         .iter()
@@ -403,14 +417,11 @@ fn talks(ir: &Ir, m: &Machine) -> Talks {
 
 /// The machine a type is a handle to: `ref M`, with any suffixes, or an alias of one.
 fn ref_machine(ir: &Ir, ty: &TypeRef) -> Option<String> {
-    let mut ty = ty;
+    let mut ty = ty.clone();
     for _ in 0..32 {
-        match ty.base() {
-            TypeRef::Ref(m) => return Some(m.clone()),
-            TypeRef::Named(n) => match ir.types.get(n).map(|d| &d.def) {
-                Some(TypeDef::Alias { ty: next }) => ty = next,
-                _ => return None,
-            },
+        match ir.expand_top(ty.base()).into_owned() {
+            TypeRef::Ref(m) => return Some(m),
+            next @ (TypeRef::List(_) | TypeRef::Optional(_)) => ty = next,
             _ => return None,
         }
     }
@@ -542,5 +553,37 @@ mod tests {
     #[test]
     fn inline_scripts_cannot_close_early() {
         assert_eq!(inline_js("a</script>b<!--c"), "a<\\/script>b<\\!--c");
+    }
+
+    /// Spawned children are a relation of their own, and what is sent to them or received
+    /// from them counts as for any other machine (`projectIndex` in the viewer builds the same).
+    #[test]
+    fn the_index_records_spawns_and_messages_with_spawned_children() {
+        let ir = Ir::from_json(include_str!(
+            "../../../../../spec/conformance/charts/hub.ir.json"
+        ))
+        .unwrap();
+        let index = project_index("hub", &[("hub.road", &ir)], &["hub.html".into()]);
+        let machines = index["machines"].as_array().unwrap();
+        let at = |name: &str| machines.iter().position(|m| m["name"] == name).unwrap();
+        let (hub, pool, session) = (&machines[at("Hub")], &machines[at("Pool")], at("Session"));
+        assert_eq!(
+            hub["spawns"],
+            json!([{ "to": session, "names": ["sessions"] }])
+        );
+        assert_eq!(
+            pool["spawns"],
+            json!([{ "to": session, "names": ["slots"] }])
+        );
+        assert_eq!(hub["invokes"], json!([]));
+        assert_eq!(
+            hub["sends"],
+            json!([{ "to": session, "events": ["Echo", "Notify", "Leave", "Drop", "Crash"] }])
+        );
+        assert_eq!(
+            hub["receives"],
+            json!([{ "from": session, "events": ["Said"] }])
+        );
+        assert_eq!(machines[session]["spawns"], json!([]));
     }
 }

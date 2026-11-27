@@ -117,6 +117,29 @@ async fn subscribe_hears_what_the_run_emits_after_it_typed_and_writes_nothing() 
 }
 
 #[tokio::test(start_paused = true)]
+async fn a_subscription_hears_sensitive_fields_as_they_are_while_the_trace_redacts_them() {
+    let sink = Arc::new(MemorySink::new());
+    let actor = rt::beacon::spawn_with(config(&sink), host(false));
+    let mut sub = actor.subscribe();
+    let word = "swordfish".to_owned();
+    actor.send(Event::Whisper { word: word.clone() }).await;
+    actor.send(Event::Stop).await;
+    actor.result().await.unwrap();
+    assert_eq!(
+        rest(&mut sub).await,
+        vec![Emitted::Heard { word }, Emitted::Bye]
+    );
+    let records: Vec<TraceRecord> = sink.records();
+    assert_eq!(
+        emitted_values(&records)[1..],
+        [
+            json!({"_tag": "Heard", "word": "<redacted>"}),
+            json!({"_tag": "Bye"})
+        ]
+    );
+}
+
+#[tokio::test(start_paused = true)]
 async fn each_subscription_hears_from_when_it_was_made() {
     let sink = Arc::new(MemorySink::new());
     let actor = rt::beacon::spawn_with(config(&sink), host(false));

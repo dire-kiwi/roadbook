@@ -27,7 +27,7 @@ pub const DUPLICATE_DECLARATION: Code = Code(107);
 pub const DUPLICATE_NAME: Code = Code(108);
 /// A declared name used as something it is not, such as an action in `invoke`.
 pub const WRONG_KIND: Code = Code(109);
-/// `event`, `result`, `error` or `call` where it is not in scope.
+/// `event`, `result`, `error`, `call` or `key` where it is not in scope.
 pub const IMPLICIT_NAME_OUT_OF_SCOPE: Code = Code(110);
 /// An import of a file that cannot be read.
 pub const IMPORT_NOT_FOUND: Code = Code(111);
@@ -57,6 +57,14 @@ pub const UNKNOWN_CALL: Code = Code(118);
 /// The built-in error `Unanswered` where it cannot be: in a `!` list, as a type or a value, or
 /// in a `fail` outcome of an invoke that is not a call.
 pub const UNANSWERED_MISUSED: Code = Code(119);
+/// `attempt` in a retry's delay, in a machine with a parameter or variable named `attempt`.
+pub const ATTEMPT_SHADOWED: Code = Code(120);
+/// A `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` or `on name.fail` through a
+/// name that is not a `children` collection, or a `send name.E` to a collection with no key.
+pub const NOT_A_COLLECTION: Code = Code(121);
+/// `key`, the implicit name of a spawned child's key, as the name of a machine parameter,
+/// variable, `as` name or collection.
+pub const KEY_AS_NAME: Code = Code(122);
 
 // ───────────── structure ─────────────
 
@@ -73,7 +81,8 @@ pub const UNHANDLED_ERROR: Code = Code(204);
 pub const DUPLICATE_TRIGGER: Code = Code(205);
 /// A second `invoke` in one state.
 pub const SECOND_INVOKE: Code = Code(206);
-/// A `fail E` outcome for an error the task or machine does not declare.
+/// A `fail E` outcome, or a `retry … on E`, for an error the task or machine does not
+/// declare.
 pub const UNDECLARED_ERROR_OUTCOME: Code = Code(207);
 /// `output` or `fail` outside a top-level final state, or more than one in a final state.
 pub const MISPLACED_RESULT: Code = Code(208);
@@ -94,6 +103,26 @@ pub const CHILD_NOT_RUNNING: Code = Code(213);
 /// `invoke task(…) as name` or `invoke x.call(…) as name`: only an invoked machine has a name
 /// to send to.
 pub const ALIAS_ON_TASK: Code = Code(214);
+
+/// `retry` on the invoke of a state with child states, which cannot be written out as
+/// `Attempt` and `Backoff` children.
+pub const RETRY_WITH_CHILDREN: Code = Code(215);
+
+/// `retry` on an invoke with `as`: each attempt is a new child, which a name cannot address
+/// during the waits.
+pub const RETRY_WITH_ALIAS: Code = Code(216);
+
+/// A `retry` that retries nothing (`retry 0`, a task or machine with no declared errors), or
+/// names an error twice.
+pub const RETRY_NOTHING: Code = Code(217);
+
+/// A retried error handled by a `fail *` that also handles an error that is not retried.
+pub const RETRY_SHARED_OUTCOME: Code = Code(218);
+
+/// `history H` or `deep history H` in a state with no child states, or in a final state.
+pub const HISTORY_WITHOUT_CHILDREN: Code = Code(219);
+/// A `spawn` of a machine other than its collection's.
+pub const SPAWN_MACHINE_MISMATCH: Code = Code(220);
 
 // ───────────── types ─────────────
 
@@ -148,6 +177,35 @@ pub const NOT_A_PENDING_CALL: Code = Code(318);
 /// returns nothing or without one for a call that returns a value, or `fail` with a value that
 /// is not one of the call's declared errors.
 pub const BAD_REPLY: Code = Code(319);
+/// A value read from a sensitive field, parameter or variable (or computed from one by an
+/// operator) going where a trace shows it:
+/// to a variable, parameter or field that is not sensitive, or to an `output`, a `fail`, a
+/// call's reply or an `after` delay.
+pub const SENSITIVE_VALUE: Code = Code(320);
+
+/// A value whose type has sensitive fields going where `json` is expected, in a place a trace
+/// shows.
+pub const SENSITIVE_INTO_JSON: Code = Code(321);
+/// A `children` key type that is not `string`, `int` or an enum, or an alias of one.
+pub const BAD_KEY_TYPE: Code = Code(322);
+
+/// A `map` whose key type is not `string` or an alias of it.
+pub const MAP_KEY: Code = Code(323);
+
+/// A generic type without its type arguments or with the wrong number of them, or type
+/// arguments on a type that takes none.
+pub const TYPE_ARGUMENT_COUNT: Code = Code(324);
+
+/// A type parameter its declaration does not use.
+pub const UNUSED_TYPE_PARAMETER: Code = Code(325);
+
+/// A generic type that refers to itself, directly or through other types, with other type
+/// arguments than its own parameters.
+pub const IRREGULAR_RECURSION: Code = Code(326);
+
+/// A record value of a generic type whose type arguments cannot be told from the expected
+/// type or the field values.
+pub const UNINFERRED_TYPE_ARGUMENT: Code = Code(327);
 
 // ───────────── analyses ─────────────
 
@@ -183,6 +241,10 @@ pub const CALL_NEVER_TAKEN: Code = Code(908);
 
 /// A variable of type `call name` that no `reply` answers.
 pub const CALL_NEVER_REPLIED: Code = Code(909);
+/// A history state that no transition targets.
+pub const UNUSED_HISTORY: Code = Code(910);
+/// A `children` collection that no `spawn` fills (warning).
+pub const NEVER_SPAWNED: Code = Code(911);
 
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
@@ -205,6 +267,9 @@ pub const ALL: &[Code] = &[
     NOT_EMITTED,
     UNKNOWN_CALL,
     UNANSWERED_MISUSED,
+    ATTEMPT_SHADOWED,
+    NOT_A_COLLECTION,
+    KEY_AS_NAME,
     UNKNOWN_TARGET,
     MISSING_INITIAL,
     BAD_INITIAL,
@@ -219,6 +284,12 @@ pub const ALL: &[Code] = &[
     DONE_WITHOUT_CHILDREN,
     CHILD_NOT_RUNNING,
     ALIAS_ON_TASK,
+    RETRY_WITH_CHILDREN,
+    RETRY_WITH_ALIAS,
+    RETRY_NOTHING,
+    RETRY_SHARED_OUTCOME,
+    HISTORY_WITHOUT_CHILDREN,
+    SPAWN_MACHINE_MISMATCH,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
     BAD_OPERANDS,
@@ -238,6 +309,14 @@ pub const ALL: &[Code] = &[
     CALL_TYPE_NOT_ALLOWED,
     NOT_A_PENDING_CALL,
     BAD_REPLY,
+    SENSITIVE_VALUE,
+    SENSITIVE_INTO_JSON,
+    BAD_KEY_TYPE,
+    MAP_KEY,
+    TYPE_ARGUMENT_COUNT,
+    UNUSED_TYPE_PARAMETER,
+    IRREGULAR_RECURSION,
+    UNINFERRED_TYPE_ARGUMENT,
     ALWAYS_CYCLE,
     UNBOUNDED_RECURSION,
     UNASSIGNED_READ,
@@ -250,6 +329,8 @@ pub const ALL: &[Code] = &[
     NEVER_RECEIVED,
     CALL_NEVER_TAKEN,
     CALL_NEVER_REPLIED,
+    UNUSED_HISTORY,
+    NEVER_SPAWNED,
 ];
 
 #[cfg(test)]

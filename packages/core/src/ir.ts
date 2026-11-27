@@ -1,11 +1,12 @@
 /**
- * The Roadbook IR, version 0.5, as `spec/ir.md` describes it. The types mirror the JSON;
+ * The Roadbook IR, version 0.7, as `spec/ir.md` describes it. The types mirror the JSON;
  * {@link loadIr} checks the version before anything else.
  */
+import { aliasCycle } from "./typeref.ts"
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.5"
+export const IR_VERSION = "0.7"
 
 export interface Span {
   readonly file: number
@@ -18,14 +19,35 @@ export interface Span {
 /** A field of a record, error or event, or a parameter. */
 export interface Field {
   readonly name: string
-  /** A type reference in canonical source form: `LineItem[]`, `string?`, `ref Inventory`. */
+  /**
+   * A type reference in canonical source form: `LineItem[]`, `string?`, `ref Inventory`,
+   * `map<string, int>`, `Page<Order>`. {@link parseTypeRef} reads it.
+   */
   readonly type: string
+  /** Marked `sensitive`: trace records show its value as `"<redacted>"`. */
+  readonly sensitive: boolean
   readonly doc: string
 }
 
+/**
+ * A declared type. A record or an alias is generic when it has `params`: inside it, a bare name
+ * that is one of them refers to that parameter.
+ */
 export type TypeDecl =
-  | { readonly kind: "record"; readonly fields: ReadonlyArray<Field>; readonly doc: string; readonly span: Span }
-  | { readonly kind: "alias"; readonly type: string; readonly doc: string; readonly span: Span }
+  | {
+    readonly kind: "record"
+    readonly params: ReadonlyArray<string>
+    readonly fields: ReadonlyArray<Field>
+    readonly doc: string
+    readonly span: Span
+  }
+  | {
+    readonly kind: "alias"
+    readonly params: ReadonlyArray<string>
+    readonly type: string
+    readonly doc: string
+    readonly span: Span
+  }
   | { readonly kind: "enum"; readonly variants: ReadonlyArray<string>; readonly doc: string; readonly span: Span }
   | { readonly kind: "error"; readonly fields: ReadonlyArray<Field>; readonly doc: string; readonly span: Span }
   | { readonly kind: "extern"; readonly doc: string; readonly span: Span }
@@ -54,6 +76,8 @@ export interface TaskDecl {
 export interface Variable {
   readonly name: string
   readonly type: string
+  /** Marked `sensitive`: trace records show its value as `"<redacted>"`. */
+  readonly sensitive: boolean
   readonly init: Expr | null
   readonly doc: string
   readonly span: Span
@@ -88,11 +112,22 @@ export interface Machine {
   readonly events: Readonly<Record<string, EventDecl>>
   readonly emits: Readonly<Record<string, EventDecl>>
   readonly calls: Readonly<Record<string, CallDecl>>
+  readonly children: Readonly<Record<string, ChildrenDecl>>
   readonly root: State
   readonly hash: string
 }
 
-export type StateKind = "atomic" | "compound" | "parallel" | "final"
+/** `children name: Machine by Key`: a keyed collection of spawned children. */
+export interface ChildrenDecl {
+  readonly machine: string
+  /** The key type: `string`, `int` or an enum, or an alias of one. */
+  readonly key: string
+  readonly doc: string
+  readonly span: Span
+}
+
+/** `history` and `deepHistory` are history pseudo-states (ir.md, "History states"). */
+export type StateKind = "atomic" | "compound" | "parallel" | "final" | "history" | "deepHistory"
 
 export interface State {
   readonly id: string
@@ -121,9 +156,12 @@ export interface Invoke {
   readonly span: Span
 }
 
-/** Another running machine: an invoked child by its `as` name, or a `ref` parameter or variable. */
+/**
+ * Another running machine: an invoked child by its `as` name, a `ref` parameter or variable, or
+ * the spawned children of a collection.
+ */
 export interface Address {
-  readonly kind: "child" | "ref"
+  readonly kind: "child" | "ref" | "children"
   readonly name: string
   readonly machine: string
   readonly state: string | null
@@ -139,6 +177,8 @@ export type Trigger =
   | { readonly kind: "invoke.done" }
   | { readonly kind: "invoke.fail"; readonly error: string }
   | { readonly kind: "call"; readonly call: string }
+  | { readonly kind: "spawn.done"; readonly children: string }
+  | { readonly kind: "spawn.fail"; readonly children: string; readonly error: string }
 
 export interface Transition {
   readonly trigger: Trigger
@@ -152,7 +192,14 @@ export interface Transition {
 export type Effect =
   | { readonly kind: "set"; readonly var: string; readonly value: Expr }
   | { readonly kind: "do"; readonly action: string; readonly args: ReadonlyArray<Expr> }
-  | { readonly kind: "send"; readonly to: Address; readonly event: string; readonly value: Expr }
+  | {
+    readonly kind: "send"
+    readonly to: Address
+    /** For a collection, the child's key, or `null` for every running child. */
+    readonly key: Expr | null
+    readonly event: string
+    readonly value: Expr
+  }
   | { readonly kind: "emit"; readonly event: string; readonly value: Expr }
   | {
     readonly kind: "reply"
@@ -161,6 +208,14 @@ export type Effect =
     readonly outcome: "done" | "fail"
     readonly value: Expr | null
   }
+  | {
+    readonly kind: "spawn"
+    readonly children: string
+    readonly machine: string
+    readonly key: Expr
+    readonly args: ReadonlyArray<Expr>
+  }
+  | { readonly kind: "stop"; readonly children: string; readonly key: Expr }
 
 interface ExprBase {
   readonly type: string
@@ -191,6 +246,16 @@ export interface Ir {
   readonly machines: Readonly<Record<string, Machine>>
 }
 
+/** Whether `state` is a history pseudo-state: never active, and never one of its parent's children. */
+export const isHistory = (state: State): boolean => state.kind === "history" || state.kind === "deepHistory"
+
+/**
+ * The children of `state` in execution.md's sense: its `states` that are not history states,
+ * in order. A parallel state's regions are these.
+ */
+export const childrenOf = (state: State): ReadonlyArray<State> =>
+  state.states.some(isHistory) ? state.states.filter((c) => !isHistory(c)) : state.states
+
 /** Thrown by {@link loadIr} for a document this package cannot run. */
 export class IrError extends Error {
   override readonly name = "IrError"
@@ -211,6 +276,10 @@ export const loadIr = (json: unknown): Ir => {
       `unsupported IR version ${JSON.stringify(version ?? null)}: this runtime reads IR version ${IR_VERSION}`
     )
   }
+  const cycle = aliasCycle(json as Ir)
+  if (cycle !== undefined) {
+    throw new IrError(`type alias ${JSON.stringify(cycle)} refers to itself, so it cannot be expanded`)
+  }
   return json as Ir
 }
 
@@ -223,38 +292,3 @@ export const getMachine = (ir: Ir, name: string): Machine => {
   return machine
 }
 
-/**
- * A parsed type reference: its base and its suffixes, applied left to right. The base is a
- * builtin or a declared name (`Item`), an event type (`Upload.Progress`) or a handle type
- * (`ref Inventory`, whose suffixes apply to the handle: `ref Inventory[]` is a list of them), or
- * a pending call (`call reserve`).
- */
-export interface TypeRef {
-  readonly base: string
-  readonly suffixes: ReadonlyArray<"[]" | "?">
-}
-
-/** The machine of a `ref` base (`ref Inventory` gives `Inventory`), or `undefined`. */
-export const refMachine = (base: string): string | undefined =>
-  base.startsWith("ref ") ? base.slice(4) : undefined
-
-/** The call of a pending-call base (`call reserve` gives `reserve`), or `undefined`. */
-export const callName = (base: string): string | undefined =>
-  base.startsWith("call ") ? base.slice(5) : undefined
-
-export const parseTypeRef = (type: string): TypeRef => {
-  const match = /^(ref [A-Z][A-Za-z0-9]*|call [a-z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(?:\.[A-Z][A-Za-z0-9]*)?)((?:\[\]|\?)*)$/.exec(type)
-  if (match === null) throw new IrError(`not a type reference: ${JSON.stringify(type)}`)
-  const suffixes: Array<"[]" | "?"> = []
-  const rest = match[2] ?? ""
-  for (let i = 0; i < rest.length;) {
-    if (rest[i] === "?") {
-      suffixes.push("?")
-      i += 1
-    } else {
-      suffixes.push("[]")
-      i += 2
-    }
-  }
-  return { base: match[1] ?? "", suffixes }
-}

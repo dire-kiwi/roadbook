@@ -1,0 +1,826 @@
+{
+  "irVersion": "0.7",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/switchboard.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Line": {
+      "doc": "One open line, until it is hung up.",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 15,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Hang": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Line",
+        "name": "Line",
+        "kind": "compound",
+        "doc": "One open line, until it is hung up.",
+        "span": {
+          "file": 0,
+          "line": 7,
+          "col": 1,
+          "endLine": 15,
+          "endCol": 2
+        },
+        "initial": "Line.Up",
+        "states": [
+          {
+            "id": "Line.Up",
+            "name": "Up",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 12,
+              "col": 3,
+              "endLine": 12,
+              "endCol": 31
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Hang"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Line.Down",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 12,
+                  "col": 14,
+                  "endLine": 12,
+                  "endCol": 29
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Line.Down",
+            "name": "Down",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 14,
+              "col": 3,
+              "endLine": 14,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:a6f08e78d1697e43f7ffd05c097490e9c6d2aa2dc2748c08267aabe1082597a5"
+    },
+    "Switchboard": {
+      "doc": "Opens lines, holds a lookup taken at night, and pauses to answer it, coming back to the\nstate it was in.",
+      "span": {
+        "file": 0,
+        "line": 19,
+        "col": 1,
+        "endLine": 49,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "pending",
+          "type": "call lookup",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 31,
+            "col": 3,
+            "endLine": 31,
+            "endCol": 27
+          }
+        },
+        {
+          "name": "asked",
+          "type": "string",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 32,
+            "col": 3,
+            "endLine": 32,
+            "endCol": 27
+          }
+        }
+      ],
+      "events": {
+        "Open": {
+          "fields": [
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 23,
+            "col": 3,
+            "endLine": 23,
+            "endCol": 26
+          }
+        },
+        "Night": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 24,
+            "col": 3,
+            "endLine": 24,
+            "endCol": 14
+          }
+        },
+        "Pause": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 25,
+            "col": 3,
+            "endLine": 25,
+            "endCol": 14
+          }
+        },
+        "Answer": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 26,
+            "col": 3,
+            "endLine": 26,
+            "endCol": 15
+          }
+        },
+        "Resume": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 27,
+            "col": 3,
+            "endLine": 27,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {},
+      "calls": {
+        "lookup": {
+          "params": [
+            {
+              "name": "name",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "returns": "int",
+          "errors": [],
+          "doc": "The number for `name`, once the switchboard is told to answer.",
+          "span": {
+            "file": 0,
+            "line": 21,
+            "col": 3,
+            "endLine": 21,
+            "endCol": 35
+          }
+        }
+      },
+      "children": {
+        "lines": {
+          "machine": "Line",
+          "key": "int",
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 29,
+            "col": 3,
+            "endLine": 29,
+            "endCol": 30
+          }
+        }
+      },
+      "root": {
+        "id": "Switchboard",
+        "name": "Switchboard",
+        "kind": "compound",
+        "doc": "Opens lines, holds a lookup taken at night, and pauses to answer it, coming back to the\nstate it was in.",
+        "span": {
+          "file": 0,
+          "line": 19,
+          "col": 1,
+          "endLine": 49,
+          "endCol": 2
+        },
+        "initial": "Switchboard.Working",
+        "states": [
+          {
+            "id": "Switchboard.Working",
+            "name": "Working",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 38,
+              "col": 3,
+              "endLine": 45,
+              "endCol": 4
+            },
+            "initial": "Switchboard.Working.Day",
+            "states": [
+              {
+                "id": "Switchboard.Working.Last",
+                "name": "Last",
+                "kind": "history",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 40,
+                  "col": 5,
+                  "endLine": 40,
+                  "endCol": 17
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Switchboard.Working.Day",
+                "name": "Day",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 42,
+                  "col": 5,
+                  "endLine": 42,
+                  "endCol": 38
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Night"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Switchboard.Working.Night",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 42,
+                      "col": 19,
+                      "endLine": 42,
+                      "endCol": 36
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Switchboard.Working.Night",
+                "name": "Night",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 43,
+                  "col": 5,
+                  "endLine": 43,
+                  "endCol": 78
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "call",
+                      "call": "lookup"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Switchboard.Working.Held",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "pending",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "call"
+                          ],
+                          "type": "call lookup",
+                          "text": "call"
+                        }
+                      },
+                      {
+                        "kind": "set",
+                        "var": "asked",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "name"
+                          ],
+                          "type": "string",
+                          "text": "event.name"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 43,
+                      "col": 19,
+                      "endLine": 43,
+                      "endCol": 76
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Switchboard.Working.Held",
+                "name": "Held",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 44,
+                  "endCol": 39
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Pause"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Switchboard.Paused",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 44,
+                      "col": 19,
+                      "endLine": 44,
+                      "endCol": 37
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Switchboard.Paused",
+            "name": "Paused",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 47,
+              "col": 3,
+              "endLine": 47,
+              "endCol": 65
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Answer"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Switchboard.Answered",
+                "effects": [
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "pending"
+                      ],
+                      "type": "call lookup",
+                      "text": "pending"
+                    },
+                    "outcome": "done",
+                    "value": {
+                      "kind": "lit",
+                      "value": 7,
+                      "type": "int",
+                      "text": "7"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 47,
+                  "col": 20,
+                  "endLine": 47,
+                  "endCol": 63
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Switchboard.Answered",
+            "name": "Answered",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 48,
+              "col": 3,
+              "endLine": 48,
+              "endCol": 47
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Resume"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Switchboard.Working.Last",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 48,
+                  "col": 20,
+                  "endLine": 48,
+                  "endCol": 45
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Open"
+            },
+            "group": 0,
+            "guard": null,
+            "target": null,
+            "effects": [
+              {
+                "kind": "spawn",
+                "children": "lines",
+                "machine": "Line",
+                "key": {
+                  "kind": "ref",
+                  "path": [
+                    "event",
+                    "n"
+                  ],
+                  "type": "int",
+                  "text": "event.n"
+                },
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "event",
+                      "n"
+                    ],
+                    "type": "int",
+                    "text": "event.n"
+                  }
+                ]
+              }
+            ],
+            "span": {
+              "file": 0,
+              "line": 36,
+              "col": 3,
+              "endLine": 36,
+              "endCol": 47
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:c80d2d2e21b91a70911875446ebe661e9f65738b46471334435cc18f133b1318"
+    },
+    "Caller": {
+      "doc": "Looks a name up.",
+      "span": {
+        "file": 0,
+        "line": 52,
+        "col": 1,
+        "endLine": 65,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "board",
+          "type": "ref Switchboard",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "number",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 53,
+            "col": 3,
+            "endLine": 53,
+            "endCol": 22
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Caller",
+        "name": "Caller",
+        "kind": "compound",
+        "doc": "Looks a name up.",
+        "span": {
+          "file": 0,
+          "line": 52,
+          "col": 1,
+          "endLine": 65,
+          "endCol": 2
+        },
+        "initial": "Caller.Asking",
+        "states": [
+          {
+            "id": "Caller.Asking",
+            "name": "Asking",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 57,
+              "col": 3,
+              "endLine": 62,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "call",
+              "src": "lookup",
+              "to": {
+                "kind": "ref",
+                "name": "board",
+                "machine": "Switchboard",
+                "state": null
+              },
+              "as": null,
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": "ada",
+                  "type": "string",
+                  "text": "\"ada\""
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 58,
+                "col": 5,
+                "endLine": 61,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Caller.Got",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "number",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 59,
+                  "col": 7,
+                  "endLine": 59,
+                  "endCol": 50
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "Unanswered"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Caller.Got",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 60,
+                  "col": 7,
+                  "endLine": 60,
+                  "endCol": 29
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Caller.Got",
+            "name": "Got",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 64,
+              "col": 3,
+              "endLine": 64,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "number"
+              ],
+              "type": "int",
+              "text": "number"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:a51f64d2fd5a5f29df9422e1f7763e69c02656efde1150154ae10fc335c334f8"
+    }
+  }
+}

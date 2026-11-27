@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0321]: `Creds` has sensitive fields, and the result of call `lookup` is `json`
+ --> RB0321-sensitive-call-into-json.road:7:39
+  |
+7 |   state A { on lookup reply call done Creds { user: event.user, password: "" } }
+  |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a trace would show these fields
+  |
+  = help: traces redact a value by its type, and `json` has no fields to redact by: use the value's own type

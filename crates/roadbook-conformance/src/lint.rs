@@ -35,6 +35,10 @@ struct Run {
     restarts: Vec<(&'static str, u64)>,
     invokes: BTreeMap<u64, (String, String)>,
     started_invokes: HashMap<u64, (String, String)>,
+    /// The spawned children running, by id: their collection and key.
+    spawned: BTreeMap<u64, (String, Value)>,
+    /// The ids that were spawned children, as opposed to invokes.
+    spawn_ids: std::collections::HashSet<u64>,
     next_invoke: u64,
     timers: BTreeMap<u64, (String, u64)>,
     next_timer: u64,
@@ -201,6 +205,12 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     );
                     run.restarts.push(("invoke", n));
                 }
+                for ch in list("spawned") {
+                    let n = u64_of(&ch, "id");
+                    run.spawned
+                        .insert(n, (str_of(&ch, "children").to_owned(), ch["key"].clone()));
+                    run.restarts.push(("spawn", n));
+                }
                 for tm in list("timers") {
                     let n = u64_of(&tm, "id");
                     run.timers
@@ -292,7 +302,7 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 let e = r.get("event").cloned().unwrap_or(Value::Null);
                 let ekind = str_of(&e, "kind").to_owned();
                 if kind == "event" {
-                    run.expect = Some(if ekind == "invoke.defect" {
+                    run.expect = Some(if ekind == "invoke.defect" || ekind == "spawn.defect" {
                         &["defect"]
                     } else {
                         &["transition"]
@@ -342,7 +352,7 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                                     "emitted event of invoke {n} is not from run {id}.{n}"
                                 ));
                             }
-                            let live = run.invokes.contains_key(&n);
+                            let live = run.invokes.contains_key(&n) || run.spawned.contains_key(&n);
                             if kind == "stale" && (live || n >= run.next_invoke) {
                                 bad(format!(
                                     "stale emitted event of invoke {n}, which is running or never started"
@@ -355,6 +365,26 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                             bad("an emitted event from a peer is never stale".to_owned());
                         }
                         None => {}
+                    }
+                } else if let Some(n) = e.get("spawn").and_then(Value::as_u64) {
+                    let live = run.spawned.contains_key(&n);
+                    if kind == "stale" {
+                        if live || n >= run.next_invoke {
+                            bad(format!(
+                                "stale outcome of spawned child {n}, which is running or never started"
+                            ));
+                        }
+                    } else if !live {
+                        bad(format!(
+                            "outcome of spawned child {n}, which is not running"
+                        ));
+                    } else {
+                        run.spawned.remove(&n);
+                        let payload = ["value", "error", "defect"]
+                            .iter()
+                            .find_map(|k| e.get(*k).cloned())
+                            .unwrap_or(Value::Null);
+                        run.invoke_ends.insert(n, (ekind.clone(), payload));
                     }
                 } else if let Some(n) = e.get("invoke").and_then(Value::as_u64) {
                     let live = run.invokes.contains_key(&n);
@@ -502,6 +532,57 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 run.invokes.insert(n, (s.clone(), src.clone()));
                 run.started_invokes.insert(n, (s, src));
             }
+            "spawn.started" => {
+                let n = u64_of(r, "spawn");
+                let children = str_of(r, "children").to_owned();
+                let src = str_of(r, "src").to_owned();
+                let key = r["key"].clone();
+                if let Some(i) = run.restarts.iter().position(|x| *x == ("spawn", n)) {
+                    run.restarts.remove(i);
+                    if run.spawned.get(&n) != Some(&(children.clone(), key.clone())) {
+                        bad(format!("restarted spawned child {n} is not the snapshot's"));
+                    }
+                } else {
+                    if n != run.next_invoke {
+                        bad(format!("spawn id {n}, expected {}", run.next_invoke));
+                    }
+                    run.next_invoke = n + 1;
+                }
+                if run
+                    .spawned
+                    .iter()
+                    .any(|(m, (c, k))| *m != n && *c == children && *k == key)
+                {
+                    bad(format!(
+                        "spawned child {n} has the key of another running child"
+                    ));
+                }
+                if let Some(m) = machine {
+                    match m.children.get(&children) {
+                        Some(c) if c.machine == src => {}
+                        _ => bad(format!(
+                            "{} has no collection {children} of {src}",
+                            run.machine
+                        )),
+                    }
+                }
+                run.spawned.insert(n, (children, key));
+                run.spawn_ids.insert(n);
+                run.started_invokes.insert(n, (String::new(), src));
+            }
+            "spawn.stopped" => {
+                let n = u64_of(r, "spawn");
+                let want = (str_of(r, "children").to_owned(), r["key"].clone());
+                match run.spawned.remove(&n) {
+                    Some(have) if have == want => {
+                        run.invoke_ends
+                            .insert(n, ("cancelled".to_owned(), Value::Null));
+                    }
+                    _ => bad(format!(
+                        "stopped spawned child {n}, which is not running as written"
+                    )),
+                }
+            }
             "invoke.cancelled" => {
                 let n = u64_of(r, "invoke");
                 let want = (str_of(r, "state").to_owned(), str_of(r, "src").to_owned());
@@ -547,8 +628,10 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 if run.parent.is_some() {
                     bad(format!("child run {id} is suspended"));
                 }
-                if !run.invokes.is_empty() {
-                    bad(format!("run {id} is suspended with an invoke running"));
+                if !run.invokes.is_empty() || !run.spawned.is_empty() {
+                    bad(format!(
+                        "run {id} is suspended with an invoke or a spawned child running"
+                    ));
                 }
                 if !run.calls.is_empty() {
                     bad(format!("run {id} is suspended with a call pending"));
@@ -560,7 +643,8 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                     if !run.stack.is_empty() {
                         bad(format!("run {id} ended with states still active"));
                     }
-                    if !run.invokes.is_empty() || !run.timers.is_empty() {
+                    if !run.invokes.is_empty() || !run.timers.is_empty() || !run.spawned.is_empty()
+                    {
                         bad(format!("run {id} ended with work still running"));
                     }
                 }
@@ -611,7 +695,9 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
         // its own, which the parent ignores.
         let cancelled_by_defect = seen.is_none()
             && parent_end == Some("defect")
-            && runs.get(parent).is_some_and(|p| p.invokes.contains_key(&n))
+            && runs
+                .get(parent)
+                .is_some_and(|p| p.invokes.contains_key(&n) || p.spawned.contains_key(&n))
             && run
                 .end
                 .as_ref()
@@ -619,10 +705,18 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
         if cancelled_by_defect {
             continue;
         }
+        let spawned = runs.get(parent).is_some_and(|p| p.spawn_ids.contains(&n));
+        let outcome = |k: &str| {
+            if spawned {
+                format!("spawn.{k}")
+            } else {
+                format!("invoke.{k}")
+            }
+        };
         let expected = run.end.as_ref().map(|e| match str_of(e, "kind") {
-            "done" => ("invoke.done".to_owned(), e["output"].clone()),
-            "failed" => ("invoke.fail".to_owned(), e["error"].clone()),
-            "defect" => ("invoke.defect".to_owned(), e["defect"].clone()),
+            "done" => (outcome("done"), e["output"].clone()),
+            "failed" => (outcome("fail"), e["error"].clone()),
+            "defect" => (outcome("defect"), e["defect"].clone()),
             _ => ("cancelled".to_owned(), Value::Null),
         });
         match (expected, seen) {

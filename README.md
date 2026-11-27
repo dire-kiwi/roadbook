@@ -39,7 +39,7 @@ The design, its decisions and what was built are in [`docs/design/`](docs/design
 | `crates/roadbook-gen-ts` | The generator behind `roadbook gen`, which writes a typed `.road.ts` module next to each chart. |
 | `crates/roadbook-lsp` | The language server. |
 | `crates/roadbook-conformance` | Loads and checks the conformance cases. |
-| `packages/core`, `packages/effect` | The TypeScript runtime: `@dire-kiwi/roadbook-core`, the pure interpreter, and `@dire-kiwi/roadbook-effect`, the Effect v4 driver and API. |
+| `packages/core`, `packages/effect` | The TypeScript runtime: `@dire-kiwi/roadbook-core`, the pure interpreter, and `@dire-kiwi/roadbook-effect`, the Effect v4 driver and API, with durable runs on `effect/workflow` in `@dire-kiwi/roadbook-effect/durable`. |
 | `crates/roadbook-wasm`, `packages/cli` | The compiler as WebAssembly, and `@dire-kiwi/roadbook-cli`, a Node `roadbook` (`check`, `fmt`, `gen`, `export ir`) that gives the same output as the native one without a Rust toolchain. |
 | `packages/viewer` | The diagram viewer (explore, simulate, replay, diff and coverage), built into the script `roadbook viz` embeds. |
 | `spec/` | The contract every tool and runtime is built against: the IR, the execution rules, the trace and snapshot formats, and the conformance cases. |

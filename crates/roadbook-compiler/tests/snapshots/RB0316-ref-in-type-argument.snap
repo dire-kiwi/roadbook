@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0316]: a type argument cannot be `ref Peer`: it holds a `ref`
+ --> RB0316-ref-in-type-argument.road:9:14
+  |
+9 | machine M(a: Box<ref Peer>, b: Many<ref Peer?>, ok: map<string, ref Peer>) {
+  |              ^^^^^^^^^^^^^
+  |
+  = help: the type arguments of `Box` become its fields, which cannot hold a `ref`; pass the handle as a parameter instead
+
+error[RB0316]: a type argument cannot be `ref Peer?`: it holds a `ref`
+ --> RB0316-ref-in-type-argument.road:9:32
+  |
+9 | machine M(a: Box<ref Peer>, b: Many<ref Peer?>, ok: map<string, ref Peer>) {
+  |                                ^^^^^^^^^^^^^^^
+  |
+  = help: the type arguments of `Many` become its fields, which cannot hold a `ref`; pass the handle as a parameter instead

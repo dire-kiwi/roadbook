@@ -205,6 +205,21 @@ pub fn valid_name(kind: SymbolKind, name: &str) -> Result<(), String> {
     if Keyword::lookup(name).is_some() || name == "result" {
         return Err(format!("`{name}` is reserved and cannot be a name"));
     }
+    // `key` is the implicit name of a spawned child's key: it can name a field, but nothing
+    // in the machine's namespace.
+    let in_machine_namespace = matches!(
+        kind,
+        SymbolKind::Parameter
+            | SymbolKind::Variable
+            | SymbolKind::InvokeName
+            | SymbolKind::Children
+    );
+    if name == "key" && in_machine_namespace {
+        return Err(format!(
+            "`key` is reserved and cannot be the name of {}",
+            article(what)
+        ));
+    }
     Ok(())
 }
 
@@ -261,9 +276,11 @@ fn clash(index: &SymbolIndex, id: SymbolId, new: &str) -> Option<String> {
             machine_of(oid) == machine_of(id)
                 && (contains(s.parent, o.parent) || contains(o.parent, s.parent))
         }
-        K::Parameter | K::Variable | K::InvokeName => {
-            matches!(o.kind, K::Parameter | K::Variable | K::InvokeName)
-                && !of_call(o)
+        K::Parameter | K::Variable | K::InvokeName | K::Children => {
+            matches!(
+                o.kind,
+                K::Parameter | K::Variable | K::InvokeName | K::Children
+            ) && !of_call(o)
                 && machine_of(oid) == machine_of(id)
         }
         _ => false,
@@ -291,6 +308,11 @@ mod tests {
         assert!(valid_name(SymbolKind::Variable, "Count").is_err());
         assert!(valid_name(SymbolKind::Variable, "on").is_err());
         assert!(valid_name(SymbolKind::Variable, "result").is_err());
+        assert!(valid_name(SymbolKind::Variable, "key").is_err());
+        assert!(valid_name(SymbolKind::Children, "key").is_err());
+        assert!(valid_name(SymbolKind::Children, "Sessions").is_err());
+        assert!(valid_name(SymbolKind::Children, "stop").is_ok());
+        assert!(valid_name(SymbolKind::Field, "key").is_ok());
         assert!(valid_name(SymbolKind::Field, "my_field").is_err());
         assert!(valid_name(SymbolKind::Task, "fetch2").is_ok());
         assert!(valid_name(SymbolKind::Task, "2fetch").is_err());

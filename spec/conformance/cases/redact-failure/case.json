@@ -1,0 +1,37 @@
+{
+  "description": "A sensitive field of an error is redacted in the `invoke.fail` input, in the variable it is set to, and in the `failed` record.",
+  "requires": [],
+  "chart": "charts/vault.road",
+  "machine": "Vault",
+  "input": {
+    "login": {
+      "user": "ada",
+      "password": "hunter2"
+    },
+    "pin": 1234,
+    "extra": [
+      {
+        "user": "bob",
+        "password": "pw-bob"
+      }
+    ],
+    "backup": null
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "task": "signIn",
+      "fail": {
+        "_tag": "Locked",
+        "user": "ada",
+        "hint": "first pet"
+      }
+    },
+    {
+      "advance": 1000
+    }
+  ],
+  "status": "failed"
+}

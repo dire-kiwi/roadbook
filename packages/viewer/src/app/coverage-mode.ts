@@ -71,13 +71,13 @@ export function coverageMode(host: Host, el: HTMLElement, embedded: { name: stri
     const untaken = ts.filter((t) => t.count === 0)
     const unentered = ss.filter((s) => s.count === 0)
     h += `<p>Transitions taken: <strong>${ts.length - untaken.length} of ${ts.length}</strong> · states entered: <strong>${ss.length - unentered.length} of ${ss.length}</strong></p>`
-    h += `<p class="rb-mode-note">Marks: <strong>×N</strong> taken or entered N times, heavier and darker the more often; <strong>never</strong> (dotted, in the error colour) never taken or entered. Hover for the count.</p>`
+    h += `<p class="rb-mode-note">Marks: <strong>×N</strong> taken or entered N times, heavier and darker the more often; <strong>never</strong> (dotted, in the error colour) never taken or entered. A history state, never entered itself, counts the transitions taken to it. Hover for the count.</p>`
     if (untaken.length)
       h += `<h3>Never taken (${untaken.length})</h3><ol class="rb-list rb-cov-list">${untaken
         .map((t, i) => `<li${i === at ? ' class="rb-current"' : ''}><button class="rb-link rb-mono" type="button" data-m-transition="${esc(JSON.stringify([t.state, t.index]))}" data-cov-at="${i}">${esc(transitionLabel(t.state, t.index))}</button></li>`)
         .join('')}</ol>`
     else h += `<p>Every transition was taken at least once.</p>`
-    if (unentered.length) h += `<h3>Never entered (${unentered.length})</h3><ul class="rb-list">${unentered.map((s) => `<li><button class="rb-link rb-mono" type="button" data-m-state="${esc(s.state)}">${esc(short(s.state))}</button></li>`).join('')}</ul>`
+    if (unentered.length) h += `<h3>Never entered (${unentered.length})</h3><ul class="rb-list">${unentered.map((s) => `<li><button class="rb-link rb-mono" type="button" data-m-state="${esc(s.state)}">${esc(short(s.state))}</button>${s.history ? ' <span class="rb-cnote">history state: no transition to it taken</span>' : ''}</li>`).join('')}</ul>`
     h += `<details class="rb-cov-all"><summary>Every transition, with its count</summary><table class="rb-cov-table"><tbody>${ts
       .map((t) => `<tr><td class="rb-cov-n">${t.count ? `×${t.count}` : 'never'}</td><td><button class="rb-link rb-mono" type="button" data-m-transition="${esc(JSON.stringify([t.state, t.index]))}">${esc(transitionLabel(t.state, t.index))}</button></td></tr>`)
       .join('')}</tbody></table></details>`

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "packages/viewer/test/charts/escape.road",
@@ -39,6 +39,7 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -58,6 +59,7 @@
         {
           "name": "s",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -91,11 +93,13 @@
         {
           "name": "s",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "peer",
           "type": "ref EscapePeer",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -107,6 +111,7 @@
         {
           "name": "t",
           "type": "string",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": "</script><img src=x onerror=alert(3)>",
@@ -129,6 +134,7 @@
             {
               "name": "who",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -155,6 +161,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Escape",
         "name": "Escape",
@@ -202,6 +209,7 @@
                   "machine": "EscapePeer",
                   "state": null
                 },
+                "key": null,
                 "event": "Ping",
                 "value": {
                   "kind": "record",
@@ -454,6 +462,7 @@
                       "machine": "EscapePeer",
                       "state": null
                     },
+                    "key": null,
                     "event": "Ping",
                     "value": {
                       "kind": "record",
@@ -570,6 +579,7 @@
                       "machine": "EscapePeer",
                       "state": "Escape.K"
                     },
+                    "key": null,
                     "event": "Ping",
                     "value": {
                       "kind": "record",
@@ -1052,11 +1062,13 @@
         {
           "name": "s",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "other",
           "type": "ref EscapePeer",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -1069,6 +1081,7 @@
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1088,6 +1101,7 @@
             {
               "name": "text",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1102,6 +1116,7 @@
         }
       },
       "calls": {},
+      "children": {},
       "root": {
         "id": "EscapePeer",
         "name": "EscapePeer",

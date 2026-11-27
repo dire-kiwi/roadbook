@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/strict-calls.road",
@@ -28,6 +28,7 @@
         {
           "name": "pending",
           "type": "call hold",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -41,6 +42,7 @@
         {
           "name": "answered",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -121,6 +123,7 @@
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Desk",
         "name": "Desk",
@@ -414,6 +417,7 @@
         {
           "name": "desk",
           "type": "ref Desk",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -423,6 +427,7 @@
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -437,6 +442,7 @@
       "events": {},
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Asker",
         "name": "Asker",
@@ -615,6 +621,7 @@
         {
           "name": "desk",
           "type": "ref Desk",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -624,6 +631,7 @@
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -638,6 +646,7 @@
       "events": {},
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Holder",
         "name": "Holder",

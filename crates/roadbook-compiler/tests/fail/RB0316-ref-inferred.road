@@ -1,0 +1,15 @@
+type Box<T> { value: T }
+
+action poke(p: ref Peer)
+
+machine Peer() {
+  initial Done
+  final state Done {}
+}
+
+machine M(p: ref Peer) {
+  initial Done
+  final state Done { entry do poke(Box { value: p }.value) }
+}
+
+// expect: RB0316 at 12:36

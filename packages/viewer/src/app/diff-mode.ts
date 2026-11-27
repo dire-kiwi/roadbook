@@ -5,9 +5,9 @@
 
 import type { Ir } from '../ir.ts'
 import { own } from '../ir.ts'
-import { DIFF_SIGN, changesTable, countsText, diffAnnotations, diffDetailsHtml, diffEntries, machineDiff, statusChip } from '../diff.ts'
+import { DIFF_SIGN, changesTable, countsText, diffAnnotations, historyCountsText, diffDetailsHtml, diffEntries, machineDiff, statusChip } from '../diff.ts'
 import type { ChartDiff } from '../diff.ts'
-import { findState, triggerText } from '../model.ts'
+import { findState, isHistory, kindText, triggerText } from '../model.ts'
 import { esc } from '../render.ts'
 import type { Controller, Host } from './modes.ts'
 
@@ -20,8 +20,11 @@ export function diffMode(host: Host, el: HTMLElement, diff: ChartDiff): Controll
   function entryLabel(e: ReturnType<typeof entries>[number]): string {
     const m = host.current()
     const short = (id: string) => (id === m ? m : id.slice(m.length + 1))
-    if (e.type === 'state') return `state ${short(e.state)}`
     const machine = own(ir.machines, m)
+    if (e.type === 'state') {
+      const st = machine ? findState(machine, e.state) : null
+      return `${st && isHistory(st) ? kindText(st) + ' ' : ''}state ${short(e.state)}`
+    }
     const st = machine ? findState(machine, e.state) : null
     const t = st?.transitions[e.index]
     if (!t) return `${short(e.state)} #${e.index}`
@@ -39,13 +42,13 @@ export function diffMode(host: Host, el: HTMLElement, diff: ChartDiff): Controll
       h += `<h3>Machines</h3><ul class="rb-list">${names
         .map((n) => {
           const md = machineDiff(diff, n)
-          const counts = md.status === 'unchanged' ? '' : ` <span class="rb-cnote">states ${esc(countsText(md.counts.states))}, transitions ${esc(countsText(md.counts.transitions))}</span>`
+          const counts = md.status === 'unchanged' ? '' : ` <span class="rb-cnote">states ${esc(countsText(md.counts.states) + historyCountsText(md))}, transitions ${esc(countsText(md.counts.transitions))}</span>`
           return `<li><button class="rb-link rb-mono" type="button" data-diff-machine="${esc(n)}"${n === name ? ' aria-current="true"' : ''}>${esc(n)}</button> ${statusChip(md.status)}${counts}</li>`
         })
         .join('')}</ul>`
     }
     h += `<h3>${esc(name)} ${statusChip(d.status)}</h3>`
-    if (d.status !== 'unchanged') h += `<p class="rb-cnote">States ${esc(countsText(d.counts.states))} · transitions ${esc(countsText(d.counts.transitions))}</p>`
+    if (d.status !== 'unchanged') h += `<p class="rb-cnote">States ${esc(countsText(d.counts.states) + historyCountsText(d))} · transitions ${esc(countsText(d.counts.transitions))}</p>`
     if (d.changes.length) h += `<h3>The machine itself</h3>${changesTable(diff, d.changes)}`
     const list = entries()
     if (d.status === 'added' || d.status === 'removed') {

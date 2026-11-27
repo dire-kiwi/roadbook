@@ -1,0 +1,98 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0320]: `pin` is sensitive, and the initial value of `leaked` is not
+  --> RB0320-sensitive-value.road:25:24
+   |
+25 |   var leaked: string = pin
+   |                        ^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark `leaked` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0320]: `-count + 1` is sensitive, and the initial value of `shown` is not
+  --> RB0320-sensitive-value.road:27:20
+   |
+27 |   var shown: int = -count + 1
+   |                    ^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark `shown` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0320]: `strong(pin) and count < 3` is sensitive, and the initial value of `few` is not
+  --> RB0320-sensitive-value.road:28:19
+   |
+28 |   var few: bool = strong(pin) and count < 3
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark `few` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0320]: `event.password` is sensitive, and the value assigned to `leaked` is not
+  --> RB0320-sensitive-value.road:37:20
+   |
+37 |       set leaked = event.password, kept = event.password, note = Note { text: creds.password }
+   |                    ^^^^^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark `leaked` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0320]: `creds.password` is sensitive, and field `text` of `Note` is not
+  --> RB0320-sensitive-value.road:37:79
+   |
+37 |       set leaked = event.password, kept = event.password, note = Note { text: creds.password }
+   |                                                                               ^^^^^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark field `text` of `Note` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0320]: `event.password` is sensitive, and argument `what` of `log` is not
+  --> RB0320-sensitive-value.road:38:14
+   |
+38 |       do log(event.password), keep(event.password), log(creds.user)
+   |              ^^^^^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark parameter `what` of `log` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0320]: `event.password` is sensitive, and field `plain` of `Hello` is not
+  --> RB0320-sensitive-value.road:39:55
+   |
+39 |       send peer.Hello { token: event.password, plain: event.password }
+   |                                                       ^^^^^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark field `plain` of `Hello` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0320]: `event.password` is sensitive, and field `user` of `Seen` is not
+  --> RB0320-sensitive-value.road:40:51
+   |
+40 |       emit Seen { password: event.password, user: event.password }
+   |                                                   ^^^^^^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark field `user` of `Seen` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0320]: `copy.ttl` is sensitive, and an `after` delay is not
+  --> RB0320-sensitive-value.road:42:11
+   |
+42 |     after copy.ttl -> B
+   |           ^^^^^^^^ a trace would show this value
+   |
+   = help: traces show an `after` delay as it is: carry the value in a field marked `sensitive`, or derive what may be shown with a `fn`
+
+error[RB0320]: `pin` is sensitive, and argument `shown` of `Child` is not
+  --> RB0320-sensitive-value.road:53:23
+   |
+53 |     invoke Child(pin, pin) { done -> E }
+   |                       ^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark parameter `shown` of `Child` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0320]: `kept` is sensitive, and the output of `M` is not
+  --> RB0320-sensitive-value.road:57:26
+   |
+57 |   final state E { output kept }
+   |                          ^^^^ a trace would show this value
+   |
+   = help: traces show the output of `M` as it is: carry the value in a field marked `sensitive`, or derive what may be shown with a `fn`
+
+error[RB0320]: `hidden` is sensitive, and the failure of `M` is not
+  --> RB0320-sensitive-value.road:58:24
+   |
+58 |   final state F { fail hidden }
+   |                        ^^^^^^ a trace would show this value
+   |
+   = help: traces show a machine's failure as it is, redacting only the error's sensitive fields; fail with an error built with the value in a `sensitive` field

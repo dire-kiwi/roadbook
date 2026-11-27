@@ -1,0 +1,30 @@
+{
+  "description": "Retrying a call (`booth.road`: `invoke booth.reserve(\"12A\") retry 2 on Busy after 1s`). Without `on` it would retry the same, never `Unanswered`. Booth r1 answers Guest r2's first two calls `fail Busy`; each takes the retry branch to `Backoff`, whose 1s timer goes back to `Attempt`, which calls again with a new invoke id, `src` `booth.reserve` each time. The third call is answered `done`, and the Guest ends with the seat.",
+  "requires": [
+    "messaging",
+    "calls"
+  ],
+  "chart": "charts/booth.road",
+  "machine": "Booth",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Guest",
+      "run": "r2",
+      "input": {
+        "booth": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "advance": 1000
+    },
+    {
+      "advance": 1000
+    }
+  ],
+  "status": "running"
+}

@@ -1,0 +1,32 @@
+{
+  "description": "A parent and its child: the child's sensitive parameters in `invoke.started` and in its `started`; a send to the child before it runs (`undelivered`, `to` null) and once it does (`sent`, and the child's `message` input); the child's `emitted` event and the parent's `emitted` input; a sensitive variable set from it.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/teller.road",
+  "machine": "Keeper",
+  "input": {
+    "owner": {
+      "user": "ada",
+      "password": "hunter2"
+    },
+    "code": "c0de"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Go",
+        "question": "what is it?"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Stop"
+      }
+    }
+  ],
+  "status": "done"
+}

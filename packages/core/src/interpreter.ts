@@ -4,17 +4,20 @@
  */
 import {
   type Address,
-  callName,
+  childrenOf,
   type Effect,
   type Expr,
   getMachine,
   type Ir,
+  isHistory,
   type Machine,
   type State,
   type Transition,
   UNANSWERED
 } from "./ir.ts"
 import type { Json } from "./json.ts"
+import { redactor } from "./redact.ts"
+import { expandType, isOptionalType, parseTypeRef } from "./typeref.ts"
 import type {
   CallEntry,
   Command,
@@ -26,6 +29,7 @@ import type {
   RunResult,
   Saved,
   Snapshot,
+  SpawnedEntry,
   Status,
   Stepped,
   Tagged,
@@ -58,22 +62,24 @@ export const start = (
     vars: {},
     invokes: [],
     calls: [],
+    spawned: [],
     timers: [],
     nextInvoke: 1,
     nextTimer: 1,
     nextMessage: 1,
+    history: {},
     result: null
   }
   const started: Command = {
     kind: "trace",
-    record: { kind: "started", machine: name, ir: index.machine.hash, input }
+    record: redactor(ir).record(index.machine, { kind: "started", machine: name, ir: index.machine.hash, input })
   }
   const macro = new Macrostep(ir, index, initial, fns)
   macro.commands.push(started)
   try {
     for (const v of index.machine.vars) {
       if (v.init !== null) macro.vars[v.name] = macro.eval(v.init, NO_BINDINGS)
-      else if (isOptional(ir, v.type)) macro.vars[v.name] = null
+      else if (isOptionalType(ir, v.type)) macro.vars[v.name] = null
     }
     const root = index.machine.root
     macro.enterStates([root, ...index.defaultEntry(root)])
@@ -139,15 +145,24 @@ export const restore = (
     invokes: saved.invokes.map(({ id, src, state }) => ({ id, state, src })),
     // A snapshot with pending calls is refused (`calls`), so the restored run has none.
     calls: [],
+    spawned: (saved.spawned ?? []).map(({ args, children, id, key }) => ({ id, children, key, args })),
     timers: saved.timers.map(({ delay, id, index, state }) => ({ id, state, index, delay })),
     nextInvoke: saved.nextInvoke,
     nextTimer: saved.nextTimer,
     nextMessage: saved.nextMessage,
+    // A version 1 snapshot, written before history states, has none.
+    history: saved.history ?? {},
     result: saved.result
   }
   const restored: Command = {
     kind: "trace",
-    record: { kind: "restored", machine: saved.machine, ir: index.machine.hash, migrated, snapshot: saved }
+    record: redactor(ir).record(index.machine, {
+      kind: "restored",
+      machine: saved.machine,
+      ir: index.machine.hash,
+      migrated,
+      snapshot: saved
+    })
   }
   try {
     const macro = new Macrostep(ir, index, snapshot, fns)
@@ -214,7 +229,7 @@ class MachineIndex {
       const child = this.state(state.initial)
       return [child, ...this.defaultEntry(child)]
     }
-    if (state.kind === "parallel") return state.states.flatMap((child) => [child, ...this.defaultEntry(child)])
+    if (state.kind === "parallel") return childrenOf(state).flatMap((child) => [child, ...this.defaultEntry(child)])
     return []
   }
 
@@ -274,6 +289,14 @@ interface Bindings {
   readonly error?: Json
   /** In an `on c` transition, the pending-call value `{from, invoke}` of the call it takes. */
   readonly call?: Json
+  readonly key?: Json
+}
+
+/** A child spawned during this macrostep that has not started yet. */
+interface PendingSpawn {
+  readonly children: string
+  readonly key: Json
+  readonly args: { readonly [param: string]: Json }
 }
 
 const NO_BINDINGS: Bindings = {}
@@ -293,16 +316,20 @@ class Macrostep {
   readonly vars: Record<string, Json>
   invokes: Array<InvokeEntry>
   calls: Array<CallEntry>
+  spawned: Array<SpawnedEntry>
   timers: Array<TimerEntry>
   nextInvoke: number
   nextTimer: number
   nextMessage: number
+  history: Record<string, ReadonlyArray<string>>
   result: RunResult | null
   readonly commands: Array<Command> = []
   /** The states entered during this macrostep. */
   private readonly entered = new Set<string>()
   /** Compound states that reached a final child and have not been exited since. */
   private completions: Array<string> = []
+  /** The children spawned during this macrostep, in order, not started yet. */
+  private pending: Array<PendingSpawn> = []
 
   private readonly ir: Ir
   private readonly index: MachineIndex
@@ -319,10 +346,12 @@ class Macrostep {
     this.vars = { ...snapshot.vars }
     this.invokes = [...snapshot.invokes]
     this.calls = [...snapshot.calls]
+    this.spawned = [...snapshot.spawned]
     this.timers = [...snapshot.timers]
     this.nextInvoke = snapshot.nextInvoke
     this.nextTimer = snapshot.nextTimer
     this.nextMessage = snapshot.nextMessage
+    this.history = { ...snapshot.history }
     this.result = snapshot.result
   }
 
@@ -339,38 +368,50 @@ class Macrostep {
         vars: this.vars,
         invokes: this.invokes,
         calls: this.calls,
+        spawned: this.spawned,
         timers: this.timers,
         nextInvoke: this.nextInvoke,
         nextTimer: this.nextTimer,
         nextMessage: this.nextMessage,
+        history: this.history,
         result: this.result
       },
       commands: this.commands
     }
   }
 
+  /**
+   * Emit a trace record, redacted (`spec/trace.md#redaction`). An `event`, `dropped` or `stale`
+   * record holds an input {@link Macrostep.take} has already redacted.
+   */
   private trace(record: CoreRecord) {
-    this.commands.push({ kind: "trace", record })
+    const r = redactor(this.ir)
+    this.commands.push({ kind: "trace", record: r.active ? r.record(this.index.machine, record) : record })
   }
 
   take(input: Exclude<Input, { readonly kind: "defect" }>) {
+    // The input as its record shows it, redacted while the invoke or spawned child it may be
+    // the outcome of is still in the snapshot.
+    if (input.kind === "cancel") {
+      this.cancelRun()
+      return
+    }
+    const r = redactor(this.ir)
+    const shown = r.active ? r.input(this.index.machine, this.invokes, input, this.spawned) : input
     let selected: ReadonlyArray<Selected> = []
     let bindings: Bindings = NO_BINDINGS
     switch (input.kind) {
-      case "cancel":
-        this.cancelRun()
-        return
       case "invoke.done":
       case "invoke.fail":
       case "invoke.defect": {
         const inv = this.invokes.find((i) => i.id === input.invoke)
         if (inv === undefined) {
-          this.trace({ kind: "stale", event: input })
+          this.trace({ kind: "stale", event: shown })
           return
         }
         this.invokes = this.invokes.filter((i) => i !== inv)
         if (input.kind === "invoke.defect") {
-          this.trace({ kind: "event", event: input })
+          this.trace({ kind: "event", event: shown })
           this.failWithDefect(input.defect)
           return
         }
@@ -386,10 +427,42 @@ class Macrostep {
         }
         break
       }
+      case "spawn.done":
+      case "spawn.fail":
+      case "spawn.defect": {
+        const ch = this.spawned.find((c) => c.id === input.spawn)
+        if (ch === undefined) {
+          this.trace({ kind: "stale", event: shown })
+          return
+        }
+        this.spawned = this.spawned.filter((c) => c !== ch)
+        if (input.kind === "spawn.defect") {
+          this.trace({ kind: "event", event: shown })
+          this.failWithDefect(input.defect)
+          return
+        }
+        const machine = this.collectionMachine(ch.children)
+        if (input.kind === "spawn.fail" && !this.srcErrors(machine).includes(input.error._tag)) {
+          throw new Abort({ kind: "undeclared", error: input.error._tag })
+        }
+        if (input.kind === "spawn.done") {
+          bindings = { result: input.value, key: ch.key }
+          const isDone = (t: Transition) => t.trigger.kind === "spawn.done" && t.trigger.children === ch.children
+          selected = this.selectByWalks(() => isDone, bindings)
+        } else {
+          bindings = { error: input.error, key: ch.key }
+          const isFail = (name: string) => (t: Transition) =>
+            t.trigger.kind === "spawn.fail" && t.trigger.children === ch.children && t.trigger.error === name
+          const named = isFail(input.error._tag)
+          const any = isFail("*")
+          selected = this.selectByWalks((state) => (state.transitions.some(named) ? named : any), bindings)
+        }
+        break
+      }
       case "after": {
         const tm = this.timers.find((t) => t.id === input.timer)
         if (tm === undefined) {
-          this.trace({ kind: "stale", event: input })
+          this.trace({ kind: "stale", event: shown })
           return
         }
         this.timers = this.timers.filter((t) => t !== tm)
@@ -406,11 +479,12 @@ class Macrostep {
         selected = this.selectCall(input.call, bindings)
         break
       case "emitted": {
-        if (input.invoke !== null && !this.invokes.some((i) => i.id === input.invoke)) {
-          this.trace({ kind: "stale", event: input })
+        const child = input.invoke === null ? undefined : this.spawned.find((c) => c.id === input.invoke)
+        if (input.invoke !== null && child === undefined && !this.invokes.some((i) => i.id === input.invoke)) {
+          this.trace({ kind: "stale", event: shown })
           return
         }
-        bindings = { event: input.value }
+        bindings = child === undefined ? { event: input.value } : { event: input.value, key: child.key }
         selected = this.selectEmitted(input, bindings)
         break
       }
@@ -421,12 +495,12 @@ class Macrostep {
       if (this.index.machine.strict && (input.kind === "event" || input.kind === "message" || input.kind === "call")) {
         throw new Abort({ kind: "unhandled", event: input })
       }
-      this.trace({ kind: "dropped", event: input })
+      this.trace({ kind: "dropped", event: shown })
       // A dropped call is answered at once, so its caller does not wait for it.
       if (input.kind === "call") this.answer(input.from, input.invoke, input.call, "fail", { _tag: UNANSWERED })
       return
     }
-    this.trace({ kind: "event", event: input })
+    this.trace({ kind: "event", event: shown })
     // A call that enables a transition is pending from now on, so a `reply` among the
     // transition's effects finds it.
     if (input.kind === "call") this.calls.push({ from: input.from, invoke: input.invoke, call: input.call })
@@ -435,11 +509,22 @@ class Macrostep {
     if (this.status === "running") this.startWork()
   }
 
+  /** The machine the children of collection `children` run. */
+  private collectionMachine(children: string): string {
+    const decl = this.index.machine.children[children]
+    if (decl === undefined) throw new Error(`no collection ${children} in machine ${this.index.machine.root.id}`)
+    return decl.machine
+  }
+
   /** The errors invoke `inv` may fail with: its task's, machine's, or call's, and `Unanswered` for a call. */
   private declaredErrors(inv: InvokeEntry): ReadonlyArray<string> {
     const invoke = this.index.state(inv.state).invoke
     if (invoke?.kind === "call") return [...(this.callDecl(invoke)?.errors ?? []), UNANSWERED]
-    const src = invoke?.src ?? inv.src
+    return this.srcErrors(invoke?.src ?? inv.src)
+  }
+
+  /** The errors task or machine `src` may fail with. */
+  private srcErrors(src: string): ReadonlyArray<string> {
     if (Object.hasOwn(this.ir.tasks, src)) return this.ir.tasks[src]?.errors ?? []
     return this.ir.machines[src]?.errors ?? []
   }
@@ -562,6 +647,9 @@ class Macrostep {
     if (address.kind === "child") {
       return input.invoke !== null && this.invokes.find((i) => i.id === input.invoke)?.state === address.state
     }
+    if (address.kind === "children") {
+      return input.invoke !== null && this.spawned.find((c) => c.id === input.invoke)?.children === address.name
+    }
     if (input.invoke !== null) return false
     // A parameter, or a variable with a value; one with no value names no sender.
     if (this.index.params.has(address.name)) return this.snapshot.input[address.name] === input.from
@@ -609,17 +697,71 @@ class Macrostep {
     return this.active.filter((id) => this.index.isProperAncestor(domain, this.index.state(id)))
   }
 
-  /** The states a transition enters, below its domain down to the target and its default entry. */
-  private entrySet(t: Selected, target: State): Array<State> {
-    const domain = this.domain(t, target)
+  /** The states from just below `domain` down to `target`, outermost first. */
+  private pathFrom(domain: State, target: State): Array<State> {
     const path: Array<State> = []
     for (let s: State | undefined = target; s !== undefined && s !== domain; s = this.index.parent(s)) path.unshift(s)
+    return path
+  }
+
+  /** The states a transition enters, below its domain down to the target and its default entry. */
+  private entrySet(t: Selected, target: State): Array<State> {
+    if (isHistory(target)) return this.historyEntrySet(t, target)
+    const path = this.pathFrom(this.domain(t, target), target)
     const set = [...path, ...this.index.defaultEntry(target)]
     for (const p of path) {
       if (p === target || p.kind !== "parallel") continue
-      for (const c of p.states) if (!path.includes(c)) set.push(c, ...this.index.defaultEntry(c))
+      for (const c of childrenOf(p)) if (!path.includes(c)) set.push(c, ...this.index.defaultEntry(c))
     }
     return set
+  }
+
+  /**
+   * execution.md's `entrySet` for a history target `h`: what `h` recorded, or its parent's
+   * default entry, each with the path down to it from the domain (computed with `h` as the
+   * target) and its own default entry; then every region on the way that none of them is in,
+   * by default entry. `h` itself is never entered.
+   */
+  private historyEntrySet(t: Selected, h: State): Array<State> {
+    const parent = this.index.parent(h)!
+    const recorded = this.history[h.id]
+    const targets = recorded !== undefined
+      ? recorded.map((id) => this.index.state(id))
+      : parent.kind === "compound"
+      ? [this.index.state(parent.initial!)]
+      : [...childrenOf(parent)]
+    const domain = this.domain(t, h)
+    const set = new Set<State>()
+    for (const r of targets) {
+      for (const s of this.pathFrom(domain, r)) set.add(s)
+      for (const s of this.index.defaultEntry(r)) set.add(s)
+    }
+    const inSet = (c: State): boolean => [...set].some((s) => s === c || this.index.isProperAncestor(c, s))
+    for (const q of [...set]) {
+      if (q.kind !== "parallel") continue
+      for (const c of childrenOf(q)) {
+        if (!inSet(c)) for (const s of [c, ...this.index.defaultEntry(c)]) set.add(s)
+      }
+    }
+    return [...set]
+  }
+
+  /**
+   * execution.md's `recordHistory`: for each state about to be exited, what each of its history
+   * states records, from the active states as they are before anything is exited.
+   */
+  private recordHistory(exits: ReadonlySet<string>) {
+    for (const id of exits) {
+      const s = this.index.state(id)
+      for (const h of s.states) {
+        if (h.kind === "history") {
+          this.history[h.id] = this.active.filter((a) => this.index.parent(this.index.state(a)) === s)
+        } else if (h.kind === "deepHistory") {
+          const leaves = this.activeLeaves().filter((leaf) => this.index.isProperAncestor(s, leaf))
+          this.history[h.id] = leaves.map((leaf) => leaf.id)
+        }
+      }
+    }
   }
 
   /** Take the transitions of `selected` together: every exit, then every effect, then every entry. */
@@ -628,6 +770,7 @@ class Macrostep {
       this.trace({ kind: "transition", from: source.id, index, to: transition.target })
     }
     const exits = new Set(selected.flatMap((t) => this.exitSet(t)))
+    this.recordHistory(exits)
     for (const state of this.innermostFirst()) {
       if (exits.has(state.id)) this.exitState(state)
     }
@@ -702,7 +845,7 @@ class Macrostep {
       case "compound":
         return state.states.some((c) => c.kind === "final" && this.active.includes(c.id))
       case "parallel":
-        return state.states.every((c) => this.inFinalState(c))
+        return childrenOf(state).every((c) => this.inFinalState(c))
       default:
         return false
     }
@@ -730,17 +873,42 @@ class Macrostep {
           break
         }
         case "send": {
+          if (effect.to.kind === "children" && effect.key === null) {
+            // `send name.*.E`: the value once, then a message of its own to every running child.
+            const value = this.eval(effect.value, bindings) as Tagged
+            const name = effect.to.name
+            for (const ch of this.spawned.filter((c) => c.children === name)) {
+              const message = this.nextMessage
+              this.nextMessage += 1
+              const to = `${this.snapshot.run}.${ch.id}`
+              this.trace({ kind: "sent", message, to, value })
+              this.commands.push({ kind: "send", to, invoke: ch.id, message, value })
+            }
+            break
+          }
           const message = this.nextMessage
           this.nextMessage += 1
           let to: string
           let invoke: number | null
           let value: Tagged
-          if (effect.to.kind === "child") {
+          if (effect.to.kind === "children") {
+            const key = this.eval(effect.key!, bindings)
+            value = this.eval(effect.value, bindings) as Tagged
+            const name = effect.to.name
+            const ch = this.spawned.find((c) => c.children === name && c.key === key)
+            if (ch === undefined) {
+              this.trace({ kind: "undelivered", message, to: null, value })
+              break
+            }
+            to = `${this.snapshot.run}.${ch.id}`
+            invoke = ch.id
+          } else if (effect.to.kind === "child") {
             const state = effect.to.state
             const inv = this.invokes.find((i) => i.state === state)
             value = this.eval(effect.value, bindings) as Tagged
             if (inv === undefined) {
-              this.trace({ kind: "undelivered", message, to: null, value })
+              const shown = redactor(this.ir).sent(effect.to.machine, value) as Tagged
+              this.trace({ kind: "undelivered", message, to: null, value: shown })
               break
             }
             to = `${this.snapshot.run}.${inv.id}`
@@ -751,7 +919,7 @@ class Macrostep {
             invoke = null
             value = this.eval(effect.value, bindings) as Tagged
           }
-          this.trace({ kind: "sent", message, to, value })
+          this.trace({ kind: "sent", message, to, value: redactor(this.ir).sent(effect.to.machine, value) as Tagged })
           this.commands.push({ kind: "send", to, invoke, message, value })
           break
         }
@@ -768,13 +936,28 @@ class Macrostep {
           const c = this.eval(effect.call, bindings) as { readonly from: string; readonly invoke: number }
           const pending = this.calls.find((p) => p.from === c.from && p.invoke === c.invoke)
           if (pending === undefined) {
-            throw new Abort({ kind: "answered", call: callName(effect.call.type) ?? effect.call.type })
+            const t = parseTypeRef(effect.call.type)
+            throw new Abort({ kind: "answered", call: t.kind === "call" ? t.call : effect.call.type })
           }
           const value = effect.value === null ? null : this.eval(effect.value, bindings)
           this.calls = this.calls.filter((p) => p !== pending)
           this.answer(pending.from, pending.invoke, pending.call, effect.outcome, value)
           break
         }
+        case "spawn": {
+          const key = this.eval(effect.key, bindings)
+          const params = this.ir.machines[effect.machine]?.params ?? []
+          const args: Record<string, Json> = {}
+          effect.args.forEach((arg, i) => {
+            args[params[i]?.name ?? String(i)] = this.eval(arg, bindings)
+          })
+          this.stopChild(effect.children, key)
+          this.pending.push({ children: effect.children, key, args })
+          break
+        }
+        case "stop":
+          this.stopChild(effect.children, this.eval(effect.key, bindings))
+          break
       }
     }
   }
@@ -783,6 +966,33 @@ class Macrostep {
   private answer(to: string, invoke: number, call: string, outcome: "done" | "fail", value: Json) {
     this.trace({ kind: "replied", to, invoke, call, outcome, value })
     this.commands.push({ kind: "reply", to, invoke, call, outcome, value })
+  }
+
+  /** Stop the child of `children` with `key`: a running one with a record, a pending one silently. */
+  private stopChild(children: string, key: Json) {
+    this.pending = this.pending.filter((p) => !(p.children === children && p.key === key))
+    const ch = this.spawned.find((c) => c.children === children && c.key === key)
+    if (ch === undefined) return
+    this.spawned = this.spawned.filter((c) => c !== ch)
+    this.trace({ kind: "spawn.stopped", spawn: ch.id, children, key })
+    this.commands.push({ kind: "spawn.stop", spawn: ch.id })
+  }
+
+  /** When the run finishes or is cancelled, after every exit: stop every child still running. */
+  private stopChildren() {
+    for (const ch of this.spawned) {
+      this.trace({ kind: "spawn.stopped", spawn: ch.id, children: ch.children, key: ch.key })
+      this.commands.push({ kind: "spawn.stop", spawn: ch.id })
+    }
+    this.spawned = []
+    this.pending = []
+  }
+
+  /** Trace and start spawned child `ch`. */
+  private startChild(ch: SpawnedEntry) {
+    const src = this.collectionMachine(ch.children)
+    this.trace({ kind: "spawn.started", spawn: ch.id, children: ch.children, key: ch.key, src, args: ch.args })
+    this.commands.push({ kind: "spawn.start", spawn: ch.id, src, args: ch.args })
   }
 
   // ---- settling, work, finishing ----
@@ -804,6 +1014,13 @@ class Macrostep {
   }
 
   startWork() {
+    for (const p of this.pending) {
+      const ch: SpawnedEntry = { id: this.nextInvoke, children: p.children, key: p.key, args: p.args }
+      this.nextInvoke += 1
+      this.spawned.push(ch)
+      this.startChild(ch)
+    }
+    this.pending = []
     for (const id of [...this.active]) {
       if (!this.entered.has(id)) continue
       const state = this.index.state(id)
@@ -860,6 +1077,7 @@ class Macrostep {
    * already due, the earliest first.
    */
   restartWork(saved: Saved, now: number) {
+    for (const ch of this.spawned) this.startChild(ch)
     for (const id of this.active) {
       const state = this.index.state(id)
       const inv = this.invokes.find((i) => i.state === id)
@@ -884,6 +1102,7 @@ class Macrostep {
       value = this.eval(final.fail, NO_BINDINGS)
     }
     for (const state of this.innermostFirst()) this.exitState(state)
+    this.stopChildren()
     this.result = status === "done" ? { output: value } : { error: value }
     this.status = status
     this.completions = []
@@ -893,14 +1112,18 @@ class Macrostep {
 
   private cancelRun() {
     for (const state of this.innermostFirst()) this.exitState(state)
+    this.stopChildren()
     this.status = "cancelled"
     this.trace({ kind: "cancelled" })
   }
 
   failWithDefect(defect: Defect) {
     for (const inv of this.invokes) this.commands.push({ kind: "invoke.cancel", invoke: inv.id })
+    for (const ch of this.spawned) this.commands.push({ kind: "spawn.stop", spawn: ch.id })
     for (const tm of this.timers) this.commands.push({ kind: "timer.cancel", timer: tm.id })
     this.invokes = []
+    this.spawned = []
+    this.pending = []
     this.timers = []
     this.status = "defect"
     this.result = { defect }
@@ -956,14 +1179,16 @@ class Macrostep {
 
   /**
    * The `_tag` of a record of type `type`, if it has one: an error's name, or an event's
-   * (`Machine.Name`, or a bare event of this machine) without the machine.
+   * (`Machine.Name`, or a bare event of this machine) without the machine. Aliases are expanded
+   * first; an instance of a generic record (`Page<Order>`) has none.
    */
   private tagOf(type: string): string | undefined {
-    if (Object.hasOwn(this.ir.types, type)) return this.ir.types[type]!.kind === "error" ? type : undefined
-    const dot = type.indexOf(".")
-    if (dot !== -1) return type.slice(dot + 1)
+    const t = expandType(this.ir, type)
+    if (t.kind === "event") return t.event
+    if (t.kind !== "named") return undefined
+    if (Object.hasOwn(this.ir.types, t.name)) return this.ir.types[t.name]!.kind === "error" ? t.name : undefined
     const m = this.index.machine
-    return Object.hasOwn(m.emits, type) || Object.hasOwn(m.events, type) ? type : undefined
+    return Object.hasOwn(m.emits, t.name) || Object.hasOwn(m.events, t.name) ? t.name : undefined
   }
 
   private evalOp(expr: Extract<Expr, { kind: "op" }>, bindings: Bindings): Json {
@@ -1002,9 +1227,12 @@ class Macrostep {
     }
   }
 
-  /** Check an arithmetic result against the node's type: `int` range or finite `float`. */
+  /**
+   * Check an arithmetic result against the node's type, aliases expanded: `int` range or
+   * finite `float`.
+   */
   private arith(expr: Expr, value: number): number {
-    if (expr.type === "int") {
+    if (scalarOf(this.ir, expr.type) === "int") {
       if (!Number.isSafeInteger(value)) throw new Abort({ kind: "overflow", expr: expr.text })
       return value === 0 ? 0 : value
     }
@@ -1039,10 +1267,9 @@ export const compareCodePoints = (a: string, b: string): number => {
   return (a.length - i) - (b.length - j)
 }
 
-/** Whether a type reference is optional once aliases are expanded (`type Note = string?`). */
-function isOptional(ir: Ir, type: string): boolean {
-  if (type.endsWith("?")) return true
-  if (type.endsWith("[]")) return false
-  const decl = Object.hasOwn(ir.types, type) ? ir.types[type] : undefined
-  return decl !== undefined && decl.kind === "alias" ? isOptional(ir, decl.type) : false
+/** The builtin an operand of type `type` is, aliases and `?` removed, or `undefined`. */
+function scalarOf(ir: Ir, type: string): string | undefined {
+  let t = expandType(ir, type)
+  while (t.kind === "optional") t = expandType(ir, t.of)
+  return t.kind === "builtin" ? t.name : undefined
 }

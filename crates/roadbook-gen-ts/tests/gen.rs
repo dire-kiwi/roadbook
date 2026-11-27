@@ -482,3 +482,108 @@ fn calls_need_no_implementation() {
     let desk = gen_ok(&ir(&mut loader.clone(), "desk.road"));
     assert!(desk.contains("export const Ask = "), "{desk}");
 }
+
+/// History states are never active, so the union of state ids leaves them out.
+#[test]
+fn history_states_are_not_states_of_the_union() {
+    let ir = ir(
+        &mut MemoryLoader::new().with(
+            "h.road",
+            "machine H() {\n  event Go\n  event Back\n  initial P\n  state P {\n    initial A\n    \
+             history Last\n    deep history Deep\n    state A { on Go -> Q }\n  }\n  \
+             state Q { on Back -> P.Last  on Go -> P.Deep }\n}\n",
+        ),
+        "h.road",
+    );
+    let code = gen_ok(&ir);
+    assert!(
+        code.contains("readonly state: \"H\" | \"H.P\" | \"H.P.A\" | \"H.Q\"\n"),
+        "{code}"
+    );
+}
+
+/// Maps and generic types: a generic record or alias is a schema function and an interface
+/// or type of the same parameters, a map a `Schema.Record`, and a generic type on a cycle has
+/// its schema function annotated.
+#[test]
+fn generics_and_maps() {
+    let mut loader = FsLoader::new(Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."));
+    let generics = ir(
+        &mut loader,
+        "crates/roadbook-compiler/tests/pass/generics.road",
+    );
+    snapshot("generics", &generics);
+}
+
+/// A generic type of a module that may import this one back is called when first needed.
+#[test]
+fn generic_types_across_an_import_cycle() {
+    let loader = MemoryLoader::new()
+        .with(
+            "a.road",
+            "import { Page, Flag } from \"./b.road\"\n\ntype T { page: Page<int>, flags: map<string, Flag> }\n",
+        )
+        .with(
+            "b.road",
+            "import { T } from \"./a.road\"\n\ntype Page<X> { items: X[], next: string? }\nenum Flag { On, Off }\nfn size(t: T) -> int\n",
+        );
+    let a = gen_ok(&ir(&mut loader.clone(), "a.road"));
+    for line in [
+        "import { Flag, Page } from \"./b.road.js\"\n",
+        "export const T = Schema.Struct({\n  page: Schema.suspend(() => Page(Schema.Int)),\n  \
+         flags: Schema.Record(Schema.String, Schema.suspend(() => Flag))\n})\n",
+    ] {
+        assert!(a.contains(line), "no {line:?} in\n{a}");
+    }
+    let b = gen_ok(&ir(&mut loader.clone(), "b.road"));
+    for line in [
+        "export const Page = <X extends Schema.Top>(X: X) =>\n  \
+         Schema.Struct({ items: Schema.Array(X), next: Schema.NullOr(Schema.String) })\n",
+        "export interface Page<X> { readonly items: ReadonlyArray<X>; readonly next: string | null }\n",
+    ] {
+        assert!(b.contains(line), "no {line:?} in\n{b}");
+    }
+}
+
+/// A map's key schema is `Schema.String` whatever alias names the keys, and names that would
+/// hide what the module uses are refused.
+#[test]
+fn map_keys_and_hidden_names() {
+    let loader = MemoryLoader::new()
+        .with(
+            "one.road",
+            "import { Uid, Box } from \"./two.road\"\n\ntype Local { n: int }\ntype Scores = map<Uid, int>\n",
+        )
+        .with(
+            "two.road",
+            "import { Local } from \"./one.road\"\n\ntype Uid = string\ntype Box<T> { v: T, l: Local }\n",
+        );
+    let one = gen_ok(&ir(&mut loader.clone(), "one.road"));
+    assert!(
+        one.contains("export const Scores = Schema.Record(Schema.String, Schema.Int)\nexport type Scores = typeof Scores.Type\n"),
+        "{one}"
+    );
+    for (src, name) in [
+        ("type Box<Schema> { v: Schema }\n", "Schema"),
+        ("type Box<Record> { v: Record }\n", "Record"),
+        (
+            "type Record { v: int }\ntype H<T> { m: map<string, T> }\n",
+            "Record",
+        ),
+        (
+            "type ReadonlyArray { v: int }\ntype L<T> { l: T[] }\n",
+            "ReadonlyArray",
+        ),
+    ] {
+        assert_eq!(
+            error_of(&[("a.road", src)]),
+            GenError::Clash { name: name.into() },
+            "{src}"
+        );
+    }
+    // A type named like a global the module does not use is fine.
+    gen_ok(&ir(
+        &mut MemoryLoader::new().with("b.road", "type Record { v: int }\n"),
+        "b.road",
+    ));
+}

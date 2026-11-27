@@ -1,0 +1,75 @@
+{
+  "description": "A snapshot with a pending call, a history record and spawned children (`switchboard.road`). Switchboard r1 spawns lines 1 and 2, takes Caller r2's `lookup` at night into `pending`, and pauses, leaving `Working` from `Held`. Saved then, its snapshot has `calls` (the pending lookup), `history` (`Working.Last` recorded `Working.Held`) and `spawned` (both lines), and restoring it is refused (`calls`). Once `Answer` replies to the call, which r2 takes as its outcome, the snapshot saved again has no `calls`, and restoring it as r3 starts both lines again as r3.1 and r3.2; `Resume` there enters `Working.Held` through the history record.",
+  "requires": [
+    "messaging",
+    "calls",
+    "snapshots",
+    "history",
+    "spawn"
+  ],
+  "chart": "charts/switchboard.road",
+  "machine": "Switchboard",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Open",
+        "n": 1
+      }
+    },
+    {
+      "event": {
+        "_tag": "Open",
+        "n": 2
+      }
+    },
+    {
+      "event": {
+        "_tag": "Night"
+      }
+    },
+    {
+      "start": "Caller",
+      "run": "r2",
+      "input": {
+        "board": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Pause"
+      }
+    },
+    {
+      "snapshot": "pending"
+    },
+    {
+      "restore": "pending",
+      "refused": "calls"
+    },
+    {
+      "event": {
+        "_tag": "Answer"
+      }
+    },
+    {
+      "snapshot": "answered"
+    },
+    {
+      "restore": "answered",
+      "run": "r3",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Resume"
+      },
+      "run": "r3"
+    }
+  ],
+  "status": "running"
+}

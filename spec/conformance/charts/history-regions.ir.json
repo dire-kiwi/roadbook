@@ -1,0 +1,777 @@
+{
+  "irVersion": "0.7",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/history-regions.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Panels": {
+      "doc": "History states of a parallel state.",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 40,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Left": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 6,
+            "col": 3,
+            "endLine": 6,
+            "endCol": 13
+          }
+        },
+        "Right": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 7,
+            "col": 3,
+            "endLine": 7,
+            "endCol": 14
+          }
+        },
+        "Away": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 13
+          }
+        },
+        "Back": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 13
+          }
+        },
+        "BackShallow": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 20
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Panels",
+        "name": "Panels",
+        "kind": "compound",
+        "doc": "History states of a parallel state.",
+        "span": {
+          "file": 0,
+          "line": 5,
+          "col": 1,
+          "endLine": 40,
+          "endCol": 2
+        },
+        "initial": "Panels.Both",
+        "states": [
+          {
+            "id": "Panels.Both",
+            "name": "Both",
+            "kind": "parallel",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 14,
+              "col": 3,
+              "endLine": 34,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [
+              {
+                "id": "Panels.Both.Deep",
+                "name": "Deep",
+                "kind": "deepHistory",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 15,
+                  "col": 5,
+                  "endLine": 15,
+                  "endCol": 22
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Panels.Both.Shallow",
+                "name": "Shallow",
+                "kind": "history",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 16,
+                  "col": 5,
+                  "endLine": 16,
+                  "endCol": 20
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Panels.Both.L",
+                "name": "L",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 6
+                },
+                "initial": "Panels.Both.L.L1",
+                "states": [
+                  {
+                    "id": "Panels.Both.L.L1",
+                    "name": "L1",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 20,
+                      "col": 7,
+                      "endLine": 20,
+                      "endCol": 33
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Left"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Panels.Both.L.L2",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 20,
+                          "col": 18,
+                          "endLine": 20,
+                          "endCol": 31
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Panels.Both.L.L2",
+                    "name": "L2",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 21,
+                      "col": 7,
+                      "endLine": 21,
+                      "endCol": 18
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Panels.Both.R",
+                "name": "R",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 24,
+                  "col": 5,
+                  "endLine": 31,
+                  "endCol": 6
+                },
+                "initial": "Panels.Both.R.R1",
+                "states": [
+                  {
+                    "id": "Panels.Both.R.R1",
+                    "name": "R1",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 26,
+                      "col": 7,
+                      "endLine": 26,
+                      "endCol": 34
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Right"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Panels.Both.R.R2",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 26,
+                          "col": 18,
+                          "endLine": 26,
+                          "endCol": 32
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Panels.Both.R.R2",
+                    "name": "R2",
+                    "kind": "compound",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 27,
+                      "col": 7,
+                      "endLine": 30,
+                      "endCol": 8
+                    },
+                    "initial": "Panels.Both.R.R2.R3",
+                    "states": [
+                      {
+                        "id": "Panels.Both.R.R2.R3",
+                        "name": "R3",
+                        "kind": "atomic",
+                        "doc": "",
+                        "span": {
+                          "file": 0,
+                          "line": 29,
+                          "col": 9,
+                          "endLine": 29,
+                          "endCol": 20
+                        },
+                        "initial": null,
+                        "states": [],
+                        "entry": [],
+                        "exit": [],
+                        "invoke": null,
+                        "transitions": [],
+                        "output": null,
+                        "fail": null
+                      }
+                    ],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Away"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Panels.Out",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 5,
+                  "endLine": 33,
+                  "endCol": 19
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Panels.Out",
+            "name": "Out",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 36,
+              "col": 3,
+              "endLine": 39,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Back"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Panels.Both.Deep",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 37,
+                  "endCol": 32
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "BackShallow"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Panels.Both.Shallow",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 38,
+                  "col": 5,
+                  "endLine": 38,
+                  "endCol": 35
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:0a0f1531fbabafe000300b506842299c15bb29d193c0927ae85e50ea4128f0c8"
+    },
+    "Region": {
+      "doc": "The history state of a compound state in one region of a parallel state.",
+      "span": {
+        "file": 0,
+        "line": 43,
+        "col": 1,
+        "endLine": 68,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 44,
+            "col": 3,
+            "endLine": 44,
+            "endCol": 11
+          }
+        },
+        "Out": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 45,
+            "col": 3,
+            "endLine": 45,
+            "endCol": 12
+          }
+        },
+        "Back": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 46,
+            "col": 3,
+            "endLine": 46,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Region",
+        "name": "Region",
+        "kind": "compound",
+        "doc": "The history state of a compound state in one region of a parallel state.",
+        "span": {
+          "file": 0,
+          "line": 43,
+          "col": 1,
+          "endLine": 68,
+          "endCol": 2
+        },
+        "initial": "Region.P",
+        "states": [
+          {
+            "id": "Region.P",
+            "name": "P",
+            "kind": "parallel",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 50,
+              "col": 3,
+              "endLine": 65,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [
+              {
+                "id": "Region.P.A",
+                "name": "A",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 51,
+                  "col": 5,
+                  "endLine": 56,
+                  "endCol": 6
+                },
+                "initial": "Region.P.A.A1",
+                "states": [
+                  {
+                    "id": "Region.P.A.H",
+                    "name": "H",
+                    "kind": "deepHistory",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 53,
+                      "col": 7,
+                      "endLine": 53,
+                      "endCol": 21
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Region.P.A.A1",
+                    "name": "A1",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 54,
+                      "col": 7,
+                      "endLine": 54,
+                      "endCol": 31
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Go"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Region.P.A.A2",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 54,
+                          "col": 18,
+                          "endLine": 54,
+                          "endCol": 29
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Region.P.A.A2",
+                    "name": "A2",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 55,
+                      "col": 7,
+                      "endLine": 55,
+                      "endCol": 18
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Region.P.B",
+                "name": "B",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 58,
+                  "col": 5,
+                  "endLine": 62,
+                  "endCol": 6
+                },
+                "initial": "Region.P.B.B1",
+                "states": [
+                  {
+                    "id": "Region.P.B.B1",
+                    "name": "B1",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 60,
+                      "col": 7,
+                      "endLine": 60,
+                      "endCol": 31
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Go"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Region.P.B.B2",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 60,
+                          "col": 18,
+                          "endLine": 60,
+                          "endCol": 29
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Region.P.B.B2",
+                    "name": "B2",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 61,
+                      "col": 7,
+                      "endLine": 61,
+                      "endCol": 18
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Out"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Region.Away",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 64,
+                  "col": 5,
+                  "endLine": 64,
+                  "endCol": 19
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Region.Away",
+            "name": "Away",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 67,
+              "col": 3,
+              "endLine": 67,
+              "endCol": 34
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Back"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Region.P.A.H",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 67,
+                  "col": 16,
+                  "endLine": 67,
+                  "endCol": 32
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:41565302f21b8cf55c77a6823d4adadfa73a13d2a30b98a36c745503e30b7f17"
+    }
+  }
+}

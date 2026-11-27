@@ -1,0 +1,24 @@
+{"input":{"id":"d1"},"ir":"sha256:952bbad7b5fcfd22838d6cc23ad73420363373e9536ddda02501f833204b6d82","kind":"started","machine":"Fetcher","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Fetcher","t":0}
+{"kind":"entered","run":"r1","state":"Fetcher.Loading","t":0}
+{"kind":"set","run":"r1","t":0,"value":0,"var":"loadingAttempt"}
+{"action":"log","args":{"what":"loading"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Fetcher.Loading.Attempt","t":0}
+{"delay":10000,"index":0,"kind":"timer.started","run":"r1","state":"Fetcher.Loading","t":0,"timer":1}
+{"args":{"id":"d1"},"invoke":1,"kind":"invoke.started","run":"r1","src":"fetch","state":"Fetcher.Loading.Attempt","t":0}
+{"event":{"error":{"_tag":"Busy"},"invoke":1,"kind":"invoke.fail"},"kind":"event","run":"r1","t":0}
+{"from":"Fetcher.Loading.Attempt","index":1,"kind":"transition","run":"r1","t":0,"to":"Fetcher.Loading.Backoff"}
+{"kind":"exited","run":"r1","state":"Fetcher.Loading.Attempt","t":0}
+{"kind":"set","run":"r1","t":0,"value":1,"var":"loadingAttempt"}
+{"kind":"entered","run":"r1","state":"Fetcher.Loading.Backoff","t":0}
+{"delay":60000,"index":0,"kind":"timer.started","run":"r1","state":"Fetcher.Loading.Backoff","t":0,"timer":2}
+{"event":{"kind":"after","timer":1},"kind":"event","run":"r1","t":10000}
+{"from":"Fetcher.Loading","index":0,"kind":"transition","run":"r1","t":10000,"to":"Fetcher.TimedOut"}
+{"index":0,"kind":"timer.cancelled","run":"r1","state":"Fetcher.Loading.Backoff","t":10000,"timer":2}
+{"kind":"exited","run":"r1","state":"Fetcher.Loading.Backoff","t":10000}
+{"action":"log","args":{"what":"left loading"},"kind":"action","run":"r1","t":10000}
+{"kind":"exited","run":"r1","state":"Fetcher.Loading","t":10000}
+{"kind":"entered","run":"r1","state":"Fetcher.TimedOut","t":10000}
+{"kind":"exited","run":"r1","state":"Fetcher.TimedOut","t":10000}
+{"kind":"exited","run":"r1","state":"Fetcher","t":10000}
+{"error":{"_tag":"Busy"},"kind":"failed","run":"r1","state":"Fetcher.TimedOut","t":10000}

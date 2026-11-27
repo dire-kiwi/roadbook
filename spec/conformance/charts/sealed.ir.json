@@ -1,0 +1,365 @@
+{
+  "irVersion": "0.7",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/sealed.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Login": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "user",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "password",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 61
+      }
+    },
+    "Page": {
+      "kind": "record",
+      "params": [
+        "T"
+      ],
+      "fields": [
+        {
+          "name": "items",
+          "type": "T[]",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "next",
+          "type": "string?",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 46
+      }
+    },
+    "Pair": {
+      "kind": "record",
+      "params": [
+        "A",
+        "B"
+      ],
+      "fields": [
+        {
+          "name": "first",
+          "type": "A",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "second",
+          "type": "B",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 40
+      }
+    },
+    "Vault": {
+      "kind": "record",
+      "params": [
+        "T"
+      ],
+      "fields": [
+        {
+          "name": "label",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "secret",
+          "type": "T",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 55
+      }
+    },
+    "Logins": {
+      "kind": "alias",
+      "params": [],
+      "type": "map<string, Login>",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 37
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "page",
+          "type": "Page<Pair<string, Login>>",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 12,
+        "endCol": 44
+      }
+    }
+  },
+  "tasks": {
+    "fetch": {
+      "params": [
+        {
+          "name": "users",
+          "type": "Logins",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Page<Pair<string, Login>>",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 14,
+        "col": 1,
+        "endLine": 14,
+        "endCol": 55
+      }
+    }
+  },
+  "machines": {
+    "Keep": {
+      "doc": "Fetches a page of the users' logins, and gives it back.",
+      "span": {
+        "file": 0,
+        "line": 17,
+        "col": 1,
+        "endLine": 29,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "users",
+          "type": "Logins",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "vault",
+          "type": "Vault<map<string, int>>",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Page<Pair<string, Login>>",
+      "errors": [],
+      "vars": [
+        {
+          "name": "page",
+          "type": "Page<Pair<string, Login>>",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 18,
+            "col": 3,
+            "endLine": 18,
+            "endCol": 38
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Keep",
+        "name": "Keep",
+        "kind": "compound",
+        "doc": "Fetches a page of the users' logins, and gives it back.",
+        "span": {
+          "file": 0,
+          "line": 17,
+          "col": 1,
+          "endLine": 29,
+          "endCol": 2
+        },
+        "initial": "Keep.Fetching",
+        "states": [
+          {
+            "id": "Keep.Fetching",
+            "name": "Fetching",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 22,
+              "col": 3,
+              "endLine": 26,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "fetch",
+              "to": null,
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "users"
+                  ],
+                  "type": "Logins",
+                  "text": "users"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 23,
+                "col": 5,
+                "endLine": 25,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Keep.Done",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "page",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "Page<Pair<string, Login>>",
+                      "text": "result"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "result"
+                        ],
+                        "type": "Page<Pair<string, Login>>",
+                        "text": "result"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 24,
+                  "col": 7,
+                  "endLine": 24,
+                  "endCol": 54
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Keep.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 28,
+              "col": 3,
+              "endLine": 28,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "page"
+              ],
+              "type": "Page<Pair<string, Login>>",
+              "text": "page"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:69bf79febe1630645b241499ca8a5c8bab738cf0b38c351283cb869da878ce68"
+    }
+  }
+}

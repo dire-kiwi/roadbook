@@ -1,0 +1,15 @@
+type Box<T> { value: T }
+type Many<T> = T[]
+
+machine Peer() {
+  initial Done
+  final state Done {}
+}
+
+machine M(a: Box<ref Peer>, b: Many<ref Peer?>, ok: map<string, ref Peer>) {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0316 at 9:14
+// expect: RB0316 at 9:32

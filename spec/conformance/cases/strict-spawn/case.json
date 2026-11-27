@@ -1,0 +1,39 @@
+{
+  "description": "A strict machine with spawned children (`speakers.road`). The Foreman hears its speakers' `Ping`, but its guard `event.n > 5` fails for child `a`'s, which is `dropped`, and `Pong`, which it does not hear, writes nothing. Child `a` then ends, and its `spawn.done` is `dropped` too, since the guard `key == \"boss\"` fails. Neither is `unhandled`: they come from a child, not from host code. The external event `Stray`, which no transition takes, is: it ends the Foreman with an `unhandled` defect naming it.",
+  "requires": [
+    "messaging",
+    "spawn"
+  ],
+  "chart": "charts/speakers.road",
+  "machine": "Foreman",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Hire",
+        "id": "a"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Tell",
+        "id": "a"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Finish",
+        "id": "a"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Stray"
+      }
+    }
+  ],
+  "status": "defect"
+}

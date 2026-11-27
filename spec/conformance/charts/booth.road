@@ -1,0 +1,40 @@
+// Conformance chart: retrying a call. The booth fails the first two calls with
+// a declared error, and the caller retries them after a delay.
+
+/// The booth is busy, and has been asked `tries` times.
+error Busy { tries: int }
+
+/// Books seats, once it has been asked enough times.
+machine Booth() {
+  /// Book `seat`, or fail if the booth is busy.
+  call reserve(seat: string) -> string ! Busy
+
+  var tries: int = 0
+
+  initial Open
+
+  state Open {
+    on reserve {
+      if tries < 2 set tries = tries + 1  reply call fail Busy { tries: tries }
+      else         reply call done event.seat
+    }
+  }
+}
+
+/// Books a seat, retrying while the booth is busy.
+machine Guest(booth: ref Booth) -> string {
+  var seat: string = ""
+
+  initial Booking
+
+  state Booking {
+    invoke booth.reserve("12A") retry 2 on Busy after 1s {
+      done            -> Booked  set seat = result
+      fail Busy       -> Gave
+      fail Unanswered -> Gave
+    }
+  }
+
+  final state Booked { output seat }
+  final state Gave   { output "" }
+}

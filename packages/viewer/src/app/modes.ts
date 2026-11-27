@@ -1,6 +1,7 @@
 // What simulate and replay share: the page they drive (Host), what they give it back
 // (Controller), and the HTML of their common parts: variables, records, active states.
 
+import { REDACTED } from '@dire-kiwi/roadbook-core'
 import type { Ir, Machine } from '../ir.ts'
 import type { Selection } from '../panel.ts'
 import { jsonText, recordText, stateName } from '../replay.ts'
@@ -55,14 +56,22 @@ export interface Controller {
 
 export const pretty = (v: unknown) => JSON.stringify(v, null, 2) ?? 'null'
 
+/**
+ * A value as the panels show it. A value a trace redacted whole (`"<redacted>"`, for a
+ * sensitive parameter or variable) is marked as such; one redacted inside shows the marker
+ * where its sensitive fields were.
+ */
+const valueHtml = (v: unknown) => (v === REDACTED ? '<span class="rb-redacted" title="sensitive: the trace does not show it">redacted</span>' : esc(jsonText(v, 400)))
+
 /** The parameters and variables of `m`: their values, or why there is none. */
 export function variablesHtml(m: Machine, input: { [k: string]: unknown }, vars: { [k: string]: unknown }, untracedInit: boolean): string {
   const rows: string[] = []
-  for (const p of m.params) rows.push(`<dt>${esc(p.name)}</dt><dd>${esc(jsonText(input[p.name], 400))}<span class="rb-vnote"> param</span></dd>`)
+  const note = (x: { sensitive: boolean }, what: string) => `<span class="rb-vnote"> ${x.sensitive ? `sensitive ${what}` : what}</span>`
+  for (const p of m.params) rows.push(`<dt>${esc(p.name)}</dt><dd>${valueHtml(input[p.name])}${note(p, 'param')}</dd>`)
   for (const v of m.vars) {
     const has = Object.prototype.hasOwnProperty.call(vars, v.name)
     const value = has
-      ? esc(jsonText(vars[v.name], 400))
+      ? `${valueHtml(vars[v.name])}${v.sensitive ? note(v, 'var') : ''}`
       : untracedInit && v.init
         ? `<span class="rb-vnote">= ${esc(v.init.text)} (initial value; not in the trace)</span>`
         : `<span class="rb-vnote">no value yet</span>`

@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0207]: `desk.reserve` does not declare the error `Unanswered`, so it cannot be retried
+  --> RB0207-retry-call-unanswered.road:18:39
+   |
+18 |     invoke desk.reserve(1) retry 2 on Unanswered {
+   |                                       ^^^^^^^^^^
+   |
+   = help: `Unanswered` is not retried: the callee is not running, has ended or had no transition for the call; handle it in the `fail Unanswered` outcome

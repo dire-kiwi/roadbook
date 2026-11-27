@@ -22,7 +22,7 @@ An abridged IR for `Checkout` (`/* … */` marks what is left out):
 
 ```jsonc
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [{ "path": "examples/shop/checkout.road", "package": null },
               { "path": "examples/shop/types.road", "package": null }],
   "types": {
@@ -93,6 +93,7 @@ Roadbook machines are statecharts with the semantics of SCXML, the W3C standard 
 4. **Unhandled events are dropped and recorded.** An event with no enabled transition changes nothing. It appears in the trace as dropped, so it is visible. A `strict machine` turns an event, message or call of its own that enables no transition into a defect instead, and says where it ignores one on purpose with `on Event ignore`; emitted events, invoke outcomes and timer expiries are still dropped ([strict machines](language.md#strict-machines)).
 5. **Parallel states** are active in all regions at once. Entering one enters every region, in the order they are written; leaving it exits them all, the last region first. Each region looks for a transition for the event on its own, from its innermost state outward, and the transitions found are taken together, in one step: all their exits, then all their effects in region order, then all their entries. If two would exit the same state, the one in the earlier region wins, unless the other belongs to a state inside the first one's, which wins as the inner state always does. A transition from one region into another leaves the parallel state and enters it again. `always` transitions in several regions are likewise taken together, and the parallel state is done (its `done` is enabled) when every region is in a final state.
 6. **Final.** Reaching a final child completes the parent, which enables the parent's `done` transition. Reaching a top-level final state ends the machine with its `output` or `fail`, evaluated on entering it; then every active state is exited, so the machine's own `exit` effects run last.
+7. **History states.** A transition to a `history` state of a compound or parallel state enters the child that state was in when a transition last left it; to a `deep history` state, every state it was in down to the leaves. Before the state has been left, it is entered as usual, at its `initial`. Restoring enters states again, with their entry effects and fresh work; it does not resume what ran in them. Which states the transition leaves is decided as for an ordinary target, never by what was recorded.
 
 ### Work is tied to states
 
@@ -162,7 +163,7 @@ xstate offers the same pattern, with `actor.getPersistedSnapshot()` and `createA
 Three rules make this safe.
 
 - **A snapshot records the IR hash it was taken with**, and restoring it into a changed chart is refused unless a migration is supplied: a host function from the old snapshot to the new one, as plain data. Snapshots are the same JSON in both runtimes, so one saved by a TypeScript service restores in a Rust one.
-- **A snapshot taken while a task is running restarts that task on restore**, with its arguments evaluated again, and a child machine running then starts again from the beginning. So a machine meant to be saved should wait in states that have no `invoke`, or use tasks that are safe to repeat; `resume` itself never saves a running task, since it waits for them. Surviving a crash in the middle of a task without repeating it is durable execution, which is a later driver and not part of this.
+- **A snapshot taken while a task is running restarts that task on restore**, with its arguments evaluated again, and a child machine running then starts again from the beginning. So a machine meant to be saved should wait in states that have no `invoke`, or use tasks that are safe to repeat; `resume` itself never saves a running task, since it waits for them. Surviving a crash in the middle of a task without repeating it is durable execution: the TypeScript runtime's [durable runs](typescript.md#durable-runs), on `effect/workflow`, journal every input a run takes and replay it after a crash, so that a task that finished is not run again.
 - **A restored run is a new run.** It gets a new run id, and what was queued for the old one is not in the snapshot. A machine that holds a `ref` to a peer cannot be restored yet, since the peer's id belongs to the process that saved it. Nor can one saved with calls pending, since its callers belong to that process too.
 
 ## A pure core and a driver
@@ -208,7 +209,7 @@ Every runtime can emit a trace: an ordered stream of JSON records describing wha
 
 Records name states and transitions by the ids in the IR, so the viewer can light up exactly what ran. A child machine's records carry their own `run` id and the parent's: the child started by invoke 4 of run `r1` is `r1.4`, so a trace of a whole request nests the way the charts do. Within one run, records are in the order things happened. Across runs, the interleaving depends on how the host schedules fibers or futures, so traces are compared with each run's records grouped together, in run order.
 
-Values in a trace go through the generated schemas. Fields can be marked `sensitive` in the chart to be redacted. Trace output is off by default and goes wherever the application points it: a file, stdout, an OpenTelemetry exporter (each state becomes a span, each transition a span event), or a live connection to the viewer.
+Values in a trace go through the generated schemas. Fields, parameters and variables marked `sensitive` in the chart are shown as `"<redacted>"`: the core redacts every record as it emits it, by the declared types, so no driver or exporter holds the real value and both runtimes write the same bytes ([redaction](../../spec/trace.md#redaction)). Saved snapshots keep the real values. Trace output is off by default and goes wherever the application points it: a file, stdout, an OpenTelemetry exporter (each state becomes a span, each transition a span event), or a live connection to the viewer.
 
 ## Conformance
 

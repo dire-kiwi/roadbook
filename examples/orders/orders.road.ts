@@ -50,7 +50,7 @@ export interface OrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "examples/orders/orders.road",
@@ -64,15 +64,18 @@ const ir: unknown = {
   "types": {
     "OrderDraft": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "items",
           "type": "Item[]",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "card",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -87,15 +90,18 @@ const ir: unknown = {
     },
     "Receipt": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "total",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -122,15 +128,18 @@ const ir: unknown = {
     },
     "Item": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "sku",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "qty",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -149,6 +158,7 @@ const ir: unknown = {
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -169,11 +179,13 @@ const ir: unknown = {
         {
           "name": "warehouse",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -191,16 +203,19 @@ const ir: unknown = {
         {
           "name": "warehouse",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "sku",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "qty",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -220,11 +235,13 @@ const ir: unknown = {
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "draft",
           "type": "OrderDraft",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -246,16 +263,19 @@ const ir: unknown = {
         {
           "name": "warehouse",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "items",
           "type": "Item[]",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -288,16 +308,19 @@ const ir: unknown = {
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "draft",
           "type": "OrderDraft",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "inventory",
           "type": "ref Inventory",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -310,6 +333,7 @@ const ir: unknown = {
         {
           "name": "receipt",
           "type": "Receipt",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -323,6 +347,7 @@ const ir: unknown = {
         {
           "name": "problem",
           "type": "OutOfStock",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -337,6 +362,7 @@ const ir: unknown = {
       "events": {},
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -630,6 +656,7 @@ const ir: unknown = {
                       "machine": "Inventory",
                       "state": null
                     },
+                    "key": null,
                     "event": "Release",
                     "value": {
                       "kind": "record",
@@ -769,6 +796,7 @@ const ir: unknown = {
         {
           "name": "warehouse",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -778,6 +806,7 @@ const ir: unknown = {
         {
           "name": "pending",
           "type": "call reserve",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -791,6 +820,7 @@ const ir: unknown = {
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -804,6 +834,7 @@ const ir: unknown = {
         {
           "name": "items",
           "type": "Item[]",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -821,6 +852,7 @@ const ir: unknown = {
             {
               "name": "orderId",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -838,11 +870,13 @@ const ir: unknown = {
             {
               "name": "sku",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "qty",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -874,11 +908,13 @@ const ir: unknown = {
             {
               "name": "orderId",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "items",
               "type": "Item[]",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -896,6 +932,7 @@ const ir: unknown = {
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Inventory",
         "name": "Inventory",

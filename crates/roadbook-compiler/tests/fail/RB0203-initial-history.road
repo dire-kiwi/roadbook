@@ -1,0 +1,12 @@
+machine M() {
+  event Go
+  initial Work
+  state Work {
+    initial Last
+    history Last
+    state A { on Go -> Out }
+  }
+  state Out { on Go -> Work.Last }
+}
+
+// expect: RB0203 at 5:13

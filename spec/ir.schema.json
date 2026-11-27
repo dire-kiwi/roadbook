@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Roadbook IR 0.5",
+  "title": "Roadbook IR 0.7",
   "description": "The compiled form of a Roadbook project: one document per entry file. See spec/ir.md for what each member means. Every member listed is required; absent values are null, missing docs are \"\", and empty lists and maps are [] and {}.",
   "type": "object",
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.5" },
+    "irVersion": { "const": "0.7" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -43,14 +43,25 @@
     "upperName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
     "lowerName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "typeRef": {
-      "description": "A type in canonical source form: a built-in, a declared name, an event type Machine.Event, or ref Machine, then any number of [] and ? suffixes.",
+      "description": "A type in canonical source form: a built-in, a declared name with optional type arguments (Page<Order>), an event type Machine.Event, ref Machine, or map<K, V>, then any number of [] and ? suffixes; or a pending call, call name, with no suffix. The pattern checks the tokens only; spec/ir.md gives the exact grammar, whose nesting a regular expression cannot check.",
       "type": "string",
-      "pattern": "^(string|int|float|bool|duration|json|[A-Z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?|ref [A-Z][A-Za-z0-9]*|call [a-z][A-Za-z0-9]*)(\\[\\]|\\?)*$"
+      "pattern": "^(call [a-z][A-Za-z0-9]*|(ref [A-Z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?)(<|, |>|\\[\\]|\\?|ref [A-Z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?)*)$"
+    },
+    "typeParams": {
+      "description": "The type parameters of a generic record or alias, in order; [] unless it is generic.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/upperName" },
+      "uniqueItems": true
     },
     "eventType": {
       "description": "The type of an event value: an event of the machine by its bare name, or Machine.Event.",
       "type": "string",
       "pattern": "^[A-Z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?$"
+    },
+    "instanceType": {
+      "description": "The type of a value of a generic record: its name and type arguments, as in typeRef.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]*<.*>$"
     },
     "stateId": {
       "description": "Absolute dotted path of a state, starting with the machine name.",
@@ -95,14 +106,19 @@
     "field": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "type", "doc"],
+      "required": ["name", "type", "sensitive", "doc"],
       "properties": {
         "name": { "$ref": "#/$defs/lowerName" },
         "type": { "$ref": "#/$defs/typeRef" },
+        "sensitive": { "$ref": "#/$defs/sensitive" },
         "doc": { "$ref": "#/$defs/doc" }
       }
     },
     "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+    "sensitive": {
+      "description": "Marked `sensitive`: trace records show the value as \"<redacted>\" (spec/trace.md#redaction).",
+      "type": "boolean"
+    },
     "errors": {
       "description": "Names of error types, in source order.",
       "type": "array",
@@ -114,9 +130,10 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "fields", "doc", "span"],
+          "required": ["kind", "params", "fields", "doc", "span"],
           "properties": {
             "kind": { "const": "record" },
+            "params": { "$ref": "#/$defs/typeParams" },
             "fields": { "$ref": "#/$defs/fields" },
             "doc": { "$ref": "#/$defs/doc" },
             "span": { "$ref": "#/$defs/span" }
@@ -125,9 +142,10 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "type", "doc", "span"],
+          "required": ["kind", "params", "type", "doc", "span"],
           "properties": {
             "kind": { "const": "alias" },
+            "params": { "$ref": "#/$defs/typeParams" },
             "type": { "$ref": "#/$defs/typeRef" },
             "doc": { "$ref": "#/$defs/doc" },
             "span": { "$ref": "#/$defs/span" }
@@ -222,7 +240,7 @@
     "machine": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["doc", "span", "strict", "params", "returns", "errors", "vars", "events", "emits", "calls", "root", "hash"],
+      "required": ["doc", "span", "strict", "params", "returns", "errors", "vars", "events", "emits", "calls", "children", "root", "hash"],
       "properties": {
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" },
@@ -246,6 +264,12 @@
           "propertyNames": { "$ref": "#/$defs/lowerName" },
           "additionalProperties": { "$ref": "#/$defs/callDecl" }
         },
+        "children": {
+          "description": "The machine's keyed collections of spawned children, by name.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/lowerName" },
+          "additionalProperties": { "$ref": "#/$defs/childrenDecl" }
+        },
         "root": {
           "description": "The machine body as a compound state whose id and name are the machine name.",
           "allOf": [
@@ -268,11 +292,23 @@
     "var": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "type", "init", "doc", "span"],
+      "required": ["name", "type", "sensitive", "init", "doc", "span"],
       "properties": {
         "name": { "$ref": "#/$defs/lowerName" },
         "type": { "$ref": "#/$defs/typeRef" },
+        "sensitive": { "$ref": "#/$defs/sensitive" },
         "init": { "oneOf": [{ "$ref": "#/$defs/expr" }, { "type": "null" }] },
+        "doc": { "$ref": "#/$defs/doc" },
+        "span": { "$ref": "#/$defs/span" }
+      }
+    },
+    "childrenDecl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["machine", "key", "doc", "span"],
+      "properties": {
+        "machine": { "$ref": "#/$defs/upperName" },
+        "key": { "description": "The key type: string, int or an enum, or an alias of one.", "$ref": "#/$defs/typeRef" },
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" }
       }
@@ -298,7 +334,7 @@
       "properties": {
         "id": { "$ref": "#/$defs/stateId" },
         "name": { "$ref": "#/$defs/upperName" },
-        "kind": { "enum": ["atomic", "compound", "parallel", "final"] },
+        "kind": { "enum": ["atomic", "compound", "parallel", "final", "history", "deepHistory"] },
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" },
         "initial": { "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }] },
@@ -317,8 +353,20 @@
           "else": { "properties": { "initial": { "type": "null" } } }
         },
         {
-          "if": { "properties": { "kind": { "enum": ["atomic", "final"] } } },
+          "if": { "properties": { "kind": { "enum": ["atomic", "final", "history", "deepHistory"] } } },
           "then": { "properties": { "states": { "maxItems": 0 } } }
+        },
+        {
+          "description": "A history state is a pseudo-state: no effects, work or transitions.",
+          "if": { "properties": { "kind": { "enum": ["history", "deepHistory"] } } },
+          "then": {
+            "properties": {
+              "entry": { "maxItems": 0 },
+              "exit": { "maxItems": 0 },
+              "invoke": { "type": "null" },
+              "transitions": { "maxItems": 0 }
+            }
+          }
         },
         {
           "if": { "properties": { "kind": { "const": "parallel" } } },
@@ -370,12 +418,12 @@
       ]
     },
     "address": {
-      "description": "Another running machine: an invoked child by its as name, or a parameter or variable of type ref. A call invoke's callee is always a ref.",
+      "description": "Another running machine: an invoked child by its as name, a parameter or variable of type ref, or a children collection. A call invoke's callee is always a ref.",
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "name", "machine", "state"],
       "properties": {
-        "kind": { "enum": ["child", "ref"] },
+        "kind": { "enum": ["child", "ref", "children"] },
         "name": { "$ref": "#/$defs/lowerName" },
         "machine": { "$ref": "#/$defs/upperName" },
         "state": { "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }] }
@@ -448,6 +496,22 @@
           "additionalProperties": false,
           "required": ["kind", "call"],
           "properties": { "kind": { "const": "call" }, "call": { "$ref": "#/$defs/lowerName" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "children"],
+          "properties": { "kind": { "const": "spawn.done" }, "children": { "$ref": "#/$defs/lowerName" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "children", "error"],
+          "properties": {
+            "kind": { "const": "spawn.fail" },
+            "children": { "$ref": "#/$defs/lowerName" },
+            "error": { "oneOf": [{ "$ref": "#/$defs/upperName" }, { "const": "*" }] }
+          }
         }
       ]
     },
@@ -476,10 +540,14 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "to", "event", "value"],
+          "required": ["kind", "to", "key", "event", "value"],
           "properties": {
             "kind": { "const": "send" },
             "to": { "$ref": "#/$defs/address" },
+            "key": {
+              "description": "For an address of kind children, the key expression, or null for every child (send name.*.E). Null for the other kinds.",
+              "oneOf": [{ "$ref": "#/$defs/expr" }, { "type": "null" }]
+            },
             "event": { "$ref": "#/$defs/upperName" },
             "value": { "$ref": "#/$defs/eventValue" }
           }
@@ -518,6 +586,28 @@
           },
           "if": { "properties": { "outcome": { "const": "fail" } } },
           "then": { "properties": { "value": { "$ref": "#/$defs/expr" } } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "children", "machine", "key", "args"],
+          "properties": {
+            "kind": { "const": "spawn" },
+            "children": { "$ref": "#/$defs/lowerName" },
+            "machine": { "$ref": "#/$defs/upperName" },
+            "key": { "$ref": "#/$defs/expr" },
+            "args": { "type": "array", "items": { "$ref": "#/$defs/expr" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "children", "key"],
+          "properties": {
+            "kind": { "const": "stop" },
+            "children": { "$ref": "#/$defs/lowerName" },
+            "key": { "$ref": "#/$defs/expr" }
+          }
         }
       ]
     },
@@ -533,7 +623,7 @@
           "properties": {
             "kind": { "const": "ref" },
             "path": {
-              "description": "A variable, parameter or event/result/error/call, then field names.",
+              "description": "A variable, parameter or event/result/error/call/key, then field names.",
               "type": "array",
               "minItems": 1,
               "items": { "$ref": "#/$defs/lowerName" }
@@ -599,7 +689,7 @@
                 }
               }
             },
-            "type": { "$ref": "#/$defs/eventType" },
+            "type": { "oneOf": [{ "$ref": "#/$defs/eventType" }, { "$ref": "#/$defs/instanceType" }] },
             "text": { "type": "string" }
           }
         },

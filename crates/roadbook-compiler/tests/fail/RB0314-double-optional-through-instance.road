@@ -1,0 +1,12 @@
+type Box<T> { value: T? }
+type Wrap<T> { box: Box<T> }
+type Maybe<T> = T?
+
+machine M(a: Box<int?>, b: Wrap<string?>, c: Maybe<int?>, d: Box<int>) {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0314 at 5:14
+// expect: RB0314 at 5:28
+// expect: RB0314 at 5:46

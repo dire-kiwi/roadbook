@@ -116,6 +116,9 @@ pub struct MachineDiff {
     /// The transitions that are not unchanged, by source state id and index in the merged
     /// state's `transitions`, in document order.
     pub transitions: Vec<((String, usize), Element)>,
+    /// The ids among `states` of history states (in either version): counted with the states,
+    /// and again on their own.
+    pub history: HashSet<String>,
 }
 
 impl MachineDiff {
@@ -131,6 +134,17 @@ impl MachineDiff {
         let mut c = Counts::default();
         for (_, e) in &self.states {
             c.count(e.status);
+        }
+        c
+    }
+
+    /// The history states among [`state_counts`](Self::state_counts).
+    pub fn history_counts(&self) -> Counts {
+        let mut c = Counts::default();
+        for (id, e) in &self.states {
+            if self.history.contains(id) {
+                c.count(e.status);
+            }
         }
         c
     }
@@ -204,6 +218,7 @@ impl ChartDiff {
                     "counts": {
                         "states": d.state_counts().to_json(),
                         "transitions": d.transition_counts().to_json(),
+                        "history": d.history_counts().to_json(),
                     },
                 }),
             );
@@ -303,6 +318,7 @@ pub fn diff(before: Option<&Ir>, after: Option<&Ir>, before_label: &str) -> Char
             moved: None,
             states: Vec::new(),
             transitions: Vec::new(),
+            history: HashSet::new(),
         };
         let merged = match b_ir.machines.get(name) {
             None => {
@@ -348,6 +364,7 @@ pub fn diff(before: Option<&Ir>, after: Option<&Ir>, before_label: &str) -> Char
             moved: None,
             states: Vec::new(),
             transitions: Vec::new(),
+            history: HashSet::new(),
         };
         mark_all(&b.root, Status::Removed, &mut d);
         d.states.retain(|(id, _)| id != name);
@@ -408,6 +425,9 @@ pub fn shift_machine(m: &mut Machine, offset: u32) {
         e.span.file += offset;
     }
     for c in m.calls.values_mut() {
+        c.span.file += offset;
+    }
+    for c in m.children.values_mut() {
         c.span.file += offset;
     }
     shift_state(&mut m.root, offset);
@@ -541,6 +561,9 @@ fn change(
 
 /// Every state and transition of `s` and inside it, with status `status`.
 fn mark_all(s: &State, status: Status, d: &mut MachineDiff) {
+    if s.kind.is_history() {
+        d.history.insert(s.id.clone());
+    }
     d.states.push((
         s.id.clone(),
         Element {
@@ -596,6 +619,10 @@ impl Merge<'_> {
                 .changes
                 .extend(changes.into_iter().filter(|c| c.what != "doc"));
         } else if !changes.is_empty() {
+            // `history` to `deep history` is a change of kind, as any.
+            if a.kind.is_history() || b.kind.is_history() {
+                self.d.history.insert(a.id.clone());
+            }
             self.d.states.push((a.id.clone(), changed(changes)));
         }
         let mut out = a.clone();
@@ -756,6 +783,8 @@ pub fn trigger_text(t: &Trigger) -> String {
         Trigger::After { delay } => format!("after {}", delay.text),
         Trigger::Always => "always".into(),
         Trigger::InvokeFail { error } => format!("fail {error}"),
+        Trigger::SpawnDone { children } => format!("{children}.done"),
+        Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
         Trigger::Done | Trigger::InvokeDone => "done".into(),
     }
 }
@@ -771,7 +800,14 @@ pub fn effect_text(e: &Effect) -> String {
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
-        Effect::Send { to, value, .. } => format!("send {}.{}", to.name, value.text),
+        Effect::Send { to, key, value, .. } => {
+            let which = match (to.kind, key) {
+                (roadbook_ir::AddressKind::Children, Some(k)) => format!("[{}]", k.text),
+                (roadbook_ir::AddressKind::Children, None) => ".*".into(),
+                _ => String::new(),
+            };
+            format!("send {}{which}.{}", to.name, value.text)
+        }
         Effect::Emit { value, .. } => format!("emit {}", value.text),
         Effect::Reply {
             call,
@@ -787,6 +823,20 @@ pub fn effect_text(e: &Effect) -> String {
                 .map_or(String::new(), |v| format!(" {}", v.text));
             format!("reply {} {outcome}{value}", call.text)
         }
+        Effect::Spawn {
+            children,
+            machine,
+            key,
+            args,
+        } => format!(
+            "spawn {children}[{}] = {machine}({})",
+            key.text,
+            args.iter()
+                .map(|a| a.text.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Effect::Stop { children, key } => format!("stop {children}[{}]", key.text),
     }
 }
 
@@ -818,6 +868,8 @@ fn kind_text(k: StateKind) -> String {
         StateKind::Compound => "compound",
         StateKind::Parallel => "parallel",
         StateKind::Final => "final",
+        StateKind::History => "history",
+        StateKind::DeepHistory => "deep history",
     }
     .into()
 }
@@ -917,7 +969,7 @@ fn guard_text(s: &State, i: usize) -> String {
 fn fields_text(fields: &[roadbook_ir::Field]) -> String {
     fields
         .iter()
-        .map(|f| format!("{}: {}", f.name, f.ty))
+        .map(page::field_text)
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -930,11 +982,20 @@ fn type_text(name: &str, t: &roadbook_ir::TypeDecl) -> String {
             format!(" {{ {} }}", fields_text(fs))
         }
     };
+    let generic = |params: &[String]| {
+        if params.is_empty() {
+            String::new()
+        } else {
+            format!("<{}>", params.join(", "))
+        }
+    };
     match &t.def {
-        TypeDef::Record { fields: fs } => format!("type {name}{}", fields(fs)),
+        TypeDef::Record { params, fields: fs } => {
+            format!("type {name}{}{}", generic(params), fields(fs))
+        }
         TypeDef::Error { fields: fs } => format!("error {name}{}", fields(fs)),
         TypeDef::Enum { variants } => format!("enum {name} {{ {} }}", variants.join(", ")),
-        TypeDef::Alias { ty } => format!("type {name} = {ty}"),
+        TypeDef::Alias { params, ty } => format!("type {name}{} = {ty}", generic(params)),
         TypeDef::Extern => format!("extern type {name}"),
     }
 }
@@ -956,7 +1017,8 @@ fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
             .as_ref()
             .map(|e| format!(" = {}", e.text))
             .unwrap_or_default();
-        format!("var {}: {}{init}", v.name, v.ty)
+        let sensitive = if v.sensitive { "sensitive " } else { "" };
+        format!("{sensitive}var {}: {}{init}", v.name, v.ty)
     };
     keyed(
         &mut out,
@@ -997,6 +1059,18 @@ fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
         "call",
         b.calls.iter().map(|(n, c)| (n.clone(), call_text(n, c))),
         a.calls.iter().map(|(n, c)| (n.clone(), call_text(n, c))),
+    );
+    let children = |n: &String, c: &roadbook_ir::ChildrenDecl| {
+        (
+            n.clone(),
+            format!("children {n}: {} by {}", c.machine, c.key),
+        )
+    };
+    keyed(
+        &mut out,
+        "children",
+        b.children.iter().map(|(n, c)| children(n, c)),
+        a.children.iter().map(|(n, c)| children(n, c)),
     );
     out
 }
@@ -1451,6 +1525,49 @@ machine Q(p: ref P) {
     }
 
     #[test]
+    fn history_states_added_removed_and_changed_in_kind() {
+        let before = BASE.replace(
+            "    initial C1\n",
+            "    initial C1\n    history Last\n    history Gone\n",
+        );
+        let after = BASE.replace(
+            "    initial C1\n",
+            "    initial C1\n    deep history Last\n    history New\n",
+        );
+        let d = diff(Some(&ir(&before)), Some(&ir(&after)), "main");
+        let last = status_of(&d, "M.C.Last").unwrap();
+        assert_eq!(last.status, Status::Changed);
+        assert_eq!(
+            last.changes,
+            [change(
+                "kind",
+                "history".to_string(),
+                "deep history".to_string()
+            )]
+        );
+        assert_eq!(status_of(&d, "M.C.New").unwrap().status, Status::Added);
+        assert_eq!(status_of(&d, "M.C.Gone").unwrap().status, Status::Removed);
+        let m = &d.machines[0].1;
+        let all = Counts {
+            added: 1,
+            removed: 1,
+            changed: 1,
+        };
+        // Counted with the states, and on their own.
+        assert_eq!(m.state_counts(), all);
+        assert_eq!(m.history_counts(), all);
+        assert_eq!(
+            d.to_json()["machines"]["M"]["counts"]["history"],
+            all.to_json()
+        );
+        // The removed one is put back where it was, in the merged chart.
+        let c = &d.ir.machines["M"].root.states[2];
+        let names: Vec<&str> = c.states.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, ["Last", "Gone", "New", "C1", "C2"]);
+        assert_eq!(c.states[1].kind, StateKind::History);
+    }
+
+    #[test]
     fn a_renamed_state_is_removed_and_added() {
         let after = BASE
             .replace("state B {", "state Paying {")
@@ -1475,6 +1592,37 @@ machine Q(p: ref P) {
         assert_eq!(c.initial.as_deref(), Some("M.C.C1"));
         assert_eq!(c.states.len(), 2);
         assert_eq!(whats(status_of(&d, "M.C").unwrap()), ["kind", "initial"]);
+    }
+
+    #[test]
+    fn a_sensitive_mark_added_or_removed_is_a_change() {
+        // The machine hash leaves marks out, so the diff must find them itself.
+        let after = BASE
+            .replace("task charge(n: int)", "task charge(sensitive n: int)")
+            .replace("machine M(n: int)", "machine M(sensitive n: int)")
+            .replace("  var tries: int = 0", "  sensitive var tries: int = 0")
+            .replace("set tries = tries + 1", "set tries = 1")
+            .replace("output tries", "output 0");
+        let before = BASE
+            .replace("set tries = tries + 1", "set tries = 1")
+            .replace("output tries", "output 0");
+        let (b, a) = (ir(&before), ir(&after));
+        assert_eq!(b.machines["M"].hash, a.machines["M"].hash);
+        let d = diff(Some(&b), Some(&a), "main");
+        assert_eq!(d.machines[0].1.status, Status::Changed);
+        let whats: Vec<&str> = d.machines[0]
+            .1
+            .changes
+            .iter()
+            .map(|c| c.what.as_str())
+            .collect();
+        assert_eq!(whats, ["signature", "var tries"]);
+        let names: Vec<(&str, Status)> = d
+            .decls
+            .iter()
+            .map(|(n, e)| (n.as_str(), e.status))
+            .collect();
+        assert_eq!(names, [("charge", Status::Changed)]);
     }
 
     #[test]

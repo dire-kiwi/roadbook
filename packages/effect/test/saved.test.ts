@@ -46,7 +46,7 @@ describe("save and restore", () => {
       yield* actor.send({ _tag: "Add", by: 2 })
       yield* settle
       const saved = yield* actor.save
-      assert.strictEqual(saved.snapshotVersion, 1)
+      assert.strictEqual(saved.snapshotVersion, 3)
       assert.deepStrictEqual(saved.vars, { n: 3 })
       assert.deepStrictEqual(saved.active, ["Counter", "Counter.Counting"])
       // The run carries on.
@@ -67,7 +67,7 @@ describe("save and restore", () => {
       const text = JSON.stringify(yield* actor.save)
       const decoded = Schema.decodeUnknownSync(Roadbook.Saved)(JSON.parse(text))
       assert.strictEqual(decoded.vars["n"], 5)
-      assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(Roadbook.Saved)({ ...decoded, snapshotVersion: 2 })))
+      assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(Roadbook.Saved)({ ...decoded, snapshotVersion: 4 })))
       const restored = yield* CounterLive.restore(decoded)
       yield* restored.send({ _tag: "Finish" })
       assert.strictEqual(yield* restored.result, 5)
@@ -88,7 +88,7 @@ describe("save and restore", () => {
       const restore = (live: Roadbook.Implemented<any, never>, value: unknown, options?: Roadbook.RestoreOptions) =>
         Effect.exit(live.restore(value as Roadbook.Saved, options).pipe(Effect.provideService(Roadbook.TraceSink, sink)))
       assert.strictEqual(refusal(yield* restore(CounterLive, {})), "invalid")
-      assert.strictEqual(refusal(yield* restore(CounterLive, { ...saved, snapshotVersion: 2 })), "invalid")
+      assert.strictEqual(refusal(yield* restore(CounterLive, { ...saved, snapshotVersion: 4 })), "invalid")
       assert.strictEqual(refusal(yield* restore(CounterLive, { ...saved, extra: 1 })), "invalid")
       assert.strictEqual(refusal(yield* restore(OrderLive, saved)), "machine")
       assert.strictEqual(refusal(yield* restore(CounterLive, old)), "ir")
@@ -245,7 +245,7 @@ describe("saving and restoring, at the edges", () => {
       }
       assert.deepStrictEqual(records, [])
       // A refused snapshot is refused first, with its reason.
-      const refused = yield* Effect.exit(CounterLive.resume({ ...saved, snapshotVersion: 2 } as never, { _tag: "Nope" } as never))
+      const refused = yield* Effect.exit(CounterLive.resume({ ...saved, snapshotVersion: 4 } as never, { _tag: "Nope" } as never))
       assert.strictEqual(refusal(refused), "invalid")
       const fine = yield* resume({ _tag: "Add", by: 2 })
       assert.isTrue(Exit.isSuccess(fine) && fine.value.vars["n"] === 3)
@@ -271,6 +271,41 @@ describe("saving and restoring, at the edges", () => {
       const defect = { ...saved, status: "defect", active: [], result: { defect: { kind: "cosmic", ray: 1 } } }
       assert.strictEqual(refusal(yield* restore(defect)), "ended")
     }))
+
+  it.effect("history: saved as version 2, a version 1 snapshot restored with no records, no history state reported", () =>
+    Effect.gen(function*() {
+      const historyIr = JSON.parse(fs.readFileSync(path.join(charts, "history.ir.json"), "utf8")) as Core.Ir
+      const EditorLive = impl("Editor", { actions: { log: () => Effect.void }, tasks: { fetch: () => Effect.never } }, historyIr)
+      const actor = yield* EditorLive.spawn({})
+      yield* actor.send({ _tag: "Next" })
+      yield* actor.send({ _tag: "Help" })
+      yield* actor.send({ _tag: "BackDeep" })
+      yield* settle
+      const saved = yield* actor.save
+      assert.strictEqual(saved.snapshotVersion, 3)
+      assert.deepStrictEqual(saved.history, {
+        "Editor.Work.Deep": ["Editor.Work.Review.Read"],
+        "Editor.Work.Shallow": ["Editor.Work.Review"]
+      })
+      assert.deepStrictEqual((yield* actor.snapshot).active, ["Editor", "Editor.Work", "Editor.Work.Review", "Editor.Work.Review.Read"])
+      // Version 1, in Help: it has no records, so going back enters Work by default.
+      const { history: _, spawned: __, ...rest } = yield* Effect.scoped(Effect.gen(function*() {
+        const other = yield* EditorLive.spawn({})
+        yield* other.send({ _tag: "Help" })
+        yield* settle
+        return yield* other.save
+      }))
+      const v1 = { ...rest, snapshotVersion: 1 } as Roadbook.Saved
+      const restored = yield* EditorLive.restore(v1)
+      const resaved = yield* restored.save
+      assert.strictEqual(resaved.snapshotVersion, 3)
+      assert.deepStrictEqual(resaved.history, {})
+      yield* restored.send({ _tag: "BackDeep" })
+      yield* settle
+      const snapshot = yield* restored.snapshot
+      assert.deepStrictEqual(snapshot.active, ["Editor", "Editor.Work", "Editor.Work.Draft"])
+      assert.isFalse(snapshot.matches("Editor.Work.Deep"))
+    }).pipe(Effect.scoped))
 })
 
 describe("the request handler", () => {

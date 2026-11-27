@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0314]: `Box<int?>` makes a type optional twice: `Box` makes its parameter `T` optional, and `int?` already is
+ --> RB0314-double-optional-through-instance.road:5:14
+  |
+5 | machine M(a: Box<int?>, b: Wrap<string?>, c: Maybe<int?>, d: Box<int>) {
+  |              ^^^^^^^^^
+  |
+  = help: a value is either present or absent; pass a type argument that is not optional
+
+error[RB0314]: `Wrap<string?>` makes a type optional twice: `Wrap` makes its parameter `T` optional, and `string?` already is
+ --> RB0314-double-optional-through-instance.road:5:28
+  |
+5 | machine M(a: Box<int?>, b: Wrap<string?>, c: Maybe<int?>, d: Box<int>) {
+  |                            ^^^^^^^^^^^^^
+  |
+  = help: a value is either present or absent; pass a type argument that is not optional
+
+error[RB0314]: `Maybe<int?>` makes a type optional twice: `Maybe` makes its parameter `T` optional, and `int?` already is
+ --> RB0314-double-optional-through-instance.road:5:46
+  |
+5 | machine M(a: Box<int?>, b: Wrap<string?>, c: Maybe<int?>, d: Box<int>) {
+  |                                              ^^^^^^^^^^^
+  |
+  = help: a value is either present or absent; pass a type argument that is not optional

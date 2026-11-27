@@ -1,0 +1,33 @@
+{
+  "description": "The retrying state's own `after 10s` fires while it waits in Backoff: the wait's timer is cancelled and Backoff and the state are left.",
+  "requires": [],
+  "chart": "charts/retry.road",
+  "machine": "Fetcher",
+  "input": {
+    "id": "d1"
+  },
+  "stub": [],
+  "fns": {
+    "backoff": [
+      {
+        "args": [
+          1
+        ],
+        "returns": 60000
+      }
+    ]
+  },
+  "actions": {},
+  "script": [
+    {
+      "task": "fetch",
+      "fail": {
+        "_tag": "Busy"
+      }
+    },
+    {
+      "advance": 10000
+    }
+  ],
+  "status": "failed"
+}

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/many.road",
@@ -28,6 +28,7 @@
         {
           "name": "count",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 1,
@@ -47,6 +48,7 @@
       "events": {},
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Many",
         "name": "Many",
@@ -224,6 +226,7 @@
       "events": {},
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Leaf",
         "name": "Leaf",

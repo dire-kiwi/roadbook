@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/upload.road",
@@ -14,6 +14,7 @@
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -33,6 +34,7 @@
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -63,6 +65,7 @@
         {
           "name": "size",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -72,6 +75,7 @@
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -118,6 +122,7 @@
             {
               "name": "offset",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -132,6 +137,7 @@
         }
       },
       "calls": {},
+      "children": {},
       "root": {
         "id": "Upload",
         "name": "Upload",
@@ -388,6 +394,7 @@
         {
           "name": "size",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -397,6 +404,7 @@
         {
           "name": "shown",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -415,6 +423,7 @@
         {
           "name": "uploaded",
           "type": "int",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -452,6 +461,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -552,6 +562,7 @@
                       "machine": "Upload",
                       "state": "Publish.Uploading"
                     },
+                    "key": null,
                     "event": "Pause",
                     "value": {
                       "kind": "record",
@@ -586,6 +597,7 @@
                       "machine": "Upload",
                       "state": "Publish.Uploading"
                     },
+                    "key": null,
                     "event": "Resume",
                     "value": {
                       "kind": "record",
@@ -711,6 +723,7 @@
         {
           "name": "size",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -720,6 +733,7 @@
         {
           "name": "uploaded",
           "type": "int",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -734,6 +748,7 @@
       "events": {},
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Quiet",
         "name": "Quiet",
@@ -873,6 +888,7 @@
         {
           "name": "size",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -882,6 +898,7 @@
         {
           "name": "uploaded",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -924,6 +941,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Eager",
         "name": "Eager",
@@ -975,6 +993,7 @@
                       "machine": "Upload",
                       "state": "Eager.Uploading"
                     },
+                    "key": null,
                     "event": "Pause",
                     "value": {
                       "kind": "record",
@@ -1063,6 +1082,7 @@
                       "machine": "Upload",
                       "state": "Eager.Uploading"
                     },
+                    "key": null,
                     "event": "Pause",
                     "value": {
                       "kind": "record",

@@ -1,0 +1,9 @@
+type Order { id: string }
+type Page<Order> { items: Order[] }
+
+machine M(p: Page<int>) {
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0107 at 2:11

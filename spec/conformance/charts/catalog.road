@@ -1,0 +1,37 @@
+// Conformance chart: a call whose parameters and result are a map and an
+// instance of a generic record, given and answered as their JSON forms.
+
+/// Something for sale.
+type Item { sku: string, qty: int }
+
+/// A page of results, and where the next one starts.
+type Page<T> { items: T[], next: string? }
+
+/// The items of `page` that `stock` has enough of.
+fn inStock(stock: map<string, int>, page: Page<Item>) -> Page<Item>
+
+/// Searches its stock for the items it is asked about.
+machine Catalog() {
+  /// The items of `page` that are in stock, by `stock`'s counts.
+  call search(stock: map<string, int>, page: Page<Item>) -> Page<Item>
+
+  initial Open
+
+  state Open { on search reply call done inStock(event.stock, event.page) }
+}
+
+/// Asks the catalog which of the items it wants are in stock.
+machine Shopper(catalog: ref Catalog, stock: map<string, int>, wanted: Page<Item>) -> Page<Item> {
+  var found: Page<Item> = wanted
+
+  initial Asking
+
+  state Asking {
+    invoke catalog.search(stock, wanted) {
+      done            -> Found  set found = result
+      fail Unanswered -> Found
+    }
+  }
+
+  final state Found { output found }
+}

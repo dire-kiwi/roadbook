@@ -3,12 +3,17 @@
  * starts a run from one (execution.md, "Restoring a snapshot"), in the order the spec gives
  * them, each refusal with its reason.
  */
-import { callName, type Field, type Ir, type Machine, parseTypeRef, refMachine, type State } from "./ir.ts"
+import { childrenOf, type Field, type Ir, isHistory, type Machine, type State } from "./ir.ts"
 import { copyJson, type Json } from "./json.ts"
+import { expandType, fieldsOf, isOptionalType, type TypeRef } from "./typeref.ts"
 import type { Saved, Snapshot } from "./types.ts"
 
-/** The `snapshotVersion` this runtime saves and restores. */
-export const SNAPSHOT_VERSION = 1
+/**
+ * The `snapshotVersion` this runtime saves. It restores this one, version 2, written before
+ * keyed spawn, which has no `spawned`, and version 1, written before history states, which has
+ * no `history` either.
+ */
+export const SNAPSHOT_VERSION = 3
 
 /** Why a saved snapshot was refused. */
 export type RefusalReason = "invalid" | "machine" | "ir" | "migration" | "ended" | "ref" | "calls"
@@ -29,8 +34,8 @@ export type Checked =
   | ({ readonly ok: false } & Refusal)
 
 /**
- * The saved form of `snapshot`: the version added, each timer's due time from `due`, and
- * `calls` only when the run has pending calls.
+ * The saved form of `snapshot`: the version (always 3) added, each timer's due time from `due`,
+ * and `calls` only when the run has pending calls.
  */
 export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Saved => ({
   snapshotVersion: SNAPSHOT_VERSION,
@@ -43,10 +48,12 @@ export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Sav
   vars: snapshot.vars,
   invokes: snapshot.invokes,
   ...(snapshot.calls.length > 0 ? { calls: snapshot.calls } : {}),
+  spawned: snapshot.spawned,
   timers: snapshot.timers.map((t) => ({ ...t, due: due(t.id) })),
   nextInvoke: snapshot.nextInvoke,
   nextTimer: snapshot.nextTimer,
   nextMessage: snapshot.nextMessage,
+  history: snapshot.history,
   result: snapshot.result
 })
 
@@ -97,7 +104,10 @@ export const checkSaved = (ir: Ir, machine: string, json: unknown, migrate?: Mig
 
 // ---- the shape: snapshot.schema.json --------------------------------------------------------
 
-/** Whether `u` matches `snapshot.schema.json` with `snapshotVersion` 1. Its values are not checked. */
+/**
+ * Whether `u` matches `snapshot.schema.json`: version 3 with `history` and `spawned`, version 2
+ * with `history` only, or version 1 with neither. Its values are not checked.
+ */
 export const isSaved = (u: unknown): u is Saved => shapeIssue(u) === undefined
 
 const UPPER = /^[A-Z][A-Za-z0-9]*$/
@@ -156,10 +166,17 @@ const membersIssue = (
 /** What makes `json` not match snapshot.schema.json, or `undefined`. */
 const shapeIssue = (json: unknown): string | undefined => {
   if (!isObject(json)) return "not a JSON object"
-  const members = membersIssue(json, MEMBERS, "it", ["calls"])
+  const version = json["snapshotVersion"]
+  if (version === 1 && Object.hasOwn(json, "history")) return "it is version 1 and has history, which version 2 added"
+  if (version !== SNAPSHOT_VERSION && Object.hasOwn(json, "spawned")) {
+    return `it is version ${JSON.stringify(version)} and has spawned, which version 3 added`
+  }
+  const expected = version === 1 ? MEMBERS : version === 2 ? [...MEMBERS, "history"] : [...MEMBERS, "history", "spawned"]
+  // `calls` is written only when the run has pending calls, in any version.
+  const members = membersIssue(json, expected, "it", ["calls"])
   if (members !== undefined) return members
-  if (json["snapshotVersion"] !== SNAPSHOT_VERSION) {
-    return `snapshotVersion is ${JSON.stringify(json["snapshotVersion"])}, and this runtime reads ${SNAPSHOT_VERSION}`
+  if (version !== 1 && version !== 2 && version !== SNAPSHOT_VERSION) {
+    return `snapshotVersion is ${JSON.stringify(version)}, and this runtime reads 1, 2 and ${SNAPSHOT_VERSION}`
   }
   if (!matches(UPPER, json["machine"])) return "machine is not a machine name"
   if (!isRunId(json["run"])) return "run is not a run id"
@@ -191,6 +208,18 @@ const shapeIssue = (json: unknown): string | undefined => {
       if (!isRunId(call["from"]) || !isId(call["invoke"]) || !matches(LOWER, call["call"])) return "a call is malformed"
     }
   }
+  const spawned = json["spawned"] ?? []
+  if (!Array.isArray(spawned)) return "spawned is not a list"
+  for (const ch of spawned) {
+    if (!isObject(ch)) return "a spawned child is not an object"
+    const issue = membersIssue(ch, ["id", "children", "key", "args"], "a spawned child")
+    if (issue !== undefined) return issue
+    const key = ch["key"]
+    if (
+      !isId(ch["id"]) || !matches(LOWER, ch["children"]) || !(typeof key === "string" || Number.isInteger(key)) ||
+      !isObject(ch["args"]) || !Object.keys(ch["args"]).every((k) => LOWER.test(k))
+    ) return "a spawned child is malformed"
+  }
   const timers = json["timers"]
   if (!Array.isArray(timers)) return "timers is not a list"
   for (const tm of timers) {
@@ -204,6 +233,17 @@ const shapeIssue = (json: unknown): string | undefined => {
   }
   for (const name of ["nextInvoke", "nextTimer", "nextMessage"]) {
     if (!isId(json[name])) return `${name} is not a positive integer`
+  }
+  if (version !== 1) {
+    const history = json["history"]
+    if (!isObject(history)) return "history is not an object"
+    for (const [id, record] of Object.entries(history)) {
+      if (!STATE_ID.test(id)) return `history has ${JSON.stringify(id)}, which is not a state id`
+      if (!Array.isArray(record) || record.length === 0 || !record.every((s) => matches(STATE_ID, s))) {
+        return `history.${id} is not a non-empty list of state ids`
+      }
+      if (new Set(record).size !== record.length) return `history.${id} names a state twice`
+    }
   }
   const result = json["result"]
   if (result !== null) {
@@ -243,11 +283,20 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
     last = entry.order
     if (entry.parent !== undefined && !active.has(entry.parent.id)) return `${id} is active but its parent is not`
     const { state } = entry
+    if (isHistory(state)) return `active names ${id}, which is a history state`
     const children = state.states.filter((c) => active.has(c.id)).length
     if (state.kind === "compound" && children !== 1) return `${id} is an active compound state with ${children} active children`
-    if (state.kind === "parallel" && children !== state.states.length) {
+    if (state.kind === "parallel" && children !== childrenOf(state).length) {
       return `${id} is an active parallel state whose regions are not all active`
     }
+  }
+
+  // What the history states recorded.
+  for (const [id, record] of Object.entries(saved.history ?? {})) {
+    const entry = states.get(id)
+    if (entry === undefined || !isHistory(entry.state)) return `history has ${id}, which is not a history state`
+    const issue = recordIssue(entry.state, entry.parent!, record, (s) => states.get(s))
+    if (issue !== undefined) return `history.${id} is not what ${id} could have recorded: ${issue}`
   }
 
   // The work.
@@ -265,6 +314,30 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
     if (invokeIds.has(inv.id)) return `invoke id ${inv.id} is repeated`
     invokeIds.add(inv.id)
     if (inv.id >= saved.nextInvoke) return `invoke id ${inv.id} is not below nextInvoke`
+  }
+  const keys = new Set<string>()
+  for (const ch of saved.spawned ?? []) {
+    const decl = Object.hasOwn(m.children, ch.children) ? m.children[ch.children] : undefined
+    if (decl === undefined) return `spawned child ${ch.id} is of ${ch.children}, which is not a collection of the machine`
+    const keyIssue = valueIssue(ir, decl.key, ch.key, `the key of spawned child ${ch.id}`)
+    if (keyIssue !== undefined) return keyIssue
+    const child = ir.machines[decl.machine]
+    if (child === undefined) return `the machine of ${ch.children} is not in the IR`
+    const names = new Set(child.params.map((p) => p.name))
+    const absent = child.params.find((p) => !Object.hasOwn(ch.args, p.name))
+    if (absent !== undefined) return `spawned child ${ch.id} has no argument ${absent.name}`
+    const other = Object.keys(ch.args).find((k) => !names.has(k))
+    if (other !== undefined) return `spawned child ${ch.id} has an argument ${other}, which is not a parameter`
+    for (const p of child.params) {
+      const issue = valueIssue(ir, p.type, ch.args[p.name] ?? null, `the argument ${p.name} of spawned child ${ch.id}`)
+      if (issue !== undefined) return issue
+    }
+    const key = `${ch.children} ${JSON.stringify(ch.key)}`
+    if (keys.has(key)) return `two spawned children of ${ch.children} have the key ${JSON.stringify(ch.key)}`
+    keys.add(key)
+    if (invokeIds.has(ch.id)) return `invoke id ${ch.id} is repeated`
+    invokeIds.add(ch.id)
+    if (ch.id >= saved.nextInvoke) return `spawned child id ${ch.id} is not below nextInvoke`
   }
   const timerKeys = new Set<string>()
   const timerIds = new Set<number>()
@@ -304,95 +377,148 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
   return undefined
 }
 
-/** Whether a type reference is optional once aliases are expanded. */
-const isOptionalType = (ir: Ir, type: string): boolean => {
-  const { base, suffixes } = parseTypeRef(type)
-  if (suffixes.length > 0) return suffixes[suffixes.length - 1] === "?"
-  const decl = Object.hasOwn(ir.types, base) ? ir.types[base] : undefined
-  return decl?.kind === "alias" ? isOptionalType(ir, decl.type) : false
+/**
+ * What makes `record` not a record history state `h` with parent `parent` could have made, or
+ * `undefined`. A shallow one records one child of a compound parent or every child of a
+ * parallel one; a deep one the leaves of a configuration below its parent. In document order
+ * either way.
+ */
+const recordIssue = (
+  h: State,
+  parent: State,
+  record: ReadonlyArray<string>,
+  lookup: (id: string) => { readonly state: State; readonly parent: State | undefined; readonly order: number } | undefined
+): string | undefined => {
+  const children = childrenOf(parent)
+  if (h.kind === "history") {
+    if (parent.kind === "compound") {
+      return record.length === 1 && children.some((c) => c.id === record[0]) ? undefined : `not one child of ${parent.id}`
+    }
+    const every = record.length === children.length && children.every((c, i) => c.id === record[i])
+    return every ? undefined : `not every child of ${parent.id}, in order`
+  }
+  // The leaves and their ancestors up to the parent must be a configuration below it.
+  const below = new Set<string>([parent.id])
+  let last = -1
+  for (const id of record) {
+    const entry = lookup(id)
+    if (entry === undefined) return `${id} is not a state of the machine`
+    if (entry.state.kind !== "atomic" && entry.state.kind !== "final") return `${id} is not an atomic or final state`
+    if (entry.order <= last) return "it is not in document order"
+    last = entry.order
+    let s: { readonly state: State; readonly parent: State | undefined } | undefined = entry
+    while (s !== undefined && s.state !== parent) {
+      below.add(s.state.id)
+      s = s.parent === undefined ? undefined : lookup(s.parent.id)
+    }
+    if (s === undefined) return `${id} is not below ${parent.id}`
+  }
+  for (const id of below) {
+    const state = lookup(id)!.state
+    const count = childrenOf(state).filter((c) => below.has(c.id)).length
+    if (state.kind === "compound" && count !== 1) return `${id} would have ${count} active children`
+    if (state.kind === "parallel" && count !== childrenOf(state).length) {
+      return `${id} would not have all its regions active`
+    }
+  }
+  return undefined
 }
 
-/** Whether a parameter type is a `ref`, an optional one or a list of them, through aliases. */
-const holdsRef = (ir: Ir, type: string): boolean => {
-  const { base } = parseTypeRef(type)
-  if (refMachine(base) !== undefined) return true
-  const decl = Object.hasOwn(ir.types, base) ? ir.types[base] : undefined
-  return decl?.kind === "alias" ? holdsRef(ir, decl.type) : false
+/** Whether a parameter type holds a `ref`: a `ref`, or an optional, list or map of them, through aliases. */
+const holdsRef = (ir: Ir, type: TypeRef | string): boolean => {
+  const t = expandType(ir, type)
+  switch (t.kind) {
+    case "ref":
+      return true
+    case "optional":
+    case "list":
+      return holdsRef(ir, t.of)
+    case "map":
+      return holdsRef(ir, t.value)
+    default:
+      return false
+  }
 }
 
 // ---- values ---------------------------------------------------------------------------------
 
 /**
  * What makes JSON value `value` not the JSON form of type `type` (execution.md, "Values"), or
- * `undefined`. A record, error or event has exactly its fields (an optional one as `null`).
+ * `undefined`. A record, error or event has exactly its fields (an optional one as `null`); a
+ * map is an object, each member a value of its value type.
  */
-export const valueIssue = (ir: Ir, type: string, value: Json, what: string): string | undefined => {
-  const { base, suffixes } = parseTypeRef(type)
-  return refIssue(ir, base, suffixes, suffixes.length, value, what)
-}
-
-const refIssue = (
-  ir: Ir,
-  base: string,
-  suffixes: ReadonlyArray<"[]" | "?">,
-  n: number,
-  value: Json,
-  what: string
-): string | undefined => {
-  if (n > 0) {
-    if (suffixes[n - 1] === "?") return value === null ? undefined : refIssue(ir, base, suffixes, n - 1, value, what)
-    if (!Array.isArray(value)) return `${what} is not a list`
-    for (let i = 0; i < value.length; i++) {
-      const issue = refIssue(ir, base, suffixes, n - 1, value[i] ?? null, `${what}[${i}]`)
-      if (issue !== undefined) return issue
-    }
-    return undefined
-  }
+export const valueIssue = (ir: Ir, type: TypeRef | string, value: Json, what: string): string | undefined => {
+  const t = expandType(ir, type)
   const fail = (expected: string) => `${what} is not ${expected}`
-  switch (base) {
-    case "string":
-      return typeof value === "string" ? undefined : fail("a string")
-    case "int":
-      return Number.isSafeInteger(value) ? undefined : fail("an int within ±(2^53 - 1)")
-    case "float":
-      return typeof value === "number" && Number.isFinite(value) ? undefined : fail("a float")
-    case "bool":
-      return typeof value === "boolean" ? undefined : fail("a bool")
-    case "duration":
-      return isNatural(value) ? undefined : fail("a duration in whole milliseconds")
-    case "json":
+  switch (t.kind) {
+    case "optional":
+      return value === null ? undefined : valueIssue(ir, t.of, value, what)
+    case "list": {
+      if (!Array.isArray(value)) return fail("a list")
+      for (let i = 0; i < value.length; i++) {
+        const issue = valueIssue(ir, t.of, value[i] ?? null, `${what}[${i}]`)
+        if (issue !== undefined) return issue
+      }
       return undefined
-  }
-  if (refMachine(base) !== undefined) return typeof value === "string" ? undefined : fail("a run id")
-  if (callName(base) !== undefined) {
-    // A pending-call value: the caller's run id and the id of its invoke.
-    if (!isObject(value)) return fail("a pending call")
-    const issue = membersIssue(value, ["from", "invoke"], what)
-    if (issue !== undefined) return issue
-    return isRunId(value["from"]) && isId(value["invoke"]) ? undefined : fail("a pending call")
-  }
-  const dot = base.indexOf(".")
-  if (dot !== -1) {
-    // An event type, `Machine.Name`: one the machine accepts or emits.
-    const m = ir.machines[base.slice(0, dot)]
-    const name = base.slice(dot + 1)
-    const decl = m === undefined ? undefined : Object.hasOwn(m.events, name) ? m.events[name] : m.emits[name]
-    if (decl === undefined) return `${what} has unknown type ${base}`
-    return taggedIssue(ir, name, decl.fields, value, what)
-  }
-  const decl = Object.hasOwn(ir.types, base) ? ir.types[base] : undefined
-  if (decl === undefined) return `${what} has unknown type ${base}`
-  switch (decl.kind) {
-    case "alias":
-      return valueIssue(ir, decl.type, value, what)
-    case "enum":
-      return typeof value === "string" && decl.variants.includes(value) ? undefined : fail(`a variant of ${base}`)
-    case "record":
-      return fieldsIssue(ir, decl.fields, value, what, [])
-    case "error":
-      return taggedIssue(ir, base, decl.fields, value, what)
-    case "extern":
+    }
+    case "map": {
+      if (!isObject(value)) return fail("a map")
+      for (const key of Object.keys(value)) {
+        const issue = valueIssue(ir, t.value, value[key] as Json, `${what}[${JSON.stringify(key)}]`)
+        if (issue !== undefined) return issue
+      }
       return undefined
+    }
+    case "builtin":
+      switch (t.name) {
+        case "string":
+          return typeof value === "string" ? undefined : fail("a string")
+        case "int":
+          return Number.isSafeInteger(value) ? undefined : fail("an int within ±(2^53 - 1)")
+        case "float":
+          return typeof value === "number" && Number.isFinite(value) ? undefined : fail("a float")
+        case "bool":
+          return typeof value === "boolean" ? undefined : fail("a bool")
+        case "duration":
+          return isNatural(value) ? undefined : fail("a duration in whole milliseconds")
+        case "json":
+          return undefined
+      }
+    case "ref":
+      return typeof value === "string" ? undefined : fail("a run id")
+    case "call": {
+      // A pending-call value: the caller's run id and the id of its invoke.
+      if (!isObject(value)) return fail("a pending call")
+      const issue = membersIssue(value, ["from", "invoke"], what)
+      if (issue !== undefined) return issue
+      return isRunId(value["from"]) && isId(value["invoke"]) ? undefined : fail("a pending call")
+    }
+    case "event": {
+      // One the machine accepts or emits.
+      const m = Object.hasOwn(ir.machines, t.machine) ? ir.machines[t.machine] : undefined
+      const decl = m === undefined ? undefined : Object.hasOwn(m.events, t.event) ? m.events[t.event] : m.emits[t.event]
+      if (decl === undefined) return `${what} has unknown type ${t.machine}.${t.event}`
+      return taggedIssue(ir, t.event, decl.fields, value, what)
+    }
+    case "named": {
+      const decl = Object.hasOwn(ir.types, t.name) ? ir.types[t.name] : undefined
+      if (decl === undefined) return `${what} has unknown type ${t.name}`
+      switch (decl.kind) {
+        case "enum":
+          return typeof value === "string" && decl.variants.includes(value) ? undefined : fail(`a variant of ${t.name}`)
+        case "extern":
+          return undefined
+        case "record":
+        case "error": {
+          const record = fieldsOf(ir, t)!
+          return record.error
+            ? taggedIssue(ir, t.name, record.fields, value, what)
+            : fieldsIssue(ir, record.fields, value, what, [])
+        }
+        case "alias":
+          return `${what} has a type whose aliases nest too deep`
+      }
+    }
   }
 }
 

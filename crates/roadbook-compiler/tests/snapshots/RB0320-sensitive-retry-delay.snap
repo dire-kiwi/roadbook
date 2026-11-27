@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0320]: `wait` is sensitive, and a retry delay is not
+ --> RB0320-sensitive-retry-delay.road:6:33
+  |
+6 |     invoke ping() retry 1 after wait {
+  |                                 ^^^^ a trace would show this value
+  |
+  = help: traces show a retry delay as it is: carry the value in a field marked `sensitive`, or derive what may be shown with a `fn`

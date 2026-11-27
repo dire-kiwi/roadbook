@@ -1,0 +1,670 @@
+{
+  "irVersion": "0.7",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/booth.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Busy": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "tries",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "The booth is busy, and has been asked `tries` times.",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 26
+      }
+    }
+  },
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Booth": {
+      "doc": "Books seats, once it has been asked enough times.",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 22,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "tries",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {
+        "reserve": {
+          "params": [
+            {
+              "name": "seat",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "returns": "string",
+          "errors": [
+            "Busy"
+          ],
+          "doc": "Book `seat`, or fail if the booth is busy.",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 46
+          }
+        }
+      },
+      "children": {},
+      "root": {
+        "id": "Booth",
+        "name": "Booth",
+        "kind": "compound",
+        "doc": "Books seats, once it has been asked enough times.",
+        "span": {
+          "file": 0,
+          "line": 8,
+          "col": 1,
+          "endLine": 22,
+          "endCol": 2
+        },
+        "initial": "Booth.Open",
+        "states": [
+          {
+            "id": "Booth.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 16,
+              "col": 3,
+              "endLine": 21,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "call",
+                  "call": "reserve"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "<",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "tries"
+                      ],
+                      "type": "int",
+                      "text": "tries"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 2,
+                      "type": "int",
+                      "text": "2"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "tries < 2"
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "tries",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "tries"
+                          ],
+                          "type": "int",
+                          "text": "tries"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "tries + 1"
+                    }
+                  },
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "call"
+                      ],
+                      "type": "call reserve",
+                      "text": "call"
+                    },
+                    "outcome": "fail",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "tries",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "tries"
+                            ],
+                            "type": "int",
+                            "text": "tries"
+                          }
+                        }
+                      ],
+                      "type": "Busy",
+                      "text": "Busy { tries: tries }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 7,
+                  "endLine": 18,
+                  "endCol": 80
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "call",
+                  "call": "reserve"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "call"
+                      ],
+                      "type": "call reserve",
+                      "text": "call"
+                    },
+                    "outcome": "done",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "seat"
+                      ],
+                      "type": "string",
+                      "text": "event.seat"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 19,
+                  "col": 7,
+                  "endLine": 19,
+                  "endCol": 46
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:9deedb05d82b347f9e149293c1ee94f437deb7cc1d3c480f7c44fc112d4a4de8"
+    },
+    "Guest": {
+      "doc": "Books a seat, retrying while the booth is busy.",
+      "span": {
+        "file": 0,
+        "line": 25,
+        "col": 1,
+        "endLine": 40,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "booth",
+          "type": "ref Booth",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [],
+      "vars": [
+        {
+          "name": "seat",
+          "type": "string",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 26,
+            "col": 3,
+            "endLine": 26,
+            "endCol": 24
+          }
+        },
+        {
+          "name": "bookingAttempt",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 31,
+            "col": 33,
+            "endLine": 31,
+            "endCol": 57
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Guest",
+        "name": "Guest",
+        "kind": "compound",
+        "doc": "Books a seat, retrying while the booth is busy.",
+        "span": {
+          "file": 0,
+          "line": 25,
+          "col": 1,
+          "endLine": 40,
+          "endCol": 2
+        },
+        "initial": "Guest.Booking",
+        "states": [
+          {
+            "id": "Guest.Booking",
+            "name": "Booking",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 30,
+              "col": 3,
+              "endLine": 36,
+              "endCol": 4
+            },
+            "initial": "Guest.Booking.Attempt",
+            "states": [
+              {
+                "id": "Guest.Booking.Attempt",
+                "name": "Attempt",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 31,
+                  "col": 5,
+                  "endLine": 35,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": {
+                  "kind": "call",
+                  "src": "reserve",
+                  "to": {
+                    "kind": "ref",
+                    "name": "booth",
+                    "machine": "Booth",
+                    "state": null
+                  },
+                  "as": null,
+                  "args": [
+                    {
+                      "kind": "lit",
+                      "value": "12A",
+                      "type": "string",
+                      "text": "\"12A\""
+                    }
+                  ],
+                  "span": {
+                    "file": 0,
+                    "line": 31,
+                    "col": 5,
+                    "endLine": 35,
+                    "endCol": 6
+                  }
+                },
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "invoke.done"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Guest.Booked",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "seat",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "result"
+                          ],
+                          "type": "string",
+                          "text": "result"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 32,
+                      "col": 7,
+                      "endLine": 32,
+                      "endCol": 51
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "Busy"
+                    },
+                    "group": 1,
+                    "guard": {
+                      "kind": "op",
+                      "op": "<",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "bookingAttempt"
+                          ],
+                          "type": "int",
+                          "text": "bookingAttempt"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 2,
+                          "type": "int",
+                          "text": "2"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "bookingAttempt < 2"
+                    },
+                    "target": "Guest.Booking.Backoff",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "bookingAttempt",
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "bookingAttempt"
+                              ],
+                              "type": "int",
+                              "text": "bookingAttempt"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "bookingAttempt + 1"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 31,
+                      "col": 33,
+                      "endLine": 31,
+                      "endCol": 57
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "Busy"
+                    },
+                    "group": 1,
+                    "guard": null,
+                    "target": "Guest.Gave",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 33,
+                      "col": 7,
+                      "endLine": 33,
+                      "endCol": 30
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "invoke.fail",
+                      "error": "Unanswered"
+                    },
+                    "group": 2,
+                    "guard": null,
+                    "target": "Guest.Gave",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 34,
+                      "col": 7,
+                      "endLine": 34,
+                      "endCol": 30
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Guest.Booking.Backoff",
+                "name": "Backoff",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 31,
+                  "col": 33,
+                  "endLine": 31,
+                  "endCol": 57
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "after",
+                      "delay": {
+                        "kind": "lit",
+                        "value": 1000,
+                        "type": "duration",
+                        "text": "1s"
+                      }
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Guest.Booking.Attempt",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 31,
+                      "col": 33,
+                      "endLine": 31,
+                      "endCol": 57
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [
+              {
+                "kind": "set",
+                "var": "bookingAttempt",
+                "value": {
+                  "kind": "lit",
+                  "value": 0,
+                  "type": "int",
+                  "text": "0"
+                }
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Guest.Booked",
+            "name": "Booked",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 38,
+              "col": 3,
+              "endLine": 38,
+              "endCol": 37
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "seat"
+              ],
+              "type": "string",
+              "text": "seat"
+            },
+            "fail": null
+          },
+          {
+            "id": "Guest.Gave",
+            "name": "Gave",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 39,
+              "col": 3,
+              "endLine": 39,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": "",
+              "type": "string",
+              "text": "\"\""
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:f384c01879ec436e98569044e2e17e9f4598ba71938c335f7047dcfa545df8ab"
+    }
+  }
+}

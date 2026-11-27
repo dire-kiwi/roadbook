@@ -82,6 +82,10 @@ export const DIAGRAM_CSS = `
 .rb-kind-final > .rb-box { stroke-width: 1.6; }
 .rb-collapsed > .rb-box { stroke-width: 1.8; }
 .rb-sep { stroke: var(--rb-border); stroke-width: 1; }
+/* a history state: a small circle marked H, or H* for a deep one */
+.rb-history > .rb-box { stroke-width: 1.5; }
+.rb-history-mark { font-size: 12px; font-weight: 750; fill: var(--rb-fg); }
+.rb-legend-swatch .rb-history-mark { font-size: 10px; }
 
 .rb-title { font-size: 13px; font-weight: 650; }
 .rb-tag { font-size: 11px; fill: var(--rb-muted) !important; }
@@ -124,9 +128,13 @@ export const DIAGRAM_CSS = `
 .rb-svg .rb-msg { fill: var(--rb-msg) !important; }
 .rb-msg-kw { font-weight: 700; }
 .rb-alias { font-weight: 650; font-style: italic; }
+/* spawn: a child machine started, in the colour of a machine invoke */
+.rb-svg .rb-spawn { fill: var(--rb-accent) !important; }
+.rb-spawn-kw { font-weight: 700; }
 
-/* the project index's edges: invoke solid, ref dashed, messages in the message colour with open arrows, emitted ones dotted, calls in the message colour with a filled arrow */
+/* the project index's edges: invoke solid, spawn solid with a double head, ref dashed, messages in the message colour with open arrows, emitted ones dotted, calls in the message colour with a filled arrow */
 .rb-i-ref .rb-edge-line { stroke-dasharray: 7 4; }
+.rb-ilabel.rb-i-spawn .rb-ikw { fill: var(--rb-accent); }
 .rb-i-send .rb-edge-line, .rb-i-emit .rb-edge-line, .rb-i-call .rb-edge-line { stroke: var(--rb-msg); stroke-width: 1.4; }
 .rb-arrow.rb-i-call path { fill: var(--rb-msg); stroke: none; }
 .rb-i-emit .rb-edge-line { stroke-dasharray: 0.1 4.5; stroke-linecap: round; stroke-width: 2.2; }
@@ -195,6 +203,7 @@ code, .rb-mono { font-family: var(--rb-mono); font-size: 0.92em; }
 .rb-t-done { color: var(--rb-ok); }
 .rb-t-fail { color: var(--rb-err); }
 .rb-t-msg { color: var(--rb-msg); }
+.rb-t-spawn { color: var(--rb-accent); }
 
 .rb-legend-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 12.5px; }
 .rb-legend-list li { display: flex; align-items: center; gap: 9px; color: var(--rb-muted); }
@@ -202,6 +211,7 @@ code, .rb-mono { font-family: var(--rb-mono); font-size: 0.92em; }
 .rb-legend-list code.rb-t-done { color: var(--rb-ok); }
 .rb-legend-list code.rb-t-fail { color: var(--rb-err); }
 .rb-legend-list code.rb-t-msg { color: var(--rb-msg); }
+.rb-legend-list code.rb-t-spawn { color: var(--rb-accent); }
 .rb-legend-swatch { flex: none; font-family: var(--rb-mono); }
 .rb-legend-swatch .rb-legend-guard { font-size: 9.5px; }
 
@@ -239,10 +249,10 @@ body.rb-app { height: 100vh; display: grid; grid-template-rows: auto auto minmax
 .rb-canvas { position: relative; overflow: hidden; background: var(--rb-canvas); cursor: grab; touch-action: none; user-select: none; }
 .rb-canvas.rb-dragging { cursor: grabbing; }
 .rb-canvas > .rb-svg { display: block; width: 100%; height: 100%; }
-.rb-canvas .rb-state, .rb-canvas .rb-edge, .rb-canvas .rb-label, .rb-canvas .rb-machine-link, .rb-canvas .rb-row[data-transition], .rb-canvas .rb-toggle { cursor: pointer; }
+.rb-canvas .rb-state, .rb-canvas .rb-edge, .rb-canvas .rb-label, .rb-canvas .rb-machine-link, .rb-canvas .rb-spawn, .rb-canvas .rb-row[data-transition], .rb-canvas .rb-toggle { cursor: pointer; }
 .rb-canvas .rb-state:hover > .rb-box { stroke: var(--rb-fg); }
 .rb-canvas [data-event] { cursor: pointer; }
-.rb-canvas [data-event]:hover { text-decoration: underline; }
+.rb-canvas [data-event]:hover, .rb-canvas .rb-spawn:hover { text-decoration: underline; }
 .rb-canvas .rb-msg.rb-selected { text-decoration: underline; font-weight: 700; }
 .rb-canvas .rb-toggle:hover rect { stroke: var(--rb-accent); stroke-width: 2; }
 .rb-canvas .rb-machine-link:hover .rb-pill { stroke-width: 2; }
@@ -287,6 +297,7 @@ body.rb-app { height: 100vh; display: grid; grid-template-rows: auto auto minmax
 .rb-tlink { display: block; width: 100%; font-family: var(--rb-mono); font-size: 12.5px; color: var(--rb-fg); background: none; border: 1px solid var(--rb-border); border-radius: 6px; padding: 5px 8px; cursor: pointer; text-align: left; overflow-wrap: anywhere; }
 .rb-tlink:hover { border-color: var(--rb-accent); }
 .rb-tlink .rb-msg-kw, .rb-list .rb-msg-kw { color: var(--rb-msg); font-weight: 700; }
+.rb-list .rb-spawn-kw { color: var(--rb-accent); font-weight: 700; }
 .rb-signature .rb-ref { font-size: inherit; }
 .rb-talks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 12.5px; }
 .rb-talks li { font-family: var(--rb-mono); overflow-wrap: anywhere; }
@@ -377,6 +388,7 @@ details.rb-choice[open] > summary { border-style: dashed; margin-bottom: 5px; }
 .rb-advance label { font: 12.5px var(--rb-mono); }
 .rb-active-path { margin: 0; font-size: 12.5px; }
 .rb-vars .rb-vnote { color: var(--rb-muted); font-family: var(--rb-sans); font-size: 11.5px; }
+.rb-redacted { color: var(--rb-muted); font-family: var(--rb-sans); font-style: italic; }
 .rb-file { display: inline-block; }
 .rb-problems summary { cursor: pointer; color: var(--rb-err); font-size: 13px; margin-top: 8px; }
 /* diff and coverage panels */

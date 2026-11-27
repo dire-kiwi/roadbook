@@ -1,0 +1,35 @@
+{
+  "description": "A deep history state that restores a final state. `Flow` reaches its final child `S2` while its `done` guard fails, so the completion is discarded, and is left from `S2`. Entering its deep history state enters `S2` again, which completes `Flow` again, and this time its `done` is taken.",
+  "requires": [
+    "history"
+  ],
+  "chart": "charts/history.road",
+  "machine": "Steps",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Finish"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Pause"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Ready"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Resume"
+      }
+    }
+  ],
+  "status": "done"
+}

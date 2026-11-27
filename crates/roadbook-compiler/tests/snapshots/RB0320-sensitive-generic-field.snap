@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0320]: `pin` is sensitive, and field `value` of `Box` is not
+  --> RB0320-sensitive-generic-field.road:12:32
+   |
+12 |     entry do show(Box { value: pin }), keep(Box { value: pin }), show(Secret { value: pin })
+   |                                ^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark field `value` of `Box` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0320]: `pin` is sensitive, and field `value` of `Box` is not
+  --> RB0320-sensitive-generic-field.road:12:58
+   |
+12 |     entry do show(Box { value: pin }), keep(Box { value: pin }), show(Secret { value: pin })
+   |                                                          ^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark field `value` of `Box` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0321]: `Secret<int>` has sensitive fields, and argument `v` of `show` is `json`
+  --> RB0320-sensitive-generic-field.road:12:71
+   |
+12 |     entry do show(Box { value: pin }), keep(Box { value: pin }), show(Secret { value: pin })
+   |                                                                       ^^^^^^^^^^^^^^^^^^^^^ a trace would show these fields
+   |
+   = help: traces redact a value by its type, and `json` has no fields to redact by: give parameter `v` of `show` the value's own type, or mark it `sensitive`

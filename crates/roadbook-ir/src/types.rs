@@ -53,18 +53,18 @@ impl Builtin {
 
 /// A reference to a type, as written in canonical source form.
 ///
-/// In JSON a `TypeRef` is a string: a built-in keyword or a declared
-/// upper-case name, followed by any number of `[]` (list of) and `?`
-/// (optional) suffixes, applied left to right. `LineItem[]` is a list of
-/// `LineItem`; `string[]?` is an optional list of strings; `string?[]` is a
-/// list of optional strings. There is no whitespace.
+/// In JSON a `TypeRef` is a string: a base followed by any number of `[]`
+/// (list of) and `?` (optional) suffixes, applied left to right. `LineItem[]`
+/// is a list of `LineItem`; `string[]?` is an optional list of strings;
+/// `string?[]` is a list of optional strings. The base is a built-in keyword,
+/// a declared upper-case name with optional type arguments (`Page<Order>`),
+/// an event type `Machine.Event`, a handle `ref Machine`, a pending call
+/// `call name`, or a map
+/// `map<string, Order>`. Type arguments are separated by `, `; there is no
+/// other whitespace, except the one space after `ref` and after `call`.
 ///
 /// `Display` and `FromStr` convert to and from that string, and
 /// `parse(display(t)) == t` for every `t`.
-///
-/// `ref Name` is a handle to a running machine `Name`, with the same suffix
-/// rules: `ref Inventory[]` is a list of handles. It is the one form with a
-/// space.
 ///
 /// `call name` is a pending call of the machine's own call `name`: only the
 /// type of a machine variable and of the implicit `call` in `on name`, never
@@ -73,7 +73,8 @@ impl Builtin {
 pub enum TypeRef {
     /// A built-in type such as `int`.
     Builtin(Builtin),
-    /// A declared type, error or extern type, by name (`Order`).
+    /// A declared type, error or extern type, by name (`Order`); or, inside a
+    /// generic declaration, one of its type parameters (`T`).
     ///
     /// Event types are named here too. Inside a machine, the bare name of one
     /// of its own events or emitted events (`Cancel`, `Progress`) is that
@@ -82,6 +83,12 @@ pub enum TypeRef {
     /// is an event of another machine: the type of `event` in
     /// `on upload.Progress`, of the value of `send upload.Pause`.
     Named(String),
+    /// `Name<A, B>`: a generic declared type with its type arguments, at
+    /// least one.
+    Generic(String, Vec<TypeRef>),
+    /// `map<K, V>`: a map from keys of type `K` (`string` or an alias of it)
+    /// to values of type `V`.
+    Map(Box<TypeRef>, Box<TypeRef>),
     /// `ref Name`: a handle to a running machine, a key of `machines`.
     Ref(String),
     /// `call name`: a pending call of the machine's call `name`, a key of its
@@ -117,11 +124,11 @@ impl TypeRef {
         }
     }
 
-    /// The declared name this type refers to, if its base is a declared type
-    /// (not a built-in or a `ref`).
+    /// The declared name this type refers to, if its base is a declared type,
+    /// generic or not (not a built-in, a map or a `ref`).
     pub fn named_base(&self) -> Option<&str> {
         match self.base() {
-            TypeRef::Named(n) => Some(n),
+            TypeRef::Named(n) | TypeRef::Generic(n, _) => Some(n),
             _ => None,
         }
     }
@@ -131,6 +138,65 @@ impl TypeRef {
         match self.base() {
             TypeRef::Ref(n) => Some(n),
             _ => None,
+        }
+    }
+
+    /// Calls `f` with every name this type mentions as a declared type (or a
+    /// type parameter, or an event type), outermost first: `map<UserId,
+    /// Page<Order>>` gives `UserId`, `Page` and `Order`. `ref` machines and `call` names are
+    /// not names of types and are not given.
+    pub fn for_each_name<'a>(&'a self, f: &mut impl FnMut(&'a str)) {
+        match self {
+            TypeRef::Builtin(_) | TypeRef::Ref(_) | TypeRef::Call(_) => {}
+            TypeRef::Named(n) => f(n),
+            TypeRef::Generic(n, args) => {
+                f(n);
+                for a in args {
+                    a.for_each_name(f);
+                }
+            }
+            TypeRef::Map(k, v) => {
+                k.for_each_name(f);
+                v.for_each_name(f);
+            }
+            TypeRef::List(t) | TypeRef::Optional(t) => t.for_each_name(f),
+        }
+    }
+
+    /// Whether a `ref` appears anywhere in this type (not through aliases).
+    pub fn mentions_ref(&self) -> bool {
+        match self {
+            TypeRef::Ref(_) => true,
+            TypeRef::Builtin(_) | TypeRef::Named(_) | TypeRef::Call(_) => false,
+            TypeRef::Generic(_, args) => args.iter().any(TypeRef::mentions_ref),
+            TypeRef::Map(k, v) => k.mentions_ref() || v.mentions_ref(),
+            TypeRef::List(t) | TypeRef::Optional(t) => t.mentions_ref(),
+        }
+    }
+
+    /// The type with each of `params` replaced by the argument at the same
+    /// index: the member types of an instance `G<args>` of a generic
+    /// declaration with these parameters. Other names are left alone.
+    pub fn substitute(&self, params: &[String], args: &[TypeRef]) -> TypeRef {
+        if params.is_empty() {
+            return self.clone();
+        }
+        match self {
+            TypeRef::Named(n) => match params.iter().position(|p| p == n) {
+                Some(i) => args.get(i).cloned().unwrap_or_else(|| self.clone()),
+                None => self.clone(),
+            },
+            TypeRef::Generic(n, a) => TypeRef::Generic(
+                n.clone(),
+                a.iter().map(|t| t.substitute(params, args)).collect(),
+            ),
+            TypeRef::Map(k, v) => TypeRef::Map(
+                Box::new(k.substitute(params, args)),
+                Box::new(v.substitute(params, args)),
+            ),
+            TypeRef::List(t) => t.substitute(params, args).list(),
+            TypeRef::Optional(t) => t.substitute(params, args).optional(),
+            TypeRef::Builtin(_) | TypeRef::Ref(_) | TypeRef::Call(_) => self.clone(),
         }
     }
 }
@@ -146,6 +212,17 @@ impl fmt::Display for TypeRef {
         match self {
             TypeRef::Builtin(b) => f.write_str(b.name()),
             TypeRef::Named(n) => f.write_str(n),
+            TypeRef::Generic(n, args) => {
+                write!(f, "{n}<")?;
+                for (i, a) in args.iter().enumerate() {
+                    if i > 0 {
+                        f.write_str(", ")?;
+                    }
+                    write!(f, "{a}")?;
+                }
+                f.write_str(">")
+            }
+            TypeRef::Map(k, v) => write!(f, "map<{k}, {v}>"),
             TypeRef::Ref(n) => write!(f, "ref {n}"),
             TypeRef::Call(n) => write!(f, "call {n}"),
             TypeRef::List(t) => write!(f, "{t}[]"),
@@ -165,8 +242,8 @@ impl fmt::Display for TypeRefError {
         write!(
             f,
             "`{}` is not a type: expected a built-in (string, int, float, bool, duration, json), \
-             an upper-case name, `Machine.Event`, `ref Machine` or `call name`, followed by any \
-             number of `[]` and `?`",
+             an upper-case name with optional type arguments (`Page<Order>`), `Machine.Event`, \
+             `ref Machine`, `call name` or `map<K, V>`, followed by any number of `[]` and `?`",
             self.input
         )
     }
@@ -188,58 +265,118 @@ fn is_lower_name(s: &str) -> bool {
         && chars.all(|c| c.is_ascii_alphanumeric())
 }
 
+/// The deepest nesting of type arguments read, so that a hostile IR cannot
+/// exhaust the stack. The source grammar allows at most 64 levels.
+const MAX_TYPE_DEPTH: usize = 128;
+
+/// A recursive descent reader of one type reference.
+struct TypeReader<'s> {
+    rest: &'s str,
+}
+
+impl TypeReader<'_> {
+    fn eat(&mut self, s: &str) -> bool {
+        match self.rest.strip_prefix(s) {
+            Some(r) => {
+                self.rest = r;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// A run of `[A-Za-z0-9.]`.
+    fn word(&mut self) -> &str {
+        let len = self
+            .rest
+            .find(|c: char| !c.is_ascii_alphanumeric() && c != '.')
+            .unwrap_or(self.rest.len());
+        let (w, r) = self.rest.split_at(len);
+        self.rest = r;
+        w
+    }
+
+    fn ty(&mut self, depth: usize) -> Option<TypeRef> {
+        if depth > MAX_TYPE_DEPTH {
+            return None;
+        }
+        let mut t = if self.eat("ref ") {
+            let m = self.word();
+            if !is_upper_name(m) {
+                return None;
+            }
+            TypeRef::Ref(m.to_owned())
+        } else if self.eat("call ") {
+            let c = self.word();
+            if !is_lower_name(c) {
+                return None;
+            }
+            TypeRef::Call(c.to_owned())
+        } else {
+            let base = self.word().to_owned();
+            if base == "map" && self.eat("<") {
+                let k = self.ty(depth + 1)?;
+                if !self.eat(", ") {
+                    return None;
+                }
+                let v = self.ty(depth + 1)?;
+                if !self.eat(">") {
+                    return None;
+                }
+                TypeRef::Map(Box::new(k), Box::new(v))
+            } else if let Some(b) = Builtin::from_name(&base) {
+                TypeRef::Builtin(b)
+            } else if is_upper_name(&base) {
+                if self.eat("<") {
+                    let mut args = vec![self.ty(depth + 1)?];
+                    while self.eat(", ") {
+                        args.push(self.ty(depth + 1)?);
+                    }
+                    if !self.eat(">") {
+                        return None;
+                    }
+                    TypeRef::Generic(base, args)
+                } else {
+                    TypeRef::Named(base)
+                }
+            } else if let Some((m, e)) = base.split_once('.')
+                && is_upper_name(m)
+                && is_upper_name(e)
+            {
+                TypeRef::Named(base)
+            } else {
+                return None;
+            }
+        };
+        // Each suffix is a level too, counted against the same bound.
+        let mut depth = depth;
+        loop {
+            if self.eat("[]") {
+                t = t.list();
+            } else if self.eat("?") {
+                t = t.optional();
+            } else {
+                return Some(t);
+            }
+            depth += 1;
+            if depth > MAX_TYPE_DEPTH {
+                return None;
+            }
+        }
+    }
+}
+
 impl FromStr for TypeRef {
     type Err = TypeRefError;
 
     fn from_str(s: &str) -> Result<TypeRef, TypeRefError> {
-        let err = || TypeRefError {
-            input: s.to_owned(),
-        };
-        let (prefix, body) = if let Some(rest) = s.strip_prefix("ref ") {
-            ("ref", rest)
-        } else if let Some(rest) = s.strip_prefix("call ") {
-            ("call", rest)
-        } else {
-            ("", s)
-        };
-        let base_len = body
-            .find(|c: char| !c.is_ascii_alphanumeric() && c != '.')
-            .unwrap_or(body.len());
-        let (base, mut rest) = body.split_at(base_len);
-        let mut t = if prefix == "ref" {
-            if !is_upper_name(base) {
-                return Err(err());
-            }
-            TypeRef::Ref(base.to_owned())
-        } else if prefix == "call" {
-            if !is_lower_name(base) {
-                return Err(err());
-            }
-            TypeRef::Call(base.to_owned())
-        } else if let Some(b) = Builtin::from_name(base) {
-            TypeRef::Builtin(b)
-        } else if is_upper_name(base) {
-            TypeRef::Named(base.to_owned())
-        } else if let Some((m, e)) = base.split_once('.')
-            && is_upper_name(m)
-            && is_upper_name(e)
-        {
-            TypeRef::Named(base.to_owned())
-        } else {
-            return Err(err());
-        };
-        while !rest.is_empty() {
-            if let Some(r) = rest.strip_prefix("[]") {
-                t = t.list();
-                rest = r;
-            } else if let Some(r) = rest.strip_prefix('?') {
-                t = t.optional();
-                rest = r;
-            } else {
-                return Err(err());
-            }
+        let mut r = TypeReader { rest: s };
+        match r.ty(0) {
+            Some(t) if r.rest.is_empty() => Ok(t),
+            _ => Err(TypeRefError {
+                input: s.to_owned(),
+            }),
         }
-        Ok(t)
     }
 }
 
@@ -276,6 +413,11 @@ mod tests {
             "ref Inventory[]?",
             "Upload.Progress",
             "call reserve",
+            "map<string, int>",
+            "map<UserId, Order[]>?",
+            "Page<Order>",
+            "Pair<string, map<string, Tree<int>>>[]",
+            "Page<Order?>[]?",
         ] {
             let t: TypeRef = s.parse().unwrap();
             assert_eq!(t.to_string(), s);
@@ -292,6 +434,29 @@ mod tests {
         assert_eq!(r, TypeRef::Ref("Inventory".into()).list());
         assert_eq!(r.ref_base(), Some("Inventory"));
         assert_eq!(r.named_base(), None);
+        let g = "Page<T[]>".parse::<TypeRef>().unwrap();
+        assert_eq!(
+            g.substitute(&["T".into()], &[TypeRef::named("Order")]),
+            "Page<Order[]>".parse().unwrap()
+        );
+        let mut names = Vec::new();
+        "map<UserId, Page<Order>>"
+            .parse::<TypeRef>()
+            .unwrap()
+            .for_each_name(&mut |n| names.push(n.to_owned()));
+        assert_eq!(names, ["UserId", "Page", "Order"]);
+        let deep = format!("{}int{}", "Page<".repeat(200), ">".repeat(200));
+        assert!(deep.parse::<TypeRef>().is_err());
+        assert!(
+            format!("int{}", "[]".repeat(100_000))
+                .parse::<TypeRef>()
+                .is_err()
+        );
+        assert!(
+            format!("int{}", "[]".repeat(100))
+                .parse::<TypeRef>()
+                .is_ok()
+        );
     }
 
     #[test]
@@ -315,6 +480,15 @@ mod tests {
             "call Reserve",
             "call  reserve",
             "call re.serve",
+            "map<string,int>",
+            "map<string>",
+            "map<string, int, int>",
+            "Page<>",
+            "Page<Order",
+            "Page <Order>",
+            "page<Order>",
+            "ref Page<Order>",
+            "Upload.Progress<int>",
         ] {
             assert!(s.parse::<TypeRef>().is_err(), "{s:?} should be rejected");
         }

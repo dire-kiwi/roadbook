@@ -6,7 +6,7 @@ import type { Ir, State } from './ir.ts'
 import { own } from './ir.ts'
 import type { Layout, Point, Box } from './layout.ts'
 import { machineView, stateBox } from './layout.ts'
-import { METRICS, eventKey, estimateWidth, refMachine, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
+import { METRICS, eventKey, estimateWidth, historyMark, historyText, isHistory, refMachine, transitionId, transitionLines, triggerKind, walkStates } from './model.ts'
 import type { EdgeKind, EventRef, Measure, Row } from './model.ts'
 import { DARK, DIAGRAM_CSS, FONTS, LIGHT } from './style.ts'
 
@@ -84,6 +84,24 @@ function messageText(text: string, ref: EventRef): string {
   return `${' '.repeat(lead)}<tspan class="rb-msg"${eventAttr(ref)}><title>Open ${what} ${esc(eventKey(ref))}</title>${inner}</tspan>`
 }
 
+/**
+ * A `spawn` effect, its keyword stressed, marked so the viewer opens the child's machine. In
+ * the colour of a machine invoke, which it is like.
+ */
+function spawnText(text: string, machine: string): string {
+  const lead = text.length - text.trimStart().length
+  const body = text.slice(lead)
+  const inner = body.startsWith('spawn ') ? `<tspan class="rb-spawn-kw">spawn</tspan>${esc(body.slice(5))}` : esc(body)
+  return `${' '.repeat(lead)}<tspan class="rb-spawn" data-machine="${esc(machine)}"><title>Open machine ${esc(machine)}</title>${inner}</tspan>`
+}
+
+/** The text of a row or label line: plain, or linked to the event, call or machine it names. */
+function lineText(l: { text: string; event?: EventRef | undefined; spawn?: string | undefined }): string {
+  if (l.event) return messageText(l.text, l.event)
+  if (l.spawn) return spawnText(l.text, l.spawn)
+  return esc(l.text)
+}
+
 /** A row's keyword; `on upload.Progress` and `on reserve` with the event or call marked as a link. */
 function rowKeyword(r: Row): string {
   if (!r.kw) return ''
@@ -119,7 +137,7 @@ function renderRows(rows: Row[], x0: number, y0: number, measure: Measure, mark?
     } else if (r.cls === 'collapsed') {
       out += `<text class="${cls}" x="${n(x0 + M.padX)}" y="${y}" xml:space="preserve">${esc(r.text)}</text>`
     } else {
-      const text = r.event ? messageText(r.text, r.event) : esc(r.text)
+      const text = lineText(r)
       out += `<text class="${cls}"${data} x="${n(x0 + M.padX)}" y="${y}" xml:space="preserve">${kw}${text}</text>`
     }
   })
@@ -134,8 +152,60 @@ function pillRest(r: Row): string {
   return `${esc(rest.slice(0, -tail.length))} <tspan class="rb-kw">as</tspan> <tspan class="rb-alias">${esc(r.alias!)}</tspan>`
 }
 
+/**
+ * A history state: a circle marked `H` (shallow) or `H*` (deep) inside its parent. Its outline
+ * is a `rb-box` rect rounded into a circle, so the modes' rings and marks fit it as any box.
+ */
+function renderHistory(state: State, parent: State | null, g: Box, annotate?: Annotations): string {
+  const mark = annotate?.state?.(state.id)
+  const cls = ['rb-state', `rb-kind-${state.kind}`, 'rb-leaf', 'rb-history', mark?.cls ?? ''].filter(Boolean).join(' ')
+  const d = Math.min(g.width, g.height)
+  const r = d / 2
+  const what = parent ? historyText(state, parent) : ''
+  let s = `<g class="${cls}" data-state="${esc(state.id)}" transform="translate(${n(g.x + (g.width - d) / 2)},${n(g.y + (g.height - d) / 2)})">`
+  s += `<title>${esc(state.id)} (${state.kind === 'deepHistory' ? 'deep history' : 'history'})${state.doc ? ' - ' + esc(state.doc) : ''}${what ? '\n' + esc(what) : ''}${mark?.title ? '\n' + esc(mark.title) : ''}</title>`
+  s += `<rect class="rb-box" width="${n(d)}" height="${n(d)}" rx="${n(r)}"/>`
+  s += `<text class="rb-history-mark" x="${n(r)}" y="${n(r + 4.2)}" text-anchor="middle">${esc(historyMark(state))}</text>`
+  if (mark?.badge) s += badge(mark.badge, d, 0)
+  return s + '</g>'
+}
+
+/**
+ * Moves the end of a route that stops on the square around a history state's circle onto the
+ * circle. ELK spreads the arrows into a node along its side, so an arrow may come in beside the
+ * circle: its last segment, and the end of the one before, are first moved towards the centre
+ * (keeping the route orthogonal) so that it meets the circle well inside its edge.
+ */
+function clipToCircle(points: Point[], box: Box): Point[] {
+  if (points.length < 2) return points
+  const pts = points.map((p) => ({ ...p }))
+  const end = pts[pts.length - 1]!
+  const from = pts[pts.length - 2]!
+  const r = Math.min(box.width, box.height) / 2
+  const c = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  const max = r * 0.6
+  if (Math.abs(end.x - from.x) < 0.01 && Math.abs(end.x - c.x) > max) end.x = from.x = c.x + Math.sign(end.x - c.x) * max
+  else if (Math.abs(end.y - from.y) < 0.01 && Math.abs(end.y - c.y) > max) end.y = from.y = c.y + Math.sign(end.y - c.y) * max
+  // The first point of the line from `from` through `end` at distance r from the centre: the
+  // end moves on along it into the square, or back, onto the circle.
+  const dx = end.x - from.x
+  const dy = end.y - from.y
+  const fx = from.x - c.x
+  const fy = from.y - c.y
+  const a = dx * dx + dy * dy
+  const b = 2 * (fx * dx + fy * dy)
+  const k = fx * fx + fy * fy - r * r
+  const disc = b * b - 4 * a * k
+  if (a === 0 || k <= 0 || disc < 0) return pts
+  const t = (-b - Math.sqrt(disc)) / (2 * a)
+  if (t < 0) return pts
+  pts[pts.length - 1] = { x: from.x + t * dx, y: from.y + t * dy }
+  return pts
+}
+
 function renderState(state: State, parent: State | null, collapsed: boolean, g: Box, measure: Measure, interactive: boolean, annotate?: Annotations): string {
   const M = METRICS
+  if (isHistory(state)) return renderHistory(state, parent, g, annotate)
   const box = stateBox(state, measure, collapsed)
   const isContainer = state.states.length > 0 && !collapsed
   const inset = state.kind === 'final' ? M.finalInset : 0
@@ -198,7 +268,7 @@ function renderLabel(state: State, index: number, kind: EdgeKind, label: Box, ma
   s += `<rect class="rb-label-bg" x="${n(label.x)}" y="${n(label.y)}" width="${n(label.width)}" height="${n(label.height)}" rx="5"/>`
   let top = label.y + M.labelPadY
   for (const l of lines) {
-    const text = l.event ? messageText(l.text, l.event) : esc(l.text)
+    const text = lineText(l)
     if (l.cls === 'trigger') {
       const guard = l.guard ? `${l.text ? ' ' : ''}<tspan class="rb-guard">${esc(l.guard)}</tspan>` : ''
       s += `<text class="rb-label-trigger" x="${n(cx)}" y="${baseline(top, M.labelLineH, M.fontLabel)}" text-anchor="middle" xml:space="preserve">${text}${guard}</text>`
@@ -262,10 +332,10 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
     else leaves += svg
   }
 
-  const edge = (id: string, kind: EdgeKind, attrs: string, port: boolean, inner: boolean, mk?: Mark | null) => {
+  const edge = (id: string, kind: EdgeKind, attrs: string, port: boolean, inner: boolean, mk?: Mark | null, toHistory?: Box) => {
     const e = layout.edges[id]
     if (!e || e.points.length < 2) return ''
-    const d = roundedPath(e.points)
+    const d = roundedPath(toHistory ? clipToCircle(e.points, toHistory) : e.points)
     // A transition written on a compound state leaves from a dot on the container's border;
     // one from a state hidden inside a collapsed one from a hollow square.
     const p0 = e.points[0]!
@@ -298,7 +368,10 @@ export function renderSvg(ir: Ir, machineName: string, layout: Layout, opts: Ren
       const inner = view.visible(state.id) !== state.id
       const isContainer = state.states.length > 0 && !(here?.collapsed ?? false)
       const mark = opts.annotate?.transition?.(state.id, index)
-      edgePaths += edge(id, kind, ` data-state="${esc(state.id)}" data-transition="${index}"`, isContainer, inner, mark)
+      // An arrow to a history state drawn as itself ends on its circle.
+      const to = drawn.get(t.target)
+      const circle = to && isHistory(to.state) && view.visible(t.target) === t.target ? layout.nodes[t.target] : undefined
+      edgePaths += edge(id, kind, ` data-state="${esc(state.id)}" data-transition="${index}"`, isContainer, inner, mark, circle)
       const e = layout.edges[id]
       if (e && e.label) labels += renderLabel(state, index, kind, e.label, mark)
     })
@@ -346,8 +419,8 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
     item(line('event'), { text: 'Cancel' }, 'event') +
     item(line('message'), { text: 'upload.Progress', cls: 'rb-t-msg' }, opts.interactive ? 'event emitted by upload, another machine; click the name to open it' : 'event emitted by upload, another machine') +
     item(line('message'), { text: 'reserve', cls: 'rb-t-msg' }, 'a call of this machine another run made; reply answers it') +
-    item(line('done'), { text: 'done', cls: 'rb-t-done' }, 'invoke or nested states finished') +
-    item(line('fail'), { text: 'fail X', cls: 'rb-t-fail' }, 'invoke failed with error X') +
+    item(line('done'), { text: 'done', cls: 'rb-t-done' }, 'invoke, spawned child or nested states finished') +
+    item(line('fail'), { text: 'fail X', cls: 'rb-t-fail' }, 'invoke or spawned child failed with error X') +
     item(line('after'), { text: 'after 30s' }, 'time in the state (dashed)') +
     item(line('always'), { text: 'always' }, 'no event needed (dotted)') +
     item(
@@ -362,6 +435,11 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
     ) +
     item(shape('<g class="rb-state rb-kind-final"><rect class="rb-box" x="4" y="1" width="38" height="16" rx="5"/><rect class="rb-box-inner" x="7" y="4" width="32" height="10" rx="2.5"/></g>'), { text: 'final' }, 'state (double border)') +
     item(
+      shape('<g class="rb-state rb-history"><rect class="rb-box" x="14" y="0.5" width="17" height="17" rx="8.5"/><text class="rb-history-mark" x="22.5" y="13" text-anchor="middle">H</text></g>'),
+      { text: 'H' },
+      'history state: back to where its parent was when last left (H* deep: every state inside it)',
+    ) +
+    item(
       shape('<g class="rb-label"><rect class="rb-label-bg" x="2" y="2" width="42" height="14" rx="4"/><text class="rb-label-effect rb-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="rb-msg"><tspan class="rb-msg-kw">send</tspan></tspan></text></g>'),
       { text: 'send x.E', cls: 'rb-t-msg' },
       'queues E for machine x; emit E tells whoever listens',
@@ -370,6 +448,11 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
       shape('<g class="rb-label"><rect class="rb-label-bg" x="2" y="2" width="42" height="14" rx="4"/><text class="rb-label-effect rb-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="rb-msg"><tspan class="rb-msg-kw">reply</tspan></tspan></text></g>'),
       { text: 'reply p done v', cls: 'rb-t-msg' },
       'answers the call p holds; invoke x.c(…) makes a call',
+    ) +
+    item(
+      shape('<g class="rb-label"><rect class="rb-label-bg" x="2" y="2" width="42" height="14" rx="4"/><text class="rb-label-effect rb-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="rb-spawn"><tspan class="rb-spawn-kw">spawn</tspan></tspan></text></g>'),
+      { text: 'spawn xs[k] = M()', cls: 'rb-t-spawn' },
+      opts.interactive ? 'starts a child machine M under key k; click to open M' : 'starts a child machine M under key k',
     ) +
     item(
       shape('<g class="rb-machine-link"><rect class="rb-pill" x="2" y="2" width="42" height="14" rx="7"/><path class="rb-pill-chevron" d="M33,5.5 l3.5,3.5 l-3.5,3.5"/></g>'),
@@ -391,8 +474,8 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
  * A list of parameters or fields as HTML: `name: Type`, a `ref Machine` type (or an alias of
  * one) a button that opens that machine.
  */
-export function paramsHtml(ir: Ir, params: { name: string; type: string }[]): string {
-  return params.map((p) => `${esc(p.name)}: ${typeHtml(ir, p.type)}`).join(', ')
+export function paramsHtml(ir: Ir, params: { name: string; type: string; sensitive?: boolean }[]): string {
+  return params.map((p) => `${p.sensitive ? 'sensitive ' : ''}${esc(p.name)}: ${typeHtml(ir, p.type)}`).join(', ')
 }
 
 /** A type reference as HTML; a `ref` to a machine of the IR links to it. */
@@ -410,10 +493,21 @@ export function signatureHtml(ir: Ir, kind: string, name: string, decl: { params
   return s
 }
 
-/** The signature and doc comment of a machine. HTML. */
+/** `children sessions: Session by SessionId` as HTML, the machine a button that opens it. */
+export function childrenHtml(ir: Ir, name: string, c: { machine: string; key: string }): string {
+  const machine = own(ir.machines, c.machine)
+    ? `<button class="rb-link rb-mono rb-ref" type="button" data-open-machine="${esc(c.machine)}" data-via="spawn" title="Open machine ${esc(c.machine)}">${esc(c.machine)}</button>`
+    : esc(c.machine)
+  return `children ${esc(name)}: ${machine} by ${esc(c.key)}`
+}
+
+/** The signature, the collections of spawned children and the doc comment of a machine. HTML. */
 export function renderMachineHeader(ir: Ir, machineName: string): string {
   const m = own(ir.machines, machineName)
   if (!m) return ''
   const doc = m.doc ? `<p class="rb-doc">${esc(m.doc).replace(/\n/g, '<br>')}</p>` : ''
-  return `<code class="rb-signature">${signatureHtml(ir, 'machine', machineName, m)}</code>${doc}`
+  const children = Object.entries(m.children)
+    .map(([name, c]) => `<code class="rb-signature rb-children">${childrenHtml(ir, name, c)}</code>`)
+    .join('')
+  return `<code class="rb-signature">${signatureHtml(ir, 'machine', machineName, m)}</code>${children}${doc}`
 }

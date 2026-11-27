@@ -1,0 +1,34 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0320]: `event.pin` is sensitive, and the value assigned to `last` is not
+  --> RB0320-sensitive-call.road:15:48
+   |
+15 |       if event.note == "keep" -> A  set last = event.pin
+   |                                                ^^^^^^^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark `last` `sensitive` too, or derive what may be shown with a `fn`
+
+error[RB0320]: `event.pin` is sensitive, and the result of call `reserve` is not
+  --> RB0320-sensitive-call.road:16:53
+   |
+16 |       if event.note == "echo" -> A  reply call done event.pin
+   |                                                     ^^^^^^^^^ a trace would show this value
+   |
+   = help: traces show the result of call `reserve` as it is: carry the value in a field marked `sensitive`, or derive what may be shown with a `fn`
+
+error[RB0320]: `refusal` is sensitive, and the error of call `reserve` is not
+  --> RB0320-sensitive-call.road:18:53
+   |
+18 |       else                    -> A  reply call fail refusal
+   |                                                     ^^^^^^^ a trace would show this value
+   |
+   = help: traces show the error of call `reserve` as it is: carry the value in a field marked `sensitive`, or derive what may be shown with a `fn`
+
+error[RB0320]: `pin` is sensitive, and argument `note` of `bank.reserve` is not
+  --> RB0320-sensitive-call.road:26:30
+   |
+26 |     invoke bank.reserve(pin, pin) {
+   |                              ^^^ a trace would show this value
+   |
+   = help: traces redact only what is marked: mark parameter `note` of `bank.reserve` `sensitive` too, or derive what may be shown with a `fn`

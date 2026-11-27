@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/strict-messages.road",
@@ -31,6 +31,7 @@
             {
               "name": "loud",
               "type": "bool",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -80,6 +81,7 @@
         }
       },
       "calls": {},
+      "children": {},
       "root": {
         "id": "Door",
         "name": "Door",
@@ -249,6 +251,7 @@
         {
           "name": "door",
           "type": "ref Door",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -261,6 +264,7 @@
             {
               "name": "loud",
               "type": "bool",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -287,6 +291,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Visitor",
         "name": "Visitor",
@@ -407,6 +412,7 @@
                   "machine": "Door",
                   "state": null
                 },
+                "key": null,
                 "event": "Knock",
                 "value": {
                   "kind": "record",

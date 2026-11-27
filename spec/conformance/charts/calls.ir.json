@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/calls.road",
@@ -9,15 +9,18 @@
   "types": {
     "Item": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "sku",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "qty",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -32,15 +35,18 @@
     },
     "Reservation": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "count",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -59,6 +65,7 @@
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -80,16 +87,19 @@
         {
           "name": "warehouse",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "items",
           "type": "Item[]",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -122,6 +132,7 @@
         {
           "name": "warehouse",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -131,6 +142,7 @@
         {
           "name": "pending",
           "type": "call reserve",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -144,6 +156,7 @@
         {
           "name": "orderId",
           "type": "string",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -157,6 +170,7 @@
         {
           "name": "items",
           "type": "Item[]",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -170,6 +184,7 @@
         {
           "name": "held",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -239,11 +254,13 @@
             {
               "name": "orderId",
               "type": "string",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "items",
               "type": "Item[]",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -274,6 +291,7 @@
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Inventory",
         "name": "Inventory",
@@ -842,16 +860,19 @@
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "items",
           "type": "Item[]",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "inventory",
           "type": "ref Inventory",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -863,6 +884,7 @@
         {
           "name": "reservation",
           "type": "Reservation",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -876,6 +898,7 @@
         {
           "name": "problem",
           "type": "OutOfStock",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -890,6 +913,7 @@
       "events": {},
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -1181,6 +1205,7 @@
         {
           "name": "inventory",
           "type": "ref Inventory",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -1190,6 +1215,7 @@
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -1204,6 +1230,7 @@
       "events": {},
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Counter",
         "name": "Counter",

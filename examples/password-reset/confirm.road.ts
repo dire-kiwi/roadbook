@@ -77,7 +77,7 @@ export interface ConfirmPasswordResetDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "examples/password-reset/confirm.road",
@@ -91,6 +91,7 @@ const ir: unknown = {
   "types": {
     "UserId": {
       "kind": "alias",
+      "params": [],
       "type": "string",
       "doc": "",
       "span": {
@@ -103,15 +104,18 @@ const ir: unknown = {
     },
     "ResetToken": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "tokenId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "userId",
           "type": "UserId",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -126,15 +130,18 @@ const ir: unknown = {
     },
     "ApiResponse": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "status",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "body",
           "type": "json",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -190,6 +197,7 @@ const ir: unknown = {
         {
           "name": "password",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -208,6 +216,7 @@ const ir: unknown = {
         {
           "name": "items",
           "type": "string[]",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -238,6 +247,7 @@ const ir: unknown = {
         {
           "name": "problems",
           "type": "string[]",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -256,11 +266,13 @@ const ir: unknown = {
         {
           "name": "status",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "code",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -281,6 +293,7 @@ const ir: unknown = {
         {
           "name": "userId",
           "type": "UserId",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -298,6 +311,7 @@ const ir: unknown = {
         {
           "name": "userId",
           "type": "UserId",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -317,6 +331,7 @@ const ir: unknown = {
         {
           "name": "token",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -339,6 +354,7 @@ const ir: unknown = {
         {
           "name": "password",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -358,11 +374,13 @@ const ir: unknown = {
         {
           "name": "userId",
           "type": "UserId",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "passwordHash",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -395,11 +413,13 @@ const ir: unknown = {
         {
           "name": "token",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "newPassword",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -409,6 +429,7 @@ const ir: unknown = {
         {
           "name": "reset",
           "type": "ResetToken",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -422,6 +443,7 @@ const ir: unknown = {
         {
           "name": "problems",
           "type": "string[]",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -435,6 +457,7 @@ const ir: unknown = {
         {
           "name": "hash",
           "type": "string",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -449,6 +472,7 @@ const ir: unknown = {
       "events": {},
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "ConfirmPasswordReset",
         "name": "ConfirmPasswordReset",

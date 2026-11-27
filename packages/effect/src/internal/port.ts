@@ -22,6 +22,11 @@ export interface Port {
    * receive: those their machine has an `on` for.
    */
   readonly subscribers: Map<Port, ReadonlySet<string>>
+  /**
+   * For a durable run's handle, whose run may be live in this process, parked, recovering or
+   * ended: how an input reaches it. Returns whether the run will take it (false once it ended).
+   */
+  readonly deliver?: (input: Core.Input) => boolean
 }
 
 /**
@@ -33,7 +38,8 @@ export interface Wake {
 }
 
 /** Push `input` onto the run's queue if the run is open. Returns whether it was pushed. */
-export const push = (port: Port, input: Core.Input): boolean => port.open && Queue.offerUnsafe(port.queue, input)
+export const push = (port: Port, input: Core.Input): boolean =>
+  port.deliver !== undefined ? port.deliver(input) : port.open && Queue.offerUnsafe(port.queue, input)
 
 /**
  * A call's way to answer (execution.md, "Carrying out calls"): pushes the outcome of the call's

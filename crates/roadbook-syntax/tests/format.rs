@@ -7,6 +7,11 @@ use roadbook_syntax::{FileId, format, parse_file};
 
 /// `(input, canonical output)`
 const LAYOUTS: &[(&str, &str)] = &[
+    // `sensitive` comes first, on fields, parameters and variables.
+    (
+        "type T {sensitive   a:int,b:int}\nmachine M( sensitive  k :string) {\n  sensitive   var t:int=1\n  var u: int\n}\n",
+        "type T { sensitive a: int, b: int }\nmachine M(sensitive k: string) {\n  sensitive var t: int = 1\n  var u:           int\n}\n",
+    ),
     // Spacing is normalised; trailing commas and redundant parentheses go.
     (
         "machine   M ( a :int , ) -> R!E{initial A state A{on Go->A set x=(1+2)*3,y=(a)}}",
@@ -26,6 +31,18 @@ const LAYOUTS: &[(&str, &str)] = &[
     (
         "machine M() {\n  state A {\n    on Go -> B\n  }\n  state B { entry do f() always -> A }\n  state C {\n  }\n}\n",
         "machine M() {\n  state A { on Go -> B }\n  state B {\n    entry do f()\n    always -> A\n  }\n  state C {}\n}\n",
+    ),
+    // A history state keeps a line of its own, documented or not; `history` and `deep` are
+    // still names elsewhere.
+    (
+        "machine M() {\n  var history: int = 0\n  var deep: int = 0\n  state A {\n    initial B\n    /// Back.\n    history   H\n    deep  history D\n    state B {}\n  }\n  state C { deep history E }\n}\n",
+        "machine M() {\n  var history: int = 0\n  var deep:    int = 0\n  state A {\n    initial B\n    /// Back.\n    history H\n    deep history D\n    state B {}\n  }\n  state C {\n    deep history E\n  }\n}\n",
+    ),
+    // Type arguments and parameters: no space inside `<>`, one after each comma; a `>=` closing
+    // type arguments is a `>` and an `=`; one-line types align after their parameters.
+    (
+        "type Page < T , > {items:T[]}\ntype Dict<T>=map<string,T>\ntype Id=string\nmachine M() {\n  var m: map<string, Page<int>>= f()\n}\n",
+        "type Page<T> { items: T[] }\ntype Dict<T> = map<string, T>\ntype Id      = string\nmachine M() {\n  var m: map<string, Page<int>> = f()\n}\n",
     ),
     // `error E {}` is `error E`; a record value with no fields is the bare name.
     ("error E {}\n\nfn f() -> E\n", "error E\n\nfn f() -> E\n"),
@@ -55,6 +72,16 @@ const LAYOUTS: &[(&str, &str)] = &[
     (
         "machine M() {\n  after (Cfg { ms: 1 }) -> A\n  after (d) -> A\n}\n",
         "machine M() {\n  after (Cfg { ms: 1 }) -> A\n  after d               -> A\n}\n",
+    ),
+    // A `retry` clause: single spaces, `|` between errors, a record delay in parentheses.
+    (
+        "machine M() {\n  state A {\n    invoke f( x )   retry   007 on A|B   after (d) {\n      done -> A\n    }\n    invoke g() as g retry 1 after (Cfg { ms: 1 }) { done -> A }\n  }\n}\n",
+        "machine M() {\n  state A {\n    invoke f(x) retry 7 on A | B after d {\n      done -> A\n    }\n    invoke g() as g retry 1 after (Cfg { ms: 1 }) {\n      done -> A\n    }\n  }\n}\n",
+    ),
+    // Comments inside a `retry` clause, which is printed on one line, move before the invoke.
+    (
+        "machine M() {\n  state A {\n    invoke f() retry 2 // two\n      on A // which\n      after 1s {\n      done -> A\n    }\n  }\n}\n",
+        "machine M() {\n  state A {\n    // two\n    // which\n    invoke f() retry 2 on A after 1s {\n      done -> A\n    }\n  }\n}\n",
     ),
     // Alignment: transition arrows and effects across a block, nested branches included.
     (

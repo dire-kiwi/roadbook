@@ -1,0 +1,21 @@
+error Lost
+error Gone
+
+machine Child() ! Lost {
+  initial Done
+  final state Done { fail Lost }
+}
+
+machine M() {
+  event Go
+  children kids: Child by int
+  initial A
+  state A {
+    on Go           spawn kids[1] = Child()
+    on kids.fail Gone -> A
+    on kids.fail Lsot -> A
+  }
+}
+
+// expect: RB0207 at 15:18
+// expect: RB0207 at 16:18

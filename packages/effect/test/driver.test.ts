@@ -6,8 +6,8 @@ import { TestClock } from "effect/testing"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import * as Roadbook from "../src/index.ts"
-import { type Beat, Beacon, Boom, type Bye, Ping, Stop } from "./charts/beacon.road.ts"
-import { Asker, Close, Desk, Early, Go, Leftover, Overflow, Payload, Settle } from "./charts/runtime.road.ts"
+import { type Beat, Beacon, Boom, type Bye, type Heard, Ping, Stop, Whisper } from "./charts/beacon.road.ts"
+import { Asker, Close, Desk, Early, Generic, Go, Leftover, Overflow, Payload, Settle } from "./charts/runtime.road.ts"
 
 const charts = path.resolve(import.meta.dirname, "../../../spec/conformance/charts")
 const readIr = (file: string): unknown => JSON.parse(fs.readFileSync(path.join(charts, file), "utf8"))
@@ -536,6 +536,34 @@ describe("calls", () => {
     }).pipe(Effect.scoped))
 })
 
+describe("maps and generic records", () => {
+  it.effect("pass through input, functions and output in their host form", () =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      const boxes = JSON.parse(`{"__proto__": {"value": 2000}, "a": {"value": 5}}`, (_, v) =>
+        typeof v === "number" ? Duration.millis(v) : v)
+      const Live = Generic.implement({
+        fns: {
+          withLongest: ({ boxes }) => {
+            const longest = Object.values(boxes).reduce((a, b) => Duration.isGreaterThan(b.value, a.value) ? b : a)
+            return { ...boxes, longest }
+          }
+        }
+      })
+      const output = yield* Live.run({ boxes }).pipe(Effect.provideService(Roadbook.TraceSink, sink))
+      assert.deepStrictEqual(Object.keys(output), ["__proto__", "a", "longest"])
+      assert.isTrue(Duration.equals(output["__proto__"]!.value, Duration.seconds(2)))
+      assert.isTrue(Duration.equals(output["longest"]!.value, Duration.seconds(2)))
+      const started = records.find((r) => r.kind === "started")!
+      assert.strictEqual(Core.canonicalJson(started.input), `{"boxes":{"__proto__":{"value":2000},"a":{"value":5}}}`)
+      const done = records.find((r) => r.kind === "done")!
+      assert.strictEqual(
+        Core.canonicalJson(done.output),
+        `{"__proto__":{"value":2000},"a":{"value":5},"longest":{"value":2000}}`
+      )
+    }))
+})
+
 describe("host listeners", () => {
   const live = (log: () => Effect.Effect<void> = () => Effect.void) => Beacon.implement({ actions: { log } })
   const emittedValues = (records: ReadonlyArray<Core.TraceRecord>) =>
@@ -549,7 +577,7 @@ describe("host listeners", () => {
         Effect.provideService(Roadbook.TraceSink, sink),
         Effect.provideService(Roadbook.RootRunId, () => "b")
       )
-      const stream: Stream.Stream<Beat | Bye> = actor.emitted
+      const stream: Stream.Stream<Beat | Bye | Heard> = actor.emitted
       const seen = listening ? yield* Effect.forkChild(Stream.runCollect(stream)) : undefined
       yield* Effect.yieldNow
       yield* actor.send(Ping.make({}))
@@ -572,6 +600,20 @@ describe("host listeners", () => {
       ])
       assert.deepStrictEqual(records, (yield* pings(false)).records)
     }))
+
+  it.effect("a listener hears sensitive fields as they are, while the trace redacts them", () =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      const actor = yield* live().spawn({}).pipe(Effect.provideService(Roadbook.TraceSink, sink))
+      const seen = yield* Effect.forkChild(Stream.runCollect(actor.emitted))
+      yield* Effect.yieldNow
+      yield* actor.send(Whisper.make({ word: "swordfish" }))
+      yield* actor.send(Stop.make({}))
+      yield* actor.result
+      const heard = [...(yield* Fiber.join(seen))]
+      assert.deepStrictEqual(heard, [{ _tag: "Heard", word: "swordfish" }, { _tag: "Bye" }])
+      assert.deepStrictEqual(emittedValues(records).slice(1), [{ _tag: "Heard", word: "<redacted>" }, { _tag: "Bye" }])
+    }).pipe(Effect.scoped))
 
   it.effect("each subscriber hears from when it subscribes; one after the end hears nothing", () =>
     Effect.gen(function*() {

@@ -1,0 +1,62 @@
+// Conformance chart: what spawned children emit, and who hears it. A parent
+// is sent only the emitted events its machine has an `on children.E` for; a
+// strict parent drops what its children emit or end with when no transition
+// is enabled for it, and fails only on its own events.
+
+/// Says two things when told to, and ends when told to quit.
+machine Speaker(name: string) {
+  event Speak
+  event Quit
+  emits Ping  { n: int }
+  emits Pong  { n: int }
+
+  initial Talking
+
+  state Talking {
+    on Speak          emit Ping { n: 1 }  emit Pong { n: 2 }
+    on Quit  -> Gone
+  }
+
+  final state Gone {}
+}
+
+/// Hears its speakers' `Ping`, from every key but "quiet", and never their `Pong`.
+machine Listener() {
+  event Add  { id: string }
+  event Tell { id: string }
+
+  children speakers: Speaker by string
+
+  var heard: int = 0
+
+  initial Listening
+
+  state Listening {
+    on Add                             spawn speakers[event.id] = Speaker(event.id)
+    on Tell                            send speakers[event.id].Speak
+    on speakers.Ping if key != "quiet" set heard = heard + event.n
+  }
+}
+
+/// Strict, with spawned children: what they emit or end with that it does not take is
+/// dropped, and only its own events can be `unhandled`.
+strict machine Foreman() {
+  event Hire   { id: string }
+  event Tell   { id: string }
+  event Finish { id: string }
+  event Stray
+
+  children speakers: Speaker by string
+
+  var heard: int = 0
+
+  initial Working
+
+  state Working {
+    on Hire                           spawn speakers[event.id] = Speaker(event.id)
+    on Tell                           send speakers[event.id].Speak
+    on Finish                         send speakers[event.id].Quit
+    on speakers.Ping if event.n > 5   set heard = heard + event.n
+    on speakers.done if key == "boss" set heard = 0
+  }
+}

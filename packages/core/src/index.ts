@@ -5,6 +5,8 @@
  */
 export * from "./ir.ts"
 export * from "./json.ts"
+export { REDACTED, redactEmitted } from "./redact.ts"
+export * from "./typeref.ts"
 export * from "./types.ts"
 export { compareCodePoints, heard, restore, SETTLE_LIMIT, start, step } from "./interpreter.ts"
 export {

@@ -2,7 +2,7 @@
 
 import type { Effect, Ir } from './ir.ts'
 import { own } from './ir.ts'
-import { callOfType, effectText, invokeText, triggerText, walkStates } from './model.ts'
+import { callOfType, effectText, invokeText, isHistory, kindText, triggerText, walkStates } from './model.ts'
 
 export type SearchKind = 'state' | 'event' | 'call' | 'task' | 'machine' | 'error' | 'action'
 
@@ -32,10 +32,11 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
         if (e.kind === 'send' || e.kind === 'emit') out.push({ kind: 'event', name: e.event, label: `${effectText(e)}: ${where}`, machine, target })
         const call = e.kind === 'reply' ? callOfType(e.call.type) : null
         if (call) out.push({ kind: 'call', name: call, label: `${effectText(e)}: ${where}`, machine, target })
+        if (e.kind === 'spawn') out.push({ kind: 'machine', name: e.machine, label: `${effectText(e)}: ${where}`, machine, target })
       }
     }
     walkStates(m.root, (s, _parent, depth) => {
-      if (depth > 0) out.push({ kind: 'state', name: s.name, label: `${machine}.${short(s.id)}`, machine, target: { type: 'state', id: s.id } })
+      if (depth > 0) out.push({ kind: 'state', name: s.name, label: `${machine}.${short(s.id)}${isHistory(s) ? ` (${kindText(s)})` : ''}`, machine, target: { type: 'state', id: s.id } })
       if (s.invoke) {
         out.push({
           kind: s.invoke.kind,
@@ -56,7 +57,7 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
         const target = { type: 'transition' as const, state: s.id, index }
         if (t.trigger.kind === 'event' || t.trigger.kind === 'emitted') out.push({ kind: 'event', name: t.trigger.event, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
         if (t.trigger.kind === 'call') out.push({ kind: 'call', name: t.trigger.call, label: `on ${t.trigger.call}: ${where}`, machine, target })
-        if (t.trigger.kind === 'invoke.fail') out.push({ kind: 'error', name: t.trigger.error, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
+        if (t.trigger.kind === 'invoke.fail' || t.trigger.kind === 'spawn.fail') out.push({ kind: 'error', name: t.trigger.error, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
         effects(t.effects, where, target)
       })
     })

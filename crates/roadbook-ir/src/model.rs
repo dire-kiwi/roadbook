@@ -1,5 +1,7 @@
 //! The IR document and its declarations, machines and states.
 
+use std::borrow::Cow;
+
 use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -30,6 +32,110 @@ pub struct Ir {
     pub tasks: IndexMap<String, TaskDecl>,
     /// Machines.
     pub machines: IndexMap<String, Machine>,
+}
+
+impl Ir {
+    /// `t` with aliases expanded at the top, transitively, a generic alias's
+    /// arguments substituted into its target: `Money` for `type Money = int`
+    /// is `int`, `S` for `type S = string?` is `string?`, and `Dict<Order>` for
+    /// `type Dict<T> = map<string, T>` is `map<string, Order>`. Anything else
+    /// (a record, an instance of a generic record, a list) is returned as it
+    /// is. The compiler rejects alias cycles; the bound only keeps a
+    /// hand-written IR from looping.
+    pub fn expand_top<'a>(&'a self, t: &'a TypeRef) -> Cow<'a, TypeRef> {
+        let mut t = Cow::Borrowed(t);
+        for _ in 0..64 {
+            let next = match &*t {
+                TypeRef::Named(n) => match self.types.get(n).map(|d| &d.def) {
+                    Some(TypeDef::Alias { params, ty }) if params.is_empty() => Cow::Borrowed(ty),
+                    _ => break,
+                },
+                TypeRef::Generic(n, args) => match self.types.get(n).map(|d| &d.def) {
+                    Some(TypeDef::Alias { params, ty }) => Cow::Owned(ty.substitute(params, args)),
+                    _ => break,
+                },
+                _ => break,
+            };
+            t = next;
+        }
+        t
+    }
+
+    /// An alias that refers to itself, directly or through other aliases (anywhere in its
+    /// target: in a type argument, a map, a list), if there is one. The compiler never writes
+    /// one; a reader refuses an IR that has one, since expanding it would not end.
+    pub fn alias_cycle(&self) -> Option<&str> {
+        let aliases_in = |name: &str| -> Vec<&str> {
+            let mut out = Vec::new();
+            if let Some(TypeDef::Alias { ty, .. }) = self.types.get(name).map(|d| &d.def) {
+                ty.for_each_name(&mut |n| {
+                    if let Some((key, d)) = self.types.get_key_value(n)
+                        && matches!(d.def, TypeDef::Alias { .. })
+                    {
+                        out.push(key.as_str());
+                    }
+                });
+            }
+            out
+        };
+        // Depth first, colouring each alias once: grey while on the path, black when done.
+        let mut done: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        for start in self.types.keys() {
+            if done.contains(start.as_str()) {
+                continue;
+            }
+            let mut path: Vec<(&str, Vec<&str>)> = vec![(start, aliases_in(start))];
+            let mut on_path: std::collections::HashSet<&str> = [start.as_str()].into();
+            while let Some((name, next)) = path.last_mut() {
+                match next.pop() {
+                    Some(n) if on_path.contains(n) => return Some(n),
+                    Some(n) if !done.contains(n) => {
+                        on_path.insert(n);
+                        let more = aliases_in(n);
+                        path.push((n, more));
+                    }
+                    Some(_) => {}
+                    None => {
+                        let name = *name;
+                        on_path.remove(name);
+                        done.insert(name);
+                        path.pop();
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// The fields of `t` if it is (through aliases) a record or error type,
+    /// with the arguments of an instance of a generic record substituted:
+    /// its name, whether it is an error, and the fields.
+    pub fn fields_of<'a>(&'a self, t: &'a TypeRef) -> Option<(String, bool, Cow<'a, [Field]>)> {
+        let (name, args): (String, Vec<TypeRef>) = match self.expand_top(t).into_owned() {
+            TypeRef::Named(n) => (n, Vec::new()),
+            TypeRef::Generic(n, args) => (n, args),
+            _ => return None,
+        };
+        match &self.types.get(&name)?.def {
+            TypeDef::Record { params, fields } if params.is_empty() => {
+                Some((name, false, Cow::Borrowed(fields)))
+            }
+            TypeDef::Record { params, fields } => {
+                let fields = fields
+                    .iter()
+                    .map(|f| Field {
+                        name: f.name.clone(),
+                        ty: f.ty.substitute(params, &args),
+                        sensitive: f.sensitive,
+                        doc: f.doc.clone(),
+                    })
+                    .collect();
+                Some((name, false, Cow::Owned(fields)))
+            }
+            TypeDef::Error { fields } => Some((name, true, Cow::Borrowed(fields))),
+            _ => None,
+        }
+    }
 }
 
 /// A source file.
@@ -73,6 +179,8 @@ pub struct Field {
     /// Its type.
     #[serde(rename = "type")]
     pub ty: TypeRef,
+    /// Written `sensitive`: its value is redacted in trace records.
+    pub sensitive: bool,
     /// Doc comment, `""` if none.
     pub doc: String,
 }
@@ -91,14 +199,19 @@ pub struct TypeDecl {
 /// The kinds of type declaration. In JSON the kind is the `kind` member.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeDef {
-    /// `type Name { fields }`: `{"kind": "record", "fields": [Field]}`.
+    /// `type Name<params> { fields }`:
+    /// `{"kind": "record", "params": [string], "fields": [Field]}`.
     Record {
-        /// Fields, in source order.
+        /// Type parameters, in source order. Empty unless the type is generic.
+        params: Vec<String>,
+        /// Fields, in source order. Their types may name the parameters.
         fields: Vec<Field>,
     },
-    /// `type Name = T`: `{"kind": "alias", "type": TypeRef}`.
+    /// `type Name<params> = T`: `{"kind": "alias", "params": [string], "type": TypeRef}`.
     Alias {
-        /// The aliased type.
+        /// Type parameters, in source order. Empty unless the alias is generic.
+        params: Vec<String>,
+        /// The aliased type. It may name the parameters.
         ty: TypeRef,
     },
     /// `enum Name { A, B }`: `{"kind": "enum", "variants": [string]}`.
@@ -119,11 +232,13 @@ pub enum TypeDef {
 #[serde(tag = "kind", rename_all = "lowercase")]
 enum TypeDeclSer<'a> {
     Record {
+        params: &'a [String],
         fields: &'a [Field],
         doc: &'a str,
         span: &'a Span,
     },
     Alias {
+        params: &'a [String],
         #[serde(rename = "type")]
         ty: &'a TypeRef,
         doc: &'a str,
@@ -149,11 +264,13 @@ enum TypeDeclSer<'a> {
 #[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
 enum TypeDeclDe {
     Record {
+        params: Vec<String>,
         fields: Vec<Field>,
         doc: String,
         span: Span,
     },
     Alias {
+        params: Vec<String>,
         #[serde(rename = "type")]
         ty: TypeRef,
         doc: String,
@@ -179,8 +296,18 @@ impl Serialize for TypeDecl {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let (doc, span) = (self.doc.as_str(), &self.span);
         match &self.def {
-            TypeDef::Record { fields } => TypeDeclSer::Record { fields, doc, span },
-            TypeDef::Alias { ty } => TypeDeclSer::Alias { ty, doc, span },
+            TypeDef::Record { params, fields } => TypeDeclSer::Record {
+                params,
+                fields,
+                doc,
+                span,
+            },
+            TypeDef::Alias { params, ty } => TypeDeclSer::Alias {
+                params,
+                ty,
+                doc,
+                span,
+            },
             TypeDef::Enum { variants } => TypeDeclSer::Enum {
                 variants,
                 doc,
@@ -196,8 +323,18 @@ impl Serialize for TypeDecl {
 impl<'de> Deserialize<'de> for TypeDecl {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<TypeDecl, D::Error> {
         let (def, doc, span) = match TypeDeclDe::deserialize(deserializer)? {
-            TypeDeclDe::Record { fields, doc, span } => (TypeDef::Record { fields }, doc, span),
-            TypeDeclDe::Alias { ty, doc, span } => (TypeDef::Alias { ty }, doc, span),
+            TypeDeclDe::Record {
+                params,
+                fields,
+                doc,
+                span,
+            } => (TypeDef::Record { params, fields }, doc, span),
+            TypeDeclDe::Alias {
+                params,
+                ty,
+                doc,
+                span,
+            } => (TypeDef::Alias { params, ty }, doc, span),
             TypeDeclDe::Enum {
                 variants,
                 doc,
@@ -280,6 +417,9 @@ pub struct Machine {
     /// Calls the machine answers (`call name(params) -> T ! E`), keyed by their
     /// lower-case name, in source order.
     pub calls: IndexMap<String, Call>,
+    /// The keyed collections of spawned children (`children name: Machine by
+    /// Key`), keyed by name, in source order.
+    pub children: IndexMap<String, ChildrenDecl>,
     /// The root state. Its `id` and `name` are the machine's name, it is
     /// `compound`, and it holds the `entry`, `exit`, `on`, `after` and
     /// `always` items written directly in the machine body.
@@ -288,7 +428,7 @@ pub struct Machine {
     pub hash: String,
 }
 
-/// `var name: T [= expr]`.
+/// `[sensitive] var name: T [= expr]`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Var {
@@ -297,6 +437,8 @@ pub struct Var {
     /// Its type.
     #[serde(rename = "type")]
     pub ty: TypeRef,
+    /// Written `sensitive var`: its value is redacted in trace records.
+    pub sensitive: bool,
     /// Initial value, `null` if the variable starts unassigned.
     pub init: Option<Expr>,
     /// Doc comment, `""` if none.
@@ -341,6 +483,20 @@ pub struct Call {
 /// key of [`Ir::types`].
 pub const UNANSWERED: &str = "Unanswered";
 
+/// `children name: Machine by Key`: a keyed collection of spawned children.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChildrenDecl {
+    /// The machine the children run, a key of [`Ir::machines`].
+    pub machine: String,
+    /// The key type: `string`, `int` or an enum, or an alias of one.
+    pub key: TypeRef,
+    /// Doc comment, `""` if none.
+    pub doc: String,
+    /// From `children` to the end of the key type.
+    pub span: Span,
+}
+
 /// The kinds of state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -353,6 +509,19 @@ pub enum StateKind {
     Parallel,
     /// `final state`.
     Final,
+    /// `history Name`: a shallow history pseudo-state of its parent.
+    History,
+    /// `deep history Name`: a deep history pseudo-state of its parent.
+    #[serde(rename = "deepHistory")]
+    DeepHistory,
+}
+
+impl StateKind {
+    /// Whether this is a history pseudo-state, `history` or `deepHistory`: never active, and
+    /// never one of its parent's children in the sense of `spec/execution.md`.
+    pub fn is_history(self) -> bool {
+        matches!(self, StateKind::History | StateKind::DeepHistory)
+    }
 }
 
 /// A state.
@@ -434,7 +603,7 @@ impl Invoke {
     }
 }
 
-/// Whether an [`Address`] names an invoked child or a `ref` value.
+/// Whether an [`Address`] names an invoked child, a `ref` value or a children collection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AddressKind {
@@ -442,6 +611,8 @@ pub enum AddressKind {
     Child,
     /// A parameter or variable of type `ref Machine`.
     Ref,
+    /// The spawned children of a `children` collection.
+    Children,
 }
 
 /// Another running machine, as a `send` names its receiver, an
@@ -451,12 +622,13 @@ pub enum AddressKind {
 pub struct Address {
     /// A child or a ref.
     pub kind: AddressKind,
-    /// The `as` name, or the parameter or variable.
+    /// The `as` name, the parameter or variable, or the collection.
     pub name: String,
     /// The machine at the other end, a key of [`Ir::machines`].
     pub machine: String,
     /// For a child, the id of the state whose invoke is named `name`: the
-    /// innermost such state containing the item. `None` for a ref.
+    /// innermost such state containing the item. `None` for a ref or a
+    /// collection.
     pub state: Option<String>,
 }
 
@@ -534,6 +706,21 @@ pub enum Trigger {
         /// The call's name, a key of [`Machine::calls`].
         call: String,
     },
+    /// `on name.done`: a spawned child of the collection ended `done`.
+    #[serde(rename = "spawn.done")]
+    SpawnDone {
+        /// The collection, a key of [`Machine::children`].
+        children: String,
+    },
+    /// `on name.fail E`: a spawned child of the collection failed with `E`.
+    #[serde(rename = "spawn.fail")]
+    SpawnFail {
+        /// The collection, a key of [`Machine::children`].
+        children: String,
+        /// The error's name, or `"*"` for the declared errors the state has
+        /// no `on name.fail` for.
+        error: String,
+    },
 }
 
 /// An effect, run by an `entry`, an `exit` or a transition.
@@ -558,6 +745,10 @@ pub enum Effect {
     Send {
         /// The receiver.
         to: Address,
+        /// For a collection, the key of the child (`send name[key].Event`), or
+        /// `None` for every running child (`send name.*.Event`). `None` for
+        /// the other kinds of address.
+        key: Option<Expr>,
         /// The event's name, a key of the receiver's [`Machine::events`].
         event: String,
         /// The event's value: a `record` expression whose type is
@@ -584,6 +775,24 @@ pub enum Effect {
         /// it returns nothing; for `fail`, one of its declared errors.
         value: Option<Expr>,
     },
+    /// `spawn name[key] = Machine(args)`: start a child in a collection.
+    Spawn {
+        /// The collection, a key of [`Machine::children`].
+        children: String,
+        /// Its machine.
+        machine: String,
+        /// The child's key.
+        key: Expr,
+        /// Arguments, positional, in parameter order.
+        args: Vec<Expr>,
+    },
+    /// `stop name[key]`: stop a spawned child.
+    Stop {
+        /// The collection, a key of [`Machine::children`].
+        children: String,
+        /// The child's key.
+        key: Expr,
+    },
 }
 
 /// How a `reply` answers a call.
@@ -598,14 +807,18 @@ pub enum ReplyOutcome {
 
 impl Machine {
     /// The first use of messaging in the machine, described for a "not supported" message:
-    /// an `emits`, a `ref` type, an `invoke … as`, an `on name.Event`, a `send` or an `emit`.
+    /// an `emits`, a `children` collection, a `ref` type, an `invoke … as`, an `on name.Event`,
+    /// a `send`, an `emit`, a `spawn` or a `stop`.
     /// `None` if it uses none. A reader that does not implement messaging refuses a machine
     /// for which this is `Some`.
     pub fn messaging(&self) -> Option<String> {
         if let Some(e) = self.emits.keys().next() {
             return Some(format!("`emits {e}`"));
         }
-        let has_ref = |t: &TypeRef| t.ref_base().is_some();
+        if let Some(c) = self.children.keys().next() {
+            return Some(format!("`children {c}`"));
+        }
+        let has_ref = |t: &TypeRef| t.mentions_ref();
         if let Some(p) = self.params.iter().find(|p| has_ref(&p.ty)) {
             return Some(format!("the parameter `{}: {}`", p.name, p.ty));
         }
@@ -621,6 +834,8 @@ fn state_messaging(s: &State) -> Option<String> {
         effects.iter().find_map(|e| match e {
             Effect::Send { to, event, .. } => Some(format!("`send {}.{event}`", to.name)),
             Effect::Emit { event, .. } => Some(format!("`emit {event}`")),
+            Effect::Spawn { children, .. } => Some(format!("`spawn {children}[…]`")),
+            Effect::Stop { children, .. } => Some(format!("`stop {children}[…]`")),
             _ => None,
         })
     };

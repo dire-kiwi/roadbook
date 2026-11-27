@@ -1,0 +1,44 @@
+// Conformance chart: redaction in calls between machines. A call's sensitive
+// parameter is redacted in the caller's `invoke.started` and the callee's
+// `call` input, its result's sensitive field in `replied` and the caller's
+// `invoke.done`, and the input of a strict callee's `unhandled` defect is
+// redacted as an `event` record's would be.
+
+/// What the issuer gives: the token's secret is never shown.
+type Token { user: string, sensitive secret: string }
+
+/// Issues tokens while it is open; strict, so a call while closed is a defect.
+strict machine Issuer() {
+  /// A token for `user`, who gave `pin`.
+  call issue(user: string, sensitive pin: string) -> Token
+
+  event Close
+  event Reopen
+
+  initial Open
+
+  state Open {
+    on issue          reply call done Token { user: event.user, secret: event.pin }
+    on Close -> Shut
+  }
+
+  /// No `on issue`: a call here ends the run with an `unhandled` defect.
+  state Shut { on Reopen -> Open }
+}
+
+/// Asks the issuer for a token; gives the user it was issued to, or "".
+machine Client(issuer: ref Issuer, user: string, sensitive pin: string) -> string {
+  var token: Token?
+
+  initial Asking
+
+  state Asking {
+    invoke issuer.issue(user, pin) {
+      done            -> Got   set token = result
+      fail Unanswered -> Gave
+    }
+  }
+
+  final state Got  { output user }
+  final state Gave { output "" }
+}

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/strict.road",
@@ -42,6 +42,7 @@
         {
           "name": "tries",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -86,6 +87,7 @@
             {
               "name": "loud",
               "type": "bool",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -101,6 +103,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Lock",
         "name": "Lock",

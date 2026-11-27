@@ -1,0 +1,90 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: Login
+      kind:
+        record:
+          fields:
+            - name: user
+              ty:
+                builtin: string
+            - sensitive: true
+              name: password
+              ty:
+                builtin: string
+            - name: sensitive
+              ty:
+                builtin: bool
+  - decl:
+      name: Denied
+      kind:
+        error:
+          fields:
+            - sensitive: true
+              name: token
+              ty:
+                builtin: string
+  - decl:
+      name: check
+      kind:
+        task:
+          params:
+            - sensitive: true
+              name: password
+              ty:
+                builtin: string
+          returns:
+            builtin: bool
+          errors: []
+  - decl:
+      name: M
+      kind:
+        machine:
+          strict: false
+          params:
+            - sensitive: true
+              name: key
+              ty:
+                builtin: string
+          returns: ~
+          errors: []
+          body:
+            - var:
+                doc: The session.
+                sensitive: true
+                name: token
+                ty:
+                  optional:
+                    builtin: string
+                init: ~
+            - var:
+                name: sensitive
+                ty:
+                  builtin: int
+                init:
+                  int: 0
+            - event:
+                name: Submit
+                fields:
+                  - sensitive: true
+                    name: sensitive
+                    ty:
+                      builtin: string
+            - emits:
+                name: Done
+                fields:
+                  - sensitive: true
+                    name: code
+                    ty:
+                      builtin: int
+            - initial: S
+            - state:
+                kind: normal
+                name: S
+                body: []
+comments:
+  - kind: doc
+    text: /// The session.

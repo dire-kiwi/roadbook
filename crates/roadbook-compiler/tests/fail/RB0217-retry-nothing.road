@@ -1,0 +1,25 @@
+error Busy
+error Gone
+task ping() ! Busy | Gone
+task quiet()
+
+machine M() {
+  initial A
+  state A {
+    invoke ping() retry 0 on Busy | Gone | Busy {
+      done      -> B
+      fail Busy -> B
+      fail Gone -> B
+    }
+  }
+  state B {
+    invoke quiet() retry 1 {
+      done -> C
+    }
+  }
+  final state C {}
+}
+
+// expect: RB0217 at 9:25
+// expect: RB0217 at 9:44
+// expect: RB0217 at 16:20

@@ -3,13 +3,14 @@
 // (app/simulate.ts) draws it, and the tests drive it with a conformance case's script.
 //
 // It is a small driver (spec/execution.md, "The driver") for a single run on a virtual clock:
-// the reader is the host. Tasks, machine invokes (treated as tasks: the child run is not
-// started) and call invokes (the callee is not run either) end when the reader gives their
-// outcome; timers fire when the reader lets them or advances the clock; functions are answered
-// by the reader when the core calls them; actions do nothing. `send` and `emit` are carried out
-// as their records only: there is no other run to deliver to. A child invoked with `as` can be
-// made to emit one of its events by hand, and the machine's own calls can be made to it by a
-// simulated caller, whose answer (`reply`) shows as its `replied` record only.
+// the reader is the host. Tasks, machine invokes and spawned children (treated as tasks: the
+// child run is not started) and call invokes (the callee is not run either) end when the reader
+// gives their outcome; timers fire when the reader lets them or advances the clock; functions
+// are answered by the reader when the core calls them; actions do nothing. `send` and `emit`
+// are carried out as their records only: there is no other run to deliver to. A child invoked
+// with `as`, or spawned, can be made to emit one of its events by hand, and the machine's own
+// calls can be made to it by a simulated caller, whose answer (`reply`) shows as its `replied`
+// record only.
 
 import { canonicalJson, getMachine, IrError, start as coreStart, step as coreStep } from '@dire-kiwi/roadbook-core'
 import type { Command, Fns, FnResult, Input, Ir as CoreIr, Json, Snapshot, Stepped, Tagged, TraceRecord } from '@dire-kiwi/roadbook-core'
@@ -44,7 +45,7 @@ export interface Frame {
   now: number
   /** When each running timer is due, by timer id. */
   due: Readonly<Record<number, number>>
-  /** For each running child invoke with `as`, the id its next emitted event gets. */
+  /** For each running child invoke with `as` and each running spawned child, the id its next emitted event gets. */
   childMessages: Readonly<Record<number, number>>
   /** How many calls simulated callers have made: the next comes from run `r{callers + 2}`. */
   callers: number
@@ -79,6 +80,22 @@ export interface InvokeChoice {
   /** The `as` name of a machine invoke, through which the child's emitted events reach this run. */
   as: string | null
   /** The events the child machine emits (for an invoke with `as`). */
+  emits: { name: string; fields: Field[] }[]
+}
+
+/** A running spawned child and what can end it. */
+export interface SpawnChoice {
+  /** Its id, from the sequence invokes take theirs from. */
+  id: number
+  /** Its collection, and its key there. */
+  children: string
+  key: Json
+  src: string
+  /** The machine's result type, or null if it returns nothing. */
+  returns: string | null
+  /** The machine's declared errors, with their fields. */
+  errors: { name: string; fields: Field[] }[]
+  /** The events the machine emits, which reach this run through the collection. */
   emits: { name: string; fields: Field[] }[]
 }
 
@@ -120,6 +137,7 @@ export interface Choices {
   /** The calls taken and not yet answered, oldest first. */
   pending: PendingCall[]
   invokes: InvokeChoice[]
+  spawned: SpawnChoice[]
   timers: TimerChoice[]
 }
 
@@ -192,8 +210,23 @@ export class Simulation {
     return this.choose(`send ${value._tag}`, (w) => this.step(w, { kind: 'event', value }))
   }
 
-  /** Ends a running invoke: with a value, one of its errors, or a host defect. */
+  /**
+   * Ends a running invoke or spawned child (they take their ids from one sequence): with a
+   * value, one of its errors, or a host defect.
+   */
   complete(invoke: number, outcome: { done: Json } | { fail: Tagged } | { defect: string }): Outcome {
+    const what = 'done' in outcome ? 'done' : 'fail' in outcome ? `fail ${outcome.fail._tag}` : 'defect'
+    const spawned = this.current?.snapshot.spawned.find((c) => c.id === invoke)
+    if (spawned) {
+      const spawn = invoke
+      const input: Input =
+        'done' in outcome
+          ? { kind: 'spawn.done', spawn, value: outcome.done }
+          : 'fail' in outcome
+            ? { kind: 'spawn.fail', spawn, error: outcome.fail }
+            : { kind: 'spawn.defect', spawn, defect: { kind: 'host', message: outcome.defect } }
+      return this.choose(`${spawnedText(spawned)} ${what}`, (w) => this.step(w, input))
+    }
     const inv = this.current?.snapshot.invokes.find((i) => i.id === invoke)
     if (!inv) return { kind: 'error', message: `invoke ${invoke} is not running` }
     const input: Input =
@@ -202,7 +235,6 @@ export class Simulation {
         : 'fail' in outcome
           ? { kind: 'invoke.fail', invoke, error: outcome.fail }
           : { kind: 'invoke.defect', invoke, defect: { kind: 'host', message: outcome.defect } }
-    const what = 'done' in outcome ? 'done' : 'fail' in outcome ? `fail ${outcome.fail._tag}` : 'defect'
     // A call's label names its address, `inventory.reserve`, as the snapshot's src does.
     return this.choose(`${inv.src} ${what}`, (w) => this.step(w, input))
   }
@@ -253,11 +285,16 @@ export class Simulation {
     })
   }
 
-  /** Makes the child of a running machine invoke with `as` emit one of its events to this run. */
+  /**
+   * Makes the child of a running machine invoke with `as`, or a running spawned child, emit
+   * one of its events to this run.
+   */
   emitFromChild(invoke: number, value: Tagged): Outcome {
+    const spawned = this.current?.snapshot.spawned.find((c) => c.id === invoke)
     const inv = this.current?.snapshot.invokes.find((i) => i.id === invoke)
-    if (!inv) return { kind: 'error', message: `invoke ${invoke} is not running` }
-    return this.choose(`${inv.src} emits ${value._tag}`, (w) => {
+    const who = spawned ? spawnedText(spawned) : inv?.src
+    if (who === undefined) return { kind: 'error', message: `invoke ${invoke} is not running` }
+    return this.choose(`${who} emits ${value._tag}`, (w) => {
       const message = w.childMessages[invoke] ?? 1
       w.childMessages[invoke] = message + 1
       this.step(w, { kind: 'emitted', from: `${this.run}.${invoke}`, invoke, message, value })
@@ -314,7 +351,7 @@ export class Simulation {
   /** What the reader can do in the frame shown. */
   choices(): Choices {
     const f = this.current
-    if (!f || f.snapshot.status !== 'running') return { events: [], calls: [], pending: [], invokes: [], timers: [] }
+    if (!f || f.snapshot.status !== 'running') return { events: [], calls: [], pending: [], invokes: [], spawned: [], timers: [] }
     const m = this.def
     const active = f.snapshot.active.map((id) => findState(m, id)).filter((s) => s !== null)
     const events = Object.entries(m.events).map(([name, decl]) => ({
@@ -362,8 +399,24 @@ export class Simulation {
         emits: as && child ? Object.entries(child.emits).map(([name, d]) => ({ name, fields: d.fields })) : [],
       }
     })
+    const spawned = f.snapshot.spawned.map((c): SpawnChoice => {
+      const src = own(m.children, c.children)?.machine ?? ''
+      const child = own(this.ir.machines, src)
+      return {
+        id: c.id,
+        children: c.children,
+        key: c.key,
+        src,
+        returns: child?.returns ?? null,
+        errors: (child?.errors ?? []).map((name) => {
+          const t = own(this.ir.types, name)
+          return { name, fields: t && t.kind === 'error' ? t.fields : [] }
+        }),
+        emits: child ? Object.entries(child.emits).map(([name, d]) => ({ name, fields: d.fields })) : [],
+      }
+    })
     const timers = f.snapshot.timers.map((t) => ({ id: t.id, state: t.state, index: t.index, delay: t.delay, due: f.due[t.id] ?? f.now + t.delay }))
-    return { events, calls, pending, invokes, timers }
+    return { events, calls, pending, invokes, spawned, timers }
   }
 
   // ───────────── the driver ─────────────
@@ -395,7 +448,8 @@ export class Simulation {
     this.pending = null
     const taken = w.records.flatMap((r) => (r.kind === 'transition' ? [{ state: r.from, index: r.index }] : []))
     for (const id of Object.keys(w.due).map(Number)) if (!w.snapshot.timers.some((t) => t.id === id)) delete w.due[id]
-    for (const id of Object.keys(w.childMessages).map(Number)) if (!w.snapshot.invokes.some((i) => i.id === id)) delete w.childMessages[id]
+    const running = (id: number) => w.snapshot.invokes.some((i) => i.id === id) || w.snapshot.spawned.some((c) => c.id === id)
+    for (const id of Object.keys(w.childMessages).map(Number)) if (!running(id)) delete w.childMessages[id]
     const frame: Frame = { label, snapshot: w.snapshot, now: w.now, due: w.due, childMessages: w.childMessages, callers: w.callers, records: w.records, taken }
     this.frames = [...this.frames.slice(0, from + 1), frame]
     this.at = this.frames.length - 1
@@ -448,18 +502,27 @@ export class Simulation {
       case 'invoke.cancel':
         delete w.childMessages[c.invoke]
         return null
+      case 'spawn.stop':
+        delete w.childMessages[c.spawn]
+        return null
       case 'invoke.start':
+      case 'spawn.start':
       case 'send':
       case 'emit':
       case 'reply':
-        // The invoke waits for the reader, a call's too; messages, and the replies to simulated
-        // callers, have no other run to go to: their records are all there is of them.
+        // The invoke or spawned child waits for the reader, a call's too; messages, and the
+        // replies to simulated callers, have no other run to go to: their records are all there is of them.
         return null
       case 'timer.fire':
         // Only `restore` emits it, and simulate mode never restores a run.
         return null
     }
   }
+}
+
+/** A spawned child in words: `sessions["a"]`. */
+export function spawnedText(c: { children: string; key: Json }): string {
+  return `${c.children}[${JSON.stringify(c.key)}]`
 }
 
 /** Why the machine cannot be simulated, or null: the core refuses a machine the IR does not have. */

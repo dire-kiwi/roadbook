@@ -2,6 +2,7 @@
 // Pure and DOM-free. Layout (to size boxes) and render (to draw them) both call it, so the
 // two always agree on what goes where.
 
+import { expandType, parseTypeRef, type TypeRef, typeNames } from '@dire-kiwi/roadbook-core'
 import type { Address, CallDecl, Effect, EventDecl, Field, Invoke, Ir, Machine, Span, State, Transition, Trigger, TypeDecl } from './ir.ts'
 import { own } from './ir.ts'
 
@@ -26,6 +27,7 @@ export const METRICS = {
   labelWrapAt: 30, // put the guard of an edge label on its own line beyond this
   machinePillPad: 6,
   toggle: 14, // the collapse / expand button of a container
+  historyD: 28, // diameter of the circle of a history state
 } as const
 
 /** Width of `text` at `fontSize` px. The browser passes a real measurer; Node estimates. */
@@ -74,7 +76,11 @@ function breakable(code: string): number[] {
   return out
 }
 
-/** `set a = 1`, `do f(x)`, `send upload.Pause`, `send inventory.Reserve { orderId: id }`, `emit Progress { percent: p }` */
+/**
+ * `set a = 1`, `do f(x)`, `send upload.Pause`, `send inventory.Reserve { orderId: id }`,
+ * `send sessions[id].Notify { text: t }`, `send sessions.*.Leave`, `emit Progress { percent: p }`,
+ * `spawn sessions[id] = Session(id)`, `stop sessions[id]`
+ */
 export function effectText(e: Effect): string {
   switch (e.kind) {
     case 'set':
@@ -83,12 +89,22 @@ export function effectText(e: Effect): string {
       return `do ${e.action}(${e.args.map((a) => a.text).join(', ')})`
     case 'send':
       // A send's or emit's value text is the event as written after `send name.` or `emit`.
-      return `send ${e.to.name}.${e.value.text}`
+      return `send ${e.to.name}${sendKey(e.to, e.key)}.${e.value.text}`
     case 'emit':
       return `emit ${e.value.text}`
     case 'reply':
       return `reply ${e.call.text} ${e.outcome}${e.value ? ` ${e.value.text}` : ''}`
+    case 'spawn':
+      return `spawn ${e.children}[${e.key.text}] = ${e.machine}(${e.args.map((a) => a.text).join(', ')})`
+    case 'stop':
+      return `stop ${e.children}[${e.key.text}]`
   }
+}
+
+/** Which child of a collection a send goes to: `[key]`, or `.*` for every one; `""` for another address. */
+function sendKey(to: Address, key: { text: string } | null): string {
+  if (to.kind !== 'children') return ''
+  return key ? `[${key.text}]` : '.*'
 }
 
 /**
@@ -173,14 +189,19 @@ export function triggerKind(trigger: Trigger): EdgeKind {
     case 'always':
       return 'always'
     case 'invoke.fail':
+    case 'spawn.fail':
       return 'fail'
     case 'done':
     case 'invoke.done':
+    case 'spawn.done':
       return 'done'
   }
 }
 
-/** The trigger as the diagram labels it: `Cancel`, `upload.Progress`, `reserve` (a call), `on *`, `after 30s`, `always`, `done`, `fail CardDeclined`. */
+/**
+ * The trigger as the diagram labels it: `Cancel`, `upload.Progress`, `reserve` (a call), `on *`,
+ * `after 30s`, `always`, `done`, `fail CardDeclined`, `sessions.done`, `sessions.fail Lost`.
+ */
 export function triggerText(trigger: Trigger): string {
   switch (trigger.kind) {
     case 'event':
@@ -197,15 +218,28 @@ export function triggerText(trigger: Trigger): string {
       return 'always'
     case 'invoke.fail':
       return `fail ${trigger.error}`
+    case 'spawn.done':
+      return `${trigger.children}.done`
+    case 'spawn.fail':
+      return `${trigger.children}.fail ${trigger.error}`
     case 'done':
     case 'invoke.done':
       return 'done'
   }
 }
 
-/** The trigger as written in source: `on Cancel`, `on upload.Progress`, `on reserve`, `on *`, `after 30s`, `done`, `fail E`. */
+/**
+ * The trigger as written in source: `on Cancel`, `on upload.Progress`, `on reserve`, `on *`,
+ * `after 30s`, `done`, `fail E`, `on sessions.done`, `on sessions.fail E`.
+ */
 export function triggerSource(trigger: Trigger): string {
-  return trigger.kind === 'event' || trigger.kind === 'emitted' || trigger.kind === 'call' ? `on ${triggerText(trigger)}` : triggerText(trigger)
+  const on =
+    trigger.kind === 'event' ||
+    trigger.kind === 'emitted' ||
+    trigger.kind === 'call' ||
+    trigger.kind === 'spawn.done' ||
+    trigger.kind === 'spawn.fail'
+  return on ? `on ${triggerText(trigger)}` : triggerText(trigger)
 }
 
 /** `[guard]` for a guarded branch, `[else]` for the unguarded last branch of a block, `""` otherwise. */
@@ -226,6 +260,8 @@ export interface LabelLine {
    * `on reserve`, or a `send`, `emit` or `reply` effect. Clicking it opens that event or call.
    */
   event?: EventRef
+  /** The line is (part of) a `spawn` effect: clicking it opens this machine, the child's. */
+  spawn?: string
 }
 
 /**
@@ -253,10 +289,17 @@ export function transitionLines(state: State, index: number): LabelLine[] {
     lines.push(trig(head, guard))
   }
   for (const e of t.effects) {
-    const event = effectEvent(machine, e)
-    for (const l of wrapCode(effectText(e), METRICS.labelWrapAt + 8)) lines.push(event ? { cls: 'effect', text: l, guard: '', event } : { cls: 'effect', text: l, guard: '' })
+    const link = effectLink(machine, e)
+    for (const l of wrapCode(effectText(e), METRICS.labelWrapAt + 8)) lines.push({ cls: 'effect', text: l, guard: '', ...link })
   }
   return lines
+}
+
+/** What the lines of an effect link to: the event of a `send` or `emit`, the machine of a `spawn`. */
+function effectLink(machine: string, e: Effect): { event?: EventRef; spawn?: string } {
+  const event = effectEvent(machine, e)
+  if (event) return { event }
+  return e.kind === 'spawn' ? { spawn: e.machine } : {}
 }
 
 /** A row inside a state box. `kw` is drawn muted, `text` in the code colour. */
@@ -276,11 +319,52 @@ export interface Row {
   kwEvent?: EventRef
   /** `text` is (part of) a `send`, `emit` or `reply` effect, or a call invoke: clicking it opens the event or call. */
   event?: EventRef
+  /** `text` is (part of) a `spawn` effect: clicking it opens this machine, the child's. */
+  spawn?: string
 }
 
-/** Number of states nested inside `state`, at any depth. */
+/** Whether a state is a history pseudo-state, shallow (`history`) or deep (`deepHistory`). */
+export function isHistory(state: State): boolean {
+  return state.kind === 'history' || state.kind === 'deepHistory'
+}
+
+/** A state's children: its `states` less its history states (the regions of a parallel state). */
+export function childStates(state: State): State[] {
+  return state.states.filter((c) => !isHistory(c))
+}
+
+/** `H` for a shallow history state, `H*` for a deep one: what its circle says. */
+export function historyMark(state: State): string {
+  return state.kind === 'deepHistory' ? 'H*' : 'H'
+}
+
+/** `history`, `deep history`, `compound`, …: a state's kind in words. */
+export function kindText(state: State): string {
+  return state.kind === 'deepHistory' ? 'deep history' : state.kind
+}
+
+/**
+ * What entering a history state does, in words: `Returns to where Editing was when it was last
+ * left: …`. `parent` is its parent state.
+ */
+export function historyText(state: State, parent: State): string {
+  const children = childStates(parent)
+  const start =
+    parent.kind === 'parallel'
+      ? 'every region from its start'
+      : `its initial state${parent.initial ? `, ${parent.initial.slice(parent.id.length + 1)}` : ''}`
+  const what =
+    state.kind === 'deepHistory'
+      ? `Returns to where ${parent.name} was when it was last left, all the way down: every state that was active inside it then, in every region.`
+      : parent.kind === 'parallel'
+        ? `Returns to where ${parent.name} was when it was last left: its regions (${children.map((c) => c.name).join(', ')}), each from its start.`
+        : `Returns to where ${parent.name} was when it was last left: the state inside it that was active then, entered from its start.`
+  return `${what} Before ${parent.name} has been left, it enters ${start}.`
+}
+
+/** Number of states nested inside `state`, at any depth, not counting history states. */
 export function descendantCount(state: State): number {
-  return state.states.reduce((n, c) => n + 1 + descendantCount(c), 0)
+  return childStates(state).reduce((n, c) => n + 1 + descendantCount(c), 0)
 }
 
 /** The rows shown inside a state box. `collapsed`: the state's children are hidden. */
@@ -299,10 +383,7 @@ export function stateRows(state: State, collapsed = false): Row[] {
       rows.push(row)
     })
   }
-  const effectExtra = (e: Effect): Partial<Row> => {
-    const event = effectEvent(machine, e)
-    return event ? { event } : {}
-  }
+  const effectExtra = (e: Effect): Partial<Row> => effectLink(machine, e)
   if (state.invoke) {
     const inv = state.invoke
     if (inv.kind === 'machine') {
@@ -357,6 +438,15 @@ export function allStates(machine: Machine): State[] {
   return out
 }
 
+/** The state whose `states` hold the state `id`; null for the root or an unknown id. */
+export function parentState(machine: Machine, id: string): State | null {
+  let found: State | null = null
+  walkStates(machine.root, (s, parent) => {
+    if (s.id === id) found = parent
+  })
+  return found
+}
+
 export function findState(machine: Machine, id: string): State | null {
   let found: State | null = null
   walkStates(machine.root, (s) => {
@@ -380,7 +470,7 @@ export function rootIsVisible(machine: Machine): boolean {
 }
 
 export function paramsText(params: Field[]): string {
-  return params.map((p) => `${p.name}: ${p.type}`).join(', ')
+  return params.map((p) => `${p.sensitive ? 'sensitive ' : ''}${p.name}: ${p.type}`).join(', ')
 }
 
 /** `[strict] machine Checkout(order: Order, user: User) -> Receipt ! CardDeclined | GatewayUnavailable` */
@@ -405,23 +495,37 @@ export function sourceText(ir: Ir, span: Span): string {
 /** A type declaration in source form, on one line. */
 export function typeDeclText(name: string, t: TypeDecl): string {
   const fields = (fs: Field[]) => (fs.length ? ` { ${fs.map((f) => `${f.name}: ${f.type}`).join(', ')} }` : '')
+  const params = (ps: string[]) => (ps.length ? `<${ps.join(', ')}>` : '')
   switch (t.kind) {
     case 'record':
-      return `type ${name}${fields(t.fields)}`
+      return `type ${name}${params(t.params)}${fields(t.fields)}`
     case 'error':
       return `error ${name}${fields(t.fields)}`
     case 'enum':
       return `enum ${name} { ${t.variants.join(', ')} }`
     case 'alias':
-      return `type ${name} = ${t.type}`
+      return `type ${name}${params(t.params)} = ${t.type}`
     case 'extern':
       return `extern type ${name}`
   }
 }
 
-/** The base name of a type reference: `LineItem[]?` is `LineItem`. */
-export function baseType(ref: string): string {
-  return ref.replace(/(\[\]|\?)+$/, '')
+/** A type reference read, or undefined if it is not one. */
+function readType(ref: string): TypeRef | undefined {
+  try {
+    return parseTypeRef(ref)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The names of declared types a type reference mentions, outermost first: `LineItem[]?` gives
+ * `LineItem`, `map<UserId, Page<Order>>` gives `UserId`, `Page` and `Order`.
+ */
+export function typeNamesOf(ref: string): string[] {
+  const t = readType(ref)
+  return t ? typeNames(t) : []
 }
 
 /** The machines a machine invokes, directly, in the order their states are written. */
@@ -457,16 +561,15 @@ export function openingMachine(ir: Ir, wanted: string): string | undefined {
 
 /**
  * The machine a type is a handle to: `ref Inventory`, `ref Inventory[]?`, or an alias of one.
- * Null for any other type.
+ * Null for any other type, a map of handles among them.
  */
 export function refMachine(ir: Ir, type: string): string | null {
-  let t = type
-  for (let depth = 0; depth < 32; depth++) {
-    const base = baseType(t)
-    if (base.startsWith('ref ')) return base.slice(4)
-    const decl = own(ir.types, base)
-    if (!decl || decl.kind !== 'alias') return null
-    t = decl.type
+  let t = readType(type)
+  for (let depth = 0; t && depth < 32; depth++) {
+    t = expandType(ir, t)
+    if (t.kind === 'ref') return t.machine
+    if (t.kind !== 'list' && t.kind !== 'optional') return null
+    t = t.of
   }
   return null
 }
@@ -521,10 +624,37 @@ export function messageSites(machineName: string, machine: Machine): MessageSite
   return out
 }
 
+/** Where a `spawn` or `stop` is written. */
+export interface SpawnSite {
+  op: 'spawn' | 'stop'
+  /** The collection. */
+  children: string
+  /** The state it is written in. */
+  state: string
+  /** The index of its transition in the state's `transitions`, or the state's `entry` or `exit`. */
+  at: number | 'entry' | 'exit'
+}
+
+/** Every `spawn` and `stop` of a machine, in the document order of `messageSites`. */
+export function spawnSites(machine: Machine): SpawnSite[] {
+  const out: SpawnSite[] = []
+  const effects = (state: string, at: SpawnSite['at'], list: Effect[]) => {
+    for (const e of list) if (e.kind === 'spawn' || e.kind === 'stop') out.push({ op: e.kind, children: e.children, state, at })
+  }
+  walkStates(machine.root, (s) => {
+    effects(s.id, 'entry', s.entry)
+    effects(s.id, 'exit', s.exit)
+    s.transitions.forEach((t, i) => effects(s.id, i, t.effects))
+  })
+  return out
+}
+
 /** Which machines a machine talks to, from its chart alone. Each list in first-written order. */
 export interface Talks {
   /** Machines invoked, with the `as` name if any. */
   invokes: { machine: string; as: string | null; state: string }[]
+  /** Machines it spawns, with the collections (`children name: Machine by Key`) that hold them. */
+  spawns: { machine: string; names: string[] }[]
   /** Machines it holds a `ref` to, with the parameters and variables that hold it. */
   refs: { machine: string; names: string[] }[]
   /** Events it sends, by receiving machine. */
@@ -545,6 +675,7 @@ function group(list: { machine: string; values: string[] }[], machine: string, v
 export function talks(ir: Ir, machineName: string): Talks {
   const m = own(ir.machines, machineName)
   const invokes: Talks['invokes'] = []
+  const spawns: { machine: string; values: string[] }[] = []
   const refs: { machine: string; values: string[] }[] = []
   const sends: { machine: string; values: string[] }[] = []
   const receives: { machine: string; values: string[] }[] = []
@@ -553,6 +684,7 @@ export function talks(ir: Ir, machineName: string): Talks {
     walkStates(m.root, (s) => {
       if (s.invoke && s.invoke.kind === 'machine') invokes.push({ machine: s.invoke.src, as: s.invoke.as, state: s.id })
     })
+    for (const [name, c] of Object.entries(m.children)) group(spawns, c.machine, name)
     for (const v of [...m.params, ...m.vars]) {
       const to = refMachine(ir, v.type)
       if (to) group(refs, to, v.name)
@@ -565,6 +697,7 @@ export function talks(ir: Ir, machineName: string): Talks {
   }
   return {
     invokes,
+    spawns: spawns.map((r) => ({ machine: r.machine, names: r.values })),
     refs: refs.map((r) => ({ machine: r.machine, names: r.values })),
     sends: sends.map((r) => ({ machine: r.machine, events: r.values })),
     receives: receives.map((r) => ({ machine: r.machine, events: r.values })),

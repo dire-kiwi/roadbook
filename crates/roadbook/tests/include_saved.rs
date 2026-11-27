@@ -4,7 +4,8 @@
 //! generated, typed code: each "request" loads an order's saved snapshot from a store,
 //! `resume`s it with one event, and stores the snapshot it gives. Between requests the chart
 //! changes (a variable is renamed), and the stored snapshots go on through a migration. Also
-//! an actor saved, restored and suspended, and parallel states in the typed `State`.
+//! an actor saved, restored and suspended, parallel states in the typed `State`, and history
+//! states, which are never one.
 
 #![deny(warnings)]
 
@@ -28,6 +29,10 @@ mod v2 {
 
 mod par {
     roadbook::include!("../../spec/conformance/charts/parallel.road");
+}
+
+mod hist {
+    roadbook::include!("../../spec/conformance/charts/history.road");
 }
 
 const HOUR: u64 = 3_600_000;
@@ -432,4 +437,75 @@ async fn suspending_through_the_handle_from_on_run() {
     let (out, ()) = tokio::join!(v2::counter::run_with(&config, &*app, 5), finish);
     assert_eq!(out, 5);
     assert!(!kinds(&sink, "w1").iter().any(|k| k == "suspended"));
+}
+
+struct Writer;
+
+impl hist::editor::Handlers for Writer {
+    async fn log(&self, _what: &str) {}
+
+    async fn fetch(&self) {
+        std::future::pending().await
+    }
+}
+
+#[tokio::test]
+async fn a_run_returns_through_its_history_states_and_saves_what_they_recorded() {
+    use hist::editor::{Emitted, Event, Review, State, Work};
+    let config = Config::new().timer(Arc::new(Clock::default()));
+    async fn until<O, E>(run: &mut roadbook::Actor<Event, State, O, E, Emitted>, want: State) {
+        while run.state() != want {
+            run.changed().await;
+        }
+    }
+    let review = State::Work(Work::Review(Review::Read));
+    let mut first = hist::editor::spawn_with(config.clone(), Arc::new(Writer));
+    first.send(Event::Next).await;
+    until(&mut first, review).await;
+    first.send(Event::Help).await;
+    until(&mut first, State::Help).await;
+    let saved = first.save().await;
+    assert_eq!(saved.snapshot_version, 3);
+    assert_eq!(
+        saved.history,
+        Some(
+            [
+                (
+                    "Editor.Work.Deep".into(),
+                    vec!["Editor.Work.Review.Read".into()]
+                ),
+                (
+                    "Editor.Work.Shallow".into(),
+                    vec!["Editor.Work.Review".into()]
+                ),
+            ]
+            .into()
+        )
+    );
+    first.send(Event::Back).await;
+    until(&mut first, review).await;
+    first.cancel().await;
+
+    // Restored, it goes back to where the history states say.
+    let mut copy =
+        hist::editor::restore_with(config.clone(), Arc::new(Writer), saved.clone()).unwrap();
+    assert_eq!(copy.state(), State::Help);
+    copy.send(Event::BackDeep).await;
+    until(&mut copy, review).await;
+    copy.cancel().await;
+
+    // A version 1 snapshot, written before history states (and keyed spawn), restores with no
+    // records and is saved again as version 3.
+    let mut old = saved.to_value();
+    old["snapshotVersion"] = json!(1);
+    old.as_object_mut().unwrap().remove("history");
+    old.as_object_mut().unwrap().remove("spawned");
+    let old = Saved::from_value(old).unwrap();
+    let mut copy = hist::editor::restore_with(config, Arc::new(Writer), old).unwrap();
+    let again = copy.save().await;
+    assert_eq!(again.snapshot_version, 3);
+    assert_eq!(again.history, Some(Default::default()));
+    copy.send(Event::Back).await;
+    until(&mut copy, State::Work(Work::Draft)).await;
+    copy.cancel().await;
 }

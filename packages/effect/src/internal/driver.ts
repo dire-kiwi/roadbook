@@ -16,6 +16,7 @@ import type { Actor, Handle, MachineDef, RestoreOptions, Snapshot } from "../Mac
 import { RootRunId, RunObserver, TraceSink, Timer } from "../References.ts"
 import { RestoreError } from "../Saved.ts"
 import type { Codec } from "./codec.ts"
+import { activity, type Attempt, type DurableRun, entryOfPort, type Execution, park, parkRecord, peek, write as writeRecord } from "./durable.ts"
 import { type Answer, type Port, portOf, push, pushCall, registerHandle, takeAnswer, type Wake } from "./port.ts"
 
 export type { Port } from "./port.ts"
@@ -36,6 +37,14 @@ export interface CancelToken {
   held: Array<Core.Input>
   /** The child run's port, once the run that claimed the token has its queue. */
   child: Port | undefined
+  /** A durable child is cancelled by an input: the parent asked for it. */
+  cancelRequested: boolean
+  /**
+   * A durable machine invoke whose implementation has not finished yet and may still claim the
+   * token: cancelling it asks and waits, so that a child run cut short by a crash gets to run
+   * its cancel step, even if it has not claimed the token when its parent cancels it.
+   */
+  starting: boolean
 }
 
 /** What a machine invoke's implementation runs with: what a child run needs from its parent. */
@@ -47,10 +56,12 @@ export interface InvokeContext {
   readonly invoke: number
   readonly token: CancelToken
   /**
-   * The parent's port, when it invoked the child with `as`: where the child's emitted events go,
-   * those in `heard`, which the parent's machine has an `on` for.
+   * The parent's port, when it invoked the child with `as` or spawned it: where the child's
+   * emitted events go, those in `heard`, which the parent's machine has an `on` for.
    */
   readonly invoker: { readonly port: Port; readonly heard: ReadonlySet<string> } | undefined
+  /** The workflow execution the parent runs in, if it runs durably: the child runs in it too. */
+  readonly durable: Execution | undefined
 }
 
 export const CurrentInvoke: Context.Reference<InvokeContext | undefined> = Context.Reference<
@@ -133,7 +144,7 @@ export class Program {
 
 // ---- runs --------------------------------------------------------------------------------------
 
-interface Env {
+export interface Env {
   readonly runId: string
   readonly parent: string | undefined
   readonly sink: TraceSink
@@ -142,12 +153,14 @@ interface Env {
   /** The token this run claimed, if it is a child run. */
   readonly token: CancelToken | undefined
   /**
-   * For a child run invoked with `as`: its invoke id, the parent's port, and which of the events
-   * it emits the parent receives.
+   * For a child run invoked with `as` or spawned: its invoke id, the parent's port, and which of
+   * the events it emits the parent receives.
    */
   readonly invoker:
     | { readonly invoke: number; readonly port: Port; readonly heard: ReadonlySet<string> }
     | undefined
+  /** Where a durable run keeps its journal and records; `undefined` for an ordinary run. */
+  readonly durable: DurableRun | undefined
 }
 
 /**
@@ -173,7 +186,8 @@ const rootEnv: Effect.Effect<Env> = Effect.gen(function*() {
     timer: yield* Timer,
     observer: yield* RunObserver,
     token: undefined,
-    invoker: undefined
+    invoker: undefined,
+    durable: undefined
   }
 })
 
@@ -181,20 +195,30 @@ const rootEnv: Effect.Effect<Env> = Effect.gen(function*() {
 const claimEnv: Effect.Effect<Env> = Effect.flatMap(CurrentInvoke, (ctx) => {
   if (ctx === undefined || ctx.token.claimed) return rootEnv
   ctx.token.claimed = true
+  const runId = `${ctx.parentRun}.${ctx.invoke}`
   return Effect.succeed({
-    runId: `${ctx.parentRun}.${ctx.invoke}`,
+    runId,
     parent: ctx.parentRun,
     sink: ctx.sink,
     timer: ctx.timer,
     observer: ctx.observer,
     token: ctx.token,
-    invoker: ctx.invoker === undefined ? undefined : { invoke: ctx.invoke, ...ctx.invoker }
+    invoker: ctx.invoker === undefined ? undefined : { invoke: ctx.invoke, ...ctx.invoker },
+    durable: ctx.durable === undefined ? undefined : { exec: ctx.durable, runId, entry: undefined }
   })
 })
 
-/** How a run begins: from its input, or from a saved snapshot that passed every check. */
-type Begin =
+/**
+ * How a run begins: from its input, from its input already in JSON form with the handles its
+ * `ref`s decode to (a durable run's payload), or from a saved snapshot that passed every check.
+ */
+export type Begin =
   | { readonly kind: "start"; readonly input: unknown }
+  | {
+    readonly kind: "encoded"
+    readonly input: { readonly [param: string]: Core.Json }
+    readonly handles: ReadonlyMap<string, object>
+  }
   | { readonly kind: "restore"; readonly saved: Core.Saved; readonly migrated: string | null }
 
 /**
@@ -224,6 +248,8 @@ interface Instance {
   readonly suspend: Effect.Effect<Core.Saved>
   /** Whether `snapshot` is the run's last: it has ended, or this is the one set when suspended. */
   readonly isLast: (snapshot: Core.Snapshot) => boolean
+  /** The core's snapshot as the last step left it. */
+  readonly current: () => Core.Snapshot
 }
 
 const WAKE: Wake = { kind: "wake" }
@@ -237,7 +263,10 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
     const fns = program.fns(codec)
     let coreInput: { readonly [param: string]: Core.Json }
     if (begin.kind === "restore") coreInput = begin.saved.input
-    else {
+    else if (begin.kind === "encoded") {
+      coreInput = begin.input
+      for (const [id, handle] of begin.handles) refs.set(id, handle)
+    } else {
       try {
         coreInput = codec.encodeArgs(machine.params, begin.input, `the input of ${name}`)
       } catch (error) {
@@ -245,7 +274,18 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       }
     }
     const queue = yield* Queue.unbounded<Core.Input | Wake>()
-    const port: Port = { id: env.runId, machine: name, hash: machine.hash, queue, open: true, subscribers: new Map() }
+    const durable = env.durable
+    // A durable root run's handle outlives this attempt of it: its port is the registry
+    // entry's, and the runs holding a `ref` to it subscribe there.
+    const entry = durable?.entry
+    const port: Port = {
+      id: env.runId,
+      machine: name,
+      hash: machine.hash,
+      queue,
+      open: true,
+      subscribers: entry === undefined ? new Map() : entry.port.subscribers
+    }
     if (env.token !== undefined) {
       // A child run's queue starts with what its parent sent before it claimed the invoke;
       // from now on the parent's sends go straight to it.
@@ -259,9 +299,15 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
     const close = () => {
       if (!port.open) return
       port.open = false
-      for (const peer of peers) peer.subscribers.delete(port)
+      for (const peer of peers) {
+        peer.subscribers.delete(port)
+        // A durable run that only stops (it parks, or the process does) stays subscribed: what
+        // its peers emit meanwhile wakes it, or waits for it.
+        if (snapshot.status !== "running") entryOfPort(peer)?.unsubscribe(env.runId)
+      }
+      if (entry !== undefined && snapshot.status !== "running") entry.close()
     }
-    const handle = registerHandle<Handle<any>>({
+    const handle = entry !== undefined ? entry.handle as unknown as Handle<any> : registerHandle<Handle<any>>({
       id: env.runId,
       machine: name,
       send: (event: unknown) =>
@@ -286,10 +332,12 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       vars: {},
       invokes: [],
       calls: [],
+      spawned: [],
       timers: [],
       nextInvoke: 1,
       nextTimer: 1,
       nextMessage: 1,
+      history: {},
       result: null
     }
     const ref = yield* SubscriptionRef.make(snapshot)
@@ -327,6 +375,10 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
     let last: Core.Snapshot | undefined
     /** Completed with the run's last saved snapshot once it has stopped: ended or suspended. */
     const stopped = yield* Deferred.make<Core.Saved>()
+    /** Whether a durable run has replayed its journal in this attempt. */
+    let atEdge = false
+    /** This attempt of a durable root run, as its registry entry sees it. */
+    const attempt: Attempt = { queue, save: () => saved, snapshot: () => snapshot, live: () => atEdge }
     env.observer.started({
       id: env.runId,
       parent: env.parent,
@@ -336,8 +388,14 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       offerAll: (inputs) => Effect.asVoid(Queue.offerAll(queue, inputs))
     })
 
+    // A durable run does not write the records of the steps it takes again on replay.
+    let quiet = false
+    // The message and value of the last `sent` record: the core writes it, redacted, right
+    // before the `send` command, and an `undelivered` record repeats it.
+    let lastSent: { readonly message: number; readonly value: Core.Tagged } | undefined
+
     const write = (record: Core.CoreRecord) =>
-      Effect.map(env.timer.now, (t) => {
+      quiet ? Effect.void : Effect.map(env.timer.now, (t) => {
         env.sink.write(
           (env.parent === undefined
             ? { ...record, t, run: env.runId }
@@ -354,6 +412,34 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       }).pipe(
         Effect.exit,
         Effect.map((exit) => (Exit.isSuccess(exit) ? undefined : causeDefect(exit.cause)))
+      )
+    }
+
+    // ---- durable runs: the journal ----------------------------------------------------------
+    // A durable run's inputs are journalled (`<run>/in/<k>`) before it takes them. On replay
+    // the steps of the journalled inputs are taken again; their commands are carried out in
+    // replay mode while the input after them is journalled too (`replaying`), which defers
+    // starting tasks and arming timers to the live edge, so that work cancelled before a crash
+    // is never started again. Inputs already journalled are dropped when they arrive again
+    // (`consumed`): replay sends and emits again, and restarted tasks give stored outcomes.
+    let replaying = false
+    const consumed = new Set<string>()
+    const deferredInvokes = new Map<number, StartCommand>()
+    const deferredTimers = new Set<number>()
+    let actionCount = 0
+
+    /** A host action, durably: an activity, so that it is not run again on replay. */
+    const doAction = (action: string, args: { readonly [param: string]: Core.Json }) => {
+      if (durable === undefined) return runAction(action, args)
+      return Effect.suspend(() =>
+        Effect.map(
+          activity(
+            durable.exec,
+            `${env.runId}/action/${++actionCount}`,
+            Effect.map(runAction(action, args), (defect) => (defect ?? null) as Core.Json)
+          ),
+          (json) => (json === null ? undefined : json as unknown as Core.Defect)
+        )
       )
     }
 
@@ -404,16 +490,27 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         }
       }
 
-      const startInvoke = (command: Extract<Core.Command, { kind: "invoke.start" }>) => {
-        if (command.srcKind === "call") return makeCall(command)
+      const newToken = (invoke: number): CancelToken => {
         const token: CancelToken = {
           claimed: false,
           cancelled: false,
           cancelDefect: undefined,
           held: [],
-          child: undefined
+          child: undefined,
+          cancelRequested: false,
+          starting: false
         }
-        tokens.set(command.invoke, token)
+        tokens.set(invoke, token)
+        return token
+      }
+
+      /**
+       * Start an invoke, or a spawned child (`spawn.start`, a machine whose emitted events always
+       * reach this run, and whose outcome comes back as a `spawn.*` input).
+       */
+      const startInvoke = (command: StartCommand) => {
+        if (command.srcKind === "call") return makeCall(command)
+        const token = tokens.get(command.invoke) ?? newToken(command.invoke)
         const { src } = command
         const decl = command.srcKind === "task" ? ir.tasks[src] : ir.machines[src]
         const params = decl?.params ?? []
@@ -432,14 +529,42 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             parentRun: env.runId,
             invoke: command.invoke,
             token,
-            invoker: command.as === null ? undefined : { port, heard: Core.heard(ir, name, src) }
+            invoker: command.as === null ? undefined : { port, heard: Core.heard(ir, name, src) },
+            durable: durable?.exec
           }
           : undefined
-        const fiber = work.pipe(
-          Effect.exit,
-          Effect.flatMap((exit) => {
+        const outcome = Effect.map(Effect.exit(work), (exit) => {
+          const input = outcomeInput(codec, command.invoke, src, returns, exit)
+          return command.kind === "spawn" ? spawnOutcome(input) : input
+        })
+        let recorded: Effect.Effect<Core.Input> = outcome
+        if (durable !== undefined) {
+          const name = `${env.runId}/invoke/${command.invoke}`
+          if (command.srcKind === "machine" && Predicate.hasProperty(impl, "run")) {
+            // A machine that runs from its chart claims the invoke and journals its own run;
+            // only one that does not (a `run` of host code) has its outcome recorded here.
+            token.starting = true
+            recorded = Effect.flatMap(peek(durable.exec, name), (found) =>
+              found !== undefined
+                ? Effect.succeed(found as unknown as Core.Input)
+                : Effect.tap(outcome, (input) =>
+                  token.claimed ? Effect.void : writeRecord(durable.exec, name, input as unknown as Core.Json))).pipe(
+                Effect.ensuring(Effect.sync(() => {
+                  token.starting = false
+                }))
+              )
+          } else {
+            // A task, or a machine stubbed by a function: an activity.
+            recorded = Effect.map(
+              activity(durable.exec, name, outcome as unknown as Effect.Effect<Core.Json>),
+              (json) => json as unknown as Core.Input
+            )
+          }
+        }
+        const fiber = recorded.pipe(
+          Effect.flatMap((input) => {
             if (token.cancelled) return Effect.void
-            return Queue.offer(queue, outcomeInput(codec, command.invoke, src, returns, exit))
+            return Queue.offer(queue, input)
           }),
           Effect.provideService(CurrentInvoke, context),
           Effect.annotateLogs("roadbook.invoke", command.invoke)
@@ -454,11 +579,16 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
        * Drop invokes. A task or stub (an unclaimed token) is interrupted at once and not waited
        * for: whatever it does while being interrupted is ignored. A child run (a claimed token)
        * is interrupted and waited for, since its cancel step runs its exit effects; a defect in
-       * that step is the result. Several children are interrupted together.
+       * that step is the result. Several children are interrupted together. A durable child is
+       * cancelled by asking it (it takes a cancel input) and waited for; when the run is only
+       * stopping (`stop`: the process is, or the run parks), it is interrupted, which stops it
+       * without a cancel step, to carry on from its journal later. A durable child whose outcome
+       * was taken (`forget`) is left to finish on its own.
        */
-      const stopInvokes = (ids: Iterable<number>) =>
+      const stopInvokes = (ids: Iterable<number>, mode: "cancel" | "stop" | "forget" = "cancel") =>
         Effect.withFiber((self) => {
           const children: Array<{ fiber: Fiber.Fiber<void>; token: CancelToken }> = []
+          const asked: Array<{ fiber: Fiber.Fiber<void>; token: CancelToken }> = []
           for (const id of ids) {
             // A call only forgets its way to answer; nothing reaches the callee.
             liveCalls.delete(id)
@@ -466,27 +596,80 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             const fiber = invokes.get(id)
             tokens.delete(id)
             invokes.delete(id)
+            deferredInvokes.delete(id)
             if (token === undefined || fiber === undefined) continue
             token.cancelled = true
-            if (token.claimed) children.push({ fiber, token })
-            else fiber.interruptUnsafe(self.id)
+            const child = token.claimed || (durable !== undefined && mode === "cancel" && token.starting)
+            if (!child) fiber.interruptUnsafe(self.id)
+            else if (durable === undefined) children.push({ fiber, token })
+            else if (mode === "cancel") {
+              token.cancelRequested = true
+              if (token.child !== undefined) Queue.offerUnsafe(token.child.queue, WAKE)
+              asked.push({ fiber, token })
+            } else if (mode === "stop") children.push({ fiber, token })
           }
-          if (children.length === 0) return Effect.succeed(undefined)
+          if (children.length === 0 && asked.length === 0) return Effect.succeed(undefined)
           return Effect.map(
-            Fiber.interruptAll(children.map((child) => child.fiber)),
-            () => children.find((child) => child.token.cancelDefect !== undefined)?.token.cancelDefect
+            Effect.andThen(
+              Fiber.interruptAll(children.map((child) => child.fiber)),
+              Effect.forEach(asked, (child) => Fiber.await(child.fiber), { discard: true })
+            ),
+            () =>
+              mode === "stop"
+                ? undefined
+                : [...children, ...asked].find((child) => child.token.cancelDefect !== undefined)?.token.cancelDefect
           )
         })
 
       const stopInvoke = (id: number) => stopInvokes([id])
 
+      /** Arm timer `id`, due at `due` on the driver's clock (durable runs) or after `delay`. */
+      const arm = (id: number, delay: number) =>
+        FiberMap.run(
+          timers,
+          id,
+          env.timer.sleep({ run: env.runId, timer: id, delay }).pipe(
+            Effect.andThen(Queue.offer(queue, { kind: "after", timer: id }))
+          )
+        )
+
+      const startTimer = (command: Extract<Core.Command, { kind: "timer.start" }>) =>
+        Effect.flatMap(env.timer.now, (now) =>
+          Effect.gen(function*() {
+            const restored = restoredDues.get(command.timer)
+            restoredDues.delete(command.timer)
+            // Capped at 2^53 - 1, the largest due time a saved snapshot holds.
+            let due = restored ?? Math.min(now + command.delay, Number.MAX_SAFE_INTEGER)
+            if (durable === undefined) {
+              dues.set(command.timer, due)
+              yield* arm(command.timer, command.delay)
+              return undefined
+            }
+            // A durable timer keeps the due time it got when it first started.
+            const name = `${env.runId}/timer/${command.timer}`
+            const found = yield* peek(durable.exec, name)
+            if (found !== undefined) due = found as number
+            else yield* writeRecord(durable.exec, name, due)
+            dues.set(command.timer, due)
+            if (replaying) deferredTimers.add(command.timer)
+            else yield* arm(command.timer, Math.max(0, due - now))
+            return undefined
+          }))
+
       const carry = (command: Core.Command): Effect.Effect<Core.Defect | undefined> => {
         switch (command.kind) {
           case "trace":
+            if (command.record.kind === "sent") lastSent = { message: command.record.message, value: command.record.value }
             return Effect.as(write(command.record), undefined)
           case "action":
-            return runAction(command.action, command.args)
+            return doAction(command.action, command.args)
           case "invoke.start":
+            if (replaying) {
+              // Started at the live edge, if it is still running then.
+              newToken(command.invoke)
+              deferredInvokes.set(command.invoke, command)
+              return Effect.succeed(undefined)
+            }
             return startInvoke(command)
           case "invoke.cancel":
             return stopInvoke(command.invoke)
@@ -502,28 +685,39 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
               )
               return undefined
             })
-          case "timer.start": {
-            const expiry = env.timer.sleep({ run: env.runId, timer: command.timer, delay: command.delay }).pipe(
-              Effect.andThen(Queue.offer(queue, { kind: "after", timer: command.timer }))
-            )
-            return Effect.flatMap(env.timer.now, (now) => {
-              const restored = restoredDues.get(command.timer)
-              restoredDues.delete(command.timer)
-              // Capped at 2^53 - 1, the largest due time a saved snapshot holds.
-              dues.set(command.timer, restored ?? Math.min(now + command.delay, Number.MAX_SAFE_INTEGER))
-              return Effect.as(FiberMap.run(timers, command.timer, expiry), undefined)
-            })
+          case "spawn.start": {
+            const start: StartCommand = {
+              kind: "spawn",
+              invoke: command.spawn,
+              src: command.src,
+              srcKind: "machine",
+              as: "",
+              args: command.args
+            }
+            if (replaying) {
+              // As an invoke: started at the live edge, if it is still running then.
+              newToken(command.spawn)
+              deferredInvokes.set(command.spawn, start)
+              return Effect.succeed(undefined)
+            }
+            return startInvoke(start)
           }
+          case "spawn.stop":
+            return stopInvoke(command.spawn)
+          case "timer.start":
+            return startTimer(command)
           case "timer.fire":
             // A restored timer already due: its expiry is queued at once, and it keeps its due.
             return Effect.sync(() => {
               dues.set(command.timer, restoredDues.get(command.timer) ?? 0)
               restoredDues.delete(command.timer)
-              Queue.offerUnsafe(queue, { kind: "after", timer: command.timer })
+              if (replaying) deferredTimers.add(command.timer)
+              else Queue.offerUnsafe(queue, { kind: "after", timer: command.timer })
               return undefined
             })
           case "timer.cancel":
             dues.delete(command.timer)
+            deferredTimers.delete(command.timer)
             return Effect.as(FiberMap.remove(timers, command.timer), undefined)
           case "send":
             return send(command)
@@ -538,7 +732,10 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
               for (const [subscriber, heard] of port.subscribers) {
                 if (heard.has(event)) push(subscriber, { kind: "emitted", from, invoke: null, message, value })
               }
-              for (const listener of listeners) listener.emit(value)
+              entry?.emit(message, value)
+              // A durable run's listeners hear an emit when its `emitted` record is written:
+              // not again when a replay carries out the step again.
+              if (!quiet) for (const listener of listeners) listener.emit(value)
               return undefined
             })
         }
@@ -561,7 +758,11 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           const peer = portOf(refs.get(to))
           if (peer !== undefined && push(peer, input)) return Effect.succeed(undefined)
         }
-        return Effect.as(write({ kind: "undelivered", message, to, value }), undefined)
+        // The value as the `sent` record showed it, redacted. The core always writes that record
+        // first; were it missing, only the event's tag is shown.
+        const shown = lastSent?.message === message ? lastSent.value : { _tag: value._tag }
+        lastSent = undefined
+        return Effect.as(write({ kind: "undelivered", message, to, value: shown }), undefined)
       }
 
       const carryOut = (stepped: Core.Stepped) =>
@@ -590,11 +791,12 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         })
 
       /**
-       * Idle: between steps, nothing queued, no invoke running and no pending call
-       * (execution.md, "Suspending").
+       * Idle: between steps, nothing queued, no invoke or spawned child running and no pending
+       * call (execution.md, "Suspending").
        */
       const idle = () =>
-        Queue.sizeUnsafe(queue) - wakes === 0 && snapshot.invokes.length === 0 && snapshot.calls.length === 0
+        Queue.sizeUnsafe(queue) - wakes === 0 && snapshot.invokes.length === 0 && snapshot.spawned.length === 0 &&
+        snapshot.calls.length === 0
 
       /**
        * Stop an idle run that was asked to suspend, which the check that found it idle has
@@ -609,15 +811,16 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         yield* SubscriptionRef.set(ref, last)
       })
 
-      const begun = begin.kind === "start"
-        ? Effect.succeed(Core.start(ir, name, env.runId, coreInput, fns))
-        : Effect.map(env.timer.now, (now) => Core.restore(ir, begin.saved, env.runId, now, begin.migrated, fns))
+      const begun = (now: Effect.Effect<number>) =>
+        begin.kind === "restore"
+          ? Effect.map(now, (at) => Core.restore(ir, begin.saved, env.runId, at, begin.migrated, fns))
+          : Effect.succeed(Core.start(ir, name, env.runId, coreInput, fns))
 
       const steps = Effect.uninterruptibleMask((restore) =>
         Effect.gen(function*() {
           // Subscribed to the peers' emitted events before `start`, until the run closes.
           for (const peer of peers) peer.subscribers.set(port, Core.heard(ir, name, peer.machine))
-          yield* carryOut(yield* begun)
+          yield* carryOut(yield* begun(env.timer.now))
           yield* Deferred.succeed(started, undefined)
           while (snapshot.status === "running") {
             // A cancel that arrived during the step (an interrupt, held while the step ran) is
@@ -651,6 +854,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             // An invoke or timer is forgotten once its outcome or expiry is taken.
             if (next.kind === "invoke.done" || next.kind === "invoke.fail" || next.kind === "invoke.defect") {
               yield* stopInvoke(next.invoke)
+            } else if (next.kind === "spawn.done" || next.kind === "spawn.fail" || next.kind === "spawn.defect") {
+              yield* stopInvoke(next.spawn)
             } else if (next.kind === "after") {
               dues.delete(next.timer)
               yield* FiberMap.remove(timers, next.timer)
@@ -659,6 +864,204 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           }
         })
       )
+
+      // ---- durable runs -----------------------------------------------------------------------
+
+      /** What makes an input the same input when it arrives again: none for events and cancels. */
+      const identity = (input: Core.Input): string | undefined => {
+        switch (input.kind) {
+          case "invoke.done":
+          case "invoke.fail":
+          case "invoke.defect":
+            return `i${input.invoke}`
+          case "spawn.done":
+          case "spawn.fail":
+          case "spawn.defect":
+            // Spawned children take their ids from the invokes' sequence.
+            return `i${input.spawn}`
+          case "after":
+            return `t${input.timer}`
+          case "message":
+            return `m${input.from}/${input.message}`
+          case "emitted":
+            return `e${input.from}/${input.message}`
+          default:
+            return undefined
+        }
+      }
+
+      /** Start what replay deferred: the child runs only (before the last journalled step), or all. */
+      const startDeferred = (which: "children" | "all") =>
+        Effect.gen(function*() {
+          for (const [id, command] of [...deferredInvokes].sort(([a], [b]) => a - b)) {
+            const impl = program.handlers.machines?.[command.src]
+            const child = command.srcKind === "machine" && Predicate.hasProperty(impl, "run")
+            if (which === "children" && !child) continue
+            deferredInvokes.delete(id)
+            yield* startInvoke(command)
+          }
+          if (which === "all") {
+            const now = yield* env.timer.now
+            for (const id of deferredTimers) yield* arm(id, Math.max(0, (dues.get(id) ?? now) - now))
+            deferredTimers.clear()
+          }
+        })
+
+      const durableSteps = (d: DurableRun) =>
+        Effect.uninterruptibleMask((restore) =>
+          Effect.gen(function*() {
+            const { exec } = d
+            const at = (k: number) => `${env.runId}/in/${k}`
+            const journalled = (k: number) =>
+              Effect.map(peek(exec, at(k)), (found) => found as unknown as Core.Input | undefined)
+            // The run's first record: the hash it runs with, and the clock a restore reads.
+            const beginName = `${env.runId}/begin`
+            const first = (yield* peek(exec, beginName)) as { hash: string; now: number } | undefined
+            let now0: number
+            if (first === undefined) {
+              now0 = yield* env.timer.now
+              yield* writeRecord(exec, beginName, { hash: machine.hash, now: now0 })
+            } else {
+              if (first.hash !== machine.hash) {
+                return yield* Effect.die(
+                  new Defect({
+                    kind: "host",
+                    message:
+                      `${name} changed while run ${env.runId} was in flight (${first.hash}, now ${machine.hash}): ` +
+                      `a new version of a chart needs a new workflow name`
+                  })
+                )
+              }
+              now0 = first.now
+              quiet = !exec.replayTrace
+            }
+            // Subscribed to the peers' emitted events: a durable holder from the message id it
+            // first subscribed at, so that it is given again what it missed.
+            for (const peer of peers) {
+              const peerEntry = entryOfPort(peer)
+              const heard = Core.heard(ir, name, peer.machine)
+              if (peerEntry === undefined || entry === undefined) {
+                peer.subscribers.set(port, heard)
+                continue
+              }
+              const subName = `${env.runId}/sub/${peer.id}`
+              let from = (yield* peek(exec, subName)) as number | undefined
+              if (from === undefined) {
+                // From what the peer emits next: what it has emitted is known once it replayed.
+                yield* peerEntry.whenKnown()
+                from = peerEntry.emitted + 1
+                yield* writeRecord(exec, subName, from)
+              }
+              peerEntry.subscribe(entry, from, heard)
+            }
+            let next = yield* journalled(1)
+            replaying = next !== undefined
+            yield* carryOut(yield* begun(Effect.succeed(now0)))
+            yield* Deferred.succeed(started, undefined)
+            let k = 0
+            let live = false
+            // Parking: the position it was considered at, and the next park's number there.
+            let parkAt = 0
+            let parkSeq = 1
+            while (snapshot.status === "running") {
+              let input: Core.Input
+              if (next !== undefined) {
+                input = next
+                k += 1
+                quiet = !exec.replayTrace
+                next = yield* journalled(k + 1)
+                const before = replaying
+                replaying = next !== undefined
+                // The last journalled step, which a crash may have cut short: carried out as a
+                // live step, after starting the child runs, so that it can cancel them.
+                if (before && !replaying) yield* startDeferred("children")
+              } else {
+                if (!live) {
+                  live = true
+                  quiet = false
+                  replaying = false
+                  yield* startDeferred("all")
+                  atEdge = true
+                  entry?.reachedEdge()
+                }
+                const taken = yield* takeLive(d, k + 1, restore, () => parkAt, (at, seq) => {
+                  parkAt = at
+                  parkSeq = seq
+                }, () => parkSeq, () => parkSeq++)
+                input = taken
+                k += 1
+                yield* writeRecord(exec, at(k), input as unknown as Core.Json)
+                entry?.journalled(input)
+              }
+              const id = identity(input)
+              if (id !== undefined) consumed.add(id)
+              const stepped = Core.step(ir, snapshot, input, fns)
+              if (input.kind === "invoke.done" || input.kind === "invoke.fail" || input.kind === "invoke.defect") {
+                yield* stopInvokes([input.invoke], "forget")
+              } else if (input.kind === "spawn.done" || input.kind === "spawn.fail" || input.kind === "spawn.defect") {
+                yield* stopInvokes([input.spawn], "forget")
+              } else if (input.kind === "after") {
+                dues.delete(input.timer)
+                deferredTimers.delete(input.timer)
+                yield* FiberMap.remove(timers, input.timer)
+              }
+              yield* carryOut(stepped)
+              if (input.kind === "cancel" && env.token !== undefined) {
+                const result = snapshot.result
+                if (result !== null && "defect" in result) env.token.cancelDefect = result.defect
+              }
+            }
+          })
+        )
+
+      /**
+       * The next input of a live durable run: a cancel request first, then the queue, dropping
+       * what it already took. An idle root run parks first, if its earliest timer is far enough.
+       */
+      const takeLive = (
+        d: DurableRun,
+        position: number,
+        restore: <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>,
+        parkAt: () => number,
+        setPark: (at: number, seq: number) => void,
+        nextPark: () => number,
+        usePark: () => void
+      ): Effect.Effect<Core.Input> =>
+        Effect.gen(function*() {
+          const { exec } = d
+          while (true) {
+            if (entry?.cancelRequested || env.token?.cancelRequested) return { kind: "cancel" } as const
+            if (entry !== undefined && exec.park !== undefined && Queue.sizeUnsafe(queue) === 0 && invokes.size === 0) {
+              if (parkAt() !== position) {
+                // The parks a replay passes again at this position: each has its result.
+                let seq = 1
+                while ((yield* peek(exec, parkRecord(`${env.runId}/park/${position}/${seq}`))) !== undefined) seq++
+                setPark(position, seq)
+              }
+              const now = yield* env.timer.now
+              const earliest = dues.size === 0 ? undefined : Math.min(...dues.values())
+              const delay = earliest === undefined ? undefined : earliest - now
+              if (delay === undefined || delay > exec.park) {
+                const at = `${env.runId}/park/${position}/${nextPark()}`
+                // Deciding and parking at once: what reached the queue while the records above
+                // were read is taken instead, and a park number is used only by a park.
+                if (entry.parking(at)) {
+                  usePark()
+                  yield* restore(park(exec, at, delay))
+                  entry.unparked()
+                }
+                continue
+              }
+            }
+            waiting = true
+            const item = yield* restore(Queue.take(queue))
+            waiting = false
+            if (item.kind === "wake") continue
+            const id = identity(item)
+            if (id !== undefined && consumed.has(id)) continue
+            return item
+          }
+        })
 
       // Cancelling from outside: the step in progress has finished (steps are uninterruptible),
       // so the cancel step runs between steps, and the interruption completes after it.
@@ -677,7 +1080,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       // Ending a run: its pending and queued calls are answered `Unanswered`, anything else
       // still queued is discarded, and every invoke it still holds is dropped as on
       // `invoke.cancel` (a child run is cancelled and its cancel step waited for; a defect there
-      // changes nothing). Its timers are dropped when the scope closes.
+      // changes nothing). Its timers are dropped when the scope closes. A durable run that is
+      // only stopping (the process is, or it parks) stops its children instead.
       const end = Effect.suspend(() => {
         close()
         listening = false
@@ -686,10 +1090,21 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         abandonCalls()
         liveCalls.clear()
         Queue.shutdownUnsafe(queue)
-        return Effect.asVoid(stopInvokes([...tokens.keys()]))
-      }).pipe(Effect.ensuring(Effect.suspend(() => Deferred.succeed(stopped, saved))))
+        const mode = durable !== undefined && snapshot.status === "running" ? "stop" : "cancel"
+        return Effect.asVoid(stopInvokes([...tokens.keys()], mode))
+      }).pipe(
+        Effect.ensuring(Effect.suspend(() => {
+          if (entry !== undefined) entry.detach(attempt)
+          return Deferred.succeed(stopped, saved)
+        }))
+      )
 
-      yield* steps.pipe(Effect.onInterrupt(() => cancel), Effect.ensuring(end))
+      if (durable === undefined) yield* steps.pipe(Effect.onInterrupt(() => cancel), Effect.ensuring(end))
+      else {
+        // Interrupting a durable run is the process stopping, or the run parking: no cancel step.
+        entry?.attach(attempt)
+        yield* durableSteps(durable).pipe(Effect.ensuring(end))
+      }
       return yield* program.outcome(snapshot)
     }).pipe(
       Effect.scoped,
@@ -724,7 +1139,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       // A copy each time: host code that changes what it was given changes nothing here.
       save: Effect.sync(() => Core.copyJson(saved)),
       suspend,
-      isLast: (s: Core.Snapshot) => s.status !== "running" || s === last
+      isLast: (s: Core.Snapshot) => s.status !== "running" || s === last,
+      current: () => snapshot
     }
   })
 
@@ -735,6 +1151,35 @@ const causeDefect = (cause: Cause.Cause<unknown>): Core.Defect => {
   const fail = cause.reasons.find(Cause.isFailReason)
   if (fail !== undefined) return hostDefect(fail.error)
   return { kind: "host", message: "interrupted" }
+}
+
+/**
+ * What starts a child or a task: an `invoke.start` command, or a `spawn.start` one as an invoke
+ * of a machine whose emitted events always reach its parent (`as` is never `null`).
+ */
+type StartCommand =
+  | Extract<Core.Command, { kind: "invoke.start" }>
+  | {
+    readonly kind: "spawn"
+    readonly invoke: number
+    readonly src: string
+    readonly srcKind: "machine"
+    readonly as: string
+    readonly args: { readonly [param: string]: Core.Json }
+  }
+
+/** The `spawn.*` input for a spawned child's outcome, from the `invoke.*` one an invoke's would be. */
+const spawnOutcome = (input: Core.Input): Core.Input => {
+  switch (input.kind) {
+    case "invoke.done":
+      return { kind: "spawn.done", spawn: input.invoke, value: input.value }
+    case "invoke.fail":
+      return { kind: "spawn.fail", spawn: input.invoke, error: input.error }
+    case "invoke.defect":
+      return { kind: "spawn.defect", spawn: input.invoke, defect: input.defect }
+    default:
+      return input
+  }
 }
 
 /** The input an invoke's exit gives its run. */
@@ -762,6 +1207,16 @@ const outcomeInput = (
 }
 
 // ---- the public entry points ---------------------------------------------------------------------
+
+/**
+ * Run a durable root run's attempt (an execution of its workflow, or a replay of one) in `env`,
+ * which carries its journal: how the attempt ended, and the snapshot it left.
+ */
+export const runDurable = (program: Program, begin: Begin, env: Env) =>
+  Effect.flatMap(
+    makeInstance(program, begin, env),
+    (instance) => Effect.map(Effect.exit(instance.loop), (exit) => ({ exit, snapshot: instance.current() }))
+  )
 
 export const run = (program: Program, input: unknown): Effect.Effect<unknown, unknown> =>
   Effect.flatMap(
@@ -833,7 +1288,7 @@ const errorMessage = (error: unknown): string => {
  * Check `saved` against the machine, migrating it if the hashes differ and `options.migrate`
  * is given. Refused (a `RestoreError`) before any run starts.
  */
-const check = (program: Program, saved: unknown, options?: RestoreOptions): Effect.Effect<Begin, RestoreError> =>
+export const check = (program: Program, saved: unknown, options?: RestoreOptions): Effect.Effect<Begin, RestoreError> =>
   Effect.suspend(() => {
     const migrate = options?.migrate
     const checked = Core.checkSaved(
