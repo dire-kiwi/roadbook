@@ -40,7 +40,8 @@ const handle = (id: string) =>
     hash,
     queue: Effect.runSync(Queue.unbounded<Core.Input | Wake>()),
     open: true,
-    subscribers: new Map()
+    subscribers: new Map(),
+    closedAs: undefined
   })
 
 /** An object with an own member named `__proto__`, as JSON.parse makes one. */

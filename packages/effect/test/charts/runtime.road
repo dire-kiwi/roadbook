@@ -99,6 +99,22 @@ machine Asker(desk: ref Desk, n: int) -> int {
   final state Gave { output 0 }
 }
 
+/// Record how a peer ended.
+action noted(status: Ended)
+
+/// Hears the end of each Desk of `desks` and of `spare`, noting how each ended, and ends with
+/// the spare's.
+machine Monitor(desks: ref Desk[], spare: ref Desk?) {
+  initial Watching
+
+  state Watching {
+    on desks.ended          do noted(event.status)
+    on spare.ended -> Over  do noted(event.status)
+  }
+
+  final state Over {}
+}
+
 type Box<T>   { value: T }
 type Boxes<T> = map<string, Box<T>>
 // Not used by a machine: here so that `tsc` checks the schema of a recursive generic type.

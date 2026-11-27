@@ -17,7 +17,20 @@ import { RootRunId, RunObserver, TraceSink, Timer } from "../References.ts"
 import { RestoreError } from "../Saved.ts"
 import type { Codec } from "./codec.ts"
 import { activity, type Attempt, type DurableRun, entryOfPort, type Execution, park, parkRecord, peek, write as writeRecord } from "./durable.ts"
-import { type Answer, type Port, portOf, push, pushCall, registerHandle, takeAnswer, type Wake } from "./port.ts"
+import {
+  type Answer,
+  endedInput,
+  endedStatus,
+  type Port,
+  portOf,
+  push,
+  pushCall,
+  registerHandle,
+  subscribe,
+  takeAnswer,
+  tellEnded,
+  type Wake
+} from "./port.ts"
 
 export type { Port } from "./port.ts"
 
@@ -284,7 +297,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       hash: machine.hash,
       queue,
       open: true,
-      subscribers: entry === undefined ? new Map() : entry.port.subscribers
+      subscribers: entry === undefined ? new Map() : entry.port.subscribers,
+      closedAs: undefined
     }
     if (env.token !== undefined) {
       // A child run's queue starts with what its parent sent before it claimed the invoke;
@@ -295,6 +309,21 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
     }
     const peers = new Set<Port>()
     for (const handle of refs.values()) peers.add(portOf(handle)!)
+    /**
+     * The peers that had ended when this run subscribed to them, and how, of those whose end it
+     * hears: its own driver tells it, right after its start step's commands.
+     */
+    const endedPeers: Array<Core.Input> = []
+    /** Subscribe to `peer` (see `subscribe`), noting its end if it has ended and this run hears it. */
+    const subscribeTo = (peer: Port, heard: ReadonlySet<string>) => {
+      const closedAs = subscribe(peer, port, heard)
+      if (closedAs !== undefined && heard.has(Core.ENDED_INPUT)) endedPeers.push(endedInput(peer.id, closedAs))
+    }
+    /** After the start step's commands: tell this run of the peers that had ended before it subscribed. */
+    const tellEndedPeers = () => {
+      if (snapshot.status === "running") Queue.offerAllUnsafe(queue, endedPeers)
+      endedPeers.length = 0
+    }
     /** Closing: nothing more is pushed onto the queue, and the run hears from no peer. */
     const close = () => {
       if (!port.open) return
@@ -818,9 +847,10 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
 
       const steps = Effect.uninterruptibleMask((restore) =>
         Effect.gen(function*() {
-          // Subscribed to the peers' emitted events before `start`, until the run closes.
-          for (const peer of peers) peer.subscribers.set(port, Core.heard(ir, name, peer.machine))
+          // Subscribed to the peers' emitted events and ends before `start`, until the run closes.
+          for (const peer of peers) subscribeTo(peer, Core.heard(ir, name, peer.machine))
           yield* carryOut(yield* begun(env.timer.now))
+          tellEndedPeers()
           yield* Deferred.succeed(started, undefined)
           while (snapshot.status === "running") {
             // A cancel that arrived during the step (an interrupt, held while the step ran) is
@@ -885,6 +915,9 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             return `m${input.from}/${input.message}`
           case "emitted":
             return `e${input.from}/${input.message}`
+          case "ended":
+            // At most one end per peer.
+            return `d${input.from}`
           default:
             return undefined
         }
@@ -941,7 +974,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
               const peerEntry = entryOfPort(peer)
               const heard = Core.heard(ir, name, peer.machine)
               if (peerEntry === undefined || entry === undefined) {
-                peer.subscribers.set(port, heard)
+                subscribeTo(peer, heard)
                 continue
               }
               const subName = `${env.runId}/sub/${peer.id}`
@@ -952,11 +985,16 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
                 from = peerEntry.emitted + 1
                 yield* writeRecord(exec, subName, from)
               }
-              peerEntry.subscribe(entry, from, heard)
+              // A holder that recovers subscribes again: a peer that has ended meanwhile is told
+              // to it as to one that subscribes late, and an end it has taken is not taken twice.
+              if (heard.has(Core.ENDED_INPUT)) yield* peerEntry.whenKnown()
+              const closedAs = peerEntry.subscribe(entry, from, heard)
+              if (closedAs !== undefined && heard.has(Core.ENDED_INPUT)) endedPeers.push(endedInput(peer.id, closedAs))
             }
             let next = yield* journalled(1)
             replaying = next !== undefined
             yield* carryOut(yield* begun(Effect.succeed(now0)))
+            tellEndedPeers()
             yield* Deferred.succeed(started, undefined)
             let k = 0
             let live = false
@@ -1088,6 +1126,16 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         for (const listener of listeners) listener.end()
         listeners.clear()
         abandonCalls()
+        // Then its holders that hear its end are told how it closed. A durable root run's entry
+        // tells them as the run ends there (`Entry.finish`); a durable run that only stops is
+        // not closed for good, and tells no one.
+        const closedAs = suspended
+          ? "Suspended"
+          : endedStatus(snapshot.status) ?? (durable === undefined ? "Cancelled" : undefined)
+        if (entry === undefined && closedAs !== undefined) {
+          port.closedAs = closedAs
+          tellEnded(port, closedAs)
+        }
         liveCalls.clear()
         Queue.shutdownUnsafe(queue)
         const mode = durable !== undefined && snapshot.status === "running" ? "stop" : "cancel"

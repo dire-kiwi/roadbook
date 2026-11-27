@@ -7,7 +7,20 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import * as Roadbook from "../src/index.ts"
 import { type Beat, Beacon, Boom, type Bye, type Heard, Ping, Stop, Whisper } from "./charts/beacon.road.ts"
-import { Asker, Close, Desk, Early, Generic, Go, Leftover, Overflow, Payload, Settle } from "./charts/runtime.road.ts"
+import {
+  Asker,
+  Close,
+  Desk,
+  Early,
+  type Ended,
+  Generic,
+  Go,
+  Leftover,
+  Monitor,
+  Overflow,
+  Payload,
+  Settle
+} from "./charts/runtime.road.ts"
 
 const charts = path.resolve(import.meta.dirname, "../../../spec/conformance/charts")
 const readIr = (file: string): unknown => JSON.parse(fs.readFileSync(path.join(charts, file), "utf8"))
@@ -533,6 +546,45 @@ describe("calls", () => {
       yield* desk.send(Close.make({}))
       yield* desk.result
       assert.strictEqual(yield* AskerLive.run({ desk: desk.handle, n: 3 }), 0)
+    }).pipe(Effect.scoped))
+})
+
+describe("a peer's end", () => {
+  it.effect("is heard from each run of a `ref` list and an optional `ref`, once, also from one that had ended", () =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      const noted: Array<Ended> = []
+      const DeskLive = Desk.implement({ actions: { hold: () => Effect.void } })
+      const [a, b, spare] = [yield* DeskLive.spawn({}), yield* DeskLive.spawn({}), yield* DeskLive.spawn({})]
+      // `a` has ended before the Monitor subscribes: its own driver tells it, after its start step.
+      yield* a.send(Close.make({}))
+      yield* a.result
+      const MonitorLive = Monitor.implement({ actions: { noted: ({ status }) => Effect.sync(() => void noted.push(status)) } })
+      const monitor = yield* MonitorLive.spawn({ desks: [a.handle, b.handle, a.handle], spare: spare.handle }).pipe(
+        Effect.provideService(Roadbook.TraceSink, sink)
+      )
+        .pipe(Effect.provideService(Roadbook.TraceSink, sink))
+      yield* b.cancel
+      yield* spare.send(Close.make({}))
+      yield* monitor.result
+      assert.deepStrictEqual(noted, ["Done", "Cancelled", "Done"])
+      // `a`, held twice in the list, is one subscription: one end.
+      const ends = records.flatMap((r) => (r.kind === "event" && r.event.kind === "ended" ? [r.event] : []))
+      assert.deepStrictEqual(ends.map((e) => e.from), [a.handle.id, b.handle.id, spare.handle.id])
+    }).pipe(Effect.scoped))
+
+  it.effect("is not taken through an optional `ref` that is `null`, which names no run", () =>
+    Effect.gen(function*() {
+      const noted: Array<Ended> = []
+      const DeskLive = Desk.implement({ actions: { hold: () => Effect.void } })
+      const desk = yield* DeskLive.spawn({})
+      const MonitorLive = Monitor.implement({ actions: { noted: ({ status }) => Effect.sync(() => void noted.push(status)) } })
+      const monitor = yield* MonitorLive.spawn({ desks: [desk.handle], spare: null })
+      yield* desk.send(Close.make({}))
+      yield* desk.result
+      for (let i = 0; i < 100 && noted.length === 0; i++) yield* Effect.yieldNow
+      assert.deepStrictEqual(noted, ["Done"])
+      assert.strictEqual((yield* monitor.snapshot).core.status, "running")
     }).pipe(Effect.scoped))
 })
 

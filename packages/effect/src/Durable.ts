@@ -218,7 +218,7 @@ export const workflow = <D extends MachineDef, R>(
           ? undefined
           : `runId gave ${JSON.stringify(info.run)}, which is not a run id: it must match ${Core.RUN_ID_PATTERN}`)
       if (notRun !== undefined) {
-        entry.finish()
+        entry.finish("Defect")
         return { status: "defect", result: { defect: { kind: "host", message: notRun } } } as Core.Json
       }
       const json = payload.begin as unknown as BeginJson
@@ -245,7 +245,7 @@ export const workflow = <D extends MachineDef, R>(
         // defect before the run began (a changed chart) ends the execution with it.
         const defect = Exit.isFailure(exit) ? Cause.squash(exit.cause) : undefined
         if (defect instanceof Defect) {
-          entry.finish()
+          entry.finish("Defect")
           return { status: "defect", result: { defect: defect.defect } } as Core.Json
         }
         return yield* Effect.failCause(Exit.isFailure(exit) ? exit.cause : Cause.interrupt())
