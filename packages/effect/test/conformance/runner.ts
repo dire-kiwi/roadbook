@@ -210,9 +210,12 @@ const syncCrypto = {
 } as unknown as Crypto
 
 export const runCase = async (name: string, durable = false): Promise<CaseResult> => {
+  const caseName = name
   const dir = path.join(conformanceDir, "cases", name)
   const spec = JSON.parse(fs.readFileSync(path.join(dir, "case.json"), "utf8")) as Case
-  const expected = fs.readFileSync(path.join(dir, "trace.jsonl"), "utf8")
+  const tracePath = path.join(dir, "trace.jsonl")
+  // A new case has no expected trace until one is blessed (`ROADBOOK_CONFORMANCE_OUT`).
+  const expected = fs.existsSync(tracePath) ? fs.readFileSync(tracePath, "utf8") : ""
   const irPath = path.join(conformanceDir, spec.chart.replace(/\.road$/, ".ir.json"))
   const ir = Core.loadIr(JSON.parse(fs.readFileSync(irPath, "utf8")))
   if (!Object.hasOwn(ir.machines, spec.machine)) throw new Error(`${irPath} has no machine ${spec.machine}`)
@@ -421,9 +424,25 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
     if (!fs.existsSync(file)) fail(`no snapshot file ${name}.snapshot.json`)
     return fs.readFileSync(file, "utf8")
   }
+  // Durable mode's go to `durable/`, as its traces do.
+  const out = process.env["ROADBOOK_CONFORMANCE_OUT"]
+  const outDir = out === undefined || out === "" ? undefined : durable ? path.join(out, "durable") : out
   const compareSaved = (name: string, saved: Core.Saved) => {
     const actual = `${Core.canonicalJson(saved)}\n`
-    if (actual !== readSnapshot(name)) fail(`snapshot ${name} differs: ${actual}`)
+    if (outDir !== undefined) {
+      // The snapshots a runtime writes, for blessing: <out>/<case>/<name>.snapshot.json.
+      fs.mkdirSync(path.join(outDir, caseName), { recursive: true })
+      fs.writeFileSync(path.join(outDir, caseName, `${name}.snapshot.json`), actual)
+      // Not there yet: noted, and the case goes on, so that the rest is written too.
+      if (!fs.existsSync(path.join(dir, `${name}.snapshot.json`))) {
+        errors.push(`no snapshot file ${name}.snapshot.json`)
+        return
+      }
+    }
+    if (actual === readSnapshot(name)) return
+    // When blessing, noted, and the case goes on.
+    if (outDir !== undefined) errors.push(`snapshot ${name} differs`)
+    else fail(`snapshot ${name} differs: ${actual}`)
   }
   const pendingSuspends: Array<{ readonly name: string; readonly run: string; readonly fiber: Fiber.Fiber<Core.Saved> }> = []
   /** Runs being suspended or suspended: no event or cancel step may give them an input. */
@@ -649,11 +668,9 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
 
   const actual = arrange(records)
   // Durable mode's traces go to `durable/`, so that they never stand in for the others.
-  const base = process.env["ROADBOOK_CONFORMANCE_OUT"]
-  if (base) {
-    const out = durable ? path.join(base, "durable") : base
-    fs.mkdirSync(out, { recursive: true })
-    fs.writeFileSync(path.join(out, `${name}.jsonl`), actual)
+  if (outDir !== undefined) {
+    fs.mkdirSync(outDir, { recursive: true })
+    fs.writeFileSync(path.join(outDir, `${name}.jsonl`), actual)
   }
   return { name, expected, actual, errors }
 }

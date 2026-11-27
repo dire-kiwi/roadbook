@@ -183,7 +183,9 @@ export const workflow = <D extends MachineDef, R>(
         observer: yield* RunObserver,
         token: undefined,
         invoker: undefined,
-        durable: { exec, runId: info.run, entry }
+        durable: { exec, runId: info.run, entry },
+        restoreFrom: undefined,
+        tree: undefined
       }
       const { exit, snapshot } = yield* runDurable(program, begin, env)
       if (snapshot.status === "running") {

@@ -7,14 +7,16 @@ import { Schema } from "effect"
 
 /**
  * A saved snapshot: plain JSON matching `spec/snapshot.schema.json`, the same document the
- * Rust runtime saves. The values inside (`input`, `vars`) are checked against the IR's types
- * when it is restored.
+ * Rust runtime saves, of version 4 (versions 1 to 3 still restore), with the saved snapshots of
+ * its running child runs nested in its `invokes` and `spawned` entries (`child`). The values
+ * inside (`input`, `vars`) are checked against the IR's types when it is restored.
  */
 export type Saved = Core.Saved
 
 /**
  * The schema of a saved snapshot, for a store to decode with: it checks the document's shape
- * and version, not that it fits a machine, which `restore` checks.
+ * and version (1 to 4, each nested snapshot of version 4), the nested snapshots' too, not that
+ * it fits a machine, which `restore` checks.
  */
 export const Saved: Schema.declare<Core.Saved> = Schema.declare<Core.Saved>(Core.isSaved, {
   title: "Roadbook.Saved",

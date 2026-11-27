@@ -75,6 +75,29 @@ export interface CancelToken {
    * its cancel step, even if it has not claimed the token when its parent cancels it.
    */
   starting: boolean
+  /**
+   * Set by the child run once its start step is done: its saved snapshot as its last step left
+   * it, with its own child runs' nested in it, or `undefined` once it has closed (ended).
+   */
+  save: (() => Core.Saved | undefined) | undefined
+  /** Set by the child run: whether it is idle, its own child runs too (execution.md, "Suspending"). */
+  idle: (() => boolean) | undefined
+  /**
+   * Set by the child run: close it and its child runs, at once, because its tree stops idle. Its
+   * parent then interrupts it with `stopping` set, and it stops instead of running its cancel step.
+   */
+  halt: (() => void) | undefined
+  /** The parent stops the child with its idle tree (suspend) rather than cancelling it. */
+  stopping: boolean
+}
+
+/**
+ * The tree of a top-level run, as its child runs see it: whether a suspend waits for the tree
+ * to be idle, and a way to have the top-level run check again, after a child run's step.
+ */
+export interface Tree {
+  readonly suspending: () => boolean
+  readonly poke: () => void
 }
 
 /** What a machine invoke's implementation runs with: what a child run needs from its parent. */
@@ -92,6 +115,10 @@ export interface InvokeContext {
   readonly invoker: { readonly port: Port; readonly heard: ReadonlySet<string> } | undefined
   /** The workflow execution the parent runs in, if it runs durably: the child runs in it too. */
   readonly durable: Execution | undefined
+  /** The saved snapshot the run that claims the token restores instead of starting, if any. */
+  readonly saved: Core.Saved | undefined
+  /** The tree the parent belongs to. */
+  readonly tree: Tree
 }
 
 export const CurrentInvoke: Context.Reference<InvokeContext | undefined> = Context.Reference<
@@ -191,6 +218,10 @@ export interface Env {
     | undefined
   /** Where a durable run keeps its journal and records; `undefined` for an ordinary run. */
   readonly durable: DurableRun | undefined
+  /** For a child run, the snapshot its invoke context holds, which it restores instead of starting. */
+  readonly restoreFrom: Core.Saved | undefined
+  /** For a child run, its top-level run's tree; a top-level run makes its own. */
+  readonly tree: Tree | undefined
 }
 
 /**
@@ -217,7 +248,9 @@ const rootEnv: Effect.Effect<Env> = Effect.gen(function*() {
     observer: yield* RunObserver,
     token: undefined,
     invoker: undefined,
-    durable: undefined
+    durable: undefined,
+    restoreFrom: undefined,
+    tree: undefined
   }
 })
 
@@ -234,7 +267,9 @@ const claimEnv: Effect.Effect<Env> = Effect.flatMap(CurrentInvoke, (ctx) => {
     observer: ctx.observer,
     token: ctx.token,
     invoker: ctx.invoker === undefined ? undefined : { invoke: ctx.invoke, ...ctx.invoker },
-    durable: ctx.durable === undefined ? undefined : { exec: ctx.durable, runId, entry: undefined }
+    durable: ctx.durable === undefined ? undefined : { exec: ctx.durable, runId, entry: undefined },
+    restoreFrom: ctx.saved,
+    tree: ctx.tree
   })
 })
 
@@ -411,6 +446,25 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       begin.kind === "restore" ? begin.saved.timers.map((t) => [t.id, t.due]) : []
     )
     let saved: Core.Saved = Core.toSaved(snapshot, () => 0)
+    // The tokens of the invokes and spawned children this run started, by id: a child run's
+    // token gives its saved snapshot (`save`), nested in this run's when it is saved.
+    const tokens = new Map<number, CancelToken>()
+    /** The saved snapshot of the tree once the run has stopped (ended or suspended), kept. */
+    let frozen: Core.Saved | undefined
+    /**
+     * The saved snapshot as the last step left it, with each running child run's own nested in
+     * it, as its last step left it (execution.md, "Saved child runs").
+     */
+    const saveTree = (): Core.Saved => {
+      if (frozen !== undefined) return frozen
+      const childOf = (id: number) => {
+        const token = tokens.get(id)
+        return token?.claimed ? token.save?.() : undefined
+      }
+      const nests = (entries: ReadonlyArray<{ readonly id: number }>) => entries.some((e) => tokens.get(e.id)?.claimed)
+      if (!nests(saved.invokes) && !nests(saved.spawned ?? [])) return saved
+      return Core.withChildren(saved, childOf)
+    }
     // Suspending. The run checks after every step whether a suspend it was asked for can stop
     // it; while it waits for an input, `suspend` wakes it to check (`WAKE`).
     let suspendRequested = false
@@ -421,10 +475,23 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
     let last: Core.Snapshot | undefined
     /** Completed with the run's last saved snapshot once it has stopped: ended or suspended. */
     const stopped = yield* Deferred.make<Core.Saved>()
+    /**
+     * The tree this run belongs to: its top-level run's, or, for a top-level run, its own, whose
+     * suspend its child runs poke after each of their steps, so that it checks whether the tree
+     * is idle (`WAKE`).
+     */
+    const tree: Tree = env.tree ?? {
+      suspending: () => suspendRequested && !suspended,
+      poke: () => {
+        if (!waiting) return
+        wakes += 1
+        Queue.offerUnsafe(queue, WAKE)
+      }
+    }
     /** Whether a durable run has replayed its journal in this attempt. */
     let atEdge = false
     /** This attempt of a durable root run, as its registry entry sees it. */
-    const attempt: Attempt = { queue, save: () => saved, snapshot: () => snapshot, live: () => atEdge }
+    const attempt: Attempt = { queue, save: saveTree, snapshot: () => snapshot, live: () => atEdge }
     env.observer.started({
       id: env.runId,
       parent: env.parent,
@@ -493,7 +560,6 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       // Detached, so that dropping a task never waits for it (see `stopInvokes`).
       const invokes = new Map<number, Fiber.Fiber<void>>()
       const timers = yield* FiberMap.make<number>()
-      const tokens = new Map<number, CancelToken>()
       // The call invokes whose answer is still wanted: started, and not cancelled or taken.
       const liveCalls = new Set<number>()
       // A durable run's calls that their callee has not journalled yet, each handed over by a
@@ -618,7 +684,11 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           held: [],
           child: undefined,
           cancelRequested: false,
-          starting: false
+          starting: false,
+          save: undefined,
+          idle: undefined,
+          halt: undefined,
+          stopping: false
         }
         tokens.set(invoke, token)
         return token
@@ -650,7 +720,9 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             invoke: command.invoke,
             token,
             invoker: command.as === null ? undefined : { port, heard: Core.heard(ir, name, src) },
-            durable: durable?.exec
+            durable: durable?.exec,
+            saved: command.saved ?? undefined,
+            tree
           }
           : undefined
         const outcome = Effect.map(Effect.exit(work), (exit) => {
@@ -816,7 +888,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
               src: command.src,
               srcKind: "machine",
               as: "",
-              args: command.args
+              args: command.args,
+              saved: command.saved
             }
             if (replaying) {
               // As an invoke: started at the live edge, if it is still running then.
@@ -914,26 +987,61 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           yield* SubscriptionRef.set(ref, snapshot)
         })
 
-      /**
-       * Idle: between steps, nothing queued, no invoke or spawned child running and no pending
-       * call (execution.md, "Suspending").
-       */
-      const idle = () =>
-        Queue.sizeUnsafe(queue) - wakes === 0 && snapshot.invokes.length === 0 && snapshot.spawned.length === 0 &&
-        snapshot.calls.length === 0
+      /** The tokens of the child runs that have claimed their invokes. */
+      const claimed = () => [...tokens.values()].filter((token) => token.claimed)
+
+      /** Whether the work of invoke or spawned child `id` is a child run that is idle itself. */
+      const childIdle = (id: number) => {
+        const token = tokens.get(id)
+        return token !== undefined && token.claimed && token.idle !== undefined && token.idle()
+      }
 
       /**
-       * Stop an idle run that was asked to suspend, which the check that found it idle has
-       * closed: cancel its timers through its timer with no record (they are in the snapshot),
-       * write `suspended`. No exit effect runs.
+       * Idle, once between steps: nothing queued, no pending call, and the work of every invoke
+       * and spawned child a child run that is idle itself (execution.md, "Suspending").
+       */
+      const idle = () =>
+        Queue.sizeUnsafe(queue) - wakes === 0 && snapshot.calls.length === 0 &&
+        snapshot.invokes.every((inv) => childIdle(inv.id)) && snapshot.spawned.every((ch) => childIdle(ch.id))
+
+      /** Close this run and its child runs, at once: its tree stops, idle. */
+      const halt = () => {
+        suspended = true
+        close()
+        for (const token of claimed()) token.halt?.()
+      }
+
+      /**
+       * Stop an idle run whose tree stops (it was asked to suspend, or its parent's tree stops),
+       * which `halt` has closed: stop its child runs the same way first, waiting for them, then
+       * cancel its timers through its timer with no record (they are in the snapshot), write
+       * `suspended`. No exit effect runs.
        */
       const stop = Effect.gen(function*() {
+        const children = claimed()
+        const fibers: Array<Fiber.Fiber<void>> = []
+        for (const token of children) {
+          token.stopping = true
+          token.cancelled = true
+        }
+        for (const [id, fiber] of invokes) if (tokens.get(id)?.claimed) fibers.push(fiber)
+        yield* Fiber.interruptAll(fibers)
+        frozen = saveTree()
         yield* FiberMap.clear(timers)
         yield* write({ kind: "suspended" })
         // Once more, as a copy `changes` can tell from the others, so that it ends.
         last = { ...snapshot }
         yield* SubscriptionRef.set(ref, last)
       })
+
+      /** Once the start step is done: a child run's token gives its snapshot, its idleness and its halt. */
+      const publish = () => {
+        const token = env.token
+        if (token === undefined) return
+        token.save = () => (port.open || suspended ? saveTree() : undefined)
+        token.idle = () => port.open && waiting && idle()
+        token.halt = halt
+      }
 
       const begun = (now: Effect.Effect<number>) =>
         begin.kind === "restore"
@@ -946,6 +1054,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           for (const peer of peers) subscribeTo(peer, Core.heard(ir, name, peer.machine))
           yield* carryOut(yield* begun(env.timer.now))
           tellEndedPeers()
+          publish()
           yield* Deferred.succeed(started, undefined)
           while (snapshot.status === "running") {
             // A cancel that arrived during the step (an interrupt, held while the step ran) is
@@ -955,11 +1064,13 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             const stopping = yield* Effect.sync(() => {
               // Deciding and closing at once: nothing can be pushed in between and left untaken.
               if (suspendRequested && idle()) {
-                suspended = true
-                close()
+                // The whole tree closes here, in this synchronous block (`halt`).
+                halt()
                 return true
               }
               waiting = true
+              // A child run between steps: its top-level run checks whether the tree is idle.
+              if (env.token !== undefined && tree.suspending()) tree.poke()
               return false
             })
             if (stopping) return yield* stop
@@ -1094,6 +1205,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             replaying = next !== undefined
             yield* carryOut(yield* begun(Effect.succeed(now0)))
             tellEndedPeers()
+            publish()
             yield* Deferred.succeed(started, undefined)
             let k = 0
             let live = false
@@ -1274,18 +1386,23 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           durable.exec.root.callers.delete(env.runId)
         }
         Queue.shutdownUnsafe(queue)
+        // The tree as it stopped: a suspended run's was kept as it stopped; a run that stops
+        // durably keeps its child runs' snapshots from before they stop.
+        frozen ??= saveTree()
         return answerDurably(abandoned).pipe(
           Effect.andThen(tell),
-          Effect.andThen(stopInvokes([...tokens.keys()], stopping ? "stop" : "cancel"))
+          // A suspended run has stopped its child runs already.
+          Effect.andThen(suspended ? Effect.void : stopInvokes([...tokens.keys()], stopping ? "stop" : "cancel"))
         )
       }).pipe(
         Effect.ensuring(Effect.suspend(() => {
           if (entry !== undefined) entry.detach(attempt)
-          return Deferred.succeed(stopped, saved)
+          return Deferred.succeed(stopped, saveTree())
         }))
       )
 
-      if (durable === undefined) yield* steps.pipe(Effect.onInterrupt(() => cancel), Effect.ensuring(end))
+      // A child run whose tree stops (`halt`) is interrupted too, and stops instead of cancelling.
+      if (durable === undefined) yield* steps.pipe(Effect.onInterrupt(() => suspended ? stop : cancel), Effect.ensuring(end))
       else {
         // Interrupting a durable run is the process stopping, or the run parking: no cancel step.
         entry?.attach(attempt)
@@ -1323,7 +1440,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       started,
       loop,
       // A copy each time: host code that changes what it was given changes nothing here.
-      save: Effect.sync(() => Core.copyJson(saved)),
+      save: Effect.sync(() => Core.copyJson(saveTree())),
       suspend,
       isLast: (s: Core.Snapshot) => s.status !== "running" || s === last,
       current: () => snapshot
@@ -1355,6 +1472,7 @@ type StartCommand =
     readonly srcKind: "machine"
     readonly as: string
     readonly args: { readonly [param: string]: Core.Json }
+    readonly saved: Core.Saved | null
   }
 
 /** The `spawn.*` input for a spawned child's outcome, from the `invoke.*` one an invoke's would be. */
@@ -1407,11 +1525,31 @@ export const runDurable = (program: Program, begin: Begin, env: Env) =>
     (instance) => Effect.map(Effect.exit(instance.loop), (exit) => ({ exit, snapshot: instance.current() }))
   )
 
+/**
+ * Run the machine: as the child run of the invoke context's token if it is unclaimed, restoring
+ * the snapshot the context holds if it holds one (execution.md, "Restoring a child run"), and
+ * otherwise as a root run.
+ */
 export const run = (program: Program, input: unknown): Effect.Effect<unknown, unknown> =>
-  Effect.flatMap(
-    claimEnv,
-    (env) => Effect.flatMap(makeInstance(program, { kind: "start", input }, env), (instance) => instance.loop)
-  )
+  Effect.flatMap(claimEnv, (env) => {
+    let begin: Begin = { kind: "start", input }
+    const saved = env.restoreFrom
+    if (saved !== undefined) {
+      // Checked with its parent's tree, but host code may have bound another machine, or one
+      // built from another chart: a host defect, before the run's first record.
+      if (saved.machine !== program.name || saved.ir !== program.machine.hash) {
+        return Effect.die(
+          new Defect({
+            kind: "host",
+            message: `run ${env.runId} is to restore a snapshot of ${saved.machine} (${saved.ir}), ` +
+              `but its invoke runs ${program.name} (${program.machine.hash})`
+          })
+        )
+      }
+      begin = { kind: "restore", saved, migrated: null }
+    }
+    return Effect.flatMap(makeInstance(program, begin, env), (instance) => instance.loop)
+  })
 
 const toSnapshot = <D extends MachineDef>(core: Core.Snapshot): Snapshot<D> => ({
   status: core.status,

@@ -46,7 +46,7 @@ describe("save and restore", () => {
       yield* actor.send({ _tag: "Add", by: 2 })
       yield* settle
       const saved = yield* actor.save
-      assert.strictEqual(saved.snapshotVersion, 3)
+      assert.strictEqual(saved.snapshotVersion, 4)
       assert.deepStrictEqual(saved.vars, { n: 3 })
       assert.deepStrictEqual(saved.active, ["Counter", "Counter.Counting"])
       // The run carries on.
@@ -67,7 +67,7 @@ describe("save and restore", () => {
       const text = JSON.stringify(yield* actor.save)
       const decoded = Schema.decodeUnknownSync(Roadbook.Saved)(JSON.parse(text))
       assert.strictEqual(decoded.vars["n"], 5)
-      assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(Roadbook.Saved)({ ...decoded, snapshotVersion: 4 })))
+      assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(Roadbook.Saved)({ ...decoded, snapshotVersion: 5 })))
       const restored = yield* CounterLive.restore(decoded)
       yield* restored.send({ _tag: "Finish" })
       assert.strictEqual(yield* restored.result, 5)
@@ -88,7 +88,7 @@ describe("save and restore", () => {
       const restore = (live: Roadbook.Implemented<any, never>, value: unknown, options?: Roadbook.RestoreOptions) =>
         Effect.exit(live.restore(value as Roadbook.Saved, options).pipe(Effect.provideService(Roadbook.TraceSink, sink)))
       assert.strictEqual(refusal(yield* restore(CounterLive, {})), "invalid")
-      assert.strictEqual(refusal(yield* restore(CounterLive, { ...saved, snapshotVersion: 4 })), "invalid")
+      assert.strictEqual(refusal(yield* restore(CounterLive, { ...saved, snapshotVersion: 5 })), "invalid")
       assert.strictEqual(refusal(yield* restore(CounterLive, { ...saved, extra: 1 })), "invalid")
       assert.strictEqual(refusal(yield* restore(OrderLive, saved)), "machine")
       assert.strictEqual(refusal(yield* restore(CounterLive, old)), "ir")
@@ -245,7 +245,7 @@ describe("saving and restoring, at the edges", () => {
       }
       assert.deepStrictEqual(records, [])
       // A refused snapshot is refused first, with its reason.
-      const refused = yield* Effect.exit(CounterLive.resume({ ...saved, snapshotVersion: 4 } as never, { _tag: "Nope" } as never))
+      const refused = yield* Effect.exit(CounterLive.resume({ ...saved, snapshotVersion: 5 } as never, { _tag: "Nope" } as never))
       assert.strictEqual(refusal(refused), "invalid")
       const fine = yield* resume({ _tag: "Add", by: 2 })
       assert.isTrue(Exit.isSuccess(fine) && fine.value.vars["n"] === 3)
@@ -282,7 +282,7 @@ describe("saving and restoring, at the edges", () => {
       yield* actor.send({ _tag: "BackDeep" })
       yield* settle
       const saved = yield* actor.save
-      assert.strictEqual(saved.snapshotVersion, 3)
+      assert.strictEqual(saved.snapshotVersion, 4)
       assert.deepStrictEqual(saved.history, {
         "Editor.Work.Deep": ["Editor.Work.Review.Read"],
         "Editor.Work.Shallow": ["Editor.Work.Review"]
@@ -298,7 +298,7 @@ describe("saving and restoring, at the edges", () => {
       const v1 = { ...rest, snapshotVersion: 1 } as Roadbook.Saved
       const restored = yield* EditorLive.restore(v1)
       const resaved = yield* restored.save
-      assert.strictEqual(resaved.snapshotVersion, 3)
+      assert.strictEqual(resaved.snapshotVersion, 4)
       assert.deepStrictEqual(resaved.history, {})
       yield* restored.send({ _tag: "BackDeep" })
       yield* settle
@@ -387,4 +387,81 @@ describe("the request handler", () => {
       const again = yield* request("o2", undefined)
       assert.deepStrictEqual(again.active, ["Order", "Order.Expired"])
     }))
+})
+
+describe("child runs in a saved snapshot", () => {
+  // kept.road: a Desk keeps a Tally, which counts what it is sent and naps after five seconds.
+  const keptIr = JSON.parse(fs.readFileSync(path.join(charts, "kept.ir.json"), "utf8")) as Core.Ir
+  const log = { actions: { log: () => Effect.void } }
+  const TallyLive = impl("Tally", log, keptIr)
+  const DeskLive = impl("Desk", { ...log, machines: { Tally: TallyLive } }, keptIr)
+
+  it.effect("save nests the child's snapshot; resume restores it where it was and suspends the idle tree", () =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      const saved = yield* Effect.scoped(Effect.gen(function*() {
+        const desk = yield* DeskLive.spawn({ start: 1 })
+        yield* desk.send({ _tag: "Bump", by: 2 })
+        yield* settle
+        return yield* desk.save
+      }))
+      const child = saved.invokes[0]!.child!
+      assert.strictEqual(child.run, `${saved.run}.1`)
+      assert.deepStrictEqual(child.vars, { n: 3 })
+      assert.deepStrictEqual(child.timers.map((t) => t.due), [5000])
+      // A hub of one: resume returns once the tree is idle, the child's snapshot in the parent's.
+      const resumed = yield* DeskLive.resume(saved, { _tag: "Bump", by: 4 }).pipe(Effect.provideService(Roadbook.TraceSink, sink))
+      assert.deepStrictEqual(resumed.vars, { heard: 7 })
+      assert.deepStrictEqual(resumed.invokes[0]!.child!.vars, { n: 7 })
+      const kinds = (run: string) => records.filter((r) => r.run === run).map((r) => r.kind)
+      const [root] = records
+      assert.strictEqual(kinds(root!.run)[0], "restored")
+      assert.strictEqual(kinds(`${root!.run}.1`)[0], "restored")
+      assert.strictEqual(kinds(`${root!.run}.1`).at(-1), "suspended")
+      assert.strictEqual(kinds(root!.run).at(-1), "suspended")
+    }))
+
+  it.effect("suspend stops a tree two levels deep, children first, and resume goes on from it", () =>
+    Effect.gen(function*() {
+      const OfficeLive = impl("Office", { ...log, machines: { Desk: DeskLive } }, keptIr)
+      const { records, sink } = collect()
+      const first = yield* Effect.scoped(Effect.gen(function*() {
+        const office = yield* OfficeLive.spawn({})
+        yield* office.send({ _tag: "Bump", by: 2 })
+        return yield* office.suspend
+      })).pipe(Effect.provideService(Roadbook.TraceSink, sink))
+      const desk = first.invokes[0]!.child!
+      const tally = desk.invokes[0]!.child!
+      assert.deepStrictEqual([desk.run, tally.run], [`${first.run}.1`, `${first.run}.1.1`])
+      assert.deepStrictEqual(desk.vars, { heard: 3 })
+      assert.deepStrictEqual(tally.vars, { n: 3 })
+      const suspended = records.filter((r) => r.kind === "suspended").map((r) => r.run)
+      assert.deepStrictEqual(suspended, [tally.run, desk.run, first.run])
+      // One request: the event reaches the grandchild, and the tree suspends again.
+      const second = yield* OfficeLive.resume(first, { _tag: "Bump", by: 4 })
+      assert.deepStrictEqual(second.invokes[0]!.child!.invokes[0]!.child!.vars, { n: 7 })
+      assert.deepStrictEqual(second.invokes[0]!.child!.vars, { heard: 7 })
+      // Closing it ends the whole tree.
+      const done = yield* OfficeLive.resume(second, { _tag: "Close" })
+      assert.strictEqual(done.status, "done")
+    }))
+
+  it.effect("a child run bound to another machine than its snapshot's ends with a host defect", () =>
+    Effect.gen(function*() {
+      const saved = yield* Effect.scoped(Effect.gen(function*() {
+        const desk = yield* DeskLive.spawn({ start: 1 })
+        yield* settle
+        return yield* desk.save
+      }))
+      // The Tally invoke runs a Desk, which claims the token with the Tally's snapshot.
+      const OtherDesk = impl("Desk", { ...log, machines: { Tally: { run: (input: unknown) => Effect.suspend(() => DeskLive.run(input as never)) } } }, keptIr)
+      const { records, sink } = collect()
+      const restored = yield* OtherDesk.restore(saved).pipe(Effect.provideService(Roadbook.TraceSink, sink))
+      const exit = yield* Effect.exit(restored.result)
+      assert.isTrue(Exit.isFailure(exit))
+      const event = records.find((r) => r.kind === "event")
+      assert.strictEqual((event as { event: { kind: string } }).event.kind, "invoke.defect")
+      // The child run wrote nothing.
+      assert.isFalse(records.some((r) => r.run.includes(".")))
+    }).pipe(Effect.scoped))
 })
