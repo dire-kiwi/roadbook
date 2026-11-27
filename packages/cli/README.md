@@ -7,7 +7,7 @@ The package is `private` until its name is settled; nothing is published.
 ## The command
 
 ```
-roadbook check [--json] [--warn invoke-timeout] [paths…]
+roadbook check [--json] [--checks] [--warn invoke-timeout] [paths…]
 roadbook fmt [--check] [paths…]
 roadbook gen [--check] [paths…]
 roadbook export ir <file> [-o <file>]

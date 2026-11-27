@@ -10,6 +10,7 @@
         { "include": "#comments" },
         { "include": "#strings" },
         { "include": "#import" },
+        { "include": "#check" },
         { "include": "#machine-signature" },
         { "include": "#function-signature" },
         { "include": "#call-signature" },
@@ -328,6 +329,20 @@
         "1": { "name": "keyword.operator.arrow.roadbook" },
         "2": { "name": "entity.name.type.state.roadbook" }
       }
+    },
+
+    "check": {
+      "comment": "`check` and the words of its property are not reserved: a check is a machine item, at the start of its line, `check` followed by `never`, `reachable`, `can` or a state.",
+      "begin": "^\\s*(check)\\b(?=\\s+(?:never|reachable|can|[A-Z]))",
+      "beginCaptures": { "1": { "name": "keyword.other.check.roadbook" } },
+      "end": "$",
+      "patterns": [
+        { "include": "#comments" },
+        { "match": "\\b(never|reachable|only|after|can|finish)\\b", "name": "keyword.other.check.roadbook" },
+        { "match": "\\band\\b", "name": "keyword.operator.logical.roadbook" },
+        { "match": "\\b[A-Z][A-Za-z0-9]*\\b", "name": "entity.name.type.state.roadbook" },
+        { "match": "\\.", "name": "punctuation.accessor.roadbook" }
+      ]
     },
 
     "sensitive": {

@@ -552,6 +552,12 @@ pub(crate) fn lower<'p>(
         vars.push(v);
         cx.info.vars.push(info);
     }
+    let symbols: HashMap<String, SymbolId> = cx
+        .nodes
+        .iter()
+        .filter_map(|n| Some((n.id.clone(), n.symbol?)))
+        .collect();
+    crate::checks::resolve(cx.ck, &name, &m.body, &root, &symbols);
 
     let info = cx.info;
     ck.machines.push(info);
@@ -1784,6 +1790,8 @@ impl<'p> Cx<'_, 'p> {
                 | Item::Children(_)
                 | Item::Initial(_)
                 | Item::History(_)
+                // Resolved once the machine is lowered, in `checks.rs`.
+                | Item::Check(_)
                 | Item::State(_) => {}
             }
         }
@@ -1921,6 +1929,7 @@ impl<'p> Cx<'_, 'p> {
                     Item::History(h) => h.doc.as_ref(),
                     Item::Var(v) => v.doc.as_ref(),
                     Item::Event(e) | Item::Emits(e) => e.doc.as_ref(),
+                    Item::Check(c) => c.doc.as_ref(),
                     _ => None,
                 };
                 let at = doc.map_or(item.span(), |d| d.span).shrink_to_start();

@@ -1,0 +1,58 @@
+fn approved() -> bool
+
+/// Every form of `check`, on a chart with a parallel state and a deep history state: each
+/// holds, proved or if guards allow.
+machine Order() {
+  event Pay
+  event Pack
+  event Charge
+  event Pause
+  event Resume
+  event Cancel
+
+  initial Cart
+
+  state Cart {
+    on Pay if approved() -> Fulfilling
+    on Cancel            -> Cancelled
+  }
+
+  state Fulfilling {
+    initial Work
+    deep history Last
+    on Pause -> Paused
+
+    parallel state Work {
+      state Packing {
+        initial Waiting
+        state Waiting      { on Pack -> Packed }
+        final state Packed {}
+      }
+      state Billing {
+        initial Open
+        state Open          { on Charge -> Charged }
+        final state Charged {}
+      }
+      done -> Shipped
+    }
+  }
+
+  state Paused {
+    on Resume -> Fulfilling.Last
+    on Cancel -> Cancelled
+  }
+
+  final state Shipped   {}
+  final state Cancelled {}
+
+  /// Shipping needs the payment approved.
+  check reachable Shipped
+  check reachable Cancelled
+  check reachable Fulfilling.Work.Billing.Charged
+  check never Shipped and Cancelled
+  check never Paused and Fulfilling.Work.Packing.Packed
+  check Shipped only after Fulfilling.Work.Billing.Charged
+  check Fulfilling.Work.Packing.Waiting only after Cart
+  check Fulfilling.Work.Billing.Open only after Fulfilling.Work.Packing.Waiting
+  check can finish
+}

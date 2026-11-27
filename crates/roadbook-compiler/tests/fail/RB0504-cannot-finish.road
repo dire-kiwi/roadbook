@@ -1,0 +1,25 @@
+// From `Retrying`, the machine only loops: it can never reach `Done` again.
+fn ok() -> bool
+
+machine Job() {
+  event Run
+  event Retry
+
+  initial Idle
+
+  state Idle {
+    on Run {
+      if ok() -> Done
+      else    -> Retrying
+    }
+  }
+  state Retrying {
+    after 1s -> Retrying
+    on Retry -> Retrying
+  }
+  final state Done {}
+
+  check can finish
+}
+
+// expect: RB0504 at 22:3

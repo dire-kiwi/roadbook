@@ -49,4 +49,10 @@ machine Order(inventory: ref Inventory, spare: ref Inventory?, all: Warehouses) 
 
   final state Alarm { output how }
   final state Gone  { output how }
+
+  /// Reached only through a peer's end, which the checks take as an input from the peer.
+  check reachable Alarm
+  check reachable Gone
+  check never Alarm and Paused
+  check can finish
 }

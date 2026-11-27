@@ -404,7 +404,7 @@ impl Parser<'_> {
                 };
                 self.diags.push(
                     Diagnostic::error(codes::DOC_COMMENT_DOCUMENTS_NOTHING, c.span, "this doc comment does not document anything")
-                        .with_help("`///` documents the declaration, machine, state, history state, event or variable that follows it; use `//` for other comments")
+                        .with_help("`///` documents the declaration, machine, state, history state, event, variable or check that follows it; use `//` for other comments")
                         .with_fix("make it a plain comment", slashes, "//"),
                 );
             }
@@ -433,6 +433,11 @@ impl Parser<'_> {
                     }
                 }
                 _ if depth == 0 && (stop(k) || is_decl_start(k)) => return,
+                // `check` is not a keyword, but one at the start of a line in a body starts the
+                // next item: a run of checks recovers check by check.
+                T::Lower if depth == 0 && in_block && self.at_check() && self.starts_line() => {
+                    return;
+                }
                 _ => {}
             }
             self.bump();
@@ -448,6 +453,12 @@ impl Parser<'_> {
             let item = match self.peek() {
                 T::Keyword(K::Import) => self.import().map(TopItem::Import),
                 k if is_decl_start(k) => self.decl().map(TopItem::Decl),
+                _ if self.at_check() => {
+                    let d = Diagnostic::error(codes::NOT_AT_TOP_LEVEL, self.tok().span, "`check` must be inside a machine")
+                        .with_help("a `check` is about one machine's states: write it directly in that machine's body");
+                    self.error(d);
+                    Err(Fail)
+                }
                 k if is_item_start(k) => {
                     let word = self.text(self.tok()).to_string();
                     let d = Diagnostic::error(codes::NOT_AT_TOP_LEVEL, self.tok().span, format!("`{word}` must be inside a machine"))
@@ -1033,6 +1044,9 @@ impl Parser<'_> {
             return Ok(Some(Item::History(h)));
         }
         let mut t = self.tok();
+        if self.at_check() {
+            return self.check_item(kind);
+        }
         if self.at_children() {
             let decl = self.children()?;
             if kind == BodyKind::State {
@@ -1050,7 +1064,7 @@ impl Parser<'_> {
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
-                    "a machine item (`var`, `event`, `emits`, `call`, `children`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`) or `}`"
+                    "a machine item (`var`, `event`, `emits`, `call`, `children`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
                 }
                 BodyKind::State => {
                     "a state item (`initial`, `state`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
@@ -1203,6 +1217,108 @@ impl Parser<'_> {
             return Ok(None);
         }
         Ok(Some(item))
+    }
+
+    /// `check` is not reserved: it starts a check only followed by a name (`never`,
+    /// `reachable`, `can` or a state), which no other item can begin with.
+    fn at_check(&self) -> bool {
+        self.at(T::Lower)
+            && self.text(self.tok()) == "check"
+            && matches!(self.nth(1), T::Lower | T::Upper)
+    }
+
+    /// Whether the current token is the first on its line.
+    fn starts_line(&self) -> bool {
+        self.pos == 0 || self.prev().end.line < self.tok().span.start.line
+    }
+
+    /// Whether the current token is the lower-case word `word`.
+    fn at_word(&self, word: &str) -> bool {
+        self.at(T::Lower) && self.text(self.tok()) == word
+    }
+
+    /// A check, reported and left out in a state. Not inlined: `item` is on the recursive
+    /// path of nested states, and a larger frame there lowers how deep they fit in the stack.
+    #[inline(never)]
+    fn check_item(&mut self, kind: BodyKind) -> PResult<Option<Item>> {
+        let t = self.tok();
+        let c = self.check()?;
+        if kind == BodyKind::State {
+            let d = Diagnostic::error(codes::NOT_IN_STATE, t.span, "`check` is only allowed directly in a machine body")
+                .with_help("move the `check` into the machine's body; its state paths are written from there, like a target at machine level");
+            self.error(d);
+            return Ok(None);
+        }
+        Ok(Some(Item::Check(c)))
+    }
+
+    /// `check property`, where `property` is `never A { and B }`, `reachable A`,
+    /// `A only after B` or `can finish`. All the words but `and` and `after` are contextual.
+    fn check(&mut self) -> PResult<Check> {
+        let doc = self.take_doc();
+        let start = self.bump().span;
+        let property = if self.at_word("never") {
+            self.bump();
+            let mut states = vec![self.state_path()?];
+            while self.eat_kw(K::And).is_some() {
+                states.push(self.state_path()?);
+            }
+            Property::Never(states)
+        } else if self.at_word("reachable") {
+            self.bump();
+            Property::Reachable(self.state_path()?)
+        } else if self.at_word("can") {
+            self.bump();
+            if !self.at_word("finish") {
+                return Err(self.unexpected("`finish` after `check can`"));
+            }
+            self.bump();
+            Property::CanFinish
+        } else if self.at(T::Upper) {
+            let state = self.state_path()?;
+            if self.at_kw(K::After) {
+                // `check A after B`: the `only` is missing. Reported, and parsed as meant, so
+                // the `after` does not start a transition.
+                let at = self.tok().span;
+                let d = Diagnostic::error(codes::UNEXPECTED_TOKEN, at, "expected `only after` after the state of a `check`, found keyword `after`")
+                    .with_help("a check that one state is entered only after another is written `check A only after B`")
+                    .with_fix("insert `only`", Span { end: at.start, ..at }, "only ");
+                self.error(d);
+            } else if self.at_word("only") {
+                self.bump();
+                if !self.at_kw(K::After) {
+                    return Err(self.unexpected("`after` after `only`"));
+                }
+            } else {
+                return Err(self.unexpected("`only after` after the state of a `check`"));
+            }
+            self.bump();
+            let after = self.state_path()?;
+            Property::OnlyAfter { state, after }
+        } else {
+            return Err(
+                self.unexpected("`never`, `reachable`, `can finish` or a state after `check`")
+            );
+        };
+        Ok(Check {
+            doc,
+            property,
+            span: self.since(start),
+        })
+    }
+
+    /// `Name { . Name }`: a state named in a `check`.
+    fn state_path(&mut self) -> PResult<Target> {
+        // A lower-case name on the next line is the next item, not a misspelt state.
+        if !self.at(T::Upper) && self.starts_line() {
+            return Err(self.unexpected("a state"));
+        }
+        let mut path = vec![self.upper("a state name")?];
+        while self.eat_p(P::Dot).is_some() {
+            path.push(self.upper("a state name")?);
+        }
+        let span = path[0].span.to(path[path.len() - 1].span);
+        Ok(Target { path, span })
     }
 
     /// `children` is not reserved: it starts a collection only as `children name:`.

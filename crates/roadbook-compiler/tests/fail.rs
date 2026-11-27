@@ -1,6 +1,8 @@
 //! Failing charts: `tests/fail/RBxxxx-*.road` (or a directory with `main.road`). Each file
 //! lists the diagnostics it must produce, exactly, as `// expect: CODE at LINE:COL` lines,
-//! and the rendered diagnostics are snapshot in `tests/snapshots/`.
+//! and the rendered diagnostics are snapshot in `tests/snapshots/`. Each is checked as
+//! `roadbook check` checks it, so its `check` lines are evaluated; a line `// options:
+//! warn-invoke-timeout` or `// options: max-configurations N` sets an option.
 
 mod common;
 
@@ -12,7 +14,7 @@ use roadbook_compiler::codes;
 fn every_failing_chart_gives_exactly_its_diagnostics() {
     let mut failures = Vec::new();
     for case in common::cases("fail") {
-        let out = case.compile();
+        let out = case.check();
         let found = common::found(&out);
         if found != case.expected {
             failures.push(format!(
@@ -45,7 +47,7 @@ fn every_code_has_a_failing_chart() {
 #[test]
 fn rendered_diagnostics() {
     for case in common::cases("fail") {
-        let out = case.compile();
+        let out = case.check();
         insta::with_settings!({ prepend_module_to_snapshot => false, omit_expression => true }, {
             insta::assert_snapshot!(case.name.clone(), out.render());
         });
@@ -56,7 +58,7 @@ fn rendered_diagnostics() {
 fn applying_a_fix_removes_its_diagnostic() {
     let mut checked = 0;
     for case in common::cases("fail") {
-        let out = case.compile();
+        let out = case.check();
         for d in &out.diagnostics {
             let Some(fix) = d.fixes.first() else {
                 continue;
@@ -72,8 +74,12 @@ fn applying_a_fix_removes_its_diagnostic() {
                 new.replace_range(e.span.range(), &e.text);
                 loader.insert(path, new);
             }
-            let fixed =
-                roadbook_compiler::compile(&mut loader, &case.entry, &case.options).unwrap();
+            let fixed = roadbook_compiler::check(
+                &mut loader,
+                std::slice::from_ref(&case.entry),
+                &case.options,
+            )
+            .unwrap();
             let count = |c: &roadbook_compiler::Compilation| {
                 c.diagnostics.iter().filter(|x| x.code == d.code).count()
             };

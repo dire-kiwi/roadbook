@@ -22,8 +22,9 @@ module.exports = grammar({
   word: ($) => $.identifier,
 
   // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref`, `sensitive`,
-  // `history`, `deep`, `children`, `by`, `spawn`, `stop`, `map` and the built-in type names are
-  // not, because they mean something only where no name can appear.
+  // `history`, `deep`, `children`, `by`, `spawn`, `stop`, `map`, the words of a check (`check`,
+  // `never`, `reachable`, `only`, `can`, `finish`) and the built-in type names are not, because
+  // they mean something only where no name can appear.
   reserved: {
     global: (_) => [
       'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'strict',
@@ -190,6 +191,7 @@ module.exports = grammar({
         $.emits_declaration,
         $.call_declaration,
         $.children_declaration,
+        $.check,
         $._common_item,
       ),
 
@@ -229,6 +231,29 @@ module.exports = grammar({
         'by',
         field('key', $._type),
       ),
+
+    // `check never A and B`, `check reachable A`, `check A only after B`, `check can finish`:
+    // only directly in a machine body. A state path is written like a target.
+    check: ($) =>
+      seq(
+        'check',
+        field(
+          'property',
+          choice($.never_property, $.reachable_property, $.only_after_property, $.can_finish_property),
+        ),
+      ),
+
+    never_property: ($) =>
+      seq('never', field('state', $.state_path), repeat(seq('and', field('state', $.state_path)))),
+
+    reachable_property: ($) => seq('reachable', field('state', $.state_path)),
+
+    only_after_property: ($) =>
+      seq(field('state', $.state_path), 'only', 'after', field('after', $.state_path)),
+
+    can_finish_property: (_) => seq('can', 'finish'),
+
+    state_path: ($) => seq(field('state', $.type_identifier), repeat(seq('.', field('state', $.type_identifier)))),
 
     // ───────────── states ─────────────
 

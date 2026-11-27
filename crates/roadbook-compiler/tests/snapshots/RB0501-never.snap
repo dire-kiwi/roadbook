@@ -1,0 +1,16 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0501]: `never Refunded` does not hold: `Refunded` can be active
+  --> RB0501-never.road:21:3
+   |
+13 |       if approved() -> Charged
+   |       ------------------------ 1. Pay [approved()] -> Charged
+...
+17 |   state Charged        { on Refund -> Refunded }
+   |                          --------------------- 2. Refund -> Refunded
+...
+21 |   check never Refunded
+   |   ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Idle --Pay [approved()]--> Charged --Refund--> Refunded, if `approved()` holds on the way

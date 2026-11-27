@@ -1,0 +1,15 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0504]: `Job` can reach a configuration from which no final state can be reached
+  --> RB0504-cannot-finish.road:22:3
+   |
+12 |       if ok() -> Done
+   |       --------------- 1. Run [ok()]: assumed to fail
+13 |       else    -> Retrying
+   |       ------------------- 2. Run [else] -> Retrying
+...
+22 |   check can finish
+   |   ^^^^^^^^^^^^^^^^
+   |
+   = help: Idle --Run [else]--> Retrying, if `ok()` fails on the way; from `Retrying`, no final state can be reached

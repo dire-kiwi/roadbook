@@ -38,12 +38,32 @@ export interface Diagnostic extends Range {
   fixes: { message: string; edits: (Range & { text: string })[] }[]
 }
 
+/** A step of a check's path, as `roadbook paths --json` gives the steps of a path. */
+export interface CheckStep {
+  from: string
+  index: number
+  trigger: string
+  guard: string | null
+  to: string | null
+}
+
+/** A `check` line and its verdict, as `roadbook check --json` lists it in `checks`. */
+export interface Check extends Range {
+  machine: string
+  check: string
+  doc: string | null
+  verdict: 'proved' | 'conditional' | 'failed' | 'unchecked'
+  assumptions: string[]
+  path: CheckStep[]
+}
+
 /** The object `roadbook check --json` prints. */
 export interface Report {
   diagnostics: Diagnostic[]
   errors: number
   warnings: number
   fatal: string | null
+  checks: Check[]
 }
 
 export interface Diagnostics {

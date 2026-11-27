@@ -86,7 +86,16 @@ fn each_syntax_error_has_its_code() {
         (s("    var x: int"), "RB0015"),
         (s("    event Go"), "RB0015"),
         (s("    emits Go"), "RB0015"),
+        (s("    check never S"), "RB0015"),
+        (s("    /// Documented.\n    check can finish"), "RB0015"),
         ("state S {}".into(), "RB0016"),
+        ("check reachable S".into(), "RB0016"),
+        ("machine M() {}\ncheck never M".into(), "RB0016"),
+        (m("  check can stop"), "RB0010"),
+        (m("  check S after T"), "RB0010"),
+        (m("  check S only T"), "RB0010"),
+        (m("  check never S or T"), "RB0010"),
+        (m("  check 1"), "RB0010"),
         (s("    on Go\n    on Stop -> S"), "RB0017"),
         (s("    on Go if ready"), "RB0017"),
         (s("    after 5s ignore"), "RB0026"),
@@ -215,6 +224,37 @@ fn misplaced_items_are_reported_and_dropped() {
     assert_eq!(diags.len(), 2);
     let (_, machine) = file.machines().next().unwrap();
     assert_eq!(machine.body.items.len(), 2);
+    assert!(machine.body.states().next().unwrap().body.items.is_empty());
+}
+
+#[test]
+fn a_broken_check_does_not_hide_the_next_one() {
+    let src =
+        m("  check never\n  check reachable S\n  check S only\n  check can finish\n  state S {}");
+    let (file, diags) = parse_file(FileId(0), &src);
+    let got: Vec<_> = diags
+        .iter()
+        .map(|d| (d.code.to_string(), d.span.start.line))
+        .collect();
+    assert_eq!(got, [("RB0010".to_string(), 3), ("RB0010".into(), 5)]);
+    let (_, machine) = file.machines().next().unwrap();
+    assert_eq!(machine.body.checks().count(), 2);
+    assert_eq!(machine.body.states().count(), 1);
+}
+
+#[test]
+fn misplaced_checks_are_reported_and_dropped() {
+    let src = format!("check can finish\n{}", s("    check never S"));
+    let (file, diags) = parse_file(FileId(0), &src);
+    let got: Vec<_> = diags.iter().map(|d| d.code.to_string()).collect();
+    assert_eq!(got, ["RB0016", "RB0015"]);
+    assert_eq!(diags[0].message, "`check` must be inside a machine");
+    assert_eq!(
+        diags[1].message,
+        "`check` is only allowed directly in a machine body"
+    );
+    let (_, machine) = file.machines().next().unwrap();
+    assert_eq!(machine.body.checks().count(), 0);
     assert!(machine.body.states().next().unwrap().body.items.is_empty());
 }
 

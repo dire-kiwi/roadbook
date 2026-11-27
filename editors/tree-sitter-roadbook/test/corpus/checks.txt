@@ -1,0 +1,131 @@
+================================================================================
+Checks in a machine body, and their words as names
+================================================================================
+
+machine PaymentWebhook(check: int) {
+  var never: int = check
+  initial Applying
+  state Applying {
+    initial RecordingRefund
+    state RecordingRefund {}
+  }
+  /// A refund only after the duplicate check.
+  check Applying.RecordingRefund only after CheckingDuplicate
+  check reachable Applying.RecordingRefund
+  check never BadSignature
+  check never Applying.A and Applying.B and C
+  check can finish
+  after 5s -> Applying
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type)))
+    (machine_body
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (identifier))
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (initial
+            (type_identifier))
+          (state_declaration
+            (type_identifier)
+            (state_body))))
+      (doc_comment)
+      (check
+        (only_after_property
+          (state_path
+            (type_identifier)
+            (type_identifier))
+          (state_path
+            (type_identifier))))
+      (check
+        (reachable_property
+          (state_path
+            (type_identifier)
+            (type_identifier))))
+      (check
+        (never_property
+          (state_path
+            (type_identifier))))
+      (check
+        (never_property
+          (state_path
+            (type_identifier)
+            (type_identifier))
+          (state_path
+            (type_identifier)
+            (type_identifier))
+          (state_path
+            (type_identifier))))
+      (check
+        (can_finish_property))
+      (after_transition
+        (duration)
+        (target
+          (type_identifier))))))
+
+================================================================================
+Checks beside calls in a strict machine
+================================================================================
+
+strict machine Store() {
+  call reserve(orderId: string) -> int ! OutOfStock
+  check reachable Open
+  initial Open
+  on reserve reply call done
+  check never Open and Closed
+  on Ping ignore
+  check can finish
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (call_declaration
+        (identifier)
+        (parameters
+          (parameter
+            (identifier)
+            (builtin_type)))
+        (builtin_type)
+        (errors
+          (type_identifier)))
+      (check
+        (reachable_property
+          (state_path
+            (type_identifier))))
+      (initial
+        (type_identifier))
+      (on_transition
+        (call_pattern
+          (identifier))
+        (reply
+          (implicit_name)))
+      (check
+        (never_property
+          (state_path
+            (type_identifier))
+          (state_path
+            (type_identifier))))
+      (on_transition
+        (event_pattern
+          (type_identifier))
+        (ignore))
+      (check
+        (can_finish_property)))))

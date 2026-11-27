@@ -20,6 +20,6 @@ mod parser;
 pub mod span;
 
 pub use diagnostic::{Diagnostic, Severity};
-pub use format::{expr_text, format, message_value};
+pub use format::{expr_text, format, message_value, property_text};
 pub use parser::{MAX_DEPTH, parse_file};
 pub use span::{FileId, LineIndex, Pos, Span};
