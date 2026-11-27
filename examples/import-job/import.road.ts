@@ -62,7 +62,7 @@ export interface ImportJobDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "examples/import-job/import.road",
@@ -76,15 +76,18 @@ const ir: unknown = {
   "types": {
     "Upload": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "jobId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "path",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -99,15 +102,18 @@ const ir: unknown = {
     },
     "ImportPlan": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "totalRows",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "batchSize",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -122,15 +128,18 @@ const ir: unknown = {
     },
     "RowError": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "row",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "message",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -145,25 +154,30 @@ const ir: unknown = {
     },
     "ImportSummary": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "jobId",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "totalRows",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "batches",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "retries",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -182,6 +196,7 @@ const ir: unknown = {
         {
           "name": "rowErrors",
           "type": "RowError[]",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -200,11 +215,13 @@ const ir: unknown = {
         {
           "name": "batch",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -223,6 +240,7 @@ const ir: unknown = {
         {
           "name": "batchesDone",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -241,6 +259,7 @@ const ir: unknown = {
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -262,6 +281,7 @@ const ir: unknown = {
         {
           "name": "upload",
           "type": "Upload",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -283,16 +303,19 @@ const ir: unknown = {
         {
           "name": "upload",
           "type": "Upload",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "plan",
           "type": "ImportPlan",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "batch",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -325,6 +348,7 @@ const ir: unknown = {
         {
           "name": "upload",
           "type": "Upload",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -338,6 +362,7 @@ const ir: unknown = {
         {
           "name": "plan",
           "type": "ImportPlan",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -351,6 +376,7 @@ const ir: unknown = {
         {
           "name": "invalid",
           "type": "InvalidFile",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -364,6 +390,7 @@ const ir: unknown = {
         {
           "name": "batch",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -382,6 +409,7 @@ const ir: unknown = {
         {
           "name": "retries",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -400,6 +428,7 @@ const ir: unknown = {
         {
           "name": "totalRetries",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -418,6 +447,7 @@ const ir: unknown = {
         {
           "name": "lastReason",
           "type": "string",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": "",
@@ -436,6 +466,7 @@ const ir: unknown = {
         {
           "name": "pauseRequested",
           "type": "bool",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": false,
@@ -489,6 +520,7 @@ const ir: unknown = {
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "ImportJob",
         "name": "ImportJob",
