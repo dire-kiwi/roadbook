@@ -68,7 +68,8 @@ machine Hub() -> int {
   final state Closed { output said }
 }
 
-/// Keyed by number: handles only its children's ending, and can be saved while they run.
+/// Keyed by number: handles only its children's ending, and can be saved while they run. It
+/// hears what they say (so it is delivered, and dropped or stale) but never takes it.
 machine Pool() {
   event Open   { n: int, name: string }
   event Close  { n: int }
@@ -80,12 +81,13 @@ machine Pool() {
 
   initial Running
   state Running {
-    on Open                    spawn slots[event.n] = Session(event.name)
-    on Close                   stop slots[event.n]
-    on Leave                   send slots[event.n].Leave
-    on Drop                    send slots[event.n].Drop
-    on slots.done              do log("left")
-    on Finish     -> Finished
+    on Open                               spawn slots[event.n] = Session(event.name)
+    on Close                              stop slots[event.n]
+    on Leave                              send slots[event.n].Leave
+    on Drop                               send slots[event.n].Drop
+    on slots.done                         do log("left")
+    on Finish                -> Finished
+    on slots.Said if key < 0              do log("never")
   }
   final state Finished {}
 }
