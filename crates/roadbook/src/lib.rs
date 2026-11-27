@@ -19,6 +19,9 @@
 //! - [`Actor`] (from a generated `spawn`) takes events, shows its state, and can be
 //!   cancelled gracefully. Its [`Actor::handle`], a [`Ref`], is how host code and other
 //!   machines reach the run: a `ref` argument, and a way to send it events.
+//! - Host code receives what a spawned run emits through [`Actor::subscribe`], a
+//!   [`Subscription`] of the machine's `Emitted` enum: every event from then on, unbounded,
+//!   until the run ends. Tools subscribe to any run, as JSON, with [`RunHandle::subscribe`].
 //! - Messages between runs go through the runs' queues: a run is open until its core gives a
 //!   snapshot that is not `running`, a `send` to a closed run is `undelivered`, and a run is
 //!   subscribed to what its peers emit while it is open.

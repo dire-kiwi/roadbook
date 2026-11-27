@@ -491,6 +491,9 @@ fn advance(timer: &VirtualTimer, runner: &mut Runner<'_>, d: u64) -> Result<(), 
 }
 
 /// Runs one case and gives its trace in the compared form.
+/// A host listener of each run, by run id.
+type Listeners = Vec<(String, Subscription<Value>)>;
+
 fn run_case(c: &LoadedCase) -> Result<String, String> {
     let ir =
         c.ir.clone()
@@ -513,7 +516,7 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
     let seen = handles.clone();
     // A host listener of every run from before its start step: what it hears must be exactly
     // the values of the run's `emitted` records (`spec/execution.md#host-listeners`).
-    let listeners: Arc<Mutex<Vec<(String, Subscription<Value>)>>> = Arc::default();
+    let listeners: Arc<Mutex<Listeners>> = Arc::default();
     let listening = listeners.clone();
     let config = Config::new()
         .sink(sink.clone())
