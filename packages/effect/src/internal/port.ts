@@ -14,7 +14,7 @@ export interface Port {
   readonly machine: string
   /** The machine's hash in the IR the run runs: which version of the machine it is. */
   readonly hash: string
-  readonly queue: Queue.Queue<Core.Input | Wake>
+  readonly queue: Queue.Queue<Item>
   /** From just before `start` until the core returns a snapshot that is not `running`. */
   open: boolean
   /**
@@ -36,6 +36,19 @@ export interface Port {
 export interface Wake {
   readonly kind: "wake"
 }
+
+/**
+ * Not an input: what a durable caller's queue is given when the answer to its call invoke
+ * `invoke` has been recorded in its execution. The run reads the answer from that record, and
+ * takes it as the invoke's outcome.
+ */
+export interface Answered {
+  readonly kind: "answered"
+  readonly invoke: number
+}
+
+/** What a run's queue holds. */
+export type Item = Core.Input | Wake | Answered
 
 /** Push `input` onto the run's queue if the run is open. Returns whether it was pushed. */
 export const push = (port: Port, input: Core.Input): boolean =>

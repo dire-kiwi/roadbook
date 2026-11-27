@@ -5,19 +5,28 @@ import * as Roadbook from "@dire-kiwi/roadbook-effect"
 
 // ---- machine: Desk ----
 
+export const Answer = Schema.TaggedStruct("Answer", { by: Schema.Int })
+export type Answer = typeof Answer.Type
+
 export const Close = Schema.TaggedStruct("Close", {})
 export type Close = typeof Close.Type
 
+export const Shut = Schema.TaggedStruct("Shut", {})
+export type Shut = typeof Shut.Type
+
 export interface DeskDef extends Roadbook.MachineDef {
   readonly name: "Desk"
-  readonly input: {}
+  readonly input: { readonly id: string }
   readonly output: void
   readonly error: never
-  readonly event: Close
+  readonly event: Answer | Close | Shut
   readonly emits: never
-  readonly state: "Desk" | "Desk.Open" | "Desk.Closed"
+  readonly state: "Desk" | "Desk.Open" | "Desk.Holding" | "Desk.Closing" | "Desk.Closed"
   readonly fns: {}
-  readonly actions: {}
+  readonly actions: {
+    readonly log: { readonly text: string }
+    readonly pause: { readonly n: number }
+  }
   readonly tasks: {}
   readonly machines: {}
 }
@@ -32,49 +41,163 @@ const ir: unknown = {
   ],
   "types": {},
   "functions": {},
-  "actions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "text",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "Write a line to the log.",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 25
+      }
+    },
+    "pause": {
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "Wait until the test opens gate `n`: the step that runs it is held there.",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 21
+      }
+    }
+  },
   "tasks": {},
   "machines": {
     "Desk": {
-      "doc": "Answers 1 to each `ask`, until it is closed.",
+      "doc": "Holds the first `hold` call until it is told to answer it, and keeps any other pending,\nunanswered. Closed while it holds one, it pauses, and ends when it is shut: the calls\npending then, and those queued behind the `Shut`, are answered `Unanswered`.",
       "span": {
         "file": 0,
-        "line": 5,
+        "line": 13,
         "col": 1,
-        "endLine": 18,
+        "endLine": 39,
         "endCol": 2
       },
       "strict": false,
-      "params": [],
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
       "returns": null,
       "errors": [],
-      "vars": [],
+      "vars": [
+        {
+          "name": "pending",
+          "type": "call hold",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 20,
+            "col": 3,
+            "endLine": 20,
+            "endCol": 25
+          }
+        },
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 21,
+            "col": 3,
+            "endLine": 21,
+            "endCol": 23
+          }
+        }
+      ],
       "events": {
+        "Answer": {
+          "fields": [
+            {
+              "name": "by",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 27
+          }
+        },
         "Close": {
           "fields": [],
           "doc": "",
           "span": {
             "file": 0,
-            "line": 8,
+            "line": 17,
             "col": 3,
-            "endLine": 8,
+            "endLine": 17,
             "endCol": 14
+          }
+        },
+        "Shut": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 18,
+            "col": 3,
+            "endLine": 18,
+            "endCol": 13
           }
         }
       },
       "emits": {},
       "calls": {
-        "ask": {
-          "params": [],
+        "hold": {
+          "params": [
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
           "returns": "int",
           "errors": [],
           "doc": "",
           "span": {
             "file": 0,
-            "line": 6,
+            "line": 14,
             "col": 3,
-            "endLine": 6,
-            "endCol": 20
+            "endLine": 14,
+            "endCol": 27
           }
         }
       },
@@ -83,12 +206,12 @@ const ir: unknown = {
         "id": "Desk",
         "name": "Desk",
         "kind": "compound",
-        "doc": "Answers 1 to each `ask`, until it is closed.",
+        "doc": "Holds the first `hold` call until it is told to answer it, and keeps any other pending,\nunanswered. Closed while it holds one, it pauses, and ends when it is shut: the calls\npending then, and those queued behind the `Shut`, are answered `Unanswered`.",
         "span": {
           "file": 0,
-          "line": 5,
+          "line": 13,
           "col": 1,
-          "endLine": 18,
+          "endLine": 39,
           "endCol": 2
         },
         "initial": "Desk.Open",
@@ -100,9 +223,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 12,
+              "line": 25,
               "col": 3,
-              "endLine": 15,
+              "endLine": 28,
               "endCol": 4
             },
             "initial": null,
@@ -114,37 +237,56 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "call",
-                  "call": "ask"
+                  "call": "hold"
                 },
                 "group": 0,
                 "guard": null,
-                "target": null,
+                "target": "Desk.Holding",
                 "effects": [
                   {
-                    "kind": "reply",
-                    "call": {
+                    "kind": "set",
+                    "var": "pending",
+                    "value": {
                       "kind": "ref",
                       "path": [
                         "call"
                       ],
-                      "type": "call ask",
+                      "type": "call hold",
                       "text": "call"
-                    },
-                    "outcome": "done",
-                    "value": {
-                      "kind": "lit",
-                      "value": 1,
-                      "type": "int",
-                      "text": "1"
                     }
+                  },
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "n"
+                      ],
+                      "type": "int",
+                      "text": "event.n"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "held",
+                        "type": "string",
+                        "text": "\"held\""
+                      }
+                    ]
                   }
                 ],
                 "span": {
                   "file": 0,
-                  "line": 13,
+                  "line": 26,
                   "col": 5,
-                  "endLine": 13,
-                  "endCol": 42
+                  "endLine": 26,
+                  "endCol": 73
                 }
               },
               {
@@ -158,10 +300,186 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 14,
+                  "line": 27,
                   "col": 5,
-                  "endLine": 14,
+                  "endLine": 27,
                   "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Desk.Holding",
+            "name": "Holding",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 30,
+              "col": 3,
+              "endLine": 34,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "call",
+                  "call": "hold"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "extra",
+                        "type": "string",
+                        "text": "\"extra\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 31,
+                  "col": 5,
+                  "endLine": 31,
+                  "endCol": 42
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Answer"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Desk.Open",
+                "effects": [
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "pending"
+                      ],
+                      "type": "call hold",
+                      "text": "pending"
+                    },
+                    "outcome": "done",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "by"
+                          ],
+                          "type": "int",
+                          "text": "event.by"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "n + event.by"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 32,
+                  "col": 5,
+                  "endLine": 32,
+                  "endCol": 58
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Desk.Closing",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "pause",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": 1,
+                        "type": "int",
+                        "text": "1"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 5,
+                  "endLine": 33,
+                  "endCol": 38
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Desk.Closing",
+            "name": "Closing",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 36,
+              "col": 3,
+              "endLine": 36,
+              "endCol": 38
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Shut"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Desk.Closed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 36,
+                  "col": 19,
+                  "endLine": 36,
+                  "endCol": 36
                 }
               }
             ],
@@ -175,9 +493,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 17,
+              "line": 38,
               "col": 3,
-              "endLine": 17,
+              "endLine": 38,
               "endCol": 24
             },
             "initial": null,
@@ -197,15 +515,15 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:08621fc0c2e905b5a82a3cb134606c989b6d9f04f931579e18f150c117fdf029"
+      "hash": "sha256:8c07feebe3c4adb1a9807586e0696a722991054a603987d8f4c44416366cc8d6"
     },
     "Asker": {
-      "doc": "Asks its Desk.",
+      "doc": "Asks its Desk to hold `n`: gives the answer, or -1 if it is `Unanswered`.",
       "span": {
         "file": 0,
-        "line": 21,
+        "line": 42,
         "col": 1,
-        "endLine": 34,
+        "endLine": 55,
         "endCol": 2
       },
       "strict": false,
@@ -215,13 +533,25 @@ const ir: unknown = {
           "type": "ref Desk",
           "sensitive": false,
           "doc": ""
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
         }
       ],
       "returns": "int",
       "errors": [],
       "vars": [
         {
-          "name": "n",
+          "name": "got",
           "type": "int",
           "sensitive": false,
           "init": {
@@ -233,10 +563,10 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 22,
+            "line": 43,
             "col": 3,
-            "endLine": 22,
-            "endCol": 17
+            "endLine": 43,
+            "endCol": 19
           }
         }
       ],
@@ -248,12 +578,12 @@ const ir: unknown = {
         "id": "Asker",
         "name": "Asker",
         "kind": "compound",
-        "doc": "Asks its Desk.",
+        "doc": "Asks its Desk to hold `n`: gives the answer, or -1 if it is `Unanswered`.",
         "span": {
           "file": 0,
-          "line": 21,
+          "line": 42,
           "col": 1,
-          "endLine": 34,
+          "endLine": 55,
           "endCol": 2
         },
         "initial": "Asker.Asking",
@@ -265,9 +595,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 26,
+              "line": 47,
               "col": 3,
-              "endLine": 31,
+              "endLine": 52,
               "endCol": 4
             },
             "initial": null,
@@ -276,7 +606,7 @@ const ir: unknown = {
             "exit": [],
             "invoke": {
               "kind": "call",
-              "src": "ask",
+              "src": "hold",
               "to": {
                 "kind": "ref",
                 "name": "desk",
@@ -284,12 +614,21 @@ const ir: unknown = {
                 "state": null
               },
               "as": null,
-              "args": [],
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "n"
+                  ],
+                  "type": "int",
+                  "text": "n"
+                }
+              ],
               "span": {
                 "file": 0,
-                "line": 27,
+                "line": 48,
                 "col": 5,
-                "endLine": 30,
+                "endLine": 51,
                 "endCol": 6
               }
             },
@@ -304,7 +643,7 @@ const ir: unknown = {
                 "effects": [
                   {
                     "kind": "set",
-                    "var": "n",
+                    "var": "got",
                     "value": {
                       "kind": "ref",
                       "path": [
@@ -317,27 +656,46 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 28,
+                  "line": 49,
                   "col": 7,
-                  "endLine": 28,
-                  "endCol": 36
+                  "endLine": 49,
+                  "endCol": 47
                 }
               },
               {
                 "trigger": {
                   "kind": "invoke.fail",
-                  "error": "*"
+                  "error": "Unanswered"
                 },
                 "group": 1,
                 "guard": null,
                 "target": "Asker.Got",
-                "effects": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "got",
+                    "value": {
+                      "kind": "op",
+                      "op": "neg",
+                      "args": [
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "-1"
+                    }
+                  }
+                ],
                 "span": {
                   "file": 0,
-                  "line": 29,
+                  "line": 50,
                   "col": 7,
-                  "endLine": 29,
-                  "endCol": 20
+                  "endLine": 50,
+                  "endCol": 43
                 }
               }
             ],
@@ -351,10 +709,10 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 33,
+              "line": 54,
               "col": 3,
-              "endLine": 33,
-              "endCol": 31
+              "endLine": 54,
+              "endCol": 33
             },
             "initial": null,
             "states": [],
@@ -365,10 +723,10 @@ const ir: unknown = {
             "output": {
               "kind": "ref",
               "path": [
-                "n"
+                "got"
               ],
               "type": "int",
-              "text": "n"
+              "text": "got"
             },
             "fail": null
           }
@@ -380,22 +738,61 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d342e935915cdeda77b30846cb9329b404f40cd31adf68ade92439928dbfc320"
+      "hash": "sha256:8c279f319f9725c7370d84a5d4ca4a0268347977f9ce5c9ea00db7cc173caa56"
     },
     "Host": {
-      "doc": "Runs a Desk as its child.",
+      "doc": "Runs an Asker as its child, which calls the Desk.",
       "span": {
         "file": 0,
-        "line": 37,
+        "line": 58,
         "col": 1,
-        "endLine": 47,
+        "endLine": 70,
         "endCol": 2
       },
       "strict": false,
-      "params": [],
-      "returns": null,
+      "params": [
+        {
+          "name": "desk",
+          "type": "ref Desk",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
       "errors": [],
-      "vars": [],
+      "vars": [
+        {
+          "name": "got",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 59,
+            "col": 3,
+            "endLine": 59,
+            "endCol": 19
+          }
+        }
+      ],
       "events": {},
       "emits": {},
       "calls": {},
@@ -404,26 +801,26 @@ const ir: unknown = {
         "id": "Host",
         "name": "Host",
         "kind": "compound",
-        "doc": "Runs a Desk as its child.",
+        "doc": "Runs an Asker as its child, which calls the Desk.",
         "span": {
           "file": 0,
-          "line": 37,
+          "line": 58,
           "col": 1,
-          "endLine": 47,
+          "endLine": 70,
           "endCol": 2
         },
-        "initial": "Host.Hosting",
+        "initial": "Host.Running",
         "states": [
           {
-            "id": "Host.Hosting",
-            "name": "Hosting",
+            "id": "Host.Running",
+            "name": "Running",
             "kind": "atomic",
             "doc": "",
             "span": {
               "file": 0,
-              "line": 40,
+              "line": 63,
               "col": 3,
-              "endLine": 44,
+              "endLine": 67,
               "endCol": 4
             },
             "initial": null,
@@ -432,15 +829,40 @@ const ir: unknown = {
             "exit": [],
             "invoke": {
               "kind": "machine",
-              "src": "Desk",
+              "src": "Asker",
               "to": null,
               "as": null,
-              "args": [],
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "desk"
+                  ],
+                  "type": "ref Desk",
+                  "text": "desk"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "id"
+                  ],
+                  "type": "string",
+                  "text": "id"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "n"
+                  ],
+                  "type": "int",
+                  "text": "n"
+                }
+              ],
               "span": {
                 "file": 0,
-                "line": 41,
+                "line": 64,
                 "col": 5,
-                "endLine": 43,
+                "endLine": 66,
                 "endCol": 6
               }
             },
@@ -452,13 +874,26 @@ const ir: unknown = {
                 "group": 0,
                 "guard": null,
                 "target": "Host.Done",
-                "effects": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "got",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
                 "span": {
                   "file": 0,
-                  "line": 42,
+                  "line": 65,
                   "col": 7,
-                  "endLine": 42,
-                  "endCol": 19
+                  "endLine": 65,
+                  "endCol": 37
                 }
               }
             ],
@@ -472,187 +907,10 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 46,
+              "line": 69,
               "col": 3,
-              "endLine": 46,
-              "endCol": 22
-            },
-            "initial": null,
-            "states": [],
-            "entry": [],
-            "exit": [],
-            "invoke": null,
-            "transitions": [],
-            "output": null,
-            "fail": null
-          }
-        ],
-        "entry": [],
-        "exit": [],
-        "invoke": null,
-        "transitions": [],
-        "output": null,
-        "fail": null
-      },
-      "hash": "sha256:fa521d2182a3d1422cdaa629c5b237a0ccb8b0227afd3be3a4dd1251140f84e6"
-    },
-    "Outer": {
-      "doc": "Runs a Host, which runs a Desk.",
-      "span": {
-        "file": 0,
-        "line": 50,
-        "col": 1,
-        "endLine": 60,
-        "endCol": 2
-      },
-      "strict": false,
-      "params": [],
-      "returns": null,
-      "errors": [],
-      "vars": [],
-      "events": {},
-      "emits": {},
-      "calls": {},
-      "children": {},
-      "root": {
-        "id": "Outer",
-        "name": "Outer",
-        "kind": "compound",
-        "doc": "Runs a Host, which runs a Desk.",
-        "span": {
-          "file": 0,
-          "line": 50,
-          "col": 1,
-          "endLine": 60,
-          "endCol": 2
-        },
-        "initial": "Outer.Running",
-        "states": [
-          {
-            "id": "Outer.Running",
-            "name": "Running",
-            "kind": "atomic",
-            "doc": "",
-            "span": {
-              "file": 0,
-              "line": 53,
-              "col": 3,
-              "endLine": 57,
-              "endCol": 4
-            },
-            "initial": null,
-            "states": [],
-            "entry": [],
-            "exit": [],
-            "invoke": {
-              "kind": "machine",
-              "src": "Host",
-              "to": null,
-              "as": null,
-              "args": [],
-              "span": {
-                "file": 0,
-                "line": 54,
-                "col": 5,
-                "endLine": 56,
-                "endCol": 6
-              }
-            },
-            "transitions": [
-              {
-                "trigger": {
-                  "kind": "invoke.done"
-                },
-                "group": 0,
-                "guard": null,
-                "target": "Outer.Done",
-                "effects": [],
-                "span": {
-                  "file": 0,
-                  "line": 55,
-                  "col": 7,
-                  "endLine": 55,
-                  "endCol": 19
-                }
-              }
-            ],
-            "output": null,
-            "fail": null
-          },
-          {
-            "id": "Outer.Done",
-            "name": "Done",
-            "kind": "final",
-            "doc": "",
-            "span": {
-              "file": 0,
-              "line": 59,
-              "col": 3,
-              "endLine": 59,
-              "endCol": 22
-            },
-            "initial": null,
-            "states": [],
-            "entry": [],
-            "exit": [],
-            "invoke": null,
-            "transitions": [],
-            "output": null,
-            "fail": null
-          }
-        ],
-        "entry": [],
-        "exit": [],
-        "invoke": null,
-        "transitions": [],
-        "output": null,
-        "fail": null
-      },
-      "hash": "sha256:616830c1102564aeda30b41a5d046a6beb8145e22f1934efd502e188caf4fa3e"
-    },
-    "Plain": {
-      "doc": "No calls anywhere: it runs.",
-      "span": {
-        "file": 0,
-        "line": 63,
-        "col": 1,
-        "endLine": 67,
-        "endCol": 2
-      },
-      "strict": false,
-      "params": [],
-      "returns": "int",
-      "errors": [],
-      "vars": [],
-      "events": {},
-      "emits": {},
-      "calls": {},
-      "children": {},
-      "root": {
-        "id": "Plain",
-        "name": "Plain",
-        "kind": "compound",
-        "doc": "No calls anywhere: it runs.",
-        "span": {
-          "file": 0,
-          "line": 63,
-          "col": 1,
-          "endLine": 67,
-          "endCol": 2
-        },
-        "initial": "Plain.Done",
-        "states": [
-          {
-            "id": "Plain.Done",
-            "name": "Done",
-            "kind": "final",
-            "doc": "",
-            "span": {
-              "file": 0,
-              "line": 66,
-              "col": 3,
-              "endLine": 66,
-              "endCol": 32
+              "endLine": 69,
+              "endCol": 34
             },
             "initial": null,
             "states": [],
@@ -661,10 +919,12 @@ const ir: unknown = {
             "invoke": null,
             "transitions": [],
             "output": {
-              "kind": "lit",
-              "value": 7,
+              "kind": "ref",
+              "path": [
+                "got"
+              ],
               "type": "int",
-              "text": "7"
+              "text": "got"
             },
             "fail": null
           }
@@ -676,21 +936,29 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:fd0a6230703757648c4a3569357bfe70ebee52aab513068d11fc65bab16210ca"
+      "hash": "sha256:91def38221ec9259f41dfb2ad3708151e4750a994f5dde32846a25c0639a6230"
     }
   }
 }
 
 const errors = {}
 
-/** Answers 1 to each `ask`, until it is closed. */
+/**
+ * Holds the first `hold` call until it is told to answer it, and keeps any other pending,
+ * unanswered. Closed while it holds one, it pauses, and ends when it is shut: the calls
+ * pending then, and those queued behind the `Shut`, are answered `Unanswered`.
+ */
 export const Desk = Roadbook.make<DeskDef>(ir, "Desk", errors)
 
 // ---- machine: Asker ----
 
 export interface AskerDef extends Roadbook.MachineDef {
   readonly name: "Asker"
-  readonly input: { readonly desk: Roadbook.Handle<DeskDef> }
+  readonly input: {
+    readonly desk: Roadbook.Handle<DeskDef>
+    readonly id: string
+    readonly n: number
+  }
   readonly output: number
   readonly error: never
   readonly event: never
@@ -702,66 +970,38 @@ export interface AskerDef extends Roadbook.MachineDef {
   readonly machines: {}
 }
 
-/** Asks its Desk. */
+/** Asks its Desk to hold `n`: gives the answer, or -1 if it is `Unanswered`. */
 export const Asker = Roadbook.make<AskerDef>(ir, "Asker", errors)
 
 // ---- machine: Host ----
 
 export interface HostDef extends Roadbook.MachineDef {
   readonly name: "Host"
-  readonly input: {}
-  readonly output: void
-  readonly error: never
-  readonly event: never
-  readonly emits: never
-  readonly state: "Host" | "Host.Hosting" | "Host.Done"
-  readonly fns: {}
-  readonly actions: {}
-  readonly tasks: {}
-  readonly machines: {
-    readonly Desk: { readonly args: {}; readonly success: void; readonly error: never }
+  readonly input: {
+    readonly desk: Roadbook.Handle<DeskDef>
+    readonly id: string
+    readonly n: number
   }
-}
-
-/** Runs a Desk as its child. */
-export const Host = Roadbook.make<HostDef>(ir, "Host", errors)
-
-// ---- machine: Outer ----
-
-export interface OuterDef extends Roadbook.MachineDef {
-  readonly name: "Outer"
-  readonly input: {}
-  readonly output: void
-  readonly error: never
-  readonly event: never
-  readonly emits: never
-  readonly state: "Outer" | "Outer.Running" | "Outer.Done"
-  readonly fns: {}
-  readonly actions: {}
-  readonly tasks: {}
-  readonly machines: {
-    readonly Host: { readonly args: {}; readonly success: void; readonly error: never }
-  }
-}
-
-/** Runs a Host, which runs a Desk. */
-export const Outer = Roadbook.make<OuterDef>(ir, "Outer", errors)
-
-// ---- machine: Plain ----
-
-export interface PlainDef extends Roadbook.MachineDef {
-  readonly name: "Plain"
-  readonly input: {}
   readonly output: number
   readonly error: never
   readonly event: never
   readonly emits: never
-  readonly state: "Plain" | "Plain.Done"
+  readonly state: "Host" | "Host.Running" | "Host.Done"
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}
-  readonly machines: {}
+  readonly machines: {
+    readonly Asker: {
+      readonly args: {
+        readonly desk: Roadbook.Handle<DeskDef>
+        readonly id: string
+        readonly n: number
+      }
+      readonly success: number
+      readonly error: never
+    }
+  }
 }
 
-/** No calls anywhere: it runs. */
-export const Plain = Roadbook.make<PlainDef>(ir, "Plain", errors)
+/** Runs an Asker as its child, which calls the Desk. */
+export const Host = Roadbook.make<HostDef>(ir, "Host", errors)
