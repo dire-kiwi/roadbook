@@ -132,8 +132,8 @@ pub const DOUBLE_OPTIONAL: Code = Code(314);
 /// another type, or a `ref` that is optional or a list.
 pub const NOT_A_REF: Code = Code(315);
 
-/// A `ref` in a field of a record, error or event, or in what a function, task or machine
-/// returns.
+/// A `ref` in a field of a record, error or event, in a parameter of a `call`, or in what a
+/// function, task or machine returns.
 pub const REF_NOT_ALLOWED: Code = Code(316);
 
 /// A pending call type `call name` anywhere but as the type of a machine variable (optional,

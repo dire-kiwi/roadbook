@@ -397,6 +397,12 @@ impl<'p> Checker<'p> {
                     continue;
                 }
                 let sig = self.signature(file, &c.name, &c.params, c.returns.as_ref(), &c.errors);
+                // A call's arguments arrive like an event's fields, so they cannot carry a
+                // `ref` either: the runs a machine holds are fixed when it starts.
+                for (p, (_, t)) in c.params.iter().zip(&sig.params) {
+                    let what = format!("parameter `{}` of call `{}`", p.name.name, c.name.name);
+                    self.no_ref(file, &p.ty, t, &what);
+                }
                 iface.calls.insert(c.name.name.clone(), sig);
             }
             self.interfaces.insert(d.name.name.clone(), iface);

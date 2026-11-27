@@ -163,7 +163,7 @@ The implicit names have these types:
 
 Outside those transitions these names are not in scope.
 
-A `ref Machine` is a handle, not data. It can be a parameter of a machine, function, action or task and a `var`, and be passed as an argument to an invoked machine and to host functions, actions and tasks. It cannot be a field of a record, error or event, or what a function, task or machine returns (`RB0316`): a machine gets a handle only from its own signature or from `invoke … as`, so the charts' signatures show who can talk to whom. It has no JSON form, so it cannot be passed where `json` is expected, and `==` and `!=` are not defined on it. `ref A` and `ref B` are different types for different machines; a `ref A` can be used where a `ref A?` is expected, as for any `T`.
+A `ref Machine` is a handle, not data. It can be a parameter of a machine, function, action or task and a `var`, and be passed as an argument to an invoked machine and to host functions, actions and tasks. It cannot be a field of a record, error or event, a parameter of a `call`, or what a function, task or machine returns (`RB0316`): a machine gets a handle only from its own signature or from `invoke … as`, so the charts' signatures show who can talk to whom. It has no JSON form, so it cannot be passed where `json` is expected, and `==` and `!=` are not defined on it. `ref A` and `ref B` are different types for different machines; a `ref A` can be used where a `ref A?` is expected, as for any `T`.
 
 A `call name` is a pending call of the machine's own call `name`. It can only be the type of a machine variable: not optional, not in a list or an alias, and never a parameter, a field or a result (`RB0317`), so a pending call cannot leave its run. It has no initial value, so it starts unassigned and [definite assignment](#definite-assignment) applies to it; `set pending = call` in an `on name` gives it one. Like a `ref` it has no JSON form and no `==`.
 
@@ -242,7 +242,7 @@ state Reserving {
 }
 ```
 
-- **`call name(params) [-> T] [! E | F]`** in a machine body declares a call. Its name is lower-case and unique among the machine's calls, and its parameters, result and errors follow the rules for a task's.
+- **`call name(params) [-> T] [! E | F]`** in a machine body declares a call. Its name is lower-case and unique among the machine's calls, and its parameters, result and errors follow the rules for a task's, except that a parameter cannot be a `ref` (`RB0316`): the arguments reach the callee as an event's fields do, and a machine holds only the runs it was started with.
 - **`invoke x.name(args) { … }`** calls it. `x` is a parameter or variable of type `ref M` (directly or through an alias; not optional, not a list), and `name` one of `M`'s calls. The arguments, `done` (with `result` of the call's return type) and `fail` outcomes are checked as for a task, and the invoke must also handle the built-in error `Unanswered` (`RB0204`), which `fail *` covers. There is no `as`.
 - **`on name`**, a lower-case name with no dot, takes a call of the machine's own call `name`, in a state or the machine body, with guards and branches as for an event. In its guard and effects `event` is the call's arguments, read only through their fields (`event.items`), and `call` is the pending call. `on *` never takes a call.
 - **`reply x done [value]`** and **`reply x fail error`** answer a pending call: `x` is `call` or a variable of type `call name`. `done` takes a value exactly when the call declares a result, of that type; `fail` takes one of the call's declared errors, never `Unanswered`. `reply` is an effect, so it can answer in the step that took the call or in a later one, through a variable. The value after `done` is on the same line as `done`, so `reply pending done` at the end of a line has none.
@@ -522,7 +522,7 @@ The compiler's codes:
 | `RB0313` | A type alias that refers to itself. | `type A = A[]` |
 | `RB0314` | A type made optional twice. | `note: string??` |
 | `RB0315` | A `send`, `on name.E` or `invoke name.call(…)` through a value that is not a `ref`, or a `ref` that is optional or a list. | `send count.Ping` for `count: int` |
-| `RB0316` | A `ref` in a field of a record, error or event, or in what a function, task or machine returns. | `type Holder { peer: ref Peer }` |
+| `RB0316` | A `ref` in a field of a record, error or event, in a parameter of a `call`, or in what a function, task or machine returns. | `type Holder { peer: ref Peer }` |
 | `RB0317` | A `call name` type anywhere but a machine variable's, or a variable of it with an initial value. | `var p: call reserve?`, `fn f(p: call reserve) -> int` |
 | `RB0318` | A `reply` to something that is not a pending call. | `reply count done` for `count: int` |
 | `RB0319` | A `reply` that does not answer as its call is declared. | `reply call done` for a call that returns `int`, `reply call fail Gone` |
