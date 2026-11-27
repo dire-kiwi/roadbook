@@ -62,6 +62,9 @@ pub enum SymbolKind {
     State,
     /// The name of `invoke Machine(…) as name`; its parent is the invoking state.
     InvokeName,
+    /// A `call` a machine answers; its parent is the machine, and its parameters are its
+    /// members.
+    Call,
 }
 
 impl SymbolKind {
@@ -120,6 +123,7 @@ impl SymbolKind {
             SymbolKind::EmittedEvent => "emitted event",
             SymbolKind::State => "state",
             SymbolKind::InvokeName => "invoked machine's name",
+            SymbolKind::Call => "call",
         }
     }
 }
@@ -135,7 +139,8 @@ pub struct Symbol {
     pub decl_span: Span,
     /// What the symbol is declared in: the record, error or event of a field, the enum of a
     /// variant, the machine of a parameter, variable or event, the state or machine
-    /// containing a state, the invoking state of an `as` name. `None` for a top-level
+    /// containing a state, the invoking state of an `as` name, the machine of a call, the call
+    /// of a call's parameter. `None` for a top-level
     /// declaration.
     pub parent: Option<SymbolId>,
     /// Its `///` comment, without the slashes.
@@ -300,7 +305,7 @@ pub fn type_text(t: &TypeRef) -> String {
     ir_type(t).to_string()
 }
 
-fn list(fields: &[Field]) -> String {
+pub(crate) fn list(fields: &[Field]) -> String {
     fields.iter().map(field_text).collect::<Vec<_>>().join(", ")
 }
 
@@ -313,7 +318,7 @@ pub(crate) fn braces(fields: &[Field]) -> String {
     }
 }
 
-fn result_text(returns: Option<&TypeRef>, errors: &[Ident]) -> String {
+pub(crate) fn result_text(returns: Option<&TypeRef>, errors: &[Ident]) -> String {
     let mut s = String::new();
     if let Some(r) = returns {
         s.push_str(&format!(" -> {}", type_text(r)));

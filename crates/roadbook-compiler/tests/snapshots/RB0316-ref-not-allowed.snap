@@ -40,3 +40,11 @@ error[RB0316]: what `look` returns cannot be `ref Peer?`: it holds a `ref`
    |                          ^^^^^^^^^
    |
    = help: a machine gets a `ref` only as a parameter of its own, or through `invoke … as name`, so that who can talk to whom shows in the charts' signatures; pass it as a parameter instead
+
+error[RB0316]: parameter `who` of call `hello` cannot be `ref Peer`
+  --> RB0316-ref-not-allowed.road:16:19
+   |
+16 |   call hello(who: ref Peer)
+   |                   ^^^^^^^^
+   |
+   = help: a machine gets a `ref` only as a parameter of its own, or through `invoke … as name`, so that who can talk to whom shows in the charts' signatures; pass it as a parameter instead

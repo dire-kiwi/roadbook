@@ -22,6 +22,11 @@
 //! - Messages between runs go through the runs' queues: a run is open until its core gives a
 //!   snapshot that is not `running`, a `send` to a closed run is `undelivered`, and a run is
 //!   subscribed to what its peers emit while it is open.
+//! - A call (`invoke inventory.reserve(…)`) is made by the driver itself, with no `Handlers`
+//!   method: it pushes the call onto the peer's queue with a way to answer it, and the
+//!   callee's `reply` pushes the answer onto the caller's queue as the invoke's outcome. A
+//!   call to a closed peer, and every call a run has not answered when it ends (or is
+//!   dropped), is answered `Unanswered`.
 //! - A top-level run can be saved ([`Saved`], `actor.save()`), suspended once idle
 //!   (`actor.suspend()`), and restored from a saved snapshot as a new run (a generated
 //!   `restore` or `resume`, [`dynamic::restore`], [`dynamic::resume`]); a snapshot that does

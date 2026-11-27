@@ -9,8 +9,11 @@
 //! state's invoke, `entry`, `exit`, internal transitions and `output`/`fail` as its
 //! description. Messaging is written as in the chart: `on upload.Progress` as the trigger
 //! `upload.Progress`, `send upload.Pause` and `emit Progress { … }` as effects, and
-//! `invoke machine Upload(file) as upload`. Mermaid allows no description on a state with states inside, so a compound or
-//! parallel state (and the machine, when it is drawn as a state) has them in a note beside it.
+//! `invoke machine Upload(file) as upload`; so are calls: `on reserve` as the trigger
+//! `reserve`, `reply pending done x` as an effect, `invoke inventory.reserve(id)` with its `done`,
+//! `fail E` and `fail Unanswered` branches as a task's. Mermaid allows no description on a
+//! state with states inside, so a compound or parallel state (and the machine, when it is drawn
+//! as a state) has them in a note beside it.
 //! What it loses: the line styles of the kinds of transition, the details panel, drill-down
 //! into invoked machines, and the viewer's layout.
 //!
@@ -23,7 +26,9 @@ use std::fmt::Write as _;
 use std::path::PathBuf;
 
 use roadbook_compiler::Ir;
-use roadbook_ir::{Effect, InvokeKind, Machine, State, StateKind, Transition, Trigger};
+use roadbook_ir::{
+    Effect, InvokeKind, Machine, ReplyOutcome, State, StateKind, Transition, Trigger,
+};
 
 use crate::workspace::Workspace;
 use crate::{Exit, report};
@@ -318,6 +323,20 @@ fn effect(e: &Effect) -> String {
         }
         Effect::Send { to, value, .. } => format!("send {}.{}", to.name, value.text),
         Effect::Emit { value, .. } => format!("emit {}", value.text),
+        Effect::Reply {
+            call,
+            outcome,
+            value,
+        } => {
+            let outcome = match outcome {
+                ReplyOutcome::Done => "done",
+                ReplyOutcome::Fail => "fail",
+            };
+            let value = value
+                .as_ref()
+                .map_or(String::new(), |v| format!(" {}", v.text));
+            format!("reply {} {outcome}{value}", call.text)
+        }
     }
 }
 
@@ -325,6 +344,7 @@ fn trigger(t: &Trigger) -> String {
     match t {
         Trigger::Event { event } => event.clone(),
         Trigger::Emitted { from, event } => format!("{}.{event}", from.name),
+        Trigger::Call { call } => call.clone(),
         Trigger::Any => "on *".into(),
         Trigger::After { delay } => format!("after {}", delay.text),
         Trigger::Always => "always".into(),
@@ -369,7 +389,7 @@ fn description(s: &State) -> Vec<String> {
             .map_or(String::new(), |a| format!(" as {a}"));
         out.push(format!(
             "invoke {kind}{}({}){alias}",
-            inv.src,
+            inv.callee(),
             args.join(", ")
         ));
     }
@@ -377,7 +397,7 @@ fn description(s: &State) -> Vec<String> {
     out.extend(s.exit.iter().map(|e| format!("exit {}", effect(e))));
     for t in s.transitions.iter().filter(|t| t.target.is_none()) {
         let head = match &t.trigger {
-            Trigger::Event { .. } | Trigger::Emitted { .. } => {
+            Trigger::Event { .. } | Trigger::Emitted { .. } | Trigger::Call { .. } => {
                 format!("on {}", trigger(&t.trigger))
             }
             other => trigger(other),

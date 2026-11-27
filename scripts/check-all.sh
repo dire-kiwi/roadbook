@@ -44,7 +44,7 @@ pnpm -r test
 step "Conformance: the TypeScript and Rust runtimes write identical traces"
 out=$(mktemp -d)
 mkdir -p "$out/ts" "$out/rust"
-ROADBOOK_CONFORMANCE_OUT="$out/ts" pnpm --filter @roadbook/effect exec vitest run test/conformance >/dev/null
+ROADBOOK_CONFORMANCE_OUT="$out/ts" pnpm --filter @dire-kiwi/roadbook-effect exec vitest run test/conformance >/dev/null
 ROADBOOK_CONFORMANCE_OUT="$out/rust" cargo test -q -p roadbook --test conformance >/dev/null
 # A runtime skips the cases that require a feature it does not implement yet (`requires`).
 # Each must run every case whose features it shows it supports, by running some case that

@@ -94,6 +94,7 @@ impl Cx<'_, '_> {
                     "event" => Some((&scope.event, "an `on` transition")),
                     "result" => Some((&scope.result, "an invoke's `done` outcome")),
                     "error" => Some((&scope.error, "an invoke's `fail` outcome")),
+                    "call" => Some((&scope.call, "an `on name` transition that takes a call")),
                     _ => None,
                 };
                 let ty = match implicit {
@@ -112,6 +113,22 @@ impl Cx<'_, '_> {
                             .push(Diagnostic::error(*code, n.span, msg.clone()));
                         Ty::Unknown
                     }
+                    Some((Implicit::CallArgs(c), _)) => {
+                        let example = self
+                            .calls
+                            .get(c)
+                            .and_then(|s| s.params.first())
+                            .map_or("event.<name>".to_string(), |(p, _)| format!("event.{p}"));
+                        self.ck.diags.push(
+                            Diagnostic::error(
+                                codes::UNTYPED_EVENT,
+                                n.span,
+                                format!("`event` is the arguments of call `{c}`, which are read only through their fields"),
+                            )
+                            .with_help(format!("read one argument: `{example}`")),
+                        );
+                        Ty::Unknown
+                    }
                     None => match self.vars.get(&n.name) {
                         Some(v) => {
                             self.ck.refer_member(self.file, self.symbol, n);
@@ -128,6 +145,17 @@ impl Cx<'_, '_> {
                     },
                 };
                 let path = vec![n.name.clone()];
+                (node(K::Ref { path }, &ty, e), ty)
+            }
+            ExprKind::Field(base, f)
+                if matches!(&base.kind, ExprKind::Var(n) if n.name == "event")
+                    && matches!(scope.event, Implicit::CallArgs(_)) =>
+            {
+                let Implicit::CallArgs(c) = &scope.event else {
+                    unreachable!("matched above")
+                };
+                let ty = self.call_argument(c, f);
+                let path = vec!["event".to_string(), f.name.clone()];
                 (node(K::Ref { path }, &ty, e), ty)
             }
             ExprKind::Field(base, f) => {
@@ -524,6 +552,47 @@ impl Cx<'_, '_> {
         }
     }
 
+    /// The type of argument `f` of the machine's call `c`, read as `event.f` in `on c`.
+    fn call_argument(&mut self, c: &str, f: &roadbook_syntax::ast::Ident) -> Ty {
+        let Some(sig) = self.calls.get(c).cloned() else {
+            return Ty::Unknown;
+        };
+        if let Some((_, t)) = sig.params.iter().find(|(n, _)| *n == f.name) {
+            let call = self.ck.call_symbol(self.symbol, c);
+            self.ck.refer_member(self.file, call, f);
+            return t.clone();
+        }
+        let names: Vec<&str> = sig.params.iter().map(|(n, _)| n.as_str()).collect();
+        let mut d = if names.is_empty() {
+            Diagnostic::error(
+                codes::NO_FIELDS,
+                f.span,
+                format!(
+                    "call `{c}` takes no arguments, so `event` has no field `{}`",
+                    f.name
+                ),
+            )
+        } else {
+            Diagnostic::error(
+                codes::UNKNOWN_FIELD,
+                f.span,
+                format!("call `{c}` has no argument `{}`", f.name),
+            )
+        };
+        d = d.with_secondary(sig.name_span, "declared here");
+        if let Some(s) = suggest(&f.name, names.iter().copied()) {
+            d = d.with_help(format!("did you mean `{s}`?")).with_fix(
+                format!("replace with `{s}`"),
+                f.span,
+                s,
+            );
+        } else if !names.is_empty() {
+            d = d.with_help(format!("its arguments are {}", names.join(", ")));
+        }
+        self.ck.diags.push(d);
+        Ty::Unknown
+    }
+
     fn no_such_field(&self, t: &Ty, f: &roadbook_syntax::ast::Ident, names: &[&str]) -> Diagnostic {
         let mut d = Diagnostic::error(
             codes::UNKNOWN_FIELD,
@@ -589,6 +658,13 @@ impl Cx<'_, '_> {
                 None
             }
             Found::Poisoned => None,
+            Found::Missing if t.name == crate::check::UNANSWERED => {
+                self.ck.diags.push(crate::check::unanswered_misused(
+                    t.span,
+                    "`Unanswered` is not a value a chart can make: a call fails with it only when it is not answered",
+                ));
+                None
+            }
             Found::Missing => {
                 let accept = |k: &DeclKind| is_type(k);
                 let d = self

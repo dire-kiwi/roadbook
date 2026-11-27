@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/saved.road",
@@ -202,6 +202,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Counter",
         "name": "Counter",
@@ -358,7 +359,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:1fa81f452da00ee2767aeec05233a81ed2e52266bd1c14968a8ba72f0fa0cede"
+      "hash": "sha256:4fec4922d7bc7293026394e711380c40884a5d12fec9a1ad35c2e9cc2174a0eb"
     },
     "Shop": {
       "doc": "Pays through a child machine.",
@@ -400,6 +401,7 @@
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Shop",
         "name": "Shop",
@@ -433,6 +435,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Pay",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -522,7 +525,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d88779f5271ef7275d837f47134eeb23f06425b2d5de61cc65b73d6ee6a335cc"
+      "hash": "sha256:5f98ff5cd657a6a67379dc1d3c10483c356eaa5ba821c07ddb849c0d592d6a9a"
     },
     "Pay": {
       "doc": "Quotes a price, then charges it.",
@@ -582,6 +585,7 @@
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Pay",
         "name": "Pay",
@@ -615,6 +619,7 @@
             "invoke": {
               "kind": "task",
               "src": "quote",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -687,6 +692,7 @@
             "invoke": {
               "kind": "task",
               "src": "charge",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -776,7 +782,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d57f6abb799593153fc90494c80b262900698880e21da1047a14f5988a31e8ea"
+      "hash": "sha256:9cca509376b93cab06cfef7aad10fb70fd95b6b52674a0f59929375b14de7cc8"
     },
     "Reminder": {
       "doc": "Rings a second after it starts waiting.",
@@ -805,6 +811,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Reminder",
         "name": "Reminder",
@@ -923,7 +930,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:b26b68226ae24916fb82b7a9bd55153deb0f87ba39cf990c75abacc7fca343d6"
+      "hash": "sha256:6f83fd3a9469662848dbcdb7c9100c9d22d972b3e3524740568e87a79af5d741"
     },
     "Order": {
       "doc": "An order kept as a snapshot between requests: it waits three days for\npayment, ships, and waits for delivery.",
@@ -1012,6 +1019,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -1120,6 +1128,7 @@
             "invoke": {
               "kind": "task",
               "src": "ship",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1304,7 +1313,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:6ae1c132e34692919ad8977d8619a1c8414fb382b9cd13dc7ff5f32d85d9ec6c"
+      "hash": "sha256:0ece17382da865ed3465edce3ac15a2747827caf9075af2673b228be67d98baf"
     }
   }
 }

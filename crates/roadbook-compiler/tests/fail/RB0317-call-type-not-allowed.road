@@ -1,0 +1,26 @@
+type Pending = call reserve
+
+fn f(p: call reserve) -> int
+
+machine M() {
+  call reserve()
+  call other(p: call reserve)
+  var a: call reserve?
+  var b: call reserve[]
+  var c: call reserve = 1
+  event E { p: call reserve }
+  initial A
+  state A {
+    on reserve reply call done
+    on other reply call done
+    on E -> A
+  }
+}
+
+// expect: RB0317 at 1:16
+// expect: RB0317 at 3:9
+// expect: RB0317 at 7:17
+// expect: RB0317 at 8:10
+// expect: RB0317 at 9:10
+// expect: RB0317 at 10:25
+// expect: RB0317 at 11:16

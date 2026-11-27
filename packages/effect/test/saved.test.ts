@@ -4,7 +4,7 @@
  * docs/design/semantics.md built on `resume`, with a store, a migration and virtual time.
  */
 import { assert, describe, it } from "@effect/vitest"
-import type * as Core from "@roadbook/core"
+import type * as Core from "@dire-kiwi/roadbook-core"
 import { Cause, Clock, Deferred, Effect, Exit, Fiber, Schema, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import * as fs from "node:fs"

@@ -1,0 +1,11 @@
+action log(what: json)
+
+machine M() {
+  call ask(n: int)
+  initial A
+  state A {
+    on ask do log(event)  reply call done
+  }
+}
+
+// expect: RB0309 at 7:19

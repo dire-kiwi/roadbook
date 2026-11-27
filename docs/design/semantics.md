@@ -22,7 +22,7 @@ An abridged IR for `Checkout` (`/* … */` marks what is left out):
 
 ```jsonc
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [{ "path": "examples/shop/checkout.road", "package": null },
               { "path": "examples/shop/types.road", "package": null }],
   "types": {
@@ -124,6 +124,7 @@ Machines that exchange messages while they run, rather than only arguments and a
 - **A message is an input like any other.** `send` queues an event for another machine and carries on; the receiver takes it from its own queue by rule 1. `emit` queues one for the invoker (if it named the child with `as`) and for every machine holding a reference, of those that have an `on` for it. Each is one more source pushing onto the receiver's single queue, so a message waits behind what arrived before it, and two from one sender arrive in the order sent.
 - **A child's emitted events are tied to its invoke**, as its outcome is: once the invoking state is left, what the child emitted is stale. Leaving the state still cancels the child and waits for its exit effects, which may send and emit.
 - **A send that reaches nothing is recorded**, as an unhandled event is: a message to a machine that has ended, or to a child that is not running, is `undelivered` in the trace.
+- **A call is an invoke on one side and an input on the other.** The caller's `invoke inventory.reserve(…)` is work tied to its state, like a task (rule 3): leaving the state abandons it, and its answer is an outcome. The callee takes the call from its queue by rule 1 and answers it with `reply`, then or later; until it does, it is not idle. A callee that has ended, or that has no transition for the call, answers `Unanswered` ([calls between runs](../../spec/execution.md#calls-between-runs)).
 - **The core stays pure.** A `send` or `emit` is a command, like starting a task; the driver delivers it. The core knows only its own run id and the ids its arguments hold, so it needs no registry of machines.
 
 ## Definitions and instances
@@ -162,7 +163,7 @@ Three rules make this safe.
 
 - **A snapshot records the IR hash it was taken with**, and restoring it into a changed chart is refused unless a migration is supplied: a host function from the old snapshot to the new one, as plain data. Snapshots are the same JSON in both runtimes, so one saved by a TypeScript service restores in a Rust one.
 - **A snapshot taken while a task is running restarts that task on restore**, with its arguments evaluated again, and a child machine running then starts again from the beginning. So a machine meant to be saved should wait in states that have no `invoke`, or use tasks that are safe to repeat; `resume` itself never saves a running task, since it waits for them. Surviving a crash in the middle of a task without repeating it is durable execution, which is a later driver and not part of this.
-- **A restored run is a new run.** It gets a new run id, and what was queued for the old one is not in the snapshot. A machine that holds a `ref` to a peer cannot be restored yet, since the peer's id belongs to the process that saved it.
+- **A restored run is a new run.** It gets a new run id, and what was queued for the old one is not in the snapshot. A machine that holds a `ref` to a peer cannot be restored yet, since the peer's id belongs to the process that saved it. Nor can one saved with calls pending, since its callers belong to that process too.
 
 ## A pure core and a driver
 

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/nest.road",
@@ -133,6 +133,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Nest",
         "name": "Nest",
@@ -236,6 +237,7 @@
                     "invoke": {
                       "kind": "task",
                       "src": "work",
+                      "to": null,
                       "as": null,
                       "args": [
                         {
@@ -756,7 +758,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:896123d9ccd388fd1f9d1e8a6744bba7312bb0aa41bce7611745b0894187e9f5"
+      "hash": "sha256:d72fd0686064c7bfd50de0cd1b816084b12300792f3e2cf516f22ee2ace03675"
     }
   }
 }

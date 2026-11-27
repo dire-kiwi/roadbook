@@ -7,7 +7,7 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: /^effect$/, replacement: fileURLToPath(import.meta.resolve("effect")) },
-      { find: /^@roadbook\/effect$/, replacement: fileURLToPath(new URL("./src/index.ts", import.meta.url)) }
+      { find: /^@dire-kiwi\/roadbook-effect$/, replacement: fileURLToPath(new URL("./src/index.ts", import.meta.url)) }
     ]
   }
 })

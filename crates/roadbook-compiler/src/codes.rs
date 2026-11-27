@@ -27,7 +27,7 @@ pub const DUPLICATE_DECLARATION: Code = Code(107);
 pub const DUPLICATE_NAME: Code = Code(108);
 /// A declared name used as something it is not, such as an action in `invoke`.
 pub const WRONG_KIND: Code = Code(109);
-/// `event`, `result` or `error` where it is not in scope.
+/// `event`, `result`, `error` or `call` where it is not in scope.
 pub const IMPLICIT_NAME_OUT_OF_SCOPE: Code = Code(110);
 /// An import of a file that cannot be read.
 pub const IMPORT_NOT_FOUND: Code = Code(111);
@@ -39,7 +39,8 @@ pub const UNKNOWN_VARIANT: Code = Code(113);
 pub const ASSIGN_TO_PARAMETER: Code = Code(114);
 
 /// A `send name.E` or `on name.E` whose `name` is neither an `invoke … as name` in scope nor a
-/// parameter or variable.
+/// parameter or variable, or an `invoke name.call(…)` whose `name` is not a parameter or
+/// variable.
 pub const UNKNOWN_ADDRESS: Code = Code(115);
 
 /// A `send name.E` of an event the receiving machine does not declare with `event`.
@@ -49,6 +50,14 @@ pub const NOT_ACCEPTED: Code = Code(116);
 /// event the sending machine does not.
 pub const NOT_EMITTED: Code = Code(117);
 
+/// An `invoke x.name(…)` of a call `x`'s machine does not declare, an `on name` of a call the
+/// machine does not declare, or a `call name` type naming no call of the machine.
+pub const UNKNOWN_CALL: Code = Code(118);
+
+/// The built-in error `Unanswered` where it cannot be: in a `!` list, as a type or a value, or
+/// in a `fail` outcome of an invoke that is not a call.
+pub const UNANSWERED_MISUSED: Code = Code(119);
+
 // ───────────── structure ─────────────
 
 /// A transition target that does not resolve to a state.
@@ -57,7 +66,8 @@ pub const UNKNOWN_TARGET: Code = Code(201);
 pub const MISSING_INITIAL: Code = Code(202);
 /// An `initial` that is not a child, is written twice, or is in a state without children.
 pub const BAD_INITIAL: Code = Code(203);
-/// An `invoke` that leaves a declared error of the task or machine unhandled.
+/// An `invoke` that leaves a declared error of the task or machine unhandled, or, for a call,
+/// `Unanswered`.
 pub const UNHANDLED_ERROR: Code = Code(204);
 /// The same trigger written twice in one state or one `invoke`.
 pub const DUPLICATE_TRIGGER: Code = Code(205);
@@ -81,7 +91,8 @@ pub const DONE_WITHOUT_CHILDREN: Code = Code(212);
 /// state.
 pub const CHILD_NOT_RUNNING: Code = Code(213);
 
-/// `invoke task(…) as name`: only an invoked machine has a name to send to.
+/// `invoke task(…) as name` or `invoke x.call(…) as name`: only an invoked machine has a name
+/// to send to.
 pub const ALIAS_ON_TASK: Code = Code(214);
 
 // ───────────── types ─────────────
@@ -103,7 +114,8 @@ pub const NO_FIELDS: Code = Code(306);
 pub const NO_RESULT: Code = Code(307);
 /// `error` in a `fail *` that covers more than one error, or none.
 pub const AMBIGUOUS_ERROR: Code = Code(308);
-/// `event` in an `on *` transition.
+/// `event` in an `on *` transition, or used whole in an `on name` transition that takes a
+/// call, where it is read only through its fields.
 pub const UNTYPED_EVENT: Code = Code(309);
 /// `output` in a machine that returns nothing.
 pub const OUTPUT_WITHOUT_RETURN: Code = Code(310);
@@ -116,13 +128,26 @@ pub const ALIAS_CYCLE: Code = Code(313);
 /// A type made optional twice, such as `string??`.
 pub const DOUBLE_OPTIONAL: Code = Code(314);
 
-/// A `send name.E` or `on name.E` through a value that is not a `ref`: another type, or a
-/// `ref` that is optional or a list.
+/// A `send name.E`, `on name.E` or `invoke name.call(…)` through a value that is not a `ref`:
+/// another type, or a `ref` that is optional or a list.
 pub const NOT_A_REF: Code = Code(315);
 
-/// A `ref` in a field of a record, error or event, or in what a function, task or machine
-/// returns.
+/// A `ref` in a field of a record, error or event, in a parameter of a `call`, or in what a
+/// function, task or machine returns.
 pub const REF_NOT_ALLOWED: Code = Code(316);
+
+/// A pending call type `call name` anywhere but as the type of a machine variable (optional,
+/// in a list or an alias, a parameter, a field, a result), or a variable of it with an
+/// initial value.
+pub const CALL_TYPE_NOT_ALLOWED: Code = Code(317);
+
+/// A `reply x …` where `x` is neither `call` nor a variable holding a pending call.
+pub const NOT_A_PENDING_CALL: Code = Code(318);
+
+/// A `reply` that does not answer as its call is declared: `done` with a value for a call that
+/// returns nothing or without one for a call that returns a value, or `fail` with a value that
+/// is not one of the call's declared errors.
+pub const BAD_REPLY: Code = Code(319);
 
 // ───────────── analyses ─────────────
 
@@ -153,6 +178,12 @@ pub const RECEIVES_NOTHING: Code = Code(906);
 /// An `emits E` that no `on name.E` in the checked charts receives.
 pub const NEVER_RECEIVED: Code = Code(907);
 
+/// A `call` that no `on name` of its machine takes.
+pub const CALL_NEVER_TAKEN: Code = Code(908);
+
+/// A variable of type `call name` that no `reply` answers.
+pub const CALL_NEVER_REPLIED: Code = Code(909);
+
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
     UNKNOWN_TYPE,
@@ -172,6 +203,8 @@ pub const ALL: &[Code] = &[
     UNKNOWN_ADDRESS,
     NOT_ACCEPTED,
     NOT_EMITTED,
+    UNKNOWN_CALL,
+    UNANSWERED_MISUSED,
     UNKNOWN_TARGET,
     MISSING_INITIAL,
     BAD_INITIAL,
@@ -202,6 +235,9 @@ pub const ALL: &[Code] = &[
     DOUBLE_OPTIONAL,
     NOT_A_REF,
     REF_NOT_ALLOWED,
+    CALL_TYPE_NOT_ALLOWED,
+    NOT_A_PENDING_CALL,
+    BAD_REPLY,
     ALWAYS_CYCLE,
     UNBOUNDED_RECURSION,
     UNASSIGNED_READ,
@@ -212,6 +248,8 @@ pub const ALL: &[Code] = &[
     NEVER_EMITTED,
     RECEIVES_NOTHING,
     NEVER_RECEIVED,
+    CALL_NEVER_TAKEN,
+    CALL_NEVER_REPLIED,
 ];
 
 #[cfg(test)]

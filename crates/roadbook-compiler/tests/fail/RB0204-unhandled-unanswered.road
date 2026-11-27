@@ -1,0 +1,20 @@
+error Busy
+
+machine Peer() {
+  call ask() -> int ! Busy
+  initial A
+  state A { on ask reply call done 1 }
+}
+
+machine M(peer: ref Peer) {
+  initial A
+  state A {
+    invoke peer.ask() {
+      done      -> B
+      fail Busy -> B
+    }
+  }
+  final state B {}
+}
+
+// expect: RB0204 at 12:5

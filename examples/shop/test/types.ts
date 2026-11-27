@@ -1,10 +1,10 @@
 /**
  * Type-level tests, checked by `tsc` (`pnpm typecheck`), not run: the guarantees of
  * docs/design/typescript.md's table, against the generated shop modules and the real
- * `@roadbook/effect`. Every `@ts-expect-error` must be needed, so each mistake must be an error.
+ * `@dire-kiwi/roadbook-effect`. Every `@ts-expect-error` must be needed, so each mistake must be an error.
  */
 import { Duration, Effect, type Scope, Stream } from "effect"
-import type * as Roadbook from "@roadbook/effect"
+import type * as Roadbook from "@dire-kiwi/roadbook-effect"
 import { Checkout, type CheckoutDef } from "../checkout.road.js"
 import { PlaceOrder, type PlaceOrderDef } from "../place_order.road.js"
 import {

@@ -125,14 +125,15 @@ export const DIAGRAM_CSS = `
 .rb-msg-kw { font-weight: 700; }
 .rb-alias { font-weight: 650; font-style: italic; }
 
-/* the project index's edges: invoke solid, ref dashed, messages in the message colour with open arrows, emitted ones dotted */
+/* the project index's edges: invoke solid, ref dashed, messages in the message colour with open arrows, emitted ones dotted, calls in the message colour with a filled arrow */
 .rb-i-ref .rb-edge-line { stroke-dasharray: 7 4; }
-.rb-i-send .rb-edge-line, .rb-i-emit .rb-edge-line { stroke: var(--rb-msg); stroke-width: 1.4; }
+.rb-i-send .rb-edge-line, .rb-i-emit .rb-edge-line, .rb-i-call .rb-edge-line { stroke: var(--rb-msg); stroke-width: 1.4; }
+.rb-arrow.rb-i-call path { fill: var(--rb-msg); stroke: none; }
 .rb-i-emit .rb-edge-line { stroke-dasharray: 0.1 4.5; stroke-linecap: round; stroke-width: 2.2; }
 .rb-arrow.rb-i-send path, .rb-arrow.rb-i-emit path { fill: none; stroke: var(--rb-msg); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .rb-ilabel-text { font-size: 11px; }
 .rb-ilabel .rb-ikw { font-weight: 700; }
-.rb-ilabel.rb-i-send .rb-ikw, .rb-ilabel.rb-i-emit .rb-ikw { fill: var(--rb-msg); }
+.rb-ilabel.rb-i-send .rb-ikw, .rb-ilabel.rb-i-emit .rb-ikw, .rb-ilabel.rb-i-call .rb-ikw { fill: var(--rb-msg); }
 .rb-label.rb-k-done .rb-label-trigger { fill: var(--rb-ok); }
 .rb-label.rb-k-fail .rb-label-trigger { fill: var(--rb-err); }
 .rb-label .rb-guard { fill: var(--rb-fg); }

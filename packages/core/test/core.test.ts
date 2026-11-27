@@ -3,6 +3,8 @@ import * as path from "node:path"
 import { describe, expect, it } from "vitest"
 import {
   canonicalJson,
+  checkSaved,
+  type Command,
   compareCodePoints,
   type Fns,
   getMachine,
@@ -12,7 +14,8 @@ import {
   loadIr,
   RUN_ID_PATTERN,
   start,
-  step
+  step,
+  toSaved
 } from "../src/index.ts"
 
 const charts = path.resolve(import.meta.dirname, "../../../spec/conformance/charts")
@@ -52,7 +55,7 @@ describe("compareCodePoints", () => {
 
 describe("loadIr", () => {
   it("refuses another IR version, naming both", () => {
-    expect(() => loadIr({ irVersion: "0.1" })).toThrow(/"0\.1".*0\.2/)
+    expect(() => loadIr({ irVersion: "0.1" })).toThrow(/"0\.1".*0\.4/)
     expect(() => loadIr([])).toThrow(IrError)
   })
   it("refuses a machine the IR does not have", () => {
@@ -110,6 +113,7 @@ describe("start and step", () => {
       state: "Checkout.Charging",
       src: "chargeCard",
       srcKind: "task",
+      to: null,
       as: null,
       args: input
     })
@@ -149,5 +153,81 @@ describe("heard", () => {
     // A Supplier holds a `ref Inventory` only to send to it.
     expect(heard(ir, "Supplier", "Inventory").size).toBe(0)
     expect(heard(ir, "Inventory", "Order").size).toBe(0)
+  })
+})
+
+describe("calls", () => {
+  const ir = readIr("calls.ir.json")
+  const items = [{ sku: "s1", qty: 2 }]
+  const reserve = { kind: "call", from: "r2", invoke: 1, call: "reserve", args: { orderId: "o1", items } } as const
+  const records = (commands: ReadonlyArray<Command>) => commands.flatMap((c) => (c.kind === "trace" ? [c.record.kind] : []))
+
+  it("makes a call as an invoke: the peer read as `to`, the call as `src`, Unanswered declared", () => {
+    const started = start(ir, "Order", "r2", { id: "o1", items, inventory: "r1" }, noFns)
+    expect(started.snapshot.invokes).toEqual([{ id: 1, state: "Order.Reserving", src: "inventory.reserve" }])
+    expect(started.commands).toContainEqual({
+      kind: "invoke.start",
+      invoke: 1,
+      state: "Order.Reserving",
+      src: "reserve",
+      srcKind: "call",
+      to: "r1",
+      as: null,
+      args: { orderId: "o1", items }
+    })
+    const unanswered = step(ir, started.snapshot, { kind: "invoke.fail", invoke: 1, error: { _tag: "Unanswered" } }, noFns)
+    expect(unanswered.snapshot.status).toBe("failed")
+    expect(unanswered.snapshot.result).toEqual({ error: { _tag: "OutOfStock", reason: "unanswered" } })
+  })
+
+  it("keeps a taken call pending until a reply answers it", () => {
+    const started = start(ir, "Inventory", "r1", { warehouse: "w1" }, noFns)
+    const taken = step(ir, started.snapshot, reserve, noFns)
+    expect(taken.snapshot.calls).toEqual([{ from: "r2", invoke: 1, call: "reserve" }])
+    expect(taken.snapshot.vars["pending"]).toEqual({ from: "r2", invoke: 1 })
+    const done = step(ir, taken.snapshot, { kind: "invoke.done", invoke: 1, value: 2 }, noFns)
+    expect(done.snapshot.calls).toEqual([])
+    const reply = { to: "r2", invoke: 1, call: "reserve", outcome: "done", value: { orderId: "o1", count: 2 } } as const
+    expect(done.commands).toContainEqual({ kind: "trace", record: { kind: "replied", ...reply } })
+    expect(done.commands).toContainEqual({ kind: "reply", ...reply })
+  })
+
+  it("answers a call that enables no transition at once, with Unanswered", () => {
+    const started = start(ir, "Inventory", "r1", { warehouse: "w1" }, noFns)
+    const paused = step(ir, started.snapshot, { kind: "event", value: { _tag: "Pause" } }, noFns)
+    const dropped = step(ir, paused.snapshot, reserve, noFns)
+    const reply = { to: "r2", invoke: 1, call: "reserve", outcome: "fail", value: { _tag: "Unanswered" } } as const
+    expect(dropped.commands).toEqual([
+      { kind: "trace", record: { kind: "dropped", event: reserve } },
+      { kind: "trace", record: { kind: "replied", ...reply } },
+      { kind: "reply", ...reply }
+    ])
+    expect(dropped.snapshot.calls).toEqual([])
+  })
+
+  it("makes a second reply to one call the runtime error answered, discarding the step", () => {
+    const started = start(ir, "Inventory", "r1", { warehouse: "w1" }, noFns)
+    const taken = step(ir, started.snapshot, reserve, noFns)
+    const twice = step(ir, taken.snapshot, { kind: "event", value: { _tag: "Twice" } }, noFns)
+    expect(twice.snapshot.result).toEqual({ defect: { kind: "answered", call: "reserve" } })
+    expect(records(twice.commands)).toEqual(["defect"])
+    expect(twice.commands.some((c) => c.kind === "reply")).toBe(false)
+  })
+
+  it("saves pending calls only when there are some, and refuses to restore them (calls)", () => {
+    const started = start(ir, "Inventory", "r1", { warehouse: "w1" }, noFns)
+    expect(Object.hasOwn(toSaved(started.snapshot, () => 0), "calls")).toBe(false)
+    const taken = step(ir, started.snapshot, reserve, noFns)
+    const saved = toSaved(taken.snapshot, () => 0)
+    expect(saved.calls).toEqual([{ from: "r2", invoke: 1, call: "reserve" }])
+    expect(checkSaved(ir, "Inventory", saved)).toMatchObject({ ok: false, reason: "calls" })
+    // `calls` is written only when not empty: an empty list is not a saved snapshot.
+    const answered = step(ir, taken.snapshot, { kind: "invoke.done", invoke: 1, value: 2 }, noFns)
+    const restorable = toSaved(answered.snapshot, () => 0)
+    expect(checkSaved(ir, "Inventory", restorable)).toMatchObject({ ok: true })
+    expect(checkSaved(ir, "Inventory", { ...restorable, calls: [] })).toMatchObject({ ok: false, reason: "invalid" })
+    // A pending-call value in `vars` must be one.
+    const bad = { ...restorable, vars: { ...restorable.vars, pending: { from: "r2" } } }
+    expect(checkSaved(ir, "Inventory", bad)).toMatchObject({ ok: false, reason: "invalid" })
   })
 })

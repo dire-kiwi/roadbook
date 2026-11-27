@@ -271,6 +271,7 @@ fn blank() -> Snapshot {
         input: Map::new(),
         vars: Map::new(),
         invokes: Vec::new(),
+        calls: Vec::new(),
         timers: Vec::new(),
         next_invoke: 1,
         next_timer: 1,
@@ -441,6 +442,7 @@ impl<'a> Driver<'a> {
                 ));
             }
             self.close();
+            self.shared.answer_unanswered();
             self.shared.finish(Finished::Ok);
             return (RunEnd::Defect(defect), false);
         }
@@ -484,6 +486,7 @@ impl<'a> Driver<'a> {
             // ignored, as for a cancelled one: a panic while dropping it included.
             if let Some(i) = invoke {
                 self.contexts.remove(&i);
+                self.shared.forget_call(i);
             }
             if let Some(slot) = invoke.and_then(|i| self.invokes.remove(&i)) {
                 let _ = drop_caught(slot);
@@ -546,6 +549,7 @@ impl<'a> Driver<'a> {
                 }
                 if self.queue.is_empty()
                     && self.snap.invokes.is_empty()
+                    && self.snap.calls.is_empty()
                     && self.parent.is_none()
                     && self.suspendable
                     && self.shared.suspend_requested()
@@ -573,6 +577,8 @@ impl<'a> Driver<'a> {
     /// saved snapshot. No exit effect runs.
     async fn suspend(mut self) -> (RunEnd, bool) {
         self.close();
+        // An idle run has no pending call, and nothing queued.
+        self.shared.answer_unanswered();
         self.queue.clear();
         self.contexts.clear();
         for (_, slot) in std::mem::take(&mut self.invokes) {
@@ -708,6 +714,17 @@ impl<'a> Driver<'a> {
             }
             Command::InvokeStart {
                 invoke,
+                src_kind: SrcKind::Call,
+                src,
+                to,
+                args,
+                ..
+            } => {
+                self.make_call(invoke, src, to, args);
+                Ok(())
+            }
+            Command::InvokeStart {
+                invoke,
                 src,
                 src_kind,
                 alias,
@@ -734,6 +751,8 @@ impl<'a> Driver<'a> {
                 let params = match src_kind {
                     SrcKind::Task => ir.tasks.get(&src).map(|t| &t.params[..]),
                     SrcKind::Machine => ir.machines.get(&src).map(|m| &m.params[..]),
+                    // Made by `make_call`, above.
+                    SrcKind::Call => None,
                 };
                 let refs = arg_ref_ids(self.program, params.unwrap_or_default(), &args)
                     .iter()
@@ -762,11 +781,25 @@ impl<'a> Driver<'a> {
                 Ok(())
             }
             Command::InvokeCancel { invoke } => {
+                // A call is abandoned: its answer, if it comes, is not pushed.
+                self.shared.forget_call(invoke);
                 self.contexts.remove(&invoke);
                 match self.invokes.remove(&invoke) {
                     Some(slot) => self.cancel_slot(slot).await,
                     None => Ok(()),
                 }
+            }
+            Command::Reply {
+                to,
+                invoke,
+                outcome,
+                value,
+                ..
+            } => {
+                if let Some(answer) = self.shared.take_answer(&to, invoke) {
+                    answer.answer(outcome, value);
+                }
+                Ok(())
             }
             Command::Send {
                 to,
@@ -843,6 +876,28 @@ impl<'a> Driver<'a> {
         }
     }
 
+    /// Makes call `call` of the peer `to` with invoke `invoke` (`spec/execution.md#carrying-out-calls`):
+    /// pushes the call onto the peer's queue with a way to answer it, if the peer is open, or
+    /// else answers it `Unanswered` at once, onto this run's own queue. No record either way,
+    /// and no host code: a call has no implementation to bind.
+    fn make_call(&mut self, invoke: u64, call: String, to: Option<String>, args: Object) {
+        let answer = self.shared.make_call(invoke);
+        let input = Input::Call {
+            from: self.id.clone(),
+            invoke,
+            call,
+            args,
+        };
+        let peer = to.as_ref().and_then(|to| self.peers.get(to));
+        let refused = match peer {
+            Some(peer) => peer.shared.deliver_call(input, answer).err(),
+            None => Some(answer),
+        };
+        if let Some(answer) = refused {
+            answer.unanswered();
+        }
+    }
+
     /// Stops a running invoke. A task's or stub's future is dropped at once. A child run is
     /// signalled through its token and polled until it reports that its cancel step is
     /// done; only then is its future dropped. What a cancelled invoke does is ignored, so a
@@ -901,6 +956,7 @@ impl<'a> Driver<'a> {
     /// cancelled through its token first), and reports through the token.
     async fn end(mut self) -> (RunEnd, bool) {
         self.close();
+        self.shared.answer_unanswered();
         self.queue.clear();
         self.contexts.clear();
         for (_, slot) in std::mem::take(&mut self.invokes) {
@@ -930,6 +986,9 @@ impl<'a> Driver<'a> {
 impl Drop for Driver<'_> {
     fn drop(&mut self) {
         self.close();
+        // A hard stop answers the calls it was given, so that their callers do not wait for
+        // a run that is gone.
+        self.shared.answer_unanswered();
         for (_, slot) in std::mem::take(&mut self.invokes) {
             let _ = drop_caught(slot);
         }

@@ -1,0 +1,8 @@
+machine M() {
+  call ask()
+  call ask(n: int)
+  initial A
+  state A { on ask reply call done }
+}
+
+// expect: RB0108 at 3:8

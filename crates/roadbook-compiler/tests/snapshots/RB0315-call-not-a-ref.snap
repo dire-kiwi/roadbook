@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0315]: `count` is `int`, not a `ref`
+  --> RB0315-call-not-a-ref.road:10:12
+   |
+10 |     invoke count.ask() {
+   |            ^^^^^
+   |
+   = help: a call goes to the run that a parameter or variable of type `ref Machine` holds
+
+error[RB0315]: `maybe` is `ref Peer?`, which may be absent
+  --> RB0315-call-not-a-ref.road:15:12
+   |
+15 |     invoke maybe.ask() {
+   |            ^^^^^
+   |
+   = help: a call goes to the run that a parameter or variable of type `ref Machine` holds
+
+error[RB0315]: `many` is `ref Peer[]`, a list of handles, not one
+  --> RB0315-call-not-a-ref.road:20:12
+   |
+20 |     invoke many.ask() {
+   |            ^^^^
+   |
+   = help: a call goes to the run that a parameter or variable of type `ref Machine` holds

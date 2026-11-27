@@ -4,7 +4,7 @@
  * emits. Pushing checks the flag and offers synchronously, so it is one operation with respect
  * to the run's closing, which also happens synchronously in the run's own fiber.
  */
-import type * as Core from "@roadbook/core"
+import type * as Core from "@dire-kiwi/roadbook-core"
 import { Queue } from "effect"
 
 export interface Port {
@@ -34,6 +34,33 @@ export interface Wake {
 
 /** Push `input` onto the run's queue if the run is open. Returns whether it was pushed. */
 export const push = (port: Port, input: Core.Input): boolean => port.open && Queue.offerUnsafe(port.queue, input)
+
+/**
+ * A call's way to answer (execution.md, "Carrying out calls"): pushes the outcome of the call's
+ * invoke onto the caller's queue, unless the caller has closed or cancelled that invoke.
+ */
+export type Answer = (outcome: Core.Input) => void
+
+/** The way to answer of each call input pushed onto a callee's queue and not yet taken. */
+const answers = new WeakMap<Core.Input, Answer>()
+
+/**
+ * Push call input `input` onto the callee's queue if it is open, with its way to answer.
+ * Returns whether it was pushed.
+ */
+export const pushCall = (port: Port, input: Core.Input, answer: Answer): boolean => {
+  answers.set(input, answer)
+  if (push(port, input)) return true
+  answers.delete(input)
+  return false
+}
+
+/** The way to answer of a call input taken from a queue, which forgets it. */
+export const takeAnswer = (input: Core.Input): Answer | undefined => {
+  const answer = answers.get(input)
+  answers.delete(input)
+  return answer
+}
 
 /** The port behind every handle, keyed by the handle object. */
 const ports = new WeakMap<object, Port>()

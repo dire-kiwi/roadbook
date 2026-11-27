@@ -274,6 +274,9 @@ pub struct Machine {
     /// Events the machine emits (`emits Name { fields }`), keyed by name, in
     /// source order. No name is both in `events` and in `emits`.
     pub emits: IndexMap<String, EventDecl>,
+    /// Calls the machine answers (`call name(params) -> T ! E`), keyed by their
+    /// lower-case name, in source order.
+    pub calls: IndexMap<String, Call>,
     /// The root state. Its `id` and `name` are the machine's name, it is
     /// `compound`, and it holds the `entry`, `exit`, `on`, `after` and
     /// `always` items written directly in the machine body.
@@ -310,6 +313,30 @@ pub struct EventDecl {
     /// The whole declaration.
     pub span: Span,
 }
+
+/// `call name(params) [-> T] [! E | …]`: a request another run makes of the
+/// machine with `invoke x.name(…)`, taken with `on name` and answered with
+/// `reply`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Call {
+    /// Parameters, in order: the fields of `event` in `on name`.
+    pub params: Vec<Field>,
+    /// Result type, `null` if the call returns nothing.
+    pub returns: Option<TypeRef>,
+    /// Declared errors (names of `error` types), in source order. Never
+    /// [`UNANSWERED`], which every call can fail with.
+    pub errors: Vec<String>,
+    /// Doc comment, `""` if none.
+    pub doc: String,
+    /// The whole declaration, from `call` to its end.
+    pub span: Span,
+}
+
+/// The built-in error every call can fail with besides its declared ones: the
+/// callee ended, or left the call unanswered. It has no fields and is never a
+/// key of [`Ir::types`].
+pub const UNANSWERED: &str = "Unanswered";
 
 /// The kinds of state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -357,7 +384,7 @@ pub struct State {
     pub fail: Option<Expr>,
 }
 
-/// Whether an invoke runs a task or a machine.
+/// Whether an invoke runs a task or a machine, or calls a peer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum InvokeKind {
@@ -365,6 +392,9 @@ pub enum InvokeKind {
     Task,
     /// A child machine, a key of [`Ir::machines`].
     Machine,
+    /// A call of the run a `ref` holds: a key of the [`Machine::calls`] of
+    /// [`Invoke::to`]'s machine.
+    Call,
 }
 
 /// `invoke src(args) { outcomes }`. The outcomes are transitions of the
@@ -374,17 +404,31 @@ pub enum InvokeKind {
 pub struct Invoke {
     /// Task or machine.
     pub kind: InvokeKind,
-    /// Its name.
+    /// Its name: the task's, the machine's or the call's.
     pub src: String,
+    /// For a call, the callee: an address of kind `ref`. `None` for a task or
+    /// a machine.
+    pub to: Option<Address>,
     /// The name given with `invoke Machine(…) as name`, through which the
     /// state and its descendants send to the child and receive what it
-    /// emits. `None` without `as`; always `None` for a task.
+    /// emits. `None` without `as`; always `None` for a task and a call.
     #[serde(rename = "as")]
     pub alias: Option<String>,
     /// Arguments, positional, in parameter order.
     pub args: Vec<Expr>,
     /// From `invoke` to the closing brace.
     pub span: Span,
+}
+
+impl Invoke {
+    /// What is invoked, as written after `invoke`: the task's or machine's name, or for a
+    /// call `inventory.reserve`.
+    pub fn callee(&self) -> String {
+        match &self.to {
+            Some(to) => format!("{}.{}", to.name, self.src),
+            None => self.src.clone(),
+        }
+    }
 }
 
 /// Whether an [`Address`] names an invoked child or a `ref` value.
@@ -397,8 +441,8 @@ pub enum AddressKind {
     Ref,
 }
 
-/// Another running machine, as a `send` names its receiver and an
-/// `on name.Event` trigger its sender.
+/// Another running machine, as a `send` names its receiver, an
+/// `on name.Event` trigger its sender and a call invoke its callee.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Address {
@@ -426,8 +470,8 @@ pub struct Transition {
     pub guard: Option<Expr>,
     /// Target state id, `null` for an internal transition.
     pub target: Option<String>,
-    /// Effects: every `set` assignment, then the `do`, `send` and `emit`
-    /// effects in the order written.
+    /// Effects: every `set` assignment, then the `do`, `send`, `emit` and
+    /// `reply` effects in the order written.
     pub effects: Vec<Effect>,
     /// The branch: the whole line for a single-branch trigger, from `if` or
     /// `else` for a branch in a block.
@@ -476,8 +520,15 @@ pub enum Trigger {
     /// `fail E` inside `invoke { }`: it failed with error `E`.
     #[serde(rename = "invoke.fail")]
     InvokeFail {
-        /// The error's name, or `"*"` for the declared errors not listed.
+        /// The error's name, or `"*"` for the declared errors not listed. For
+        /// a call, it may be [`UNANSWERED`], and `"*"` covers it too.
         error: String,
+    },
+    /// `on name`: a call of the machine's own call `name`, from another run.
+    #[serde(rename = "call")]
+    Call {
+        /// The call's name, a key of [`Machine::calls`].
+        call: String,
     },
 }
 
@@ -517,6 +568,28 @@ pub enum Effect {
         /// event's bare name.
         value: Expr,
     },
+    /// `reply name done [value]` or `reply name fail error`: answer a pending
+    /// call.
+    Reply {
+        /// The pending call: a `ref` expression of type `call c`, the implicit
+        /// `call` or a variable.
+        call: Expr,
+        /// Done or fail.
+        outcome: ReplyOutcome,
+        /// For `done`, the result, of the call's `returns` type, or `None` when
+        /// it returns nothing; for `fail`, one of its declared errors.
+        value: Option<Expr>,
+    },
+}
+
+/// How a `reply` answers a call.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReplyOutcome {
+    /// `reply … done [value]`: the call succeeded.
+    Done,
+    /// `reply … fail error`: the call failed with one of its declared errors.
+    Fail,
 }
 
 impl Machine {

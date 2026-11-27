@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/orders.road",
@@ -380,6 +380,7 @@
           }
         }
       },
+      "calls": {},
       "root": {
         "id": "Inventory",
         "name": "Inventory",
@@ -496,6 +497,7 @@
             "invoke": {
               "kind": "task",
               "src": "reserveStock",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -798,7 +800,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ce476c9f805a78c0125d0aa5e47142cbacf245ae7a2b5d5ae3aa1de2c1afc5eb"
+      "hash": "sha256:019dfc294192de134a30a44df3d0016d3c79140bc35649d3ff890b75386f6023"
     },
     "Order": {
       "doc": "Reserve the items with the warehouse, then take the payment.",
@@ -861,6 +863,7 @@
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -1118,6 +1121,7 @@
             "invoke": {
               "kind": "task",
               "src": "charge",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1315,7 +1319,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4acb625ac346689b1399e54cca1ebad79f5509d474ffaab2dc727e628f6a243e"
+      "hash": "sha256:65aab51d235122b03dc6c2755e86256e54eca9914b1832f2c8052d403f70b018"
     },
     "Supplier": {
       "doc": "Passes deliveries on to the warehouse. It has no `on` for what the Inventory\nemits, so it is sent none of it.",
@@ -1372,6 +1376,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Supplier",
         "name": "Supplier",
@@ -1513,7 +1518,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:8387654bfbbbfc6c4ec589c3fa908917e045a45bc75ab26d439f1dbe87775a42"
+      "hash": "sha256:32ab16325f02be4610d4beee2c777c2f83ceb9c51f9c8e31c78e33e356587e03"
     }
   }
 }

@@ -1,0 +1,58 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0317]: `call reserve` is the type of a pending call, which only a machine variable can hold
+ --> RB0317-call-type-not-allowed.road:1:16
+  |
+1 | type Pending = call reserve
+  |                ^^^^^^^^^^^^
+  |
+  = help: a pending call never leaves its run: keep it in a `var` of type `call <name>` (not optional, not a list, not through an alias) and answer it with `reply`
+
+error[RB0317]: `call reserve` is the type of a pending call, which only a machine variable can hold
+ --> RB0317-call-type-not-allowed.road:3:9
+  |
+3 | fn f(p: call reserve) -> int
+  |         ^^^^^^^^^^^^
+  |
+  = help: a pending call never leaves its run: keep it in a `var` of type `call <name>` (not optional, not a list, not through an alias) and answer it with `reply`
+
+error[RB0317]: `call reserve` is the type of a pending call, which only a machine variable can hold
+ --> RB0317-call-type-not-allowed.road:7:17
+  |
+7 |   call other(p: call reserve)
+  |                 ^^^^^^^^^^^^
+  |
+  = help: a pending call never leaves its run: keep it in a `var` of type `call <name>` (not optional, not a list, not through an alias) and answer it with `reply`
+
+error[RB0317]: `call reserve` is the type of a pending call, which only a machine variable can hold
+ --> RB0317-call-type-not-allowed.road:8:10
+  |
+8 |   var a: call reserve?
+  |          ^^^^^^^^^^^^
+  |
+  = help: a pending call never leaves its run: keep it in a `var` of type `call <name>` (not optional, not a list, not through an alias) and answer it with `reply`
+
+error[RB0317]: `call reserve` is the type of a pending call, which only a machine variable can hold
+ --> RB0317-call-type-not-allowed.road:9:10
+  |
+9 |   var b: call reserve[]
+  |          ^^^^^^^^^^^^
+  |
+  = help: a pending call never leaves its run: keep it in a `var` of type `call <name>` (not optional, not a list, not through an alias) and answer it with `reply`
+
+error[RB0317]: `c` holds a pending call, so it has no initial value
+  --> RB0317-call-type-not-allowed.road:10:25
+   |
+10 |   var c: call reserve = 1
+   |                         ^
+   |
+   = help: it starts unassigned; `set c = call` in an `on reserve` transition gives it one
+
+error[RB0317]: `call reserve` is the type of a pending call, which only a machine variable can hold
+  --> RB0317-call-type-not-allowed.road:11:16
+   |
+11 |   event E { p: call reserve }
+   |                ^^^^^^^^^^^^
+   |
+   = help: a pending call never leaves its run: keep it in a `var` of type `call <name>` (not optional, not a list, not through an alias) and answer it with `reply`

@@ -10,7 +10,7 @@ const here = path.dirname(new URL(import.meta.url).pathname)
 const repo = path.resolve(here, '../../..')
 const build = (await import('../build.mjs')) as { staleness(): string | undefined; CRATES: string[] }
 
-it('the committed wasm/ is current (rebuild: pnpm --filter @roadbook/cli build)', () => {
+it('the committed wasm/ is current (rebuild: pnpm --filter @dire-kiwi/roadbook-cli build)', () => {
   expect(build.staleness()).toBeUndefined()
 })
 

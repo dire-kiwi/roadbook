@@ -260,6 +260,170 @@
 #                                  ^ punctuation.section.braces.roadbook
 >}
 #^ punctuation.section.braces.roadbook
+>
+>machine Stock() {
+#^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
+#        ^^^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
+#             ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#              ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                ^ punctuation.section.braces.roadbook
+>  /// A call this machine answers.
+#  ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>  call reserve(orderId: string, items: Item[]) -> Reservation ! OutOfStock | Closed
+#  ^^^^ meta.declaration.call.roadbook storage.type.call.roadbook
+#       ^^^^^^^ meta.declaration.call.roadbook entity.name.function.roadbook
+#              ^ meta.declaration.call.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#               ^^^^^^^ meta.declaration.call.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                      ^ meta.declaration.call.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                        ^^^^^^ meta.declaration.call.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                              ^ meta.declaration.call.roadbook meta.parameters.roadbook punctuation.separator.comma.roadbook
+#                                ^^^^^ meta.declaration.call.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                                     ^ meta.declaration.call.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                                       ^^^^ meta.declaration.call.roadbook meta.parameters.roadbook entity.name.type.roadbook
+#                                           ^^ meta.declaration.call.roadbook meta.parameters.roadbook keyword.operator.type.list.roadbook
+#                                             ^ meta.declaration.call.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                                               ^^ meta.declaration.call.roadbook keyword.operator.arrow.roadbook
+#                                                  ^^^^^^^^^^^ meta.declaration.call.roadbook entity.name.type.roadbook
+#                                                              ^ meta.declaration.call.roadbook keyword.operator.error.roadbook
+#                                                                ^^^^^^^^^^ meta.declaration.call.roadbook entity.name.type.roadbook
+#                                                                           ^ meta.declaration.call.roadbook keyword.operator.error.roadbook
+#                                                                             ^^^^^^ meta.declaration.call.roadbook entity.name.type.roadbook
+>  call count() -> int
+#  ^^^^ meta.declaration.call.roadbook storage.type.call.roadbook
+#       ^^^^^ meta.declaration.call.roadbook entity.name.function.roadbook
+#            ^ meta.declaration.call.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#             ^ meta.declaration.call.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#               ^^ meta.declaration.call.roadbook keyword.operator.arrow.roadbook
+#                  ^^^ meta.declaration.call.roadbook support.type.primitive.roadbook
+>  var pending: call reserve
+#  ^^^ storage.type.var.roadbook
+#      ^^^^^^^ variable.other.definition.roadbook
+#             ^ punctuation.separator.colon.roadbook
+#               ^^^^ storage.modifier.call.roadbook
+#                    ^^^^^^^ entity.name.function.roadbook
+>
+>  on count reply call done held
+#  ^^ keyword.control.trigger.roadbook
+#     ^^^^^ entity.name.function.roadbook
+#           ^^^^^ keyword.other.effect.roadbook
+#                 ^^^^ variable.language.roadbook
+#                      ^^^^ keyword.control.done.roadbook
+#                           ^^^^ variable.other.roadbook
+>  state Ready {
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^^ entity.name.type.state.roadbook
+#              ^ punctuation.section.braces.roadbook
+>    on reserve -> Busy  set pending = call, orderId = event.orderId
+#    ^^ keyword.control.trigger.roadbook
+#       ^^^^^^^ entity.name.function.roadbook
+#               ^^ keyword.operator.arrow.roadbook
+#                  ^^^^ entity.name.type.state.roadbook
+#                        ^^^ keyword.other.effect.roadbook
+#                            ^^^^^^^ variable.other.roadbook
+#                                    ^ keyword.operator.assignment.roadbook
+#                                      ^^^^ variable.language.roadbook
+#                                          ^ punctuation.separator.comma.roadbook
+#                                            ^^^^^^^ variable.other.roadbook
+#                                                    ^ keyword.operator.assignment.roadbook
+#                                                      ^^^^^ variable.language.roadbook
+#                                                           ^ punctuation.accessor.roadbook
+#                                                            ^^^^^^^ variable.other.property.roadbook
+>    on count if held > 0 reply call fail OutOfStock { reason: "busy" }
+#    ^^ keyword.control.trigger.roadbook
+#       ^^^^^ entity.name.function.roadbook
+#             ^^ keyword.control.if.roadbook
+#                ^^^^ variable.other.roadbook
+#                     ^ keyword.operator.comparison.roadbook
+#                       ^ constant.numeric.integer.roadbook
+#                         ^^^^^ keyword.other.effect.roadbook
+#                               ^^^^ variable.language.roadbook
+#                                    ^^^^ keyword.control.fail.roadbook
+#                                         ^^^^^^^^^^ entity.name.type.roadbook
+#                                                    ^ punctuation.section.braces.roadbook
+#                                                      ^^^^^^ variable.other.property.roadbook
+#                                                            ^ punctuation.separator.colon.roadbook
+#                                                              ^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
+#                                                               ^^^^ string.quoted.double.roadbook
+#                                                                   ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
+#                                                                     ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>  state Busy {
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^ entity.name.type.state.roadbook
+#             ^ punctuation.section.braces.roadbook
+>    invoke reserveStock(orderId) {
+#    ^^^^^^ keyword.control.invoke.roadbook
+#           ^^^^^^^^^^^^ entity.name.function.call.roadbook
+#                       ^ punctuation.section.parens.roadbook
+#                        ^^^^^^^ variable.other.roadbook
+#                               ^ punctuation.section.parens.roadbook
+#                                 ^ punctuation.section.braces.roadbook
+>      done            -> Ready  reply pending done Reservation { orderId: orderId }
+#      ^^^^ keyword.control.done.roadbook
+#                      ^^ keyword.operator.arrow.roadbook
+#                         ^^^^^ entity.name.type.state.roadbook
+#                                ^^^^^ keyword.other.effect.roadbook
+#                                      ^^^^^^^ variable.other.roadbook
+#                                              ^^^^ keyword.control.done.roadbook
+#                                                   ^^^^^^^^^^^ entity.name.type.roadbook
+#                                                               ^ punctuation.section.braces.roadbook
+#                                                                 ^^^^^^^ variable.other.property.roadbook
+#                                                                        ^ punctuation.separator.colon.roadbook
+#                                                                          ^^^^^^^ variable.other.roadbook
+#                                                                                  ^ punctuation.section.braces.roadbook
+>      fail OutOfStock -> Ready  reply pending fail error
+#      ^^^^ keyword.control.fail.roadbook
+#           ^^^^^^^^^^ entity.name.type.error.roadbook
+#                      ^^ keyword.operator.arrow.roadbook
+#                         ^^^^^ entity.name.type.state.roadbook
+#                                ^^^^^ keyword.other.effect.roadbook
+#                                      ^^^^^^^ variable.other.roadbook
+#                                              ^^^^ keyword.control.fail.roadbook
+#                                                   ^^^^^ variable.language.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>  state Asking {
+#  ^^^^^ storage.type.state.roadbook
+#        ^^^^^^ entity.name.type.state.roadbook
+#               ^ punctuation.section.braces.roadbook
+>    invoke peer.reserve(id, items) {
+#    ^^^^^^ keyword.control.invoke.roadbook
+#           ^^^^ variable.other.roadbook
+#               ^ punctuation.accessor.roadbook
+#                ^^^^^^^ entity.name.function.call.roadbook
+#                       ^ punctuation.section.parens.roadbook
+#                        ^^ variable.other.roadbook
+#                          ^ punctuation.separator.comma.roadbook
+#                            ^^^^^ variable.other.roadbook
+#                                 ^ punctuation.section.parens.roadbook
+#                                   ^ punctuation.section.braces.roadbook
+>      done            -> Ready  reply pending done
+#      ^^^^ keyword.control.done.roadbook
+#                      ^^ keyword.operator.arrow.roadbook
+#                         ^^^^^ entity.name.type.state.roadbook
+#                                ^^^^^ keyword.other.effect.roadbook
+#                                      ^^^^^^^ variable.other.roadbook
+#                                              ^^^^ keyword.control.done.roadbook
+>      fail Unanswered -> Ready
+#      ^^^^ keyword.control.fail.roadbook
+#           ^^^^^^^^^^ support.type.builtin.error.roadbook
+#                      ^^ keyword.operator.arrow.roadbook
+#                         ^^^^^ entity.name.type.state.roadbook
+>      fail *          -> Busy
+#      ^^^^ keyword.control.fail.roadbook
+#           ^ keyword.operator.wildcard.roadbook
+#                      ^^ keyword.operator.arrow.roadbook
+#                         ^^^^ entity.name.type.state.roadbook
+>    }
+#    ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>}
+#^ punctuation.section.braces.roadbook
 >"unterminated
 #^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
 # ^^^^^^^^^^^^ string.quoted.double.roadbook

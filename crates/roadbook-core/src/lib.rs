@@ -20,6 +20,12 @@
 //! emit comes back as [`Input::Message`] and [`Input::Emitted`]. A `ref` is the id of the run
 //! it refers to; delivering is the driver's business.
 //!
+//! Calls between runs are commands and inputs too: a call invoke's [`Command::InvokeStart`]
+//! has [`SrcKind::Call`] and the callee's run id, the callee takes the call as an
+//! [`Input::Call`], keeps it in [`Snapshot::calls`] while it is pending, and a `reply` gives
+//! the driver a [`Command::Reply`], whose answer reaches the caller as the outcome of its
+//! invoke.
+//!
 //! Parallel states take one input in several regions at once, in one microstep. A run can be
 //! saved as a [`Saved`] snapshot and started again from it: [`Program::check_saved`] checks a
 //! saved snapshot against the IR (and applies a migration), and [`Program::restore`] starts
@@ -57,8 +63,8 @@ pub use program::{Program, ProgramError};
 pub use run::{StepResult, UnknownMachine};
 pub use saved::{Migration, RUN_ID_PATTERN, Refusal, RestoreError, is_run_id};
 pub use types::{
-    Command, Defect, Input, InvokeEntry, Object, Record, RunResult, Saved, SavedTimer, Snapshot,
-    SrcKind, Status, TimerEntry,
+    CallEntry, Command, Defect, Input, InvokeEntry, Object, Record, ReplyOutcome, RunResult, Saved,
+    SavedTimer, Snapshot, SrcKind, Status, TimerEntry,
 };
 
 /// The most microsteps settling may take for one input before it is a `limit` defect.

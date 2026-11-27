@@ -3,9 +3,11 @@
  * "Values"); host code sees records as plain objects, errors as instances of their tagged error
  * classes, enums as string literals, `duration` as an Effect `Duration`, optional as `null` and
  * `int` as a `number`, and a `ref` as a handle to the run it refers to (its run id in the core).
+ * A pending call (`call c`) never leaves its run, so host code never sees one; it keeps its JSON
+ * form, `{from, invoke}`, both ways.
  * The conversion is driven by the IR's type references.
  */
-import { type Field, type Ir, type Json, parseTypeRef, refMachine, type Tagged } from "@roadbook/core"
+import { callName, type Field, type Ir, isRunId, type Json, parseTypeRef, refMachine, type Tagged } from "@dire-kiwi/roadbook-core"
 import { Duration, Predicate } from "effect"
 import { portOf } from "./port.ts"
 
@@ -150,6 +152,13 @@ export class Codec {
       this.refs?.set(port.id, value as object)
       return port.id
     }
+    if (callName(base) !== undefined) {
+      const call = value as { readonly from?: unknown; readonly invoke?: unknown }
+      if (!Predicate.isObject(value) || !isRunId(call.from) || !Number.isSafeInteger(call.invoke) || (call.invoke as number) < 1) {
+        throw new CodecError(`${what} is not a pending call: {from: a run id, invoke: a positive int}`)
+      }
+      return { from: call.from as string, invoke: call.invoke as number }
+    }
     const decl = Object.hasOwn(this.ir.types, base) ? this.ir.types[base] : undefined
     if (decl === undefined) throw new CodecError(`${what} has unknown type ${base}`)
     switch (decl.kind) {
@@ -222,6 +231,8 @@ export class Codec {
       case "json":
         return value
     }
+    // A pending call keeps its JSON form.
+    if (callName(base) !== undefined) return value
     if (refMachine(base) !== undefined) {
       const handle = this.refs?.get(value as string)
       if (handle === undefined) throw new CodecError(`no handle to the run ${JSON.stringify(value)}`)
