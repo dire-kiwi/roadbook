@@ -652,6 +652,10 @@ impl Formatter<'_> {
                     None,
                 );
             }
+            Item::Check(c) => {
+                let text = format!("check {}", property_text(&c.property));
+                self.row(whole, indent, vec![text], "", None);
+            }
             _ => {
                 let text = inline_item(item).expect("every other item is one line");
                 self.row(whole, indent, vec![text], "", None);
@@ -774,10 +778,33 @@ fn inline_item(item: &Item) -> Option<String> {
         | Item::State(_)
         | Item::Invoke(_)
         | Item::History(_)
+        | Item::Check(_)
         | Item::Transition(_) => {
             return None;
         }
     })
+}
+
+/// A state path as written: `A.B`.
+fn path_text(t: &Target) -> String {
+    let path: Vec<_> = t.path.iter().map(|p| p.name.as_str()).collect();
+    path.join(".")
+}
+
+/// The property of a `check`, as the formatter writes it after `check`: `never A and B`,
+/// `reachable A`, `A only after B` or `can finish`.
+pub fn property_text(p: &Property) -> String {
+    match p {
+        Property::Never(states) => {
+            let states: Vec<_> = states.iter().map(path_text).collect();
+            format!("never {}", states.join(" and "))
+        }
+        Property::Reachable(s) => format!("reachable {}", path_text(s)),
+        Property::OnlyAfter { state, after } => {
+            format!("{} only after {}", path_text(state), path_text(after))
+        }
+        Property::CanFinish => "can finish".into(),
+    }
 }
 
 /// `[head, target, effects]`, with the head left for the caller to fill in.

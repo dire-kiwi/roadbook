@@ -18,10 +18,12 @@
 //!   "examples/inventory"]], "nodeModules": true, "allowUnassigned": ["a.road"],
 //!   "warnInvokeTimeout": false, "files": { "/abs/project/a.road": "…" } }`.
 //! - `check(host, config, roots)` (`roots`: a JSON array of project paths) and
-//!   `compile(host, config, entry)` return `{ "report", "rendered", "errors", "warnings" }`:
-//!   `report` is the text `roadbook check --json` prints (documented in
-//!   `docs/design/language.md`, "Diagnostics as JSON"), `rendered` the human-readable
-//!   diagnostics. `compile` adds `"ir"`: the IR as committed-file JSON text, `null` if there
+//!   `compile(host, config, entry)` return `{ "report", "rendered", "errors", "warnings",
+//!   "checksSummary", "checksList" }`: `report` is the text `roadbook check --json` prints
+//!   (documented in `docs/design/language.md`, "Diagnostics as JSON"), `rendered` the
+//!   human-readable diagnostics, `checksSummary` the line `roadbook check` prints after them
+//!   when it evaluated checks (`checks: 6 proved, 1 failed`, or `null`) and `checksList` the
+//!   lines `--checks` prints before it. `compile` adds `"ir"`: the IR as committed-file JSON text, `null` if there
 //!   are errors.
 //! - `gen(host, config, entry)` adds `"code"` (the `.road.ts` module, or `null`) and
 //!   `"error"` (why no module was generated, other than diagnostics, or `null`).

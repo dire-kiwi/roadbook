@@ -608,6 +608,80 @@
 #  ^ punctuation.section.braces.roadbook
 >}
 #^ punctuation.section.braces.roadbook
+>
+>machine Checked(check: int) {
+#^^^^^^^ meta.declaration.machine.roadbook storage.type.machine.roadbook
+#        ^^^^^^^ meta.declaration.machine.roadbook entity.name.type.machine.roadbook
+#               ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.begin.roadbook
+#                ^^^^^ meta.declaration.machine.roadbook meta.parameters.roadbook variable.parameter.roadbook
+#                     ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.separator.colon.roadbook
+#                       ^^^ meta.declaration.machine.roadbook meta.parameters.roadbook support.type.primitive.roadbook
+#                          ^ meta.declaration.machine.roadbook meta.parameters.roadbook punctuation.definition.parameters.end.roadbook
+#                            ^ punctuation.section.braces.roadbook
+>  var never: int = check
+#  ^^^ storage.type.var.roadbook
+#      ^^^^^ variable.other.definition.roadbook
+#           ^ punctuation.separator.colon.roadbook
+#             ^^^ support.type.primitive.roadbook
+#                 ^ keyword.operator.assignment.roadbook
+#                   ^^^^^ variable.other.roadbook
+>  initial A
+#  ^^^^^^^ keyword.control.initial.roadbook
+#          ^ entity.name.type.state.roadbook
+>  state A {
+#  ^^^^^ storage.type.state.roadbook
+#        ^ entity.name.type.state.roadbook
+#          ^ punctuation.section.braces.roadbook
+>    initial B
+#    ^^^^^^^ keyword.control.initial.roadbook
+#            ^ entity.name.type.state.roadbook
+>    state B {}
+#    ^^^^^ storage.type.state.roadbook
+#          ^ entity.name.type.state.roadbook
+#            ^ punctuation.section.braces.roadbook
+#             ^ punctuation.section.braces.roadbook
+>  }
+#  ^ punctuation.section.braces.roadbook
+>  /// Only after A.
+#  ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#     ^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>  check A.B only after A
+#  ^^^^^ keyword.other.check.roadbook
+#        ^ entity.name.type.state.roadbook
+#         ^ punctuation.accessor.roadbook
+#          ^ entity.name.type.state.roadbook
+#            ^^^^ keyword.other.check.roadbook
+#                 ^^^^^ keyword.other.check.roadbook
+#                       ^ entity.name.type.state.roadbook
+>  check reachable A.B // a comment
+#  ^^^^^ keyword.other.check.roadbook
+#        ^^^^^^^^^ keyword.other.check.roadbook
+#                  ^ entity.name.type.state.roadbook
+#                   ^ punctuation.accessor.roadbook
+#                    ^ entity.name.type.state.roadbook
+#                      ^^ comment.line.double-slash.roadbook punctuation.definition.comment.roadbook
+#                        ^^^^^^^^^^ comment.line.double-slash.roadbook
+>  check never A and A.B
+#  ^^^^^ keyword.other.check.roadbook
+#        ^^^^^ keyword.other.check.roadbook
+#              ^ entity.name.type.state.roadbook
+#                ^^^ keyword.operator.logical.roadbook
+#                    ^ entity.name.type.state.roadbook
+#                     ^ punctuation.accessor.roadbook
+#                      ^ entity.name.type.state.roadbook
+>  check can finish
+#  ^^^^^ keyword.other.check.roadbook
+#        ^^^ keyword.other.check.roadbook
+#            ^^^^^^ keyword.other.check.roadbook
+>  on Go set check = never
+#  ^^ keyword.control.trigger.roadbook
+#     ^^ entity.name.type.event.roadbook
+#        ^^^ keyword.other.effect.roadbook
+#            ^^^^^ variable.other.roadbook
+#                  ^ keyword.operator.assignment.roadbook
+#                    ^^^^^ variable.other.roadbook
+>}
+#^ punctuation.section.braces.roadbook
 >"unterminated
 #^ string.quoted.double.roadbook punctuation.definition.string.begin.roadbook
 # ^^^^^^^^^^^^ string.quoted.double.roadbook

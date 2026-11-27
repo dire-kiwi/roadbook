@@ -8,6 +8,7 @@ use roadbook_ir as ir;
 use roadbook_syntax::ast::{self, DeclKind, Field, Ident};
 use roadbook_syntax::{Diagnostic, Span};
 
+use crate::checks::Check;
 use crate::codes;
 use crate::index::{self, Symbol, SymbolId, SymbolIndex, SymbolKind};
 use crate::machine::MachineInfo;
@@ -74,6 +75,8 @@ pub(crate) struct Checker<'p> {
     /// Names of the functions, actions, tasks and machines something uses.
     pub used: HashSet<String>,
     pub machines: Vec<MachineInfo>,
+    /// The `check` lines of every machine lowered, resolved. Not in the IR.
+    pub(crate) checks: Vec<Check>,
     /// Whether every declared type is resolved, so that aliases can be expanded.
     types_resolved: bool,
     /// The checks of types met before then that need aliases expanded, made once it is.
@@ -200,6 +203,7 @@ impl<'p> Checker<'p> {
             diags,
             used: HashSet::new(),
             machines: Vec::new(),
+            checks: Vec::new(),
             types_resolved: false,
             deferred: Vec::new(),
             type_params: None,

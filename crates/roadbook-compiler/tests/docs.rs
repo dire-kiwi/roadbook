@@ -78,3 +78,28 @@ fn the_definite_assignment_example() {
     let out = compile_with(edited);
     assert_eq!(out.render(), block("error[RB0403]"));
 }
+
+#[test]
+fn the_checking_properties_example() {
+    // "Checking properties": the Payment chart and what `roadbook check --checks` prints.
+    let chart = block("fn approved() -> bool\n\nmachine Payment()");
+    let printed = LANGUAGE
+        .split_once("`roadbook check --checks payment.road` prints:\n\n```\n")
+        .and_then(|(_, rest)| rest.split_once("```"))
+        .unwrap()
+        .0;
+    let mut loader = MemoryLoader::new().with("payment.road", chart);
+    let out = roadbook_compiler::check(
+        &mut loader,
+        &["payment.road".to_string()],
+        &Options::default(),
+    )
+    .unwrap();
+    let got = format!(
+        "{}\n1 error\n{}{}\n",
+        out.render(),
+        out.render_checks(),
+        out.checks_summary().unwrap()
+    );
+    assert_eq!(got, printed);
+}

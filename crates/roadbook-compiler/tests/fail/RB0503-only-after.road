@@ -1,0 +1,22 @@
+// `Refund` from `Idle` reaches `Refunded` before `Charged` has been active.
+machine Payment() {
+  event Pay
+  event Refund
+  event Charge
+
+  initial Idle
+
+  state Idle {
+    on Pay    -> Charged
+    on Refund -> Refunded
+  }
+  state Charged {
+    on Refund -> Refunded
+    on Charge -> Charged
+  }
+  final state Refunded {}
+
+  check Refunded only after Charged
+}
+
+// expect: RB0503 at 19:3

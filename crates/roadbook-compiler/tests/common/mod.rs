@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use roadbook_compiler::{Compilation, MemoryLoader, Options, compile};
+use roadbook_compiler::{Compilation, MemoryLoader, Options, check, compile};
 use serde_json::Value;
 
 /// A test chart: a single `.road` file, or a directory whose entry is `main.road`.
@@ -78,6 +78,9 @@ pub fn cases(sub: &str) -> Vec<Case> {
                     if line.trim() == "// options: warn-invoke-timeout" {
                         options.warn_invoke_timeout = true;
                     }
+                    if let Some(n) = line.trim().strip_prefix("// options: max-configurations ") {
+                        options.max_configurations = Some(n.parse().unwrap());
+                    }
                 }
             }
             expected.sort();
@@ -96,6 +99,17 @@ impl Case {
     pub fn compile(&self) -> Compilation {
         let mut loader = self.loader.clone();
         compile(&mut loader, &self.entry, &self.options).unwrap()
+    }
+
+    /// As `roadbook check` checks the entry: with its `check` lines evaluated, and no IR.
+    pub fn check(&self) -> Compilation {
+        let mut loader = self.loader.clone();
+        check(
+            &mut loader,
+            std::slice::from_ref(&self.entry),
+            &self.options,
+        )
+        .unwrap()
     }
 }
 

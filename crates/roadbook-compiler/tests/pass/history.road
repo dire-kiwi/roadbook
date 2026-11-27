@@ -47,4 +47,6 @@ machine Histories() {
   }
 
   state Away { on Resume -> Both.Again }
+
+  check reachable Work.B.B2
 }

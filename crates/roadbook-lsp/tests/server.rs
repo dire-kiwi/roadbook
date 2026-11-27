@@ -91,6 +91,28 @@ fn diagnostics_are_published_and_cleared() {
 }
 
 #[test]
+fn a_failing_check_is_a_diagnostic_with_its_path() {
+    let src = "machine M() {\n  event Go\n  initial A\n  state A { on Go -> B }\n  final state B {}\n  check never B\n}\n";
+    let p = Project::new("checks", &[("m.road", src)]);
+    let uri = p.uri("m.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, src);
+    let diags = c.diagnostics(&uri);
+    assert_eq!(diags.len(), 1, "{diags:#?}");
+    assert_eq!(diags[0]["code"], "RB0501");
+    assert_eq!(diags[0]["severity"], 1);
+    assert_eq!(slice(src, &diags[0]["range"]), "check never B");
+    // The counterexample's transition, as related information.
+    let related = &diags[0]["relatedInformation"][0];
+    assert_eq!(related["message"], "1. Go -> B");
+    assert_eq!(slice(src, &related["location"]["range"]), "on Go -> B");
+    let fixed = src.replace("check never B", "check reachable B");
+    c.change(&uri, 2, &fixed);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+    c.shutdown();
+}
+
+#[test]
 fn a_change_rechecks_the_files_that_import_it() {
     let types = "type Order { id: string }\n";
     let a = "import { Order } from \"./types.road\"\n\nmachine A(o: Order) -> Order {\n  initial Done\n  final state Done { output o }\n}\n";
@@ -368,6 +390,63 @@ fn rename_each_kind_of_name() {
         why.contains("already the name of a record type `Thing`"),
         "{why}"
     );
+    c.shutdown();
+}
+
+#[test]
+fn states_named_in_checks_are_uses() {
+    let text = "machine M() {\n  event Go\n  initial Idle\n  state Idle { on Go -> Applying }\n  state Applying {\n    initial Recording\n    state Recording { on Go -> Done }\n  }\n  final state Done {}\n  check reachable Applying.Recording\n  check Done only after Applying.Recording\n  check never Idle and Applying\n}\n";
+    let p = Project::new("checks", &[("c.road", text)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, text);
+    assert!(c.diagnostics(&uri).is_empty());
+    // Go to definition from a check.
+    let loc = c
+        .request(
+            "textDocument/definition",
+            at(&uri, text, "check reachable Applying.^Recording"),
+        )
+        .unwrap();
+    assert_eq!(loc["range"]["start"], position(text, "state ^Recording"));
+    // References include the checks.
+    let mut params = at(&uri, text, "state ^Recording");
+    params["context"] = json!({ "includeDeclaration": false });
+    let found = c.request("textDocument/references", params).unwrap();
+    let lines: Vec<u64> = found
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["range"]["start"]["line"].as_u64().unwrap() + 1)
+        .collect();
+    assert_eq!(lines, [6, 10, 11]);
+    // Renaming a state renames it in the checks, from its declaration or from a check.
+    let text = rename(&mut c, &uri, text, "state ^Recording", "Logging");
+    assert!(
+        text.contains("check reachable Applying.Logging\n"),
+        "{text}"
+    );
+    assert!(
+        text.contains("check Done only after Applying.Logging\n"),
+        "{text}"
+    );
+    c.change(&uri, 2, &text);
+    let text = rename(
+        &mut c,
+        &uri,
+        &text,
+        "check never Idle and ^Applying",
+        "Paying",
+    );
+    for e in [
+        "-> Paying }",
+        "state Paying {",
+        "check reachable Paying.Logging",
+        "after Paying.Logging",
+        "and Paying\n",
+    ] {
+        assert!(text.contains(e), "no `{e}` in\n{text}");
+    }
     c.shutdown();
 }
 

@@ -24,10 +24,15 @@
 //! While names are resolved, the [`index`] records every declared name and every use the
 //! compiler resolved ([`Compilation::index`]), for editors: go to definition, references,
 //! rename and hover.
+//!
+//! Outside the passes, [`statespace`] explores a compiled machine's configurations, and
+//! [`check`] evaluates the `check` lines of the files it checks on them ([`properties`]).
+//! [`compile`] does not, so a failing check fails `roadbook check`, not a build.
 
 mod analysis;
 mod assign;
 mod check;
+mod checks;
 pub mod codes;
 mod expr;
 pub mod index;
@@ -36,12 +41,15 @@ pub mod loader;
 mod machine;
 mod names;
 mod project;
+pub mod properties;
 mod sensitive;
+pub mod statespace;
 mod types;
 
 pub use index::{Reference, Symbol, SymbolId, SymbolIndex, SymbolKind};
 pub use loader::{FileSystem, FsLoader, Loaded, Loader, MemoryLoader, StdFs};
 pub use project::LoadError;
+pub use properties::{CheckResult, Verdict};
 pub use roadbook_ir::Ir;
 pub use roadbook_syntax::{Diagnostic, FileId, Severity, Span};
 
@@ -57,6 +65,10 @@ pub struct Options {
     /// might not be assigned yet (`RB0403`): fixtures for a runtime's `unassigned` defect,
     /// which a chart can reach only this way. `roadbook.toml`'s `allow-unassigned`.
     pub allow_unassigned: Vec<String>,
+    /// The most configurations a machine's checks may explore; past that each gets `RB0912`
+    /// and is not checked. `None` for [`statespace::DEFAULT_MAX_NODES`]. Not in
+    /// `roadbook.toml`: tests use it to reach the limit cheaply.
+    pub max_configurations: Option<usize>,
 }
 
 /// The result of a compilation.
@@ -72,6 +84,9 @@ pub struct Compilation {
     pub files: Vec<(String, String)>,
     /// Every name the files declare and every use the compiler resolved, for editors.
     pub index: SymbolIndex,
+    /// The verdict of every `check` line of the checked files, ordered by file and position.
+    /// Always empty from [`compile`], and from [`check`] for an entry with errors.
+    pub checks: Vec<CheckResult>,
 }
 
 impl Compilation {
@@ -99,7 +114,18 @@ impl Compilation {
     /// The machine-readable form printed by `roadbook check --json`, as text with members in
     /// the documented order. See [`json`].
     pub fn to_json(&self) -> String {
-        json::diagnostics_string(&self.diagnostics, &self.files)
+        json::diagnostics_string(&self.diagnostics, &self.checks, &self.files)
+    }
+
+    /// `checks: 6 proved, 2 conditional, 1 failed`, as `roadbook check` prints it after
+    /// the diagnostics; `None` if no check was evaluated.
+    pub fn checks_summary(&self) -> Option<String> {
+        properties::summary(&self.checks)
+    }
+
+    /// Every check with its verdict, one line each, as `roadbook check --checks` prints it.
+    pub fn render_checks(&self) -> String {
+        properties::list(&self.checks, &self.files)
     }
 }
 
@@ -142,6 +168,7 @@ pub fn check(
         diagnostics: Vec::new(),
         files: Vec::new(),
         index: SymbolIndex::default(),
+        checks: Vec::new(),
     };
     let mut ids: HashMap<String, FileId> = HashMap::new();
     let mut used: HashSet<analysis::DeclKey> = HashSet::new();
@@ -168,6 +195,12 @@ pub fn check(
             }
         }
         out.index.merge(unit.compilation.index, &map);
+        for mut r in unit.compilation.checks {
+            r.span.file = map[r.span.file.0 as usize];
+            if !out.checks.contains(&r) {
+                out.checks.push(r);
+            }
+        }
         used.extend(unit.used);
         for mut c in unit.candidates {
             c.span.file = map[c.span.file.0 as usize];
@@ -182,6 +215,8 @@ pub fn check(
         }
     }
     sort(&mut out.diagnostics);
+    out.checks
+        .sort_by_key(|c| (c.span.file, c.span.start.offset, c.span.end.offset));
     Ok(out)
 }
 
@@ -197,6 +232,7 @@ pub fn compile_source(path: &str, source: &str, options: &Options) -> Compilatio
             diagnostics: Vec::new(),
             files: Vec::new(),
             index: SymbolIndex::default(),
+            checks: Vec::new(),
         },
     }
 }
@@ -228,11 +264,18 @@ impl Unit {
             analysis::run(&doc, &ck, &project, options, &mut diagnostics);
         }
         let (mut candidates, used) = analysis::uses(&ck, &project);
+        let files = project.file_list();
         let mut ir = None;
+        let mut checks = Vec::new();
         if !diagnostics.iter().any(Diagnostic::is_error) {
             if want_ir {
                 roadbook_ir::fill_hashes(&mut doc).expect("a checked IR names only declared items");
                 ir = Some(doc);
+            } else {
+                let budget = options
+                    .max_configurations
+                    .unwrap_or(statespace::DEFAULT_MAX_NODES);
+                checks = properties::evaluate(&doc, &ck.checks, &files, budget, &mut diagnostics);
             }
         } else {
             candidates.clear();
@@ -244,8 +287,9 @@ impl Unit {
             compilation: Compilation {
                 ir,
                 diagnostics,
-                files: project.file_list(),
+                files,
                 index,
+                checks,
             },
             candidates,
             used,

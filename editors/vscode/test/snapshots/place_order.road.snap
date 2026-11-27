@@ -396,5 +396,25 @@
 #                                                          ^ string.quoted.double.roadbook punctuation.definition.string.end.roadbook
 #                                                           ^ punctuation.section.parens.roadbook
 #                                                             ^ punctuation.section.braces.roadbook
+>
+>  /// An order is confirmed only once it has been paid for.
+#  ^^^ comment.line.documentation.roadbook punctuation.definition.comment.roadbook
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.line.documentation.roadbook
+>  check Confirmed only after Processing.Paying
+#  ^^^^^ keyword.other.check.roadbook
+#        ^^^^^^^^^ entity.name.type.state.roadbook
+#                  ^^^^ keyword.other.check.roadbook
+#                       ^^^^^ keyword.other.check.roadbook
+#                             ^^^^^^^^^^ entity.name.type.state.roadbook
+#                                       ^ punctuation.accessor.roadbook
+#                                        ^^^^^^ entity.name.type.state.roadbook
+>  check reachable Confirmed
+#  ^^^^^ keyword.other.check.roadbook
+#        ^^^^^^^^^ keyword.other.check.roadbook
+#                  ^^^^^^^^^ entity.name.type.state.roadbook
+>  check can finish
+#  ^^^^^ keyword.other.check.roadbook
+#        ^^^ keyword.other.check.roadbook
+#            ^^^^^^ keyword.other.check.roadbook
 >}
 #^ punctuation.section.braces.roadbook

@@ -1,0 +1,13 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0503]: `Refunded` can be active before `Charged` has been
+  --> RB0503-only-after.road:19:3
+   |
+11 |     on Refund -> Refunded
+   |     --------------------- 1. Refund -> Refunded
+...
+19 |   check Refunded only after Charged
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Idle --Refund--> Refunded

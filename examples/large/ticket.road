@@ -265,4 +265,10 @@ machine SupportTicket(ticket: Ticket) -> Closure {
   final state OutOfScope   { output closure(ticket, CloseReason.OutOfScope, reopens) }
   final state Merged       { output closure(ticket, CloseReason.Merged, reopens) }
   final state Unresolvable { output closure(ticket, CloseReason.Unresolvable, reopens) }
+
+  /// A ticket is resolved only once its fix is verified and the customer has been told.
+  check Resolved only after Active.Resolving.FixCheck.Verified
+  check Resolved only after Active.Resolving.CustomerNotice.Drafted
+  check reachable Resolved
+  check can finish
 }
