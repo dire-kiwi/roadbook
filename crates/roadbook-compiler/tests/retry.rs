@@ -318,3 +318,18 @@ fn retrying_a_machine() {
         ),
     );
 }
+
+#[test]
+fn retrying_a_call() {
+    // Without `on`, every declared error is retried, and `Unanswered` is not: it keeps its
+    // own outcome.
+    let desk = "machine Desk() {\n  call reserve(n: int) -> int ! Busy | Other\n  event Close\n  initial Open\n  state Open {\n    on reserve reply call fail Busy\n    on Close -> Shut\n  }\n  final state Shut {}\n}\n";
+    same(
+        &format!(
+            "{desk}machine M(desk: ref Desk) {{\n  initial A\n  state A {{\n    invoke desk.reserve(1) retry 2 after 1s {{\n      done            -> B\n      fail Busy       -> B\n      fail Other      -> B\n      fail Unanswered -> B\n    }}\n  }}\n  final state B {{}}\n}}\n"
+        ),
+        &format!(
+            "{desk}machine M(desk: ref Desk) {{\n  var aAttempt: int = 0\n  initial A\n  state A {{\n    entry set aAttempt = 0\n    initial Attempt\n    state Attempt {{\n      invoke desk.reserve(1) {{\n        done -> B\n        fail Busy {{\n          if aAttempt < 2 -> Backoff  set aAttempt = aAttempt + 1\n          else -> B\n        }}\n        fail Other {{\n          if aAttempt < 2 -> Backoff  set aAttempt = aAttempt + 1\n          else -> B\n        }}\n        fail Unanswered -> B\n      }}\n    }}\n    state Backoff {{ after 1s -> Attempt }}\n  }}\n  final state B {{}}\n}}\n"
+        ),
+    );
+}

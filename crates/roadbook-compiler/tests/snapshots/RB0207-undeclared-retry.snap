@@ -15,4 +15,4 @@ error[RB0207]: `ping` does not declare the error `Timeout`, so it cannot be retr
 9 |     invoke ping() retry 2 on Bsy | Timeout {
   |                                    ^^^^^^^
   |
-  = help: retry only errors the task or machine declares
+  = help: retry only errors the task, machine or call declares

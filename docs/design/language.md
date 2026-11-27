@@ -149,7 +149,7 @@ state Charging {
 `retry N [on E | F …] [after delay]` means:
 
 - **How many times.** `N` is an integer literal of at least 1: the number of retries, so the task runs at most `N + 1` times. `retry 3` above makes up to four attempts.
-- **Which errors.** The errors listed after `on`, each one the task or machine declares; without `on`, every error it declares. Nothing else is retried: not `done`, and not a host defect (a thrown exception, a panic), which is not flow and fails the run as it does without `retry`.
+- **Which errors.** The errors listed after `on`, each one the task, machine or [call](#calls-between-machines) declares; without `on`, every error it declares. Nothing else is retried: not `done`, and not a host defect (a thrown exception, a panic), which is not flow and fails the run as it does without `retry`. Nor is a call's built-in `Unanswered`, with `on` or without: it is not a declared error, so it cannot be listed (`RB0207`), and it keeps its own `fail Unanswered` outcome, which a `fail *` that handles a retried error cannot be (`RB0218`). A callee that is not running or has ended would not answer the next attempt either; one that may be busy should answer with a declared error.
 - **When the retries run out.** A failure that is not retried, an error not in the list or the failure after the last retry, goes to its outcome as it would without `retry`, with `error` the last failure. Every declared error still needs an outcome (`RB0204`): it says what happens when retrying did not help.
 - **Delays.** `after delay` is how long to wait between a failure and the next attempt; without it, the next attempt starts at once. The delay is a `duration` expression, evaluated when the wait starts, like an `after` transition's. In it, `attempt` is the number of attempts that have failed so far, an `int`: 1 before the first retry, 2 before the second. So `after 2s` waits the same each time and `after retryDelay(attempt)` lets a host function grow the delay (doubling, a cap, jitter): the language has no arithmetic on durations, so backoff is the function's choice. `attempt` is in scope only in a retry's delay, and it is the only implicit name there: the delay cannot read `error`, so a wait chosen by the failure (a server's retry-after) needs the explicit form. `attempt` is not reserved, so a machine may have a parameter or variable named `attempt`, but then it cannot use `attempt` in a retry delay (`RB0120`).
 - **The state stays active.** While it retries, the invoking state is still active, through every attempt and every wait. Its own `on`, `after` and `always` transitions apply all the time, so `after 30s -> TimedOut` written in the state is a deadline for all the attempts together, and `on Cancel` stops a wait as well as an attempt. Its `entry` and `exit` run once, not once per attempt. Leaving the state and entering it again starts counting from zero.
@@ -734,7 +734,7 @@ The compiler's codes:
 | `RB0204` | An `invoke` that leaves a declared error unhandled, or for a call `Unanswered`. | see above |
 | `RB0205` | The same trigger twice in one state or one `invoke`. | `on Go -> A` and `on Go -> B` |
 | `RB0206` | A second `invoke` in a state. | two `invoke`s in `state A` |
-| `RB0207` | An outcome, or a retry, for an error the task or machine does not declare. | `fail Timeout -> A`, `retry 3 on Timeout` |
+| `RB0207` | An outcome, or a retry, for an error the task, machine or call does not declare (a call's `Unanswered` cannot be retried). | `fail Timeout -> A`, `retry 3 on Timeout` |
 | `RB0208` | `output` or `fail` outside a top-level final state, or two of them. | `state A { output 1 }` |
 | `RB0209` | A top-level final state with no `output` or `fail` in a machine that returns a value. | `final state Done {}` in `machine M() -> int` |
 | `RB0210` | A final state with children, or a parallel state with none. | `final state A { state B {} }` |
@@ -745,7 +745,7 @@ The compiler's codes:
 | `RB0215` | `retry` on the invoke of a state with child states. | `state A { invoke f() retry 2 { … }  initial B  state B {} }` |
 | `RB0216` | `retry` on an invoke with `as`. | `invoke Upload(file) as upload retry 2` |
 | `RB0217` | A `retry` that retries nothing, or names an error twice. | `retry 0`, `retry 2` of a task that declares no errors, `retry 2 on Busy \| Busy` |
-| `RB0218` | A retried error handled by a `fail *` that also handles an error not retried. | `retry 2 on Busy` with only `fail * -> Failed` for `! Busy \| Gone` |
+| `RB0218` | A retried error handled by a `fail *` that also handles an error not retried (for a call, `Unanswered` too). | `retry 2 on Busy` with only `fail * -> Failed` for `! Busy \| Gone` |
 | `RB0219` | A history state in a state with no child states, or in a final state. | `state A { history H }` |
 | `RB0220` | A `spawn` of a machine that is not its collection's. | `spawn sessions[id] = Upload(f)` for `children sessions: Session by string` |
 | `RB0301` | A value of the wrong type. | `var ratio: float = 1` |
