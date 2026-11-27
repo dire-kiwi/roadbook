@@ -3,7 +3,7 @@
  * its job id, each batch a task, and so an activity. A process that crashes in the middle of
  * batch 3 imports batch 3 again after it restarts, and never batches 1 and 2.
  */
-import { Durable } from "@roadbook/effect/durable"
+import { Durable } from "@dire-kiwi/roadbook-effect/durable"
 import { Context, Effect, Layer } from "effect"
 import {
   ClusterWorkflowEngine,

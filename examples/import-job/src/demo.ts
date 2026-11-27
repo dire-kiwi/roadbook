@@ -1,5 +1,5 @@
 /**
- * `pnpm --filter @roadbook/example-import-job start`: import a 500-row file in five batches,
+ * `pnpm --filter @dire-kiwi/roadbook-example-import-job start`: import a 500-row file in five batches,
  * crash the process while batch 3 runs, start it again on the same storage, pause and resume
  * the job, and print what the database was asked to import.
  */

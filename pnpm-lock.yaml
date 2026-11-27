@@ -218,7 +218,7 @@ importers:
 
   examples/import-job:
     dependencies:
-      '@roadbook/effect':
+      '@dire-kiwi/roadbook-effect':
         specifier: workspace:*
         version: link:../../packages/effect
       effect:
