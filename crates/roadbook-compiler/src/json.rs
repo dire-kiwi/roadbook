@@ -29,7 +29,8 @@
 //! `checks` lists every `check` line `roadbook check` evaluated, with its verdict:
 //! `proved`, `conditional`, `failed` (also an error among the diagnostics) or `unchecked`
 //! (with the warning `RB0910`). `assumptions` are what its path relies on that the chart does
-//! not decide (guard outcomes, which timer expires first, what other machines do), and `path`
+//! not decide (guard outcomes, which timer expires first, what other machines do, and that a
+//! step comes before another machine that could act then), and `path`
 //! the transitions of that path from the initial configuration, shaped as the steps of
 //! `roadbook paths --json`: the counterexample of a failed check, the witness of a
 //! `reachable` that holds, and for a conditional `can finish`, the way to the first

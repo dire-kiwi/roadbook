@@ -11,12 +11,15 @@
 //! - for a timer's expiry while another timer of the run is running, that it expires first,
 //!   since its delay might not be the shortest;
 //! - for an outcome of a child or spawned child machine, or an event that a child, a spawned
-//!   child or a peer emits, that the other machine does that.
+//!   child or a peer emits, that the other machine does that;
+//! - for any step from a stable node where another machine can act (some edge from it is
+//!   that machine's move), that the step comes first: that machine does not end or emit
+//!   before it ([`Assumption::Unpreempted`]). A machine's own moves race only the others.
 //!
 //! The machine's own events and the outcomes of tasks are the host's to give, and a timer
-//! that is the only one running expires whenever the run waits long enough, so those assume
-//! nothing. A path whose edges assume nothing is one a real run can take, whatever the data
-//! and whatever the other machines do.
+//! that is the only one running expires whenever the run waits long enough, so where no
+//! other machine can act those assume nothing. A path whose edges assume nothing is one a
+//! real run can take, whatever the data and whatever the other machines do.
 //!
 //! The graph covers runs started from the chart. A snapshot restored after a migration can be
 //! in a configuration the chart cannot reach, which is not in the graph, so a property of the
@@ -133,6 +136,74 @@ pub enum Assumption {
     /// edge's own input: [`Input::InvokeDone`] or [`Input::InvokeFail`] of a machine's invoke,
     /// [`Input::Emitted`], [`Input::SpawnDone`] or [`Input::SpawnFail`].
     Machine(Input),
+    /// None of these other machines acts first: at a node where they can (an edge from it
+    /// assumes [`Assumption::Machine`] of them), the step happens before they end, fail or
+    /// emit. Given to every edge from such a node but those of the sender's own moves, which
+    /// name only the other senders.
+    Unpreempted {
+        /// The machines that could act first, sorted.
+        senders: Vec<Sender>,
+    },
+}
+
+impl Assumption {
+    /// The machine whose move a [`Assumption::Machine`] input is.
+    fn sender(input: &Input) -> Option<Sender> {
+        match input {
+            Input::InvokeDone { state } | Input::InvokeFail { state, .. } => {
+                Some(Sender::Child(*state))
+            }
+            Input::Emitted { from, .. } => Some(from.clone()),
+            Input::SpawnDone { children } | Input::SpawnFail { children, .. } => {
+                Some(Sender::Children(children.clone()))
+            }
+            _ => None,
+        }
+    }
+}
+
+/// Whether two senders may be the same machine: the same child or collection, or peers that
+/// some name may hold for both.
+fn same_sender(a: &Sender, b: &Sender) -> bool {
+    match (a, b) {
+        (Sender::Refs(x), Sender::Refs(y)) => x.iter().any(|n| y.contains(n)),
+        _ => a == b,
+    }
+}
+
+/// Gives each successor of a stable node the race it relies on: that the other machines
+/// that can act at the node (those some successor's input is a move of) do not act first.
+fn add_races(successors: &mut [Successor]) {
+    let mut live: Vec<Sender> = Vec::new();
+    for s in successors.iter() {
+        for a in &s.assumptions {
+            if let Assumption::Machine(input) = a
+                && let Some(sender) = Assumption::sender(input)
+                && !live.contains(&sender)
+            {
+                live.push(sender);
+            }
+        }
+    }
+    if live.is_empty() {
+        return;
+    }
+    live.sort();
+    for s in successors.iter_mut() {
+        let own = s.assumptions.iter().find_map(|a| match a {
+            Assumption::Machine(input) => Assumption::sender(input),
+            _ => None,
+        });
+        let senders: Vec<Sender> = live
+            .iter()
+            .filter(|x| own.as_ref().is_none_or(|o| !same_sender(o, x)))
+            .cloned()
+            .collect();
+        if !senders.is_empty() {
+            s.assumptions.push(Assumption::Unpreempted { senders });
+            s.assumptions.sort_unstable();
+        }
+    }
 }
 
 /// Who sent an emitted event.
@@ -320,7 +391,10 @@ pub fn explore(ir: &ir::Ir, machine: &ir::Machine, max_nodes: usize) -> Result<G
     let mut next = 0;
     while next < b.configs.len() {
         let cfg = b.configs[next].clone();
-        let successors = chart.successors(&cfg);
+        let mut successors = chart.successors(&cfg);
+        if !cfg.settling {
+            add_races(&mut successors);
+        }
         if chart.exhausted() {
             return Err(TooLarge::Combinations { budget });
         }
@@ -2214,18 +2288,30 @@ mod tests {
         let g = graph(
             "error Lost\ntask work() -> int\nmachine Kid() -> int ! Lost {\n  emits Ping\n  initial A\n  state A { entry emit Ping }\n}\nmachine M(peer: ref Kid) {\n  event Go\n  children kids: Kid by string\n  initial A\n  state A {\n    invoke Kid() as kid {\n      done      -> T\n      fail Lost -> T\n    }\n    on kid.Ping -> A\n    on peer.Ping -> A\n    on Go -> T  spawn kids[\"a\"] = Kid()\n  }\n  state T {\n    invoke work() {\n      done -> T\n    }\n    on kids.done -> A\n    on kids.fail Lost -> A\n    on kids.Ping -> A\n  }\n}\n",
         );
-        let machine =
-            |e: &Edge| matches!(&e.assumptions[..], [Assumption::Machine(i)] if *i == e.input);
+        // Besides the race with the other machines live at the node, which
+        // `the_race_with_another_machine_is_assumed_exactly_when_one_is_live` covers.
+        let own: Vec<Vec<&Assumption>> = edges(&g)
+            .map(|e| {
+                e.assumptions
+                    .iter()
+                    .filter(|a| !matches!(a, Assumption::Unpreempted { .. }))
+                    .collect()
+            })
+            .collect();
         let mut kinds = BTreeSet::new();
-        for e in edges(&g) {
+        for (e, own) in edges(&g).zip(&own) {
             let d = g.describe(&e.input);
             match &e.input {
-                Input::Event(_) => assert!(e.assumptions.is_empty(), "{d}"),
+                Input::Event(_) => assert!(own.is_empty(), "{d}"),
                 // A task's outcome is the host's to give.
                 Input::InvokeDone { state } if g.state_id(*state) == "M.T" => {
-                    assert!(e.assumptions.is_empty(), "{d}")
+                    assert!(own.is_empty(), "{d}")
                 }
-                _ => assert!(machine(e), "{d}: {:?}", e.assumptions),
+                _ => assert!(
+                    matches!(own[..], [Assumption::Machine(i)] if *i == e.input),
+                    "{d}: {:?}",
+                    e.assumptions
+                ),
             }
             kinds.insert(d);
         }
@@ -2243,6 +2329,47 @@ mod tests {
                 "kids.Ping",
             ])
         );
+    }
+
+    #[test]
+    fn the_race_with_another_machine_is_assumed_exactly_when_one_is_live() {
+        let child = "machine Child() {\n  initial Done\n  final state Done {}\n}\n";
+        let g = graph(&format!(
+            "{child}machine M() {{\n  initial A\n  state A {{\n    invoke Child() {{\n      done -> D\n    }}\n    after 1s -> T\n  }}\n  final state T {{}}\n  final state D {{}}\n}}\n"
+        ));
+        let a = g.state_index("M.A").unwrap();
+        let race = Assumption::Unpreempted {
+            senders: vec![Sender::Child(a)],
+        };
+        // The timer races the child; the child's own outcome does not race itself.
+        assert_eq!(assumed_by(&g, "the after at #1 of M.A"), vec![vec![race]]);
+        assert_eq!(
+            assumed_by(&g, "done of the invoke in M.A"),
+            vec![vec![Assumption::Machine(Input::InvokeDone { state: a })]]
+        );
+        // No other machine live: nothing to race.
+        let g = graph(
+            "machine M() {\n  initial A\n  state A { after 1s -> T }\n  final state T {}\n}\n",
+        );
+        assert_eq!(assumed_by(&g, "the after at #0 of M.A"), vec![vec![]]);
+        // Two children: each one's outcome races the other.
+        let g = graph(&format!(
+            "{child}machine M() {{\n  initial P\n  parallel state P {{\n    state L {{\n      initial A\n      state A {{\n        invoke Child() {{\n          done -> B\n        }}\n      }}\n      final state B {{}}\n    }}\n    state R {{\n      initial A\n      state A {{\n        invoke Child() {{\n          done -> B\n        }}\n      }}\n      final state B {{}}\n    }}\n  }}\n}}\n"
+        ));
+        let (l, r) = (
+            g.state_index("M.P.L.A").unwrap(),
+            g.state_index("M.P.R.A").unwrap(),
+        );
+        let first = assumed_by(&g, "done of the invoke in M.P.L.A");
+        assert!(first[0].contains(&Assumption::Unpreempted {
+            senders: vec![Sender::Child(r)]
+        }));
+        // Once R's child has ended, L's races nothing.
+        assert!(first.iter().any(|a| a.len() == 1));
+        assert!(!first.iter().flatten().any(|a| matches!(
+            a,
+            Assumption::Unpreempted { senders } if senders.contains(&Sender::Child(l))
+        )));
     }
 
     #[test]

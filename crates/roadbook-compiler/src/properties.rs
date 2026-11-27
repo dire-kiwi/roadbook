@@ -4,7 +4,7 @@
 //! the Rust macro never do.
 //!
 //! The graph keeps free what the chart does not decide (guards, which timer expires first,
-//! what other machines do: [`statespace::Assumption`]), so a check can be proved, refuted, or
+//! what other machines do and whether they act first: [`statespace::Assumption`]), so a check can be proved, refuted, or
 //! hold on conditions ([`Verdict`]):
 //!
 //! - `never S1 and … Sn` fails if some configuration, a transient one of settling or a final
@@ -17,8 +17,8 @@
 //!   does the initial one. Otherwise it is proved.
 //! - `can finish` fails if some configuration cannot reach a top-level final state. It is
 //!   proved if from every configuration the host can bring the run to a final state whatever
-//!   the guards decide: by choosing its events, task outcomes and timers sure to expire first
-//!   ([`Eval::sure`]). Otherwise it is conditional: a path exists, but something the chart
+//!   the guards decide and whatever other machines do first: by choosing its events, task
+//!   outcomes and timers sure to expire first ([`Eval::sure`]). Otherwise it is conditional: a path exists, but something the chart
 //!   does not decide could block it.
 //!
 //! A failure is an error at the check, `RB0501` to `RB0504`, with the counterexample that
@@ -435,11 +435,14 @@ impl<'a> Eval<'a> {
 
     /// For each node, whether the host can bring the run from it to a final state whatever the
     /// guards decide: the attractor of the final nodes in a game where the host picks the
-    /// input and the data the guard outcomes. A final node is sure. A settling node, where
-    /// nobody chooses, is sure if every step from it leads to a sure node. A stable node is
-    /// sure if some input the host controls (one whose steps assume only guard outcomes: the
-    /// machine's own events, task outcomes, a timer sure to expire first) leads to a sure node
-    /// whatever its guards decide, including when they all fail and it takes nothing.
+    /// input, the data the guard outcomes and other machines may act first. A final node is
+    /// sure. A settling node, where nobody chooses, is sure if every step from it leads to a
+    /// sure node. A stable node is sure if some input the host controls (one whose steps
+    /// assume only guard outcomes and that no other machine acts first: the machine's own
+    /// events, task outcomes, a timer sure to expire first) leads to a sure node whatever its
+    /// guards decide, including when they all fail and it takes nothing, and every move of
+    /// another machine from it (an edge that assumes [`Assumption::Machine`]) leads to a sure
+    /// node too.
     fn sure(&self) -> Vec<bool> {
         let g = self.graph;
         let mut sure = vec![false; g.node_count()];
@@ -467,6 +470,18 @@ impl<'a> Eval<'a> {
         if g.is_settling(n) {
             return !out.is_empty() && out.iter().all(to_sure);
         }
+        // The other machines may act first: whatever they do must still be winnable.
+        let theirs = out.iter().all(|e| {
+            let edge = g.edge(*e);
+            !edge
+                .assumptions
+                .iter()
+                .any(|a| matches!(a, Assumption::Machine(_)))
+                || sure[edge.to.index()]
+        });
+        if !theirs {
+            return false;
+        }
         let mut tried: Vec<&Input> = Vec::new();
         for &e in out {
             let input = &g.edge(e).input;
@@ -479,7 +494,7 @@ impl<'a> Eval<'a> {
                 g.edge(**x)
                     .assumptions
                     .iter()
-                    .all(|a| matches!(a, Assumption::Guard { .. }))
+                    .all(|a| matches!(a, Assumption::Guard { .. } | Assumption::Unpreempted { .. }))
             });
             if controlled && !g.takes_nothing(n, input) && edges.iter().all(|x| to_sure(x)) {
                 return true;
@@ -680,7 +695,39 @@ impl<'a> Eval<'a> {
                 }
                 other => self.graph.describe(other),
             },
+            Assumption::Unpreempted { senders } => {
+                let names: Vec<String> = senders.iter().map(|x| self.sender(x)).collect();
+                let verb = if names.len() == 1 { "does" } else { "do" };
+                format!("{} {verb} not end or emit first", and_list(&names))
+            }
         })
+    }
+
+    /// Another machine, for a message: "`Child` (invoked in `A`)", "peer `inventory`", "the
+    /// children of `kids`".
+    fn sender(&self, s: &Sender) -> String {
+        match s {
+            Sender::Child(state) => {
+                let src = self
+                    .state(*state)
+                    .invoke
+                    .as_ref()
+                    .map_or("", |i| i.src.as_str());
+                format!(
+                    "`{src}` (invoked in `{}`)",
+                    self.relative(self.graph.state_id(*state))
+                )
+            }
+            Sender::Refs(names) => {
+                let names: Vec<String> = names.iter().map(|n| format!("`{n}`")).collect();
+                if names.len() == 1 {
+                    format!("peer {}", names[0])
+                } else {
+                    format!("the peer that {} hold", and_list(&names))
+                }
+            }
+            Sender::Children(c) => format!("the children of `{c}`"),
+        }
     }
 
     /// An IR span as a span of the compilation's files, with offsets.
@@ -1243,6 +1290,89 @@ machine M() {
         let src = "fn a() -> bool\nfn b() -> bool\nfn c() -> bool\nfn d() -> bool\nfn e() -> bool\nmachine M() {\n  event Go\n  event Next\n  initial A\n  state A {\n    on Go {\n      if a() -> Z\n      if b() -> Z\n      if c() -> T\n    }\n    on Next if d() -> B\n  }\n  state B { on Next if e() -> T }\n  state Z {}\n  state T {}\n  check never T\n}\n";
         let (r, _) = run(src);
         assert_eq!(r[0].assumptions, ["`d()` holds", "`e()` holds"]);
+    }
+
+    #[test]
+    fn a_path_that_another_machine_can_preempt_is_conditional() {
+        let src = "\
+machine Child() {
+  initial Done
+  final state Done {}
+}
+machine Parent() {
+  initial A
+  state A {
+    invoke Child() {
+      done -> D
+    }
+    after 1s -> T
+  }
+  final state T {}
+  final state D {}
+  check reachable T
+  check can finish
+  check never T
+}
+";
+        let (r, rendered) = run(src);
+        assert_eq!(
+            verdicts(&r),
+            [
+                ("reachable T", Verdict::Conditional),
+                ("can finish", Verdict::Proved),
+                ("never T", Verdict::Failed)
+            ],
+            "{rendered}"
+        );
+        let race = "`Child` (invoked in `A`) does not end or emit first";
+        assert_eq!(r[0].assumptions, [race]);
+        assert_eq!(r[2].assumptions, [race]);
+        assert!(
+            rendered.contains(&format!("help: A --after 1s--> T, if {race} on the way")),
+            "{rendered}"
+        );
+    }
+
+    #[test]
+    fn can_finish_wins_against_every_move_of_another_machine_or_not_at_all() {
+        let chart = |done: &str| {
+            format!(
+                "\
+fn ok() -> bool
+error Lost
+machine Kid() ! Lost {{
+  initial A
+  final state A {{}}
+}}
+machine M() {{
+  event Stop
+  event Go
+  initial A
+  state A {{
+    invoke Kid() {{
+      done      -> {done}
+      fail Lost -> End
+    }}
+    on Stop -> End
+  }}
+  state W {{ on Go if ok() -> End }}
+  final state End {{}}
+  check can finish
+}}
+"
+            )
+        };
+        // Whatever the child does ends the run, and `Stop` does too.
+        let (r, rendered) = run(&chart("End"));
+        assert_eq!(r[0].verdict, Verdict::Proved, "{rendered}");
+        // Its `done` leads to W, where `Go`'s guard may keep failing: the host could end the
+        // run with `Stop`, but the child may end first.
+        let (r, rendered) = run(&chart("W"));
+        assert_eq!(r[0].verdict, Verdict::Conditional, "{rendered}");
+        assert_eq!(
+            r[0].assumptions,
+            ["`Kid` (invoked in `A`) does not end or emit first"]
+        );
     }
 
     #[test]
