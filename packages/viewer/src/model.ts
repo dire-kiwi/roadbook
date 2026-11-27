@@ -172,7 +172,8 @@ export function invokeText(inv: Invoke): string {
 /**
  * How the diagram encodes a trigger: line style, colour and wording all follow it. `message`
  * is what comes from another run: an event another machine emitted (`on upload.Progress`),
- * labelled through its sender, or a call of this machine another run made (`on reserve`).
+ * labelled through its sender, a call of this machine another run made (`on reserve`), or the
+ * end of a peer the machine holds a `ref` to (`on inventory.ended`).
  */
 export type EdgeKind = 'event' | 'message' | 'done' | 'fail' | 'after' | 'always' | 'initial'
 
@@ -183,6 +184,7 @@ export function triggerKind(trigger: Trigger): EdgeKind {
       return 'event'
     case 'emitted':
     case 'call':
+    case 'ended':
       return 'message'
     case 'after':
       return 'after'
@@ -200,7 +202,8 @@ export function triggerKind(trigger: Trigger): EdgeKind {
 
 /**
  * The trigger as the diagram labels it: `Cancel`, `upload.Progress`, `reserve` (a call), `on *`,
- * `after 30s`, `always`, `done`, `fail CardDeclined`, `sessions.done`, `sessions.fail Lost`.
+ * `after 30s`, `always`, `done`, `fail CardDeclined`, `sessions.done`, `sessions.fail Lost`,
+ * `inventory.ended`.
  */
 export function triggerText(trigger: Trigger): string {
   switch (trigger.kind) {
@@ -222,6 +225,8 @@ export function triggerText(trigger: Trigger): string {
       return `${trigger.children}.done`
     case 'spawn.fail':
       return `${trigger.children}.fail ${trigger.error}`
+    case 'ended':
+      return `${trigger.from.name}.ended`
     case 'done':
     case 'invoke.done':
       return 'done'
@@ -230,7 +235,7 @@ export function triggerText(trigger: Trigger): string {
 
 /**
  * The trigger as written in source: `on Cancel`, `on upload.Progress`, `on reserve`, `on *`,
- * `after 30s`, `done`, `fail E`, `on sessions.done`, `on sessions.fail E`.
+ * `after 30s`, `done`, `fail E`, `on sessions.done`, `on sessions.fail E`, `on inventory.ended`.
  */
 export function triggerSource(trigger: Trigger): string {
   const on =
@@ -238,7 +243,8 @@ export function triggerSource(trigger: Trigger): string {
     trigger.kind === 'emitted' ||
     trigger.kind === 'call' ||
     trigger.kind === 'spawn.done' ||
-    trigger.kind === 'spawn.fail'
+    trigger.kind === 'spawn.fail' ||
+    trigger.kind === 'ended'
   return on ? `on ${triggerText(trigger)}` : triggerText(trigger)
 }
 
@@ -663,6 +669,8 @@ export interface Talks {
   receives: { machine: string; events: string[] }[]
   /** Calls it makes (`invoke inventory.reserve(…)`), by called machine. */
   calls: { machine: string; calls: string[] }[]
+  /** Peers whose end it hears (`on inventory.ended`), by peer machine, with the names it watches them through. */
+  ends: { machine: string; names: string[] }[]
 }
 
 /** Adds `value` to the list of `machine` in `list`, keeping first-seen order and no repeats. */
@@ -680,6 +688,7 @@ export function talks(ir: Ir, machineName: string): Talks {
   const sends: { machine: string; values: string[] }[] = []
   const receives: { machine: string; values: string[] }[] = []
   const calls: { machine: string; values: string[] }[] = []
+  const ends: { machine: string; values: string[] }[] = []
   if (m) {
     walkStates(m.root, (s) => {
       if (s.invoke && s.invoke.kind === 'machine') invokes.push({ machine: s.invoke.src, as: s.invoke.as, state: s.id })
@@ -694,6 +703,9 @@ export function talks(ir: Ir, machineName: string): Talks {
       else if (site.dir === 'receive') group(receives, site.event.machine, site.event.event)
       else if (site.dir === 'call') group(calls, site.event.machine, site.event.event)
     }
+    walkStates(m.root, (s) => {
+      for (const t of s.transitions) if (t.trigger.kind === 'ended') group(ends, t.trigger.from.machine, t.trigger.from.name)
+    })
   }
   return {
     invokes,
@@ -702,6 +714,7 @@ export function talks(ir: Ir, machineName: string): Talks {
     sends: sends.map((r) => ({ machine: r.machine, events: r.values })),
     receives: receives.map((r) => ({ machine: r.machine, events: r.values })),
     calls: calls.map((r) => ({ machine: r.machine, calls: r.values })),
+    ends: ends.map((r) => ({ machine: r.machine, names: r.values })),
   }
 }
 

@@ -5,7 +5,8 @@
 // machine (the `ir` of `started` differs from the machine's hash). A run restored from a saved
 // snapshot begins with `restored` instead, and goes on from the snapshot's configuration,
 // variables and work; a suspended run ends with `suspended`. A callee's view keeps the calls it
-// has taken and not yet answered (`replied`). Pure and DOM-free.
+// has taken and not yet answered (`replied`). A peer's end (an `ended` input) is linked to the
+// record that ends the peer's run, and back. Pure and DOM-free.
 
 import type { Json } from '@dire-kiwi/roadbook-core'
 import type { Ir, Machine, State } from './ir.ts'
@@ -21,6 +22,8 @@ const KINDS = new Set([
 ])
 /** The records after which a run writes nothing more. */
 const ENDS = new Set(['done', 'failed', 'cancelled', 'defect', 'suspended'])
+/** The statuses of an `ended` input, by the record that ends the peer's run. */
+const ENDED_STATUS: Readonly<Record<string, string>> = { done: 'Done', failed: 'Failed', cancelled: 'Cancelled', defect: 'Defect', suspended: 'Suspended' }
 /** The records that begin a run. */
 const BEGINS = new Set(['started', 'restored'])
 
@@ -176,6 +179,28 @@ export class Replay {
     return view
   }
 
+  /** For an `event` or `dropped` record whose input is a peer's end, the index of the record that ends the peer's run, if the trace has it. */
+  peerEnd(at: number): number | null {
+    const from = endedFrom(this.records[at])
+    if (from === null) return null
+    for (let i = this.records.length - 1; i >= 0; i--) {
+      const r = this.records[i]!
+      if (r.run === from && ENDS.has(r.kind)) return i
+    }
+    return null
+  }
+
+  /** For the record that ends a run, the `event` and `dropped` records in which its holders heard it (an `ended` input). */
+  heardBy(at: number): number[] {
+    const r = this.records[at]
+    if (!r || !ENDS.has(r.kind)) return []
+    const out: number[] = []
+    this.records.forEach((x, i) => {
+      if (endedFrom(x) === r.run) out.push(i)
+    })
+    return out
+  }
+
   /** The states and transition record `at` names. */
   named(at: number): Named {
     const r = this.records[at]
@@ -263,8 +288,14 @@ export class Replay {
           }
           case 'event':
           case 'dropped': {
-            const input = r.event as { kind?: string; call?: unknown } | undefined
+            const input = r.event as { kind?: string; call?: unknown; from?: unknown } | undefined
             if (input?.kind === 'call' && !own(m.calls, str(input.call))) out.push(`${at}: ${view.machine} has no call ${str(input.call)}`)
+            if (input?.kind === 'ended') {
+              // Only a holder that hears the peer's machine's end is told it.
+              const peer = this.runs.find((x) => x.id === input.from)?.machine
+              const hears = allStates(m).some((s) => s.transitions.some((t) => t.trigger.kind === 'ended' && (peer === undefined || t.trigger.from.machine === peer)))
+              if (!hears) out.push(`${at}: ${view.machine} has no on name.ended for ${peer ?? str(input.from)}`)
+            }
             break
           }
           case 'spawn.started': {
@@ -289,6 +320,18 @@ export class Replay {
         const answersDropped = dropped?.kind === 'call' && dropped.from === r.to && dropped.invoke === r.invoke
         if (!answersDropped && !view.calls.some((c) => c.from === r.to && c.invoke === r.invoke && c.call === r.call))
           out.push(`${at}: no pending call ${str(r.call)} from ${str(r.to)}'s invoke ${String(r.invoke)}`)
+      }
+      const from = endedFrom(r)
+      if (from !== null || (r.kind === 'stale' && (r.event as { kind?: unknown } | undefined)?.kind === 'ended')) {
+        const input = r.event as { status?: unknown }
+        if (r.kind === 'stale') out.push(`${at}: a peer's end is never stale`)
+        else if (!Object.values(ENDED_STATUS).includes(str(input.status))) out.push(`${at}: ${JSON.stringify(input.status ?? null)} is not a variant of Ended`)
+        else {
+          // It points at the record that ends the peer's run, which says the same.
+          const end = this.peerEnd(i)
+          const peerEnd = end === null ? undefined : this.records[end]
+          if (peerEnd && ENDED_STATUS[peerEnd.kind] !== input.status) out.push(`${at}: ${from} ended ${peerEnd.kind}, not ${str(input.status)}`)
+        }
       }
       if (r.kind === 'event') {
         const input = r.event as { kind?: string; invoke?: number; spawn?: number; timer?: number } | undefined
@@ -429,6 +472,13 @@ function apply(view: RunView, r: Rec) {
   }
 }
 
+/** The run whose end an `event` or `dropped` record's input is (`{"kind": "ended", "from": "r1", …}`), or null. */
+function endedFrom(r: Rec | undefined): string | null {
+  if (!r || (r.kind !== 'event' && r.kind !== 'dropped')) return null
+  const input = r.event as { kind?: unknown; from?: unknown } | undefined
+  return input?.kind === 'ended' && typeof input.from === 'string' ? input.from : null
+}
+
 const short = (hash: string) => (hash.length > 19 ? `${hash.slice(0, 19)}…` : hash || '(none)')
 
 /** A value as compact JSON, cut short when long. */
@@ -486,6 +536,8 @@ export function inputText(input: unknown): string {
       return `spawned child ${String(i.spawn)} defect ${jsonText(i.defect, 100)}`
     case 'after':
       return `timer ${String(i.timer)} expired`
+    case 'ended':
+      return `${str(i.from)} ended ${str(i.status)}`
     default:
       return jsonText(input, 100)
   }

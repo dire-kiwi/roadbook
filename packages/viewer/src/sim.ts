@@ -8,15 +8,16 @@
 // gives their outcome; timers fire when the reader lets them or advances the clock; functions
 // are answered by the reader when the core calls them; actions do nothing. `send` and `emit`
 // are carried out as their records only: there is no other run to deliver to. A child invoked
-// with `as`, or spawned, can be made to emit one of its events by hand, and the machine's own
+// with `as`, or spawned, can be made to emit one of its events by hand, the machine's own
 // calls can be made to it by a simulated caller, whose answer (`reply`) shows as its `replied`
-// record only.
+// record only, and a peer the machine holds a `ref` to and has an `on name.ended` for can be
+// made to end, once, with the status the reader picks.
 
-import { canonicalJson, getMachine, IrError, start as coreStart, step as coreStep } from '@dire-kiwi/roadbook-core'
-import type { Command, Fns, FnResult, Input, Ir as CoreIr, Json, Snapshot, Stepped, Tagged, TraceRecord } from '@dire-kiwi/roadbook-core'
+import { canonicalJson, ENDED_VARIANTS, getMachine, IrError, start as coreStart, step as coreStep } from '@dire-kiwi/roadbook-core'
+import type { Command, EndedStatus, Fns, FnResult, Input, Ir as CoreIr, Json, Snapshot, Stepped, Tagged, TraceRecord } from '@dire-kiwi/roadbook-core'
 import type { Field, FunctionDecl, Ir, Machine } from './ir.ts'
 import { own } from './ir.ts'
-import { findState } from './model.ts'
+import { findState, walkStates } from './model.ts'
 
 /** The reader's answer to a function call: a value of the function's type, or a host defect. */
 export type Answer = { value: Json } | { defect: string }
@@ -49,6 +50,8 @@ export interface Frame {
   childMessages: Readonly<Record<number, number>>
   /** How many calls simulated callers have made: the next comes from run `r{callers + 2}`. */
   callers: number
+  /** The peers whose end the run has been told, by run id: each is told once. */
+  ended: readonly string[]
   /** The records this choice wrote, in order. */
   records: TraceRecord[]
   /** The transitions this choice took, in order. */
@@ -131,6 +134,24 @@ export interface PendingCall {
   call: string
 }
 
+/**
+ * A peer whose end the run hears: a run a `ref` parameter or variable holds now (one, or one of
+ * a list), whose name an `on name.ended` of the machine watches, and that has not ended yet.
+ */
+export interface PeerChoice {
+  /** The run id the names hold. */
+  run: string
+  /** Its machine, the `machine` of the `on name.ended` address. */
+  machine: string
+  /** The parameters and variables that hold it now, of those an `on name.ended` names. */
+  names: string[]
+  /** Whether an active state has an `on name.ended` for one of them; otherwise its end would be dropped, unless a guard decides. */
+  handled: boolean
+}
+
+/** How a peer can end: the variants of the built-in enum `Ended`. */
+export const ENDED_STATUSES: readonly EndedStatus[] = ENDED_VARIANTS
+
 export interface Choices {
   events: EventChoice[]
   calls: CallChoice[]
@@ -139,6 +160,8 @@ export interface Choices {
   invokes: InvokeChoice[]
   spawned: SpawnChoice[]
   timers: TimerChoice[]
+  /** The peers whose end the run can be told. */
+  peers: PeerChoice[]
 }
 
 class NeedAnswer {
@@ -154,7 +177,15 @@ interface Work {
   due: Record<number, number>
   childMessages: Record<number, number>
   callers: number
+  ended: string[]
   records: TraceRecord[]
+}
+
+/** A value of a `ref`, `ref M?` or `ref M[]` parameter or variable: the run ids it holds. */
+function heldRuns(v: Json | undefined): string[] {
+  if (typeof v === 'string') return [v]
+  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string')
+  return []
 }
 
 export class Simulation {
@@ -301,6 +332,19 @@ export class Simulation {
     })
   }
 
+  /**
+   * Tells the run that the peer `run`, which a `ref` of it holds, closed with `status`: an
+   * `ended` input, as its driver gives it. A run is told at most once per peer.
+   */
+  peerEnded(run: string, status: EndedStatus): Outcome {
+    if (this.current?.ended.includes(run)) return { kind: 'error', message: `the run has already been told that ${run} ended` }
+    if (!ENDED_STATUSES.includes(status)) return { kind: 'error', message: `${status} is not a variant of Ended` }
+    return this.choose(`${run} ended ${status}`, (w) => {
+      w.ended = [...w.ended, run]
+      this.step(w, { kind: 'ended', from: run, status })
+    })
+  }
+
   /** Cancels the run from outside. */
   cancel(): Outcome {
     return this.choose('cancel', (w) => this.step(w, { kind: 'cancel' }))
@@ -351,7 +395,7 @@ export class Simulation {
   /** What the reader can do in the frame shown. */
   choices(): Choices {
     const f = this.current
-    if (!f || f.snapshot.status !== 'running') return { events: [], calls: [], pending: [], invokes: [], spawned: [], timers: [] }
+    if (!f || f.snapshot.status !== 'running') return { events: [], calls: [], pending: [], invokes: [], spawned: [], timers: [], peers: [] }
     const m = this.def
     const active = f.snapshot.active.map((id) => findState(m, id)).filter((s) => s !== null)
     const events = Object.entries(m.events).map(([name, decl]) => ({
@@ -416,7 +460,23 @@ export class Simulation {
       }
     })
     const timers = f.snapshot.timers.map((t) => ({ id: t.id, state: t.state, index: t.index, delay: t.delay, due: f.due[t.id] ?? f.now + t.delay }))
-    return { events, calls, pending, invokes, spawned, timers }
+    // The names an `on name.ended` watches, anywhere in the machine, and the runs they hold now.
+    const watched = new Map<string, string>()
+    walkStates(m.root, (s) => {
+      for (const t of s.transitions) if (t.trigger.kind === 'ended' && !watched.has(t.trigger.from.name)) watched.set(t.trigger.from.name, t.trigger.from.machine)
+    })
+    const peers: PeerChoice[] = []
+    for (const [name, machine] of watched) {
+      const held = Object.prototype.hasOwnProperty.call(f.snapshot.vars, name) ? f.snapshot.vars[name] : f.snapshot.input[name]
+      for (const run of heldRuns(held)) {
+        if (f.ended.includes(run)) continue
+        let peer = peers.find((p) => p.run === run)
+        if (!peer) peers.push((peer = { run, machine, names: [], handled: false }))
+        if (!peer.names.includes(name)) peer.names.push(name)
+      }
+    }
+    for (const p of peers) p.handled = active.some((s) => s.transitions.some((t) => t.trigger.kind === 'ended' && p.names.includes(t.trigger.from.name)))
+    return { events, calls, pending, invokes, spawned, timers, peers }
   }
 
   // ───────────── the driver ─────────────
@@ -432,8 +492,8 @@ export class Simulation {
   private attempt(label: string, from: number, act: (w: Work) => void): Outcome {
     const base = this.frames[from]
     const w: Work = base
-      ? { snapshot: base.snapshot, now: base.now, due: { ...base.due }, childMessages: { ...base.childMessages }, callers: base.callers, records: [] }
-      : { snapshot: undefined as unknown as Snapshot, now: 0, due: {}, childMessages: {}, callers: 0, records: [] }
+      ? { snapshot: base.snapshot, now: base.now, due: { ...base.due }, childMessages: { ...base.childMessages }, callers: base.callers, ended: [...base.ended], records: [] }
+      : { snapshot: undefined as unknown as Snapshot, now: 0, due: {}, childMessages: {}, callers: 0, ended: [], records: [] }
     try {
       act(w)
     } catch (e) {
@@ -450,7 +510,7 @@ export class Simulation {
     for (const id of Object.keys(w.due).map(Number)) if (!w.snapshot.timers.some((t) => t.id === id)) delete w.due[id]
     const running = (id: number) => w.snapshot.invokes.some((i) => i.id === id) || w.snapshot.spawned.some((c) => c.id === id)
     for (const id of Object.keys(w.childMessages).map(Number)) if (!running(id)) delete w.childMessages[id]
-    const frame: Frame = { label, snapshot: w.snapshot, now: w.now, due: w.due, childMessages: w.childMessages, callers: w.callers, records: w.records, taken }
+    const frame: Frame = { label, snapshot: w.snapshot, now: w.now, due: w.due, childMessages: w.childMessages, callers: w.callers, ended: w.ended, records: w.records, taken }
     this.frames = [...this.frames.slice(0, from + 1), frame]
     this.at = this.frames.length - 1
     return { kind: 'ok' }

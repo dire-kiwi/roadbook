@@ -1,6 +1,7 @@
 // Replay mode's panel: load a trace (embedded by `roadbook viz --trace`, picked, or dropped on
 // the page), step through its records, and see at each one the states and transition it names,
-// the active states and variables of its run, and the child runs to follow. The model is
+// the active states and variables of its run, and the child runs to follow. A peer's end links
+// the holder's record that heard it and the record that ended the peer, both ways. The model is
 // src/replay.ts; this file draws it.
 
 import type { Ir } from '../ir.ts'
@@ -96,7 +97,7 @@ export function replayMode(host: Host, el: HTMLElement, embedded: { name: string
     const m = r && own(ir.machines, r.machine)
     const view = replay.viewAt(at, run)
     let h = `<div class="rb-steps"><button class="rb-btn" type="button" data-m-step="first" title="First record (Home)">⇤</button><button class="rb-btn" type="button" data-m-step="back" title="Step back (←)">← Back</button><span class="rb-step-text">record ${at + 1} of ${replay.records.length}</span><button class="rb-btn" type="button" data-m-step="fwd" title="Step forward (→)">Forward →</button><button class="rb-btn" type="button" data-m-step="last" title="Last record (End)">⇥</button></div>`
-    h += `<div class="rb-now"><p class="rb-path">run ${esc(run)}${r ? ` · ${esc(r.machine)}` : ''} · t = ${esc(String(rec.t))}</p><p class="rb-now-text"><strong>${esc(recordText(rec))}</strong></p></div>`
+    h += `<div class="rb-now"><p class="rb-path">run ${esc(run)}${r ? ` · ${esc(r.machine)}` : ''} · t = ${esc(String(rec.t))}</p><p class="rb-now-text"><strong>${esc(recordText(rec))}</strong></p>${peerEndHtml(at)}</div>`
     if (!m) h += `<p class="rb-empty">This chart has no machine ${esc(r?.machine ?? '')}: nothing to draw for this run.</p>`
     else {
       h += `<h3>Active states of ${esc(run)}</h3>${activeHtml(view.active.filter((id) => id !== r!.machine))}`
@@ -126,6 +127,23 @@ export function replayMode(host: Host, el: HTMLElement, embedded: { name: string
       if (view.status !== 'running') h += `<h3>Result</h3><pre class="rb-code">${esc(view.status)} ${esc(pretty(view.result))}</pre>`
     }
     state.innerHTML = h
+  }
+
+  /**
+   * A peer's end, as a sequence view draws it: from the record that ended the peer's run to each
+   * holder's `event` or `dropped` record with the `ended` input. Links to the other end.
+   */
+  function peerEndHtml(i: number): string {
+    if (!replay) return ''
+    const link = (j: number, text: string) => `<button class="rb-link rb-mono" type="button" data-m-record="${j}">${esc(text)}</button>`
+    const end = replay.peerEnd(i)
+    if (end !== null) {
+      const e = replay.records[end]!
+      return `<p class="rb-cnote rb-peer-end">← from ${link(end, `${e.run}: ${recordText(e)}`)} <span>(record ${end + 1})</span></p>`
+    }
+    const heard = replay.heardBy(i)
+    if (!heard.length) return ''
+    return `<p class="rb-cnote rb-peer-end">heard by ${heard.map((j) => `${link(j, `${replay!.records[j]!.run}: ${replay!.records[j]!.kind}`)} <span>(record ${j + 1})</span>`).join(', ')} →</p>`
   }
 
   function renderList() {

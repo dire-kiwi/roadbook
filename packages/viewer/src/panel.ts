@@ -256,6 +256,7 @@ function talksToSection(ctx: PanelContext): string {
   for (const x of t.sends) items.push(`${rel('sends', true)} ${eventLinks(x.machine, x.events)} ${rel('to')} ${machineLink(x.machine)}`)
   for (const x of t.calls) items.push(`${rel('calls', true)} ${eventLinks(x.machine, x.calls)} ${rel('on')} ${machineLink(x.machine)}`)
   for (const x of t.receives) items.push(`${rel('handles', true)} ${eventLinks(x.machine, x.events)} ${rel('emitted by')} ${machineLink(x.machine)}`)
+  for (const x of t.ends) items.push(`${rel('hears when', true)} ${machineLink(x.machine)} ${rel('ends, through')} ${esc(x.names.join(', '))}`)
   return items.length ? `<ul class="rb-talks">${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : ''
 }
 
@@ -272,6 +273,8 @@ function talkedToBySection(ctx: PanelContext): string {
     if (calls) items.push(`${machineLink(other)} ${rel('calls', true)} ${eventLinks(ctx.machine, calls.calls)}`)
     const receives = t.receives.find((r) => r.machine === ctx.machine)
     if (receives) items.push(`${machineLink(other)} ${rel('handles', true)} ${eventLinks(ctx.machine, receives.events)}`)
+    const ends = t.ends.find((r) => r.machine === ctx.machine)
+    if (ends) items.push(`${machineLink(other)} ${rel('hears when it ends, through', true)} ${esc(ends.names.join(', '))}`)
   }
   return items.length ? `<ul class="rb-talks">${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : ''
 }
@@ -494,6 +497,17 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
     case 'spawn.done':
       what = `A child of ${t.trigger.children} finished; its value is available as result, its key as key.`
       break
+    case 'ended': {
+      const from = t.trigger.from
+      what = `The run of ${from.machine} that ${addressText(ctx, from)} holds closed, however it closed: it finished, failed, was cancelled, ended with a defect or was suspended. event.status says which. Taken at most once per run, after the last message it sent.`
+      const td = own(ir.types, 'Ended')
+      extra = section(
+        `Peer ${from.machine}`,
+        (td ? code(typeDeclText('Ended', td)) + docHtml(td.doc) : '') +
+          (own(ir.machines, from.machine) ? `<p><button class="rb-btn" type="button" data-open-machine="${esc(from.machine)}">Open machine ${esc(from.machine)} →</button></p>` : ''),
+      )
+      break
+    }
     case 'spawn.fail': {
       const err = t.trigger.error
       what = `A child of ${t.trigger.children} failed with ${err === '*' ? `a declared error no other on ${t.trigger.children}.fail names` : err}; the error is available as error, the child's key as key.`

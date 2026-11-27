@@ -125,6 +125,8 @@ export type Trigger =
   | { kind: 'spawn.done'; children: string }
   /** `on name.fail E`: a spawned child of the collection failed with `error`, or `*`. */
   | { kind: 'spawn.fail'; children: string; error: string }
+  /** `on name.ended`: the run the ref `from` names closed, however it closed; `event.status`, of the built-in enum `Ended`, says how. */
+  | { kind: 'ended'; from: Address }
 
 export type Effect =
   | { kind: 'set'; var: string; value: Expr }

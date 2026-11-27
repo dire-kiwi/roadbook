@@ -89,6 +89,7 @@ describe('model text', () => {
       sends: [{ machine: 'Session', events: ['Leave', 'Notify'] }],
       receives: [{ machine: 'Session', events: ['Typing'] }],
       calls: [],
+      ends: [],
     })
     expect(talks(spawn, 'Session').spawns).toEqual([])
   })

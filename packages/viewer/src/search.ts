@@ -58,6 +58,8 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
         if (t.trigger.kind === 'event' || t.trigger.kind === 'emitted') out.push({ kind: 'event', name: t.trigger.event, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
         if (t.trigger.kind === 'call') out.push({ kind: 'call', name: t.trigger.call, label: `on ${t.trigger.call}: ${where}`, machine, target })
         if (t.trigger.kind === 'invoke.fail' || t.trigger.kind === 'spawn.fail') out.push({ kind: 'error', name: t.trigger.error, label: `${triggerText(t.trigger)}: ${where}`, machine, target })
+        // A peer's end is found through the peer's machine: `Inventory` finds `inventory.ended`.
+        if (t.trigger.kind === 'ended') out.push({ kind: 'machine', name: t.trigger.from.machine, label: `on ${triggerText(t.trigger)}: ${where}`, machine, target })
         effects(t.effects, where, target)
       })
     })
