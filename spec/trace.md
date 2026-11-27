@@ -22,7 +22,7 @@ States are named by their ids in the IR, transitions by their state's id and the
 | `kind` | Members | Written |
 | --- | --- | --- |
 | `started` | `machine`, `ir`, `input` | First, when the run starts. `ir` is the machine's `hash` from the IR. `input` holds the arguments, keyed by parameter name. |
-| `restored` | `machine`, `ir`, `migrated`, `snapshot` | First, instead of `started`, when the run is restored from a saved snapshot ([restoring](execution.md#restoring-a-snapshot)). `ir` is the machine's `hash`. `snapshot` is the [saved snapshot](execution.md#the-saved-snapshot) it was restored from, after any migration, so its `run` is the id the run had when it was saved. `migrated` is the hash the snapshot had before a migration, or `null`. The `spawn.started`, then `invoke.started` and `timer.started` records that follow it, with the ids the snapshot gives, restart the work that was running. |
+| `restored` | `machine`, `ir`, `migrated`, `snapshot` | First, instead of `started`, when the run is restored from a saved snapshot ([restoring](execution.md#restoring-a-snapshot)). `ir` is the machine's `hash`. `snapshot` is the [saved snapshot](execution.md#the-saved-snapshot) it was restored from, after any migration and without the snapshots of child runs nested in it, so its `run` is the id the run had when it was saved. A child run restored from a snapshot nested in its parent's ([restoring a child run](execution.md#restoring-a-child-run)) begins with its own `restored` record, whose `migrated` is `null`. `migrated` is the hash the snapshot had before a migration, or `null`. The `spawn.started`, then `invoke.started` and `timer.started` records that follow it, with the ids the snapshot gives, restart the work that was running. |
 | `entered` | `state` | When a state is entered, before its entry effects. The root is entered first and exited last. |
 | `exited` | `state` | When a state is left, after its invoke and timers were cancelled and its exit effects ran. |
 | `event` | `event` | When the run takes an input that enables a transition, before anything it causes. `event` is the input as the core received it (below). |
@@ -45,7 +45,7 @@ States are named by their ids in the IR, transitions by their state's id and the
 | `failed` | `state`, `error` | Last, when the run reaches a top-level final state with `fail`. |
 | `cancelled` | none | Last, when the run was cancelled from outside, after every state was exited. |
 | `defect` | `defect` | Last, when the run ended with a [defect](execution.md#defects). When an action of the step that would have ended the run had a host defect, it comes right after that action's record, in place of the `done`, `failed` or `cancelled` record and the records between. |
-| `suspended` | none | Last, written by the driver, when it stopped an idle run it had saved ([suspending](execution.md#suspending-and-resume)). The run has not ended: it goes on, as another run, from its saved snapshot. |
+| `suspended` | none | Last, written by the driver, when it stopped an idle run it had saved ([suspending](execution.md#suspending-and-resume)), and by each child run of its tree, which stops with it. The run has not ended: it goes on, as another run, from its saved snapshot. |
 
 Exactly one of `done`, `failed`, `cancelled` and `defect` ends every run that ends. A trace of a run still in progress has none, and neither has one of a Rust run whose future was dropped ([ending a run](execution.md#ending-a-run)) or of a suspended run, which ends with `suspended`.
 
