@@ -24,6 +24,9 @@
 //! While names are resolved, the [`index`] records every declared name and every use the
 //! compiler resolved ([`Compilation::index`]), for editors: go to definition, references,
 //! rename and hover.
+//!
+//! Outside the passes, [`statespace`] explores a compiled machine's configurations, for
+//! property checks on charts.
 
 mod analysis;
 mod assign;
@@ -38,6 +41,7 @@ mod machine;
 mod names;
 mod project;
 mod sensitive;
+pub mod statespace;
 mod types;
 
 pub use index::{Reference, Symbol, SymbolId, SymbolIndex, SymbolKind};
