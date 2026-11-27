@@ -331,8 +331,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       input: coreInput,
       vars: {},
       invokes: [],
-      spawned: [],
       calls: [],
+      spawned: [],
       timers: [],
       nextInvoke: 1,
       nextTimer: 1,
@@ -451,27 +451,21 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       // The call invokes whose answer is still wanted: started, and not cancelled or taken.
       const liveCalls = new Set<number>()
       // The calls this run's core was given and the driver has not carried out a `reply` for,
-      // in the order they were taken, with their ways to answer. A durable root run keeps them
-      // in its registry entry, so that an attempt after a park or a replay can still answer
-      // the calls an earlier attempt in this process took.
-      const given = entry?.given ?? new Map<string, { readonly invoke: number; readonly answer: Answer }>()
+      // in the order they were taken, with their ways to answer.
+      const given = new Map<string, { readonly invoke: number; readonly answer: Answer }>()
       const callKey = (from: string, invoke: number) => `${from} ${invoke}`
-      /** The record of a durable run's reply to the call run `from` made with its invoke `invoke`. */
-      const replyName = (from: string, invoke: number) => `${env.runId}/reply/${from}/${invoke}`
 
       /**
        * Make a call (execution.md, "Carrying out calls"): push it onto the callee's queue with a
        * way to answer, or, if the callee is not open, fail the invoke with `Unanswered` at once.
-       * No record either way, and no host code. A durable root run is answered through its
-       * registry entry, which reaches it parked or in a later attempt too (it drops an outcome it
-       * already took).
+       * No record either way, and no host code.
        */
       const makeCall = (command: Extract<Core.Command, { kind: "invoke.start" }>) =>
         Effect.sync(() => {
           const { invoke } = command
           liveCalls.add(invoke)
           const answer: Answer = (outcome) => {
-            if (liveCalls.has(invoke)) push(entry?.port ?? port, outcome)
+            if (liveCalls.has(invoke)) push(port, outcome)
           }
           const input: Core.Input = { kind: "call", from: env.runId, invoke, call: command.src, args: command.args }
           const callee = portOf(refs.get(command.to ?? ""))
@@ -535,7 +529,6 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             parentRun: env.runId,
             invoke: command.invoke,
             token,
-            // A spawned child's `as` is never `null`: its parent hears it as one invoked with `as`.
             invoker: command.as === null ? undefined : { port, heard: Core.heard(ir, name, src) },
             durable: durable?.exec
           }
@@ -672,15 +665,26 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             return doAction(command.action, command.args)
           case "invoke.start":
             if (replaying) {
-              // Started at the live edge, if it is still running then: a call is made again
-              // there, unless its outcome was journalled.
-              if (command.srcKind !== "call") newToken(command.invoke)
+              // Started at the live edge, if it is still running then.
+              newToken(command.invoke)
               deferredInvokes.set(command.invoke, command)
               return Effect.succeed(undefined)
             }
             return startInvoke(command)
           case "invoke.cancel":
             return stopInvoke(command.invoke)
+          case "reply":
+            return Effect.sync(() => {
+              const key = callKey(command.to, command.invoke)
+              const answer = given.get(key)?.answer
+              given.delete(key)
+              answer?.(
+                command.outcome === "done"
+                  ? { kind: "invoke.done", invoke: command.invoke, value: command.value }
+                  : { kind: "invoke.fail", invoke: command.invoke, error: command.value as Core.Tagged }
+              )
+              return undefined
+            })
           case "spawn.start": {
             const start: StartCommand = {
               kind: "spawn",
@@ -698,20 +702,6 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             }
             return startInvoke(start)
           }
-          case "reply":
-            return Effect.gen(function*() {
-              const key = callKey(command.to, command.invoke)
-              const answer = given.get(key)?.answer
-              given.delete(key)
-              const outcome: Core.Input = command.outcome === "done"
-                ? { kind: "invoke.done", invoke: command.invoke, value: command.value }
-                : { kind: "invoke.fail", invoke: command.invoke, error: command.value as Core.Tagged }
-              // A durable run records each reply, so that a caller that asks again (it was
-              // replayed, and made the call again) is given the same answer.
-              if (durable !== undefined) yield* writeRecord(durable.exec, replyName(command.to, command.invoke), outcome as unknown as Core.Json)
-              answer?.(outcome)
-              return undefined
-            })
           case "spawn.stop":
             return stopInvoke(command.spawn)
           case "timer.start":
@@ -895,8 +885,6 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             return `m${input.from}/${input.message}`
           case "emitted":
             return `e${input.from}/${input.message}`
-          case "call":
-            return `c${input.from}/${input.invoke}`
           default:
             return undefined
         }
@@ -1004,11 +992,6 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
                 k += 1
                 yield* writeRecord(exec, at(k), input as unknown as Core.Json)
                 entry?.journalled(input)
-                // As in an ordinary run, the call's way to answer is kept until its `reply`.
-                if (input.kind === "call") {
-                  const answer = takeAnswer(input)
-                  if (answer !== undefined) given.set(callKey(input.from, input.invoke), { invoke: input.invoke, answer })
-                }
               }
               const id = identity(input)
               if (id !== undefined) consumed.add(id)
@@ -1032,27 +1015,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         )
 
       /**
-       * A call this durable run has already taken, made again by a caller that was replayed:
-       * still pending, it is answered through the new way to answer when the run replies; already
-       * answered, it is given the recorded reply again.
-       */
-      const askedAgain = (input: Extract<Core.Input, { kind: "call" }>) =>
-        Effect.gen(function*() {
-          const answer = takeAnswer(input)
-          if (answer === undefined || durable === undefined) return
-          const pending = snapshot.calls.some((c) => c.from === input.from && c.invoke === input.invoke)
-          if (pending) {
-            given.set(callKey(input.from, input.invoke), { invoke: input.invoke, answer })
-            return
-          }
-          const reply = yield* peek(durable.exec, replyName(input.from, input.invoke))
-          if (reply !== undefined) answer(reply as unknown as Core.Input)
-        })
-
-      /**
        * The next input of a live durable run: a cancel request first, then the queue, dropping
-       * what it already took. An idle root run parks first, if its earliest timer is far enough
-       * and it waits for no call's reply.
+       * what it already took. An idle root run parks first, if its earliest timer is far enough.
        */
       const takeLive = (
         d: DurableRun,
@@ -1067,12 +1031,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           const { exec } = d
           while (true) {
             if (entry?.cancelRequested || env.token?.cancelRequested) return { kind: "cancel" } as const
-            // A run waiting for the reply to a call it made does not park: if the process stopped
-            // while it was parked, nothing would wake it to make the call again.
-            if (
-              entry !== undefined && exec.park !== undefined && Queue.sizeUnsafe(queue) === 0 && invokes.size === 0 &&
-              liveCalls.size === 0
-            ) {
+            if (entry !== undefined && exec.park !== undefined && Queue.sizeUnsafe(queue) === 0 && invokes.size === 0) {
               if (parkAt() !== position) {
                 // The parks a replay passes again at this position: each has its result.
                 let seq = 1
@@ -1099,10 +1058,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             waiting = false
             if (item.kind === "wake") continue
             const id = identity(item)
-            if (id !== undefined && consumed.has(id)) {
-              if (item.kind === "call") yield* askedAgain(item)
-              continue
-            }
+            if (id !== undefined && consumed.has(id)) continue
             return item
           }
         })
@@ -1125,20 +1081,16 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       // still queued is discarded, and every invoke it still holds is dropped as on
       // `invoke.cancel` (a child run is cancelled and its cancel step waited for; a defect there
       // changes nothing). Its timers are dropped when the scope closes. A durable run that is
-      // only stopping (the process is, or it parks) stops its children instead, and leaves its
-      // calls to the attempt that carries on from its journal: the ones it made are answered
-      // through it, and the ones it took stay in its registry entry.
+      // only stopping (the process is, or it parks) stops its children instead.
       const end = Effect.suspend(() => {
         close()
         listening = false
         for (const listener of listeners) listener.end()
         listeners.clear()
-        const mode = durable !== undefined && snapshot.status === "running" ? "stop" : "cancel"
-        if (mode === "cancel") {
-          abandonCalls()
-          liveCalls.clear()
-        }
+        abandonCalls()
+        liveCalls.clear()
         Queue.shutdownUnsafe(queue)
+        const mode = durable !== undefined && snapshot.status === "running" ? "stop" : "cancel"
         return Effect.asVoid(stopInvokes([...tokens.keys()], mode))
       }).pipe(
         Effect.ensuring(Effect.suspend(() => {

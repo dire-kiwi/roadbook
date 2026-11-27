@@ -136,8 +136,8 @@
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Upload",
         "name": "Upload",
@@ -460,8 +460,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -747,8 +747,8 @@
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Quiet",
         "name": "Quiet",
@@ -940,8 +940,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Eager",
         "name": "Eager",

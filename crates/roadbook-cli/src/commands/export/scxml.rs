@@ -653,6 +653,28 @@ impl Writer<'_> {
                     let attrs = vec![("event", event.clone()), ("type", EMIT_TYPE.into())];
                     self.send(depth, attrs, value);
                 }
+                Effect::Reply {
+                    call,
+                    outcome,
+                    value,
+                } => {
+                    let event = match (outcome, value.as_ref().map(|v| &v.ty)) {
+                        (ReplyOutcome::Done, _) => "done".to_string(),
+                        (ReplyOutcome::Fail, Some(TypeRef::Named(error))) => {
+                            format!("error.{error}")
+                        }
+                        (ReplyOutcome::Fail, _) => "error".to_string(),
+                    };
+                    let attrs = vec![
+                        ("event", event),
+                        ("type", REPLY_TYPE.into()),
+                        ("targetexpr", call.text.clone()),
+                    ];
+                    match value {
+                        Some(value) => self.send(depth, attrs, value),
+                        None => self.open(depth, "send", &attrs, true),
+                    }
+                }
                 Effect::Spawn {
                     children,
                     machine,
@@ -675,28 +697,6 @@ impl Writer<'_> {
                 Effect::Stop { children, key } => {
                     let attrs = [("children", children.clone()), ("key", key.text.clone())];
                     self.open(depth, "rb:stop", &attrs, true);
-                }
-                Effect::Reply {
-                    call,
-                    outcome,
-                    value,
-                } => {
-                    let event = match (outcome, value.as_ref().map(|v| &v.ty)) {
-                        (ReplyOutcome::Done, _) => "done".to_string(),
-                        (ReplyOutcome::Fail, Some(TypeRef::Named(error))) => {
-                            format!("error.{error}")
-                        }
-                        (ReplyOutcome::Fail, _) => "error".to_string(),
-                    };
-                    let attrs = vec![
-                        ("event", event),
-                        ("type", REPLY_TYPE.into()),
-                        ("targetexpr", call.text.clone()),
-                    ];
-                    match value {
-                        Some(value) => self.send(depth, attrs, value),
-                        None => self.open(depth, "send", &attrs, true),
-                    }
                 }
             }
         }

@@ -1,6 +1,5 @@
 // The project index: every machine of the charts given to `roadbook viz`, which machine invokes
-// or spawns which, and which talk to which: refs held, events sent, emitted events handled,
-// calls made. `roadbook viz`
+// or spawns which, and which talk to which: refs held, events sent, emitted events handled, calls made. `roadbook viz`
 // writes the data (it compiles each entry chart and keeps one entry per machine); this module
 // lays it out and draws it. Pure and DOM-free.
 
@@ -385,8 +384,8 @@ export function renderIndexLegend(): string {
 }
 
 /**
- * `spawns Session (sessions)`, `ref Inventory (inventory)`, `sends Release to Inventory`,
- * `calls reserve on Inventory`, `handles Progress from Upload`, one per line.
+ * `spawns Session (sessions)`, `ref Inventory (inventory)`, `sends Reserve, Release to Inventory`,
+ * `calls reserve on Inventory`, `handles Reserved from Inventory`, one per line.
  */
 function talksText(index: ProjectIndex, m: IndexMachine): string[] {
   const name = (i: number) => index.machines[i]?.name ?? '?'

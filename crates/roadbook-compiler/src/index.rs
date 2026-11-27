@@ -62,14 +62,14 @@ pub enum SymbolKind {
     State,
     /// The name of `invoke Machine(…) as name`; its parent is the invoking state.
     InvokeName,
+    /// A `call` a machine answers; its parent is the machine, and its parameters are its
+    /// members.
+    Call,
     /// A type parameter of a generic record or alias (`T` in `type Page<T>`); its parent is
     /// the declaration.
     TypeParameter,
     /// A `children` collection of a machine; its parent is the machine.
     Children,
-    /// A `call` a machine answers; its parent is the machine, and its parameters are its
-    /// members.
-    Call,
 }
 
 impl SymbolKind {
@@ -129,9 +129,9 @@ impl SymbolKind {
             SymbolKind::EmittedEvent => "emitted event",
             SymbolKind::State => "state",
             SymbolKind::InvokeName => "invoked machine's name",
+            SymbolKind::Call => "call",
             SymbolKind::TypeParameter => "type parameter",
             SymbolKind::Children => "children collection",
-            SymbolKind::Call => "call",
         }
     }
 }

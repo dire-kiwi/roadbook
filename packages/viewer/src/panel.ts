@@ -108,8 +108,8 @@ function addressText(ctx: PanelContext, a: Address, key?: { text: string } | nul
 }
 
 /**
- * An effect as HTML: a `send` or `emit` links to its event and says where it goes, a `reply` to
- * its call, a `spawn` links to the child's machine.
+ * An effect as HTML: a `send` or `emit` links to its event and says where it goes, a `reply`
+ * to its call, a `spawn` links to the child's machine.
  */
 function effectHtml(ctx: PanelContext, e: Effect): string {
   if (e.kind === 'spawn') {
@@ -276,6 +276,16 @@ function talkedToBySection(ctx: PanelContext): string {
   return items.length ? `<ul class="rb-talks">${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : ''
 }
 
+/** `reserve(orderId: string, items: Item[]) ! OutOfStock`, the name a link to the call. */
+function callItems(machine: string, calls: Record<string, CallDecl>): string {
+  return list(
+    Object.entries(calls).map(([name, c]) => {
+      const sig = callSignatureText(name, c).slice(name.length)
+      return `${eventLink({ machine, event: name })}${esc(sig)}${c.doc ? `<span class="rb-sub rb-note">${esc(c.doc)}</span>` : ''}`
+    }),
+  )
+}
+
 /** Where a machine spawns or stops a child, in it: `Serving: on Join`, `Serving (entry)`. */
 function spawnSiteLink(ctx: PanelContext, m: Machine, site: SpawnSite): string {
   const short = shortId(ctx, site.state)
@@ -295,16 +305,6 @@ function childrenSection(ctx: PanelContext, m: Machine): string {
         .map((x) => `<span class="rb-sub">${rel(x.op === 'spawn' ? 'spawned' : 'stopped')} ${spawnSiteLink(ctx, m, x)}</span>`)
         .join('')
       return `${childrenHtml(ctx.ir, name, c)}${c.doc ? `<span class="rb-sub rb-note">${esc(c.doc)}</span>` : ''}${where}`
-    }),
-  )
-}
-
-/** `reserve(orderId: string, items: Item[]) ! OutOfStock`, the name a link to the call. */
-function callItems(machine: string, calls: Record<string, CallDecl>): string {
-  return list(
-    Object.entries(calls).map(([name, c]) => {
-      const sig = callSignatureText(name, c).slice(name.length)
-      return `${eventLink({ machine, event: name })}${esc(sig)}${c.doc ? `<span class="rb-sub rb-note">${esc(c.doc)}</span>` : ''}`
     }),
   )
 }
@@ -341,8 +341,8 @@ export function machinePanel(ctx: PanelContext): string {
           : ''),
     ) +
     section('Events it emits', eventItems(ctx.machine, m.emits)) +
-    section('Children it spawns', childrenSection(ctx, m)) +
     section('Calls it answers', callItems(ctx.machine, m.calls)) +
+    section('Children it spawns', childrenSection(ctx, m)) +
     section('Talks to', talksToSection(ctx)) +
     section('States', `<ul class="rb-tree">${m.root.states.map(tree).join('')}</ul>`) +
     section('Invoked by', list(callers)) +

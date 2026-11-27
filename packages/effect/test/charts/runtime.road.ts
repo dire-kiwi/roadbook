@@ -67,9 +67,9 @@ const ir: unknown = {
       "doc": "",
       "span": {
         "file": 0,
-        "line": 69,
+        "line": 102,
         "col": 1,
-        "endLine": 69,
+        "endLine": 102,
         "endCol": 27
       }
     },
@@ -82,9 +82,9 @@ const ir: unknown = {
       "doc": "",
       "span": {
         "file": 0,
-        "line": 70,
+        "line": 103,
         "col": 1,
-        "endLine": 70,
+        "endLine": 103,
         "endCol": 36
       }
     },
@@ -116,9 +116,9 @@ const ir: unknown = {
       "doc": "",
       "span": {
         "file": 0,
-        "line": 72,
+        "line": 105,
         "col": 1,
-        "endLine": 72,
+        "endLine": 105,
         "endCol": 65
       }
     }
@@ -149,9 +149,9 @@ const ir: unknown = {
       "doc": "",
       "span": {
         "file": 0,
-        "line": 74,
+        "line": 107,
         "col": 1,
-        "endLine": 74,
+        "endLine": 107,
         "endCol": 58
       }
     }
@@ -246,8 +246,8 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Overflow",
         "name": "Overflow",
@@ -350,8 +350,8 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Settle",
         "name": "Settle",
@@ -528,8 +528,8 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Early",
         "name": "Early",
@@ -610,8 +610,8 @@ const ir: unknown = {
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Leftover",
         "name": "Leftover",
@@ -776,8 +776,8 @@ const ir: unknown = {
       "vars": [],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Payload",
         "name": "Payload",
@@ -829,98 +829,13 @@ const ir: unknown = {
       },
       "hash": "sha256:b8467f09a0f8ce264df87c301cf7d9971b3c887fd44988084a777f4c8fb40a67"
     },
-    "Generic": {
-      "doc": "Ends with what the host's `withLongest` makes of its map of generic records of durations.",
-      "span": {
-        "file": 0,
-        "line": 77,
-        "col": 1,
-        "endLine": 81,
-        "endCol": 2
-      },
-      "strict": false,
-      "params": [
-        {
-          "name": "boxes",
-          "type": "Boxes<duration>",
-          "sensitive": false,
-          "doc": ""
-        }
-      ],
-      "returns": "Boxes<duration>",
-      "errors": [],
-      "vars": [],
-      "events": {},
-      "emits": {},
-      "children": {},
-      "calls": {},
-      "root": {
-        "id": "Generic",
-        "name": "Generic",
-        "kind": "compound",
-        "doc": "Ends with what the host's `withLongest` makes of its map of generic records of durations.",
-        "span": {
-          "file": 0,
-          "line": 77,
-          "col": 1,
-          "endLine": 81,
-          "endCol": 2
-        },
-        "initial": "Generic.Over",
-        "states": [
-          {
-            "id": "Generic.Over",
-            "name": "Over",
-            "kind": "final",
-            "doc": "",
-            "span": {
-              "file": 0,
-              "line": 80,
-              "col": 3,
-              "endLine": 80,
-              "endCol": 49
-            },
-            "initial": null,
-            "states": [],
-            "entry": [],
-            "exit": [],
-            "invoke": null,
-            "transitions": [],
-            "output": {
-              "kind": "call",
-              "fn": "withLongest",
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "boxes"
-                  ],
-                  "type": "Boxes<duration>",
-                  "text": "boxes"
-                }
-              ],
-              "type": "Boxes<duration>",
-              "text": "withLongest(boxes)"
-            },
-            "fail": null
-          }
-        ],
-        "entry": [],
-        "exit": [],
-        "invoke": null,
-        "transitions": [],
-        "output": null,
-        "fail": null
-      },
-      "hash": "sha256:bc3b1cb2c7bce34c08d5fd30d7476f11868556de7bcebfca5c7b6b96ed36149e"
-    },
     "Desk": {
       "doc": "Answers `ask` with its argument once `hold` has run for it, one call at a time.",
       "span": {
         "file": 0,
-        "line": 84,
+        "line": 70,
         "col": 1,
-        "endLine": 97,
+        "endLine": 83,
         "endCol": 2
       },
       "strict": false,
@@ -934,15 +849,14 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 87,
+            "line": 73,
             "col": 3,
-            "endLine": 87,
+            "endLine": 73,
             "endCol": 14
           }
         }
       },
       "emits": {},
-      "children": {},
       "calls": {
         "ask": {
           "params": [
@@ -958,13 +872,14 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 85,
+            "line": 71,
             "col": 3,
-            "endLine": 85,
+            "endLine": 71,
             "endCol": 26
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Desk",
         "name": "Desk",
@@ -972,9 +887,9 @@ const ir: unknown = {
         "doc": "Answers `ask` with its argument once `hold` has run for it, one call at a time.",
         "span": {
           "file": 0,
-          "line": 84,
+          "line": 70,
           "col": 1,
-          "endLine": 97,
+          "endLine": 83,
           "endCol": 2
         },
         "initial": "Desk.Open",
@@ -986,9 +901,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 91,
+              "line": 77,
               "col": 3,
-              "endLine": 94,
+              "endLine": 80,
               "endCol": 4
             },
             "initial": null,
@@ -1045,9 +960,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 92,
+                  "line": 78,
                   "col": 5,
-                  "endLine": 92,
+                  "endLine": 78,
                   "endCol": 66
                 }
               },
@@ -1062,9 +977,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 93,
+                  "line": 79,
                   "col": 5,
-                  "endLine": 93,
+                  "endLine": 79,
                   "endCol": 23
                 }
               }
@@ -1079,9 +994,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 96,
+              "line": 82,
               "col": 3,
-              "endLine": 96,
+              "endLine": 82,
               "endCol": 24
             },
             "initial": null,
@@ -1107,9 +1022,9 @@ const ir: unknown = {
       "doc": "Asks the desk for `n`; 0 when the desk does not answer.",
       "span": {
         "file": 0,
-        "line": 100,
+        "line": 86,
         "col": 1,
-        "endLine": 114,
+        "endLine": 100,
         "endCol": 2
       },
       "strict": false,
@@ -1138,17 +1053,17 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 101,
+            "line": 87,
             "col": 3,
-            "endLine": 101,
+            "endLine": 87,
             "endCol": 15
           }
         }
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Asker",
         "name": "Asker",
@@ -1156,9 +1071,9 @@ const ir: unknown = {
         "doc": "Asks the desk for `n`; 0 when the desk does not answer.",
         "span": {
           "file": 0,
-          "line": 100,
+          "line": 86,
           "col": 1,
-          "endLine": 114,
+          "endLine": 100,
           "endCol": 2
         },
         "initial": "Asker.Asking",
@@ -1170,9 +1085,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 105,
+              "line": 91,
               "col": 3,
-              "endLine": 110,
+              "endLine": 96,
               "endCol": 4
             },
             "initial": null,
@@ -1201,9 +1116,9 @@ const ir: unknown = {
               ],
               "span": {
                 "file": 0,
-                "line": 106,
+                "line": 92,
                 "col": 5,
-                "endLine": 109,
+                "endLine": 95,
                 "endCol": 6
               }
             },
@@ -1231,9 +1146,9 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 107,
+                  "line": 93,
                   "col": 7,
-                  "endLine": 107,
+                  "endLine": 93,
                   "endCol": 48
                 }
               },
@@ -1248,9 +1163,9 @@ const ir: unknown = {
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 108,
+                  "line": 94,
                   "col": 7,
-                  "endLine": 108,
+                  "endLine": 94,
                   "endCol": 30
                 }
               }
@@ -1265,9 +1180,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 112,
+              "line": 98,
               "col": 3,
-              "endLine": 112,
+              "endLine": 98,
               "endCol": 34
             },
             "initial": null,
@@ -1293,9 +1208,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 113,
+              "line": 99,
               "col": 3,
-              "endLine": 113,
+              "endLine": 99,
               "endCol": 32
             },
             "initial": null,
@@ -1321,6 +1236,91 @@ const ir: unknown = {
         "fail": null
       },
       "hash": "sha256:f4b9343856abd75c9e05030e6a7a0e2177d49e2473bc07dd4c7de2021dd1e1b9"
+    },
+    "Generic": {
+      "doc": "Ends with what the host's `withLongest` makes of its map of generic records of durations.",
+      "span": {
+        "file": 0,
+        "line": 110,
+        "col": 1,
+        "endLine": 114,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "boxes",
+          "type": "Boxes<duration>",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Boxes<duration>",
+      "errors": [],
+      "vars": [],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Generic",
+        "name": "Generic",
+        "kind": "compound",
+        "doc": "Ends with what the host's `withLongest` makes of its map of generic records of durations.",
+        "span": {
+          "file": 0,
+          "line": 110,
+          "col": 1,
+          "endLine": 114,
+          "endCol": 2
+        },
+        "initial": "Generic.Over",
+        "states": [
+          {
+            "id": "Generic.Over",
+            "name": "Over",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 113,
+              "col": 3,
+              "endLine": 113,
+              "endCol": 49
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "call",
+              "fn": "withLongest",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "boxes"
+                  ],
+                  "type": "Boxes<duration>",
+                  "text": "boxes"
+                }
+              ],
+              "type": "Boxes<duration>",
+              "text": "withLongest(boxes)"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:bc3b1cb2c7bce34c08d5fd30d7476f11868556de7bcebfca5c7b6b96ed36149e"
     }
   }
 }
@@ -1411,30 +1411,6 @@ export interface PayloadDef extends Roadbook.MachineDef {
 /** Ends with whatever the host's `payload` returns, which must be JSON. */
 export const Payload = Roadbook.make<PayloadDef>(ir, "Payload", errors)
 
-// ---- machine: Generic ----
-
-export interface GenericDef extends Roadbook.MachineDef {
-  readonly name: "Generic"
-  readonly input: { readonly boxes: Boxes<Duration.Duration> }
-  readonly output: Boxes<Duration.Duration>
-  readonly error: never
-  readonly event: never
-  readonly emits: never
-  readonly state: "Generic" | "Generic.Over"
-  readonly fns: {
-    readonly withLongest: {
-      readonly args: { readonly boxes: Boxes<Duration.Duration> }
-      readonly returns: Boxes<Duration.Duration>
-    }
-  }
-  readonly actions: {}
-  readonly tasks: {}
-  readonly machines: {}
-}
-
-/** Ends with what the host's `withLongest` makes of its map of generic records of durations. */
-export const Generic = Roadbook.make<GenericDef>(ir, "Generic", errors)
-
 // ---- machine: Desk ----
 
 export const Close = Schema.TaggedStruct("Close", {})
@@ -1475,3 +1451,27 @@ export interface AskerDef extends Roadbook.MachineDef {
 
 /** Asks the desk for `n`; 0 when the desk does not answer. */
 export const Asker = Roadbook.make<AskerDef>(ir, "Asker", errors)
+
+// ---- machine: Generic ----
+
+export interface GenericDef extends Roadbook.MachineDef {
+  readonly name: "Generic"
+  readonly input: { readonly boxes: Boxes<Duration.Duration> }
+  readonly output: Boxes<Duration.Duration>
+  readonly error: never
+  readonly event: never
+  readonly emits: never
+  readonly state: "Generic" | "Generic.Over"
+  readonly fns: {
+    readonly withLongest: {
+      readonly args: { readonly boxes: Boxes<Duration.Duration> }
+      readonly returns: Boxes<Duration.Duration>
+    }
+  }
+  readonly actions: {}
+  readonly tasks: {}
+  readonly machines: {}
+}
+
+/** Ends with what the host's `withLongest` makes of its map of generic records of durations. */
+export const Generic = Roadbook.make<GenericDef>(ir, "Generic", errors)

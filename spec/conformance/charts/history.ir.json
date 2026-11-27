@@ -149,8 +149,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Editor",
         "name": "Editor",
@@ -697,8 +697,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Steps",
         "name": "Steps",
@@ -1003,8 +1003,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Bounce",
         "name": "Bounce",

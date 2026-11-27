@@ -83,7 +83,7 @@ fn parse_version(v: &str) -> Option<(u32, u32)> {
 /// crate.
 ///
 /// Versions are `"MAJOR.MINOR"`. While the major version is 0 every change
-/// is breaking, so only `"0.5"` is accepted. From `1.0` on, a reader accepts
+/// is breaking, so only `"0.7"` is accepted. From `1.0` on, a reader accepts
 /// its own major version with any minor version up to its own: a minor
 /// version only adds to the IR, and an older reader must not silently ignore
 /// what it does not know.

@@ -14,14 +14,13 @@ const BUILTINS: ReadonlyArray<string> = ["string", "int", "float", "bool", "dura
  * list of optional strings. A `named` type is a declared type (or, inside a generic declaration,
  * one of its parameters, or a bare event name of the machine it is used in); `args` is empty
  * unless it is an instance of a generic declaration, `Page<Order>`. An `event` is a dotted
- * `Machine.Event`.
+ * `Machine.Event`. A `call` is a pending call of the machine it is used in, `call reserve`.
  */
 export type TypeRef =
   | { readonly kind: "builtin"; readonly name: Builtin }
   | { readonly kind: "named"; readonly name: string; readonly args: ReadonlyArray<TypeRef> }
   | { readonly kind: "event"; readonly machine: string; readonly event: string }
   | { readonly kind: "ref"; readonly machine: string }
-  /** A pending call of the machine, `call reserve`: what a reply answers. */
   | { readonly kind: "call"; readonly call: string }
   | { readonly kind: "map"; readonly key: TypeRef; readonly value: TypeRef }
   | { readonly kind: "list"; readonly of: TypeRef }
@@ -136,7 +135,7 @@ export const typeRefText = (t: TypeRef): string => {
 /**
  * Every name `t` mentions as a declared type (or a type parameter, or an event type, dotted),
  * outermost first: `map<UserId, Page<Order>>` gives `UserId`, `Page` and `Order`. The machine of
- * a `ref` and the name of a `call` are not types and are not given.
+ * a `ref` is not a type and is not given, nor is the call of a `call`.
  */
 export const typeNames = (t: TypeRef): Array<string> => {
   switch (t.kind) {

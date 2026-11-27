@@ -160,8 +160,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Escape",
         "name": "Escape",
@@ -1115,8 +1115,8 @@
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "EscapePeer",
         "name": "EscapePeer",

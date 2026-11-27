@@ -69,8 +69,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Receiver",
         "name": "Receiver",
@@ -251,8 +251,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Sender",
         "name": "Sender",

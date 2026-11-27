@@ -1,0 +1,457 @@
+{
+  "irVersion": "0.7",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/catalog.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Item": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "sku",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "Something for sale.",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 36
+      }
+    },
+    "Page": {
+      "kind": "record",
+      "params": [
+        "T"
+      ],
+      "fields": [
+        {
+          "name": "items",
+          "type": "T[]",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "next",
+          "type": "string?",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "A page of results, and where the next one starts.",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 43
+      }
+    }
+  },
+  "functions": {
+    "inStock": {
+      "params": [
+        {
+          "name": "stock",
+          "type": "map<string, int>",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "page",
+          "type": "Page<Item>",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Page<Item>",
+      "doc": "The items of `page` that `stock` has enough of.",
+      "span": {
+        "file": 0,
+        "line": 11,
+        "col": 1,
+        "endLine": 11,
+        "endCol": 68
+      }
+    }
+  },
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Catalog": {
+      "doc": "Searches its stock for the items it is asked about.",
+      "span": {
+        "file": 0,
+        "line": 14,
+        "col": 1,
+        "endLine": 21,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {},
+      "emits": {},
+      "calls": {
+        "search": {
+          "params": [
+            {
+              "name": "stock",
+              "type": "map<string, int>",
+              "sensitive": false,
+              "doc": ""
+            },
+            {
+              "name": "page",
+              "type": "Page<Item>",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "returns": "Page<Item>",
+          "errors": [],
+          "doc": "The items of `page` that are in stock, by `stock`'s counts.",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 71
+          }
+        }
+      },
+      "children": {},
+      "root": {
+        "id": "Catalog",
+        "name": "Catalog",
+        "kind": "compound",
+        "doc": "Searches its stock for the items it is asked about.",
+        "span": {
+          "file": 0,
+          "line": 14,
+          "col": 1,
+          "endLine": 21,
+          "endCol": 2
+        },
+        "initial": "Catalog.Open",
+        "states": [
+          {
+            "id": "Catalog.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 20,
+              "col": 3,
+              "endLine": 20,
+              "endCol": 76
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "call",
+                  "call": "search"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "call"
+                      ],
+                      "type": "call search",
+                      "text": "call"
+                    },
+                    "outcome": "done",
+                    "value": {
+                      "kind": "call",
+                      "fn": "inStock",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "stock"
+                          ],
+                          "type": "map<string, int>",
+                          "text": "event.stock"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "page"
+                          ],
+                          "type": "Page<Item>",
+                          "text": "event.page"
+                        }
+                      ],
+                      "type": "Page<Item>",
+                      "text": "inStock(event.stock, event.page)"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 20,
+                  "col": 16,
+                  "endLine": 20,
+                  "endCol": 74
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:1bbb265d8b21d6db9e584a9704fa3a43711f286d6544adf8fc9b13750973ac43"
+    },
+    "Shopper": {
+      "doc": "Asks the catalog which of the items it wants are in stock.",
+      "span": {
+        "file": 0,
+        "line": 24,
+        "col": 1,
+        "endLine": 37,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "catalog",
+          "type": "ref Catalog",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "stock",
+          "type": "map<string, int>",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "wanted",
+          "type": "Page<Item>",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Page<Item>",
+      "errors": [],
+      "vars": [
+        {
+          "name": "found",
+          "type": "Page<Item>",
+          "sensitive": false,
+          "init": {
+            "kind": "ref",
+            "path": [
+              "wanted"
+            ],
+            "type": "Page<Item>",
+            "text": "wanted"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 25,
+            "col": 3,
+            "endLine": 25,
+            "endCol": 33
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Shopper",
+        "name": "Shopper",
+        "kind": "compound",
+        "doc": "Asks the catalog which of the items it wants are in stock.",
+        "span": {
+          "file": 0,
+          "line": 24,
+          "col": 1,
+          "endLine": 37,
+          "endCol": 2
+        },
+        "initial": "Shopper.Asking",
+        "states": [
+          {
+            "id": "Shopper.Asking",
+            "name": "Asking",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 29,
+              "col": 3,
+              "endLine": 34,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "call",
+              "src": "search",
+              "to": {
+                "kind": "ref",
+                "name": "catalog",
+                "machine": "Catalog",
+                "state": null
+              },
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "stock"
+                  ],
+                  "type": "map<string, int>",
+                  "text": "stock"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "wanted"
+                  ],
+                  "type": "Page<Item>",
+                  "text": "wanted"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 30,
+                "col": 5,
+                "endLine": 33,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Shopper.Found",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "found",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "Page<Item>",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 31,
+                  "col": 7,
+                  "endLine": 31,
+                  "endCol": 51
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "Unanswered"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Shopper.Found",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 32,
+                  "col": 7,
+                  "endLine": 32,
+                  "endCol": 31
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Shopper.Found",
+            "name": "Found",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 36,
+              "col": 3,
+              "endLine": 36,
+              "endCol": 37
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "found"
+              ],
+              "type": "Page<Item>",
+              "text": "found"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:dfe1f93895107bfb1db805dff70aeb9f66d8ee3ac84ca2f370c2c5533711310f"
+    }
+  }
+}

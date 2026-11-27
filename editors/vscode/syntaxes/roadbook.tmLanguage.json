@@ -173,6 +173,14 @@
           }
         },
         {
+          "match": "(:)\\s*(call)\\s+([a-z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "punctuation.separator.colon.roadbook" },
+            "2": { "name": "storage.modifier.call.roadbook" },
+            "3": { "name": "entity.name.function.roadbook" }
+          }
+        },
+        {
           "match": "\\b(children)\\s+([a-z][A-Za-z0-9]*)\\s*(:)\\s*([A-Z][A-Za-z0-9]*)\\s+(by)\\b",
           "captures": {
             "1": { "name": "storage.type.children.roadbook" },
@@ -180,14 +188,6 @@
             "3": { "name": "punctuation.separator.colon.roadbook" },
             "4": { "name": "entity.name.type.machine.roadbook" },
             "5": { "name": "keyword.other.by.roadbook" }
-          }
-        },
-        {
-          "match": "(:)\\s*(call)\\s+([a-z][A-Za-z0-9]*)",
-          "captures": {
-            "1": { "name": "punctuation.separator.colon.roadbook" },
-            "2": { "name": "storage.modifier.call.roadbook" },
-            "3": { "name": "entity.name.function.roadbook" }
           }
         },
         {

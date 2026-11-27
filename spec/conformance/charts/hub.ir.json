@@ -202,8 +202,8 @@
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Session",
         "name": "Session",
@@ -740,6 +740,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "children": {
         "sessions": {
           "machine": "Session",
@@ -754,7 +755,6 @@
           }
         }
       },
-      "calls": {},
       "root": {
         "id": "Hub",
         "name": "Hub",
@@ -1480,12 +1480,12 @@
       "hash": "sha256:24d307ada6ee1809dc0e6879de8fa93fd536bb2537874023b6c9dc92e0bbdf4e"
     },
     "Pool": {
-      "doc": "Keyed by number: handles only its children's ending, and can be saved while they run.",
+      "doc": "Keyed by number: handles only its children's ending, and can be saved while they run. It\nhears what they say (so it is delivered, and dropped or stale) but never takes it.",
       "span": {
         "file": 0,
-        "line": 72,
+        "line": 73,
         "col": 1,
-        "endLine": 91,
+        "endLine": 93,
         "endCol": 2
       },
       "strict": false,
@@ -1512,31 +1512,13 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 73,
+            "line": 74,
             "col": 3,
-            "endLine": 73,
+            "endLine": 74,
             "endCol": 40
           }
         },
         "Close": {
-          "fields": [
-            {
-              "name": "n",
-              "type": "int",
-              "sensitive": false,
-              "doc": ""
-            }
-          ],
-          "doc": "",
-          "span": {
-            "file": 0,
-            "line": 74,
-            "col": 3,
-            "endLine": 74,
-            "endCol": 26
-          }
-        },
-        "Leave": {
           "fields": [
             {
               "name": "n",
@@ -1554,7 +1536,7 @@
             "endCol": 26
           }
         },
-        "Drop": {
+        "Leave": {
           "fields": [
             {
               "name": "n",
@@ -1572,19 +1554,38 @@
             "endCol": 26
           }
         },
-        "Finish": {
-          "fields": [],
+        "Drop": {
+          "fields": [
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
           "doc": "",
           "span": {
             "file": 0,
             "line": 77,
             "col": 3,
             "endLine": 77,
+            "endCol": 26
+          }
+        },
+        "Finish": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 78,
+            "col": 3,
+            "endLine": 78,
             "endCol": 15
           }
         }
       },
       "emits": {},
+      "calls": {},
       "children": {
         "slots": {
           "machine": "Session",
@@ -1592,24 +1593,23 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 79,
+            "line": 80,
             "col": 3,
-            "endLine": 79,
+            "endLine": 80,
             "endCol": 33
           }
         }
       },
-      "calls": {},
       "root": {
         "id": "Pool",
         "name": "Pool",
         "kind": "compound",
-        "doc": "Keyed by number: handles only its children's ending, and can be saved while they run.",
+        "doc": "Keyed by number: handles only its children's ending, and can be saved while they run. It\nhears what they say (so it is delivered, and dropped or stale) but never takes it.",
         "span": {
           "file": 0,
-          "line": 72,
+          "line": 73,
           "col": 1,
-          "endLine": 91,
+          "endLine": 93,
           "endCol": 2
         },
         "initial": "Pool.Running",
@@ -1621,9 +1621,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 82,
+              "line": 83,
               "col": 3,
-              "endLine": 89,
+              "endLine": 91,
               "endCol": 4
             },
             "initial": null,
@@ -1669,10 +1669,10 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 83,
+                  "line": 84,
                   "col": 5,
-                  "endLine": 83,
-                  "endCol": 74
+                  "endLine": 84,
+                  "endCol": 85
                 }
               },
               {
@@ -1700,10 +1700,10 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 84,
+                  "line": 85,
                   "col": 5,
-                  "endLine": 84,
-                  "endCol": 51
+                  "endLine": 85,
+                  "endCol": 62
                 }
               },
               {
@@ -1743,10 +1743,10 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 85,
+                  "line": 86,
                   "col": 5,
-                  "endLine": 85,
-                  "endCol": 57
+                  "endLine": 86,
+                  "endCol": 68
                 }
               },
               {
@@ -1786,10 +1786,10 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 86,
+                  "line": 87,
                   "col": 5,
-                  "endLine": 86,
-                  "endCol": 56
+                  "endLine": 87,
+                  "endCol": 67
                 }
               },
               {
@@ -1816,10 +1816,10 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 87,
+                  "line": 88,
                   "col": 5,
-                  "endLine": 87,
-                  "endCol": 46
+                  "endLine": 88,
+                  "endCol": 57
                 }
               },
               {
@@ -1833,10 +1833,67 @@
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 88,
+                  "line": 89,
                   "col": 5,
-                  "endLine": 88,
-                  "endCol": 30
+                  "endLine": 89,
+                  "endCol": 41
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "children",
+                    "name": "slots",
+                    "machine": "Session",
+                    "state": null
+                  },
+                  "event": "Said"
+                },
+                "group": 6,
+                "guard": {
+                  "kind": "op",
+                  "op": "<",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "key"
+                      ],
+                      "type": "int",
+                      "text": "key"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 0,
+                      "type": "int",
+                      "text": "0"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "key < 0"
+                },
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "never",
+                        "type": "string",
+                        "text": "\"never\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 90,
+                  "col": 5,
+                  "endLine": 90,
+                  "endCol": 58
                 }
               }
             ],
@@ -1850,9 +1907,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 90,
+              "line": 92,
               "col": 3,
-              "endLine": 90,
+              "endLine": 92,
               "endCol": 26
             },
             "initial": null,
@@ -1872,7 +1929,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:62f3e25845e36f9cc96e878155dff792cd5a49185e3722509a2d88b566f4734d"
+      "hash": "sha256:1b6360b4b067f8f5770f4d1b0919f0c26fb7f79403ca38cf3e385a1ddbac63ab"
     }
   }
 }

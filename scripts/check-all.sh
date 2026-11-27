@@ -81,7 +81,8 @@ for (const c of both) {
 }
 console.log(`identical traces for the ${both.length} cases both ran`)
 // The TypeScript durable driver (`durable/`) must write the same traces as both, for the cases
-// it runs: all but those with `suspend` steps.
+// it runs: all but those with `suspend` steps and those that require calls, which a durable run
+// refuses.
 const durableDir = path.join(out, "ts", "durable")
 const durable = fs.readdirSync(durableDir).filter((f) => f.endsWith(".jsonl")).map((f) => f.replace(/\.jsonl$/, ""))
 for (const c of durable) {
@@ -91,9 +92,11 @@ for (const c of durable) {
     failed = true
   }
 }
-const withoutSuspend = cases.filter((c) => !fs.readFileSync(path.join(dir, c, "case.json"), "utf8").includes('"suspend"'))
-if (durable.length !== withoutSuspend.length) {
-  console.error(`the durable driver ran ${durable.length} cases, not the ${withoutSuspend.length} without suspend steps`)
+const durableCases = cases.filter(
+  (c) => !fs.readFileSync(path.join(dir, c, "case.json"), "utf8").includes('"suspend"') && !requires(c).includes("calls")
+)
+if (durable.length !== durableCases.length) {
+  console.error(`the durable driver ran ${durable.length} cases, not the ${durableCases.length} without suspend steps or calls`)
   failed = true
 }
 console.log(`identical traces from the durable driver for its ${durable.length} cases`)

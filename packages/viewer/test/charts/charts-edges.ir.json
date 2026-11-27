@@ -79,8 +79,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "OnlyRoot",
         "name": "OnlyRoot",
@@ -229,8 +229,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Note",
         "name": "Note",
@@ -772,8 +772,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Same",
         "name": "Same",
@@ -935,8 +935,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Rows",
         "name": "Rows",

@@ -30,9 +30,9 @@ export function buildSearchIndex(ir: Ir): SearchEntry[] {
       for (const e of list) {
         if (e.kind === 'do') out.push({ kind: 'action', name: e.action, label: `${effectText(e)}: ${where}`, machine, target })
         if (e.kind === 'send' || e.kind === 'emit') out.push({ kind: 'event', name: e.event, label: `${effectText(e)}: ${where}`, machine, target })
-        if (e.kind === 'spawn') out.push({ kind: 'machine', name: e.machine, label: `${effectText(e)}: ${where}`, machine, target })
         const call = e.kind === 'reply' ? callOfType(e.call.type) : null
         if (call) out.push({ kind: 'call', name: call, label: `${effectText(e)}: ${where}`, machine, target })
+        if (e.kind === 'spawn') out.push({ kind: 'machine', name: e.machine, label: `${effectText(e)}: ${where}`, machine, target })
       }
     }
     walkStates(m.root, (s, _parent, depth) => {

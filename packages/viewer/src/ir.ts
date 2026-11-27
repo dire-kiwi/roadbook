@@ -120,11 +120,11 @@ export type Trigger =
   | { kind: 'done' }
   | { kind: 'invoke.done' }
   | { kind: 'invoke.fail'; error: string }
+  | { kind: 'call'; call: string }
   /** `on name.done`: a spawned child of the collection `children` ended with an output. */
   | { kind: 'spawn.done'; children: string }
   /** `on name.fail E`: a spawned child of the collection failed with `error`, or `*`. */
   | { kind: 'spawn.fail'; children: string; error: string }
-  | { kind: 'call'; call: string }
 
 export type Effect =
   | { kind: 'set'; var: string; value: Expr }
@@ -132,11 +132,11 @@ export type Effect =
   /** `key`: for a `children` address, the key (`send name[key].E`), or null for every child (`send name.*.E`); null otherwise. */
   | { kind: 'send'; to: Address; key: Expr | null; event: string; value: Expr }
   | { kind: 'emit'; event: string; value: Expr }
+  | { kind: 'reply'; call: Expr; outcome: 'done' | 'fail'; value: Expr | null }
   /** `spawn name[key] = Machine(args)` */
   | { kind: 'spawn'; children: string; machine: string; key: Expr; args: Expr[] }
   /** `stop name[key]` */
   | { kind: 'stop'; children: string; key: Expr }
-  | { kind: 'reply'; call: Expr; outcome: 'done' | 'fail'; value: Expr | null }
 
 export interface Transition {
   trigger: Trigger
@@ -184,10 +184,10 @@ export interface Machine {
   events: Record<string, EventDecl>
   /** Events the machine emits (`emits Name { fields }`), to its invoker and every holder of a ref to it. */
   emits: Record<string, EventDecl>
-  /** The collections of spawned children, keyed by name. */
-  children: Record<string, ChildrenDecl>
   /** Calls the machine answers (`call name(params) -> T ! E`). */
   calls: Record<string, CallDecl>
+  /** The collections of spawned children, keyed by name. */
+  children: Record<string, ChildrenDecl>
   root: State
   hash: string
 }

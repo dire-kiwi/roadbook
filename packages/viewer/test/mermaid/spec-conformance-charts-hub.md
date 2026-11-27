@@ -65,10 +65,11 @@ stateDiagram-v2
 
 ## Pool
 
-`spec/conformance/charts/hub.road:72`
+`spec/conformance/charts/hub.road:73`
 
 ```text
-Keyed by number: handles only its children's ending, and can be saved while they run.
+Keyed by number: handles only its children's ending, and can be saved while they run. It
+hears what they say (so it is delivered, and dropped or stale) but never takes it.
 ```
 
 ```mermaid
@@ -78,6 +79,7 @@ stateDiagram-v2
   Running: on Leave / send slots[event.n].Leave
   Running: on Drop / send slots[event.n].Drop
   Running: on slots.done / do log("left")
+  Running: on slots.Said [key < 0] / do log("never")
   [*] --> Running
   Running --> Finished: Finish
   Finished --> [*]

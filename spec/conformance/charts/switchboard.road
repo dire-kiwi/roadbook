@@ -1,0 +1,65 @@
+// Conformance chart: a saved snapshot with a pending call, a history state's
+// record and spawned children at once. A snapshot with `calls` is refused;
+// once the call is answered, the snapshot restores the history record and
+// starts the children again.
+
+/// One open line, until it is hung up.
+machine Line(n: int) {
+  event Hang
+
+  initial Up
+
+  state Up { on Hang -> Down }
+
+  final state Down {}
+}
+
+/// Opens lines, holds a lookup taken at night, and pauses to answer it, coming back to the
+/// state it was in.
+machine Switchboard() {
+  /// The number for `name`, once the switchboard is told to answer.
+  call lookup(name: string) -> int
+
+  event Open   { n: int }
+  event Night
+  event Pause
+  event Answer
+  event Resume
+
+  children lines: Line by int
+
+  var pending: call lookup
+  var asked:   string = ""
+
+  initial Working
+
+  on Open spawn lines[event.n] = Line(event.n)
+
+  state Working {
+    initial Day
+    history Last
+
+    state Day   { on Night -> Night }
+    state Night { on lookup -> Held  set pending = call, asked = event.name }
+    state Held  { on Pause -> Paused }
+  }
+
+  state Paused   { on Answer -> Answered  reply pending done 7 }
+  state Answered { on Resume -> Working.Last }
+}
+
+/// Looks a name up.
+machine Caller(board: ref Switchboard) -> int {
+  var number: int = 0
+
+  initial Asking
+
+  state Asking {
+    invoke board.lookup("ada") {
+      done            -> Got  set number = result
+      fail Unanswered -> Got
+    }
+  }
+
+  final state Got { output number }
+}

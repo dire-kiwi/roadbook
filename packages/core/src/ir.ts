@@ -111,8 +111,8 @@ export interface Machine {
   readonly vars: ReadonlyArray<Variable>
   readonly events: Readonly<Record<string, EventDecl>>
   readonly emits: Readonly<Record<string, EventDecl>>
-  readonly children: Readonly<Record<string, ChildrenDecl>>
   readonly calls: Readonly<Record<string, CallDecl>>
+  readonly children: Readonly<Record<string, ChildrenDecl>>
   readonly root: State
   readonly hash: string
 }
@@ -176,9 +176,9 @@ export type Trigger =
   | { readonly kind: "done" }
   | { readonly kind: "invoke.done" }
   | { readonly kind: "invoke.fail"; readonly error: string }
+  | { readonly kind: "call"; readonly call: string }
   | { readonly kind: "spawn.done"; readonly children: string }
   | { readonly kind: "spawn.fail"; readonly children: string; readonly error: string }
-  | { readonly kind: "call"; readonly call: string }
 
 export interface Transition {
   readonly trigger: Trigger
@@ -202,6 +202,13 @@ export type Effect =
   }
   | { readonly kind: "emit"; readonly event: string; readonly value: Expr }
   | {
+    readonly kind: "reply"
+    /** A `ref` expression of type `call c`: the implicit `call` or a variable. */
+    readonly call: Expr
+    readonly outcome: "done" | "fail"
+    readonly value: Expr | null
+  }
+  | {
     readonly kind: "spawn"
     readonly children: string
     readonly machine: string
@@ -209,13 +216,6 @@ export type Effect =
     readonly args: ReadonlyArray<Expr>
   }
   | { readonly kind: "stop"; readonly children: string; readonly key: Expr }
-  | {
-    readonly kind: "reply"
-    /** A `ref` expression of type `call c`: the implicit `call` or a variable. */
-    readonly call: Expr
-    readonly outcome: "done" | "fail"
-    readonly value: Expr | null
-  }
 
 interface ExprBase {
   readonly type: string
@@ -291,3 +291,4 @@ export const getMachine = (ir: Ir, name: string): Machine => {
   }
   return machine
 }
+

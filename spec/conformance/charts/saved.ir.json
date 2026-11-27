@@ -214,8 +214,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Counter",
         "name": "Counter",
@@ -417,8 +417,8 @@
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Shop",
         "name": "Shop",
@@ -606,8 +606,8 @@
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Pay",
         "name": "Pay",
@@ -834,8 +834,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Reminder",
         "name": "Reminder",
@@ -1048,8 +1048,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Order",
         "name": "Order",

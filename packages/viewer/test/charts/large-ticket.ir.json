@@ -1160,8 +1160,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "SupportTicket",
         "name": "SupportTicket",
@@ -4302,8 +4302,8 @@
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "SatisfactionSurvey",
         "name": "SatisfactionSurvey",

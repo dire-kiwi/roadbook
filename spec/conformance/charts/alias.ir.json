@@ -317,8 +317,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Aliases",
         "name": "Aliases",

@@ -46,9 +46,9 @@ pub const FEATURES: &[&str] = &[
     "messaging",
     "parallel",
     "snapshots",
+    "calls",
     "history",
     "spawn",
-    "calls",
 ];
 
 /// `spec/conformance` in this repository.

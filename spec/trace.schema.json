@@ -160,6 +160,18 @@
       "required": ["invoke", "state", "src"]
     },
     {
+      "description": "A call was answered: by a reply effect, or with Unanswered because it enabled no transition. to is the caller's run id and invoke its invoke.",
+      "properties": {
+        "kind": { "const": "replied" },
+        "to": { "$ref": "#/$defs/runId" },
+        "invoke": { "$ref": "#/$defs/id" },
+        "call": { "$ref": "#/$defs/lowerName" },
+        "outcome": { "enum": ["done", "fail"] },
+        "value": { "$ref": "#/$defs/value" }
+      },
+      "required": ["to", "invoke", "call", "outcome", "value"]
+    },
+    {
       "description": "A spawned child was started, after the step that spawned it settled, or again on restoring.",
       "properties": {
         "kind": { "const": "spawn.started" },
@@ -180,18 +192,6 @@
         "key": { "$ref": "#/$defs/key" }
       },
       "required": ["spawn", "children", "key"]
-    },
-    {
-      "description": "A call was answered: by a reply effect, or with Unanswered because it enabled no transition. to is the caller's run id and invoke its invoke.",
-      "properties": {
-        "kind": { "const": "replied" },
-        "to": { "$ref": "#/$defs/runId" },
-        "invoke": { "$ref": "#/$defs/id" },
-        "call": { "$ref": "#/$defs/lowerName" },
-        "outcome": { "enum": ["done", "fail"] },
-        "value": { "$ref": "#/$defs/value" }
-      },
-      "required": ["to", "invoke", "call", "outcome", "value"]
     },
     {
       "description": "An after timer was started.",

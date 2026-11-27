@@ -84,7 +84,7 @@ export const conformanceDir = path.resolve(import.meta.dirname, "../../../../spe
  * The features of case.schema.json's `requires` this runtime implements. A case that requires
  * another is skipped, not failed.
  */
-export const supported: ReadonlyArray<string> = ["messaging", "parallel", "snapshots", "history", "spawn", "calls"]
+export const supported: ReadonlyArray<string> = ["messaging", "parallel", "snapshots", "calls", "history", "spawn"]
 
 /** Whether this runtime implements everything case `name` requires. */
 export const isSupported = (name: string): boolean => {
@@ -92,12 +92,15 @@ export const isSupported = (name: string): boolean => {
   return spec.requires.every((feature) => supported.includes(feature))
 }
 
-/** Whether durable mode runs case `name`: not if it has `suspend` steps (durable runs park). */
+/**
+ * Whether durable mode runs case `name`: not if it has `suspend` steps (durable runs park), nor
+ * if it requires calls, which the durable driver does not carry out.
+ */
 export const isDurable = (name: string): boolean => {
   const spec = JSON.parse(fs.readFileSync(path.join(conformanceDir, "cases", name, "case.json"), "utf8")) as Case
   const suspends = (steps: ReadonlyArray<Step>): boolean =>
     steps.some((step) => "suspend" in step || ("together" in step && suspends(step.together)))
-  return !suspends(spec.script)
+  return !suspends(spec.script) && !spec.requires.includes("calls")
 }
 
 export const caseNames = (): Array<string> =>

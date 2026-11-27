@@ -9,7 +9,7 @@ import type * as Core from "@dire-kiwi/roadbook-core"
 import { Deferred, Effect, Exit, Option, Queue, Schema } from "effect"
 import { Activity, DurableClock, DurableDeferred, type Workflow, WorkflowEngine } from "effect/workflow"
 import { Defect, hostDefect } from "../Defect.ts"
-import { type Answer, type Port, registerHandle, type Wake } from "./port.ts"
+import { type Port, registerHandle, type Wake } from "./port.ts"
 
 // ---- one execution ------------------------------------------------------------------------------
 
@@ -183,19 +183,13 @@ export class Entry {
   emitted = 0
   readonly log: Array<{ readonly message: number; readonly value: Core.Tagged }> = []
   /**
-   * The durable runs holding a `ref` to this one, from which message id each receives, and which
-   * of the events it emits: those their machine has an `on` for.
+   * The durable runs holding a `ref` to this one, from which message id each receives, and
+   * which of the events this run emits it receives: those its machine has an `on` for.
    */
   readonly subscribers = new Map<
     string,
     { readonly entry: Entry; readonly from: number; readonly heard: ReadonlySet<string> }
   >()
-  /**
-   * The calls the run has taken in this process and not replied to, with their ways to answer:
-   * kept here, not in an attempt, so that the attempt that carries on after a park or a replay
-   * answers them.
-   */
-  readonly given = new Map<string, { readonly invoke: number; readonly answer: Answer }>()
   /**
    * Host listeners of the run's emitted events (`DurableMachine.emitted`), each with the message
    * id it hears from: an emit a replay carries out again is not heard again.
@@ -440,7 +434,7 @@ export class Entry {
 
   /**
    * `holder` receives what this run emits from message `from` on, what it already emitted too:
-   * the events in `heard`, which its machine has an `on` for.
+   * the events in `heard`.
    */
   subscribe(holder: Entry, from: number, heard: ReadonlySet<string>) {
     if (this.state === "ended") return

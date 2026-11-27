@@ -1,0 +1,27 @@
+// A call is named through its `ref`, and its `Unanswered` is not a declared error.
+error Busy
+
+machine Desk() {
+  call reserve(n: int) -> int ! Busy
+  event Close
+  initial Open
+  state Open {
+    on reserve          reply call fail Busy
+    on Close   -> Shut
+  }
+  final state Shut {}
+}
+
+machine M(desk: ref Desk) {
+  initial A
+  state A {
+    invoke desk.reserve(1) retry 2 on Unanswered {
+      done            -> B
+      fail Busy       -> B
+      fail Unanswered -> B
+    }
+  }
+  final state B {}
+}
+
+// expect: RB0207 at 18:39

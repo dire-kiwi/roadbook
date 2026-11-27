@@ -11,7 +11,7 @@ use crate::codes;
 use crate::index::SymbolId;
 use crate::machine::{Cx, Implicit, Scope};
 use crate::names::{Found, is_type, suggest};
-use crate::sensitive::Dest;
+use crate::sensitive::{Dest, Sensitive};
 use crate::types::{BOOL, Ty, TypeDef};
 
 const INT: Ty = Ty::Builtin(Builtin::Int);
@@ -138,6 +138,7 @@ impl Cx<'_, '_> {
                     "event" => Some((&scope.event, "an `on` transition")),
                     "result" => Some((&scope.result, "an invoke's `done` outcome")),
                     "error" => Some((&scope.error, "an invoke's `fail` outcome")),
+                    "call" => Some((&scope.call, "an `on name` transition that takes a call")),
                     // A parameter or variable named `key` (already reported) is read as one
                     // where no child's key is in scope.
                     "key"
@@ -149,7 +150,6 @@ impl Cx<'_, '_> {
                             "a transition taken for a spawned child: `on name.Event`, `on name.done` or `on name.fail` through a `children` collection",
                         ))
                     }
-                    "call" => Some((&scope.call, "an `on name` transition that takes a call")),
                     _ => None,
                 };
                 let ty = match implicit {
@@ -214,7 +214,7 @@ impl Cx<'_, '_> {
                 self.sens = self
                     .ck
                     .sensitive
-                    .is(&format!("{}.{c}", self.machine), &f.name);
+                    .is(&Sensitive::call(&self.machine, c), &f.name);
                 let path = vec!["event".to_string(), f.name.clone()];
                 (node(K::Ref { path }, &ty, e), ty)
             }
@@ -241,7 +241,15 @@ impl Cx<'_, '_> {
             }
             ExprKind::Call(c) => {
                 let sig = self.callee(&c.name, SigKind::Fn);
-                let args = self.args(&c.name, c.span, &c.args, sig.as_ref(), SigKind::Fn, scope);
+                let args = self.args(
+                    &c.name,
+                    c.span,
+                    &c.args,
+                    sig.as_ref(),
+                    SigKind::Fn,
+                    scope,
+                    None,
+                );
                 let ty = sig.and_then(|s| s.returns).unwrap_or(Ty::Unknown);
                 let kind = K::Call {
                     func: c.name.name.clone(),

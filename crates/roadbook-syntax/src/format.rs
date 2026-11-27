@@ -773,8 +773,8 @@ fn inline_item(item: &Item) -> Option<String> {
         Item::Var(_)
         | Item::Event(_)
         | Item::Emits(_)
-        | Item::Children(_)
         | Item::Call(_)
+        | Item::Children(_)
         | Item::State(_)
         | Item::Invoke(_)
         | Item::History(_)
@@ -828,9 +828,9 @@ fn trigger(t: &Trigger) -> String {
     match t {
         Trigger::On(p) => format!("on {}", pattern(p)),
         Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
+        Trigger::Call(n) => format!("on {}", n.name),
         Trigger::ChildDone { from } => format!("on {}.done", from.name),
         Trigger::ChildFail { from, error } => format!("on {}.fail {}", from.name, pattern(error)),
-        Trigger::Call(n) => format!("on {}", n.name),
         Trigger::After(e) if bare_record(e) => format!("after ({})", expr(e)),
         Trigger::After(e) => format!("after {}", expr(e)),
         Trigger::Always => "always".into(),
@@ -866,9 +866,9 @@ fn bare_record(e: &Expr) -> bool {
 }
 
 /// Consecutive `set`s, and consecutive `do`s, share a clause; clauses are separated by two
-/// spaces. Every `set` comes first, then the `do`, `send`, `emit`, `spawn`, `stop` and `reply`
-/// effects, each in the order written: the order they run in. A `send`, `emit`, `spawn`, `stop`
-/// or `reply` is a clause of its own.
+/// spaces. Every `set` comes first, then the `do`, `send`, `emit`, `reply`, `spawn` and `stop`
+/// effects, each in the order written: the order they run in. A `send`, `emit`, `reply`,
+/// `spawn` or `stop` is a clause of its own.
 fn effects(effects: &[Effect]) -> String {
     let mut out = String::new();
     let mut last: Option<&'static str> = None;
@@ -880,9 +880,9 @@ fn effects(effects: &[Effect]) -> String {
             Effect::Do(_) => "do",
             Effect::Send(_) => "send",
             Effect::Emit(_) => "emit",
+            Effect::Reply(_) => "reply",
             Effect::Spawn(_) => "spawn",
             Effect::Stop(_) => "stop",
-            Effect::Reply(_) => "reply",
         };
         if last == Some(kw) && matches!(kw, "set" | "do") {
             out.push_str(", ");
@@ -897,6 +897,13 @@ fn effects(effects: &[Effect]) -> String {
             Effect::Set(a) => out.push_str(&format!("{} = {}", a.var.name, expr(&a.value))),
             Effect::Do(c) => out.push_str(&call(c)),
             Effect::Send(m) | Effect::Emit(m) => out.push_str(&message(m)),
+            Effect::Reply(r) => {
+                out.push_str(&format!("{} {}", r.call.name, r.outcome.as_str()));
+                if let Some(v) = &r.value {
+                    out.push(' ');
+                    out.push_str(&expr(v));
+                }
+            }
             Effect::Spawn(sp) => out.push_str(&format!(
                 "{}[{}] = {}({})",
                 sp.children.name,
@@ -905,13 +912,6 @@ fn effects(effects: &[Effect]) -> String {
                 exprs(&sp.args)
             )),
             Effect::Stop(st) => out.push_str(&format!("{}[{}]", st.children.name, expr(&st.key))),
-            Effect::Reply(r) => {
-                out.push_str(&format!("{} {}", r.call.name, r.outcome.as_str()));
-                if let Some(v) = &r.value {
-                    out.push(' ');
-                    out.push_str(&expr(v));
-                }
-            }
         }
         last = Some(kw);
     }

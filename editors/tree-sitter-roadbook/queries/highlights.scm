@@ -48,9 +48,9 @@
   "do"
   "send"
   "emit"
+  "reply"
   "spawn"
   "stop"
-  "reply"
   "ref"
 ] @keyword
 
@@ -69,13 +69,13 @@
 [
   "final"
   "parallel"
-  "deep"
   "strict"
+  "deep"
 ] @keyword.modifier
 
-(sensitive) @keyword.modifier
-
 (ignore) @keyword
+
+(sensitive) @keyword.modifier
 
 [
   "if"
@@ -312,6 +312,11 @@
 (send
   to: (identifier) @variable)
 
+(invoke
+  peer: (identifier) @variable)
+
+(reply
+  call: (identifier) @variable)
 (children_declaration
   name: (identifier) @variable)
 
@@ -326,12 +331,6 @@
 
 (child_fail
   from: (identifier) @variable)
-
-(invoke
-  peer: (identifier) @variable)
-
-(reply
-  call: (identifier) @variable)
 
 ; A name read in an expression.
 (_

@@ -1,0 +1,26 @@
+// A call's `fail *` also handles `Unanswered`, which is never retried.
+error Busy
+
+machine Desk() {
+  call reserve(n: int) -> int ! Busy
+  event Close
+  initial Open
+  state Open {
+    on reserve          reply call fail Busy
+    on Close   -> Shut
+  }
+  final state Shut {}
+}
+
+machine M(desk: ref Desk) {
+  initial A
+  state A {
+    invoke desk.reserve(1) retry 2 {
+      done   -> B
+      fail * -> B
+    }
+  }
+  final state B {}
+}
+
+// expect: RB0218 at 18:28

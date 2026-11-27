@@ -1388,8 +1388,8 @@ const ir: unknown = {
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "SupportTicket",
         "name": "SupportTicket",
@@ -4530,8 +4530,8 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "SatisfactionSurvey",
         "name": "SatisfactionSurvey",

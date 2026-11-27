@@ -83,8 +83,8 @@ impl Program {
             input,
             vars: Map::new(),
             invokes: Vec::new(),
-            spawned: Vec::new(),
             calls: Vec::new(),
+            spawned: Vec::new(),
             timers: Vec::new(),
             next_invoke: 1,
             next_timer: 1,
@@ -529,7 +529,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     // the call `Unanswered` as the run ends.
                     if self.m.strict {
                         return Err(Defect::Unhandled {
-                            event: Box::new(shown.unwrap_or(input)),
+                            event: Box::new(input.clone()),
                         });
                     }
                     // Dropped, and answered at once, so that its caller does not wait.
@@ -572,7 +572,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             // handle (a call is above).
             if self.m.strict && matches!(input, Input::Event { .. } | Input::Message { .. }) {
                 return Err(Defect::Unhandled {
-                    event: Box::new(shown.unwrap_or(input)),
+                    event: Box::new(input.clone()),
                 });
             }
             self.trace(Record::Dropped {
@@ -623,7 +623,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         self.declares(src, tag)
     }
 
-    /// Whether the task or machine `src` declares the error `tag`.
+    /// Whether task or machine `src` declares the error `tag`.
     fn declares(&self, src: &str, tag: &str) -> bool {
         let ir = self.program.ir();
         let errors = match (ir.tasks.get(src), ir.machines.get(src)) {
@@ -1211,26 +1211,6 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     });
                     self.cmds.push(Command::Emit { message, value });
                 }
-                Effect::Spawn {
-                    children,
-                    machine,
-                    key,
-                    args,
-                } => {
-                    let key = key_form(self.eval(key, implicit)?);
-                    let params = &self.program.ir().machines[machine.as_str()].params;
-                    let mut obj = Map::new();
-                    for (p, a) in params.iter().zip(args) {
-                        let v = self.eval(a, implicit)?;
-                        obj.insert(p.name.clone(), v);
-                    }
-                    self.stop_child(children, &key);
-                    self.pending.push((children.clone(), key, obj));
-                }
-                Effect::Stop { children, key } => {
-                    let key = key_form(self.eval(key, implicit)?);
-                    self.stop_child(children, &key);
-                }
                 Effect::Reply {
                     call,
                     outcome,
@@ -1256,9 +1236,47 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     let pending = self.snap.calls.remove(pos);
                     self.answer(pending, *outcome, v);
                 }
+                Effect::Spawn {
+                    children,
+                    machine,
+                    key,
+                    args,
+                } => {
+                    let key = key_form(self.eval(key, implicit)?);
+                    let params = &self.program.ir().machines[machine.as_str()].params;
+                    let mut obj = Map::new();
+                    for (p, a) in params.iter().zip(args) {
+                        let v = self.eval(a, implicit)?;
+                        obj.insert(p.name.clone(), v);
+                    }
+                    self.stop_child(children, &key);
+                    self.pending.push((children.clone(), key, obj));
+                }
+                Effect::Stop { children, key } => {
+                    let key = key_form(self.eval(key, implicit)?);
+                    self.stop_child(children, &key);
+                }
             }
         }
         Ok(())
+    }
+
+    /// Answers the pending call `p`: its `replied` record and the `reply` command.
+    fn answer(&mut self, p: CallEntry, outcome: ReplyOutcome, value: Value) {
+        self.trace(Record::Replied {
+            to: p.from.clone(),
+            invoke: p.invoke,
+            call: p.call.clone(),
+            outcome,
+            value: value.clone(),
+        });
+        self.cmds.push(Command::Reply {
+            to: p.from,
+            invoke: p.invoke,
+            call: p.call,
+            outcome,
+            value,
+        });
     }
 
     /// Stops the child of `children` with `key`: a running one with a record, a pending one
@@ -1310,24 +1328,6 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             spawn: ch.id,
             src,
             args: ch.args.clone(),
-        });
-    }
-
-    /// Answers the pending call `p`: its `replied` record and the `reply` command.
-    fn answer(&mut self, p: CallEntry, outcome: ReplyOutcome, value: Value) {
-        self.trace(Record::Replied {
-            to: p.from.clone(),
-            invoke: p.invoke,
-            call: p.call.clone(),
-            outcome,
-            value: value.clone(),
-        });
-        self.cmds.push(Command::Reply {
-            to: p.from,
-            invoke: p.invoke,
-            call: p.call,
-            outcome,
-            value,
         });
     }
 

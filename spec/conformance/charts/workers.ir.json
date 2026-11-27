@@ -76,8 +76,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Logbook",
         "name": "Logbook",
@@ -242,8 +242,8 @@
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Worker",
         "name": "Worker",
@@ -412,8 +412,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Boss",
         "name": "Boss",

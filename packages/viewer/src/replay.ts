@@ -17,7 +17,7 @@ export type Rec = { kind: string; run: string; t: number; parent?: string } & { 
 
 const KINDS = new Set([
   'started', 'restored', 'suspended', 'entered', 'exited', 'event', 'dropped', 'stale', 'transition', 'set', 'action', 'sent', 'emitted', 'undelivered',
-  'invoke.started', 'invoke.cancelled', 'spawn.started', 'spawn.stopped', 'replied', 'timer.started', 'timer.cancelled', 'done', 'failed', 'cancelled', 'defect',
+  'invoke.started', 'invoke.cancelled', 'replied', 'spawn.started', 'spawn.stopped', 'timer.started', 'timer.cancelled', 'done', 'failed', 'cancelled', 'defect',
 ])
 /** The records after which a run writes nothing more. */
 const ENDS = new Set(['done', 'failed', 'cancelled', 'defect', 'suspended'])
@@ -87,10 +87,10 @@ export interface RunView {
   /** The output, error or defect of the record that ended it. */
   result: Json
   invokes: { id: number; state: string; src: string }[]
-  /** The running spawned children: id, collection, key and machine. */
-  spawned: { id: number; children: string; key: Json; src: string }[]
   /** The calls taken and not answered yet, oldest first: the caller's run, its invoke, the call. */
   calls: { from: string; invoke: number; call: string }[]
+  /** The running spawned children: id, collection, key and machine. */
+  spawned: { id: number; children: string; key: Json; src: string }[]
   timers: { id: number; state: string; index: number; delay: number }[]
   /** The last transition the run took. */
   taken: { state: string; index: number } | null
@@ -313,8 +313,8 @@ const emptyView = (run: string, machine: string): RunView => ({
   suspended: false,
   result: null,
   invokes: [],
-  spawned: [],
   calls: [],
+  spawned: [],
   timers: [],
   taken: null,
 })

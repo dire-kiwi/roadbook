@@ -358,8 +358,8 @@ const ir: unknown = {
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Upload",
         "name": "Upload",

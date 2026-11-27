@@ -95,7 +95,7 @@ function spawnText(text: string, machine: string): string {
   return `${' '.repeat(lead)}<tspan class="rb-spawn" data-machine="${esc(machine)}"><title>Open machine ${esc(machine)}</title>${inner}</tspan>`
 }
 
-/** The text of a row or label line: plain, or linked to the event or machine it names. */
+/** The text of a row or label line: plain, or linked to the event, call or machine it names. */
 function lineText(l: { text: string; event?: EventRef | undefined; spawn?: string | undefined }): string {
   if (l.event) return messageText(l.text, l.event)
   if (l.spawn) return spawnText(l.text, l.spawn)

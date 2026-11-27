@@ -1,7 +1,7 @@
 //! Checking a saved snapshot before it is restored (`spec/execution.md#restoring-a-snapshot`):
 //! the schema, the machine, the hash and a migration, the status, `ref` parameters, pending
-//! calls, and whether it fits the machine. The checks are made in the order the spec lists them, and the
-//! first that fails gives the reason.
+//! calls, and whether it fits the machine. The checks are made in the order the spec lists
+//! them, and the first that fails gives the reason.
 
 use std::collections::HashSet;
 use std::fmt;
@@ -15,7 +15,7 @@ use crate::{RunResult, Saved};
 /// Why a saved snapshot was refused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Refusal {
-    /// It does not match `snapshot.schema.json`, its version is not 1 or 2, or it does not
+    /// It does not match `snapshot.schema.json`, its version is not 1, 2 or 3, or it does not
     /// fit the machine.
     Invalid,
     /// The IR has no machine of its name, or it is not the machine asked for.
@@ -605,7 +605,8 @@ fn integer(v: &Value) -> Option<i64> {
 
 // ---- the schema ----------------------------------------------------------------------------
 
-/// The members every saved snapshot has. `calls` is the one optional member.
+/// The members every saved snapshot has. `history` (version 2 and 3) and `spawned` (version
+/// 3) are added by version; `calls` is optional in any version.
 const MEMBERS: [&str; 14] = [
     "snapshotVersion",
     "machine",
@@ -627,15 +628,10 @@ const MEMBERS: [&str; 14] = [
 const MAX_SAFE: u64 = 9_007_199_254_740_991;
 
 /// Checks `v` against `spec/snapshot.schema.json`, including `snapshotVersion` being 1 (with
-/// no `history` and no `spawned`), 2 (with `history`) or 3 (with both). Any version may have
-/// `calls`.
+/// no `history` and no `spawned`), 2 (with `history`) or 3 (with both).
 pub(crate) fn schema(v: &Value) -> Result<(), String> {
     let o = v.as_object().ok_or("a saved snapshot is an object")?;
     let version = o.get("snapshotVersion").and_then(Value::as_u64);
-    // `calls` is written only when the run has pending calls, in every version.
-    let mut required = o.clone();
-    let calls = required.remove("calls");
-    let o = &required;
     let mut members = MEMBERS.to_vec();
     if matches!(version, Some(2 | 3)) {
         members.push("history");
@@ -647,7 +643,10 @@ pub(crate) fn schema(v: &Value) -> Result<(), String> {
         Some(v @ (1..=3)) => format!("a version {v} saved snapshot"),
         _ => "a saved snapshot".to_owned(),
     };
-    exactly(o, &members, &what)?;
+    // `calls` is optional in any version.
+    let mut required = o.clone();
+    let calls = required.remove("calls");
+    exactly(&required, &members, &what)?;
     if !matches!(version, Some(1..=3)) {
         return Err(format!(
             "its snapshotVersion is {}, not 1, 2 or 3",

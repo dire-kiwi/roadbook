@@ -1,6 +1,5 @@
 // Simulate mode's panel: start the machine drawn with an input, then choose what happens next
-// (an event, a call from a simulated caller, an invoke's or a spawned child's outcome, a timer,
-// the clock, a cancel), answer the functions the core
+// (an event, a call from a simulated caller, an invoke's or a spawned child's outcome, a timer, the clock, a cancel), answer the functions the core
 // calls, and step back and forward through the choices. The model is src/sim.ts; this file
 // only draws it and wires up the forms.
 
@@ -238,7 +237,8 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
       return s.advance(ms)
     }, 'Move the clock on, firing the timers due on the way')}</div>`
     h += `<div class="rb-choice">${button(k('cancel'), 'Cancel the run', () => s.cancel(), 'Cancel from outside: every state is exited')}</div>`
-    if (!c.events.length && !c.calls.length && !c.invokes.length && !c.spawned.length && !c.timers.length) h += `<p class="rb-empty">${esc(m.root.name)} waits for nothing: no event, call, invoke or timer can move it.</p>`
+    if (!c.events.length && !c.calls.length && !c.invokes.length && !c.spawned.length && !c.timers.length)
+      h += `<p class="rb-empty">${esc(m.root.name)} waits for nothing: no event, call, invoke, spawned child or timer can move it.</p>`
     return h
   }
 

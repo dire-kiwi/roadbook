@@ -48,9 +48,9 @@ const SUPPORTED: &[&str] = &[
     "messaging",
     "parallel",
     "snapshots",
+    "calls",
     "history",
     "spawn",
-    "calls",
 ];
 
 // ---- the executor ------------------------------------------------------------------------

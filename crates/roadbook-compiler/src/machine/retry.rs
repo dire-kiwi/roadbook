@@ -12,7 +12,7 @@ use roadbook_syntax::ast::{self, ExprKind, Invoke, Pattern, Trigger};
 use roadbook_syntax::{Diagnostic, Span};
 
 use super::{Cx, Reads, Scope, StateInfo, TransitionReads, Var, VarInfo, invoke_head};
-use crate::check::ir_span;
+use crate::check::{UNANSWERED, ir_span};
 use crate::codes;
 use crate::names::suggest;
 use crate::sensitive::Dest;
@@ -51,7 +51,11 @@ impl<'p> Cx<'_, 'p> {
         plan: Plan<'p>,
     ) -> Option<Checked<'p>> {
         let r = plan.retry;
-        let callee = plan.inv.callee.name.clone();
+        // A call is named as it is written, through its `ref`: `inventory.reserve`.
+        let callee = match &plan.inv.to {
+            Some(to) => format!("{}.{}", to.name, plan.inv.callee.name),
+            None => plan.inv.callee.name.clone(),
+        };
         let mut ok = true;
 
         // The delay is checked whatever else is wrong, so that its errors are reported.
@@ -189,14 +193,16 @@ impl<'p> Cx<'_, 'p> {
                 let unlisted = declared
                     .iter()
                     .filter(|e| !r.errors.iter().any(|l| l.name == **e));
-                if let Some(s) = suggest(&n.name, unlisted.map(String::as_str)) {
+                if n.name == UNANSWERED && plan.inv.is_call() {
+                    d = d.with_help("`Unanswered` is not retried: the callee is not running, has ended or had no transition for the call; handle it in the `fail Unanswered` outcome");
+                } else if let Some(s) = suggest(&n.name, unlisted.map(String::as_str)) {
                     d = d.with_help(format!("did you mean `{s}`?")).with_fix(
                         format!("replace with `{s}`"),
                         n.span,
                         s,
                     );
                 } else {
-                    d = d.with_help("retry only errors the task or machine declares");
+                    d = d.with_help("retry only errors the task, machine or call declares");
                 }
                 self.ck.diags.push(d);
                 ok = false;
@@ -244,8 +250,11 @@ impl<'p> Cx<'_, 'p> {
             .iter()
             .find(|o| matches!(o.trigger, Trigger::Fail(Pattern::Any { .. })))
         {
+            // A call's `fail *` also handles `Unanswered`, which is never retried.
+            let unanswered = UNANSWERED.to_string();
             let covered: Vec<&String> = declared
                 .iter()
+                .chain(plan.inv.is_call().then_some(&unanswered))
                 .filter(|e| !own.contains(e.as_str()))
                 .collect();
             let (yes, no): (Vec<&String>, Vec<&String>) =

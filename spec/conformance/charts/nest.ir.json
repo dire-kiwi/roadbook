@@ -138,8 +138,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Nest",
         "name": "Nest",

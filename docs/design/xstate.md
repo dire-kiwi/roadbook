@@ -11,7 +11,7 @@ It compares against **XState v5**, the stable release, and the **XState v6 beta*
 | SM-19 | `strict machine` and `on Event ignore` | PR #6, in review |
 | SM-20 | `call` declarations for asking a peer, with `reply` and the built-in `Unanswered` error | Being built, plan approved |
 
-Below, "Roadbook" means `main`, and a feature from one of these tasks is marked with the task's key. All four have since been merged, and so has SM-22, which added property checks ([checking properties](language.md#checking-properties)): the rows and the gap below that it closed say so.
+Below, "Roadbook" means `main`, and a feature from one of these tasks is marked with the task's key.
 
 ## In short
 
@@ -138,7 +138,7 @@ Below, "Roadbook" means `main`, and a feature from one of these tasks is marked 
 | Feature | XState v5 | XState v6 beta | Roadbook | |
 | --- | --- | --- | --- | --- |
 | Static checks | TypeScript types | Types, `xstate validate` | A compiler: unknown names, types, exhaustive errors, definite assignment, `always` cycles, unbounded recursion, unreachable states, no way out, unused declarations, emitted events nobody receives, optional invoke-timeout warning | ➕ |
-| Checking properties ("never reach `refunded`") | — | `xstate test`, `xstate replay` | `check never`, `reachable`, `only after` and `can finish` in the chart, proved or refuted by `roadbook check` over every configuration the machine can be in (SM-22, built since) | ≈ |
+| Checking properties ("never reach `refunded`") | — | `xstate test`, `xstate replay` | — `roadbook paths` lists paths; nothing checks a property | — |
 | Machine as data | The config object | `machineToJSON`, `machineFromJSON` | The IR, with a JSON Schema and a content hash | ✅ |
 | Diagrams | Stately Studio, Inspector | A read-only viz, and Editor Sync that edits code from the diagram | `roadbook viz`: explore, simulate, replay, coverage and diff modes, drawn from the IR; read-only | ≈ |
 | Diff between versions | — | `xstate diff` (structure) | `roadbook viz --diff`: a drawn diff, with `summary.md` and a CI recipe | ➕ |
@@ -151,7 +151,7 @@ Below, "Roadbook" means `main`, and a feature from one of these tasks is marked 
 Ordered from most to least likely to matter for program flow, which is what Roadbook is for.
 
 1. **Reacting to a peer's end.** XState can subscribe to another actor's lifecycle. Roadbook's holders of a `ref` find out only through their own timeouts. SM-8 designed `on peer.ended` and deferred it; SM-20's `Unanswered` covers only pending calls.
-2. **Checking properties.** XState v6's `xstate test` checks that a state can or cannot be reached. Roadbook had the IR and `roadbook paths`, which is most of what such a check needs, but nothing that takes a property and fails. Built since, as SM-22: `check` lines that `roadbook check` proves or refutes.
+2. **Checking properties.** XState v6's `xstate test` checks that a state can or cannot be reached. Roadbook has the IR and `roadbook paths`, which is most of what such a check needs, but nothing that takes a property and fails.
 3. **Transitions that target a child without re-entering the source.** In XState, `on: { RESET: { target: '.idle' } }` on a parent keeps the parent's work running. In Roadbook the same transition exits and re-enters the parent, restarting its invoke and timers. The workaround is to write the transition in each child, or to move the work into a sibling region. SCXML has `type="internal"` for this; Roadbook has no counterpart.
 4. **Several invokes per state.** XState allows an array. Roadbook needs a parallel state with one region per invoke, which is more verbose but shows in the diagram.
 5. **Delayed and self-sent events.** XState has `raise`, delayed `sendTo`, and `cancel`. Roadbook has only `after`, tied to a state. Most uses are timeouts, which `after` covers, and "do X after this step" is what `always` does. A debounce, or a deadline that should survive moving between states, has to be modelled with a parent state that holds the `after`.

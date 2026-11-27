@@ -639,7 +639,7 @@ pub(crate) struct InvokeContext {
     /// The parent's own, which the child pushes what it emits onto when the parent receives it.
     pub parent_queue: Arc<Shared>,
     /// The child's emitted events that the parent receives: those its machine has an `on`
-    /// for, and none when the invoke has no `as` name.
+    /// for, and none when the invoke has no `as` name (a spawned child always has them).
     pub heard: HashSet<String>,
 }
 

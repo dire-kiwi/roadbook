@@ -511,8 +511,7 @@ export class Simulation {
       case 'emit':
       case 'reply':
         // The invoke or spawned child waits for the reader, a call's too; messages, and the
-        // replies to simulated callers, have no other run to go to: their records are all there
-        // is of them.
+        // replies to simulated callers, have no other run to go to: their records are all there is of them.
         return null
       case 'timer.fire':
         // Only `restore` emits it, and simulate mode never restores a run.

@@ -692,8 +692,8 @@ const ir: unknown = {
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "PlaceOrder",
         "name": "PlaceOrder",
@@ -1601,8 +1601,8 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Checkout",
         "name": "Checkout",

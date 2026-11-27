@@ -361,8 +361,8 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -902,7 +902,6 @@ const ir: unknown = {
         }
       },
       "emits": {},
-      "children": {},
       "calls": {
         "reserve": {
           "params": [
@@ -933,6 +932,7 @@ const ir: unknown = {
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Inventory",
         "name": "Inventory",

@@ -18,8 +18,8 @@
 (children_declaration
   name: (identifier) @local.definition)
 
-; Names read in expressions, assigned, or used as the address of a message, a collection, a
-; call or a reply.
+; Names read in expressions, assigned, or used as the address of a message, a call, a reply or
+; a collection.
 (_
   value: (identifier) @local.reference)
 
@@ -56,6 +56,11 @@
 (received_event
   from: (identifier) @local.reference)
 
+(invoke
+  peer: (identifier) @local.reference)
+
+(reply
+  call: (identifier) @local.reference)
 (spawn
   collection: (identifier) @local.reference)
 
@@ -67,9 +72,3 @@
 
 (child_fail
   from: (identifier) @local.reference)
-
-(invoke
-  peer: (identifier) @local.reference)
-
-(reply
-  call: (identifier) @local.reference)

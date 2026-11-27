@@ -80,8 +80,8 @@
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Door",
         "name": "Door",
@@ -290,8 +290,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Visitor",
         "name": "Visitor",

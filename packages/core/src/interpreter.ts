@@ -17,7 +17,7 @@ import {
 } from "./ir.ts"
 import type { Json } from "./json.ts"
 import { redactor } from "./redact.ts"
-import { expandType, isOptionalType, typeRefText } from "./typeref.ts"
+import { expandType, isOptionalType, parseTypeRef } from "./typeref.ts"
 import type {
   CallEntry,
   Command,
@@ -61,8 +61,8 @@ export const start = (
     input,
     vars: {},
     invokes: [],
-    spawned: [],
     calls: [],
+    spawned: [],
     timers: [],
     nextInvoke: 1,
     nextTimer: 1,
@@ -143,9 +143,9 @@ export const restore = (
     input: saved.input,
     vars: saved.vars,
     invokes: saved.invokes.map(({ id, src, state }) => ({ id, state, src })),
-    spawned: (saved.spawned ?? []).map(({ args, children, id, key }) => ({ id, children, key, args })),
     // A snapshot with pending calls is refused (`calls`), so the restored run has none.
     calls: [],
+    spawned: (saved.spawned ?? []).map(({ args, children, id, key }) => ({ id, children, key, args })),
     timers: saved.timers.map(({ delay, id, index, state }) => ({ id, state, index, delay })),
     nextInvoke: saved.nextInvoke,
     nextTimer: saved.nextTimer,
@@ -287,9 +287,9 @@ interface Bindings {
   readonly event?: Json
   readonly result?: Json
   readonly error?: Json
-  readonly key?: Json
   /** In an `on c` transition, the pending-call value `{from, invoke}` of the call it takes. */
   readonly call?: Json
+  readonly key?: Json
 }
 
 /** A child spawned during this macrostep that has not started yet. */
@@ -315,8 +315,8 @@ class Macrostep {
   active: Array<string>
   readonly vars: Record<string, Json>
   invokes: Array<InvokeEntry>
-  spawned: Array<SpawnedEntry>
   calls: Array<CallEntry>
+  spawned: Array<SpawnedEntry>
   timers: Array<TimerEntry>
   nextInvoke: number
   nextTimer: number
@@ -345,8 +345,8 @@ class Macrostep {
     this.active = [...snapshot.active]
     this.vars = { ...snapshot.vars }
     this.invokes = [...snapshot.invokes]
-    this.spawned = [...snapshot.spawned]
     this.calls = [...snapshot.calls]
+    this.spawned = [...snapshot.spawned]
     this.timers = [...snapshot.timers]
     this.nextInvoke = snapshot.nextInvoke
     this.nextTimer = snapshot.nextTimer
@@ -367,8 +367,8 @@ class Macrostep {
         input: s.input,
         vars: this.vars,
         invokes: this.invokes,
-        spawned: this.spawned,
         calls: this.calls,
+        spawned: this.spawned,
         timers: this.timers,
         nextInvoke: this.nextInvoke,
         nextTimer: this.nextTimer,
@@ -415,7 +415,7 @@ class Macrostep {
           this.failWithDefect(input.defect)
           return
         }
-        if (input.kind === "invoke.fail" && !this.invokeErrors(inv).includes(input.error._tag)) {
+        if (input.kind === "invoke.fail" && !this.declaredErrors(inv).includes(input.error._tag)) {
           throw new Abort({ kind: "undeclared", error: input.error._tag })
         }
         if (input.kind === "invoke.done") {
@@ -442,7 +442,7 @@ class Macrostep {
           return
         }
         const machine = this.collectionMachine(ch.children)
-        if (input.kind === "spawn.fail" && !this.declaredErrors(machine).includes(input.error._tag)) {
+        if (input.kind === "spawn.fail" && !this.srcErrors(machine).includes(input.error._tag)) {
           throw new Abort({ kind: "undeclared", error: input.error._tag })
         }
         if (input.kind === "spawn.done") {
@@ -493,7 +493,7 @@ class Macrostep {
       // A strict machine fails on one of its own events, a message or a call that it does not
       // handle. Its driver answers the call `Unanswered` as the run ends.
       if (this.index.machine.strict && (input.kind === "event" || input.kind === "message" || input.kind === "call")) {
-        throw new Abort({ kind: "unhandled", event: shown as typeof input })
+        throw new Abort({ kind: "unhandled", event: input })
       }
       this.trace({ kind: "dropped", event: shown })
       // A dropped call is answered at once, so its caller does not wait for it.
@@ -517,14 +517,14 @@ class Macrostep {
   }
 
   /** The errors invoke `inv` may fail with: its task's, machine's, or call's, and `Unanswered` for a call. */
-  private invokeErrors(inv: InvokeEntry): ReadonlyArray<string> {
+  private declaredErrors(inv: InvokeEntry): ReadonlyArray<string> {
     const invoke = this.index.state(inv.state).invoke
     if (invoke?.kind === "call") return [...(this.callDecl(invoke)?.errors ?? []), UNANSWERED]
-    return this.declaredErrors(invoke?.src ?? inv.src)
+    return this.srcErrors(invoke?.src ?? inv.src)
   }
 
-  /** The errors task or machine `src` declares. */
-  private declaredErrors(src: string): ReadonlyArray<string> {
+  /** The errors task or machine `src` may fail with. */
+  private srcErrors(src: string): ReadonlyArray<string> {
     if (Object.hasOwn(this.ir.tasks, src)) return this.ir.tasks[src]?.errors ?? []
     return this.ir.machines[src]?.errors ?? []
   }
@@ -931,6 +931,19 @@ class Macrostep {
           this.commands.push({ kind: "emit", message, value })
           break
         }
+        case "reply": {
+          // The pending-call value is read before the result or error is evaluated.
+          const c = this.eval(effect.call, bindings) as { readonly from: string; readonly invoke: number }
+          const pending = this.calls.find((p) => p.from === c.from && p.invoke === c.invoke)
+          if (pending === undefined) {
+            const t = parseTypeRef(effect.call.type)
+            throw new Abort({ kind: "answered", call: t.kind === "call" ? t.call : effect.call.type })
+          }
+          const value = effect.value === null ? null : this.eval(effect.value, bindings)
+          this.calls = this.calls.filter((p) => p !== pending)
+          this.answer(pending.from, pending.invoke, pending.call, effect.outcome, value)
+          break
+        }
         case "spawn": {
           const key = this.eval(effect.key, bindings)
           const params = this.ir.machines[effect.machine]?.params ?? []
@@ -945,21 +958,14 @@ class Macrostep {
         case "stop":
           this.stopChild(effect.children, this.eval(effect.key, bindings))
           break
-        case "reply": {
-          // The pending-call value is read before the result or error is evaluated.
-          const c = this.eval(effect.call, bindings) as { readonly from: string; readonly invoke: number }
-          const pending = this.calls.find((p) => p.from === c.from && p.invoke === c.invoke)
-          if (pending === undefined) {
-            const t = expandType(this.ir, effect.call.type)
-            throw new Abort({ kind: "answered", call: t.kind === "call" ? t.call : typeRefText(t) })
-          }
-          const value = effect.value === null ? null : this.eval(effect.value, bindings)
-          this.calls = this.calls.filter((p) => p !== pending)
-          this.answer(pending.from, pending.invoke, pending.call, effect.outcome, value)
-          break
-        }
       }
     }
+  }
+
+  /** Answer the call run `to` made with its invoke `invoke`: the `replied` record and the `reply` command. */
+  private answer(to: string, invoke: number, call: string, outcome: "done" | "fail", value: Json) {
+    this.trace({ kind: "replied", to, invoke, call, outcome, value })
+    this.commands.push({ kind: "reply", to, invoke, call, outcome, value })
   }
 
   /** Stop the child of `children` with `key`: a running one with a record, a pending one silently. */
@@ -987,12 +993,6 @@ class Macrostep {
     const src = this.collectionMachine(ch.children)
     this.trace({ kind: "spawn.started", spawn: ch.id, children: ch.children, key: ch.key, src, args: ch.args })
     this.commands.push({ kind: "spawn.start", spawn: ch.id, src, args: ch.args })
-  }
-
-  /** Answer the call run `to` made with its invoke `invoke`: the `replied` record and the `reply` command. */
-  private answer(to: string, invoke: number, call: string, outcome: "done" | "fail", value: Json) {
-    this.trace({ kind: "replied", to, invoke, call, outcome, value })
-    this.commands.push({ kind: "reply", to, invoke, call, outcome, value })
   }
 
   // ---- settling, work, finishing ----

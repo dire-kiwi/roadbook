@@ -42,7 +42,7 @@ The additions are grouped into tasks by the code they change. They are on the bo
 
 | Task | Covers | Waits for | Size |
 | --- | --- | --- | --- |
-| **SM-22: Property checks** (approved, built) | Assertions over the IR's states and transitions, checked by `roadbook check` in CI. Guards are ignored, which over-approximates the paths, so a "never" that passes is proved. A "can reach" that passes may still be blocked by a guard, and the report says so. | Nothing | Medium, compiler and CLI only |
+| **SM-22: Property checks** (approved) | Assertions over the IR's states and transitions, checked by `roadbook check` in CI. Guards are ignored, which over-approximates the paths, so a "never" that passes is proved. A "can reach" that passes may still be blocked by a guard, and the report says so. | Nothing | Medium, compiler and CLI only |
 | **SM-23: Host code receives emitted events** (approved) | A stream in the Effect driver and a subscription in the Rust driver for a run's emits, specified in `spec/execution.md`. | SM-18 | Small |
 | **SM-24: Transitions that keep their source** (approved) | `-> .Child`, with SCXML's internal domain rule. Recommended alongside: several targets, and the warning for a transition that resets sibling regions. All three change how targets and domains are computed. | SM-18, SM-19, SM-20 | Small to medium |
 | **SM-25: `on peer.ended`** (approved) | The trigger for `ref` holders, perhaps with how the peer ended, and how it relates to `on name.done` and `on name.fail` for spawned children and to SM-20's `Unanswered`. | SM-18, SM-19, SM-20 | Medium |
@@ -52,4 +52,4 @@ The additions are grouped into tasks by the code they change. They are on the bo
 | **SM-29: Data local to a state** | `var` in a state, and state parameters with `-> State(args)`. | SM-28 | Medium |
 | **SM-30: Small additions** | `choice` pseudo-states, `in(State)`, `on A \| B`, a history default target, tags and `meta`, and equality on records, lists and maps. | SM-29 | Medium, many small parts |
 
-Property checks are built ([checking properties](language.md#checking-properties)), and host emits can start now that SM-18 is merged. The rest form two lanes after SM-20: one through transitions, emitting tasks, `raise`, state data and the small additions; the other through `on peer.ended` and child snapshots.
+Property checks can start now, and host emits once SM-18 is merged. The rest form two lanes after SM-20: one through transitions, emitting tasks, `raise`, state data and the small additions; the other through `on peer.ended` and child snapshots.

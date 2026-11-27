@@ -519,8 +519,8 @@ const ir: unknown = {
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "ImportJob",
         "name": "ImportJob",

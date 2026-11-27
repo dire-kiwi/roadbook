@@ -965,19 +965,17 @@ impl Parser<'_> {
 
     /// One body item. `Ok(None)` is a well-formed item in the wrong kind of body, reported and
     /// left out of the tree.
-    ///
-    /// A nested state is parsed here, and every other item in [`Self::other_item`], kept out
-    /// of line: states recurse through `body`, `item` and `state`, so this frame is paid once
-    /// per level of nesting and must stay small for `MAX_DEPTH` levels to fit a test thread's
-    /// stack in a debug build.
     fn item(&mut self, kind: BodyKind) -> PResult<Option<Item>> {
-        if let T::Keyword(K::State | K::Final | K::Parallel) = self.peek() {
+        // Nested states recurse through here, so a state is parsed before entering the large
+        // frame of `other_item`: the deepest nesting allowed must fit a thread's stack in a
+        // debug build.
+        if matches!(self.peek(), T::Keyword(K::State | K::Final | K::Parallel)) {
             return Ok(Some(Item::State(self.state()?)));
         }
         self.other_item(kind)
     }
 
-    /// Any body item but a nested state: see [`Self::item`].
+    /// A body item other than a state.
     #[inline(never)]
     fn other_item(&mut self, kind: BodyKind) -> PResult<Option<Item>> {
         if let Some(deep) = self.at_history() {
@@ -1016,7 +1014,7 @@ impl Parser<'_> {
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
-                    "a machine item (`var`, `event`, `emits`, `children`, `call`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
+                    "a machine item (`var`, `event`, `emits`, `call`, `children`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
                 }
                 BodyKind::State => {
                     "a state item (`initial`, `state`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
@@ -1041,7 +1039,7 @@ impl Parser<'_> {
                 let effects = self.effects()?;
                 if effects.is_empty() {
                     let expected = format!(
-                        "`set`, `do`, `send`, `emit`, `spawn`, `stop` or `reply` after `{}`",
+                        "`set`, `do`, `send`, `emit`, `reply`, `spawn` or `stop` after `{}`",
                         self.text(t)
                     );
                     return Err(self.unexpected(&expected));
@@ -1591,13 +1589,13 @@ impl Parser<'_> {
         if target.is_none() && effects.is_empty() {
             let (expected, help) = if ignore {
                 (
-                    "`-> Target`, `set`, `do`, `send`, `emit`, `spawn`, `stop`, `reply` or `ignore`",
-                    "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`), children (`spawn name[key] = M(…)`, `stop name[key]`) or a reply (`reply call done`), or write `ignore` to take the event and do nothing",
+                    "`-> Target`, `set`, `do`, `send`, `emit`, `reply`, `spawn`, `stop` or `ignore`",
+                    "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`) or a reply (`reply call done`), or write `ignore` to take the event and do nothing",
                 )
             } else {
                 (
-                    "`-> Target`, `set`, `do`, `send`, `emit`, `spawn`, `stop` or `reply`",
-                    "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`), children (`spawn name[key] = M(…)`, `stop name[key]`) or a reply (`reply call done`)",
+                    "`-> Target`, `set`, `do`, `send`, `emit`, `reply`, `spawn` or `stop`",
+                    "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`) or a reply (`reply call done`)",
                 )
             };
             let msg = format!(
@@ -1628,7 +1626,7 @@ impl Parser<'_> {
         Ok(Target { path, span })
     }
 
-    /// Zero or more `set …`, `do …`, `send …`, `emit …`, `spawn …`, `stop …` and `reply …`
+    /// Zero or more `set …`, `do …`, `send …`, `emit …`, `reply …`, `spawn …` and `stop …`
     /// clauses.
     fn effects(&mut self) -> PResult<Vec<Effect>> {
         let mut out = Vec::new();
@@ -1732,28 +1730,6 @@ impl Parser<'_> {
         }
     }
 
-    /// `spawn` and `stop` are not reserved: they start an effect only where an effect can
-    /// start, followed by a name (`spawn name[`, `stop name[`). No expression or other item
-    /// can go on with a lower-case name there, so a missing `[` is reported as such.
-    fn at_contextual(&self, word: &str) -> bool {
-        self.at(T::Lower) && self.text(self.tok()) == word && self.nth(1) == T::Lower
-    }
-
-    /// `[expr]`: the key of a spawned child.
-    fn key(&mut self) -> PResult<Expr> {
-        let open = self.bump();
-        self.deeper()?;
-        let key = self.expr(false)?;
-        self.depth -= 1;
-        if self.eat_p(P::RBracket).is_none() {
-            if self.at(T::Eof) {
-                return Err(self.unclosed(open, "the key"));
-            }
-            return Err(self.unexpected("`]` after the key"));
-        }
-        Ok(key)
-    }
-
     /// The rest of `reply name done [value]` or `reply name fail error`. The value after
     /// `done` is optional, so it is parsed only if it starts on the same line as `done`:
     /// `reply pending done` at the end of a line is followed by the next item, not a value.
@@ -1811,6 +1787,28 @@ impl Parser<'_> {
             errors,
             span: self.since(start),
         })
+    }
+
+    /// `spawn` and `stop` are not reserved: they start an effect only where an effect can
+    /// start, followed by a name (`spawn name[`, `stop name[`). No expression or other item
+    /// can go on with a lower-case name there, so a missing `[` is reported as such.
+    fn at_contextual(&self, word: &str) -> bool {
+        self.at(T::Lower) && self.text(self.tok()) == word && self.nth(1) == T::Lower
+    }
+
+    /// `[expr]`: the key of a spawned child.
+    fn key(&mut self) -> PResult<Expr> {
+        let open = self.bump();
+        self.deeper()?;
+        let key = self.expr(false)?;
+        self.depth -= 1;
+        if self.eat_p(P::RBracket).is_none() {
+            if self.at(T::Eof) {
+                return Err(self.unclosed(open, "the key"));
+            }
+            return Err(self.unexpected("`]` after the key"));
+        }
+        Ok(key)
     }
 
     /// The rest of a `send` or `emit`: the optional record body after the event's name.

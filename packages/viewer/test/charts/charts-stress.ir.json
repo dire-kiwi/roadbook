@@ -102,8 +102,8 @@
       "vars": [],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Ticker",
         "name": "Ticker",
@@ -354,8 +354,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Stress",
         "name": "Stress",

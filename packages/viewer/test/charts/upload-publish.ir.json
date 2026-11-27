@@ -383,8 +383,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -888,8 +888,8 @@
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Upload",
         "name": "Upload",

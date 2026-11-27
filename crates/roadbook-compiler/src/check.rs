@@ -146,7 +146,6 @@ fn names_written<'a>(t: &'a ast::TypeRef, out: &mut HashSet<&'a str>) {
             names_written(v, out);
         }
         ast::TypeKind::List(e) | ast::TypeKind::Optional(e) => names_written(e, out),
-        // A pending call names a call of the machine, not a type.
         ast::TypeKind::Builtin(_) | ast::TypeKind::Call(_) => {}
     }
 }

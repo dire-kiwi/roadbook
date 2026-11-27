@@ -228,23 +228,6 @@ fn top_level_runs_are_started_in_order() {
                 "{}: `requires` must list `parallel` exactly when its chart has a parallel state",
                 c.name
             );
-            let spawn = ir.machines.values().any(|m| !m.children.is_empty());
-            assert_eq!(
-                spawn,
-                requires("spawn"),
-                "{}: `requires` must list `spawn` exactly when its chart has a `children` collection",
-                c.name
-            );
-            fn has_history(s: &roadbook_ir::State) -> bool {
-                s.kind.is_history() || s.states.iter().any(has_history)
-            }
-            let history = ir.machines.values().any(|m| has_history(&m.root));
-            assert_eq!(
-                history,
-                requires("history"),
-                "{}: `requires` must list `history` exactly when its chart has a history state",
-                c.name
-            );
             fn has_call(s: &roadbook_ir::State) -> bool {
                 s.invoke
                     .as_ref()
@@ -264,6 +247,23 @@ fn top_level_runs_are_started_in_order() {
             if calls {
                 assert!(messaging, "{}: `calls` needs `messaging` too", c.name);
             }
+            let spawn = ir.machines.values().any(|m| !m.children.is_empty());
+            assert_eq!(
+                spawn,
+                requires("spawn"),
+                "{}: `requires` must list `spawn` exactly when its chart has a `children` collection",
+                c.name
+            );
+            fn has_history(s: &roadbook_ir::State) -> bool {
+                s.kind.is_history() || s.states.iter().any(has_history)
+            }
+            let history = ir.machines.values().any(|m| has_history(&m.root));
+            assert_eq!(
+                history,
+                requires("history"),
+                "{}: `requires` must list `history` exactly when its chart has a history state",
+                c.name
+            );
         }
     }
 }

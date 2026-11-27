@@ -412,8 +412,8 @@
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Inventory",
         "name": "Inventory",
@@ -902,8 +902,8 @@
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -1422,8 +1422,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Supplier",
         "name": "Supplier",

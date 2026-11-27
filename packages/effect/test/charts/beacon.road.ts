@@ -14,19 +14,25 @@ export type Boom = typeof Boom.Type
 export const Stop = Schema.TaggedStruct("Stop", {})
 export type Stop = typeof Stop.Type
 
+export const Whisper = Schema.TaggedStruct("Whisper", { word: Schema.String })
+export type Whisper = typeof Whisper.Type
+
 export const Beat = Schema.TaggedStruct("Beat", { n: Schema.Int })
 export type Beat = typeof Beat.Type
 
 export const Bye = Schema.TaggedStruct("Bye", {})
 export type Bye = typeof Bye.Type
 
+export const Heard = Schema.TaggedStruct("Heard", { word: Schema.String })
+export type Heard = typeof Heard.Type
+
 export interface BeaconDef extends Roadbook.MachineDef {
   readonly name: "Beacon"
   readonly input: {}
   readonly output: void
   readonly error: never
-  readonly event: Ping | Boom | Stop
-  readonly emits: Beat | Bye
+  readonly event: Ping | Boom | Stop | Whisper
+  readonly emits: Beat | Bye | Heard
   readonly state: "Beacon" | "Beacon.Up" | "Beacon.Over"
   readonly fns: {}
   readonly actions: { readonly log: { readonly what: string } }
@@ -67,12 +73,12 @@ const ir: unknown = {
   "tasks": {},
   "machines": {
     "Beacon": {
-      "doc": "Emits as it starts, on each `Ping`, after `log` on `Boom`, and as it leaves `Up`.",
+      "doc": "Emits as it starts, on each `Ping`, after `log` on `Boom`, as it leaves `Up`, and a `Heard`\nwith the sensitive word of each `Whisper`, which listeners hear and the trace redacts.",
       "span": {
         "file": 0,
-        "line": 7,
+        "line": 8,
         "col": 1,
-        "endLine": 29,
+        "endLine": 33,
         "endCol": 2
       },
       "strict": false,
@@ -93,9 +99,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 15,
+            "line": 18,
             "col": 3,
-            "endLine": 15,
+            "endLine": 18,
             "endCol": 17
           }
         }
@@ -106,9 +112,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 11,
+            "line": 13,
             "col": 3,
-            "endLine": 11,
+            "endLine": 13,
             "endCol": 13
           }
         },
@@ -117,9 +123,9 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 12,
+            "line": 14,
             "col": 3,
-            "endLine": 12,
+            "endLine": 14,
             "endCol": 13
           }
         },
@@ -128,10 +134,28 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 13,
+            "line": 15,
             "col": 3,
-            "endLine": 13,
+            "endLine": 15,
             "endCol": 13
+          }
+        },
+        "Whisper": {
+          "fields": [
+            {
+              "name": "word",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 43
           }
         }
       },
@@ -148,10 +172,10 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 8,
+            "line": 9,
             "col": 3,
-            "endLine": 8,
-            "endCol": 24
+            "endLine": 9,
+            "endCol": 25
           }
         },
         "Bye": {
@@ -159,25 +183,43 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 9,
+            "line": 10,
             "col": 3,
-            "endLine": 9,
+            "endLine": 10,
             "endCol": 12
+          }
+        },
+        "Heard": {
+          "fields": [
+            {
+              "name": "word",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 41
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Beacon",
         "name": "Beacon",
         "kind": "compound",
-        "doc": "Emits as it starts, on each `Ping`, after `log` on `Boom`, and as it leaves `Up`.",
+        "doc": "Emits as it starts, on each `Ping`, after `log` on `Boom`, as it leaves `Up`, and a `Heard`\nwith the sensitive word of each `Whisper`, which listeners hear and the trace redacts.",
         "span": {
           "file": 0,
-          "line": 7,
+          "line": 8,
           "col": 1,
-          "endLine": 29,
+          "endLine": 33,
           "endCol": 2
         },
         "initial": "Beacon.Up",
@@ -189,9 +231,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 19,
+              "line": 22,
               "col": 3,
-              "endLine": 26,
+              "endLine": 30,
               "endCol": 4
             },
             "initial": null,
@@ -292,10 +334,10 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 23,
+                  "line": 26,
                   "col": 5,
-                  "endLine": 23,
-                  "endCol": 55
+                  "endLine": 26,
+                  "endCol": 58
                 }
               },
               {
@@ -350,10 +392,51 @@ const ir: unknown = {
                 ],
                 "span": {
                   "file": 0,
-                  "line": 24,
+                  "line": 27,
                   "col": 5,
-                  "endLine": 24,
-                  "endCol": 57
+                  "endLine": 27,
+                  "endCol": 60
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Whisper"
+                },
+                "group": 2,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "emit",
+                    "event": "Heard",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "word",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "word"
+                            ],
+                            "type": "string",
+                            "text": "event.word"
+                          }
+                        }
+                      ],
+                      "type": "Heard",
+                      "text": "Heard { word: event.word }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 56
                 }
               },
               {
@@ -361,16 +444,16 @@ const ir: unknown = {
                   "kind": "event",
                   "event": "Stop"
                 },
-                "group": 2,
+                "group": 3,
                 "guard": null,
                 "target": "Beacon.Over",
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 25,
+                  "line": 29,
                   "col": 5,
-                  "endLine": 25,
-                  "endCol": 20
+                  "endLine": 29,
+                  "endCol": 23
                 }
               }
             ],
@@ -384,9 +467,9 @@ const ir: unknown = {
             "doc": "",
             "span": {
               "file": 0,
-              "line": 28,
+              "line": 32,
               "col": 3,
-              "endLine": 28,
+              "endLine": 32,
               "endCol": 22
             },
             "initial": null,
@@ -406,12 +489,15 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:be8f0ce4e7c2fa61a63f0e7ab033fc3f4976bbcbaed19951e1ef6e55a528ce41"
+      "hash": "sha256:36afdba5f37c36eb1e4d87a82aa62898e8f50673c28839cde2d6ec3e342adf3a"
     }
   }
 }
 
 const errors = {}
 
-/** Emits as it starts, on each `Ping`, after `log` on `Boom`, and as it leaves `Up`. */
+/**
+ * Emits as it starts, on each `Ping`, after `log` on `Boom`, as it leaves `Up`, and a `Heard`
+ * with the sensitive word of each `Whisper`, which listeners hear and the trace redacts.
+ */
 export const Beacon = Roadbook.make<BeaconDef>(ir, "Beacon", errors)

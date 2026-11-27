@@ -273,8 +273,8 @@
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Teller",
         "name": "Teller",
@@ -491,8 +491,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Keeper",
         "name": "Keeper",
@@ -833,8 +833,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Caller",
         "name": "Caller",

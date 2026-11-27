@@ -8,6 +8,12 @@
  * const live = ImportFlow.layer.pipe(Layer.provide(engine))   // registers it with the engine
  * const summary = yield* ImportFlow.run({ upload })
  * ```
+ *
+ * A durable run does not carry out calls between machines: it refuses, before it starts, a
+ * machine that declares a `call` or makes one (`invoke peer.c(…)`), and one that would start
+ * (invoke or spawn, at any depth) a machine that does. `start`, `run`, `restore` and
+ * `executionId` then die with a `host` `Defect` naming the machine and the call, and nothing
+ * reaches the engine.
  */
 import * as Core from "@dire-kiwi/roadbook-core"
 import { Cause, Duration, Effect, Exit, Layer, Option, Queue, Schema, Stream } from "effect"
@@ -104,7 +110,54 @@ type BeginJson =
   }
   | { readonly kind: "restore"; readonly saved: Core.Saved; readonly migrated: string | null }
 
-/** Run `machine` durably on `effect/workflow`. */
+/**
+ * Why a durable run refuses machine `root`, or `undefined` if it does not: the first call that
+ * `root`, or a machine it would start (by `invoke` or as a spawned child, at any depth), declares
+ * (`call c`) or makes (`invoke peer.c(…)`).
+ */
+const callRefusal = (ir: Core.Ir, root: string): string | undefined => {
+  const seen = new Set<string>()
+  // `through`: the machines between `root` and this one, which start it.
+  const visit = (name: string, through: ReadonlyArray<string>): string | undefined => {
+    const machine = ir.machines[name]
+    if (seen.has(name) || machine === undefined) return undefined
+    seen.add(name)
+    const who = name === root
+      ? "it"
+      : `${name}, which it starts${through.length > 0 ? ` through ${through.join(", ")}` : ""},`
+    const declared = Object.keys(machine.calls)[0]
+    if (declared !== undefined) return `${who} declares \`call ${declared}\``
+    const started: Array<string> = Object.values(machine.children).map((c) => c.machine)
+    const made = (state: Core.State): string | undefined => {
+      const invoke = state.invoke
+      if (invoke?.kind === "call") {
+        return `${who} makes the call \`invoke ${invoke.to?.name}.${invoke.src}(…)\` in state \`${state.id}\``
+      }
+      if (invoke?.kind === "machine") started.push(invoke.src)
+      for (const child of state.states) {
+        const found = made(child)
+        if (found !== undefined) return found
+      }
+      return undefined
+    }
+    const found = made(machine.root)
+    if (found !== undefined) return found
+    for (const child of started) {
+      const inChild = visit(child, name === root ? [] : [...through, name])
+      if (inChild !== undefined) return inChild
+    }
+    return undefined
+  }
+  const found = visit(root, [])
+  return found === undefined
+    ? undefined
+    : `${root} cannot run durably: ${found}, and a durable run does not carry out calls between machines`
+}
+
+/**
+ * Run `machine` durably on `effect/workflow`. A machine that declares or makes calls, or starts
+ * one that does, is refused: see the module's doc.
+ */
 export const workflow = <D extends MachineDef, R>(
   machine: Implemented<D, R>,
   options: Options<D>
@@ -112,6 +165,8 @@ export const workflow = <D extends MachineDef, R>(
   const program = (machine as unknown as { readonly [ProgramOf]: Program })[ProgramOf]
   const name = options.name ?? program.name
   const hash = program.machine.hash
+  const refusal = callRefusal(program.ir, program.name)
+  const refused = refusal === undefined ? undefined : Effect.die(new Defect({ kind: "host", message: refusal }))
   const runIdOf = options.runId ?? ((executionId: string) => executionId)
   const replayTrace = options.replayTrace ?? false
   const parkAfter = options.park === false
@@ -157,10 +212,14 @@ export const workflow = <D extends MachineDef, R>(
       }
       const info = infoOf(executionId)
       const entry = entryOf(registry, engine, info)
-      if (!Core.isRunId(info.run)) {
+      // A refused machine reaches here only when its `workflow` is executed directly: it ends.
+      const notRun = refusal ??
+        (Core.isRunId(info.run)
+          ? undefined
+          : `runId gave ${JSON.stringify(info.run)}, which is not a run id: it must match ${Core.RUN_ID_PATTERN}`)
+      if (notRun !== undefined) {
         entry.finish()
-        const message = `runId gave ${JSON.stringify(info.run)}, which is not a run id: it must match ${Core.RUN_ID_PATTERN}`
-        return { status: "defect", result: { defect: { kind: "host", message } } } as Core.Json
+        return { status: "defect", result: { defect: { kind: "host", message: notRun } } } as Core.Json
       }
       const json = payload.begin as unknown as BeginJson
       let begin: Begin
@@ -204,6 +263,7 @@ export const workflow = <D extends MachineDef, R>(
 
   const payloadOf = (input: D["input"]) =>
     Effect.suspend(() => {
+      if (refused !== undefined) return refused
       try {
         const key = options.idempotencyKey(input)
         const refs = new Map<string, object>()
@@ -231,7 +291,7 @@ export const workflow = <D extends MachineDef, R>(
     Effect.flatMap(payloadOf(input), (payload) => Effect.flatMap(flow.execute(payload), (json) => outcome(json as Core.Json)))
 
   const restore = (saved: Saved, restoreOptions?: RestoreOptions) =>
-    Effect.flatMap(check(program, saved, restoreOptions), (checked) =>
+    Effect.flatMap(refused ?? check(program, saved, restoreOptions), (checked) =>
       Effect.suspend(() => {
         const begun = checked as Extract<Begin, { kind: "restore" }>
         let key: string

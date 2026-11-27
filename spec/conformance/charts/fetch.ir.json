@@ -173,8 +173,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Fetch",
         "name": "Fetch",

@@ -14,7 +14,7 @@ const field = (name: string, type: string) => ({ name, type, sensitive: false, d
 const hash = `sha256:${"1".repeat(64)}`
 
 const ir = {
-  irVersion: "0.3",
+  irVersion: "0.7",
   sources: [],
   types: {
     UserId: { kind: "alias", params: [], type: "string", doc: "", span },

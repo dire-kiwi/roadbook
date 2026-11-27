@@ -7,8 +7,8 @@
 //!
 //! - a value read from a sensitive place (`password`, `event.password`, `creds.user` for a
 //!   sensitive `creds`) going to a place that is not sensitive: a variable, a parameter of an
-//!   action, task, machine or call, a field, an `output`, a `fail`, a `reply … done` value or
-//!   an `after` delay (`RB0320`);
+//!   action, task, machine or call, a field, an `output`, a `fail`, a call's reply or an
+//!   `after` delay (`RB0320`);
 //! - a value whose type has sensitive fields going where `json` is expected, which has no
 //!   fields to redact by (`RB0321`).
 //!
@@ -29,10 +29,9 @@ use crate::types::{Ty, TypeDef};
 
 /// Every member marked `sensitive`, as `(owner, member)`: the owner is a record or error type
 /// (its fields), a function, action, task or machine (its parameters), a machine (its
-/// variables), `Machine.Event` (the fields of an event or emitted event), or `Machine.call`
-/// (the parameters of a call). Declaration names are unique in a compilation, and event and
-/// call keys have a dot (an event's name is upper-case, a call's lower-case), so owners never
-/// collide.
+/// variables), `Machine.Event` (the fields of an event or emitted event), or
+/// [`Sensitive::call`] (the parameters of a call). Declaration names are unique in a
+/// compilation, event keys have a dot and call keys a space, so owners never collide.
 #[derive(Default)]
 pub(crate) struct Sensitive {
     marked: HashSet<(String, String)>,
@@ -62,11 +61,11 @@ impl Sensitive {
                             ast::Item::Event(e) | ast::Item::Emits(e) => {
                                 fields(&mut s, &format!("{name}.{}", e.name.name), &e.fields)
                             }
-                            ast::Item::Call(c) => {
-                                fields(&mut s, &format!("{name}.{}", c.name.name), &c.params)
-                            }
                             _ => {}
                         }
+                    }
+                    for c in m.body.calls() {
+                        fields(&mut s, &Sensitive::call(name, &c.name.name), &c.params)
                     }
                     for v in m.body.vars().filter(|v| v.sensitive) {
                         s.marked.insert((name.to_owned(), v.name.name.clone()));
@@ -76,6 +75,12 @@ impl Sensitive {
             }
         }
         s
+    }
+
+    /// The owner key of the parameters of `machine`'s call `call`: a call may share its name
+    /// with a task, a function or another machine's call.
+    pub fn call(machine: &str, call: &str) -> String {
+        format!("{machine} call {call}")
     }
 
     /// Whether `member` of `owner` is marked.

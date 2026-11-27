@@ -106,8 +106,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Histories",
         "name": "Histories",

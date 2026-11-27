@@ -233,9 +233,8 @@ fn source_path(src: Option<&Source>) -> String {
 /// The data of the project index (`ProjectIndex` in `packages/viewer/src/project.ts`, which
 /// builds the same from IRs): every machine once, identified by its name and source file,
 /// with the first page that draws it, which machines it invokes and spawns, and which it talks
-/// to: the machines it holds a `ref` to, the events it sends, the emitted events it handles,
-/// and the calls it makes (`invoke inventory.reserve(…)`), each as
-/// `{"to": i, "calls": ["reserve"]}`.
+/// to: the machines it holds a `ref` to, the events it sends, the emitted events it handles, and
+/// the calls it makes (`invoke inventory.reserve(…)`), each as `{"to": i, "calls": ["reserve"]}`.
 pub fn project_index(title: &str, charts: &[(&str, &Ir)], names: &[String]) -> Value {
     let key = |ir: &Ir, name: &str, m: &Machine| {
         let file = source_path(ir.sources.get(m.span.file as usize));

@@ -16,7 +16,7 @@ use crate::check::{Checker, Sig, SigKind, UNANSWERED, doc, ir_span, unanswered_m
 use crate::codes;
 use crate::index::{SymbolId, SymbolKind};
 use crate::names::{Found, is_type, kind_phrase, suggest};
-use crate::sensitive::Dest;
+use crate::sensitive::{Dest, Sensitive};
 use crate::types::{BOOL, DURATION, Ty, ir_type};
 
 mod retry;
@@ -123,7 +123,7 @@ pub(crate) enum Place {
     },
 }
 
-/// What an implicit name (`event`, `result`, `error`, `key`, `call`) means at some point.
+/// What an implicit name (`event`, `result`, `error`, `call`, `key`) means at some point.
 #[derive(Clone, Debug)]
 pub(crate) enum Implicit {
     NotHere,
@@ -140,8 +140,8 @@ pub(crate) struct Scope {
     pub event: Implicit,
     pub result: Implicit,
     pub error: Implicit,
-    pub key: Implicit,
     pub call: Implicit,
+    pub key: Implicit,
 }
 
 impl Scope {
@@ -150,8 +150,8 @@ impl Scope {
             event: Implicit::NotHere,
             result: Implicit::NotHere,
             error: Implicit::NotHere,
-            key: Implicit::NotHere,
             call: Implicit::NotHere,
+            key: Implicit::NotHere,
         }
     }
 }
@@ -206,9 +206,9 @@ pub(crate) struct Cx<'c, 'p> {
     pub vars: HashMap<String, Var>,
     pub events: HashMap<String, Vec<(String, Ty)>>,
     pub emits: HashMap<String, Vec<(String, Ty)>>,
-    pub collections: HashMap<String, Collection>,
     /// The calls the machine answers.
     pub calls: IndexMap<String, Sig>,
+    pub collections: HashMap<String, Collection>,
     returns: Option<Ty>,
     errors: Vec<String>,
     nodes: Vec<Node<'p>>,
@@ -244,8 +244,8 @@ pub(crate) fn lower<'p>(
         vars: HashMap::new(),
         events: HashMap::new(),
         emits: HashMap::new(),
-        collections: HashMap::new(),
         calls: IndexMap::new(),
+        collections: HashMap::new(),
         returns: sig.as_ref().and_then(|s| s.returns.clone()),
         errors: sig.as_ref().map(|s| s.errors.clone()).unwrap_or_default(),
         nodes: Vec::new(),
@@ -287,9 +287,6 @@ pub(crate) fn lower<'p>(
             sensitive: p.sensitive,
         });
     }
-    for p in &m.params {
-        cx.key_as_name(&p.name, "a parameter");
-    }
     // Calls: their signatures are in the interface; a name declared twice keeps the first.
     let iface = cx.ck.interfaces.get(&name).cloned().unwrap_or_default();
     cx.calls = iface.calls.clone();
@@ -320,6 +317,9 @@ pub(crate) fn lower<'p>(
         );
     }
 
+    for p in &m.params {
+        cx.key_as_name(&p.name, "a parameter");
+    }
     let mut var_tys = Vec::new();
     for v in m.body.vars() {
         cx.key_as_name(&v.name, "a variable");
@@ -577,8 +577,8 @@ pub(crate) fn lower<'p>(
         vars,
         events,
         emits,
-        children,
         calls,
+        children,
         root,
         hash: String::new(),
     }
@@ -594,9 +594,9 @@ fn trigger_key(t: &Trigger) -> String {
     match t {
         Trigger::On(p) => format!("on {}", pattern(p)),
         Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
+        Trigger::Call(n) => format!("on {}", n.name),
         Trigger::ChildDone { from } => format!("on {}.done", from.name),
         Trigger::ChildFail { from, error } => format!("on {}.fail {}", from.name, pattern(error)),
-        Trigger::Call(n) => format!("on {}", n.name),
         Trigger::After(e) => format!("after {}", expr_text(e)),
         Trigger::Always => "always".into(),
         Trigger::Done => "done".into(),
@@ -1647,8 +1647,8 @@ impl<'p> Cx<'_, 'p> {
                 Item::Var(_)
                 | Item::Event(_)
                 | Item::Emits(_)
-                | Item::Children(_)
                 | Item::Call(_)
+                | Item::Children(_)
                 | Item::Initial(_)
                 | Item::History(_)
                 // Resolved once the machine is lowered, in `checks.rs`.
@@ -2365,6 +2365,7 @@ impl<'p> Cx<'_, 'p> {
                         sig.as_ref(),
                         SigKind::Action,
                         scope,
+                        None,
                     );
                     out.push(ir::Effect::Do {
                         action: c.name.name.clone(),
@@ -2376,6 +2377,7 @@ impl<'p> Cx<'_, 'p> {
                         out.push(e);
                     }
                 }
+                Effect::Reply(r) => out.push(self.reply(r, scope)),
                 Effect::Spawn(sp) => {
                     let written = format!("spawn {}", sp.children.name);
                     let c = self.collection(&sp.children, &written);
@@ -2419,6 +2421,7 @@ impl<'p> Cx<'_, 'p> {
                         sig.as_ref(),
                         SigKind::Machine,
                         scope,
+                        None,
                     );
                     if c.is_some() {
                         out.push(ir::Effect::Spawn {
@@ -2446,7 +2449,6 @@ impl<'p> Cx<'_, 'p> {
                         });
                     }
                 }
-                Effect::Reply(r) => out.push(self.reply(r, scope)),
             }
             if out.len() > before {
                 reads.push(std::mem::take(&mut self.reads));
@@ -2491,8 +2493,8 @@ impl<'p> Cx<'_, 'p> {
         let value = match (r.outcome, &r.value, &sig) {
             (ReplyOutcome::Done, Some(v), Some((c, s))) => match &s.returns {
                 Some(want) => {
+                    // A `replied` record shows the value, redacted by the result's type.
                     let what = format!("the result of call `{c}`");
-                    // The `replied` record shows it, redacted by the call's result type only.
                     Some(self.expect_to(v, scope, &want.clone(), &what, Dest::Shown))
                 }
                 None => {
@@ -2524,6 +2526,9 @@ impl<'p> Cx<'_, 'p> {
             }
             (ReplyOutcome::Fail, Some(v), Some((c, s))) => {
                 let (ie, t) = self.expr(v, scope);
+                // A `replied` record shows the error, redacting only its sensitive fields.
+                let what = format!("the error of call `{c}`");
+                self.check_dest(v, &ie.text.clone(), &t, &t, &what, &Dest::Shown);
                 let ok = match self.ck.env.expand(&t) {
                     Ty::Unknown => true,
                     Ty::Named(n) => s.errors.contains(&n),
@@ -2674,7 +2679,10 @@ impl<'p> Cx<'_, 'p> {
         }
     }
 
-    /// Checks arguments against a signature (if known) and lowers them.
+    /// Checks arguments against a signature (if known) and lowers them. `call` is, for a call
+    /// invoke `peer.c(…)`, the `ref` it goes through and that ref's machine, whose call `c`'s
+    /// parameters the arguments go to.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn args(
         &mut self,
         name: &Ident,
@@ -2683,23 +2691,15 @@ impl<'p> Cx<'_, 'p> {
         sig: Option<&Sig>,
         kind: SigKind,
         scope: &Scope,
+        call: Option<(&str, &str)>,
     ) -> Vec<ir::Expr> {
-        self.args_of(&name.name.clone(), name, span, args, sig, kind, scope)
-    }
-
-    /// [`Cx::args`], with the parameters' marks those of `owner` (a call's are
-    /// `Machine.call`'s).
-    #[allow(clippy::too_many_arguments)]
-    fn args_of(
-        &mut self,
-        owner: &str,
-        name: &Ident,
-        span: Span,
-        args: &[ast::Expr],
-        sig: Option<&Sig>,
-        kind: SigKind,
-        scope: &Scope,
-    ) -> Vec<ir::Expr> {
+        let (owner, shown) = match call {
+            Some((to, machine)) => (
+                Sensitive::call(machine, &name.name),
+                format!("{to}.{}", name.name),
+            ),
+            None => (name.name.clone(), name.name.clone()),
+        };
         if let Some(sig) = sig
             && sig.params.len() != args.len()
         {
@@ -2733,14 +2733,14 @@ impl<'p> Cx<'_, 'p> {
             .map(|(i, a)| match sig.and_then(|s| s.params.get(i)) {
                 Some((p, t)) => {
                     let t = t.clone();
-                    let what = format!("argument `{p}` of `{}`", name.name);
+                    let what = format!("argument `{p}` of `{shown}`");
                     if kind == SigKind::Fn {
                         // Function calls are not traced.
                         self.expect(a, scope, &t, &what)
                     } else {
                         let to = dest(
-                            self.ck.sensitive.is(owner, p),
-                            format!("parameter `{p}` of `{}`", name.name),
+                            self.ck.sensitive.is(&owner, p),
+                            format!("parameter `{p}` of `{shown}`"),
                         );
                         self.expect_to(a, scope, &t, &what, to)
                     }
@@ -2771,13 +2771,7 @@ impl<'p> Cx<'_, 'p> {
                 (None, self.callee(&inv.callee, kind))
             }
         };
-        // A call's parameters are marked as `Machine.call`'s.
-        let owner = match &to {
-            Some(to) => format!("{}.{}", to.machine, inv.callee.name),
-            None => inv.callee.name.clone(),
-        };
-        let args = self.args_of(
-            &owner,
+        let args = self.args(
             &inv.callee,
             invoke_head(inv),
             &inv.args,
@@ -2788,6 +2782,7 @@ impl<'p> Cx<'_, 'p> {
                 SigKind::Task
             },
             &Scope::none(),
+            to.as_ref().map(|a| (a.name.as_str(), a.machine.as_str())),
         );
         let arg_reads = std::mem::take(&mut self.reads);
         // What the invoke can fail with: a call also with `Unanswered`.

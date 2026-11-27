@@ -2,54 +2,35 @@
   "irVersion": "0.7",
   "sources": [
     {
-      "path": "spec/conformance/charts/locksmith.road",
+      "path": "spec/conformance/charts/redact-call.road",
       "package": null
     }
   ],
   "types": {
-    "Key": {
+    "Token": {
       "kind": "record",
       "params": [],
       "fields": [
         {
-          "name": "label",
+          "name": "user",
           "type": "string",
           "sensitive": false,
           "doc": ""
         },
         {
-          "name": "code",
+          "name": "secret",
           "type": "string",
           "sensitive": true,
           "doc": ""
         }
       ],
-      "doc": "A cut key: its label shows, its code does not.",
+      "doc": "What the issuer gives: the token's secret is never shown.",
       "span": {
         "file": 0,
-        "line": 7,
+        "line": 8,
         "col": 1,
-        "endLine": 7,
-        "endCol": 51
-      }
-    },
-    "Refused": {
-      "kind": "error",
-      "fields": [
-        {
-          "name": "reason",
-          "type": "string",
-          "sensitive": true,
-          "doc": ""
-        }
-      ],
-      "doc": "The locksmith would not cut the key.",
-      "span": {
-        "file": 0,
-        "line": 10,
-        "col": 1,
-        "endLine": 10,
-        "endCol": 43
+        "endLine": 8,
+        "endCol": 54
       }
     }
   },
@@ -57,16 +38,16 @@
   "actions": {},
   "tasks": {},
   "machines": {
-    "Locksmith": {
-      "doc": "Cuts keys for its callers.",
+    "Issuer": {
+      "doc": "Issues tokens while it is open; strict, so a call while closed is a defect.",
       "span": {
         "file": 0,
-        "line": 13,
+        "line": 11,
         "col": 1,
-        "endLine": 30,
+        "endLine": 27,
         "endCol": 2
       },
-      "strict": false,
+      "strict": true,
       "params": [],
       "returns": null,
       "errors": [],
@@ -77,69 +58,78 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 17,
+            "line": 15,
             "col": 3,
-            "endLine": 17,
+            "endLine": 15,
             "endCol": 14
+          }
+        },
+        "Reopen": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 15
           }
         }
       },
       "emits": {},
-      "children": {},
       "calls": {
-        "cut": {
+        "issue": {
           "params": [
+            {
+              "name": "user",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            },
             {
               "name": "pin",
               "type": "string",
               "sensitive": true,
               "doc": ""
-            },
-            {
-              "name": "label",
-              "type": "string",
-              "sensitive": false,
-              "doc": ""
             }
           ],
-          "returns": "Key",
-          "errors": [
-            "Refused"
-          ],
-          "doc": "Cut a key for `pin`, labelled `label`.",
+          "returns": "Token",
+          "errors": [],
+          "doc": "A token for `user`, who gave `pin`.",
           "span": {
             "file": 0,
-            "line": 15,
+            "line": 13,
             "col": 3,
-            "endLine": 15,
-            "endCol": 66
+            "endLine": 13,
+            "endCol": 59
           }
         }
       },
+      "children": {},
       "root": {
-        "id": "Locksmith",
-        "name": "Locksmith",
+        "id": "Issuer",
+        "name": "Issuer",
         "kind": "compound",
-        "doc": "Cuts keys for its callers.",
+        "doc": "Issues tokens while it is open; strict, so a call while closed is a defect.",
         "span": {
           "file": 0,
-          "line": 13,
+          "line": 11,
           "col": 1,
-          "endLine": 30,
+          "endLine": 27,
           "endCol": 2
         },
-        "initial": "Locksmith.Open",
+        "initial": "Issuer.Open",
         "states": [
           {
-            "id": "Locksmith.Open",
+            "id": "Issuer.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
             "span": {
               "file": 0,
-              "line": 21,
+              "line": 20,
               "col": 3,
-              "endLine": 27,
+              "endLine": 23,
               "endCol": 4
             },
             "initial": null,
@@ -151,78 +141,7 @@
               {
                 "trigger": {
                   "kind": "call",
-                  "call": "cut"
-                },
-                "group": 0,
-                "guard": {
-                  "kind": "op",
-                  "op": "==",
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "event",
-                        "label"
-                      ],
-                      "type": "string",
-                      "text": "event.label"
-                    },
-                    {
-                      "kind": "lit",
-                      "value": "",
-                      "type": "string",
-                      "text": "\"\""
-                    }
-                  ],
-                  "type": "bool",
-                  "text": "event.label == \"\""
-                },
-                "target": null,
-                "effects": [
-                  {
-                    "kind": "reply",
-                    "call": {
-                      "kind": "ref",
-                      "path": [
-                        "call"
-                      ],
-                      "type": "call cut",
-                      "text": "call"
-                    },
-                    "outcome": "fail",
-                    "value": {
-                      "kind": "record",
-                      "fields": [
-                        {
-                          "name": "reason",
-                          "value": {
-                            "kind": "ref",
-                            "path": [
-                              "event",
-                              "pin"
-                            ],
-                            "type": "string",
-                            "text": "event.pin"
-                          }
-                        }
-                      ],
-                      "type": "Refused",
-                      "text": "Refused { reason: event.pin }"
-                    }
-                  }
-                ],
-                "span": {
-                  "file": 0,
-                  "line": 23,
-                  "col": 7,
-                  "endLine": 23,
-                  "endCol": 84
-                }
-              },
-              {
-                "trigger": {
-                  "kind": "call",
-                  "call": "cut"
+                  "call": "issue"
                 },
                 "group": 0,
                 "guard": null,
@@ -235,7 +154,7 @@
                       "path": [
                         "call"
                       ],
-                      "type": "call cut",
+                      "type": "call issue",
                       "text": "call"
                     },
                     "outcome": "done",
@@ -243,19 +162,19 @@
                       "kind": "record",
                       "fields": [
                         {
-                          "name": "label",
+                          "name": "user",
                           "value": {
                             "kind": "ref",
                             "path": [
                               "event",
-                              "label"
+                              "user"
                             ],
                             "type": "string",
-                            "text": "event.label"
+                            "text": "event.user"
                           }
                         },
                         {
-                          "name": "code",
+                          "name": "secret",
                           "value": {
                             "kind": "ref",
                             "path": [
@@ -267,17 +186,17 @@
                           }
                         }
                       ],
-                      "type": "Key",
-                      "text": "Key { label: event.label, code: event.pin }"
+                      "type": "Token",
+                      "text": "Token { user: event.user, secret: event.pin }"
                     }
                   }
                 ],
                 "span": {
                   "file": 0,
-                  "line": 24,
-                  "col": 7,
-                  "endLine": 24,
-                  "endCol": 98
+                  "line": 21,
+                  "col": 5,
+                  "endLine": 21,
+                  "endCol": 84
                 }
               },
               {
@@ -287,14 +206,14 @@
                 },
                 "group": 1,
                 "guard": null,
-                "target": "Locksmith.Closed",
+                "target": "Issuer.Shut",
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 26,
+                  "line": 22,
                   "col": 5,
-                  "endLine": 26,
-                  "endCol": 37
+                  "endLine": 22,
+                  "endCol": 21
                 }
               }
             ],
@@ -302,23 +221,41 @@
             "fail": null
           },
           {
-            "id": "Locksmith.Closed",
-            "name": "Closed",
-            "kind": "final",
-            "doc": "",
+            "id": "Issuer.Shut",
+            "name": "Shut",
+            "kind": "atomic",
+            "doc": "No `on issue`: a call here ends the run with an `unhandled` defect.",
             "span": {
               "file": 0,
-              "line": 29,
+              "line": 26,
               "col": 3,
-              "endLine": 29,
-              "endCol": 24
+              "endLine": 26,
+              "endCol": 35
             },
             "initial": null,
             "states": [],
             "entry": [],
             "exit": [],
             "invoke": null,
-            "transitions": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Reopen"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Issuer.Open",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 16,
+                  "endLine": 26,
+                  "endCol": 33
+                }
+              }
+            ],
             "output": null,
             "fail": null
           }
@@ -330,22 +267,28 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d78ace8a5b4dd4c9f66f6f8e8fe2ecd975239f1c4c136d7b6f87191a2485b8ed"
+      "hash": "sha256:49d1196e54faa143f084e705154f4a6a0f50d2194045ce45f662f9d17a3a0e67"
     },
     "Client": {
-      "doc": "Ask the locksmith for a key; give its label, or \"\" if it refused.",
+      "doc": "Asks the issuer for a token; gives the user it was issued to, or \"\".",
       "span": {
         "file": 0,
-        "line": 33,
+        "line": 30,
         "col": 1,
-        "endLine": 48,
+        "endLine": 44,
         "endCol": 2
       },
       "strict": false,
       "params": [
         {
-          "name": "locksmith",
-          "type": "ref Locksmith",
+          "name": "issuer",
+          "type": "ref Issuer",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "user",
+          "type": "string",
           "sensitive": false,
           "doc": ""
         },
@@ -354,46 +297,40 @@
           "type": "string",
           "sensitive": true,
           "doc": ""
-        },
-        {
-          "name": "label",
-          "type": "string",
-          "sensitive": false,
-          "doc": ""
         }
       ],
       "returns": "string",
       "errors": [],
       "vars": [
         {
-          "name": "cut",
-          "type": "Key",
+          "name": "token",
+          "type": "Token?",
           "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
             "file": 0,
-            "line": 34,
+            "line": 31,
             "col": 3,
-            "endLine": 34,
-            "endCol": 15
+            "endLine": 31,
+            "endCol": 20
           }
         }
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Client",
         "name": "Client",
         "kind": "compound",
-        "doc": "Ask the locksmith for a key; give its label, or \"\" if it refused.",
+        "doc": "Asks the issuer for a token; gives the user it was issued to, or \"\".",
         "span": {
           "file": 0,
-          "line": 33,
+          "line": 30,
           "col": 1,
-          "endLine": 48,
+          "endLine": 44,
           "endCol": 2
         },
         "initial": "Client.Asking",
@@ -405,9 +342,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 38,
+              "line": 35,
               "col": 3,
-              "endLine": 44,
+              "endLine": 40,
               "endCol": 4
             },
             "initial": null,
@@ -416,11 +353,11 @@
             "exit": [],
             "invoke": {
               "kind": "call",
-              "src": "cut",
+              "src": "issue",
               "to": {
                 "kind": "ref",
-                "name": "locksmith",
-                "machine": "Locksmith",
+                "name": "issuer",
+                "machine": "Issuer",
                 "state": null
               },
               "as": null,
@@ -428,25 +365,25 @@
                 {
                   "kind": "ref",
                   "path": [
-                    "pin"
+                    "user"
                   ],
                   "type": "string",
-                  "text": "pin"
+                  "text": "user"
                 },
                 {
                   "kind": "ref",
                   "path": [
-                    "label"
+                    "pin"
                   ],
                   "type": "string",
-                  "text": "label"
+                  "text": "pin"
                 }
               ],
               "span": {
                 "file": 0,
-                "line": 39,
+                "line": 36,
                 "col": 5,
-                "endLine": 43,
+                "endLine": 39,
                 "endCol": 6
               }
             },
@@ -461,40 +398,23 @@
                 "effects": [
                   {
                     "kind": "set",
-                    "var": "cut",
+                    "var": "token",
                     "value": {
                       "kind": "ref",
                       "path": [
                         "result"
                       ],
-                      "type": "Key",
+                      "type": "Token",
                       "text": "result"
                     }
                   }
                 ],
                 "span": {
                   "file": 0,
-                  "line": 40,
+                  "line": 37,
                   "col": 7,
-                  "endLine": 40,
-                  "endCol": 48
-                }
-              },
-              {
-                "trigger": {
-                  "kind": "invoke.fail",
-                  "error": "Refused"
-                },
-                "group": 1,
-                "guard": null,
-                "target": "Client.Gave",
-                "effects": [],
-                "span": {
-                  "file": 0,
-                  "line": 41,
-                  "col": 7,
-                  "endLine": 41,
-                  "endCol": 30
+                  "endLine": 37,
+                  "endCol": 50
                 }
               },
               {
@@ -502,15 +422,15 @@
                   "kind": "invoke.fail",
                   "error": "Unanswered"
                 },
-                "group": 2,
+                "group": 1,
                 "guard": null,
                 "target": "Client.Gave",
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 42,
+                  "line": 38,
                   "col": 7,
-                  "endLine": 42,
+                  "endLine": 38,
                   "endCol": 30
                 }
               }
@@ -525,10 +445,10 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 46,
+              "line": 42,
               "col": 3,
-              "endLine": 46,
-              "endCol": 40
+              "endLine": 42,
+              "endCol": 35
             },
             "initial": null,
             "states": [],
@@ -539,11 +459,10 @@
             "output": {
               "kind": "ref",
               "path": [
-                "cut",
-                "label"
+                "user"
               ],
               "type": "string",
-              "text": "cut.label"
+              "text": "user"
             },
             "fail": null
           },
@@ -554,9 +473,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 47,
+              "line": 43,
               "col": 3,
-              "endLine": 47,
+              "endLine": 43,
               "endCol": 33
             },
             "initial": null,
@@ -581,7 +500,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:3e4ebdc163e0541b446b5e768d9a529690034a559f2e2d7cf1b62f1be71516bc"
+      "hash": "sha256:019afc754b1f23fc4485d50a6fd481d4f90806e1d5bc50a6c04c93ebb634ca69"
     }
   }
 }

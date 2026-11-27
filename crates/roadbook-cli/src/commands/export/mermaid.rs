@@ -350,20 +350,6 @@ fn effect(e: &Effect) -> String {
             format!("send {}{which}.{}", to.name, value.text)
         }
         Effect::Emit { value, .. } => format!("emit {}", value.text),
-        Effect::Spawn {
-            children,
-            machine,
-            key,
-            args,
-        } => {
-            let args: Vec<&str> = args.iter().map(|a| a.text.as_str()).collect();
-            format!(
-                "spawn {children}[{}] = {machine}({})",
-                key.text,
-                args.join(", ")
-            )
-        }
-        Effect::Stop { children, key } => format!("stop {children}[{}]", key.text),
         Effect::Reply {
             call,
             outcome,
@@ -378,6 +364,20 @@ fn effect(e: &Effect) -> String {
                 .map_or(String::new(), |v| format!(" {}", v.text));
             format!("reply {} {outcome}{value}", call.text)
         }
+        Effect::Spawn {
+            children,
+            machine,
+            key,
+            args,
+        } => {
+            let args: Vec<&str> = args.iter().map(|a| a.text.as_str()).collect();
+            format!(
+                "spawn {children}[{}] = {machine}({})",
+                key.text,
+                args.join(", ")
+            )
+        }
+        Effect::Stop { children, key } => format!("stop {children}[{}]", key.text),
     }
 }
 

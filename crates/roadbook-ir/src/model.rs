@@ -414,12 +414,12 @@ pub struct Machine {
     /// Events the machine emits (`emits Name { fields }`), keyed by name, in
     /// source order. No name is both in `events` and in `emits`.
     pub emits: IndexMap<String, EventDecl>,
-    /// The keyed collections of spawned children (`children name: Machine by
-    /// Key`), keyed by name, in source order.
-    pub children: IndexMap<String, ChildrenDecl>,
     /// Calls the machine answers (`call name(params) -> T ! E`), keyed by their
     /// lower-case name, in source order.
     pub calls: IndexMap<String, Call>,
+    /// The keyed collections of spawned children (`children name: Machine by
+    /// Key`), keyed by name, in source order.
+    pub children: IndexMap<String, ChildrenDecl>,
     /// The root state. Its `id` and `name` are the machine's name, it is
     /// `compound`, and it holds the `entry`, `exit`, `on`, `after` and
     /// `always` items written directly in the machine body.
@@ -459,20 +459,6 @@ pub struct EventDecl {
     pub span: Span,
 }
 
-/// `children name: Machine by Key`: a keyed collection of spawned children.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ChildrenDecl {
-    /// The machine the children run, a key of [`Ir::machines`].
-    pub machine: String,
-    /// The key type: `string`, `int` or an enum, or an alias of one.
-    pub key: TypeRef,
-    /// Doc comment, `""` if none.
-    pub doc: String,
-    /// From `children` to the end of the key type.
-    pub span: Span,
-}
-
 /// `call name(params) [-> T] [! E | …]`: a request another run makes of the
 /// machine with `invoke x.name(…)`, taken with `on name` and answered with
 /// `reply`.
@@ -496,6 +482,20 @@ pub struct Call {
 /// callee ended, or left the call unanswered. It has no fields and is never a
 /// key of [`Ir::types`].
 pub const UNANSWERED: &str = "Unanswered";
+
+/// `children name: Machine by Key`: a keyed collection of spawned children.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChildrenDecl {
+    /// The machine the children run, a key of [`Ir::machines`].
+    pub machine: String,
+    /// The key type: `string`, `int` or an enum, or an alias of one.
+    pub key: TypeRef,
+    /// Doc comment, `""` if none.
+    pub doc: String,
+    /// From `children` to the end of the key type.
+    pub span: Span,
+}
 
 /// The kinds of state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -700,6 +700,12 @@ pub enum Trigger {
         /// a call, it may be [`UNANSWERED`], and `"*"` covers it too.
         error: String,
     },
+    /// `on name`: a call of the machine's own call `name`, from another run.
+    #[serde(rename = "call")]
+    Call {
+        /// The call's name, a key of [`Machine::calls`].
+        call: String,
+    },
     /// `on name.done`: a spawned child of the collection ended `done`.
     #[serde(rename = "spawn.done")]
     SpawnDone {
@@ -714,12 +720,6 @@ pub enum Trigger {
         /// The error's name, or `"*"` for the declared errors the state has
         /// no `on name.fail` for.
         error: String,
-    },
-    /// `on name`: a call of the machine's own call `name`, from another run.
-    #[serde(rename = "call")]
-    Call {
-        /// The call's name, a key of [`Machine::calls`].
-        call: String,
     },
 }
 
@@ -763,6 +763,18 @@ pub enum Effect {
         /// event's bare name.
         value: Expr,
     },
+    /// `reply name done [value]` or `reply name fail error`: answer a pending
+    /// call.
+    Reply {
+        /// The pending call: a `ref` expression of type `call c`, the implicit
+        /// `call` or a variable.
+        call: Expr,
+        /// Done or fail.
+        outcome: ReplyOutcome,
+        /// For `done`, the result, of the call's `returns` type, or `None` when
+        /// it returns nothing; for `fail`, one of its declared errors.
+        value: Option<Expr>,
+    },
     /// `spawn name[key] = Machine(args)`: start a child in a collection.
     Spawn {
         /// The collection, a key of [`Machine::children`].
@@ -780,18 +792,6 @@ pub enum Effect {
         children: String,
         /// The child's key.
         key: Expr,
-    },
-    /// `reply name done [value]` or `reply name fail error`: answer a pending
-    /// call.
-    Reply {
-        /// The pending call: a `ref` expression of type `call c`, the implicit
-        /// `call` or a variable.
-        call: Expr,
-        /// Done or fail.
-        outcome: ReplyOutcome,
-        /// For `done`, the result, of the call's `returns` type, or `None` when
-        /// it returns nothing; for `fail`, one of its declared errors.
-        value: Option<Expr>,
     },
 }
 

@@ -47,8 +47,8 @@ export const toSaved = (snapshot: Snapshot, due: (timer: number) => number): Sav
   input: snapshot.input,
   vars: snapshot.vars,
   invokes: snapshot.invokes,
-  spawned: snapshot.spawned,
   ...(snapshot.calls.length > 0 ? { calls: snapshot.calls } : {}),
+  spawned: snapshot.spawned,
   timers: snapshot.timers.map((t) => ({ ...t, due: due(t.id) })),
   nextInvoke: snapshot.nextInvoke,
   nextTimer: snapshot.nextTimer,
@@ -172,7 +172,7 @@ const shapeIssue = (json: unknown): string | undefined => {
     return `it is version ${JSON.stringify(version)} and has spawned, which version 3 added`
   }
   const expected = version === 1 ? MEMBERS : version === 2 ? [...MEMBERS, "history"] : [...MEMBERS, "history", "spawned"]
-  // `calls` is optional in every version: written only when the run has pending calls.
+  // `calls` is written only when the run has pending calls, in any version.
   const members = membersIssue(json, expected, "it", ["calls"])
   if (members !== undefined) return members
   if (version !== 1 && version !== 2 && version !== SNAPSHOT_VERSION) {

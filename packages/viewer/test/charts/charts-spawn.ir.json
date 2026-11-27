@@ -215,8 +215,8 @@
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Session",
         "name": "Session",
@@ -456,8 +456,8 @@
       "vars": [],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Job",
         "name": "Job",
@@ -679,6 +679,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "children": {
         "sessions": {
           "machine": "Session",
@@ -705,7 +706,6 @@
           }
         }
       },
-      "calls": {},
       "root": {
         "id": "Hub",
         "name": "Hub",

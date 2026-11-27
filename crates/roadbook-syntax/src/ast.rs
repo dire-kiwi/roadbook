@@ -378,7 +378,7 @@ impl Body {
     }
 }
 
-/// An item of a machine or state body. `Var`, `Event`, `Emits`, `Children`, `Call` and `Check`
+/// An item of a machine or state body. `Var`, `Event`, `Emits`, `Call`, `Children` and `Check`
 /// occur only in a machine body; `Invoke`, `Output`, `Fail` and `done` transitions only in a
 /// state.
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -388,10 +388,10 @@ pub enum Item {
     Event(EventDecl),
     /// `emits Name [{ fields }]`
     Emits(EventDecl),
-    /// `children name: Machine by Key`
-    Children(ChildrenDecl),
     /// `call name(params) [-> T] [! E | F]`
     Call(CallDecl),
+    /// `children name: Machine by Key`
+    Children(ChildrenDecl),
     /// `initial Name`
     Initial(Ident),
     State(State),
@@ -414,8 +414,8 @@ impl Item {
         match self {
             Item::Var(v) => v.span,
             Item::Event(e) | Item::Emits(e) => e.span,
-            Item::Children(c) => c.span,
             Item::Call(c) => c.span,
+            Item::Children(c) => c.span,
             Item::Initial(n) => n.span,
             Item::State(s) => s.span,
             Item::Entry(h) | Item::Exit(h) => h.span,
@@ -454,18 +454,6 @@ pub struct EventDecl {
     pub span: Span,
 }
 
-/// `children name: Machine by Key`: a keyed collection of spawned children.
-#[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct ChildrenDecl {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub doc: Option<Doc>,
-    pub name: Ident,
-    pub machine: Ident,
-    pub key: TypeRef,
-    #[serde(skip)]
-    pub span: Span,
-}
-
 /// `call name(params) [-> T] [! E | F]`: a request other runs make of the machine.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct CallDecl {
@@ -476,6 +464,18 @@ pub struct CallDecl {
     pub returns: Option<TypeRef>,
     pub errors: Vec<Ident>,
     /// From `call` to the end, doc comment excluded.
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `children name: Machine by Key`: a keyed collection of spawned children.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ChildrenDecl {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc: Option<Doc>,
+    pub name: Ident,
+    pub machine: Ident,
+    pub key: TypeRef,
     #[serde(skip)]
     pub span: Span,
 }
@@ -583,6 +583,8 @@ pub enum Trigger {
         from: Ident,
         event: Ident,
     },
+    /// `on name`: a call of the machine's call `name` (a lower-case name, no dot).
+    Call(Ident),
     /// `on name.done`: a spawned child of the collection `name` ended with an output.
     ChildDone {
         from: Ident,
@@ -592,8 +594,6 @@ pub enum Trigger {
         from: Ident,
         error: Pattern,
     },
-    /// `on name`: a call of the machine's call `name` (a lower-case name, no dot).
-    Call(Ident),
     /// `after expr`
     After(Expr),
     Always,
@@ -681,12 +681,12 @@ pub enum Effect {
     Send(Message),
     /// `emit Event [{ fields }]`
     Emit(Message),
+    /// `reply name done [value]` or `reply name fail error`
+    Reply(Reply),
     /// `spawn name[key] = Machine(args)`
     Spawn(Spawn),
     /// `stop name[key]`
     Stop(Stop),
-    /// `reply name done [value]` or `reply name fail error`
-    Reply(Reply),
 }
 
 impl Effect {
@@ -695,9 +695,9 @@ impl Effect {
             Effect::Set(a) => a.span,
             Effect::Do(c) => c.span,
             Effect::Send(m) | Effect::Emit(m) => m.span,
+            Effect::Reply(r) => r.span,
             Effect::Spawn(s) => s.span,
             Effect::Stop(s) => s.span,
-            Effect::Reply(r) => r.span,
         }
     }
 }

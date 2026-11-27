@@ -149,8 +149,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Locker",
         "name": "Locker",
@@ -453,6 +453,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "children": {
         "lockers": {
           "machine": "Locker",
@@ -467,7 +468,6 @@
           }
         }
       },
-      "calls": {},
       "root": {
         "id": "Lockers",
         "name": "Lockers",

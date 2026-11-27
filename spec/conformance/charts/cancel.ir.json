@@ -58,8 +58,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Parent",
         "name": "Parent",
@@ -228,8 +228,8 @@
       "vars": [],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Child",
         "name": "Child",

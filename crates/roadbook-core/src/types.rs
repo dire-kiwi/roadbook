@@ -148,20 +148,6 @@ pub struct InvokeEntry {
     pub src: String,
 }
 
-/// A running spawned child in a snapshot.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SpawnedEntry {
-    /// Its id within the run, from the sequence invokes take theirs from.
-    pub id: u64,
-    /// Its collection.
-    pub children: String,
-    /// Its key: a string or an integer.
-    pub key: Value,
-    /// The arguments it was spawned with, keyed by parameter name.
-    pub args: Object,
-}
-
 /// A call the run has taken and not answered yet: a pending call.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -180,6 +166,20 @@ impl CallEntry {
     pub fn value(&self) -> Value {
         serde_json::json!({ "from": self.from, "invoke": self.invoke })
     }
+}
+
+/// A running spawned child in a snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpawnedEntry {
+    /// Its id within the run, from the sequence invokes take theirs from.
+    pub id: u64,
+    /// Its collection.
+    pub children: String,
+    /// Its key: a string or an integer.
+    pub key: Value,
+    /// The arguments it was spawned with, keyed by parameter name.
+    pub args: Object,
 }
 
 /// A running `after` timer in a snapshot.
@@ -216,11 +216,11 @@ pub struct Snapshot {
     pub vars: Object,
     /// The running invokes, in the order they were started.
     pub invokes: Vec<InvokeEntry>,
-    /// The running spawned children, in the order they were started.
-    pub spawned: Vec<SpawnedEntry>,
     /// The calls the run has taken and not answered yet, in the order it took them.
     #[serde(default)]
     pub calls: Vec<CallEntry>,
+    /// The running spawned children, in the order they were started.
+    pub spawned: Vec<SpawnedEntry>,
     /// The running timers, in the order they were started.
     pub timers: Vec<TimerEntry>,
     /// The id the next invoke will get.
@@ -790,14 +790,14 @@ pub struct Saved {
     pub vars: Object,
     /// The running invokes, in the order they were started.
     pub invokes: Vec<InvokeEntry>,
-    /// The running spawned children, in the order they were started. `None` only in a
-    /// version 1 or 2 snapshot, which has no `spawned` member and restores with no children.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub spawned: Option<Vec<SpawnedEntry>>,
     /// The calls the run had taken and not answered, in the order it took them. Written
     /// only when there are some; a snapshot without the member has none.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub calls: Vec<CallEntry>,
+    /// The running spawned children, in the order they were started. `None` only in a
+    /// version 1 or 2 snapshot, which has no `spawned` member and restores with no children.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spawned: Option<Vec<SpawnedEntry>>,
     /// The running timers, in the order they were started, with their due times.
     pub timers: Vec<SavedTimer>,
     /// The id the next invoke will get.
@@ -830,8 +830,8 @@ impl Saved {
             input: snap.input.clone(),
             vars: snap.vars.clone(),
             invokes: snap.invokes.clone(),
-            spawned: Some(snap.spawned.clone()),
             calls: snap.calls.clone(),
+            spawned: Some(snap.spawned.clone()),
             timers: snap
                 .timers
                 .iter()
@@ -867,8 +867,8 @@ impl Saved {
             input: self.input.clone(),
             vars: self.vars.clone(),
             invokes: self.invokes.clone(),
-            spawned: self.spawned.clone().unwrap_or_default(),
             calls: self.calls.clone(),
+            spawned: self.spawned.clone().unwrap_or_default(),
             timers: self
                 .timers
                 .iter()

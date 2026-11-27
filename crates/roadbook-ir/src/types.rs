@@ -59,16 +59,16 @@ impl Builtin {
 /// `string?[]` is a list of optional strings. The base is a built-in keyword,
 /// a declared upper-case name with optional type arguments (`Page<Order>`),
 /// an event type `Machine.Event`, a handle `ref Machine`, a pending call
-/// `call name`, or a map `map<string, Order>`. Type arguments are separated
-/// by `, `; there is no other whitespace, except the one space after `ref`
-/// or `call`.
+/// `call name`, or a map
+/// `map<string, Order>`. Type arguments are separated by `, `; there is no
+/// other whitespace, except the one space after `ref` and after `call`.
+///
+/// `Display` and `FromStr` convert to and from that string, and
+/// `parse(display(t)) == t` for every `t`.
 ///
 /// `call name` is a pending call of the machine's own call `name`: only the
 /// type of a machine variable and of the implicit `call` in `on name`, never
 /// with a suffix.
-///
-/// `Display` and `FromStr` convert to and from that string, and
-/// `parse(display(t)) == t` for every `t`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeRef {
     /// A built-in type such as `int`.
@@ -143,8 +143,8 @@ impl TypeRef {
 
     /// Calls `f` with every name this type mentions as a declared type (or a
     /// type parameter, or an event type), outermost first: `map<UserId,
-    /// Page<Order>>` gives `UserId`, `Page` and `Order`. `ref` machines and
-    /// `call` names are not names of types and are not given.
+    /// Page<Order>>` gives `UserId`, `Page` and `Order`. `ref` machines and `call` names are
+    /// not names of types and are not given.
     pub fn for_each_name<'a>(&'a self, f: &mut impl FnMut(&'a str)) {
         match self {
             TypeRef::Builtin(_) | TypeRef::Ref(_) | TypeRef::Call(_) => {}
@@ -258,6 +258,13 @@ pub(crate) fn is_upper_name(s: &str) -> bool {
         && chars.all(|c| c.is_ascii_alphanumeric())
 }
 
+/// True for `[a-z][A-Za-z0-9]*`, the grammar's `Lower`.
+fn is_lower_name(s: &str) -> bool {
+    let mut chars = s.chars();
+    matches!(chars.next(), Some(c) if c.is_ascii_lowercase())
+        && chars.all(|c| c.is_ascii_alphanumeric())
+}
+
 /// The deepest nesting of type arguments read, so that a hostile IR cannot
 /// exhaust the stack. The source grammar allows at most 64 levels.
 const MAX_TYPE_DEPTH: usize = 128;
@@ -359,13 +366,6 @@ impl TypeReader<'_> {
     }
 }
 
-/// True for `[a-z][A-Za-z0-9]*`, the grammar's `Lower`.
-fn is_lower_name(s: &str) -> bool {
-    let mut chars = s.chars();
-    matches!(chars.next(), Some(c) if c.is_ascii_lowercase())
-        && chars.all(|c| c.is_ascii_alphanumeric())
-}
-
 impl FromStr for TypeRef {
     type Err = TypeRefError;
 
@@ -412,12 +412,12 @@ mod tests {
             "ref Inventory",
             "ref Inventory[]?",
             "Upload.Progress",
+            "call reserve",
             "map<string, int>",
             "map<UserId, Order[]>?",
             "Page<Order>",
             "Pair<string, map<string, Tree<int>>>[]",
             "Page<Order?>[]?",
-            "call reserve",
         ] {
             let t: TypeRef = s.parse().unwrap();
             assert_eq!(t.to_string(), s);
@@ -477,6 +477,9 @@ mod tests {
             "A.B.C",
             "int!",
             "Or_der",
+            "call Reserve",
+            "call  reserve",
+            "call re.serve",
             "map<string,int>",
             "map<string>",
             "map<string, int, int>",
@@ -486,9 +489,6 @@ mod tests {
             "page<Order>",
             "ref Page<Order>",
             "Upload.Progress<int>",
-            "call Reserve",
-            "call  reserve",
-            "call re.serve",
         ] {
             assert!(s.parse::<TypeRef>().is_err(), "{s:?} should be rejected");
         }

@@ -321,7 +321,6 @@ const ir: unknown = {
         }
       },
       "emits": {},
-      "children": {},
       "calls": {
         "reserve": {
           "params": [
@@ -352,6 +351,7 @@ const ir: unknown = {
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Inventory",
         "name": "Inventory",

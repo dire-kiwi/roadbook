@@ -601,8 +601,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "PlaceOrder",
         "name": "PlaceOrder",
@@ -1510,8 +1510,8 @@
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Checkout",
         "name": "Checkout",

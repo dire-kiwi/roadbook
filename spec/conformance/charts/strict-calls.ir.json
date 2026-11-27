@@ -95,7 +95,6 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {
         "ask": {
           "params": [],
@@ -124,6 +123,7 @@
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Desk",
         "name": "Desk",
@@ -441,8 +441,8 @@
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Asker",
         "name": "Asker",
@@ -645,8 +645,8 @@
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Holder",
         "name": "Holder",

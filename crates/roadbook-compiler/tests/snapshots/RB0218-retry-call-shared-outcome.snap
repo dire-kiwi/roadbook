@@ -1,0 +1,13 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0218]: `Busy` is retried, but `fail *` also handles `Unanswered`, which is not
+  --> RB0218-retry-call-shared-outcome.road:18:28
+   |
+18 |     invoke desk.reserve(1) retry 2 {
+   |                            ^^^^^^^
+...
+20 |       fail * -> B
+   |       ------ handled together here
+   |
+   = help: give each retried error an outcome of its own: `fail Busy -> …`

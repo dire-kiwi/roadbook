@@ -1,5 +1,5 @@
 // Charts for the durable driver's crash and resume tests (test/durable.test.ts): work that a
-// crash must not repeat, a timer and an event to wait for, a child run, a peer, and a call.
+// crash must not repeat, a timer and an event to wait for, a child run, and a peer.
 
 /// Write a line to the log.
 action log(text: string)
@@ -106,46 +106,4 @@ machine Adder(counter: ref Counter, goal: int) -> int {
   state Waiting { on counter.Total if event.n >= goal -> Reached }
 
   final state Reached { output goal }
-}
-
-/// Answers `take` with what its step for `n` gives, once that step has run, one call at a time.
-machine Teller() {
-  call take(n: int) -> int
-
-  var pending: call take
-  var n:       int = 0
-
-  event Close
-
-  initial Open
-
-  state Open {
-    on take  -> Busy  set pending = call, n = event.n
-    on Close -> Closed
-  }
-
-  state Busy {
-    invoke step(n) {
-      done -> Open  reply pending done result
-    }
-  }
-
-  final state Closed {}
-}
-
-/// Asks the teller to take `n`; gives its answer, or -1 if it gave none.
-machine Caller(teller: ref Teller, n: int) -> int {
-  var got: int = 0
-
-  initial Asking
-
-  state Asking {
-    invoke teller.take(n) {
-      done            -> Got   set got = result
-      fail Unanswered -> Gave
-    }
-  }
-
-  final state Got  { output got }
-  final state Gave { output -1 }
 }

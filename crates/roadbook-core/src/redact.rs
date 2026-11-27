@@ -9,10 +9,10 @@
 
 use std::collections::{HashMap, HashSet};
 
-use roadbook_ir::{Call, Field, Ir, Machine, State, TypeDef, TypeRef};
+use roadbook_ir::{Call, Field, Ir, Machine, TypeDef, TypeRef};
 use serde_json::Value;
 
-use crate::{Input, InvokeEntry, Object, Record, Saved, SpawnedEntry};
+use crate::{Defect, Input, InvokeEntry, Object, Record, Saved, SpawnedEntry};
 
 /// What a redacted value is written as.
 pub const REDACTED: &str = "<redacted>";
@@ -38,11 +38,11 @@ impl Marks {
             || ir.machines.values().any(|m| {
                 fields(&m.params)
                     || m.vars.iter().any(|v| v.sensitive)
+                    || m.calls.values().any(|c| fields(&c.params))
                     || m.events
                         .values()
                         .chain(m.emits.values())
                         .any(|e| fields(&e.fields))
-                    || m.calls.values().any(|c| fields(&c.params))
             });
         let mut marks = Marks {
             any,
@@ -254,7 +254,6 @@ impl Redactor<'_> {
             // whose invoke has ended), so the event is redacted as each machine that emits an
             // event of its name would redact it.
             Input::Emitted { value, .. } => self.emitted(value),
-            // A call's arguments, by the parameters of the machine's call.
             Input::Call { call, args, .. } => {
                 let params = m.calls.get(call.as_str()).map(|c| &c.params);
                 self.object(params.map_or(&[][..], |p| p), args);
@@ -263,7 +262,7 @@ impl Redactor<'_> {
                 match invokes.iter().find(|i| i.id == *invoke) {
                     // A task, machine or call that returns nothing gives `null`: anything else
                     // is redacted whole.
-                    Some(inv) => match self.invoked_returns(m, &inv.state, &inv.src) {
+                    Some(inv) => match self.returns(m, &inv.src) {
                         Some(t) => self.value(t, value),
                         None if value.is_null() => {}
                         None => redact(value),
@@ -301,33 +300,37 @@ impl Redactor<'_> {
             .and_then(|c| self.ir.machines.get(&c.machine))
     }
 
-    /// The call that the invoke of state `state` of `m` makes, if it is a call.
-    fn call_of(&self, m: &Machine, state: &str) -> Option<&Call> {
-        fn find<'s>(s: &'s State, id: &str) -> Option<&'s State> {
-            if s.id == id {
-                return Some(s);
-            }
-            s.states.iter().find_map(|c| find(c, id))
-        }
-        let inv = find(&m.root, state)?.invoke.as_ref()?;
-        let to = inv.to.as_ref()?;
-        self.ir.machines.get(&to.machine)?.calls.get(&inv.src)
-    }
-
-    /// What the invoke of state `state` of `m`, of `src`, returns: a call's result type, or
-    /// the task's or machine's.
-    fn invoked_returns(&self, m: &Machine, state: &str, src: &str) -> Option<&TypeRef> {
+    /// The result type of what an invoke of a run of `m` runs: task or machine `src`, or the
+    /// call `src` names (`inventory.reserve`).
+    fn returns(&self, m: &Machine, src: &str) -> Option<&TypeRef> {
         if src.contains('.') {
-            return self.call_of(m, state)?.returns.as_ref();
+            return self.call(m, src).and_then(|c| c.returns.as_ref());
         }
-        self.returns(src)
-    }
-
-    fn returns(&self, src: &str) -> Option<&TypeRef> {
         match self.ir.tasks.get(src) {
             Some(t) => t.returns.as_ref(),
             None => self.ir.machines.get(src).and_then(|m| m.returns.as_ref()),
         }
+    }
+
+    /// The call that a call invoke of a run of `m` makes, by its `src` as an invoke entry
+    /// gives it: the `ref` parameter or variable, a dot, and the call's name.
+    fn call(&self, m: &Machine, src: &str) -> Option<&Call> {
+        let (name, call) = src.split_once('.')?;
+        let ty = m
+            .params
+            .iter()
+            .find(|p| p.name == name)
+            .map(|p| &p.ty)
+            .or_else(|| m.vars.iter().find(|v| v.name == name).map(|v| &v.ty))?;
+        let peer = match &*self.ir.expand_top(ty) {
+            TypeRef::Ref(peer) => peer.clone(),
+            TypeRef::Optional(t) => match &*self.ir.expand_top(t) {
+                TypeRef::Ref(peer) => peer.clone(),
+                _ => return None,
+            },
+            _ => return None,
+        };
+        self.ir.machines.get(&peer)?.calls.get(call)
     }
 
     /// Redacts a record a run of `m` emits, other than an `event`, `dropped` or `stale` record,
@@ -344,13 +347,10 @@ impl Redactor<'_> {
                 let params = self.ir.actions.get(action.as_str()).map(|a| &a.params);
                 self.object(params.map_or(&[][..], |p| p), args);
             }
-            Record::InvokeStarted {
-                state, src, args, ..
-            } => {
+            Record::InvokeStarted { src, args, .. } => {
                 let params = match self.ir.tasks.get(src.as_str()) {
                     Some(t) => Some(&t.params),
-                    // A call's arguments go to the parameters of the callee's call.
-                    None if src.contains('.') => self.call_of(m, state).map(|c| &c.params),
+                    None if src.contains('.') => self.call(m, src).map(|c| &c.params),
                     None => self.ir.machines.get(src.as_str()).map(|m| &m.params),
                 };
                 self.object(params.map_or(&[][..], |p| p), args);
@@ -360,26 +360,33 @@ impl Redactor<'_> {
                 self.object(params.map_or(&[][..], |p| p), args);
             }
             Record::Emitted { value, .. } => self.event(m, true, value),
-            Record::Done { output, .. } => self.output(m, output),
-            // The answer to one of `m`'s calls: by the call's result type, or as an error.
+            // A `reply`'s result by the call's result type, and its error by its tag.
             Record::Replied {
                 call,
                 outcome,
                 value,
                 ..
             } => match outcome {
-                crate::ReplyOutcome::Done => match m.calls.get(call.as_str()).map(|c| &c.returns) {
-                    Some(Some(t)) => self.value(t, value),
-                    _ if value.is_null() => {}
-                    _ => redact(value),
-                },
-                crate::ReplyOutcome::Fail => self.error(value),
+                roadbook_ir::ReplyOutcome::Fail => self.error(value),
+                roadbook_ir::ReplyOutcome::Done => {
+                    match m.calls.get(call.as_str()).map(|c| &c.returns) {
+                        Some(Some(t)) => self.value(t, value),
+                        _ if value.is_null() => {}
+                        _ => redact(value),
+                    }
+                }
             },
+            Record::Done { output, .. } => self.output(m, output),
             Record::Failed { error, .. } => self.error(error),
             // `sent` and the core's `undelivered` are redacted where the send's address is
             // known (`Redactor::sent`).
             Record::Sent { .. } | Record::Undelivered { .. } => {}
             Record::Event { .. } | Record::Dropped { .. } | Record::Stale { .. } => {}
+            // A strict machine's `unhandled` input as an `event` or `dropped` record shows it:
+            // an event, a message or a call, which need no invoke or spawned child.
+            Record::Defect {
+                defect: Defect::Unhandled { event },
+            } => self.input(m, &[], &[], event),
             Record::Entered { .. }
             | Record::Exited { .. }
             | Record::Transition { .. }
@@ -447,28 +454,4 @@ fn redact(v: &mut Value) {
 
 fn tag(v: &Value) -> Option<String> {
     v.get("_tag").and_then(Value::as_str).map(str::to_owned)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Marks;
-
-    fn marks(src: &str) -> Marks {
-        let out = roadbook_compiler::compile_source("m.road", src, &Default::default());
-        assert!(!out.has_errors(), "{}", out.render());
-        Marks::new(&out.ir.unwrap())
-    }
-
-    #[test]
-    fn a_sensitive_call_parameter_alone_turns_redaction_on() {
-        // As in `packages/core/src/redact.ts`: a chart whose only sensitive mark is a call's
-        // parameter is redacted, so both runtimes write the same records.
-        let src = |mark: &str| {
-            format!(
-                "machine M() {{\n  call open({mark}pin: string)\n  initial A\n  state A {{\n    on open -> A  reply call done\n  }}\n}}\n"
-            )
-        };
-        assert!(marks(&src("sensitive ")).any);
-        assert!(!marks(&src("")).any);
-    }
 }

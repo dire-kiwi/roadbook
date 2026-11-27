@@ -457,8 +457,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Vault",
         "name": "Vault",

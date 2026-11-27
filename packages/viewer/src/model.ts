@@ -92,12 +92,12 @@ export function effectText(e: Effect): string {
       return `send ${e.to.name}${sendKey(e.to, e.key)}.${e.value.text}`
     case 'emit':
       return `emit ${e.value.text}`
+    case 'reply':
+      return `reply ${e.call.text} ${e.outcome}${e.value ? ` ${e.value.text}` : ''}`
     case 'spawn':
       return `spawn ${e.children}[${e.key.text}] = ${e.machine}(${e.args.map((a) => a.text).join(', ')})`
     case 'stop':
       return `stop ${e.children}[${e.key.text}]`
-    case 'reply':
-      return `reply ${e.call.text} ${e.outcome}${e.value ? ` ${e.value.text}` : ''}`
   }
 }
 
@@ -233,7 +233,12 @@ export function triggerText(trigger: Trigger): string {
  * `after 30s`, `done`, `fail E`, `on sessions.done`, `on sessions.fail E`.
  */
 export function triggerSource(trigger: Trigger): string {
-  const on = trigger.kind === 'event' || trigger.kind === 'emitted' || trigger.kind === 'call' || trigger.kind === 'spawn.done' || trigger.kind === 'spawn.fail'
+  const on =
+    trigger.kind === 'event' ||
+    trigger.kind === 'emitted' ||
+    trigger.kind === 'call' ||
+    trigger.kind === 'spawn.done' ||
+    trigger.kind === 'spawn.fail'
   return on ? `on ${triggerText(trigger)}` : triggerText(trigger)
 }
 

@@ -310,8 +310,8 @@
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -851,7 +851,6 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {
         "reserve": {
           "params": [
@@ -882,6 +881,7 @@
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Inventory",
         "name": "Inventory",

@@ -1,25 +1,38 @@
-/// A call's arguments show in `invoke.started` and in the callee's `call` input, by the call's
-/// parameters, and its answer in `replied`, by the call's result type.
-machine Vault() {
-  call open(sensitive pin: string, note: string) -> string
-  call peek(note: string) -> string
-  initial Ready
-  state Ready {
-    on open reply call done event.pin
-    on peek reply call done event.note
-  }
-}
+// A call's parameters are its own: a task named like the call marks nothing for it. Its
+// arguments reach the callee as `event`'s fields, sensitive where the parameter is, and its
+// reply shows in a `replied` record.
+error Refused { sensitive why: string, code: int }
 
-machine Client(vault: ref Vault, sensitive pin: string) {
-  initial Asking
-  state Asking {
-    invoke vault.open(pin, pin) {
-      done            -> Done
-      fail Unanswered -> Done
+task reserve(pin: string)
+
+machine Bank() {
+  call reserve(sensitive pin: string, note: string) -> string ! Refused
+  sensitive var refusal: Refused = Refused { why: "", code: 0 }
+  var last:              string = ""
+  initial A
+  state A {
+    on reserve {
+      if event.note == "keep" -> A  set last = event.pin
+      if event.note == "echo" -> A  reply call done event.pin
+      if event.note == "show" -> A  reply call done event.note
+      else                    -> A  reply call fail refusal
     }
   }
-  final state Done {}
 }
 
-// expect: RB0320 at 8:29
-// expect: RB0320 at 16:28
+machine M(sensitive pin: string, bank: ref Bank) {
+  initial A
+  state A {
+    invoke bank.reserve(pin, pin) {
+      done            -> B
+      fail Refused    -> B
+      fail Unanswered -> B
+    }
+  }
+  final state B {}
+}
+
+// expect: RB0320 at 15:48
+// expect: RB0320 at 16:53
+// expect: RB0320 at 18:53
+// expect: RB0320 at 26:30

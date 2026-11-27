@@ -28,7 +28,7 @@ pub const DUPLICATE_DECLARATION: Code = Code(107);
 pub const DUPLICATE_NAME: Code = Code(108);
 /// A declared name used as something it is not, such as an action in `invoke`.
 pub const WRONG_KIND: Code = Code(109);
-/// `event`, `result`, `error`, `key` or `call` where it is not in scope.
+/// `event`, `result`, `error`, `call` or `key` where it is not in scope.
 pub const IMPLICIT_NAME_OUT_OF_SCOPE: Code = Code(110);
 /// An import of a file that cannot be read.
 pub const IMPORT_NOT_FOUND: Code = Code(111);
@@ -58,7 +58,6 @@ pub const UNKNOWN_CALL: Code = Code(118);
 /// The built-in error `Unanswered` where it cannot be: in a `!` list, as a type or a value, or
 /// in a `fail` outcome of an invoke that is not a call.
 pub const UNANSWERED_MISUSED: Code = Code(119);
-
 /// `attempt` in a retry's delay, in a machine with a parameter or variable named `attempt`.
 pub const ATTEMPT_SHADOWED: Code = Code(120);
 /// A `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` or `on name.fail` through a
@@ -181,11 +180,10 @@ pub const NOT_A_PENDING_CALL: Code = Code(318);
 /// returns nothing or without one for a call that returns a value, or `fail` with a value that
 /// is not one of the call's declared errors.
 pub const BAD_REPLY: Code = Code(319);
-
 /// A value read from a sensitive field, parameter or variable (or computed from one by an
 /// operator) going where a trace shows it:
-/// to a variable, parameter or field that is not sensitive, or to an `output`, a `fail` or an
-/// `after` delay.
+/// to a variable, parameter or field that is not sensitive, or to an `output`, a `fail`, a
+/// call's reply or an `after` delay.
 pub const SENSITIVE_VALUE: Code = Code(320);
 
 /// A value whose type has sensitive fields going where `json` is expected, in a place a trace
@@ -258,7 +256,6 @@ pub const CALL_NEVER_TAKEN: Code = Code(908);
 
 /// A variable of type `call name` that no `reply` answers.
 pub const CALL_NEVER_REPLIED: Code = Code(909);
-
 /// A history state that no transition targets.
 pub const UNUSED_HISTORY: Code = Code(910);
 /// A `children` collection that no `spawn` fills (warning).

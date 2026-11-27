@@ -10,10 +10,10 @@
  * generic type substituted. A member a type does not declare is left as it is. Values are never
  * changed in place: what is redacted is a copy.
  */
-import type { CallDecl, Field, Ir, Machine, State } from "./ir.ts"
+import type { CallDecl, Field, Ir, Machine } from "./ir.ts"
 import { expandType, fieldsOf, parseTypeRef, type TypeRef } from "./typeref.ts"
 import type { Json } from "./json.ts"
-import type { CoreRecord, Input, InvokeEntry, Saved, SpawnedEntry, Tagged } from "./types.ts"
+import type { CoreRecord, Defect, Input, InvokeEntry, Saved, SpawnedEntry, Tagged } from "./types.ts"
 
 /** What a redacted value is written as. */
 export const REDACTED = "<redacted>"
@@ -44,8 +44,8 @@ const marks = (ir: Ir): Marks => {
     Object.values(ir.tasks).some((t) => marked(t.params)) ||
     Object.values(ir.machines).some((m) =>
       marked(m.params) || m.vars.some((v) => v.sensitive) ||
-      [...Object.values(m.events), ...Object.values(m.emits)].some((e) => marked(e.fields)) ||
-      Object.values(m.calls).some((c) => marked(c.params))
+      Object.values(m.calls).some((c) => marked(c.params)) ||
+      [...Object.values(m.events), ...Object.values(m.emits)].some((e) => marked(e.fields))
     )
   const carries = new Map<string, boolean>()
   if (any) {
@@ -223,25 +223,32 @@ class Redactor {
     return this.tagged(decl?.kind === "error" || decl?.kind === "record" ? [decl.fields] : [], v)
   }
 
-  /** The call that the invoke of state `state` of `m` makes, if it is a call. */
-  private callOf(m: Machine, state: string): CallDecl | undefined {
-    const find = (s: State): State | undefined => s.id === state ? s : s.states.map(find).find((x) => x !== undefined)
-    const inv = find(m.root)?.invoke
-    if (inv === null || inv === undefined || inv.to === null) return undefined
-    const callee = own(this.ir.machines, inv.to.machine)
-    return callee === undefined ? undefined : own(callee.calls, inv.src)
-  }
-
-  /** What the invoke of state `state` of `m`, of `src`, returns: a call's result type, or the task's or machine's. */
-  private invokedReturns(m: Machine, state: string, src: string): string | null {
-    if (src.includes(".")) return this.callOf(m, state)?.returns ?? null
-    return this.returns(src)
-  }
-
-  private returns(src: string): string | null {
+  /**
+   * The result type of what an invoke of a run of `m` runs: task or machine `src`, or the call
+   * `src` names (`inventory.reserve`).
+   */
+  private returns(m: Machine, src: string): string | null {
+    if (src.includes(".")) return this.call(m, src)?.returns ?? null
     const task = own(this.ir.tasks, src)
     if (task !== undefined) return task.returns
     return own(this.ir.machines, src)?.returns ?? null
+  }
+
+  /**
+   * The call that a call invoke of a run of `m` makes, by its `src` as an invoke entry gives it:
+   * the `ref` parameter or variable, a dot, and the call's name.
+   */
+  private call(m: Machine, src: string): CallDecl | undefined {
+    const dot = src.indexOf(".")
+    if (dot === -1) return undefined
+    const name = src.slice(0, dot)
+    const type = m.params.find((p) => p.name === name)?.type ?? m.vars.find((v) => v.name === name)?.type
+    if (type === undefined) return undefined
+    let t = expandType(this.ir, type)
+    if (t.kind === "optional") t = expandType(this.ir, t.of)
+    if (t.kind !== "ref") return undefined
+    const peer = own(this.ir.machines, t.machine)
+    return peer === undefined ? undefined : own(peer.calls, src.slice(dot + 1))
   }
 
   /** `output`, a result of something that returns `type` (`null`: nothing), redacted. */
@@ -285,11 +292,11 @@ class Redactor {
         // event of its name would redact it.
         return { ...input, value: this.emitted(input.value) as typeof input.value }
       case "call":
-        // A call's arguments, by the parameters of the machine's call.
         return { ...input, args: this.object(own(m.calls, input.call)?.params ?? [], input.args) }
       case "invoke.done": {
         const inv = invokes.find((i) => i.id === input.invoke)
-        if (inv !== undefined) return { ...input, value: this.result(this.invokedReturns(m, inv.state, inv.src), input.value) }
+        // A task, machine or call that returns nothing gives `null`: anything else is redacted whole.
+        if (inv !== undefined) return { ...input, value: this.result(this.returns(m, inv.src), input.value) }
         // A stale outcome: the invoke has ended, and with it what it ran, so the type of the
         // value is not known. Redacted whole: the run ignores it.
         return { ...input, value: REDACTED }
@@ -333,11 +340,10 @@ class Redactor {
         return { ...record, args: this.object(own(this.ir.actions, record.action)?.params ?? [], record.args) }
       case "invoke.started": {
         const task = own(this.ir.tasks, record.src)
-        // A call's arguments go to the parameters of the callee's call.
         const params = task !== undefined
           ? task.params
           : record.src.includes(".")
-          ? this.callOf(m, record.state)?.params ?? []
+          ? this.call(m, record.src)?.params ?? []
           : own(this.ir.machines, record.src)?.params ?? []
         return { ...record, args: this.object(params, record.args) }
       }
@@ -345,21 +351,28 @@ class Redactor {
         return { ...record, args: this.object(own(this.ir.machines, record.src)?.params ?? [], record.args) }
       case "emitted":
         return { ...record, value: this.event(m, true, record.value) as typeof record.value }
+      // A `reply`'s result by the call's result type, and its error by its tag.
+      case "replied":
+        return record.outcome === "fail"
+          ? { ...record, value: this.error(record.value) }
+          : { ...record, value: this.result(own(m.calls, record.call)?.returns ?? null, record.value) }
       case "done":
         return { ...record, output: this.result(m.returns, record.output) }
       case "failed":
         return { ...record, error: this.error(record.error) as typeof record.error }
-      case "replied":
-        // The answer to one of `m`'s calls: by the call's result type, or as an error.
-        return {
-          ...record,
-          value: record.outcome === "done"
-            ? this.result(own(m.calls, record.call)?.returns ?? null, record.value)
-            : this.error(record.value)
-        }
+      case "defect":
+        return { ...record, defect: this.defect(m, record.defect) }
       default:
         return record
     }
+  }
+
+  /**
+   * `defect` of a run of `m`, redacted: a strict machine's `unhandled` input as an `event` or
+   * `dropped` record shows it (an event, a message or a call, which need no invoke or child).
+   */
+  private defect(m: Machine, defect: Defect): Defect {
+    return defect.kind === "unhandled" ? { ...defect, event: this.anyInput(m, [], [], defect.event) as typeof defect.event } : defect
   }
 
   /** `value`, an event sent to a run of machine `to`, redacted. */

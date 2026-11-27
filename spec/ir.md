@@ -6,7 +6,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 **Every member is always present.** Nothing is ever omitted. An absent value is `null`, a missing doc comment is `""`, and an empty list or map is `[]` or `{}`. This gives each input exactly one output, which matters because compiled IR is committed and hashed, and it means readers never need to tell a missing member from a null one. Readers reject members this page does not list.
 
-**Order is source order.** Maps keyed by name (`types`, `functions`, `actions`, `tasks`, `machines`, a machine's `events`, `emits`, `children` and `calls`) keep declaration order: the entry file's declarations first, then each imported file's in the order the files were first loaded (depth first: a file's imports, in the order written, are loaded before the next import of the file that imports it). Lists (fields, parameters, variables, states, transitions, effects, arguments) are in the order written, except that a list of effects puts every `set` before the other effects (see [effects](#effects)). A JSON parser that does not keep member order loses nothing a runtime needs, since order in the maps is for readability and diffs only.
+**Order is source order.** Maps keyed by name (`types`, `functions`, `actions`, `tasks`, `machines`, a machine's `events`, `emits` and `children`) keep declaration order: the entry file's declarations first, then each imported file's in the order the files were first loaded (depth first: a file's imports, in the order written, are loaded before the next import of the file that imports it). Lists (fields, parameters, variables, states, transitions, effects, arguments) are in the order written, except that a list of effects puts every `set` before the other effects (see [effects](#effects)). A JSON parser that does not keep member order loses nothing a runtime needs, since order in the maps is for readability and diffs only.
 
 **Names.** Upper-case names (`[A-Z][A-Za-z0-9]*`) are types, errors, events, states and machines. Lower-case names (`[a-z][A-Za-z0-9]*`) are variables, parameters, fields, functions, actions and tasks. Declaration names are unique among the files of a compilation (the entry file and everything it imports), so a name in `types`, `functions`, `actions`, `tasks` or `machines` identifies a declaration on its own.
 
@@ -78,7 +78,7 @@ base  = builtin | Upper [ "<" type { ", " type } ">" ] | Upper "." Upper | "ref 
 
 **Event types.** Events are not declared types: an event's type is named after the event. Inside machine `M`, a bare name that is one of `M`'s events or emitted events is that event: the type of `event` in `on Name`, and of the value of `emit Name { … }`. The event of another machine, or of a machine reached through a `ref` or a child, is written `Machine.Name`: the type of `event` in `on upload.Progress` is `Upload.Progress`, and the value of `send upload.Pause` has type `Upload.Pause`, also when the other machine is `M` itself. Names never collide: an event never has the name of a type, error or machine of the document, and a machine's `events` and `emits` never share a name, so a bare name is a key of `types` or of the current machine's `events` or `emits`, never two of them.
 
-**Where a `ref` can be.** Machine parameters, variables, and the parameters of functions, actions and tasks may have a `ref` type, directly or through an alias, also inside a list, an optional or a map's values. Fields of records, errors and events, type arguments, the parameters of calls, and the results of functions, tasks and machines, never do, so a machine can only get a handle from its own signature or from `invoke … as`. A `ref` value is never a literal, never compared, never passed where `json` is expected, and a runtime passes it to host code as its own handle type. In snapshots and traces it is the id of the run it refers to ([values](execution.md#values)).
+**Where a `ref` can be.** Machine parameters, variables, and the parameters of functions, actions and tasks may have a `ref` type, directly or through an alias, also inside a list, an optional or a map's values. Fields of records, errors and events, the parameters of calls, type arguments, and the results of functions, tasks and machines, never do, so a machine can only get a handle from its own signature or from `invoke … as`. A `ref` value is never a literal, never compared, never passed where `json` is expected, and a runtime passes it to host code as its own handle type. In snapshots and traces it is the id of the run it refers to ([values](execution.md#values)).
 
 **Where a pending call can be.** A `call name` is the type of a machine variable of the machine that declares `name`, and of the implicit `call` in its `on name` transitions; nowhere else, not even inside an alias, an optional, a list, a map or a type argument. It is never a literal, never compared, never passed where `json` is expected, and never leaves the run: no parameter, field, result or event has the type ([calls](execution.md#calls-between-runs)).
 
@@ -154,8 +154,8 @@ Spans cover the whole declaration.
   "vars": [ /* variables */ ],
   "events": {},
   "emits": {},
-  "children": {},
   "calls": {},
+  "children": {},
   "root": { /* state */ },
   "hash": "sha256:…"
 }
@@ -171,8 +171,8 @@ Spans cover the whole declaration.
 | `vars` | Variables, in source order. |
 | `events` | Events the machine accepts, keyed by name, in source order. |
 | `emits` | Events the machine emits (`emits Name { fields }`), keyed by name, in source order, with the shape of `events`. A name is in at most one of `events` and `emits`. |
-| `children` | The machine's collections of spawned children (`children name: Machine by Key`), keyed by name, in source order. See below. |
 | `calls` | Calls the machine answers (`call name(params) -> T ! E`), keyed by name, in source order. See below. |
+| `children` | The machine's collections of spawned children (`children name: Machine by Key`), keyed by name, in source order. See below. |
 | `root` | The machine body as a state. See below. |
 | `hash` | The [machine hash](#the-machine-hash). |
 
@@ -180,8 +180,9 @@ A **variable** is `{"name", "type", "sensitive", "init", "doc", "span"}`. `sensi
 
 An **event** is `{"fields", "doc", "span"}`, keyed by its name, in `events` and in `emits` alike. The span covers the declaration from `event` or `emits` to its end.
 
-A **children collection** is `{"machine", "key", "doc", "span"}`, keyed by its name. `machine` is the machine its children run, a key of `machines`; `key` the type of its keys, a type reference that is `string`, `int` or an enum, or an alias of one of them (never optional or a list). The span covers the declaration from `children` to the end of its key type. A collection's name shares the machine's namespace with its parameters, variables and `as` names. What a runtime does with one is in [`execution.md`](execution.md#spawned-children).
 A **call** is `{"params", "returns", "errors", "doc", "span"}`, keyed by its lower-case name, with the members of a task: `params` the fields of the arguments, `returns` a type reference or `null`, `errors` error names in source order (never `Unanswered`). The span covers the declaration from `call` to its end. A caller holding a `ref` to the machine makes a call with an invoke of kind `call`; the machine takes it with an `on name` transition (trigger kind `call`) and answers it with a `reply` effect.
+
+A **children collection** is `{"machine", "key", "doc", "span"}`, keyed by its name. `machine` is the machine its children run, a key of `machines`; `key` the type of its keys, a type reference that is `string`, `int` or an enum, or an alias of one of them (never optional or a list). The span covers the declaration from `children` to the end of its key type. A collection's name shares the machine's namespace with its parameters, variables and `as` names. What a runtime does with one is in [`execution.md`](execution.md#spawned-children).
 
 The **root** is a state with `kind` `compound` whose `id` and `name` are the machine's name. Its `doc` and `span` are the machine's. It holds the machine's top-level states, its `initial`, and the `entry`, `exit`, `on`, `after` and `always` items written directly in the machine body.
 
@@ -296,9 +297,9 @@ A child is addressed only from its invoking state and that state's descendants, 
 | `done` | `done` in a state | none. The compound state reached a final child, or every region of the parallel state did. |
 | `invoke.done` | `done` inside `invoke { }` | none. The invoked task or machine succeeded. `result` is in scope. |
 | `invoke.fail` | `fail E` inside `invoke { }` | `error`: the error's name, or `"*"` for every declared error not listed (for a call, `Unanswered` among them). `error` is in scope. |
+| `call` | `on name` | `call`: a key of the machine's own `calls`. Taken for a call of it from another run. `event` is in scope, a record of the call's parameters read through its fields (`event.items`), and so is `call`, of type `call name`. |
 | `spawn.done` | `on name.done` | `children`: the collection. A spawned child of it ended `done`. `result` and `key` are in scope. |
 | `spawn.fail` | `on name.fail E` | `children`: the collection. `error`: the error's name, a declared error of the collection's machine, or `"*"` for every declared error the state has no `on name.fail` for. A spawned child of it ended `failed`. `error` and `key` are in scope. |
-| `call` | `on name` | `call`: a key of the machine's own `calls`. Taken for a call of it from another run. `event` is in scope, a record of the call's parameters read through its fields (`event.items`), and so is `call`, of type `call name`. |
 
 ## Effects
 
@@ -308,11 +309,11 @@ A child is addressed only from its invoking state and that state's descendants, 
 | `do` | `do action(args)` | `action`: a key of `actions`. `args`: expressions, positional, in parameter order. |
 | `send` | `send name.Name [{ fields }]`, `send name[key].Name [{ fields }]`, `send name.*.Name [{ fields }]` | `to`: the receiver's [address](#addresses). `key`: for an address of kind `children`, the key expression (`send name[key].Name`), or `null` for every running child of the collection (`send name.*.Name`); `null` for the other kinds. `event`: the event's name, a key of the receiver's `events`. `value`: the event, a `record` expression of type `Machine.Name` with every field of the event. |
 | `emit` | `emit Name [{ fields }]` | `event`: the event's name, a key of the machine's own `emits`. `value`: the event, a `record` expression of type `Name` with every field of the event. |
+| `reply` | `reply name done [value]`, `reply name fail error` | `call`: a `ref` expression of type `call c`, the implicit `call` or a variable. `outcome`: `"done"` or `"fail"`. `value`: for `done`, an expression of `c`'s `returns` type, or `null` when `c` returns nothing; for `fail`, an expression of one of `c`'s `errors`. |
 | `spawn` | `spawn name[key] = Machine(args)` | `children`: the collection. `machine`: its machine, the one the source names. `key`: the key expression, of the collection's key type. `args`: expressions, positional, in parameter order. |
 | `stop` | `stop name[key]` | `children`: the collection. `key`: the key expression. |
-| `reply` | `reply name done [value]`, `reply name fail error` | `call`: a `ref` expression of type `call c`, the implicit `call` or a variable. `outcome`: `"done"` or `"fail"`. `value`: for `done`, an expression of `c`'s `returns` type, or `null` when `c` returns nothing; for `fail`, an expression of one of `c`'s `errors`. |
 
-`set a = 1, b = 2` is two `set` effects. Every list of effects (a transition's, an `entry`'s, an `exit`'s) holds all its `set` effects, in the order written, then all its other effects (`do`, `send`, `emit`, `spawn`, `stop` and `reply`), in the order written among themselves, because that is the order they run in: `do f(a)  set a = 1` and `set a = 1  do f(a)` give the same list, and the same hash, and so do `send x.E { v: a }  set a = 1` and `set a = 1  send x.E { v: a }`. A runtime runs the list in order. A `send` or `emit` value is evaluated when its effect runs, so it sees every `set` of the list.
+`set a = 1, b = 2` is two `set` effects. Every list of effects (a transition's, an `entry`'s, an `exit`'s) holds all its `set` effects, in the order written, then all its other effects (`do`, `send`, `emit`, `reply`, `spawn` and `stop`), in the order written among themselves, because that is the order they run in: `do f(a)  set a = 1` and `set a = 1  do f(a)` give the same list, and the same hash, and so do `send x.E { v: a }  set a = 1` and `set a = 1  send x.E { v: a }`. A runtime runs the list in order. A `send` or `emit` value is evaluated when its effect runs, so it sees every `set` of the list.
 
 ## Expressions
 
@@ -324,7 +325,7 @@ Every expression node is an object with `kind`, the kind's own members, then two
 | `kind` | Source | Members |
 | --- | --- | --- |
 | `lit` | `3`, `1.5`, `"hi"`, `true`, `30s` | `value`, see below. `type` is the literal's built-in. |
-| `ref` | `attempts`, `error.issues`, `event.sku` | `path`: a variable, parameter, or one of the implicit names `event`, `result`, `error`, `key`, `call`, followed by the names of the fields read from it. Never empty. |
+| `ref` | `attempts`, `error.issues`, `event.sku` | `path`: a variable, parameter, or one of the implicit names `event`, `result`, `error`, `call`, `key`, followed by the names of the fields read from it. Never empty. |
 | `field` | `confirmation(order, receipt).status` | `of`: the expression whose field is read, when it is not a variable. `name`: the field. |
 | `call` | `retryDelay(attempts)` | `fn`: a key of `functions`. `args`: expressions, positional, in parameter order. |
 | `op` | `a + b`, `not ok`, `-n` | `op`: one of `==` `!=` `<` `<=` `>` `>=` `+` `-` `*` `and` `or` (two `args`, left then right) or `not` `neg` (one `args`). |
@@ -341,7 +342,7 @@ Every expression node is an object with `kind`, the kind's own members, then two
 | `bool` | `true` or `false`. |
 | `duration` | A non-negative JSON integer of milliseconds: `30s` is `30000`, `5m` is `300000`. |
 
-**Types of the implicit names.** `result` in an `invoke.done` transition has the invoked task's or machine's `returns` type, for a call invoke the call's, and in a `spawn.done` transition the collection's machine's. `error` in an `invoke.fail` or `spawn.fail` transition for error `E` has type `E`, and for a call invoke's `Unanswered` the type `Unanswered`. `key`, in a `spawn.done`, `spawn.fail` or `emitted` transition through a `children` address, has the collection's key type. `event` in an `on Name` transition has type `Name` (the event, see [type references](#type-references)), in an `emitted` transition type `Machine.Name`, and `event.field` has the field's type. In a `call` transition `event` is read only through its fields, and `call` has type `call name`.
+**Types of the implicit names.** `result` in an `invoke.done` transition has the invoked task's or machine's `returns` type, and in a `spawn.done` transition the collection's machine's. `error` in an `invoke.fail` or `spawn.fail` transition for error `E` has type `E`. `key`, in a `spawn.done`, `spawn.fail` or `emitted` transition through a `children` address, has the collection's key type. `event` in an `on Name` transition has type `Name` (the event, see [type references](#type-references)), in an `emitted` transition type `Machine.Name`, and `event.field` has the field's type. In a `call` transition `event` is read only through its fields, and `call` has type `call name`. For a call invoke, `result` has the call's `returns` type, and `error` for `Unanswered` the type `Unanswered`.
 
 ```json
 {
@@ -382,7 +383,7 @@ A machine's `hash` is `"sha256:"` followed by the 64 lowercase hexadecimal digit
 - **F**, **A** and **K** are the functions called (`call`), the actions run (`do`) and the tasks invoked by the machines in M.
 - **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send`, an `emitted` trigger or a call invoke), or by an event type `Machine.Name`. Only its interface, its `events`, `emits` and `calls`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts, emits or answers changes, and not when how the peer works inside does. (A child addressed with `as` is invoked, and a collection's machine is spawned, so they are in M whole.)
 - **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`) whose base, type arguments or map key or value names it, at any depth, by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"` and `Unanswered`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, or `Machine.Name`), a type parameter inside its declaration, and the machine of a `ref`, are not part of T.
-- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `children` and `calls` maps, which are kept whatever they are (their values are stripped), and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed: `children text: C by string` keeps its collection, and a call named `doc`, `span` or `text` keeps its name. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that spawns nothing has the hash it would have without keyed spawn, and a type that is not generic the hash it would have without generic types. `calls`, `strict` and an invoke's `to` are always kept, empty, `false` or `null` as they may be.
+- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `calls` and `children` maps, which are kept whatever they are, and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed: a call named `text` keeps its entry (its value is stripped), and `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that uses no `sensitive` mark, keyed spawn or generic type has the hash it had in 0.5. `strict` and `calls` are always part of the view, `calls` even when it is empty.
 
 So comments, formatting, source positions, file names, packages, declaration order, `sensitive` marks and unused declarations do not change a machine's hash (a run compiled without a peer's marks therefore talks to it all the same, and shows what the peer marks: build the runs that talk to each other from the same charts), and any change to what the machine does, to a type it uses, to a machine it invokes, or to the interface of a machine it talks to does. A declaration copied from another package's compiled IR therefore keeps the hash it had there. In Rust, `roadbook_ir::machine_hash(&ir, name)` computes it, `roadbook_ir::semantic_view` returns the view, and `roadbook_ir::fill_hashes(&mut ir)` sets every machine's `hash`; the compiler calls the last after type checking. Snapshots and traces record the hash, so restoring a snapshot into a changed machine is refused and the viewer can tell when a trace came from another version of a chart.
 
@@ -397,26 +398,19 @@ A runtime checks the version before anything else and refuses an IR it does not 
 
 ## Changes in 0.7
 
-Version 0.7 joins two lines of the IR that were developed in parallel from 0.2. One went 0.3 ([sensitive marks](#changes-in-03-sensitive-marks)), 0.4 ([history states](#changes-in-04-history-states)), 0.5 ([keyed spawn](#changes-in-05-keyed-spawn)) and 0.6 ([maps and generic types](#changes-in-06-maps-and-generic-types)); the other went 0.4 ([calls](#changes-in-04-calls)) and 0.5 ([strict machines](#changes-in-05-strict-machines)), with no 0.3 of its own. 0.7 holds everything both lines added, as the sections below give it, and adds nothing else. A document of any earlier version, of either line, is not a 0.7 document.
+Version 0.7 adds four features: `sensitive` marks, history states, keyed `spawn`, and maps and generic types. Every field, parameter and variable has the new member `sensitive`, every machine `children`, every `send` effect `key`, and every `record` and `alias` `params`, so a 0.5 document is not a 0.7 document. The [machine hash](#the-machine-hash) strips `sensitive` as it strips `doc`, and leaves out an empty `children`, an empty `params` and a `null` `key`, so a machine that uses none of the four features has the hash it had in 0.5, and its saved snapshots still restore.
 
-Every machine has `calls` and `strict`, and every invoke `to`, and the [machine hash](#the-machine-hash) always keeps all three, as the second line's did, so every machine's hash differs from the one it had under 0.6 and from the one it had under the second line's 0.5. The hash still strips an empty `children`, a `null` `key` on a `send`, a type declaration's `params: []`, and `sensitive`, so within 0.7 a machine that uses none of keyed spawn, generic types and history states has the hash it would have if 0.7 did not have them. Because the hashes changed, a snapshot saved under either line's earlier IR is refused as `ir` unless the host gives a migration ([restoring](execution.md#restoring-a-snapshot)). The saved snapshot's own version is still 3.
+Versions 0.3 and 0.6 were never published. Unpublished builds used 0.3 to 0.6 for these four features (0.3 for `sensitive` marks, 0.4 for history states, 0.5 for keyed spawn and 0.6 for maps and generic types), while the published 0.4 and 0.5 are calls and strict machines. A reader of 0.7 refuses the documents of those builds as it refuses any other version.
 
-The sections below describe each step as it was made, on its line; what each says about hashes and snapshots holds between the versions it names.
+Redaction ([redaction](trace.md#redaction)):
 
-## Changes in 0.6 (maps and generic types)
+- Every [field and parameter](#fields-and-parameters) and every variable has `sensitive`. The hash does not see it, so marking a field later does not invalidate snapshots: a mark changes only what traces show.
 
-Version 0.6, after [0.5 (keyed spawn)](#changes-in-05-keyed-spawn), adds maps and generic types ([maps and generic types](../docs/design/language.md#maps-and-generic-types)). Every `record` and `alias` has the new member `params`, so a 0.5 document is not a 0.6 document. The [machine hash](#the-machine-hash) strips `params` when it is `[]`, so a machine that uses no generic type has the hash it had in 0.5, and its saved snapshots still restore.
+History states:
 
-- [Type references](#type-references) may be `map<K, V>` and `Name<A, B>`, nested.
-- `record` and `alias` declarations have [`params`](#generic-types); inside a generic declaration a bare name may be a parameter.
-- The `type` of a `record` expression may be an instance, `Page<Order>`.
-- In the [semantic view](#the-machine-hash), T takes the types named anywhere in a type reference, not only its base.
+- The state kinds [`history` and `deepHistory`](#history-states). A transition's `target` may be one.
 
-What a runtime does with the new values is in [`execution.md`](execution.md#values): a map is a JSON object, an instance takes the form of its declaration, and a trace redacts the sensitive fields inside either by their declared types.
-
-## Changes in 0.5 (keyed spawn)
-
-Version 0.5 on the first line, after [0.4 (history states)](#changes-in-04-history-states), adds keyed `spawn` ([spawned children](execution.md#spawned-children)). Every machine has the new member `children` and every `send` effect `key`. The [machine hash](#the-machine-hash) leaves out an empty `children` and a `null` `key`, so a machine that spawns nothing has the hash it had in 0.4 (history states), and its saved snapshots still restore.
+Keyed spawn ([spawned children](execution.md#spawned-children)):
 
 - Machines have [`children`](#machines), the keyed collections of spawned children.
 - The address kind `children`, and `key` on `send` effects (`send name[key].E`, `send name.*.E`).
@@ -424,20 +418,25 @@ Version 0.5 on the first line, after [0.4 (history states)](#changes-in-04-histo
 - The implicit name `key` in `ref` paths.
 - A collection's machine is in the hash's M.
 
-## Changes in 0.5 (strict machines)
+Maps and generic types ([maps and generic types](../docs/design/language.md#maps-and-generic-types)):
 
-Version 0.5 on the second line, after [0.4 (calls)](#changes-in-04-calls), adds [strict machines](../docs/design/language.md#strict-machines). Every machine has the new member `strict`, so every hash changed, and a snapshot saved under 0.4 (calls) is refused as `ir` unless the host gives a migration ([restoring](execution.md#restoring-a-snapshot)). That line has no version 0.3: strict machines were built under that number while calls were built under 0.4, and calls landed first.
+- [Type references](#type-references) may be `map<K, V>` and `Name<A, B>`, nested.
+- `record` and `alias` declarations have [`params`](#generic-types); inside a generic declaration a bare name may be a parameter.
+- The `type` of a `record` expression may be an instance, `Page<Order>`.
+- In the [semantic view](#the-machine-hash), T takes the types named anywhere in a type reference, not only its base.
+
+What a runtime does with them is in [`execution.md`](execution.md): [history states](execution.md#history-states), [spawned children](execution.md#spawned-children), and [values](execution.md#values) (a map is a JSON object, an instance takes the form of its declaration, and a trace redacts the sensitive fields inside either by their declared types). Saved snapshots are version 3, which adds `history` and `spawned` ([saving and restoring](execution.md#saving-and-restoring)).
+
+## Changes in 0.5
+
+Version 0.5 adds [strict machines](../docs/design/language.md#strict-machines). Every machine has the new member `strict`, so every hash changed, and a snapshot saved under 0.4 is refused as `ir` unless the host gives a migration ([restoring](execution.md#restoring-a-snapshot)). There is no version 0.3: strict machines were built under that number while calls were built under 0.4, and calls landed first.
 
 - Machines have `strict`.
-- A transition may have no target and no effects: `on E ignore`, which 0.4 (calls) could not express.
+- A transition may have no target and no effects: `on E ignore`, which 0.4 could not express.
 
-## Changes in 0.4 (history states)
+## Changes in 0.4
 
-Version 0.4 on the first line, after [0.3 (sensitive marks)](#changes-in-03-sensitive-marks), adds [history states](#history-states): the state kinds `history` and `deepHistory`. Nothing else changed, so a machine with no history state has the hash it had in 0.3, and its saved snapshots still restore.
-
-## Changes in 0.4 (calls)
-
-Version 0.4 on the second line, after 0.2, adds calls between machines ([asking a peer](../docs/design/actors.md#asking-a-peer)). Every machine has the new member `calls` and every invoke `to`, so every hash changed.
+Version 0.4 adds calls between machines ([asking a peer](../docs/design/actors.md#asking-a-peer)). Every machine has the new member `calls` and every invoke `to`, so every hash changed.
 
 - Machines have [`calls`](#machines); invokes have `to`, and the invoke kind `call`.
 - The trigger kind `call`, and the effect kind `reply`.
@@ -445,10 +444,6 @@ Version 0.4 on the second line, after 0.2, adds calls between machines ([asking 
 - The [semantic view](#the-machine-hash)'s `interfaces` have `calls`.
 
 What a runtime does with them (the `call` input, the `reply` command, `Unanswered`, pending calls in snapshots, the `replied` record) is in [`execution.md`](execution.md#calls-between-runs) and [`trace.md`](trace.md#messages).
-
-## Changes in 0.3 (sensitive marks)
-
-Version 0.3 on the first line, after 0.2, adds `sensitive` marks ([redaction](trace.md#redaction)). Every [field and parameter](#fields-and-parameters) and every variable has the new member `sensitive`, so a 0.2 document is not a 0.3 document. The [machine hash](#the-machine-hash) strips `sensitive` as it strips `doc`, so no hash changed: a snapshot saved with 0.2 restores into the same machine compiled to 0.3, and marking a field later does not invalidate snapshots, because a mark changes only what traces show.
 
 ## Changes in 0.2
 

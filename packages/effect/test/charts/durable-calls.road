@@ -1,0 +1,67 @@
+// Charts for the durable driver's refusal of calls (test/durable.test.ts): a durable run does
+// not carry out calls, so it refuses a machine that declares or makes one, or starts one that does.
+
+/// Answers 1 to each `ask`, until it is closed.
+machine Desk() {
+  call ask() -> int
+
+  event Close
+
+  initial Open
+
+  state Open {
+    on ask              reply call done 1
+    on Close -> Closed
+  }
+
+  final state Closed {}
+}
+
+/// Asks its Desk.
+machine Asker(desk: ref Desk) -> int {
+  var n: int = 0
+
+  initial Asking
+
+  state Asking {
+    invoke desk.ask() {
+      done   -> Got  set n = result
+      fail * -> Got
+    }
+  }
+
+  final state Got { output n }
+}
+
+/// Runs a Desk as its child.
+machine Host() {
+  initial Hosting
+
+  state Hosting {
+    invoke Desk() {
+      done -> Done
+    }
+  }
+
+  final state Done {}
+}
+
+/// Runs a Host, which runs a Desk.
+machine Outer() {
+  initial Running
+
+  state Running {
+    invoke Host() {
+      done -> Done
+    }
+  }
+
+  final state Done {}
+}
+
+/// No calls anywhere: it runs.
+machine Plain() -> int {
+  initial Done
+
+  final state Done { output 7 }
+}

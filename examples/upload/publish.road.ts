@@ -438,8 +438,8 @@ const ir: unknown = {
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -943,8 +943,8 @@ const ir: unknown = {
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Upload",
         "name": "Upload",

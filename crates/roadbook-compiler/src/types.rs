@@ -337,6 +337,11 @@ mod tests {
         assert!(!env.assignable(&inv, &json));
         assert!(!env.assignable(&list(&inv), &list(&json)));
         assert!(!env.is_equatable(&inv));
+        let pending = Ty::Call("reserve".into());
+        assert!(env.assignable(&pending, &pending));
+        assert!(!env.assignable(&pending, &Ty::Call("count".into())));
+        assert!(!env.assignable(&pending, &json));
+        assert!(!env.is_equatable(&pending));
         let map = |t: &Ty| Ty::Map(Box::new(string.clone()), Box::new(t.clone()));
         assert!(env.assignable(&map(&int), &map(&opt(&int))));
         assert!(env.assignable(&map(&int), &json));
@@ -361,10 +366,5 @@ mod tests {
             env.fields(&page(&string)),
             Some(vec![("items".into(), list(&string))])
         );
-        let pending = Ty::Call("reserve".into());
-        assert!(env.assignable(&pending, &pending));
-        assert!(!env.assignable(&pending, &Ty::Call("count".into())));
-        assert!(!env.assignable(&pending, &json));
-        assert!(!env.is_equatable(&pending));
     }
 }

@@ -137,8 +137,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Main",
         "name": "Main",
@@ -458,8 +458,8 @@
       "vars": [],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Sub",
         "name": "Sub",

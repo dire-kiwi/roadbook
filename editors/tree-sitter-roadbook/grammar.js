@@ -144,8 +144,8 @@ module.exports = grammar({
         $.generic_type,
         $.builtin_type,
         $.ref_type,
-        $.map_type,
         $.call_type,
+        $.map_type,
         $.list_type,
         $.optional_type,
       ),
@@ -154,6 +154,8 @@ module.exports = grammar({
 
     ref_type: ($) => seq('ref', field('machine', $.type_identifier)),
 
+    // A pending call, kept until it is replied to: `var pending: call reserve`.
+    call_type: ($) => seq('call', field('call', $.identifier)),
     // `Page<Order>`
     generic_type: ($) => seq(field('name', $.type_identifier), field('arguments', $.type_arguments)),
 
@@ -162,9 +164,6 @@ module.exports = grammar({
     // `map<string, Order>`
     map_type: ($) =>
       seq('map', '<', field('key', $._type), ',', field('value', $._type), optional(','), '>'),
-
-    // A pending call, kept until it is replied to: `var pending: call reserve`.
-    call_type: ($) => seq('call', field('call', $.identifier)),
 
     list_type: ($) => seq(field('element', $._type), '[', ']'),
 
@@ -190,9 +189,9 @@ module.exports = grammar({
         $.variable_declaration,
         $.event_declaration,
         $.emits_declaration,
+        $.call_declaration,
         $.children_declaration,
         $.check,
-        $.call_declaration,
         $._common_item,
       ),
 
@@ -211,6 +210,16 @@ module.exports = grammar({
 
     emits_declaration: ($) =>
       seq('emits', field('name', $.type_identifier), optional(field('fields', $.fields))),
+
+    // A call the machine answers: `call reserve(orderId: string) -> Reservation ! OutOfStock`.
+    call_declaration: ($) =>
+      seq(
+        'call',
+        field('name', $.identifier),
+        field('parameters', $.parameters),
+        optional(seq('->', field('return_type', $._type))),
+        optional(field('errors', $.errors)),
+      ),
 
     // `children sessions: Session by SessionId`
     children_declaration: ($) =>
@@ -245,16 +254,6 @@ module.exports = grammar({
     can_finish_property: (_) => seq('can', 'finish'),
 
     state_path: ($) => seq(field('state', $.type_identifier), repeat(seq('.', field('state', $.type_identifier)))),
-
-    // A call the machine answers: `call reserve(orderId: string) -> Reservation ! OutOfStock`.
-    call_declaration: ($) =>
-      seq(
-        'call',
-        field('name', $.identifier),
-        field('parameters', $.parameters),
-        optional(seq('->', field('return_type', $._type))),
-        optional(field('errors', $.errors)),
-      ),
 
     // ───────────── states ─────────────
 
@@ -387,7 +386,7 @@ module.exports = grammar({
 
     _effects: ($) => repeat1(field('effect', $._effect)),
 
-    _effect: ($) => choice($.set, $.do, $.send, $.emit, $.spawn, $.stop, $.reply),
+    _effect: ($) => choice($.set, $.do, $.send, $.emit, $.reply, $.spawn, $.stop),
 
     // After a comma in a `set` or `do` list, a lower-case name continues the list, as in the
     // compiler, even `spawn`, `stop` or `children`, which after a trailing comma could also
@@ -422,6 +421,18 @@ module.exports = grammar({
     emit: ($) =>
       seq('emit', field('event', $.type_identifier), optional(field('fields', $.record_body))),
 
+    // `reply pending done [value]` or `reply pending fail error`, to the pending call a
+    // variable holds or, in the step that takes it, to `call`.
+    reply: ($) =>
+      seq(
+        'reply',
+        field('call', choice($.identifier, alias('call', $.implicit_name))),
+        choice(
+          seq('done', optional(field('value', $._expression))),
+          seq('fail', field('value', $._expression)),
+        ),
+      ),
+
     spawn: ($) =>
       seq(
         'spawn',
@@ -436,18 +447,6 @@ module.exports = grammar({
 
     stop: ($) =>
       seq('stop', field('collection', $.identifier), '[', field('key', $._expression), ']'),
-
-    // `reply pending done [value]` or `reply pending fail error`, to the pending call a
-    // variable holds or, in the step that takes it, to `call`.
-    reply: ($) =>
-      seq(
-        'reply',
-        field('call', choice($.identifier, alias('call', $.implicit_name))),
-        choice(
-          seq('done', optional(field('value', $._expression))),
-          seq('fail', field('value', $._expression)),
-        ),
-      ),
 
     record_body: ($) => seq('{', commaSep($.field_value), '}'),
 
@@ -521,15 +520,15 @@ module.exports = grammar({
 
     // The names in scope inside a transition: the current event, an invoke's result and its
     // error, the call being taken, and a spawned child's key. `event`, `error` and `call` are
-    // keywords; `result` and `key` are not reserved, so outside an expression they are ordinary
-    // names.
+    // keywords; `result` and `key` are not reserved, so outside an expression they are
+    // ordinary names.
     _implicit_name: ($) =>
       choice(
         alias('event', $.implicit_name),
         alias('error', $.implicit_name),
         alias('result', $.implicit_name),
-        alias('key', $.implicit_name),
         alias('call', $.implicit_name),
+        alias('key', $.implicit_name),
       ),
 
     // `CardDeclined { reason: "expired" }`, or a bare `GatewayUnavailable` with no fields.

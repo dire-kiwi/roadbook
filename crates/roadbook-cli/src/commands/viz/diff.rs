@@ -424,10 +424,10 @@ pub fn shift_machine(m: &mut Machine, offset: u32) {
     for e in m.events.values_mut().chain(m.emits.values_mut()) {
         e.span.file += offset;
     }
-    for c in m.children.values_mut() {
+    for c in m.calls.values_mut() {
         c.span.file += offset;
     }
-    for c in m.calls.values_mut() {
+    for c in m.children.values_mut() {
         c.span.file += offset;
     }
     shift_state(&mut m.root, offset);
@@ -809,20 +809,6 @@ pub fn effect_text(e: &Effect) -> String {
             format!("send {}{which}.{}", to.name, value.text)
         }
         Effect::Emit { value, .. } => format!("emit {}", value.text),
-        Effect::Spawn {
-            children,
-            machine,
-            key,
-            args,
-        } => format!(
-            "spawn {children}[{}] = {machine}({})",
-            key.text,
-            args.iter()
-                .map(|a| a.text.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-        Effect::Stop { children, key } => format!("stop {children}[{}]", key.text),
         Effect::Reply {
             call,
             outcome,
@@ -837,6 +823,20 @@ pub fn effect_text(e: &Effect) -> String {
                 .map_or(String::new(), |v| format!(" {}", v.text));
             format!("reply {} {outcome}{value}", call.text)
         }
+        Effect::Spawn {
+            children,
+            machine,
+            key,
+            args,
+        } => format!(
+            "spawn {children}[{}] = {machine}({})",
+            key.text,
+            args.iter()
+                .map(|a| a.text.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Effect::Stop { children, key } => format!("stop {children}[{}]", key.text),
     }
 }
 
@@ -1054,6 +1054,12 @@ fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
             .iter()
             .map(|(n, e)| (n.clone(), event("emits", n, e))),
     );
+    keyed(
+        &mut out,
+        "call",
+        b.calls.iter().map(|(n, c)| (n.clone(), call_text(n, c))),
+        a.calls.iter().map(|(n, c)| (n.clone(), call_text(n, c))),
+    );
     let children = |n: &String, c: &roadbook_ir::ChildrenDecl| {
         (
             n.clone(),
@@ -1065,12 +1071,6 @@ fn machine_changes(name: &str, b: &Machine, a: &Machine) -> Vec<Change> {
         "children",
         b.children.iter().map(|(n, c)| children(n, c)),
         a.children.iter().map(|(n, c)| children(n, c)),
-    );
-    keyed(
-        &mut out,
-        "call",
-        b.calls.iter().map(|(n, c)| (n.clone(), call_text(n, c))),
-        a.calls.iter().map(|(n, c)| (n.clone(), call_text(n, c))),
     );
     out
 }

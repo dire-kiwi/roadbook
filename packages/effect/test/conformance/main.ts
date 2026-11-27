@@ -1,6 +1,6 @@
 /**
- * `pnpm --filter @dire-kiwi/roadbook-effect conformance [--durable] [case…]`: run the cases and print a
- * line per case; with `--durable`, through the durable driver.
+ * `pnpm --filter @dire-kiwi/roadbook-effect conformance [--durable] [case…]`: run the cases and
+ * print a line per case; with `--durable`, through the durable driver.
  */
 import { caseNames, isDurable, isSupported, runCase } from "./runner.ts"
 

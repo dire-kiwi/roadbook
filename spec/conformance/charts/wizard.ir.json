@@ -78,8 +78,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Wizard",
         "name": "Wizard",

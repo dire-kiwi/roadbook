@@ -24,14 +24,6 @@ export interface InvokeEntry {
   readonly src: string
 }
 
-/** A running spawned child: its collection, its key and the arguments it was spawned with. */
-export interface SpawnedEntry {
-  readonly id: number
-  readonly children: string
-  readonly key: Json
-  readonly args: { readonly [param: string]: Json }
-}
-
 /** A call the run has taken and not answered yet: a pending call. */
 export interface CallEntry {
   /** The caller's run id. */
@@ -40,6 +32,14 @@ export interface CallEntry {
   readonly invoke: number
   /** The call's name, a key of the machine's `calls`. */
   readonly call: string
+}
+
+/** A running spawned child: its collection, its key and the arguments it was spawned with. */
+export interface SpawnedEntry {
+  readonly id: number
+  readonly children: string
+  readonly key: Json
+  readonly args: { readonly [param: string]: Json }
 }
 
 export interface TimerEntry {
@@ -66,9 +66,9 @@ export interface Snapshot {
   /** Every variable that has a value. */
   readonly vars: { readonly [name: string]: Json }
   readonly invokes: ReadonlyArray<InvokeEntry>
-  readonly spawned: ReadonlyArray<SpawnedEntry>
   /** The calls taken and not answered, in the order they were taken. */
   readonly calls: ReadonlyArray<CallEntry>
+  readonly spawned: ReadonlyArray<SpawnedEntry>
   readonly timers: ReadonlyArray<TimerEntry>
   readonly nextInvoke: number
   readonly nextTimer: number
@@ -101,7 +101,7 @@ export interface SavedTimer extends TimerEntry {
  * restores with no children, and version 1, written before history states, has no `history`
  * either and restores as if it had `{}`.
  */
-export interface Saved extends Omit<Snapshot, "timers" | "history" | "spawned" | "calls"> {
+export interface Saved extends Omit<Snapshot, "timers" | "calls" | "history" | "spawned"> {
   readonly snapshotVersion: 1 | 2 | 3
   /** Written only when the run has pending calls, in any version; a snapshot without it has none. */
   readonly calls?: ReadonlyArray<CallEntry>

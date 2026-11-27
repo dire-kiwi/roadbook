@@ -248,7 +248,6 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {
         "reserve": {
           "params": [
@@ -292,6 +291,7 @@
           }
         }
       },
+      "children": {},
       "root": {
         "id": "Inventory",
         "name": "Inventory",
@@ -912,8 +912,8 @@
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -1229,8 +1229,8 @@
       ],
       "events": {},
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Counter",
         "name": "Counter",

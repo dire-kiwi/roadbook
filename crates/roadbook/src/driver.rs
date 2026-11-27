@@ -267,8 +267,8 @@ fn blank() -> Snapshot {
         input: Map::new(),
         vars: Map::new(),
         invokes: Vec::new(),
-        spawned: Vec::new(),
         calls: Vec::new(),
+        spawned: Vec::new(),
         timers: Vec::new(),
         next_invoke: 1,
         next_timer: 1,
@@ -551,8 +551,8 @@ impl<'a> Driver<'a> {
                 }
                 if self.queue.is_empty()
                     && self.snap.invokes.is_empty()
-                    && self.snap.spawned.is_empty()
                     && self.snap.calls.is_empty()
+                    && self.snap.spawned.is_empty()
                     && self.parent.is_none()
                     && self.suspendable
                     && self.shared.suspend_requested()
@@ -751,21 +751,13 @@ impl<'a> Driver<'a> {
                 args,
                 ..
             } => {
-                // Only an invoke with `as` hears what its child emits.
-                let heard = match alias {
-                    Some(_) if src_kind == SrcKind::Machine => {
-                        self.program.heard(&self.snap.machine, &src)
-                    }
-                    _ => HashSet::new(),
-                };
-                self.start_invoke(invoke, src, src_kind, heard, args, false);
+                self.start_invoke(invoke, src, src_kind, alias.is_some(), args, false);
                 Ok(())
             }
-            // A spawned child is a machine invoke whose emitted events reach this run when it
-            // has an `on name.E` for them.
+            // A spawned child is a machine invoke whose emitted events reach this run, as an
+            // `as` child's do: those this run's machine has an `on` for.
             Command::SpawnStart { spawn, src, args } => {
-                let heard = self.program.heard(&self.snap.machine, &src);
-                self.start_invoke(spawn, src, SrcKind::Machine, heard, args, true);
+                self.start_invoke(spawn, src, SrcKind::Machine, true, args, true);
                 Ok(())
             }
             Command::InvokeCancel { invoke } | Command::SpawnStop { spawn: invoke } => {
@@ -872,13 +864,37 @@ impl<'a> Driver<'a> {
         }
     }
 
+    /// Makes call `call` of the peer `to` with invoke `invoke` (`spec/execution.md#carrying-out-calls`):
+    /// pushes the call onto the peer's queue with a way to answer it, if the peer is open, or
+    /// else answers it `Unanswered` at once, onto this run's own queue. No record either way,
+    /// and no host code: a call has no implementation to bind.
+    fn make_call(&mut self, invoke: u64, call: String, to: Option<String>, args: Object) {
+        let answer = self.shared.make_call(invoke);
+        let input = Input::Call {
+            from: self.id.clone(),
+            invoke,
+            call,
+            args,
+        };
+        let peer = to.as_ref().and_then(|to| self.peers.get(to));
+        let refused = match peer {
+            Some(peer) => peer.shared.deliver_call(input, answer).err(),
+            None => Some(answer),
+        };
+        if let Some(answer) = refused {
+            answer.unanswered();
+        }
+    }
+
     /// Starts an invoke, or (`spawn`) a spawned child, whose outcome is then a `spawn.*` input.
+    /// A child run that `delivers` (invoked with `as`, or spawned) delivers to this run the
+    /// events it emits that this run's machine has an `on` for.
     fn start_invoke(
         &mut self,
         invoke: u64,
         src: String,
         src_kind: SrcKind,
-        heard: HashSet<String>,
+        delivers: bool,
         args: Object,
         spawn: bool,
     ) {
@@ -889,7 +905,11 @@ impl<'a> Driver<'a> {
                 invoke,
                 token: Arc::new(Shared::default()),
                 parent_queue: self.shared.clone(),
-                heard,
+                heard: if delivers {
+                    self.program.heard(&self.snap.machine, &src)
+                } else {
+                    HashSet::new()
+                },
             })
         });
         if let Some(ctx) = &ctx {
@@ -899,7 +919,7 @@ impl<'a> Driver<'a> {
         let params = match src_kind {
             SrcKind::Task => ir.tasks.get(&src).map(|t| &t.params[..]),
             SrcKind::Machine => ir.machines.get(&src).map(|m| &m.params[..]),
-            // Made by `make_call`, above.
+            // Made by `make_call`.
             SrcKind::Call => None,
         };
         let refs = arg_ref_ids(self.program, params.unwrap_or_default(), &args)
@@ -926,28 +946,6 @@ impl<'a> Driver<'a> {
             Box::pin(async move { Outcome::Defect(d) })
         });
         self.invokes.insert(invoke, Slot { fut, ctx, spawn });
-    }
-
-    /// Makes call `call` of the peer `to` with invoke `invoke` (`spec/execution.md#carrying-out-calls`):
-    /// pushes the call onto the peer's queue with a way to answer it, if the peer is open, or
-    /// else answers it `Unanswered` at once, onto this run's own queue. No record either way,
-    /// and no host code: a call has no implementation to bind.
-    fn make_call(&mut self, invoke: u64, call: String, to: Option<String>, args: Object) {
-        let answer = self.shared.make_call(invoke);
-        let input = Input::Call {
-            from: self.id.clone(),
-            invoke,
-            call,
-            args,
-        };
-        let peer = to.as_ref().and_then(|to| self.peers.get(to));
-        let refused = match peer {
-            Some(peer) => peer.shared.deliver_call(input, answer).err(),
-            None => Some(answer),
-        };
-        if let Some(answer) = refused {
-            answer.unanswered();
-        }
     }
 
     /// Stops a running invoke. A task's or stub's future is dropped at once. A child run is

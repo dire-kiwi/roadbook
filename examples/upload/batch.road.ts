@@ -402,6 +402,7 @@ const ir: unknown = {
         }
       },
       "emits": {},
+      "calls": {},
       "children": {
         "uploads": {
           "machine": "Upload",
@@ -416,7 +417,6 @@ const ir: unknown = {
           }
         }
       },
-      "calls": {},
       "root": {
         "id": "Batch",
         "name": "Batch",
@@ -923,8 +923,8 @@ const ir: unknown = {
           }
         }
       },
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Upload",
         "name": "Upload",

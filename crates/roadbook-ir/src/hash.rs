@@ -34,12 +34,14 @@
 //!   value), or a dotted event type, is not a type and is skipped.
 //! - `strip` removes every member named `doc`, `span`, `text` or
 //!   `sensitive` from every object, recursively, except the keys of a
-//!   machine's `children` and `calls` maps, which are kept as they are. The
-//!   other name-keyed maps inside these values are a machine's `events` and
-//!   `emits`, whose keys are upper-case, so no user-chosen name is ever
-//!   stripped. A type declaration's `params` is removed too when it is `[]`,
-//!   so a type that is not generic hashes as it did before generic types
-//!   existed.
+//!   machine's `calls` and `children` maps, which are names the chart chose
+//!   and are kept as they are. The other name-keyed maps inside these values
+//!   are a machine's `events` and `emits`, whose keys are upper-case, so no
+//!   user-chosen name is ever stripped. It also removes a machine's
+//!   `children` when it is empty and a `send` effect's `key` when it is
+//!   `null`, and a type declaration's `params` is removed when it is `[]`, so
+//!   a machine that uses neither keyed spawn nor generic types hashes as it
+//!   did before they existed. `calls` and `strict` are always kept.
 //!
 //! Comments, formatting, source positions, `sensitive` marks and unused
 //! declarations therefore do not change a hash (a mark changes only what
@@ -220,6 +222,7 @@ impl Walker<'_> {
         for e in m.events.values().chain(m.emits.values()) {
             self.fields(&e.fields)?;
         }
+        self.calls(m.calls.values())?;
         for c in m.children.values() {
             self.type_ref(&c.key)?;
             if !self.ir.machines.contains_key(&c.machine) {
@@ -227,7 +230,6 @@ impl Walker<'_> {
             }
             self.pending_machines.push(c.machine.clone());
         }
-        self.calls(m.calls.values())?;
         self.state(&m.root)
     }
 
@@ -302,17 +304,17 @@ impl Walker<'_> {
                     self.expr(value)?;
                 }
                 Effect::Emit { value, .. } => self.expr(value)?,
-                Effect::Spawn { key, args, .. } => {
-                    self.expr(key)?;
-                    args.iter().try_for_each(|a| self.expr(a))?;
-                }
-                Effect::Stop { key, .. } => self.expr(key)?,
                 Effect::Reply { call, value, .. } => {
                     self.expr(call)?;
                     if let Some(v) = value {
                         self.expr(v)?;
                     }
                 }
+                Effect::Spawn { key, args, .. } => {
+                    self.expr(key)?;
+                    args.iter().try_for_each(|a| self.expr(a))?;
+                }
+                Effect::Stop { key, .. } => self.expr(key)?,
             }
         }
         Ok(())
@@ -427,8 +429,8 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
 }
 
 /// Removes every `doc`, `span`, `text` and `sensitive` member, recursively, except the keys
-/// of a machine's `children` and `calls` maps, which are names the chart chose (a collection
-/// or a call may be named `text`). Also removes what IR 0.5 added where it says nothing: a machine's empty
+/// of a machine's `calls` and `children` maps, which are names the chart chose (a call or a
+/// collection may be named `text`). Also removes what keyed spawn added where it says nothing: a machine's empty
 /// `children` and a `send` effect's `null` `key`, so a machine that spawns nothing keeps the
 /// hash it had before keyed spawn.
 fn strip(v: &mut Value) {
@@ -450,7 +452,7 @@ fn strip(v: &mut Value) {
             }
             for (key, value) in m.iter_mut() {
                 match value {
-                    Value::Object(named) if key == "children" || key == "calls" => {
+                    Value::Object(named) if key == "calls" || key == "children" => {
                         named.values_mut().for_each(strip)
                     }
                     value => strip(value),

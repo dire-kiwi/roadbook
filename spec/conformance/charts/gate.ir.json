@@ -148,8 +148,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Gate",
         "name": "Gate",

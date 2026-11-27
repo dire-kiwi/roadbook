@@ -153,18 +153,18 @@ fn state_exprs_mut(s: &mut State, f: &mut impl FnMut(&mut Expr)) {
                     }
                     exprs_mut(value, &mut |x| f(x))
                 }
-                Effect::Emit { value, .. } => exprs_mut(value, &mut |x| f(x)),
-                Effect::Spawn { key, args, .. } => {
-                    exprs_mut(key, &mut |x| f(x));
-                    args.iter_mut().for_each(|a| exprs_mut(a, &mut |x| f(x)))
-                }
-                Effect::Stop { key, .. } => exprs_mut(key, &mut |x| f(x)),
                 Effect::Reply { call, value, .. } => {
                     exprs_mut(call, &mut |x| f(x));
                     if let Some(v) = value {
                         exprs_mut(v, &mut |x| f(x));
                     }
                 }
+                Effect::Emit { value, .. } => exprs_mut(value, &mut |x| f(x)),
+                Effect::Spawn { key, args, .. } => {
+                    exprs_mut(key, &mut |x| f(x));
+                    args.iter_mut().for_each(|a| exprs_mut(a, &mut |x| f(x)))
+                }
+                Effect::Stop { key, .. } => exprs_mut(key, &mut |x| f(x)),
             }
         }
     };

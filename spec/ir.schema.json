@@ -43,9 +43,9 @@
     "upperName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
     "lowerName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "typeRef": {
-      "description": "A type in canonical source form: a built-in, a declared name with optional type arguments (Page<Order>), an event type Machine.Event, ref Machine, a pending call call name, or map<K, V>, then any number of [] and ? suffixes. The pattern checks the tokens only; spec/ir.md gives the exact grammar, whose nesting a regular expression cannot check.",
+      "description": "A type in canonical source form: a built-in, a declared name with optional type arguments (Page<Order>), an event type Machine.Event, ref Machine, or map<K, V>, then any number of [] and ? suffixes; or a pending call, call name, with no suffix. The pattern checks the tokens only; spec/ir.md gives the exact grammar, whose nesting a regular expression cannot check.",
       "type": "string",
-      "pattern": "^(ref [A-Z][A-Za-z0-9]*|call [a-z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?)(<|, |>|\\[\\]|\\?|ref [A-Z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?)*$"
+      "pattern": "^(call [a-z][A-Za-z0-9]*|(ref [A-Z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?)(<|, |>|\\[\\]|\\?|ref [A-Z][A-Za-z0-9]*|[A-Za-z][A-Za-z0-9]*(\\.[A-Z][A-Za-z0-9]*)?)*)$"
     },
     "typeParams": {
       "description": "The type parameters of a generic record or alias, in order; [] unless it is generic.",
@@ -240,7 +240,7 @@
     "machine": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["doc", "span", "strict", "params", "returns", "errors", "vars", "events", "emits", "children", "calls", "root", "hash"],
+      "required": ["doc", "span", "strict", "params", "returns", "errors", "vars", "events", "emits", "calls", "children", "root", "hash"],
       "properties": {
         "doc": { "$ref": "#/$defs/doc" },
         "span": { "$ref": "#/$defs/span" },
@@ -259,16 +259,16 @@
           "propertyNames": { "$ref": "#/$defs/upperName" },
           "additionalProperties": { "$ref": "#/$defs/eventDecl" }
         },
+        "calls": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/lowerName" },
+          "additionalProperties": { "$ref": "#/$defs/callDecl" }
+        },
         "children": {
           "description": "The machine's keyed collections of spawned children, by name.",
           "type": "object",
           "propertyNames": { "$ref": "#/$defs/lowerName" },
           "additionalProperties": { "$ref": "#/$defs/childrenDecl" }
-        },
-        "calls": {
-          "type": "object",
-          "propertyNames": { "$ref": "#/$defs/lowerName" },
-          "additionalProperties": { "$ref": "#/$defs/callDecl" }
         },
         "root": {
           "description": "The machine body as a compound state whose id and name are the machine name.",
@@ -494,6 +494,12 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "required": ["kind", "call"],
+          "properties": { "kind": { "const": "call" }, "call": { "$ref": "#/$defs/lowerName" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "required": ["kind", "children"],
           "properties": { "kind": { "const": "spawn.done" }, "children": { "$ref": "#/$defs/lowerName" } }
         },
@@ -506,12 +512,6 @@
             "children": { "$ref": "#/$defs/lowerName" },
             "error": { "oneOf": [{ "$ref": "#/$defs/upperName" }, { "const": "*" }] }
           }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind", "call"],
-          "properties": { "kind": { "const": "call" }, "call": { "$ref": "#/$defs/lowerName" } }
         }
       ]
     },
@@ -565,28 +565,6 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "children", "machine", "key", "args"],
-          "properties": {
-            "kind": { "const": "spawn" },
-            "children": { "$ref": "#/$defs/lowerName" },
-            "machine": { "$ref": "#/$defs/upperName" },
-            "key": { "$ref": "#/$defs/expr" },
-            "args": { "type": "array", "items": { "$ref": "#/$defs/expr" } }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind", "children", "key"],
-          "properties": {
-            "kind": { "const": "stop" },
-            "children": { "$ref": "#/$defs/lowerName" },
-            "key": { "$ref": "#/$defs/expr" }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
           "required": ["kind", "call", "outcome", "value"],
           "properties": {
             "kind": { "const": "reply" },
@@ -608,6 +586,28 @@
           },
           "if": { "properties": { "outcome": { "const": "fail" } } },
           "then": { "properties": { "value": { "$ref": "#/$defs/expr" } } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "children", "machine", "key", "args"],
+          "properties": {
+            "kind": { "const": "spawn" },
+            "children": { "$ref": "#/$defs/lowerName" },
+            "machine": { "$ref": "#/$defs/upperName" },
+            "key": { "$ref": "#/$defs/expr" },
+            "args": { "type": "array", "items": { "$ref": "#/$defs/expr" } }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "children", "key"],
+          "properties": {
+            "kind": { "const": "stop" },
+            "children": { "$ref": "#/$defs/lowerName" },
+            "key": { "$ref": "#/$defs/expr" }
+          }
         }
       ]
     },
@@ -623,7 +623,7 @@
           "properties": {
             "kind": { "const": "ref" },
             "path": {
-              "description": "A variable, parameter or event/result/error/key/call, then field names.",
+              "description": "A variable, parameter or event/result/error/call/key, then field names.",
               "type": "array",
               "minItems": 1,
               "items": { "$ref": "#/$defs/lowerName" }

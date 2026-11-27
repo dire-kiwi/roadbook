@@ -1,0 +1,10 @@
+// A `replied` record shows a call's result redacted by the call's result type.
+type Creds { user: string, sensitive password: string }
+
+machine Vault() {
+  call lookup(user: string) -> json
+  initial A
+  state A { on lookup reply call done Creds { user: event.user, password: "" } }
+}
+
+// expect: RB0321 at 7:39

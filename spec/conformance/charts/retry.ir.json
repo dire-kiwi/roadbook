@@ -239,8 +239,8 @@
         }
       },
       "emits": {},
-      "children": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Fetcher",
         "name": "Fetcher",
