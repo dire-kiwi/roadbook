@@ -1,4 +1,4 @@
-//! The server driven over JSON-RPC messages: diagnostics, navigation, rename, hover,
+//! The server driven over JSON-RPC messages: diagnostics, navigation, rename, hover, completion,
 //! formatting, outline and quick fixes, on small charts and on copies of the examples.
 
 mod common;
@@ -1124,5 +1124,181 @@ fn the_errors_of_a_retry_are_references() {
     // ambiguous.
     let why = rename_error(&mut c, &uri, text, "var ^tries", "attempt");
     assert!(why.contains("`attempt` is ambiguous"), "{why}");
+    c.shutdown();
+}
+
+const ENDED: &str = r#"/// Record how a peer ended.
+action note(status: Ended)
+
+machine Inventory() {
+  event Close
+  emits Low
+  emits Out
+  event Drain
+  initial Open
+  state Open {
+    on Close -> Closed
+    on Drain emit Low  emit Out
+  }
+  final state Closed {}
+}
+
+type Shelf = ref Inventory
+
+machine Order(inventory: ref Inventory, spare: Shelf?, all: ref Inventory[], n: int) {
+  var current: ref Inventory = inventory
+  initial Waiting
+  state Waiting {
+    on inventory.ended {
+      if event.status == Ended.Defect -> Alarm  do note(event.status)
+      else                            -> Gone
+    }
+    on current.ended -> Gone
+    on inventory.Low -> Gone
+    on inventory.Out -> Gone
+  }
+  final state Alarm {}
+  final state Gone {}
+}
+"#;
+
+/// The labels of a completion answer.
+fn labels(answer: &Value) -> Vec<String> {
+    answer
+        .as_array()
+        .unwrap_or_else(|| panic!("{answer}"))
+        .iter()
+        .map(|i| i["label"].as_str().unwrap().to_string())
+        .collect()
+}
+
+#[test]
+fn a_peer_s_end() {
+    error_free(&[("c.road", ENDED)]);
+    let p = Project::new("ended", &[("c.road", ENDED)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, ENDED);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // The name before the dot goes to the parameter or variable holding the run.
+    for (from, to) in [
+        ("on ^inventory.ended", "Order(^inventory"),
+        ("on ^current.ended", "var ^current"),
+    ] {
+        let loc = c
+            .request("textDocument/definition", at(&uri, ENDED, from))
+            .unwrap();
+        assert_eq!(loc["range"]["start"], position(ENDED, to), "{from}");
+    }
+    let mut params = at(&uri, ENDED, "Order(^inventory");
+    params["context"] = json!({ "includeDeclaration": false });
+    let refs = c.request("textDocument/references", params).unwrap();
+    // `on inventory.ended`, `.Low`, `.Out` and `current`'s initial value.
+    assert_eq!(refs.as_array().unwrap().len(), 4, "{refs}");
+
+    // Hover on the built-in names, which have no declaration.
+    let hover = |c: &mut Client, needle: &str| {
+        let h = c
+            .request("textDocument/hover", at(&uri, ENDED, needle))
+            .unwrap();
+        let value = h["contents"]["value"].as_str().unwrap().to_string();
+        (value, slice(ENDED, &h["range"]).to_string())
+    };
+    let (value, word) = hover(&mut c, "== ^Ended.Defect");
+    assert_eq!(word, "Ended");
+    assert!(
+        value.starts_with(
+            "```roadbook\nenum Ended { Done, Failed, Cancelled, Defect, Suspended }\n```"
+        ),
+        "{value}"
+    );
+    assert!(value.contains("built-in enum"), "{value}");
+    let (value, word) = hover(&mut c, "status: ^Ended");
+    assert_eq!(word, "Ended", "{value}");
+    let (value, word) = hover(&mut c, "Ended.^Defect");
+    assert_eq!(word, "Defect");
+    assert!(
+        value.starts_with("```roadbook\nEnded.Defect\n```"),
+        "{value}"
+    );
+    assert!(value.contains("a defect"), "{value}");
+    let (value, word) = hover(&mut c, "if event.^status");
+    assert_eq!(word, "status");
+    assert!(
+        value.starts_with("```roadbook\nevent.status: Ended\n```"),
+        "{value}"
+    );
+    assert!(
+        value.contains("how the run `inventory` holds ended"),
+        "{value}"
+    );
+    let (value, word) = hover(&mut c, "note(^event.status)");
+    assert_eq!(word, "event");
+    assert!(value.contains("event: { status: Ended }"), "{value}");
+    let (value, word) = hover(&mut c, "on inventory.^ended");
+    assert_eq!(word, "ended");
+    assert!(
+        value.starts_with("```roadbook\non inventory.ended\n```"),
+        "{value}"
+    );
+    // Only `event.status` in `on name.ended` is the peer's status.
+    let h = c
+        .request("textDocument/hover", at(&uri, ENDED, "note(^status"))
+        .unwrap();
+    assert_eq!(h, Value::Null);
+
+    // Completion, while the line is still being written.
+    let complete = |c: &mut Client, text: &str, needle: &str| {
+        c.change(&uri, 2, text);
+        let _ = c.diagnostics(&uri);
+        c.request("textDocument/completion", at(&uri, text, needle))
+            .unwrap()
+    };
+    let typing = ENDED.replace("    on current.ended -> Gone\n", "    on current.\n");
+    let got = complete(&mut c, &typing, "on current.^\n");
+    assert_eq!(labels(&got), ["ended", "Low", "Out"]);
+    assert_eq!(got[0]["kind"], 14, "a keyword: {got}");
+    // An optional `ref` through an alias, and a list of them.
+    let typing = ENDED.replace("    on current.ended -> Gone\n", "    on spare.en\n");
+    assert_eq!(
+        labels(&complete(&mut c, &typing, "on spare.en^\n")),
+        ["ended", "Low", "Out"]
+    );
+    let typing = ENDED.replace("    on current.ended -> Gone\n", "    on all.\n");
+    assert_eq!(
+        labels(&complete(&mut c, &typing, "on all.^\n")),
+        ["ended", "Low", "Out"]
+    );
+    // Not for a name that holds no run, nor outside `on`.
+    let typing = ENDED.replace("    on current.ended -> Gone\n", "    on n.\n");
+    assert_eq!(
+        labels(&complete(&mut c, &typing, "on n.^\n")),
+        Vec::<String>::new()
+    );
+    let typing = ENDED.replace("-> Gone\n    }", "-> Gone  do note(inventory.)\n    }");
+    assert_eq!(
+        labels(&complete(&mut c, &typing, "note(inventory.^)")),
+        Vec::<String>::new()
+    );
+    // `Ended.` lists its variants.
+    let typing = ENDED.replace("== Ended.Defect", "== Ended.");
+    assert_eq!(
+        labels(&complete(&mut c, &typing, "== Ended.^")),
+        ["Done", "Failed", "Cancelled", "Defect", "Suspended"]
+    );
+    // `event.` in `on name.ended` has `status`, and nothing in another transition.
+    let typing = ENDED.replace("do note(event.status)", "do note(event.)");
+    let got = complete(&mut c, &typing, "note(event.^)");
+    assert_eq!(labels(&got), ["status"]);
+    assert_eq!(got[0]["detail"], "Ended");
+    let typing = ENDED.replace(
+        "on inventory.Low -> Gone",
+        "on inventory.Low -> Gone  do note(event.)",
+    );
+    assert_eq!(
+        labels(&complete(&mut c, &typing, "note(event.^)")),
+        Vec::<String>::new()
+    );
     c.shutdown();
 }

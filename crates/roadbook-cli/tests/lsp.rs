@@ -119,6 +119,10 @@ fn an_editor_session() {
         init["result"]["capabilities"]["renameProvider"]["prepareProvider"],
         true
     );
+    assert_eq!(
+        init["result"]["capabilities"]["completionProvider"]["triggerCharacters"],
+        json!(["."])
+    );
     s.send(json!({ "jsonrpc": "2.0", "method": "initialized", "params": {} }));
 
     s.send(json!({ "jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {
@@ -157,6 +161,31 @@ fn an_editor_session() {
         loc["result"]["uri"],
         uri(&repo().join("examples/inventory/inventory.road"))
     );
+
+    // While `on inventory.` is being written, `ended` completes it: `inventory` holds a
+    // `ref` to the other package's machine.
+    let typing = text.replacen(
+        "  initial Reserving\n",
+        "  initial Reserving\n  on inventory.\n",
+        1,
+    );
+    assert_ne!(typing, text);
+    s.send(json!({ "jsonrpc": "2.0", "method": "textDocument/didChange", "params": {
+        "textDocument": { "uri": orders_uri, "version": 2 }, "contentChanges": [{ "text": typing }] } }));
+    let _ = s.diagnostics(&orders_uri);
+    let line = typing.lines().position(|l| l == "  on inventory.").unwrap();
+    s.send(
+        json!({ "jsonrpc": "2.0", "id": 4, "method": "textDocument/completion", "params": {
+        "textDocument": { "uri": orders_uri }, "position": { "line": line, "character": 15 } } }),
+    );
+    let items = s.answer(4);
+    let labels: Vec<&str> = items["result"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i["label"].as_str().unwrap())
+        .collect();
+    assert_eq!(labels, ["ended"], "{items}");
 
     s.send(json!({ "jsonrpc": "2.0", "id": 3, "method": "shutdown" }));
     assert_eq!(s.answer(3)["result"], Value::Null);

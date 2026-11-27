@@ -13,21 +13,23 @@ use std::sync::mpsc;
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{
     CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionParams,
-    CodeActionProviderCapability, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity,
-    DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, DidSaveTextDocumentParams, DocumentFormattingParams,
-    DocumentSymbolParams, DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse,
-    Hover, HoverContents, HoverParams, HoverProviderCapability, InitializeParams, Location,
-    MarkupContent, MarkupKind, NumberOrString, OneOf, Position, PositionEncodingKind,
-    PrepareRenameResponse, PublishDiagnosticsParams, ReferenceParams, RenameOptions, RenameParams,
-    SaveOptions, ServerCapabilities, ServerInfo, TextDocumentIdentifier,
-    TextDocumentPositionParams, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextDocumentSyncOptions, TextDocumentSyncSaveOptions, TextEdit, Uri, WorkspaceEdit,
+    CodeActionProviderCapability, CompletionOptions, CompletionParams, CompletionResponse,
+    Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DidChangeTextDocumentParams,
+    DidChangeWatchedFilesParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
+    DidSaveTextDocumentParams, DocumentFormattingParams, DocumentSymbolParams,
+    DocumentSymbolResponse, GotoDefinitionParams, GotoDefinitionResponse, Hover, HoverContents,
+    HoverParams, HoverProviderCapability, InitializeParams, Location, MarkupContent, MarkupKind,
+    NumberOrString, OneOf, Position, PositionEncodingKind, PrepareRenameResponse,
+    PublishDiagnosticsParams, ReferenceParams, RenameOptions, RenameParams, SaveOptions,
+    ServerCapabilities, ServerInfo, TextDocumentIdentifier, TextDocumentPositionParams,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextDocumentSyncOptions,
+    TextDocumentSyncSaveOptions, TextEdit, Uri, WorkspaceEdit,
 };
-use roadbook_compiler::{FileId, Severity, Span, SymbolId};
+use roadbook_compiler::{FileId, Severity, Span, SymbolId, SymbolKind};
 use serde_json::Value;
 
 use crate::FindProject;
+use crate::builtin;
 use crate::outline::outline;
 use crate::rename;
 use crate::text::{Encoding, Lines, uri_path};
@@ -73,6 +75,10 @@ pub fn run(connection: Connection, find: FindProject) -> Result<()> {
             work_done_progress_options: Default::default(),
         })),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
+        completion_provider: Some(CompletionOptions {
+            trigger_characters: Some(vec![".".into()]),
+            ..CompletionOptions::default()
+        }),
         document_formatting_provider: Some(OneOf::Left(true)),
         document_symbol_provider: Some(OneOf::Left(true)),
         code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
@@ -215,6 +221,7 @@ impl Server<'_> {
             "textDocument/prepareRename" => params(p).and_then(|p| self.prepare_rename(p)),
             "textDocument/rename" => params(p).and_then(|p| self.rename(p)),
             "textDocument/hover" => params(p).and_then(|p| self.hover(p)),
+            "textDocument/completion" => params(p).and_then(|p| self.completion(p)),
             "textDocument/formatting" => params(p).and_then(|p| self.format(p)),
             "textDocument/documentSymbol" => params(p).and_then(|p| self.symbols(p)),
             "textDocument/codeAction" => params(p).and_then(|p| self.code_actions(p)),
@@ -431,7 +438,7 @@ impl Server<'_> {
 
     fn hover(&self, p: HoverParams) -> Answer {
         let Some((a, id, span)) = self.symbol_at(&p.text_document_position_params) else {
-            return Ok(Value::Null);
+            return self.builtin_hover(&p.text_document_position_params);
         };
         let index = &a.out.index;
         let s = index.symbol(id);
@@ -464,6 +471,62 @@ impl Server<'_> {
             }),
             range: Some(range),
         })
+    }
+
+    /// A hover for what the symbol index has no symbol for: `Ended`, its variants, and
+    /// `event.status` and `ended` in `on name.ended`.
+    fn builtin_hover(&self, p: &TextDocumentPositionParams) -> Answer {
+        let Some(text) = self.document_text(&p.text_document) else {
+            return Ok(Value::Null);
+        };
+        let lines = Lines::new(&text);
+        let Some(h) = builtin::hover(&text, lines.offset(p.position, self.enc)) else {
+            return Ok(Value::Null);
+        };
+        let range = lsp_types::Range::new(
+            lines.position(h.start, self.enc),
+            lines.position(h.end, self.enc),
+        );
+        json(Hover {
+            contents: HoverContents::Markup(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: h.text,
+            }),
+            range: Some(range),
+        })
+    }
+
+    /// Completion after a dot: `ended` and a peer's emitted events after `on name.`, the
+    /// variants after `Ended.`, `status` after `event.` in `on name.ended`.
+    fn completion(&self, p: CompletionParams) -> Answer {
+        let at = &p.text_document_position;
+        let Some(text) = self.document_text(&at.text_document) else {
+            return Ok(Value::Null);
+        };
+        let offset = Lines::new(&text).offset(at.position, self.enc);
+        let analysis = doc_key(&at.text_document.uri).and_then(|k| self.world.analyses.get(&k));
+        // The events a machine emits, from the last compilation's index.
+        let emitted = |machine: &str| -> Vec<String> {
+            let Some(a) = analysis else {
+                return Vec::new();
+            };
+            let index = &a.out.index;
+            let mut out: Vec<String> = Vec::new();
+            for (_, s) in index.iter() {
+                if s.kind == SymbolKind::EmittedEvent
+                    && let Some(parent) = s.parent
+                    && index.symbol(parent).kind == SymbolKind::Machine
+                    && index.symbol(parent).name == machine
+                    && !out.contains(&s.name)
+                {
+                    out.push(s.name.clone());
+                }
+            }
+            out
+        };
+        json(CompletionResponse::Array(builtin::complete(
+            &text, offset, emitted,
+        )))
     }
 
     /// `roadbook/ir`: the document compiled as an entry, as `roadbook export ir` would

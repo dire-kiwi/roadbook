@@ -1,6 +1,6 @@
 [package]
 name = "roadbook-lsp"
-description = "The Roadbook language server: diagnostics, go to definition, references, rename, hover, formatting and outline for `.road` files"
+description = "The Roadbook language server: diagnostics, go to definition, references, rename, hover, completion, formatting and outline for `.road` files"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
