@@ -137,6 +137,7 @@ impl Host for TestHost<'_> {
                     _ => Outcome::Done(call.args["n"].clone()),
                 }
             }),
+            SrcKind::Call => unreachable!("the driver makes calls itself"),
         }
     }
 }

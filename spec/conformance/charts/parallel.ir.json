@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/parallel.road",
@@ -117,6 +117,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Regions",
         "name": "Regions",
@@ -516,7 +517,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:41f6d30bc94f19ce67a8ad75f935ac140eb869b6c00b88254c629a21f3d9293e"
+      "hash": "sha256:39021f3aad74283d24a4a96704104da7dd24e881eb008e7c523c6b0d16ceb0a8"
     },
     "Fork": {
       "doc": "One event taken in two regions, and `always` transitions in two regions\ntaken in one microstep.",
@@ -576,6 +577,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Fork",
         "name": "Fork",
@@ -1100,7 +1102,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:8a2ba773f871642c1825d52bcde4ab13f10adcbc5c5e398851a258a25c8dc6e8"
+      "hash": "sha256:19d9d98d1e87d6133ff4aa3a4bb267bfb3d2936c6051c7f350a08c192c346192"
     },
     "Clash": {
       "doc": "Two regions' transitions for one event that would exit the same state.",
@@ -1152,6 +1154,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Clash",
         "name": "Clash",
@@ -1465,7 +1468,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4fa869122942679f93a2fa50e1f7a189e9691bdeb6c1440ac353bbcdcc935531"
+      "hash": "sha256:dcc5be06cf9d86d791a006ed274c7f3e7dd7ff54aac8e881c74078e6fc91de91"
     },
     "Escape": {
       "doc": "Transitions from inside a region: into another region, and out of the\nparallel state.",
@@ -1506,6 +1509,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Escape",
         "name": "Escape",
@@ -1788,7 +1792,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:3fd62b86916388bc30a39377cafe76b4efd947329198cf6fc8c204fc7bfbb487"
+      "hash": "sha256:138a20fb297d5512eca971a5c1335c85fcafec03132aa5d58c78f35fb63b8ebb"
     },
     "Finish": {
       "doc": "A parallel state completes when every region is in a final state.",
@@ -1829,6 +1833,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Finish",
         "name": "Finish",
@@ -2144,7 +2149,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:b0449667ba46cfa902c3e4ec2f66dcfa19e34c902d6a7ed3671c1017240985c3"
+      "hash": "sha256:f0873818b411bdf123a5dabd353e98063a8587785a41577df777bfade40ceb51"
     },
     "Jobs": {
       "doc": "Invokes and timers in two regions and on the parallel state itself.",
@@ -2174,6 +2179,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Jobs",
         "name": "Jobs",
@@ -2235,6 +2241,7 @@
                     "invoke": {
                       "kind": "task",
                       "src": "upload",
+                      "to": null,
                       "as": null,
                       "args": [],
                       "span": {
@@ -2350,6 +2357,7 @@
                     "invoke": {
                       "kind": "task",
                       "src": "download",
+                      "to": null,
                       "as": null,
                       "args": [],
                       "span": {
@@ -2530,7 +2538,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:b3b267750f0ea814fbfcee939e46f212cb24c901095bbed2280b10c4fce51420"
+      "hash": "sha256:96c44bcd84d19cac7bcf5e6d5bb1c6adb786f38c384c4510e26cf190835bc2a3"
     },
     "Shell": {
       "doc": "A parallel state inside a compound state, left by the compound state's\ntransition.",
@@ -2560,6 +2568,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Shell",
         "name": "Shell",
@@ -2838,7 +2847,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:a7338ad1a8178ead60b03e6130b7898839b0d52034c113ca64feadd3162b0cc6"
+      "hash": "sha256:e803e155f37037857c962b6be125317dcf9073345cbc23f8b89bf4ddc64cc7cd"
     }
   }
 }

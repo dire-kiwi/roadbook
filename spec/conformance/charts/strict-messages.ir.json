@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/strict-messages.road",
@@ -79,6 +79,7 @@
           }
         }
       },
+      "calls": {},
       "root": {
         "id": "Door",
         "name": "Door",
@@ -232,7 +233,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4956f96830cef794f94776a0e7b8dd460f2d862ffbdbb1459df6a9745f7ea530"
+      "hash": "sha256:7b33e11953aeaef79f532cbf85041ad5bfc6d41e3827aa5301ade0b662bf7f12"
     },
     "Visitor": {
       "doc": "Knocks on its door when told to. Hears `Opened` only while it waits for it.",
@@ -285,6 +286,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Visitor",
         "name": "Visitor",
@@ -439,7 +441,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:237c17e8feacd45521862cdea4e56cf46409d7912df29d37221cb04c7b26843d"
+      "hash": "sha256:05773afd128cfb2bdce6e5c9d0cd29604a42a87a830c6afabe93d00ee54e2bde"
     }
   }
 }

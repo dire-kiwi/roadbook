@@ -1,0 +1,91 @@
+// Every construct of calls between machines, with no diagnostics.
+
+/// One line of an order.
+type Item { sku: string, qty: int }
+
+/// A handle by another name.
+type Stock = ref Counter
+
+error Busy
+error Gone { why: string }
+
+/// How many of the items are in stock.
+fn available(items: Item[]) -> int
+
+/// No items.
+fn nothing() -> Item[]
+
+/// Write something down.
+action note(what: string)
+
+/// The callee: answers three calls.
+machine Counter() {
+  /// Add to the count; gives the new count.
+  call add(n: int, items: Item[]) -> int ! Busy | Gone
+  /// Reset the count. Gives nothing back.
+  call reset()
+  /// Read the count if the items are in stock, or fail if closed.
+  call read(items: Item[]) -> int ! Gone
+
+  var count:   int = 0
+  var waiting: call reset
+
+  event Close
+
+  initial Open
+
+  // Taken in the machine body, with a block of branches and a guard on the arguments.
+  on add {
+    if event.n > 100 reply call fail Busy
+    else             set count = count + event.n  reply call done count
+  }
+
+  state Open {
+    on read if available(event.items) > 0               reply call done count
+    on reset                              -> Resetting  set waiting = call
+    on Close                              -> Closed
+  }
+
+  state Resetting {
+    entry set count = 0
+    always -> Open  reply waiting done
+  }
+
+  final state Closed { entry do note("closed") }
+}
+
+/// The caller: one call of each kind, through a parameter and through a variable.
+machine User(counter: ref Counter, stock: Stock) -> int ! Gone {
+  var peer: Stock
+  var n:    int
+
+  initial Adding
+
+  state Adding {
+    entry set peer = stock
+    invoke counter.add(1, nothing()) {
+      done            -> Resetting  set n = result
+      fail Busy       -> Resetting  set n = 0
+      fail Gone       -> Failed
+      fail Unanswered -> Failed
+    }
+  }
+
+  state Resetting {
+    invoke peer.reset() {
+      done   -> Reading
+      fail * -> Failed
+    }
+    after 5s -> Failed
+  }
+
+  state Reading {
+    invoke stock.read(nothing()) {
+      done   -> Read    set n = result
+      fail * -> Failed
+    }
+  }
+
+  final state Read   { output n }
+  final state Failed { fail Gone { why: "no answer" } }
+}

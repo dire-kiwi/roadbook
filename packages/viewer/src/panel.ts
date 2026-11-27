@@ -1,14 +1,16 @@
-// The details panel: HTML for a machine, a state, a transition or an event. Pure (strings in,
+// The details panel: HTML for a machine, a state, a transition, an event or a call. Pure (strings in,
 // string out), so it is tested in Node. Buttons carry data attributes the browser app acts on:
 //   data-select-state="<id>", data-select-transition='["<state id>", index]',
-//   data-open-machine="<name>" (data-via="invoke" when it drills into an invoke), data-open-event="<Machine>.<Event>",
+//   data-open-machine="<name>" (data-via="invoke" when it drills into an invoke),
+//   data-open-event="<Machine>.<Event>" or "<Machine>.<call>",
 //   data-goto='["<machine>", selection]' (a state or transition of any machine),
 //   data-toggle="<id>" (collapse or expand), data-clear.
 
-import type { Address, Effect, EventDecl, Ir, State, TaskDecl, Machine } from './ir.ts'
+import type { Address, CallDecl, Effect, EventDecl, Invoke, Ir, State, TaskDecl, Machine } from './ir.ts'
 import { own } from './ir.ts'
 import {
   baseType,
+  callSignatureText,
   effectEvent,
   effectText,
   eventDecl,
@@ -16,6 +18,7 @@ import {
   eventKey,
   findState,
   guardText,
+  invokeCall,
   invokeText,
   messageSites,
   paramsText,
@@ -34,7 +37,7 @@ import { esc, paramsHtml, typeHtml } from './render.ts'
 export type Selection =
   | { type: 'state'; id: string }
   | { type: 'transition'; state: string; index: number }
-  /** An event the machine accepts or emits. */
+  /** An event the machine accepts or emits, or (a lower-case name) one of its calls. */
   | { type: 'event'; name: string }
   | null
 
@@ -62,8 +65,11 @@ function machineLink(name: string): string {
   return `<button class="rb-link rb-mono" type="button" data-open-machine="${esc(name)}">${esc(name)}</button>`
 }
 
+/** Whether an event reference names a call: call names are lower case, event names upper case. */
+const isCall = (ref: EventRef) => /^[a-z]/.test(ref.event)
+
 function eventLink(ref: EventRef, label?: string): string {
-  return `<button class="rb-link rb-mono" type="button" data-open-event="${esc(eventKey(ref))}" title="Event ${esc(eventKey(ref))}">${esc(label ?? ref.event)}</button>`
+  return `<button class="rb-link rb-mono" type="button" data-open-event="${esc(eventKey(ref))}" title="${isCall(ref) ? 'Call' : 'Event'} ${esc(eventKey(ref))}">${esc(label ?? ref.event)}</button>`
 }
 
 /** A button that selects a state or transition in any machine of the IR. */
@@ -76,18 +82,22 @@ function addressText(ctx: PanelContext, a: Address): string {
   return a.kind === 'child' ? `the child ${a.name}${a.state ? `, invoked in ${shortId(ctx, a.state)}` : ''}` : `the ref ${a.name}`
 }
 
-/** An effect as HTML: a `send` or `emit` links to its event and says where it goes. */
+/** An effect as HTML: a `send` or `emit` links to its event and says where it goes, a `reply` to its call. */
 function effectHtml(ctx: PanelContext, e: Effect): string {
   const ev = effectEvent(ctx.machine, e)
-  if (!ev) return esc(effectText(e))
-  const kw = e.kind === 'send' ? 'send' : 'emit'
+  if (!ev || (e.kind !== 'send' && e.kind !== 'emit' && e.kind !== 'reply')) return esc(effectText(e))
+  const kw = e.kind
   const text = effectText(e).slice(kw.length + 1)
   const where =
     e.kind === 'send'
       ? `to ${esc(e.to.machine)}, ${esc(addressText(ctx, e.to))}`
-      : `to whoever invoked ${esc(ctx.machine)} and every machine holding a ref to it`
+      : e.kind === 'emit'
+        ? `to whoever invoked ${esc(ctx.machine)} and every machine holding a ref to it`
+        : e.call.text === 'call'
+          ? `answers the ${esc(ev.event)} call being taken, to its caller alone`
+          : `answers the ${esc(ev.event)} call ${esc(e.call.text)} holds, to its caller alone`
   return (
-    `<span class="rb-msg-kw">${kw}</span> <button class="rb-link rb-mono" type="button" data-open-event="${esc(eventKey(ev))}" title="Event ${esc(eventKey(ev))}">${esc(text)}</button>` +
+    `<span class="rb-msg-kw">${kw}</span> <button class="rb-link rb-mono" type="button" data-open-event="${esc(eventKey(ev))}" title="${isCall(ev) ? 'Call' : 'Event'} ${esc(eventKey(ev))}">${esc(text)}</button>` +
     `<span class="rb-sub rb-note">${where}</span>`
   )
 }
@@ -110,12 +120,14 @@ function typesOf(ir: Ir, decl: { params: { type: string }[]; returns?: string | 
   return lines.length ? code(lines.join('\n')) : ''
 }
 
-function signatureKv(ir: Ir, decl: { params: { name: string; type: string; doc: string }[]; returns?: string | null; errors?: string[] }): string {
+/** `takes`, `returns` and `fails with`; a call (`call`) fails with `Unanswered` too. */
+function signatureKv(ir: Ir, decl: { params: { name: string; type: string; doc: string }[]; returns?: string | null; errors?: string[] }, call = false): string {
+  const errors = [...(decl.errors ?? []), ...(call ? ['Unanswered'] : [])]
   return (
     `<dl class="rb-kv">` +
     `<dt>takes</dt><dd>${paramsHtml(ir, decl.params) || 'nothing'}</dd>` +
     (decl.returns !== undefined ? `<dt>returns</dt><dd>${esc(decl.returns ?? 'nothing')}</dd>` : '') +
-    (decl.errors ? `<dt>fails with</dt><dd>${esc(decl.errors.join(' | ') || 'never fails')}</dd>` : '') +
+    (decl.errors ? `<dt>fails with</dt><dd>${esc(errors.join(' | ') || 'never fails')}</dd>` : '') +
     `</dl>`
   )
 }
@@ -135,13 +147,34 @@ function transitionSummary(ctx: PanelContext, state: State, index: number, withS
   )
 }
 
+/** What an invoke runs: the task, the machine, or the call of the callee's machine. */
+function invokeDecl(ir: Ir, inv: Invoke): Machine | TaskDecl | CallDecl | undefined {
+  if (inv.kind === 'machine') return own(ir.machines, inv.src)
+  if (inv.kind === 'call') return inv.to ? own(own(ir.machines, inv.to.machine)?.calls ?? {}, inv.src) : undefined
+  return own(ir.tasks, inv.src)
+}
+
+/** How an invoke names what it runs: `chargeCard`, `Checkout`, `inventory.reserve`. */
+const invokeName = (inv: Invoke) => (inv.kind === 'call' && inv.to ? `${inv.to.name}.${inv.src}` : inv.src)
+
+const UNANSWERED_NOTE =
+  'Every call can also fail with the built-in <code>Unanswered</code>: the callee was not running, took no <code>on</code> for it (it is dropped), or ended before it replied.'
+
 function invokeSection(ctx: PanelContext, state: State): string {
   const { ir } = ctx
   const inv = state.invoke
   if (!inv) return ''
-  const decl: Machine | TaskDecl | undefined = inv.kind === 'machine' ? own(ir.machines, inv.src) : own(ir.tasks, inv.src)
+  const decl = invokeDecl(ir, inv)
   let s = code(`invoke ${invokeText(inv)}`)
   if (!decl) return section('Invoke', s)
+  const call = invokeCall(inv)
+  if (call && inv.to) {
+    s += `<p class="rb-path">call of ${esc(call.machine)} declared at ${esc(sourceText(ir, decl.span))}</p>`
+    s += code(signatureText('call', inv.src, decl)) + docHtml(decl.doc) + signatureKv(ir, decl, true)
+    s += `<p class="rb-empty">Asks the run <code>${esc(inv.to.name)}</code> holds and waits: its <code>reply</code> is the outcome of this invoke, and reaches this run alone. ${UNANSWERED_NOTE}</p>`
+    s += `<p>${eventLink(call, `Open call ${eventKey(call)} →`)} ${machineLink(call.machine)}</p>`
+    return section('Invokes call', s) + section('Types involved', typesOf(ir, decl))
+  }
   s += `<p class="rb-path">${inv.kind} declared at ${esc(sourceText(ir, decl.span))}</p>`
   s += code(signatureText(inv.kind, inv.src, decl)) + docHtml(decl.doc) + signatureKv(ir, decl)
   if (inv.kind === 'machine' && inv.as) {
@@ -169,18 +202,19 @@ function eventLinks(machine: string, events: string[]): string {
 
 const rel = (text: string, msg = false) => `<span class="rb-rel${msg ? ' rb-t-msg' : ''}">${esc(text)}</span>`
 
-/** Which machines this one invokes, holds a ref to, sends to and receives from. */
+/** Which machines this one invokes, holds a ref to, sends to, calls and receives from. */
 function talksToSection(ctx: PanelContext): string {
   const t = talks(ctx.ir, ctx.machine)
   const items: string[] = []
   for (const i of t.invokes) items.push(`${rel('invokes')} ${machineLink(i.machine)}${i.as ? ` ${rel('as')} ${esc(i.as)}` : ''} ${rel('in')} ${stateLink(ctx, i.state)}`)
   for (const r of t.refs) items.push(`${rel('holds a ref to')} ${machineLink(r.machine)} ${rel('in')} ${esc(r.names.join(', '))}`)
   for (const x of t.sends) items.push(`${rel('sends', true)} ${eventLinks(x.machine, x.events)} ${rel('to')} ${machineLink(x.machine)}`)
+  for (const x of t.calls) items.push(`${rel('calls', true)} ${eventLinks(x.machine, x.calls)} ${rel('on')} ${machineLink(x.machine)}`)
   for (const x of t.receives) items.push(`${rel('handles', true)} ${eventLinks(x.machine, x.events)} ${rel('emitted by')} ${machineLink(x.machine)}`)
   return items.length ? `<ul class="rb-talks">${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : ''
 }
 
-/** Which other machines of the IR hold a ref to this one, send to it and handle what it emits. */
+/** Which other machines of the IR hold a ref to this one, send to it, call it and handle what it emits. */
 function talkedToBySection(ctx: PanelContext): string {
   const items: string[] = []
   for (const other of Object.keys(ctx.ir.machines)) {
@@ -189,10 +223,22 @@ function talkedToBySection(ctx: PanelContext): string {
     if (ref) items.push(`${machineLink(other)} ${rel('holds a ref to it in')} ${esc(ref.names.join(', '))}`)
     const sends = t.sends.find((r) => r.machine === ctx.machine)
     if (sends) items.push(`${machineLink(other)} ${rel('sends', true)} ${eventLinks(ctx.machine, sends.events)}`)
+    const calls = t.calls.find((r) => r.machine === ctx.machine)
+    if (calls) items.push(`${machineLink(other)} ${rel('calls', true)} ${eventLinks(ctx.machine, calls.calls)}`)
     const receives = t.receives.find((r) => r.machine === ctx.machine)
     if (receives) items.push(`${machineLink(other)} ${rel('handles', true)} ${eventLinks(ctx.machine, receives.events)}`)
   }
   return items.length ? `<ul class="rb-talks">${items.map((i) => `<li>${i}</li>`).join('')}</ul>` : ''
+}
+
+/** `reserve(orderId: string, items: Item[]) ! OutOfStock`, the name a link to the call. */
+function callItems(machine: string, calls: Record<string, CallDecl>): string {
+  return list(
+    Object.entries(calls).map(([name, c]) => {
+      const sig = callSignatureText(name, c).slice(name.length)
+      return `${eventLink({ machine, event: name })}${esc(sig)}${c.doc ? `<span class="rb-sub rb-note">${esc(c.doc)}</span>` : ''}`
+    }),
+  )
 }
 
 function eventItems(machine: string, events: Record<string, EventDecl>): string {
@@ -222,10 +268,11 @@ export function machinePanel(ctx: PanelContext): string {
       'Events it accepts',
       eventItems(ctx.machine, m.events) +
         (m.strict
-          ? '<p class="rb-cnote">Strict: one of these events, or a message, that no active state handles ends the run with a defect instead of being dropped.</p>'
+          ? '<p class="rb-cnote">Strict: one of these events, a message or a call that no active state handles ends the run with a defect instead of being dropped.</p>'
           : ''),
     ) +
     section('Events it emits', eventItems(ctx.machine, m.emits)) +
+    section('Calls it answers', callItems(ctx.machine, m.calls)) +
     section('Talks to', talksToSection(ctx)) +
     section('States', `<ul class="rb-tree">${m.root.states.map(tree).join('')}</ul>`) +
     section('Invoked by', list(callers)) +
@@ -284,7 +331,8 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
   const group = state.transitions.map((o, i) => [o, i] as const).filter(([o]) => o.group === t.group)
   const pos = group.findIndex(([, i]) => i === index) + 1
   const inv = state.invoke
-  const decl = inv ? (inv.kind === 'machine' ? own(ir.machines, inv.src) : own(ir.tasks, inv.src)) : undefined
+  const decl = inv ? invokeDecl(ir, inv) : undefined
+  const invName = inv ? invokeName(inv) : 'The invoke'
   let what = ''
   let extra = ''
   const short = shortId(ctx, state.id)
@@ -307,6 +355,17 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
       )
       break
     }
+    case 'call': {
+      const name = t.trigger.call
+      const c = own(m.calls, name)
+      what = `Another run calls ${name} and waits for the answer. event holds the call's arguments, and call the pending call: reply call answers it now, or set p = call keeps it to answer later.`
+      if (c)
+        extra = section(
+          'Call',
+          code(signatureText('call', name, c)) + docHtml(c.doc) + `<p>${eventLink({ machine: ctx.machine, event: name }, `Who calls ${name} →`)}</p>`,
+        )
+      break
+    }
     case 'any':
       what = `Any event arrives for which ${short} has no on.`
       break
@@ -320,11 +379,18 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
       what = state.kind === 'parallel' ? `Every region of ${short} reached a final state.` : `${short} reached a final child state.`
       break
     case 'invoke.done':
-      what = `${inv ? inv.src : 'The invoke'} finished; its value is available as result.`
+      what =
+        inv?.kind === 'call'
+          ? `${invName} was answered done; ${decl?.returns ? "the reply's value is available as result" : 'the call returns nothing'}.`
+          : `${invName} finished; its value is available as result.`
       break
     case 'invoke.fail': {
       const err = t.trigger.error
-      what = `${inv ? inv.src : 'The invoke'} failed with ${err === '*' ? 'a declared error not listed' : err}; the error is available as error.`
+      const isCallInvoke = inv?.kind === 'call'
+      const which = err === '*' ? (isCallInvoke ? 'a declared error not listed, or Unanswered' : 'a declared error not listed') : err
+      what = `${invName} ${isCallInvoke ? 'was answered fail' : 'failed'} with ${which}; the error is available as error.`
+      if (isCallInvoke && err === 'Unanswered')
+        what = `${invName} failed with the built-in Unanswered: the callee was not running, dropped the call (no on ${inv.src} where it was), or ended before it replied. error is {"_tag": "Unanswered"}.`
       const td = own(ir.types, err)
       if (td) extra = section('Error', code(typeDeclText(err, td)) + docHtml(td.doc))
       break
@@ -354,7 +420,7 @@ export function transitionPanel(ctx: PanelContext, state: State, index: number):
   )
 }
 
-/** `Order · Reserving (entry)`, `Publish · Uploading: on PauseClicked → (stays)` */
+/** `Order · Reserving (entry)`, `Order · Reserving (invoke)`, `Publish · Uploading: on PauseClicked → (stays)` */
 function siteLink(ir: Ir, machine: string, site: MessageSite): string {
   const m = own(ir.machines, machine)
   const short = (id: string) => id.slice(machine.length + 1) || id
@@ -364,19 +430,62 @@ function siteLink(ir: Ir, machine: string, site: MessageSite): string {
   return gotoLink(machine, { type: 'transition', state: site.state, index: site.at }, `${machine} · ${label}`)
 }
 
+/** Every message site of the IR that names `ref`, with its machine. */
+function sitesOf(ir: Ir, ref: EventRef): [string, MessageSite][] {
+  const sites: [string, MessageSite][] = []
+  for (const [other, om] of Object.entries(ir.machines)) {
+    for (const site of messageSites(other, om)) if (site.event.machine === ref.machine && site.event.event === ref.event) sites.push([other, site])
+  }
+  return sites
+}
+
+/** The sites of one direction, each transition or entry or exit once (two replies in one transition are one place). */
+function siteLinks(ir: Ir, sites: [string, MessageSite][], dir: MessageSite['dir']): string {
+  return list([...new Set(sites.filter(([, s]) => s.dir === dir).map(([other, s]) => siteLink(ir, other, s)))])
+}
+
+/** A call the machine answers: its declaration, where it is taken and answered, and who calls it. */
+export function callPanel(ctx: PanelContext, name: string): string {
+  const { ir } = ctx
+  const m = own(ir.machines, ctx.machine)!
+  const c = own(m.calls, name)
+  if (!c) return machinePanel(ctx)
+  const sites = sitesOf(ir, { machine: ctx.machine, event: name })
+  const links = (dir: MessageSite['dir']) => siteLinks(ir, sites, dir)
+  const taken: string[] = []
+  walkStates(m.root, (s) => {
+    s.transitions.forEach((t, i) => {
+      if (t.trigger.kind === 'call' && t.trigger.call === name) taken.push(transitionSummary(ctx, s, i, true))
+    })
+  })
+  return (
+    head(esc(name), 'call', true) +
+    `<p class="rb-path">${esc(ctx.machine)}.${esc(name)} · ${esc(sourceText(ir, c.span))}</p>` +
+    docHtml(c.doc) +
+    section(
+      'Declaration',
+      code(signatureText('call', name, c)) +
+        signatureKv(ir, c, true) +
+        `<p class="rb-empty">A run holding a ref to ${esc(ctx.machine)} calls it with <code>invoke x.${esc(name)}(…)</code> and waits. ${esc(ctx.machine)} takes it with <code>on ${esc(name)}</code> and answers with <code>reply</code>; the answer reaches that caller alone. ${UNANSWERED_NOTE}</p>`,
+    ) +
+    section('Taken here', taken.join('') || `<p class="rb-empty">No transition takes it: every ${esc(name)} call is dropped and answered Unanswered.</p>`) +
+    section('Answered', links('reply') || '<p class="rb-empty">No reply names it.</p>') +
+    section('Called by', links('call') || '<p class="rb-empty">No machine of this chart calls it; another chart holding a ref may.</p>') +
+    section('Types involved', typesOf(ir, c))
+  )
+}
+
 /** An event the machine accepts or emits: its declaration and everywhere it is sent, emitted and handled. */
 export function eventPanel(ctx: PanelContext, name: string): string {
   const { ir } = ctx
   const m = own(ir.machines, ctx.machine)!
+  if (own(m.calls, name)) return callPanel(ctx, name)
   const found = eventDecl(ir, { machine: ctx.machine, event: name })
   if (!found) return machinePanel(ctx)
   const { decl, emitted } = found
   // Every site in the IR that names this event of this machine.
-  const sites: [string, MessageSite][] = []
-  for (const [other, om] of Object.entries(ir.machines)) {
-    for (const site of messageSites(other, om)) if (site.event.machine === ctx.machine && site.event.event === name) sites.push([other, site])
-  }
-  const links = (dir: MessageSite['dir']) => list(sites.filter(([, s]) => s.dir === dir).map(([other, s]) => siteLink(ir, other, s)))
+  const sites = sitesOf(ir, { machine: ctx.machine, event: name })
+  const links = (dir: MessageSite['dir']) => siteLinks(ir, sites, dir)
   let body = ''
   if (emitted) {
     body +=

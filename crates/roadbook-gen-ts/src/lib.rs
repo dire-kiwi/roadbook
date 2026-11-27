@@ -2,7 +2,7 @@
 //!
 //! [`generate`] turns the IR of one entry file into the text of the module `roadbook gen`
 //! writes next to it (`checkout.road` -> `checkout.road.ts`), for the runtime
-//! `@roadbook/effect`. It reads only the IR. The module holds, for the declarations of the
+//! `@dire-kiwi/roadbook-effect`. It reads only the IR. The module holds, for the declarations of the
 //! entry file (those whose span is in `ir.sources[0]`):
 //!
 //! - an Effect `Schema` and a TypeScript type for every type: `Schema.Struct` and an
@@ -62,7 +62,7 @@ use roadbook_ir::{
 const WIDTH: usize = 100;
 
 /// The runtime the generated module is written for.
-const RUNTIME: &str = "@roadbook/effect";
+const RUNTIME: &str = "@dire-kiwi/roadbook-effect";
 
 /// Choices about the generated code.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -356,7 +356,7 @@ pub fn error_field_conflict(ir: &Ir, field: &Field) -> Option<&'static str> {
                 Some(TypeDef::Alias { ty }) => stringish(ir, ty),
                 _ => false,
             },
-            TypeRef::List(_) | TypeRef::Optional(_) | TypeRef::Ref(_) => false,
+            TypeRef::List(_) | TypeRef::Optional(_) | TypeRef::Ref(_) | TypeRef::Call(_) => false,
         }
     }
     match field.name.as_str() {
@@ -490,6 +490,9 @@ impl<'a> Gen<'a> {
             TypeRef::List(t) => format!("ReadonlyArray<{}>", self.ts(t)?),
             TypeRef::Optional(t) => format!("{} | null", self.ts(t)?),
             TypeRef::Ref(m) => self.handle(m)?,
+            // A pending call stays inside its run: the runtime holds it, and no generated
+            // signature names it yet.
+            TypeRef::Call(_) => "unknown".into(),
         })
     }
 
@@ -524,6 +527,13 @@ impl<'a> Gen<'a> {
                 return Err(GenError::Undeclared {
                     kind: "schema for the type",
                     name: format!("ref {m}"),
+                });
+            }
+            // Only a machine variable has a pending call's type, and variables have no schema.
+            TypeRef::Call(c) => {
+                return Err(GenError::Undeclared {
+                    kind: "schema for the type",
+                    name: format!("call {c}"),
                 });
             }
         })
@@ -812,9 +822,15 @@ impl<'a> Uses<'a> {
         }
         if let Some(inv) = &s.invoke {
             match inv.kind {
-                InvokeKind::Task => self.tasks.insert(&inv.src),
-                InvokeKind::Machine => self.machines.insert(&inv.src),
-            };
+                InvokeKind::Task => {
+                    self.tasks.insert(&inv.src);
+                }
+                InvokeKind::Machine => {
+                    self.machines.insert(&inv.src);
+                }
+                // A call runs nothing here: the callee is the run a `ref` holds.
+                InvokeKind::Call => {}
+            }
             for a in &inv.args {
                 self.expr(a);
             }
@@ -848,6 +864,12 @@ impl<'a> Uses<'a> {
                 }
             }
             Effect::Send { value, .. } | Effect::Emit { value, .. } => self.expr(value),
+            Effect::Reply { call, value, .. } => {
+                self.expr(call);
+                if let Some(v) = value {
+                    self.expr(v);
+                }
+            }
         }
     }
 
@@ -940,6 +962,11 @@ fn file_refs(ir: &Ir) -> Vec<BTreeSet<u32>> {
         add(file, m.vars.iter().filter_map(|v| ty(&v.ty)).collect());
         for e in m.events.values().chain(m.emits.values()) {
             add(file, fields(&e.fields));
+        }
+        for c in m.calls.values() {
+            add(file, fields(&c.params));
+            add(file, c.returns.iter().filter_map(ty).collect());
+            add(file, errors(&c.errors));
         }
         let mut uses = Uses::default();
         uses.machine(m);

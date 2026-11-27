@@ -31,14 +31,15 @@ pub trait Host: Send + Sync {
 
     /// Starts the task or machine of `call`. The future's output becomes the invoke's
     /// outcome. For a machine, the future is polled inside an invoke context, so a
-    /// [`run`] (or a generated `run`) inside it becomes the child run.
+    /// [`run`] (or a generated `run`) inside it becomes the child run. A call of a peer
+    /// ([`SrcKind::Call`]) never comes here: the driver makes it itself.
     fn invoke<'a>(&'a self, call: Invocation) -> BoxFuture<'a, Outcome>;
 }
 
 /// One invoke the driver starts.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Invocation {
-    /// Task or machine.
+    /// Task or machine; never [`SrcKind::Call`].
     pub kind: SrcKind,
     /// The task's or machine's name.
     pub src: String,

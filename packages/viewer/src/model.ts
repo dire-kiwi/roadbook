@@ -2,7 +2,7 @@
 // Pure and DOM-free. Layout (to size boxes) and render (to draw them) both call it, so the
 // two always agree on what goes where.
 
-import type { Address, Effect, EventDecl, Field, Invoke, Ir, Machine, Span, State, Transition, Trigger, TypeDecl } from './ir.ts'
+import type { Address, CallDecl, Effect, EventDecl, Field, Invoke, Ir, Machine, Span, State, Transition, Trigger, TypeDecl } from './ir.ts'
 import { own } from './ir.ts'
 
 export const METRICS = {
@@ -86,10 +86,15 @@ export function effectText(e: Effect): string {
       return `send ${e.to.name}.${e.value.text}`
     case 'emit':
       return `emit ${e.value.text}`
+    case 'reply':
+      return `reply ${e.call.text} ${e.outcome}${e.value ? ` ${e.value.text}` : ''}`
   }
 }
 
-/** An event of a machine, as the viewer links to it: `Upload.Progress`. */
+/**
+ * An event of a machine, as the viewer links to it: `Upload.Progress`; or one of its calls,
+ * `Inventory.reserve` (call names are lower case, event names upper case, so they never clash).
+ */
 export interface EventRef {
   machine: string
   event: string
@@ -97,9 +102,9 @@ export interface EventRef {
 
 export const eventKey = (r: EventRef): string => `${r.machine}.${r.event}`
 
-/** `Upload.Progress` back to its parts; null for anything else. */
+/** `Upload.Progress` or `Inventory.reserve` back to its parts; null for anything else. */
 export function parseEventKey(key: string): EventRef | null {
-  const m = /^([A-Z][A-Za-z0-9]*)\.([A-Z][A-Za-z0-9]*)$/.exec(key)
+  const m = /^([A-Z][A-Za-z0-9]*)\.([A-Za-z][A-Za-z0-9]*)$/.exec(key)
   return m ? { machine: m[1]!, event: m[2]! } : null
 }
 
@@ -108,29 +113,50 @@ export function machineOf(stateId: string): string {
   return stateId.split('.')[0]!
 }
 
+/** The call a pending-call type names: `call reserve` is `reserve`; null for any other type. */
+export function callOfType(type: string): string | null {
+  return type.startsWith('call ') ? type.slice(5) : null
+}
+
 /**
  * The event a messaging effect carries, in the machine that declares it: the receiver's for
- * a `send`, the machine's own (`machine`) for an `emit`. Null for `set` and `do`.
+ * a `send`, the machine's own (`machine`) for an `emit`; for a `reply`, the machine's own call
+ * it answers. Null for `set` and `do`.
  */
 export function effectEvent(machine: string, e: Effect): EventRef | null {
   if (e.kind === 'send') return { machine: e.to.machine, event: e.event }
   if (e.kind === 'emit') return { machine, event: e.event }
+  if (e.kind === 'reply') {
+    const call = callOfType(e.call.type)
+    return call ? { machine, event: call } : null
+  }
   return null
 }
 
-/** The event an `on name.Event` trigger takes, in the sender's machine. Null for other triggers. */
-export function triggerEvent(t: Trigger): EventRef | null {
-  return t.kind === 'emitted' ? { machine: t.from.machine, event: t.event } : null
+/**
+ * The event an `on name.Event` trigger takes, in the sender's machine, or the call an `on c`
+ * takes, in `machine` (the machine the trigger is written in). Null for other triggers.
+ */
+export function triggerEvent(t: Trigger, machine: string): EventRef | null {
+  if (t.kind === 'emitted') return { machine: t.from.machine, event: t.event }
+  if (t.kind === 'call') return { machine, event: t.call }
+  return null
 }
 
-/** `Upload(draft.file)`, `Upload(draft.file) as upload` */
+/** The call a call invoke makes, in the callee's machine: `Inventory.reserve`. Null for a task or machine. */
+export function invokeCall(inv: Invoke): EventRef | null {
+  return inv.kind === 'call' && inv.to ? { machine: inv.to.machine, event: inv.src } : null
+}
+
+/** `Upload(draft.file)`, `Upload(draft.file) as upload`, `inventory.reserve(id, draft.items)` */
 export function invokeText(inv: Invoke): string {
-  return `${inv.src}(${inv.args.map((a) => a.text).join(', ')})${inv.as ? ` as ${inv.as}` : ''}`
+  return `${inv.to ? `${inv.to.name}.` : ''}${inv.src}(${inv.args.map((a) => a.text).join(', ')})${inv.as ? ` as ${inv.as}` : ''}`
 }
 
 /**
  * How the diagram encodes a trigger: line style, colour and wording all follow it. `message`
- * is an event another machine emitted (`on upload.Progress`), labelled through its sender.
+ * is what comes from another run: an event another machine emitted (`on upload.Progress`),
+ * labelled through its sender, or a call of this machine another run made (`on reserve`).
  */
 export type EdgeKind = 'event' | 'message' | 'done' | 'fail' | 'after' | 'always' | 'initial'
 
@@ -140,6 +166,7 @@ export function triggerKind(trigger: Trigger): EdgeKind {
     case 'any':
       return 'event'
     case 'emitted':
+    case 'call':
       return 'message'
     case 'after':
       return 'after'
@@ -153,13 +180,15 @@ export function triggerKind(trigger: Trigger): EdgeKind {
   }
 }
 
-/** The trigger as the diagram labels it: `Cancel`, `upload.Progress`, `on *`, `after 30s`, `always`, `done`, `fail CardDeclined`. */
+/** The trigger as the diagram labels it: `Cancel`, `upload.Progress`, `reserve` (a call), `on *`, `after 30s`, `always`, `done`, `fail CardDeclined`. */
 export function triggerText(trigger: Trigger): string {
   switch (trigger.kind) {
     case 'event':
       return trigger.event
     case 'emitted':
       return `${trigger.from.name}.${trigger.event}`
+    case 'call':
+      return trigger.call
     case 'any':
       return 'on *'
     case 'after':
@@ -174,9 +203,9 @@ export function triggerText(trigger: Trigger): string {
   }
 }
 
-/** The trigger as written in source: `on Cancel`, `on upload.Progress`, `on *`, `after 30s`, `done`, `fail E`. */
+/** The trigger as written in source: `on Cancel`, `on upload.Progress`, `on reserve`, `on *`, `after 30s`, `done`, `fail E`. */
 export function triggerSource(trigger: Trigger): string {
-  return trigger.kind === 'event' || trigger.kind === 'emitted' ? `on ${triggerText(trigger)}` : triggerText(trigger)
+  return trigger.kind === 'event' || trigger.kind === 'emitted' || trigger.kind === 'call' ? `on ${triggerText(trigger)}` : triggerText(trigger)
 }
 
 /** `[guard]` for a guarded branch, `[else]` for the unguarded last branch of a block, `""` otherwise. */
@@ -193,8 +222,8 @@ export interface LabelLine {
   text: string
   guard: string
   /**
-   * The line names another machine's event: the trigger of `on upload.Progress`, or a `send`
-   * or `emit` effect. Clicking it opens that event.
+   * The line names another machine's event or a call: the trigger of `on upload.Progress` or
+   * `on reserve`, or a `send`, `emit` or `reply` effect. Clicking it opens that event or call.
    */
   event?: EventRef
 }
@@ -214,7 +243,8 @@ export function transitionLines(state: State, index: number): LabelLine[] {
     return g !== '' && (head + ' ' + g).length > METRICS.labelWrapAt
   })
   const lines: LabelLine[] = []
-  const from = triggerEvent(t.trigger)
+  const machine = machineOf(state.id)
+  const from = triggerEvent(t.trigger, machine)
   const trig = (text: string, g: string): LabelLine => (from && text ? { cls: 'trigger', text, guard: g, event: from } : { cls: 'trigger', text, guard: g })
   if (guard && split) {
     lines.push(trig(head, ''))
@@ -222,7 +252,6 @@ export function transitionLines(state: State, index: number): LabelLine[] {
   } else {
     lines.push(trig(head, guard))
   }
-  const machine = machineOf(state.id)
   for (const e of t.effects) {
     const event = effectEvent(machine, e)
     for (const l of wrapCode(effectText(e), METRICS.labelWrapAt + 8)) lines.push(event ? { cls: 'effect', text: l, guard: '', event } : { cls: 'effect', text: l, guard: '' })
@@ -243,9 +272,9 @@ export interface Row {
   alias?: string
   /** The row is an internal transition: its index in the state's `transitions`. */
   transition?: number
-  /** `kw` ends with another machine's event (`on upload.Progress`): clicking it opens the event. */
+  /** `kw` ends with another machine's event (`on upload.Progress`) or a call (`on reserve`): clicking it opens it. */
   kwEvent?: EventRef
-  /** `text` is (part of) a `send` or `emit` effect: clicking it opens the event. */
+  /** `text` is (part of) a `send`, `emit` or `reply` effect, or a call invoke: clicking it opens the event or call. */
   event?: EventRef
 }
 
@@ -284,16 +313,19 @@ export function stateRows(state: State, collapsed = false): Row[] {
       const first = rows[rows.length - lines.length]!
       first.machine = inv.src
       if (inv.as && lines.length === 1) first.alias = inv.as
-    } else add('invoke', invokeText(inv))
+    } else {
+      const call = invokeCall(inv)
+      add('invoke', invokeText(inv), call ? { event: call } : {})
+    }
   }
   for (const e of state.entry) add('entry', effectText(e), effectExtra(e))
   for (const e of state.exit) add('exit', effectText(e), effectExtra(e))
   state.transitions.forEach((t, index) => {
     if (t.target !== null) return
-    // The trigger, then the guard and each effect: one effect per line, so a `send` or `emit`
-    // is a line of its own that can be clicked.
+    // The trigger, then the guard and each effect: one effect per line, so a `send`, `emit` or
+    // `reply` is a line of its own that can be clicked.
     const kw = triggerSource(t.trigger)
-    const from = triggerEvent(t.trigger)
+    const from = triggerEvent(t.trigger, machine)
     const base: Partial<Row> = { transition: index, cls: triggerKind(t.trigger) }
     const guard = guardText(state, index)
     const items: [string, Partial<Row>][] = []
@@ -439,22 +471,29 @@ export function refMachine(ir: Ir, type: string): string | null {
   return null
 }
 
-/** Where a `send`, an `emit` or an `on name.Event` is written. */
+/**
+ * Where a `send`, an `emit` or an `on name.Event` is written; or, for calls, a call invoke
+ * (`call`), an `on c` that takes a call (`take`) and a `reply` (`reply`).
+ */
 export interface MessageSite {
-  dir: 'send' | 'emit' | 'receive'
+  dir: 'send' | 'emit' | 'receive' | 'call' | 'take' | 'reply'
   /** The state it is written in. */
   state: string
-  /** The index of its transition in the state's `transitions`, or the state's `entry` or `exit`. */
-  at: number | 'entry' | 'exit'
-  /** The receiver of a send, the sender of a receive; null for an emit. */
+  /** The index of its transition in the state's `transitions`, or the state's `entry`, `exit` or `invoke`. */
+  at: number | 'entry' | 'exit' | 'invoke'
+  /** The receiver of a send, the sender of a receive, the callee of a call; null for the others. */
   address: Address | null
-  /** The event, in the machine that declares it: the receiver's, the sender's, or the machine's own. */
+  /**
+   * The event, in the machine that declares it: the receiver's, the sender's, or the machine's
+   * own; for a call, the call, in the callee's machine.
+   */
   event: EventRef
 }
 
 /**
- * Every message a machine sends, emits and receives, in document order: state by state
- * (outermost first), its `entry`, its `exit`, then each transition's trigger and effects.
+ * Every message a machine sends, emits and receives, and every call it makes, takes and
+ * answers, in document order: state by state (outermost first), its call invoke, its `entry`,
+ * its `exit`, then each transition's trigger and effects.
  */
 export function messageSites(machineName: string, machine: Machine): MessageSite[] {
   const out: MessageSite[] = []
@@ -462,13 +501,20 @@ export function messageSites(machineName: string, machine: Machine): MessageSite
     for (const e of list) {
       if (e.kind === 'send') out.push({ dir: 'send', state, at, address: e.to, event: { machine: e.to.machine, event: e.event } })
       else if (e.kind === 'emit') out.push({ dir: 'emit', state, at, address: null, event: { machine: machineName, event: e.event } })
+      else if (e.kind === 'reply') {
+        const event = effectEvent(machineName, e)
+        if (event) out.push({ dir: 'reply', state, at, address: null, event })
+      }
     }
   }
   walkStates(machine.root, (s) => {
+    const call = s.invoke && invokeCall(s.invoke)
+    if (call) out.push({ dir: 'call', state: s.id, at: 'invoke', address: s.invoke!.to, event: call })
     effects(s.id, 'entry', s.entry)
     effects(s.id, 'exit', s.exit)
     s.transitions.forEach((t, i) => {
       if (t.trigger.kind === 'emitted') out.push({ dir: 'receive', state: s.id, at: i, address: t.trigger.from, event: { machine: t.trigger.from.machine, event: t.trigger.event } })
+      if (t.trigger.kind === 'call') out.push({ dir: 'take', state: s.id, at: i, address: null, event: { machine: machineName, event: t.trigger.call } })
       effects(s.id, i, t.effects)
     })
   })
@@ -485,6 +531,8 @@ export interface Talks {
   sends: { machine: string; events: string[] }[]
   /** Events of other machines' `emits` it handles, by sending machine. */
   receives: { machine: string; events: string[] }[]
+  /** Calls it makes (`invoke inventory.reserve(…)`), by called machine. */
+  calls: { machine: string; calls: string[] }[]
 }
 
 /** Adds `value` to the list of `machine` in `list`, keeping first-seen order and no repeats. */
@@ -500,6 +548,7 @@ export function talks(ir: Ir, machineName: string): Talks {
   const refs: { machine: string; values: string[] }[] = []
   const sends: { machine: string; values: string[] }[] = []
   const receives: { machine: string; values: string[] }[] = []
+  const calls: { machine: string; values: string[] }[] = []
   if (m) {
     walkStates(m.root, (s) => {
       if (s.invoke && s.invoke.kind === 'machine') invokes.push({ machine: s.invoke.src, as: s.invoke.as, state: s.id })
@@ -511,6 +560,7 @@ export function talks(ir: Ir, machineName: string): Talks {
     for (const site of messageSites(machineName, m)) {
       if (site.dir === 'send') group(sends, site.event.machine, site.event.event)
       else if (site.dir === 'receive') group(receives, site.event.machine, site.event.event)
+      else if (site.dir === 'call') group(calls, site.event.machine, site.event.event)
     }
   }
   return {
@@ -518,6 +568,7 @@ export function talks(ir: Ir, machineName: string): Talks {
     refs: refs.map((r) => ({ machine: r.machine, names: r.values })),
     sends: sends.map((r) => ({ machine: r.machine, events: r.values })),
     receives: receives.map((r) => ({ machine: r.machine, events: r.values })),
+    calls: calls.map((r) => ({ machine: r.machine, calls: r.values })),
   }
 }
 
@@ -534,4 +585,9 @@ export function eventDecl(ir: Ir, ref: EventRef): { decl: EventDecl; emitted: bo
 /** `event Reserve { orderId: string, items: Item[] }`, `emits Progress { percent: int }` */
 export function eventDeclText(name: string, decl: { fields: Field[] }, emitted: boolean): string {
   return `${emitted ? 'emits' : 'event'} ${name}${decl.fields.length ? ` { ${paramsText(decl.fields)} }` : ''}`
+}
+
+/** `reserve(orderId: string, items: Item[]) ! OutOfStock`: a call's signature without its keyword. */
+export function callSignatureText(name: string, decl: CallDecl): string {
+  return signatureText('', name, decl).slice(1)
 }

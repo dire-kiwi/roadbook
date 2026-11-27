@@ -1,0 +1,24 @@
+error Busy
+error Other
+
+machine M() {
+  call get() -> int ! Busy
+  call put()
+  call quiet() -> int
+  initial A
+  state A {
+    on get reply call done
+    on put reply call done 1
+    on quiet reply call fail Busy
+    on Go -> B
+  }
+  state B {
+    on get reply call fail Other
+  }
+  event Go
+}
+
+// expect: RB0319 at 10:12
+// expect: RB0319 at 11:28
+// expect: RB0319 at 12:30
+// expect: RB0319 at 16:28

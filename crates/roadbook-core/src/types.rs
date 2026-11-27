@@ -3,6 +3,7 @@
 
 use std::fmt;
 
+pub use roadbook_ir::ReplyOutcome;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -52,11 +53,17 @@ pub enum Defect {
     },
     /// Settling took more than [`crate::SETTLE_LIMIT`] microsteps.
     Limit,
-    /// A `strict` machine was given one of its own events, or a message, that enabled no
+    /// A `strict` machine was given one of its own events, a message or a call that enabled no
     /// transition.
     Unhandled {
-        /// The input, an `event` or a `message`, as an `event` record would show it.
+        /// The input, an `event`, a `message` or a `call`, as an `event` record would show it.
         event: Box<Input>,
+    },
+    /// A `reply` was given a pending-call value whose call is not pending: it was answered
+    /// already, or the run was restored.
+    Answered {
+        /// The call's name.
+        call: String,
     },
 }
 
@@ -93,9 +100,18 @@ impl fmt::Display for Defect {
                         .get("_tag")
                         .and_then(Value::as_str)
                         .unwrap_or("an event"),
+                    Input::Call { call, .. } => {
+                        return write!(
+                            f,
+                            "a `{call}` call enabled no transition in a strict machine"
+                        );
+                    }
                     _ => "an input",
                 };
                 write!(f, "`{tag}` enabled no transition in a strict machine")
+            }
+            Defect::Answered { call } => {
+                write!(f, "a `reply` answered a `{call}` call that is not pending")
             }
         }
     }
@@ -123,8 +139,29 @@ pub struct InvokeEntry {
     pub id: u64,
     /// The id of the state that owns it.
     pub state: String,
-    /// The task's or machine's name.
+    /// The task's or machine's name, or for a call the address and the call's name,
+    /// `inventory.reserve`.
     pub src: String,
+}
+
+/// A call the run has taken and not answered yet: a pending call.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CallEntry {
+    /// The caller's run id.
+    pub from: String,
+    /// The id of the caller's invoke that made the call.
+    pub invoke: u64,
+    /// The call's name, a key of the machine's `calls`.
+    pub call: String,
+}
+
+impl CallEntry {
+    /// Its pending-call value, `{"from", "invoke"}`: the value of `call` in the transition
+    /// that took it.
+    pub fn value(&self) -> Value {
+        serde_json::json!({ "from": self.from, "invoke": self.invoke })
+    }
 }
 
 /// A running `after` timer in a snapshot.
@@ -161,6 +198,9 @@ pub struct Snapshot {
     pub vars: Object,
     /// The running invokes, in the order they were started.
     pub invokes: Vec<InvokeEntry>,
+    /// The calls the run has taken and not answered yet, in the order it took them.
+    #[serde(default)]
+    pub calls: Vec<CallEntry>,
     /// The running timers, in the order they were started.
     pub timers: Vec<TimerEntry>,
     /// The id the next invoke will get.
@@ -206,15 +246,28 @@ pub enum Input {
         /// The event, a tagged record.
         value: Value,
     },
+    /// A call: run `from` called this machine's call `call` with its invoke `invoke`.
+    #[serde(rename = "call")]
+    Call {
+        /// The caller's run id.
+        from: String,
+        /// The id of the caller's invoke that made the call.
+        invoke: u64,
+        /// The call's name, a key of the machine's `calls`.
+        call: String,
+        /// Its arguments, keyed by the call's parameter names.
+        args: Object,
+    },
     /// An invoke succeeded.
     #[serde(rename = "invoke.done")]
     InvokeDone {
         /// The invoke's id.
         invoke: u64,
-        /// Its result, `null` for a task that returns nothing.
+        /// Its result, `null` for a task, machine or call that returns nothing.
         value: Value,
     },
-    /// An invoke failed with an error, a tagged record.
+    /// An invoke failed with an error, a tagged record: for a call, possibly
+    /// `{"_tag": "Unanswered"}`.
     #[serde(rename = "invoke.fail")]
     InvokeFail {
         /// The invoke's id.
@@ -267,7 +320,7 @@ impl Input {
     }
 }
 
-/// Whether an invoke runs a task or a machine.
+/// Whether an invoke runs a task or a machine, or makes a call.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SrcKind {
@@ -275,6 +328,8 @@ pub enum SrcKind {
     Task,
     /// A machine.
     Machine,
+    /// A call of a peer's `call`, which the driver makes itself: host code never sees one.
+    Call,
 }
 
 /// What the core asks the driver to do, in order.
@@ -295,24 +350,42 @@ pub enum Command {
         /// Its arguments, keyed by parameter name.
         args: Object,
     },
-    /// Start the task or machine; queue its outcome as an `invoke.*` input when it ends.
+    /// Start the task or machine, or make the call; queue its outcome as an `invoke.*` input
+    /// when it ends.
     #[serde(rename = "invoke.start")]
     InvokeStart {
         /// The invoke's id.
         invoke: u64,
         /// The id of the state that owns it.
         state: String,
-        /// The task's or machine's name.
+        /// The task's, machine's or call's name.
         src: String,
-        /// Task or machine.
+        /// Task, machine or call.
         #[serde(rename = "srcKind")]
         src_kind: SrcKind,
+        /// For a call, the callee's run id; `None` for a task or a machine.
+        to: Option<String>,
         /// The invoke's `as` name, or `null`: a child run invoked with one delivers what it
         /// emits to this run.
         #[serde(rename = "as")]
         alias: Option<String>,
         /// Its arguments, keyed by parameter name.
         args: Object,
+    },
+    /// Answer the call that run `to` made with its invoke `invoke`, without waiting for the
+    /// caller.
+    #[serde(rename = "reply")]
+    Reply {
+        /// The caller's run id.
+        to: String,
+        /// The id of the caller's invoke.
+        invoke: u64,
+        /// The call's name.
+        call: String,
+        /// Done or fail.
+        outcome: ReplyOutcome,
+        /// The result (`null` for a call that returns nothing) or the error.
+        value: Value,
     },
     /// Cancel the invoke and wait until it has stopped.
     #[serde(rename = "invoke.cancel")]
@@ -477,17 +550,32 @@ pub enum Record {
         /// The event.
         value: Value,
     },
-    /// A task or child machine was started.
+    /// A task or child machine was started, or a call was made.
     #[serde(rename = "invoke.started")]
     InvokeStarted {
         /// The invoke's id.
         invoke: u64,
         /// The id of the state that owns it.
         state: String,
-        /// The task's or machine's name.
+        /// The task's or machine's name, or for a call `inventory.reserve`.
         src: String,
         /// Its arguments.
         args: Object,
+    },
+    /// A `reply` effect ran, or a call that enabled no transition was answered `Unanswered`;
+    /// the driver answers the caller next.
+    #[serde(rename = "replied")]
+    Replied {
+        /// The caller's run id.
+        to: String,
+        /// The id of the caller's invoke.
+        invoke: u64,
+        /// The call's name.
+        call: String,
+        /// Done or fail.
+        outcome: ReplyOutcome,
+        /// The result (`null` for a call that returns nothing) or the error.
+        value: Value,
     },
     /// A running invoke was cancelled because its state was left.
     #[serde(rename = "invoke.cancelled")]
@@ -603,6 +691,10 @@ pub struct Saved {
     pub vars: Object,
     /// The running invokes, in the order they were started.
     pub invokes: Vec<InvokeEntry>,
+    /// The calls the run had taken and not answered, in the order it took them. Written
+    /// only when there are some; a snapshot without the member has none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub calls: Vec<CallEntry>,
     /// The running timers, in the order they were started, with their due times.
     pub timers: Vec<SavedTimer>,
     /// The id the next invoke will get.
@@ -631,6 +723,7 @@ impl Saved {
             input: snap.input.clone(),
             vars: snap.vars.clone(),
             invokes: snap.invokes.clone(),
+            calls: snap.calls.clone(),
             timers: snap
                 .timers
                 .iter()
@@ -663,6 +756,7 @@ impl Saved {
             input: self.input.clone(),
             vars: self.vars.clone(),
             invokes: self.invokes.clone(),
+            calls: self.calls.clone(),
             timers: self
                 .timers
                 .iter()

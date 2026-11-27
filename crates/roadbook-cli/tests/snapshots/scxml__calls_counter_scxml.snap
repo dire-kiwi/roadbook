@@ -1,0 +1,29 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Ask the warehouse how many reservations it holds; 0 if it cannot say. -->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Counter" datamodel="roadbook" initial="Counter_Asking" rb:returns="int">
+  <datamodel>
+    <data id="inventory" rb:type="ref Inventory" rb:param="true"/>
+    <data id="n" rb:type="int"/>
+  </datamodel>
+  <state id="Counter_Asking">
+    <invoke id="Counter_Asking_invoke" type="urn:roadbook:call" src="inventory.count"/>
+    <transition event="done.invoke.Counter_Asking_invoke" target="Counter_Got">
+      <assign location="n" expr="result"/>
+    </transition>
+    <transition event="error.Unanswered.Counter_Asking_invoke" target="Counter_Gave"/>
+  </state>
+  <final id="Counter_Got">
+    <donedata>
+      <content expr="n"/>
+    </donedata>
+  </final>
+  <final id="Counter_Gave">
+    <donedata>
+      <content expr="0"/>
+    </donedata>
+  </final>
+</scxml>

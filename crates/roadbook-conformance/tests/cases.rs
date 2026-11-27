@@ -218,6 +218,25 @@ fn top_level_runs_are_started_in_order() {
                 "{}: `requires` must list `parallel` exactly when its chart has a parallel state",
                 c.name
             );
+            fn has_call(s: &roadbook_ir::State) -> bool {
+                s.invoke
+                    .as_ref()
+                    .is_some_and(|i| i.kind == roadbook_ir::InvokeKind::Call)
+                    || s.states.iter().any(has_call)
+            }
+            let calls = ir
+                .machines
+                .values()
+                .any(|m| !m.calls.is_empty() || has_call(&m.root));
+            assert_eq!(
+                calls,
+                requires("calls"),
+                "{}: `requires` must list `calls` exactly when a machine of its chart declares or makes a call",
+                c.name
+            );
+            if calls {
+                assert!(messaging, "{}: `calls` needs `messaging` too", c.name);
+            }
         }
     }
 }
@@ -333,6 +352,7 @@ fn every_status_and_record_kind_is_covered() {
         "undelivered",
         "restored",
         "suspended",
+        "replied",
     ] {
         assert!(kinds.contains(k), "no expected trace has a `{k}` record");
     }
@@ -341,7 +361,7 @@ fn every_status_and_record_kind_is_covered() {
         .flat_map(|c| c.records.iter())
         .filter_map(|r| r["event"]["kind"].as_str())
         .collect();
-    for k in ["message", "emitted"] {
+    for k in ["message", "emitted", "call"] {
         assert!(inputs.contains(k), "no expected trace takes a `{k}` input");
     }
 }

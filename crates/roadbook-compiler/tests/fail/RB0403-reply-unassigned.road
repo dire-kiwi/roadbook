@@ -1,0 +1,15 @@
+machine M() {
+  call ask()
+  var pending: call ask
+  event Go
+  initial A
+  state A {
+    on Go reply pending done
+    on ask -> B  set pending = call
+  }
+  state B {
+    on Go -> A  reply pending done
+  }
+}
+
+// expect: RB0403 at 7:17

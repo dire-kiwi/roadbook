@@ -40,7 +40,7 @@ const INDENT: usize = 2;
 enum Group {
     /// One-line `type`, `enum`, `error` and `extern type` declarations.
     Data,
-    /// One-line `fn`, `action` and `task` declarations.
+    /// One-line `fn`, `action` and `task` declarations, and a machine's `call`s.
     Callable,
     Var,
     Event,
@@ -558,6 +558,22 @@ impl Formatter<'_> {
                     self.row(whole, indent, vec![head, text], "", Some(Group::Event));
                 }
             }
+            Item::Call(c) => {
+                let head = format!("call {}", c.name.name);
+                let head = self.params(&c.name, &c.params, head, whole, indent);
+                let returns = c
+                    .returns
+                    .as_ref()
+                    .map_or(String::new(), |t| format!("-> {}", ty(t)));
+                let group = decl_group(&head);
+                self.row(
+                    whole,
+                    indent,
+                    vec![head, returns, error_list(&c.errors)],
+                    "",
+                    group,
+                );
+            }
             Item::State(s) => self.state(s, indent),
             Item::Invoke(inv) => {
                 let mut args_end = inv.callee.span.end.offset;
@@ -566,7 +582,11 @@ impl Formatter<'_> {
                 }
                 let rparen = self.find(args_end, Punct::RParen);
                 let open = self.find(rparen.span.end.offset, Punct::LBrace);
-                let mut head = format!("invoke {}({})", inv.callee.name, exprs(&inv.args));
+                let to = inv
+                    .to
+                    .as_ref()
+                    .map_or(String::new(), |t| format!("{}.", t.name));
+                let mut head = format!("invoke {to}{}({})", inv.callee.name, exprs(&inv.args));
                 if let Some(a) = &inv.alias {
                     head += &format!(" as {}", a.name);
                 }
@@ -700,6 +720,7 @@ fn inline_item(item: &Item) -> Option<String> {
         Item::Var(_)
         | Item::Event(_)
         | Item::Emits(_)
+        | Item::Call(_)
         | Item::State(_)
         | Item::Invoke(_)
         | Item::Transition(_) => {
@@ -729,6 +750,7 @@ fn trigger(t: &Trigger) -> String {
     match t {
         Trigger::On(p) => format!("on {}", pattern(p)),
         Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
+        Trigger::Call(n) => format!("on {}", n.name),
         Trigger::After(e) if bare_record(e) => format!("after ({})", expr(e)),
         Trigger::After(e) => format!("after {}", expr(e)),
         Trigger::Always => "always".into(),
@@ -749,8 +771,9 @@ fn bare_record(e: &Expr) -> bool {
 }
 
 /// Consecutive `set`s, and consecutive `do`s, share a clause; clauses are separated by two
-/// spaces. Every `set` comes first, then the `do`, `send` and `emit` effects, each in the
-/// order written: the order they run in. A `send` or `emit` is a clause of its own.
+/// spaces. Every `set` comes first, then the `do`, `send`, `emit` and `reply` effects, each in
+/// the order written: the order they run in. A `send`, `emit` or `reply` is a clause of its
+/// own.
 fn effects(effects: &[Effect]) -> String {
     let mut out = String::new();
     let mut last: Option<&'static str> = None;
@@ -762,6 +785,7 @@ fn effects(effects: &[Effect]) -> String {
             Effect::Do(_) => "do",
             Effect::Send(_) => "send",
             Effect::Emit(_) => "emit",
+            Effect::Reply(_) => "reply",
         };
         if last == Some(kw) && matches!(kw, "set" | "do") {
             out.push_str(", ");
@@ -776,6 +800,13 @@ fn effects(effects: &[Effect]) -> String {
             Effect::Set(a) => out.push_str(&format!("{} = {}", a.var.name, expr(&a.value))),
             Effect::Do(c) => out.push_str(&call(c)),
             Effect::Send(m) | Effect::Emit(m) => out.push_str(&message(m)),
+            Effect::Reply(r) => {
+                out.push_str(&format!("{} {}", r.call.name, r.outcome.as_str()));
+                if let Some(v) = &r.value {
+                    out.push(' ');
+                    out.push_str(&expr(v));
+                }
+            }
         }
         last = Some(kw);
     }
@@ -822,6 +853,7 @@ fn ty(t: &TypeRef) -> String {
         TypeKind::List(t) => format!("{}[]", ty(t)),
         TypeKind::Optional(t) => format!("{}?", ty(t)),
         TypeKind::Ref(n) => format!("ref {}", n.name),
+        TypeKind::Call(n) => format!("call {}", n.name),
     }
 }
 

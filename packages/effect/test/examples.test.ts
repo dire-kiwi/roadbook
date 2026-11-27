@@ -1,7 +1,7 @@
 /**
  * The messaging examples end to end, under a virtual clock: examples/upload (a parent that
  * pauses and resumes the child it invokes, and shows the child's progress) and examples/orders
- * (orders talking to a spawned Inventory peer they are given by handle). Every task sleeps on
+ * (orders calling a spawned Inventory peer they are given by handle). Every task sleeps on
  * Effect's `Clock`, so `TestClock` drives them.
  */
 import { assert, describe, it } from "@effect/vitest"
@@ -187,7 +187,7 @@ describe("examples/orders", () => {
       assert.deepStrictEqual(snapshot.active, ["Inventory", "Inventory.Reserving"])
     }).pipe(Effect.scoped))
 
-  it.effect("every order hears every reply and picks out its own, and a closed inventory is undelivered", () =>
+  it.effect("each order gets its own answer, and a closed inventory answers Unanswered at once", () =>
     Effect.gen(function*() {
       const { records, sink } = collect()
       const { InventoryLive } = warehouse()
@@ -196,7 +196,7 @@ describe("examples/orders", () => {
       const inventory = yield* traced(InventoryLive.spawn({ warehouse: "w1" }))
       const order = (id: string) =>
         Effect.forkChild(Effect.exit(traced(OrderLive.run({ id, draft: apples(1), inventory: inventory.handle }))))
-      // The second order's Reserve arrives while the first is being reserved: turned away.
+      // The second order's call arrives while the first is being reserved: turned away.
       const first = yield* order("a")
       const second = yield* order("b")
       yield* settle
@@ -204,19 +204,28 @@ describe("examples/orders", () => {
       yield* advance(5)
       assert.deepStrictEqual(outcome(yield* Fiber.join(first)), ok({ orderId: "a", total: 4200 }))
       assert.deepStrictEqual(outcome(yield* Fiber.join(second)), failed(new OutOfStock({ reason: "busy" })))
-      // Every holder hears every reply: "a" drops the one for "b" ("b" has ended by the next).
-      const dropped = records.filter((r) => r.kind === "dropped" && r.event.kind === "emitted")
-      assert.strictEqual(dropped.length, 1)
+      // Each reply goes to its caller alone: "b" is answered at once, "a" when its stock is held,
+      // and no order receives, or drops, the other's.
+      const callers = () =>
+        records.flatMap((r) => r.kind === "invoke.started" && r.src === "inventory.reserve" ? [r.run] : [])
+      const [a, b] = callers()
+      const replied = records.flatMap((r) => r.kind === "replied" ? [[r.to, r.outcome, r.value]] : [])
+      assert.deepStrictEqual(replied, [[b!, "fail", { _tag: "OutOfStock", reason: "busy" }], [a!, "done", null]])
+      assert.deepStrictEqual(records.filter((r) => r.kind === "dropped"), [])
 
+      // A closed warehouse cannot answer: the order fails without waiting for its timeout.
       yield* inventory.handle.send({ _tag: "Close" })
       yield* settle
       assert.strictEqual((yield* inventory.snapshot).status, "done")
       const late = yield* order("c")
-      yield* advance(5000)
-      const gaveUp = failed(new OutOfStock({ reason: "the warehouse did not answer" }))
-      assert.deepStrictEqual(outcome(yield* Fiber.join(late)), gaveUp)
-      const undelivered = records.filter((r) => r.kind === "undelivered")
-      assert.deepStrictEqual(undelivered.map((r) => [r.to, r.value._tag]), [[inventory.handle.id, "Reserve"]])
+      yield* settle
+      const closed = failed(new OutOfStock({ reason: "the warehouse is closed" }))
+      assert.deepStrictEqual(outcome(yield* Fiber.join(late)), closed)
+      // Its invoke failed with the built-in Unanswered, which the chart maps to OutOfStock.
+      const unanswered = records.filter((r) =>
+        r.kind === "event" && r.event.kind === "invoke.fail" && r.event.error._tag === "Unanswered"
+      )
+      assert.deepStrictEqual(unanswered.map((r) => r.run), [callers()[2]])
     }).pipe(Effect.scoped))
 
   it.effect("a value that is not a handle is a host defect", () =>
@@ -251,8 +260,8 @@ describe("examples/orders", () => {
 
 /** Type-level checks, by `tsc`. Never run. */
 export const types = (inventory: Roadbook.Handle<InventoryDef>, publish: Roadbook.Handle<PublishDef>) => {
-  // @ts-expect-error  Inventory accepts no Reserved: it emits it
-  inventory.send({ _tag: "Reserved", orderId: "o1" })
+  // @ts-expect-error  `reserve` is a call, not an event: a handle cannot send it
+  inventory.send({ _tag: "Reserve", orderId: "o1", items: [] })
   // @ts-expect-error  a Restock needs its fields
   inventory.send({ _tag: "Restock" })
   const draft = { items: [], card: "4242" }

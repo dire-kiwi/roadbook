@@ -3,7 +3,7 @@
  * default `Timer`, so `TestClock` moves them without real waiting.
  */
 import { assert, describe, it } from "@effect/vitest"
-import * as Roadbook from "@roadbook/effect"
+import * as Roadbook from "@dire-kiwi/roadbook-effect"
 import { Effect, Fiber } from "effect"
 import { TestClock } from "effect/testing"
 import { PlaceOrderLive } from "../src/machines.js"

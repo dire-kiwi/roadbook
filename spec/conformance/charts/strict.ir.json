@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/strict.road",
@@ -100,6 +100,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Lock",
         "name": "Lock",
@@ -133,6 +134,7 @@
             "invoke": {
               "kind": "task",
               "src": "fetch",
+              "to": null,
               "as": null,
               "args": [],
               "span": {
@@ -352,7 +354,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:58a5ac98159cb63db42ffb599b098c264c8e84059ce30fefd2a4d18b6f9825aa"
+      "hash": "sha256:a6a3387aea9b17127994dd91b9a7ee3b5bfceedbad780e71b70434db73877d37"
     }
   }
 }

@@ -1,0 +1,45 @@
+{
+  "description": "A strict machine that answers calls. Asker r2's `ask` is taken and answered at once. Holder r3's `hold` is taken and kept pending in a variable. After `Close`, Desk r1 is in `Shut`, which has no `on ask`, so Asker r4's `ask` ends r1 with an `unhandled` defect naming the call input: there is no `dropped` record and no `replied` record. r1's driver then answers both calls it had not answered with `Unanswered`, r3's pending `hold` first and then r4's `ask`, writing no record for either, and both callers take `fail Unanswered`.",
+  "requires": [
+    "messaging",
+    "calls"
+  ],
+  "chart": "charts/strict-calls.road",
+  "machine": "Desk",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Asker",
+      "run": "r2",
+      "input": {
+        "desk": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "start": "Holder",
+      "run": "r3",
+      "input": {
+        "desk": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    },
+    {
+      "start": "Asker",
+      "run": "r4",
+      "input": {
+        "desk": "r1"
+      },
+      "status": "done"
+    }
+  ],
+  "status": "defect"
+}

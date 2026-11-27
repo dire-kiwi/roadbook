@@ -1,6 +1,6 @@
 [package]
 name = "orders"
-description = "The orders example: a chart that imports a machine from another crate (examples/inventory) and talks to it"
+description = "The orders example: a chart that imports a machine from another crate (examples/inventory) and calls it"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,6 +12,7 @@ inventory = { path = "../inventory" }
 roadbook = { path = "../../crates/roadbook" }
 
 [dev-dependencies]
+serde_json = { workspace = true }
 tokio = { version = "1", features = ["rt", "macros", "time", "test-util"] }
 trybuild = "1"
 

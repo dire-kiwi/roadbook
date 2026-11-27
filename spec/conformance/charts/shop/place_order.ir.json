@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/shop/place_order.road",
@@ -557,6 +557,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "PlaceOrder",
         "name": "PlaceOrder",
@@ -590,6 +591,7 @@
             "invoke": {
               "kind": "task",
               "src": "authenticate",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -693,6 +695,7 @@
                 "invoke": {
                   "kind": "task",
                   "src": "validateOrder",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -796,6 +799,7 @@
                 "invoke": {
                   "kind": "task",
                   "src": "priceOrder",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -876,6 +880,7 @@
                 "invoke": {
                   "kind": "machine",
                   "src": "Checkout",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -1378,7 +1383,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ace006aac396f74c15f3f1bdbd5ae3b1472fd71186cca48d51948fb9f4be4cd5"
+      "hash": "sha256:291c63fa77ecad4cc703ef56d0616449de529e0fbd0cc7a76b2b4d8ba2f0c1c9"
     },
     "Checkout": {
       "doc": "Charge the customer's card, retrying while the payment gateway is down.",
@@ -1455,6 +1460,7 @@
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Checkout",
         "name": "Checkout",
@@ -1488,6 +1494,7 @@
             "invoke": {
               "kind": "task",
               "src": "chargeCard",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1805,7 +1812,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:85d2fa798fcdf39774403671f8acf2fe20ae821217287610a108ce3096517ca7"
+      "hash": "sha256:fa80e6f614f8898e91e52357e8d5aefe10d597e5daa33a587c6510b20c174521"
     }
   }
 }

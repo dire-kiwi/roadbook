@@ -229,3 +229,59 @@ fn a_compilation_with_errors_still_indexes_what_resolves() {
             .is_none()
     );
 }
+
+#[test]
+fn calls_resolve_to_their_declaration() {
+    let src = r#"error Busy
+
+machine Peer() {
+  /// Ask how many.
+  call count(of: string) -> int ! Busy
+  var pending: call count
+  var count: int = 0
+  initial A
+  state A {
+    on count -> B  set pending = call
+  }
+  state B {
+    always -> A  reply pending done event2
+  }
+}
+
+machine User(peer: ref Peer) {
+  initial A
+  state A {
+    invoke peer.count("x") {
+      done            -> B
+      fail Busy       -> B
+      fail Unanswered -> B
+    }
+  }
+  final state B {}
+}
+"#
+    .replace("event2", "count");
+    let out = compile_source("c.road", &src, &Options::default());
+    assert!(!out.has_errors(), "{}", out.render());
+    let cases: &[(&str, &str, SymbolKind)] = &[
+        ("call ^count(of", "Peer.count", SymbolKind::Call),
+        ("count(^of: string", "Peer.count.of", SymbolKind::Parameter),
+        ("var pending: call ^count", "Peer.count", SymbolKind::Call),
+        ("on ^count", "Peer.count", SymbolKind::Call),
+        ("var ^count: int", "Peer.count", SymbolKind::Variable),
+        ("done ^count", "Peer.count", SymbolKind::Variable),
+        ("reply ^pending", "Peer.pending", SymbolKind::Variable),
+        ("invoke ^peer.count", "User.peer", SymbolKind::Parameter),
+        ("peer.^count(\"x\")", "Peer.count", SymbolKind::Call),
+    ];
+    for &(needle, want, kind) in cases {
+        let id = at(&out, 0, needle);
+        assert_eq!(name(&out, id), want, "`{needle}`");
+        assert_eq!(out.index.symbol(id).kind, kind, "`{needle}`");
+    }
+    let call = at(&out, 0, "call ^count(of");
+    let s = out.index.symbol(call);
+    assert_eq!(s.signature, "call count(of: string) -> int ! Busy");
+    assert_eq!(s.doc.as_deref(), Some("Ask how many."));
+    assert_eq!(out.index.references_to(call).count(), 3);
+}

@@ -1,0 +1,806 @@
+{
+  "irVersion": "0.5",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/strict-calls.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Desk": {
+      "doc": "A help desk that answers questions while it is open.",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 34,
+        "endCol": 2
+      },
+      "strict": true,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "pending",
+          "type": "call hold",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 26
+          }
+        },
+        {
+          "name": "answered",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 24
+          }
+        }
+      ],
+      "events": {
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 14
+          }
+        },
+        "Release": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 16
+          }
+        },
+        "Reopen": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 18,
+            "col": 3,
+            "endLine": 18,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {},
+      "calls": {
+        "ask": {
+          "params": [],
+          "returns": "int",
+          "errors": [],
+          "doc": "How many questions it has answered.",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 20
+          }
+        },
+        "hold": {
+          "params": [],
+          "returns": "int",
+          "errors": [],
+          "doc": "Hold a place in the queue until the desk releases it.",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 21
+          }
+        }
+      },
+      "root": {
+        "id": "Desk",
+        "name": "Desk",
+        "kind": "compound",
+        "doc": "A help desk that answers questions while it is open.",
+        "span": {
+          "file": 0,
+          "line": 6,
+          "col": 1,
+          "endLine": 34,
+          "endCol": 2
+        },
+        "initial": "Desk.Staffed",
+        "states": [
+          {
+            "id": "Desk.Staffed",
+            "name": "Staffed",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 22,
+              "col": 3,
+              "endLine": 30,
+              "endCol": 4
+            },
+            "initial": "Desk.Staffed.Free",
+            "states": [
+              {
+                "id": "Desk.Staffed.Free",
+                "name": "Free",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 55
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "call",
+                      "call": "hold"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Desk.Staffed.Held",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "pending",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "call"
+                          ],
+                          "type": "call hold",
+                          "text": "call"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 28,
+                      "col": 18,
+                      "endLine": 28,
+                      "endCol": 53
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Desk.Staffed.Held",
+                "name": "Held",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 29,
+                  "col": 5,
+                  "endLine": 29,
+                  "endCol": 67
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Release"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Desk.Staffed.Free",
+                    "effects": [
+                      {
+                        "kind": "reply",
+                        "call": {
+                          "kind": "ref",
+                          "path": [
+                            "pending"
+                          ],
+                          "type": "call hold",
+                          "text": "pending"
+                        },
+                        "outcome": "done",
+                        "value": {
+                          "kind": "ref",
+                          "path": [
+                            "answered"
+                          ],
+                          "type": "int",
+                          "text": "answered"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 29,
+                      "col": 18,
+                      "endLine": 29,
+                      "endCol": 65
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "call",
+                  "call": "ask"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "answered",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "answered"
+                          ],
+                          "type": "int",
+                          "text": "answered"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "answered + 1"
+                    }
+                  },
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "call"
+                      ],
+                      "type": "call ask",
+                      "text": "call"
+                    },
+                    "outcome": "done",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "answered"
+                      ],
+                      "type": "int",
+                      "text": "answered"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 5,
+                  "endLine": 25,
+                  "endCol": 76
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Desk.Shut",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 26,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Desk.Shut",
+            "name": "Shut",
+            "kind": "atomic",
+            "doc": "No `on ask` or `on hold`: in a strict machine, a call here is a defect.",
+            "span": {
+              "file": 0,
+              "line": 33,
+              "col": 3,
+              "endLine": 33,
+              "endCol": 38
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Reopen"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Desk.Staffed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 16,
+                  "endLine": 33,
+                  "endCol": 36
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:4d6becf125cc0b2fba03aa64b3aba1225d0d2e394238571c815fe4dbac5f0c75"
+    },
+    "Asker": {
+      "doc": "Ask the desk a question; 0 if it does not answer.",
+      "span": {
+        "file": 0,
+        "line": 37,
+        "col": 1,
+        "endLine": 51,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "desk",
+          "type": "ref Desk",
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "n",
+          "type": "int",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 38,
+            "col": 3,
+            "endLine": 38,
+            "endCol": 13
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "root": {
+        "id": "Asker",
+        "name": "Asker",
+        "kind": "compound",
+        "doc": "Ask the desk a question; 0 if it does not answer.",
+        "span": {
+          "file": 0,
+          "line": 37,
+          "col": 1,
+          "endLine": 51,
+          "endCol": 2
+        },
+        "initial": "Asker.Asking",
+        "states": [
+          {
+            "id": "Asker.Asking",
+            "name": "Asking",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 42,
+              "col": 3,
+              "endLine": 47,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "call",
+              "src": "ask",
+              "to": {
+                "kind": "ref",
+                "name": "desk",
+                "machine": "Desk",
+                "state": null
+              },
+              "as": null,
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 43,
+                "col": 5,
+                "endLine": 46,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Asker.Got",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 7,
+                  "endLine": 44,
+                  "endCol": 46
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "Unanswered"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Asker.Gave",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 45,
+                  "col": 7,
+                  "endLine": 45,
+                  "endCol": 30
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Asker.Got",
+            "name": "Got",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 49,
+              "col": 3,
+              "endLine": 49,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "n"
+              ],
+              "type": "int",
+              "text": "n"
+            },
+            "fail": null
+          },
+          {
+            "id": "Asker.Gave",
+            "name": "Gave",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 50,
+              "col": 3,
+              "endLine": 50,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": 0,
+              "type": "int",
+              "text": "0"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:536b64e24a7413cf691cf60bab3e5188b6e882eeaace644d749acf71ba319d69"
+    },
+    "Holder": {
+      "doc": "Hold a place with the desk; 0 if it does not answer.",
+      "span": {
+        "file": 0,
+        "line": 54,
+        "col": 1,
+        "endLine": 68,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "desk",
+          "type": "ref Desk",
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "n",
+          "type": "int",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 55,
+            "col": 3,
+            "endLine": 55,
+            "endCol": 13
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "root": {
+        "id": "Holder",
+        "name": "Holder",
+        "kind": "compound",
+        "doc": "Hold a place with the desk; 0 if it does not answer.",
+        "span": {
+          "file": 0,
+          "line": 54,
+          "col": 1,
+          "endLine": 68,
+          "endCol": 2
+        },
+        "initial": "Holder.Holding",
+        "states": [
+          {
+            "id": "Holder.Holding",
+            "name": "Holding",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 59,
+              "col": 3,
+              "endLine": 64,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "call",
+              "src": "hold",
+              "to": {
+                "kind": "ref",
+                "name": "desk",
+                "machine": "Desk",
+                "state": null
+              },
+              "as": null,
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 60,
+                "col": 5,
+                "endLine": 63,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Holder.Got",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 61,
+                  "col": 7,
+                  "endLine": 61,
+                  "endCol": 46
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "Unanswered"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Holder.Gave",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 62,
+                  "col": 7,
+                  "endLine": 62,
+                  "endCol": 30
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Holder.Got",
+            "name": "Got",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 66,
+              "col": 3,
+              "endLine": 66,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "n"
+              ],
+              "type": "int",
+              "text": "n"
+            },
+            "fail": null
+          },
+          {
+            "id": "Holder.Gave",
+            "name": "Gave",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 67,
+              "col": 3,
+              "endLine": 67,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": 0,
+              "type": "int",
+              "text": "0"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:541588f1c17e8b7dda79acf1805c7662dafc4d77aa25da10b3c69005fcc8fdbe"
+    }
+  }
+}

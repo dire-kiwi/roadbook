@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "packages/viewer/test/charts/edges.road",
@@ -77,6 +77,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "OnlyRoot",
         "name": "OnlyRoot",
@@ -195,7 +196,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4b27b4a76d28456d2568f3f007b4e812ab2c8ffc7a9a7ff790f0a0956c157ff5"
+      "hash": "sha256:7a35ae00ede685ce99a05b08743826c93226d319617fa1d0bdc0747f52765f9b"
     },
     "Note": {
       "doc": "States Mermaid would read as keywords.",
@@ -225,6 +226,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Note",
         "name": "Note",
@@ -736,7 +738,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:27cbad83ebd7ed3c39c5233850f5ddd751b483c8563c3ccf15d0032ba673658f"
+      "hash": "sha256:aa29595b81c85199e8632556b63b2256aecad2ab011352e1d0313439180bf37e"
     },
     "Same": {
       "doc": "A state named like its machine, which has transitions of its own.",
@@ -766,6 +768,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Same",
         "name": "Same",
@@ -866,7 +869,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:818fa480c64f4beb0f3ef9ecdf19f888f8969eacd2b821869782cadeca458302"
+      "hash": "sha256:925be136c068398774651cf6b0e5fafe7bb87e56969f323887d9039e4e297fdf"
     },
     "Rows": {
       "doc": "Containers with an invoke, entry, exit and internal transitions, and labels with syntax.",
@@ -926,6 +929,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Rows",
         "name": "Rows",
@@ -1100,6 +1104,7 @@
             "invoke": {
               "kind": "task",
               "src": "work",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1199,7 +1204,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:25df6f1a24f1dc8514a4b2f7e0226f3a14f1f52ef625b51592f6e297680c67e6"
+      "hash": "sha256:51cddb77634933146302bfaf8829f96e8cf76fad4ef6d79e6567ffaa3290cef1"
     }
   }
 }

@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:4956f96830cef794f94776a0e7b8dd460f2d862ffbdbb1459df6a9745f7ea530","kind":"started","machine":"Door","run":"r1","t":0}
+{"input":{},"ir":"sha256:7b33e11953aeaef79f532cbf85041ad5bfc6d41e3827aa5301ade0b662bf7f12","kind":"started","machine":"Door","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Door","t":0}
 {"kind":"entered","run":"r1","state":"Door.Shut","t":0}
 {"event":{"from":"r2","kind":"message","message":1,"value":{"_tag":"Knock","loud":true}},"kind":"event","run":"r1","t":0}
@@ -15,7 +15,7 @@
 {"kind":"exited","run":"r1","state":"Door.Ajar","t":0}
 {"kind":"entered","run":"r1","state":"Door.Shut","t":0}
 {"defect":{"event":{"from":"r2","kind":"message","message":3,"value":{"_tag":"Knock","loud":false}},"kind":"unhandled"},"kind":"defect","run":"r1","t":0}
-{"input":{"door":"r1"},"ir":"sha256:237c17e8feacd45521862cdea4e56cf46409d7912df29d37221cb04c7b26843d","kind":"started","machine":"Visitor","run":"r2","t":0}
+{"input":{"door":"r1"},"ir":"sha256:05773afd128cfb2bdce6e5c9d0cd29604a42a87a830c6afabe93d00ee54e2bde","kind":"started","machine":"Visitor","run":"r2","t":0}
 {"kind":"entered","run":"r2","state":"Visitor","t":0}
 {"kind":"entered","run":"r2","state":"Visitor.Idle","t":0}
 {"event":{"kind":"event","value":{"_tag":"Go","loud":true}},"kind":"event","run":"r2","t":0}

@@ -35,7 +35,8 @@
 //!   most once. A position whose every step was taken already on the path ends it: `loop`,
 //!   where going on would repeat a transition. So a machine with no final or stuck state
 //!   (`A ⇄ B`) still has paths, and every transition the search can reach is on one.
-//! - Child machines are not entered: an invoke's `done` and `fail` are ordinary steps.
+//! - Child machines are not entered: an invoke's `done` and `fail` are ordinary steps, and so
+//!   are a call's (`fail Unanswered` among them) and a callee's `on c`, labelled `c`.
 //! - The search is depth-first in that order, so the output is deterministic. It stops after
 //!   `--max` paths (1000 by default) or [`BUDGET`] steps searched, prints what it found and
 //!   says on standard error that it stopped; the exit code is still 0.
@@ -484,6 +485,7 @@ fn trigger_text(t: &Trigger) -> String {
     match t {
         Trigger::Event { event } => event.clone(),
         Trigger::Emitted { from, event } => format!("{}.{event}", from.name),
+        Trigger::Call { call } => call.clone(),
         Trigger::Any => "on *".into(),
         Trigger::After { delay } => format!("after {}", delay.text),
         Trigger::Always => "always".into(),

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/workers.road",
@@ -74,6 +74,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Logbook",
         "name": "Logbook",
@@ -189,7 +190,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:945d4ede79a30f6bc2c35f54a5db6efe901ace2472d68d7a482226199b86eb0e"
+      "hash": "sha256:6a411694b31e9bf5ed42460ec03007b197d495af9233130ceb212afa42b3a49c"
     },
     "Worker": {
       "doc": "Works until it is cancelled, then says so to the logbook and to its parent.",
@@ -237,6 +238,7 @@
           }
         }
       },
+      "calls": {},
       "root": {
         "id": "Worker",
         "name": "Worker",
@@ -356,7 +358,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:3b8ffe683ef209fb4bd925f213ce73f6859f1a73601009edded4c9f1fb88e140"
+      "hash": "sha256:1e2c3e5946c80834c532b27e75856bf017d25e72a64f92a9510ff875b733a6bb"
     },
     "Boss": {
       "doc": "Watches a Worker, which it can restart or leave.",
@@ -403,6 +405,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Boss",
         "name": "Boss",
@@ -436,6 +439,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Worker",
+              "to": null,
               "as": "worker",
               "args": [
                 {
@@ -620,7 +624,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:27fe6cf5b84db45955b8030b2df7a7314dc18c0daf3e36807193bb96251ecf1a"
+      "hash": "sha256:6a2148ace642621faa59476c272a9966cd7b86feaaec99511b2f9a20930ea1fc"
     }
   }
 }

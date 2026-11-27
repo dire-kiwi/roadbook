@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -357,6 +357,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -390,6 +391,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Upload",
+              "to": null,
               "as": "upload",
               "args": [
                 {
@@ -613,6 +615,7 @@
             "invoke": {
               "kind": "task",
               "src": "publishPost",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -739,7 +742,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4c0be225aa2e320121100decfacf3df98f56c3e47c84de2ea5c4b259144cf82e"
+      "hash": "sha256:0f70917f482e7c56064719dc934569eccc8aa852f40bdfae629acb551b2aa1b5"
     },
     "Upload": {
       "doc": "Upload a file in chunks. Can be paused, and reports its progress to whoever invoked it.",
@@ -851,6 +854,7 @@
           }
         }
       },
+      "calls": {},
       "root": {
         "id": "Upload",
         "name": "Upload",
@@ -884,6 +888,7 @@
             "invoke": {
               "kind": "task",
               "src": "sendChunk",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1127,6 +1132,7 @@
             "invoke": {
               "kind": "task",
               "src": "finishUpload",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1274,7 +1280,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:7a9fd0e1b0621a9eebbaa7cda7996df85a1f47961445bec9be7a18967d6102af"
+      "hash": "sha256:3f1d143c74a23ebc52ada9f3a2b99a0c4cb2c0e0183538cfae5a84a7862557fe"
     }
   }
 }

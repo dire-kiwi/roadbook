@@ -16,7 +16,7 @@
  * runner drains the scheduler after each action, synchronously, and that is "wait until
  * quiescent".
  */
-import * as Core from "@roadbook/core"
+import * as Core from "@dire-kiwi/roadbook-core"
 import { Cause, Effect, Exit, type Fiber, References, Scheduler, Scope } from "effect"
 import * as fs from "node:fs"
 import * as path from "node:path"
@@ -72,7 +72,7 @@ export const conformanceDir = path.resolve(import.meta.dirname, "../../../../spe
  * The features of case.schema.json's `requires` this runtime implements. A case that requires
  * another is skipped, not failed.
  */
-export const supported: ReadonlyArray<string> = ["messaging", "parallel", "snapshots"]
+export const supported: ReadonlyArray<string> = ["messaging", "parallel", "snapshots", "calls"]
 
 /** Whether this runtime implements everything case `name` requires. */
 export const isSupported = (name: string): boolean => {

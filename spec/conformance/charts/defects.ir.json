@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/defects.road",
@@ -134,6 +134,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Main",
         "name": "Main",
@@ -238,6 +239,7 @@
             "invoke": {
               "kind": "task",
               "src": "load",
+              "to": null,
               "as": null,
               "args": [],
               "span": {
@@ -349,6 +351,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Sub",
+              "to": null,
               "as": null,
               "args": [],
               "span": {
@@ -431,7 +434,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ee9b41d155a6e12f8c5010c7d264c55ed3497b5c3efdcde083faaff5e4681008"
+      "hash": "sha256:8c1fba4aee21ae1704bab0aa6a183954a4da6aeac909214965baef86c95d83f8"
     },
     "Sub": {
       "doc": "Stubbed in the cases that use it.",
@@ -451,6 +454,7 @@
       "vars": [],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Sub",
         "name": "Sub",
@@ -499,7 +503,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:6707102171451e32ffc7b1b51da73aa27ce93a5b7ebad57c379c19ff1c7f5d28"
+      "hash": "sha256:a49853589c941f67b0e1271da62cbdd1ea9c0950e088481653eeb3faa0e9b5cb"
     }
   }
 }

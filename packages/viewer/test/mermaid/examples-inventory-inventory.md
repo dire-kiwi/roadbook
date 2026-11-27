@@ -1,11 +1,10 @@
 ## Inventory
 
-`examples/inventory/inventory.road:19`
+`examples/inventory/inventory.road:18`
 
 ```text
-The stock of one warehouse, shared by every order. An order asks it to reserve items, and
-it answers by emitting `Reserved` or `Rejected` with the order's id, which every holder of
-a reference to it receives.
+The stock of one warehouse, shared by every order. An order calls `reserve`, and the answer
+goes to that order alone.
 ```
 
 ```mermaid
@@ -14,12 +13,12 @@ stateDiagram-v2
   state "Inventory" as Inventory_machine
   state Inventory_machine {
     Reserving: invoke reserveStock(warehouse, orderId, items)
-    Reserving: on Reserve / emit Rejected { orderId#58; event.orderId, reason#58; "busy" }
+    Reserving: on reserve / reply call fail OutOfStock { reason#58; "busy" }
     [*] --> Ready
-    Ready --> Reserving: Reserve / set orderId = event.orderId, set items = event.items
+    Ready --> Reserving: reserve / set pending = call, set orderId = event.orderId, set items = event.items
     Ready --> Closed: Close
-    Reserving --> Ready: done / emit Reserved { orderId#58; orderId }
-    Reserving --> Ready: fail OutOfStock / emit Rejected { orderId#58; orderId, reason#58; error.reason }
+    Reserving --> Ready: done / reply pending done
+    Reserving --> Ready: fail OutOfStock / reply pending fail error
     Closed --> [*]
   }
   note right of Inventory_machine

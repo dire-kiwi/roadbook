@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:4e502cc25a4a32e39d704d347a3356815a37ce58994eceee1c6c0d0cb5240590","kind":"started","machine":"Parent","run":"r1","t":0}
+{"input":{},"ir":"sha256:a8d5809f3cfef4136999d20bf85b92ab8ec58d551dcf2c480a36adf2066d867e","kind":"started","machine":"Parent","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Parent","t":0}
 {"kind":"entered","run":"r1","state":"Parent.Running","t":0}
 {"args":{},"invoke":1,"kind":"invoke.started","run":"r1","src":"Child","state":"Parent.Running","t":0}
@@ -8,7 +8,7 @@
 {"action":"log","args":{"what":"exit Parent"},"kind":"action","run":"r1","t":1000}
 {"kind":"exited","run":"r1","state":"Parent","t":1000}
 {"kind":"cancelled","run":"r1","t":1000}
-{"input":{},"ir":"sha256:ca4e83e05c98189d743263a1c2db117922afc28e08e7440fc72790659e2f7cc9","kind":"started","machine":"Child","parent":"r1","run":"r1.1","t":0}
+{"input":{},"ir":"sha256:f7b378f98c48a5393947e631da7f975f00257ab82d9c8f724986b980f4c03c05","kind":"started","machine":"Child","parent":"r1","run":"r1.1","t":0}
 {"kind":"entered","parent":"r1","run":"r1.1","state":"Child","t":0}
 {"kind":"entered","parent":"r1","run":"r1.1","state":"Child.Outer","t":0}
 {"kind":"entered","parent":"r1","run":"r1.1","state":"Child.Outer.Inner","t":0}

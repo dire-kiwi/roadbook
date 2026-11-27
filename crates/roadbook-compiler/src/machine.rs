@@ -6,13 +6,13 @@ use std::collections::{HashMap, HashSet};
 use indexmap::IndexMap;
 use roadbook_ir as ir;
 use roadbook_syntax::ast::{
-    self, Body, Branches, Decl, DeclKind, Effect, Ident, Invoke, Item, Message, Pattern, State,
-    StateKind, Target, Transition, Trigger,
+    self, Body, Branches, Decl, DeclKind, Effect, Ident, Invoke, Item, Message, Pattern, Reply,
+    ReplyOutcome, State, StateKind, Target, Transition, Trigger,
 };
 use roadbook_syntax::diagnostic::Code;
 use roadbook_syntax::{Diagnostic, Span, expr_text, message_value};
 
-use crate::check::{Checker, Sig, SigKind, doc, ir_span};
+use crate::check::{Checker, Sig, SigKind, UNANSWERED, doc, ir_span, unanswered_misused};
 use crate::codes;
 use crate::index::{SymbolId, SymbolKind};
 use crate::names::{Found, is_type, kind_phrase, suggest};
@@ -85,6 +85,14 @@ pub(crate) struct MachineInfo {
     pub receives: Vec<(Span, String, String)>,
     /// The machine's variables, in order.
     pub vars: Vec<VarInfo>,
+    /// Declared calls with their name spans, in order.
+    pub calls: Vec<(String, Span)>,
+    /// The calls an `on name` takes.
+    pub taken_calls: HashSet<String>,
+    /// The variables of type `call name`, with their name spans, in order.
+    pub call_vars: Vec<(String, Span)>,
+    /// The variables a `reply` answers.
+    pub replied: HashSet<String>,
 }
 
 /// Where effects run, for the check that a `send` to an invoked child finds it running.
@@ -103,13 +111,16 @@ pub(crate) enum Place {
     },
 }
 
-/// What an implicit name (`event`, `result`, `error`) means at some point.
+/// What an implicit name (`event`, `result`, `error`, `call`) means at some point.
 #[derive(Clone, Debug)]
 pub(crate) enum Implicit {
     NotHere,
     Has(Ty),
     /// In scope but unusable, with the diagnostic to give.
     Bad(Code, String),
+    /// `event` in `on name` for the machine's call `name`: its arguments, read only through
+    /// their fields.
+    CallArgs(String),
 }
 
 #[derive(Clone, Debug)]
@@ -117,6 +128,7 @@ pub(crate) struct Scope {
     pub event: Implicit,
     pub result: Implicit,
     pub error: Implicit,
+    pub call: Implicit,
 }
 
 impl Scope {
@@ -125,6 +137,7 @@ impl Scope {
             event: Implicit::NotHere,
             result: Implicit::NotHere,
             error: Implicit::NotHere,
+            call: Implicit::NotHere,
         }
     }
 }
@@ -161,6 +174,8 @@ pub(crate) struct Cx<'c, 'p> {
     pub vars: HashMap<String, Var>,
     pub events: HashMap<String, Vec<(String, Ty)>>,
     pub emits: HashMap<String, Vec<(String, Ty)>>,
+    /// The calls the machine answers.
+    pub calls: IndexMap<String, Sig>,
     returns: Option<Ty>,
     errors: Vec<String>,
     nodes: Vec<Node<'p>>,
@@ -189,6 +204,7 @@ pub(crate) fn lower<'p>(
         vars: HashMap::new(),
         events: HashMap::new(),
         emits: HashMap::new(),
+        calls: IndexMap::new(),
         returns: sig.as_ref().and_then(|s| s.returns.clone()),
         errors: sig.as_ref().map(|s| s.errors.clone()).unwrap_or_default(),
         nodes: Vec::new(),
@@ -202,6 +218,10 @@ pub(crate) fn lower<'p>(
             emitted: HashSet::new(),
             receives: Vec::new(),
             vars: Vec::new(),
+            calls: Vec::new(),
+            taken_calls: HashSet::new(),
+            call_vars: Vec::new(),
+            replied: HashSet::new(),
         },
         reads: Vec::new(),
         transition_reads: Vec::new(),
@@ -220,9 +240,38 @@ pub(crate) fn lower<'p>(
             param: true,
         });
     }
+    // Calls: their signatures are in the interface; a name declared twice keeps the first.
+    let iface = cx.ck.interfaces.get(&name).cloned().unwrap_or_default();
+    cx.calls = iface.calls.clone();
+    let mut calls = IndexMap::new();
+    for c in m.body.calls() {
+        if calls.contains_key(&c.name.name) {
+            continue;
+        }
+        cx.info.calls.push((c.name.name.clone(), c.name.span));
+        calls.insert(
+            c.name.name.clone(),
+            ir::Call {
+                params: c
+                    .params
+                    .iter()
+                    .map(|p| ir::Field {
+                        name: p.name.name.clone(),
+                        ty: ir_type(&p.ty),
+                        doc: String::new(),
+                    })
+                    .collect(),
+                returns: c.returns.as_ref().map(ir_type),
+                errors: c.errors.iter().map(|e| e.name.clone()).collect(),
+                doc: doc(&c.doc),
+                span: ir_span(c.span),
+            },
+        );
+    }
+
     let mut var_tys = Vec::new();
     for v in m.body.vars() {
-        let ty = cx.ck.resolve(file, &v.ty);
+        let ty = cx.var_type(v);
         if let Some(first) = seen.get(&v.name.name) {
             let what = if cx.vars.get(&v.name.name).is_some_and(|x| x.param) {
                 "a parameter"
@@ -251,7 +300,6 @@ pub(crate) fn lower<'p>(
     }
 
     // Events and emitted events: one namespace. Their field types are in the interface.
-    let iface = cx.ck.interfaces.get(&name).cloned().unwrap_or_default();
     let mut events = IndexMap::new();
     let mut emits = IndexMap::new();
     let mut first_seen: HashMap<String, Span> = HashMap::new();
@@ -325,11 +373,16 @@ pub(crate) fn lower<'p>(
     let mut vars = Vec::new();
     for (v, ty) in m.body.vars().zip(var_tys) {
         cx.reads.clear();
+        // A pending call has no initial value (reported with its type): nothing to check against.
+        let want = match v.ty.kind {
+            ast::TypeKind::Call(_) => Ty::Unknown,
+            _ => ty.clone(),
+        };
         let init = v.init.as_ref().map(|e| {
             cx.expect(
                 e,
                 &Scope::none(),
-                &ty,
+                &want,
                 &format!("the initial value of `{}`", v.name.name),
             )
         });
@@ -390,6 +443,7 @@ pub(crate) fn lower<'p>(
         vars,
         events,
         emits,
+        calls,
         root,
         hash: String::new(),
     }
@@ -405,6 +459,7 @@ fn trigger_key(t: &Trigger) -> String {
     match t {
         Trigger::On(p) => format!("on {}", pattern(p)),
         Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
+        Trigger::Call(n) => format!("on {}", n.name),
         Trigger::After(e) => format!("after {}", expr_text(e)),
         Trigger::Always => "always".into(),
         Trigger::Done => "done".into(),
@@ -413,6 +468,93 @@ fn trigger_key(t: &Trigger) -> String {
 }
 
 impl<'p> Cx<'_, 'p> {
+    /// The type of a machine variable. `call name` is resolved here, where the machine's calls
+    /// are known: it is the one place such a type can be.
+    fn var_type(&mut self, v: &ast::Var) -> Ty {
+        let ast::TypeKind::Call(n) = &v.ty.kind else {
+            return self.ck.resolve(self.file, &v.ty);
+        };
+        if let Some(init) = &v.init {
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::CALL_TYPE_NOT_ALLOWED,
+                    init.span,
+                    format!(
+                        "`{}` holds a pending call, so it has no initial value",
+                        v.name.name
+                    ),
+                )
+                .with_help(format!(
+                    "it starts unassigned; `set {} = call` in an `on {}` transition gives it one",
+                    v.name.name, n.name
+                )),
+            );
+        }
+        self.info.call_vars.push((v.name.name.clone(), v.name.span));
+        if let Some(id) = self.ck.call_symbol(self.symbol, &n.name) {
+            if !self.ck.is_compiled(self.file) {
+                self.ck.index.refer(id, n.span);
+            }
+        }
+        if self.calls.contains_key(&n.name) {
+            Ty::Call(n.name.clone())
+        } else {
+            self.unknown_call(&self.machine.clone(), n, None);
+            Ty::Unknown
+        }
+    }
+
+    /// "`M` has no call `name`", for `machine` (the callee, or this machine with `via` `None`).
+    fn unknown_call(&mut self, machine: &str, n: &Ident, via: Option<&str>) {
+        let calls: Vec<String> = match via {
+            None => self.calls.keys().cloned().collect(),
+            Some(_) => self
+                .ck
+                .interfaces
+                .get(machine)
+                .map(|i| i.calls.keys().cloned().collect())
+                .unwrap_or_default(),
+        };
+        let declared: Vec<String> = calls.iter().map(|c| format!("`{c}`")).collect();
+        let mut d = Diagnostic::error(
+            codes::UNKNOWN_CALL,
+            n.span,
+            format!("`{machine}` has no call `{}`", n.name),
+        )
+        .with_label(if declared.is_empty() {
+            format!("`{machine}` declares no calls")
+        } else {
+            format!("`{machine}` declares {}", declared.join(", "))
+        });
+        let upper: String = {
+            let mut c = n.name.chars();
+            c.next()
+                .map(|f| f.to_uppercase().chain(c).collect())
+                .unwrap_or_default()
+        };
+        if via.is_none() && self.events.contains_key(&upper) {
+            d = d
+                .with_help(format!(
+                    "`{upper}` is an event of `{machine}`; events are upper-case: `on {upper}`"
+                ))
+                .with_fix(format!("replace with `{upper}`"), n.span, upper);
+        } else if let Some(s) = suggest(&n.name, calls.iter().map(String::as_str)) {
+            d = d.with_help(format!("did you mean `{s}`?")).with_fix(
+                format!("replace with `{s}`"),
+                n.span,
+                s,
+            );
+        } else if via.is_none() {
+            d = d.with_help(format!(
+                "declare it in the machine body: `call {}(…)`",
+                n.name
+            ));
+        } else {
+            d = d.with_help(format!("declare it in `{machine}`: `call {}(…)`", n.name));
+        }
+        self.ck.diags.push(d);
+    }
+
     fn build_tree(&mut self, parent: usize) {
         let body = self.nodes[parent].body;
         let mut seen: HashMap<&str, Span> = HashMap::new();
@@ -439,7 +581,11 @@ impl<'p> Cx<'_, 'p> {
             let invoke = s.body.invokes().next();
             let alias = invoke.and_then(|inv| {
                 let a = inv.alias.as_ref()?;
-                Some((a, inv.callee.name.clone()))
+                let callee = match &inv.to {
+                    Some(to) => format!("{}.{}", to.name, inv.callee.name),
+                    None => inv.callee.name.clone(),
+                };
+                Some((a, callee))
             });
             let word = match s.kind {
                 StateKind::Normal => "state",
@@ -491,7 +637,19 @@ impl<'p> Cx<'_, 'p> {
                 continue;
             };
             let mut bad = None;
-            if !callee.starts_with(|c: char| c.is_ascii_uppercase()) {
+            if callee.contains('.') {
+                bad = Some(
+                    Diagnostic::error(
+                        codes::ALIAS_ON_TASK,
+                        alias.span,
+                        format!(
+                            "`{callee}` is a call, so `as {}` gives it a name nothing can use",
+                            alias.name
+                        ),
+                    )
+                    .with_help("a call is answered once, with its outcome; talk to the machine through its `ref` instead; remove `as …`"),
+                );
+            } else if !callee.starts_with(|c: char| c.is_ascii_uppercase()) {
                 bad = Some(
                     Diagnostic::error(
                         codes::ALIAS_ON_TASK,
@@ -1052,6 +1210,7 @@ impl<'p> Cx<'_, 'p> {
                 Item::Var(_)
                 | Item::Event(_)
                 | Item::Emits(_)
+                | Item::Call(_)
                 | Item::Initial(_)
                 | Item::State(_) => {}
             }
@@ -1349,6 +1508,26 @@ impl<'p> Cx<'_, 'p> {
                     event: n.name.clone(),
                 }
             }
+            Trigger::Call(n) => {
+                if let Some(id) = self.ck.call_symbol(self.symbol, &n.name)
+                    && !self.ck.is_compiled(self.file)
+                {
+                    self.ck.index.refer(id, n.span);
+                }
+                if self.calls.contains_key(&n.name) {
+                    self.info.taken_calls.insert(n.name.clone());
+                    scope.event = Implicit::CallArgs(n.name.clone());
+                    scope.call = Implicit::Has(Ty::Call(n.name.clone()));
+                } else {
+                    let machine = self.machine.clone();
+                    self.unknown_call(&machine, n, None);
+                    scope.event = Implicit::Has(Ty::Unknown);
+                    scope.call = Implicit::Has(Ty::Unknown);
+                }
+                ir::Trigger::Call {
+                    call: n.name.clone(),
+                }
+            }
             Trigger::On(Pattern::Any { .. }) => {
                 scope.event = Implicit::Bad(
                     codes::UNTYPED_EVENT,
@@ -1584,12 +1763,121 @@ impl<'p> Cx<'_, 'p> {
                         out.push(e);
                     }
                 }
+                Effect::Reply(r) => out.push(self.reply(r, scope)),
             }
             if out.len() > before {
                 reads.push(std::mem::take(&mut self.reads));
             }
         }
         (out, reads)
+    }
+
+    /// Checks and lowers `reply x done [value]` or `reply x fail error`.
+    fn reply(&mut self, r: &Reply, scope: &Scope) -> ir::Effect {
+        let target = ast::Expr {
+            kind: ast::ExprKind::Var(r.call.clone()),
+            span: r.call.span,
+        };
+        let (call, t) = self.expr(&target, scope);
+        let name = &r.call.name;
+        let sig = match self.ck.env.expand(&t) {
+            Ty::Call(c) => {
+                if name != "call" {
+                    self.info.replied.insert(name.clone());
+                }
+                self.calls.get(&c).cloned().map(|s| (c, s))
+            }
+            Ty::Unknown => None,
+            other => {
+                let what = if self.vars.get(name).is_some_and(|v| v.param) {
+                    "a parameter"
+                } else {
+                    "a variable"
+                };
+                self.ck.diags.push(
+                    Diagnostic::error(
+                        codes::NOT_A_PENDING_CALL,
+                        r.call.span,
+                        format!("`{name}` is {what} of type `{other}`, not a pending call"),
+                    )
+                    .with_help("reply to `call` in an `on name` transition, or to a variable of type `call name` that holds it"),
+                );
+                None
+            }
+        };
+        let value = match (r.outcome, &r.value, &sig) {
+            (ReplyOutcome::Done, Some(v), Some((c, s))) => match &s.returns {
+                Some(want) => {
+                    let what = format!("the result of call `{c}`");
+                    Some(self.expect(v, scope, &want.clone(), &what))
+                }
+                None => {
+                    self.ck.diags.push(
+                        Diagnostic::error(
+                            codes::BAD_REPLY,
+                            v.span,
+                            format!("call `{c}` returns nothing, so its `reply … done` has no value"),
+                        )
+                        .with_secondary(s.name_span, "declared here")
+                        .with_help(format!("write `reply {name} done`, or declare what it returns: `call {c}(…) -> <type>`")),
+                    );
+                    Some(self.expr(v, scope).0)
+                }
+            },
+            (ReplyOutcome::Done, None, Some((c, s))) => {
+                if let Some(want) = &s.returns {
+                    self.ck.diags.push(
+                        Diagnostic::error(
+                            codes::BAD_REPLY,
+                            r.span,
+                            format!("call `{c}` returns `{want}`, so `reply … done` needs a value"),
+                        )
+                        .with_secondary(s.name_span, "declared here")
+                        .with_help(format!("write `reply {name} done <{want}>`")),
+                    );
+                }
+                None
+            }
+            (ReplyOutcome::Fail, Some(v), Some((c, s))) => {
+                let (ie, t) = self.expr(v, scope);
+                let ok = match self.ck.env.expand(&t) {
+                    Ty::Unknown => true,
+                    Ty::Named(n) => s.errors.contains(&n),
+                    _ => false,
+                };
+                if !ok {
+                    let mut d = Diagnostic::error(
+                        codes::BAD_REPLY,
+                        v.span,
+                        if s.errors.is_empty() {
+                            format!("call `{c}` declares no errors, so it cannot be answered with `fail`")
+                        } else {
+                            format!(
+                                "`reply … fail` needs one of the errors call `{c}` declares, found `{t}`"
+                            )
+                        },
+                    )
+                    .with_secondary(s.name_span, "declared here");
+                    if self.ck.env.expand(&t) == Ty::Named(UNANSWERED.into()) {
+                        d = d.with_help("a call is answered `Unanswered` only when it is not answered; reply with one of its declared errors");
+                    } else if !s.errors.is_empty() {
+                        d = d.with_label(format!("`{c}` declares `! {}`", s.errors.join(" | ")));
+                    }
+                    self.ck.diags.push(d);
+                }
+                Some(ie)
+            }
+            (_, Some(v), None) => Some(self.expr(v, scope).0),
+            (_, None, _) => None,
+        };
+        ir::Effect::Reply {
+            call,
+            outcome: match r.outcome {
+                ReplyOutcome::Done => ir::ReplyOutcome::Done,
+                ReplyOutcome::Fail => ir::ReplyOutcome::Fail,
+            },
+            value,
+        }
     }
 
     /// "unknown variable", with a suggestion among the variables (and parameters, if
@@ -1747,14 +2035,18 @@ impl<'p> Cx<'_, 'p> {
         triggers: &mut Vec<Span>,
     ) -> (ir::Invoke, Reads) {
         let is_machine = inv.is_machine();
-        let sig = self.callee(
-            &inv.callee,
-            if is_machine {
-                SigKind::Machine
-            } else {
-                SigKind::Task
-            },
-        );
+        let is_call = inv.is_call();
+        let (to, sig) = match &inv.to {
+            Some(to) => self.call_target(to, &inv.callee),
+            None => {
+                let kind = if is_machine {
+                    SigKind::Machine
+                } else {
+                    SigKind::Task
+                };
+                (None, self.callee(&inv.callee, kind))
+            }
+        };
         let args = self.args(
             &inv.callee,
             invoke_head(inv),
@@ -1763,6 +2055,14 @@ impl<'p> Cx<'_, 'p> {
             &Scope::none(),
         );
         let arg_reads = std::mem::take(&mut self.reads);
+        // What the invoke can fail with: a call also with `Unanswered`.
+        let errors: Option<Vec<String>> = sig.as_ref().map(|s| {
+            let mut e = s.errors.clone();
+            if is_call {
+                e.push(UNANSWERED.to_string());
+            }
+            e
+        });
 
         let listed: Vec<&Ident> = inv
             .outcomes
@@ -1776,7 +2076,10 @@ impl<'p> Cx<'_, 'p> {
             .outcomes
             .iter()
             .any(|o| matches!(o.trigger, Trigger::Fail(Pattern::Any { .. })));
-        let callee = inv.callee.name.clone();
+        let callee = match &inv.to {
+            Some(to) => format!("{}.{}", to.name, inv.callee.name),
+            None => inv.callee.name.clone(),
+        };
         let declared_as = |sig: &Sig| {
             let text = sig.result_text();
             if text.is_empty() {
@@ -1786,18 +2089,24 @@ impl<'p> Cx<'_, 'p> {
             }
         };
 
-        if let Some(sig) = &sig
+        if let (Some(sig), Some(errors)) = (&sig, &errors)
             && !has_any
         {
-            for e in &sig.errors {
+            for e in errors {
                 if !listed.iter().any(|n| n.name == *e) {
+                    let label = if e == UNANSWERED {
+                        "a call fails with `Unanswered` when the callee does not answer it"
+                            .to_string()
+                    } else {
+                        declared_as(sig)
+                    };
                     self.ck.diags.push(
                         Diagnostic::error(
                             codes::UNHANDLED_ERROR,
                             invoke_head(inv),
                             format!("`invoke {callee}` does not handle `{e}`"),
                         )
-                        .with_label(declared_as(sig))
+                        .with_label(label)
                         .with_help(format!("add `fail {e} -> <State>` or `fail * -> <State>`")),
                     );
                 }
@@ -1825,6 +2134,16 @@ impl<'p> Cx<'_, 'p> {
                     };
                     ir::Trigger::InvokeDone
                 }
+                Trigger::Fail(Pattern::Name(n)) if n.name == UNANSWERED && !is_call => {
+                    scope.error = Implicit::Has(Ty::Unknown);
+                    self.ck.diags.push(unanswered_misused(
+                        n.span,
+                        &format!("`{callee}` is not a call, so it is never `Unanswered`"),
+                    ));
+                    ir::Trigger::InvokeFail {
+                        error: n.name.clone(),
+                    }
+                }
                 Trigger::Fail(Pattern::Name(n)) => {
                     // The error the callee declares by that name, imported here or not.
                     match self.ck.decl_symbol(&n.name) {
@@ -1834,8 +2153,8 @@ impl<'p> Cx<'_, 'p> {
                         _ => self.ck.refer_decl(self.file, n),
                     }
                     scope.error = Implicit::Has(Ty::Unknown);
-                    if let Some(sig) = &sig {
-                        if sig.errors.contains(&n.name) {
+                    if let (Some(sig), Some(errors)) = (&sig, &errors) {
+                        if errors.contains(&n.name) {
                             scope.error = Implicit::Has(Ty::Named(n.name.clone()));
                         } else {
                             let mut d = Diagnostic::error(
@@ -1844,8 +2163,7 @@ impl<'p> Cx<'_, 'p> {
                                 format!("`{callee}` does not declare the error `{}`", n.name),
                             )
                             .with_secondary(sig.name_span, declared_as(sig));
-                            let unlisted: Vec<&str> = sig
-                                .errors
+                            let unlisted: Vec<&str> = errors
                                 .iter()
                                 .filter(|e| !listed.iter().any(|l| l.name == **e))
                                 .map(String::as_str)
@@ -1869,10 +2187,9 @@ impl<'p> Cx<'_, 'p> {
                     }
                 }
                 Trigger::Fail(Pattern::Any { .. }) => {
-                    scope.error = match &sig {
-                        Some(sig) => {
-                            let rest: Vec<&String> = sig
-                                .errors
+                    scope.error = match &errors {
+                        Some(errors) => {
+                            let rest: Vec<&String> = errors
                                 .iter()
                                 .filter(|e| !listed.iter().any(|l| l.name == **e))
                                 .collect();
@@ -1916,12 +2233,15 @@ impl<'p> Cx<'_, 'p> {
         }
 
         let lowered = ir::Invoke {
-            kind: if is_machine {
+            kind: if is_call {
+                ir::InvokeKind::Call
+            } else if is_machine {
                 ir::InvokeKind::Machine
             } else {
                 ir::InvokeKind::Task
             },
-            src: callee,
+            src: inv.callee.name.clone(),
+            to,
             alias: inv
                 .alias
                 .as_ref()
@@ -1931,6 +2251,83 @@ impl<'p> Cx<'_, 'p> {
             span: ir_span(inv.span),
         };
         (lowered, arg_reads)
+    }
+
+    /// Resolves `x` and `name` of `invoke x.name(…)`: `x` must be a parameter or variable of
+    /// type `ref M`, and `name` a call of `M`. Returns the callee's address and the call's
+    /// signature, each if known. A read of a variable `x` is recorded.
+    fn call_target(&mut self, to: &Ident, name: &Ident) -> (Option<ir::Address>, Option<Sig>) {
+        let Some(v) = self.vars.get(&to.name) else {
+            let mut d = Diagnostic::error(
+                codes::UNKNOWN_ADDRESS,
+                to.span,
+                format!("unknown machine `{}` to call", to.name),
+            );
+            let mut candidates: Vec<&str> = self
+                .vars
+                .iter()
+                .filter(|(_, v)| matches!(self.ck.env.expand(&v.ty), Ty::Ref(_)))
+                .map(|(n, _)| n.as_str())
+                .collect();
+            candidates.sort_unstable();
+            if let Some(s) = suggest(&to.name, candidates.into_iter()) {
+                d = d.with_help(format!("did you mean `{s}`?")).with_fix(
+                    format!("replace with `{s}`"),
+                    to.span,
+                    s,
+                );
+            } else {
+                d = d.with_help("a call goes to the run that a parameter or variable of type `ref Machine` holds");
+            }
+            self.ck.diags.push(d);
+            return (None, None);
+        };
+        let t = v.ty.clone();
+        let param = v.param;
+        self.ck.refer_member(self.file, self.symbol, to);
+        let why = match self.ck.env.expand(&t) {
+            Ty::Ref(machine) => {
+                if !param {
+                    self.reads.push((to.name.clone(), to.span));
+                }
+                let address = ir::Address {
+                    kind: ir::AddressKind::Ref,
+                    name: to.name.clone(),
+                    machine: machine.clone(),
+                    state: None,
+                };
+                let callee = self.ck.decl_symbol(&machine);
+                if let Some(id) = self.ck.call_symbol(callee, &name.name)
+                    && !self.ck.is_compiled(self.file)
+                {
+                    self.ck.index.refer(id, name.span);
+                }
+                let sig = self
+                    .ck
+                    .interfaces
+                    .get(&machine)
+                    .and_then(|i| i.calls.get(&name.name))
+                    .cloned();
+                if sig.is_none() {
+                    self.unknown_call(&machine, name, Some(&to.name));
+                }
+                return (Some(address), sig);
+            }
+            Ty::Unknown => return (None, None),
+            Ty::Optional(_) if self.ck.env.has_ref(&t) => {
+                format!("`{}` is `{t}`, which may be absent", to.name)
+            }
+            Ty::List(_) if self.ck.env.has_ref(&t) => {
+                format!("`{}` is `{t}`, a list of handles, not one", to.name)
+            }
+            _ => format!("`{}` is `{t}`, not a `ref`", to.name),
+        };
+        self.ck
+            .diags
+            .push(Diagnostic::error(codes::NOT_A_REF, to.span, why).with_help(
+                "a call goes to the run that a parameter or variable of type `ref Machine` holds",
+            ));
+        (None, None)
     }
 
     fn output(&mut self, e: &ast::Expr) -> ir::Expr {

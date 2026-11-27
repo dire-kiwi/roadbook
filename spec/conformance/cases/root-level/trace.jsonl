@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:51c6f2129d4d7dae1949609b6ab16f866b074917c869b017c6e5ad5b5dfc2351","kind":"started","machine":"Top","run":"r1","t":0}
+{"input":{},"ir":"sha256:8006ac1fb30be094fb377c39ab282780ca4e40488eea65560165c02ccd41c33e","kind":"started","machine":"Top","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Top","t":0}
 {"action":"log","args":{"what":"enter Top"},"kind":"action","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Top.A","t":0}

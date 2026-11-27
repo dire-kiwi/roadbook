@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "packages/viewer/test/charts/escape.road",
@@ -154,6 +154,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Escape",
         "name": "Escape",
@@ -503,6 +504,7 @@
             "invoke": {
               "kind": "machine",
               "src": "EscapePeer",
+              "to": null,
               "as": "kid",
               "args": [
                 {
@@ -618,6 +620,7 @@
             "invoke": {
               "kind": "task",
               "src": "work",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1033,7 +1036,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:0ddc4dfee24764c3e73cd1e65c9b2ffaf6cf5a1d42e8f47c268e402829892de7"
+      "hash": "sha256:a126d29b59723be10fdb3535ea2293708f06fc7966c1a927186e9aa90f6f7042"
     },
     "EscapePeer": {
       "doc": "Peer doc <img src=x onerror=alert(14)> & \"q\"",
@@ -1098,6 +1101,7 @@
           }
         }
       },
+      "calls": {},
       "root": {
         "id": "EscapePeer",
         "name": "EscapePeer",
@@ -1201,7 +1205,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:c43a3431e6cb6b5724546e13bbe87402c3a269f844e95603c50b2bd2943bcd57"
+      "hash": "sha256:dfbb7935d654f73ae06bf90c4ba966597be16a727ecbb3fbccd3b8658711d2a2"
     }
   }
 }

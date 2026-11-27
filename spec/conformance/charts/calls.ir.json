@@ -1,0 +1,1372 @@
+{
+  "irVersion": "0.5",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/calls.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Item": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "sku",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "qty",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "One line of an order: a product and how many of it.",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 36
+      }
+    },
+    "Reservation": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "orderId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "count",
+          "type": "int",
+          "doc": ""
+        }
+      ],
+      "doc": "What a reservation holds.",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 49
+      }
+    },
+    "OutOfStock": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "reason",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "doc": "The warehouse cannot supply every item.",
+      "span": {
+        "file": 0,
+        "line": 13,
+        "col": 1,
+        "endLine": 13,
+        "endCol": 36
+      }
+    }
+  },
+  "functions": {},
+  "actions": {},
+  "tasks": {
+    "reserveStock": {
+      "params": [
+        {
+          "name": "warehouse",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "orderId",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "items",
+          "type": "Item[]",
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [
+        "OutOfStock"
+      ],
+      "doc": "Hold `items` for an order; gives how many units were held.",
+      "span": {
+        "file": 0,
+        "line": 16,
+        "col": 1,
+        "endLine": 16,
+        "endCol": 89
+      }
+    }
+  },
+  "machines": {
+    "Inventory": {
+      "doc": "The stock of one warehouse, shared by every order.",
+      "span": {
+        "file": 0,
+        "line": 19,
+        "col": 1,
+        "endLine": 61,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "warehouse",
+          "type": "string",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "pending",
+          "type": "call reserve",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 26,
+            "col": 3,
+            "endLine": 26,
+            "endCol": 28
+          }
+        },
+        {
+          "name": "orderId",
+          "type": "string",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 27,
+            "col": 3,
+            "endLine": 27,
+            "endCol": 22
+          }
+        },
+        {
+          "name": "items",
+          "type": "Item[]",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 28,
+            "col": 3,
+            "endLine": 28,
+            "endCol": 22
+          }
+        },
+        {
+          "name": "held",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 29,
+            "col": 3,
+            "endLine": 29,
+            "endCol": 23
+          }
+        }
+      ],
+      "events": {
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 31,
+            "col": 3,
+            "endLine": 31,
+            "endCol": 14
+          }
+        },
+        "Pause": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 32,
+            "col": 3,
+            "endLine": 32,
+            "endCol": 14
+          }
+        },
+        "Resume": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 33,
+            "col": 3,
+            "endLine": 33,
+            "endCol": 15
+          }
+        },
+        "Twice": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 34,
+            "col": 3,
+            "endLine": 34,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "calls": {
+        "reserve": {
+          "params": [
+            {
+              "name": "orderId",
+              "type": "string",
+              "doc": ""
+            },
+            {
+              "name": "items",
+              "type": "Item[]",
+              "doc": ""
+            }
+          ],
+          "returns": "Reservation",
+          "errors": [
+            "OutOfStock"
+          ],
+          "doc": "Hold the items for an order, or fail if they cannot all be supplied.",
+          "span": {
+            "file": 0,
+            "line": 21,
+            "col": 3,
+            "endLine": 21,
+            "endCol": 75
+          }
+        },
+        "count": {
+          "params": [],
+          "returns": "int",
+          "errors": [],
+          "doc": "How many reservations have been made.",
+          "span": {
+            "file": 0,
+            "line": 24,
+            "col": 3,
+            "endLine": 24,
+            "endCol": 22
+          }
+        }
+      },
+      "root": {
+        "id": "Inventory",
+        "name": "Inventory",
+        "kind": "compound",
+        "doc": "The stock of one warehouse, shared by every order.",
+        "span": {
+          "file": 0,
+          "line": 19,
+          "col": 1,
+          "endLine": 61,
+          "endCol": 2
+        },
+        "initial": "Inventory.Ready",
+        "states": [
+          {
+            "id": "Inventory.Ready",
+            "name": "Ready",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 40,
+              "col": 3,
+              "endLine": 44,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "call",
+                  "call": "reserve"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Inventory.Reserving",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "pending",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "call"
+                      ],
+                      "type": "call reserve",
+                      "text": "call"
+                    }
+                  },
+                  {
+                    "kind": "set",
+                    "var": "orderId",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "orderId"
+                      ],
+                      "type": "string",
+                      "text": "event.orderId"
+                    }
+                  },
+                  {
+                    "kind": "set",
+                    "var": "items",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "items"
+                      ],
+                      "type": "Item[]",
+                      "text": "event.items"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 41,
+                  "col": 5,
+                  "endLine": 41,
+                  "endCol": 94
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Pause"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Inventory.Paused",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 42,
+                  "col": 5,
+                  "endLine": 42,
+                  "endCol": 25
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Inventory.Closed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 43,
+                  "col": 5,
+                  "endLine": 43,
+                  "endCol": 25
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Inventory.Reserving",
+            "name": "Reserving",
+            "kind": "atomic",
+            "doc": "One reservation at a time: another call meanwhile is turned away at once.",
+            "span": {
+              "file": 0,
+              "line": 47,
+              "col": 3,
+              "endLine": 55,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "reserveStock",
+              "to": null,
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "warehouse"
+                  ],
+                  "type": "string",
+                  "text": "warehouse"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "orderId"
+                  ],
+                  "type": "string",
+                  "text": "orderId"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "items"
+                  ],
+                  "type": "Item[]",
+                  "text": "items"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 48,
+                "col": 5,
+                "endLine": 51,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Inventory.Ready",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "held",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "held"
+                          ],
+                          "type": "int",
+                          "text": "held"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "held + 1"
+                    }
+                  },
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "pending"
+                      ],
+                      "type": "call reserve",
+                      "text": "pending"
+                    },
+                    "outcome": "done",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "orderId",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "orderId"
+                            ],
+                            "type": "string",
+                            "text": "orderId"
+                          }
+                        },
+                        {
+                          "name": "count",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "result"
+                            ],
+                            "type": "int",
+                            "text": "result"
+                          }
+                        }
+                      ],
+                      "type": "Reservation",
+                      "text": "Reservation { orderId: orderId, count: result }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 49,
+                  "col": 7,
+                  "endLine": 49,
+                  "endCol": 120
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "OutOfStock"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Inventory.Ready",
+                "effects": [
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "pending"
+                      ],
+                      "type": "call reserve",
+                      "text": "pending"
+                    },
+                    "outcome": "fail",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "error"
+                      ],
+                      "type": "OutOfStock",
+                      "text": "error"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 50,
+                  "col": 7,
+                  "endLine": 50,
+                  "endCol": 57
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "call",
+                  "call": "reserve"
+                },
+                "group": 2,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "call"
+                      ],
+                      "type": "call reserve",
+                      "text": "call"
+                    },
+                    "outcome": "fail",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "reason",
+                          "value": {
+                            "kind": "lit",
+                            "value": "busy",
+                            "type": "string",
+                            "text": "\"busy\""
+                          }
+                        }
+                      ],
+                      "type": "OutOfStock",
+                      "text": "OutOfStock { reason: \"busy\" }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 52,
+                  "col": 5,
+                  "endLine": 52,
+                  "endCol": 72
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Twice"
+                },
+                "group": 3,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "pending"
+                      ],
+                      "type": "call reserve",
+                      "text": "pending"
+                    },
+                    "outcome": "fail",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "reason",
+                          "value": {
+                            "kind": "lit",
+                            "value": "first",
+                            "type": "string",
+                            "text": "\"first\""
+                          }
+                        }
+                      ],
+                      "type": "OutOfStock",
+                      "text": "OutOfStock { reason: \"first\" }"
+                    }
+                  },
+                  {
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "pending"
+                      ],
+                      "type": "call reserve",
+                      "text": "pending"
+                    },
+                    "outcome": "fail",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "reason",
+                          "value": {
+                            "kind": "lit",
+                            "value": "second",
+                            "type": "string",
+                            "text": "\"second\""
+                          }
+                        }
+                      ],
+                      "type": "OutOfStock",
+                      "text": "OutOfStock { reason: \"second\" }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 53,
+                  "col": 5,
+                  "endLine": 53,
+                  "endCol": 128
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 4,
+                "guard": null,
+                "target": "Inventory.Closed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 54,
+                  "col": 5,
+                  "endLine": 54,
+                  "endCol": 25
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Inventory.Paused",
+            "name": "Paused",
+            "kind": "atomic",
+            "doc": "No `on reserve`: a reserve call is dropped, and answered Unanswered.",
+            "span": {
+              "file": 0,
+              "line": 58,
+              "col": 3,
+              "endLine": 58,
+              "endCol": 38
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Resume"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Inventory.Ready",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 58,
+                  "col": 18,
+                  "endLine": 58,
+                  "endCol": 36
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Inventory.Closed",
+            "name": "Closed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 60,
+              "col": 3,
+              "endLine": 60,
+              "endCol": 24
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "call",
+              "call": "count"
+            },
+            "group": 0,
+            "guard": null,
+            "target": null,
+            "effects": [
+              {
+                "kind": "reply",
+                "call": {
+                  "kind": "ref",
+                  "path": [
+                    "call"
+                  ],
+                  "type": "call count",
+                  "text": "call"
+                },
+                "outcome": "done",
+                "value": {
+                  "kind": "ref",
+                  "path": [
+                    "held"
+                  ],
+                  "type": "int",
+                  "text": "held"
+                }
+              }
+            ],
+            "span": {
+              "file": 0,
+              "line": 38,
+              "col": 3,
+              "endLine": 38,
+              "endCol": 32
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:571e83a513a6f95ddaf2ae3fc6ffee26a9dcf1396d9f179079d22c2e6ea96bca"
+    },
+    "Order": {
+      "doc": "Reserve the items with the warehouse, giving up after 5s.",
+      "span": {
+        "file": 0,
+        "line": 64,
+        "col": 1,
+        "endLine": 81,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "doc": ""
+        },
+        {
+          "name": "items",
+          "type": "Item[]",
+          "doc": ""
+        },
+        {
+          "name": "inventory",
+          "type": "ref Inventory",
+          "doc": ""
+        }
+      ],
+      "returns": "Reservation",
+      "errors": [
+        "OutOfStock"
+      ],
+      "vars": [
+        {
+          "name": "reservation",
+          "type": "Reservation",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 65,
+            "col": 3,
+            "endLine": 65,
+            "endCol": 31
+          }
+        },
+        {
+          "name": "problem",
+          "type": "OutOfStock",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 66,
+            "col": 3,
+            "endLine": 66,
+            "endCol": 30
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "root": {
+        "id": "Order",
+        "name": "Order",
+        "kind": "compound",
+        "doc": "Reserve the items with the warehouse, giving up after 5s.",
+        "span": {
+          "file": 0,
+          "line": 64,
+          "col": 1,
+          "endLine": 81,
+          "endCol": 2
+        },
+        "initial": "Order.Reserving",
+        "states": [
+          {
+            "id": "Order.Reserving",
+            "name": "Reserving",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 70,
+              "col": 3,
+              "endLine": 77,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "call",
+              "src": "reserve",
+              "to": {
+                "kind": "ref",
+                "name": "inventory",
+                "machine": "Inventory",
+                "state": null
+              },
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "id"
+                  ],
+                  "type": "string",
+                  "text": "id"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "items"
+                  ],
+                  "type": "Item[]",
+                  "text": "items"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 71,
+                "col": 5,
+                "endLine": 75,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Order.Reserved",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "reservation",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "Reservation",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 72,
+                  "col": 7,
+                  "endLine": 72,
+                  "endCol": 60
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "OutOfStock"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Order.Failed",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "problem",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "error"
+                      ],
+                      "type": "OutOfStock",
+                      "text": "error"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 73,
+                  "col": 7,
+                  "endLine": 73,
+                  "endCol": 55
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "Unanswered"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Order.Failed",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "problem",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "reason",
+                          "value": {
+                            "kind": "lit",
+                            "value": "unanswered",
+                            "type": "string",
+                            "text": "\"unanswered\""
+                          }
+                        }
+                      ],
+                      "type": "OutOfStock",
+                      "text": "OutOfStock { reason: \"unanswered\" }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 74,
+                  "col": 7,
+                  "endLine": 74,
+                  "endCol": 85
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 5000,
+                    "type": "duration",
+                    "text": "5s"
+                  }
+                },
+                "group": 3,
+                "guard": null,
+                "target": "Order.Failed",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "problem",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "reason",
+                          "value": {
+                            "kind": "lit",
+                            "value": "timed out",
+                            "type": "string",
+                            "text": "\"timed out\""
+                          }
+                        }
+                      ],
+                      "type": "OutOfStock",
+                      "text": "OutOfStock { reason: \"timed out\" }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 76,
+                  "col": 5,
+                  "endLine": 76,
+                  "endCol": 73
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.Reserved",
+            "name": "Reserved",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 79,
+              "col": 3,
+              "endLine": 79,
+              "endCol": 46
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "reservation"
+              ],
+              "type": "Reservation",
+              "text": "reservation"
+            },
+            "fail": null
+          },
+          {
+            "id": "Order.Failed",
+            "name": "Failed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 80,
+              "col": 3,
+              "endLine": 80,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "ref",
+              "path": [
+                "problem"
+              ],
+              "type": "OutOfStock",
+              "text": "problem"
+            }
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:dba99cfba5ec0ea3d465474076211303351d2434b8e8a8587445bea4ea532bdf"
+    },
+    "Counter": {
+      "doc": "Ask the warehouse how many reservations it holds; 0 if it cannot say.",
+      "span": {
+        "file": 0,
+        "line": 84,
+        "col": 1,
+        "endLine": 98,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "inventory",
+          "type": "ref Inventory",
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "n",
+          "type": "int",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 85,
+            "col": 3,
+            "endLine": 85,
+            "endCol": 13
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "root": {
+        "id": "Counter",
+        "name": "Counter",
+        "kind": "compound",
+        "doc": "Ask the warehouse how many reservations it holds; 0 if it cannot say.",
+        "span": {
+          "file": 0,
+          "line": 84,
+          "col": 1,
+          "endLine": 98,
+          "endCol": 2
+        },
+        "initial": "Counter.Asking",
+        "states": [
+          {
+            "id": "Counter.Asking",
+            "name": "Asking",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 89,
+              "col": 3,
+              "endLine": 94,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "call",
+              "src": "count",
+              "to": {
+                "kind": "ref",
+                "name": "inventory",
+                "machine": "Inventory",
+                "state": null
+              },
+              "as": null,
+              "args": [],
+              "span": {
+                "file": 0,
+                "line": 90,
+                "col": 5,
+                "endLine": 93,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Counter.Got",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 91,
+                  "col": 7,
+                  "endLine": 91,
+                  "endCol": 37
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "*"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Counter.Gave",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 92,
+                  "col": 7,
+                  "endLine": 92,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Counter.Got",
+            "name": "Got",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 96,
+              "col": 3,
+              "endLine": 96,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "n"
+              ],
+              "type": "int",
+              "text": "n"
+            },
+            "fail": null
+          },
+          {
+            "id": "Counter.Gave",
+            "name": "Gave",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 97,
+              "col": 3,
+              "endLine": 97,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "lit",
+              "value": 0,
+              "type": "int",
+              "text": "0"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:291921d8cd4200fb156a288debb23bf28c52e126079de4fc239e49d7596c9b78"
+    }
+  }
+}

@@ -95,7 +95,7 @@ These are the choices that shape the rest. Each has a recommendation, which the 
 
 **Status, later on 26 November 2026:** all eight milestones of the [roadmap](roadmap.md#milestones) are built, each reviewed independently before it was marked done. Where building showed a page to be wrong or incomplete, the page was changed with the code, so these pages describe what exists. `scripts/check-all.sh` runs every check.
 
-**Status, 27 November 2026:** the questions the first draft left open are decided, and each decision is on the page it belongs to. Four need code: `strict` machines are built (IR 0.3); the `@dire-kiwi` npm scope, `call` declarations, and emitted events delivered only to machines that handle them are not yet ([roadmap](roadmap.md#decided-questions)).
+**Status, 27 November 2026:** the questions the first draft left open are decided, and each decision is on the page it belongs to. Four need code: the `@dire-kiwi` npm scope, `call` declarations (IR 0.4) and `strict` machines (IR 0.5) are built; emitted events delivered only to machines that handle them are not yet ([roadmap](roadmap.md#decided-questions)).
 
 | Decision | Recommendation | Main alternative | Discussed in |
 | --- | --- | --- | --- |
@@ -135,4 +135,7 @@ Both runtimes, TypeScript ([`packages/core`](../../packages/core), [`packages/ef
 - [Actors and messaging](actors.md): machines talking to each other, including across crates.
 - [Visualization](visualization.md): the viewer and its modes.
 - [Alternatives considered](alternatives.md): formats, existing libraries, and what was rejected.
+- [Compared with XState](xstate.md): XState v5 and the v6 beta, feature by feature: what Roadbook lacks, does differently and adds.
+  - [In code](xstate-examples.md): the main differences written in XState v5, v6 and Roadbook.
+  - [What to add](xstate-plan.md): a recommendation for each gap, and the tasks to close them.
 - [Roadmap](roadmap.md): repository layout, milestones, risks and the decided questions.

@@ -225,21 +225,37 @@ The first draft left four questions about messaging open. They were decided on 2
 
 ### Asking a peer
 
-**Decided: `call` declarations. Not built.** Until they are, a request with a reply is written as in [talking to a peer](#talking-to-a-peer): a `send`, an `on` whose guard matches an id, and an `after`. Besides being verbose, that pattern has a cost: the reply is an emitted event, so it reaches every machine holding a reference to the peer. With N orders in flight, each reply is delivered N times and N − 1 orders drop it, which the [filter on emitted events](#who-receives-emitted-events) does not prevent, since every order has an `on` for it.
+**Decided: `call` declarations. Built.** Before them, a request with a reply was written as in [talking to a peer](#talking-to-a-peer): a `send`, an `on` whose guard matches an id, and an `after`, which still works. Besides being verbose, that pattern has a cost: the reply is an emitted event, so it reaches every machine holding a reference to the peer. With N orders in flight, each reply is delivered N times and N − 1 orders drop it, which the [filter on emitted events](#who-receives-emitted-events) does not prevent, since every order has an `on` for it.
 
 A long-lived machine declares the calls it answers, and a holder of a reference invokes one like a task:
 
 ```
 machine Inventory(warehouse: string) {
-  call reserve(items: Item[]) -> Reservation ! OutOfStock
-  // … takes the call, and replies to it now or in a later step
+  /// Hold the items for an order, or fail if they cannot all be supplied.
+  call reserve(orderId: string, items: Item[]) ! OutOfStock
+
+  var pending: call reserve
+  var orderId: string
+  var items:   Item[]
+
+  state Ready {
+    on reserve -> Reserving  set pending = call, orderId = event.orderId, items = event.items
+  }
+  state Reserving {
+    invoke reserveStock(warehouse, orderId, items) {
+      done            -> Ready  reply pending done
+      fail OutOfStock -> Ready  reply pending fail error
+    }
+    on reserve reply call fail OutOfStock { reason: "busy" }
+  }
 }
 
 machine Order(id: string, draft: OrderDraft, inventory: ref Inventory) -> Receipt ! OutOfStock {
   state Reserving {
-    invoke inventory.reserve(draft.items) {
-      done            -> Paying       set reservation = result
-      fail OutOfStock -> Unavailable
+    invoke inventory.reserve(id, draft.items) {
+      done            -> Paying
+      fail OutOfStock -> Unavailable  set problem = error
+      fail Unanswered -> Unavailable  set problem = OutOfStock { reason: "the warehouse did not answer" }
     }
     after 5s -> Unavailable
   }
@@ -252,11 +268,17 @@ What is decided:
 - **Replies are directed.** Only the caller receives the reply, so there is no fan-out and no guard on an id.
 - **The callee takes a call as an input** from its queue, one at a time like any other, so order per pair still holds. It must be able to reply in a later step (Inventory replies once its own work is done), so it keeps the pending call as a value until it replies. That is a new kind of value, and like a `ref` it cannot leave the machine: not in a record, an event or a result.
 - **A peer that has ended fails the call.** A call to a peer that is not running, and a call still pending when the callee ends, fail on the caller's side. This is the one place where a peer's end reaches another machine before [supervision](#supervision) is designed.
-- **The existing pattern keeps working.** Moving to `call` is optional; [`examples/orders`](../../examples/orders) should be its first user.
+- **The existing pattern keeps working.** Moving to `call` is optional; [`examples/orders`](../../examples/orders) is its first user.
 
-Left to the implementation: the syntax by which the callee takes a call and replies to it, the type of the pending-call value, and the error the caller sees when the callee has ended.
+Three questions were left to the implementation, and decided with it:
 
-What it changes: the language (the `call` item, the addressed invoke, the callee's trigger and reply effect, the pending-call value, and their checks, formatter, tree-sitter grammar and language server), the IR and its version, so every hash changes; new inputs and commands in both cores and both drivers; new trace records; a callee's snapshot, which holds its pending calls; new conformance cases; and in the viewer, a call edge in the project index and a call that simulate mode treats like a task. Holding a reply address is close to what keyed `spawn` needs to hold its children, so whichever is built second should reuse the first's design.
+- **Taking a call and replying.** The callee takes a call with `on reserve`: a lower-case name after `on`, where an event is upper-case and an emitted event has a dot, so the three never look alike. In its branches `event` is the call's arguments (`event.items`) and `call` the pending call. It answers with `reply pending done [value]` or `reply pending fail error`, which mirror the caller's `done` and `fail` branches, and a final state's `output` and `fail`. `reply` is an effect like `send`, so it can run in the step that took the call (`on reserve reply call fail …`) or in a later one, through a variable. A call that no transition takes is answered at once with `Unanswered`, so its caller does not wait for its timeout. A second reply to the same call is a runtime error, `answered`.
+- **The pending-call value** has the type `call reserve`, after the call it answers, so a `reply` is checked against that call's result and errors. It can only be a machine variable's type, never a parameter, field, result, optional or list, so it cannot leave the machine. In traces and snapshots it is the caller's run id and invoke id, `{"from": "r2", "invoke": 1}`.
+- **The caller's error** is a built-in one, `Unanswered`, with no fields: the callee was not running when the call was made, ended before answering, or had no transition for the call (a [`strict`](language.md#strict-machines) callee ends with a defect then, and its caller still gets `Unanswered`). A call invoke must handle it like a declared error (RB0204), and `fail *` covers it. The name says what the caller knows, which is the same in all three cases.
+
+A run with pending calls is not idle, so suspending it waits for its replies, and a saved snapshot that holds pending calls is not restored, since its callers are gone. Host code cannot make a call through a handle yet. The rules are in [execution](../../spec/execution.md#calls-between-runs).
+
+What it changed: the language (the `call` item, the addressed invoke, the callee's trigger and reply effect, the pending-call value, and their checks, formatter, tree-sitter grammar and language server), the IR and its version, so every hash changes; new inputs and commands in both cores and both drivers; new trace records; a callee's snapshot, which holds its pending calls; new conformance cases; and in the viewer, a call edge in the project index and a call that simulate mode treats like a task. Holding a reply address is close to what keyed `spawn` needs to hold its children, so whichever is built second should reuse the first's design.
 
 ### Full queues
 

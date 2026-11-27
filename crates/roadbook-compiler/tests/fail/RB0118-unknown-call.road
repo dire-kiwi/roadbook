@@ -1,0 +1,26 @@
+machine Peer() {
+  call reserve(id: string) -> int
+  event Go
+  initial A
+  state A {
+    on reserve reply call done 1
+    on go -> A
+    on reserv -> A
+  }
+}
+
+machine M(peer: ref Peer) {
+  var p: call nothing
+  initial A
+  state A {
+    invoke peer.reservee("x") {
+      done   -> A
+      fail * -> A
+    }
+  }
+}
+
+// expect: RB0118 at 7:8
+// expect: RB0118 at 8:8
+// expect: RB0118 at 13:15
+// expect: RB0118 at 16:17

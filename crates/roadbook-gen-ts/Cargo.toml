@@ -1,6 +1,6 @@
 [package]
 name = "roadbook-gen-ts"
-description = "The TypeScript code generator: a `.road.ts` module per `.road` file, for `@roadbook/effect`"
+description = "The TypeScript code generator: a `.road.ts` module per `.road` file, for `@dire-kiwi/roadbook-effect`"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

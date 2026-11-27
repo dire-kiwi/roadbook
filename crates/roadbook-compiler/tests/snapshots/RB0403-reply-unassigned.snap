@@ -1,0 +1,13 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0403]: `pending` might not be assigned yet when this is evaluated
+ --> RB0403-reply-unassigned.road:7:17
+  |
+5 |   initial A
+  |           - `M.A` is entered when `M` starts, and nothing before it assigns `pending`
+...
+7 |     on Go reply pending done
+  |                 ^^^^^^^
+  |
+  = help: assign `pending` on every way into `M.A`, give it an initial value, or make its type optional

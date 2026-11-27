@@ -5,8 +5,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { canonicalJson } from '@roadbook/core'
-import type { Json, Tagged } from '@roadbook/core'
+import { canonicalJson } from '@dire-kiwi/roadbook-core'
+import type { Json, Tagged } from '@dire-kiwi/roadbook-core'
 import { describe, expect, it } from 'vitest'
 import type { Ir } from '../src/ir.ts'
 import { findState, signatureText, stateRows } from '../src/model.ts'
@@ -30,6 +30,7 @@ interface Case {
   actions: { [action: string]: { args: Json; defect: string }[] }
   script: { [k: string]: Json }[]
   status: string
+  requires: string[]
 }
 
 const readCase = (name: string) => JSON.parse(fs.readFileSync(path.join(conformance, 'cases', name, 'case.json'), 'utf8')) as Case

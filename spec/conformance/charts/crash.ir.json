@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/crash.road",
@@ -59,6 +59,7 @@
       "vars": [],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Crash",
         "name": "Crash",
@@ -106,6 +107,7 @@
                 "invoke": {
                   "kind": "machine",
                   "src": "Child",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -163,6 +165,7 @@
                 "invoke": {
                   "kind": "machine",
                   "src": "Child",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -220,6 +223,7 @@
                 "invoke": {
                   "kind": "task",
                   "src": "crash",
+                  "to": null,
                   "as": null,
                   "args": [],
                   "span": {
@@ -288,7 +292,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:90b5deb762a214ea51634f971f073aba4c5a5a9809b90220316469c22a6b871c"
+      "hash": "sha256:890f4644b9e9c7f546ec52d95122a4a070dfd1923e8b3e52910d3add8a05133e"
     },
     "Child": {
       "doc": "Waits for Stop, which never comes, logging its exit.",
@@ -324,6 +328,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Child",
         "name": "Child",
@@ -421,7 +426,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d9096207b0c369b72f005a54bcd8a24906822e1295b9dd3eef8f6c4c27b256b9"
+      "hash": "sha256:fdf0ffc5101f4679031ca6a36584ccc515eeedb030bc6578fc62b0c6c1725a85"
     }
   }
 }

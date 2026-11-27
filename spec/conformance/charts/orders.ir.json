@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.3",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/orders.road",
@@ -381,6 +381,7 @@
           }
         }
       },
+      "calls": {},
       "root": {
         "id": "Inventory",
         "name": "Inventory",
@@ -497,6 +498,7 @@
             "invoke": {
               "kind": "task",
               "src": "reserveStock",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -799,7 +801,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:700aa432b21d12c192ee6a13c59bf76017abcd3a3f36cd65e95c31e3de713cbd"
+      "hash": "sha256:a7591362e4409841f15312a6c959d2de8ec8463658d9ae5cca2c37ab5039deb4"
     },
     "Order": {
       "doc": "Reserve the items with the warehouse, then take the payment.",
@@ -863,6 +865,7 @@
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Order",
         "name": "Order",
@@ -1120,6 +1123,7 @@
             "invoke": {
               "kind": "task",
               "src": "charge",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1317,7 +1321,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:54f873affeaee399b7a92ffc0f0039bfe791178f6ff706bcc7b4d324c4f9dadc"
+      "hash": "sha256:0ef6fba526e5b56a5d48801b7ff7740f574f1bc189fbe5dbee9c7f3f018e4b40"
     }
   }
 }

@@ -31,7 +31,7 @@ pub(crate) struct SourceFile {
     pub path: String,
     pub text: String,
     /// For a file of a compiled IR, a tree with its declarations only: the machines hold
-    /// their `event` and `emits` declarations and nothing else.
+    /// their `event`, `emits` and `call` declarations and nothing else.
     pub ast: File,
     /// Whether the file has syntax errors. Its tree is partial, so its declarations are left
     /// out and its names are poisoned in the files that import it: the other files are still
@@ -290,6 +290,9 @@ impl Project {
                 for (e, d) in &m.emits {
                     items.push(ast::Item::Emits(ast_event(e, d)));
                 }
+                for (c, d) in &m.calls {
+                    items.push(ast::Item::Call(ast_call(c, d)));
+                }
                 let kind = DeclKind::Machine(ast::Machine {
                     strict: m.strict,
                     params: ast_fields(&m.params, span),
@@ -456,6 +459,7 @@ fn ast_type(t: &ir::TypeRef, span: ir::Span) -> ast::TypeRef {
         }
         ir::TypeRef::Named(n) => ast::TypeKind::Named(ident(n, span)),
         ir::TypeRef::Ref(n) => ast::TypeKind::Ref(ident(n, span)),
+        ir::TypeRef::Call(n) => ast::TypeKind::Call(ident(n, span)),
         ir::TypeRef::List(e) => ast::TypeKind::List(Box::new(ast_type(e, span))),
         ir::TypeRef::Optional(e) => ast::TypeKind::Optional(Box::new(ast_type(e, span))),
     };
@@ -488,6 +492,20 @@ fn ast_event(name: &str, e: &ir::EventDecl) -> ast::EventDecl {
     }
 }
 
+fn ast_call(name: &str, c: &ir::Call) -> ast::CallDecl {
+    ast::CallDecl {
+        doc: (!c.doc.is_empty()).then(|| ast::Doc {
+            text: c.doc.clone(),
+            span: ast_span(c.span),
+        }),
+        name: ident(name, c.span),
+        params: ast_fields(&c.params, c.span),
+        returns: c.returns.as_ref().map(|t| ast_type(t, c.span)),
+        errors: c.errors.iter().map(|e| ident(e, c.span)).collect(),
+        span: ast_span(c.span),
+    }
+}
+
 /// Renumbers every span of a machine.
 fn remap_machine(m: &mut ir::Machine, f: &impl Fn(&mut ir::Span)) {
     f(&mut m.span);
@@ -496,6 +514,9 @@ fn remap_machine(m: &mut ir::Machine, f: &impl Fn(&mut ir::Span)) {
     }
     for e in m.events.values_mut().chain(m.emits.values_mut()) {
         f(&mut e.span);
+    }
+    for c in m.calls.values_mut() {
+        f(&mut c.span);
     }
     remap_state(&mut m.root, f);
 }

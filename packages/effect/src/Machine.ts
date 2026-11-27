@@ -3,7 +3,7 @@
  * implementations it needs (`Handlers`), the values `make` and `implement` return, and the
  * handle of a running machine (`Handle`).
  */
-import type * as Core from "@roadbook/core"
+import type * as Core from "@dire-kiwi/roadbook-core"
 import type { Effect, Scope, Stream } from "effect"
 import type { RestoreError, Saved } from "./Saved.ts"
 

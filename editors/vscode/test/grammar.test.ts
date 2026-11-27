@@ -98,6 +98,26 @@ describe('scopes', () => {
     expect(await scopesAt('on upload.Progress -> A', 'upload')).toContain('variable.other.roadbook')
   })
 
+  it('marks calls, the triggers that take them and replies', async () => {
+    expect(await scopesAt('  call reserve(orderId: string) -> Reservation', 'call')).toContain('storage.type.call.roadbook')
+    expect(await scopesAt('  call reserve(orderId: string) -> Reservation', 'reserve')).toContain('entity.name.function.roadbook')
+    expect(await scopesAt('  call reserve(orderId: string) -> Reservation', 'orderId')).toContain('variable.parameter.roadbook')
+    expect(await scopesAt('  var pending: call reserve', 'call')).toContain('storage.modifier.call.roadbook')
+    expect(await scopesAt('  var pending: call reserve', 'reserve')).toContain('entity.name.function.roadbook')
+    expect(await scopesAt('on reserve -> A  set pending = call', 'reserve')).toContain('entity.name.function.roadbook')
+    expect(await scopesAt('on reserve -> A  set pending = call', '= call')).toContain('keyword.operator.assignment.roadbook')
+    expect(await scopesAt('set pending = call', 'call')).toContain('variable.language.roadbook')
+    expect(await scopesAt('on count reply call done held', 'reply')).toContain('keyword.other.effect.roadbook')
+    expect(await scopesAt('on count reply call done held', 'call')).toContain('variable.language.roadbook')
+    expect(await scopesAt('on count reply call done held', 'done')).toContain('keyword.control.done.roadbook')
+    expect(await scopesAt('reply pending fail error', 'pending')).toContain('variable.other.roadbook')
+    expect(await scopesAt('reply pending fail error', 'fail')).toContain('keyword.control.fail.roadbook')
+    expect(await scopesAt('invoke inventory.reserve(id) {', 'inventory')).toContain('variable.other.roadbook')
+    expect(await scopesAt('invoke inventory.reserve(id) {', 'reserve')).toContain('entity.name.function.call.roadbook')
+    expect(await scopesAt('fail Unanswered -> A', 'Unanswered')).toContain('support.type.builtin.error.roadbook')
+    expect(await scopesAt('fail OutOfStock -> A', 'OutOfStock')).toContain('entity.name.type.error.roadbook')
+  })
+
   it('marks literals', async () => {
     expect(await scopesAt('after 30s -> A', '30s')).toContain('constant.numeric.duration.roadbook')
     expect(await scopesAt('set r = 1.5', '1.5')).toContain('constant.numeric.float.roadbook')

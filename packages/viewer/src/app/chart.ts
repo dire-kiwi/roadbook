@@ -239,7 +239,7 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     return show(name, { select })
   }
 
-  /** Opens an event (`Upload.Progress`): selects it, in its own machine. */
+  /** Opens an event (`Upload.Progress`) or a call (`Inventory.reserve`): selects it, in its own machine. */
   function openEvent(key: string) {
     const ref = parseEventKey(key)
     if (!ref || !own(ir.machines, ref.machine)) return
@@ -310,13 +310,14 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     if (selection.type === 'state') stateEl(visibleId(selection.id))?.classList.add('rb-selected')
     else if (selection.type === 'transition') transitionEls(selection.state, selection.index).forEach((el) => el.classList.add('rb-selected'))
     else {
-      // An event: where it is emitted or sent here, and the transitions it triggers.
+      // An event or a call: where it is emitted, sent or replied to here, and the transitions it triggers.
       const name = selection.name
       svg.querySelectorAll(`[data-event="${q(`${current}.${name}`)}"]`).forEach((el) => el.classList.add('rb-selected'))
       const m = own(ir.machines, current)!
       walkStates(m.root, (st) =>
         st.transitions.forEach((t, i) => {
-          if (t.trigger.kind === 'event' && t.trigger.event === name) transitionEls(st.id, i).forEach((el) => el.classList.add('rb-selected'))
+          const takes = (t.trigger.kind === 'event' && t.trigger.event === name) || (t.trigger.kind === 'call' && t.trigger.call === name)
+          if (takes) transitionEls(st.id, i).forEach((el) => el.classList.add('rb-selected'))
         }),
       )
     }

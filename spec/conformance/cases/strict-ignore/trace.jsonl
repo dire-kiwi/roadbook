@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:58a5ac98159cb63db42ffb599b098c264c8e84059ce30fefd2a4d18b6f9825aa","kind":"started","machine":"Lock","run":"r1","t":0}
+{"input":{},"ir":"sha256:a6a3387aea9b17127994dd91b9a7ee3b5bfceedbad780e71b70434db73877d37","kind":"started","machine":"Lock","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Lock","t":0}
 {"kind":"entered","run":"r1","state":"Lock.Closed","t":0}
 {"args":{},"invoke":1,"kind":"invoke.started","run":"r1","src":"fetch","state":"Lock.Closed","t":0}

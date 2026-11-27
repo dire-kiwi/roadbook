@@ -3,18 +3,20 @@
  * below in its own `Scope`, with one `Queue` that events, invoke fibers and timer fibers all
  * offer to, behind a `Port` that other runs and handles push messages and emitted events onto.
  * Invokes are detached fibers in a map keyed by invoke id, timers fibers in a `FiberMap` keyed
- * by timer id. Each step runs uninterruptibly; interrupting the run is a graceful cancel, whose
- * step runs in `Effect.onInterrupt`. A run starts from its input (`start`) or from a saved
+ * by timer id. A call invoke has no fiber: the driver pushes the call onto the callee's queue
+ * with a way to answer it, and the callee's driver answers through it. Each step runs
+ * uninterruptibly; interrupting the run is a graceful cancel, whose step runs in
+ * `Effect.onInterrupt`. A run starts from its input (`start`) or from a saved
  * snapshot (`restore`), and can be saved at any time and suspended once idle.
  */
-import * as Core from "@roadbook/core"
+import * as Core from "@dire-kiwi/roadbook-core"
 import { Cause, Context, Deferred, Effect, Exit, Fiber, FiberMap, Predicate, Queue, Stream, SubscriptionRef } from "effect"
 import { Defect, hostDefect } from "../Defect.ts"
 import type { Actor, Handle, MachineDef, RestoreOptions, Snapshot } from "../Machine.ts"
 import { RootRunId, RunObserver, TraceSink, Timer } from "../References.ts"
 import { RestoreError } from "../Saved.ts"
 import type { Codec } from "./codec.ts"
-import { type Port, portOf, push, registerHandle, type Wake } from "./port.ts"
+import { type Answer, type Port, portOf, push, pushCall, registerHandle, takeAnswer, type Wake } from "./port.ts"
 
 export type { Port } from "./port.ts"
 
@@ -50,7 +52,7 @@ export interface InvokeContext {
 
 export const CurrentInvoke: Context.Reference<InvokeContext | undefined> = Context.Reference<
   InvokeContext | undefined
->("@roadbook/effect/InvokeContext", { defaultValue: () => undefined })
+>("@dire-kiwi/roadbook-effect/InvokeContext", { defaultValue: () => undefined })
 
 // ---- a machine bound to its implementations ----------------------------------------------------
 
@@ -254,6 +256,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       input: coreInput,
       vars: {},
       invokes: [],
+      calls: [],
       timers: [],
       nextInvoke: 1,
       nextTimer: 1,
@@ -315,8 +318,50 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       const invokes = new Map<number, Fiber.Fiber<void>>()
       const timers = yield* FiberMap.make<number>()
       const tokens = new Map<number, CancelToken>()
+      // The call invokes whose answer is still wanted: started, and not cancelled or taken.
+      const liveCalls = new Set<number>()
+      // The calls this run's core was given and the driver has not carried out a `reply` for,
+      // in the order they were taken, with their ways to answer.
+      const given = new Map<string, { readonly invoke: number; readonly answer: Answer }>()
+      const callKey = (from: string, invoke: number) => `${from} ${invoke}`
+
+      /**
+       * Make a call (execution.md, "Carrying out calls"): push it onto the callee's queue with a
+       * way to answer, or, if the callee is not open, fail the invoke with `Unanswered` at once.
+       * No record either way, and no host code.
+       */
+      const makeCall = (command: Extract<Core.Command, { kind: "invoke.start" }>) =>
+        Effect.sync(() => {
+          const { invoke } = command
+          liveCalls.add(invoke)
+          const answer: Answer = (outcome) => {
+            if (liveCalls.has(invoke)) push(port, outcome)
+          }
+          const input: Core.Input = { kind: "call", from: env.runId, invoke, call: command.src, args: command.args }
+          const callee = portOf(refs.get(command.to ?? ""))
+          if (callee === undefined || !pushCall(callee, input, answer)) {
+            answer({ kind: "invoke.fail", invoke, error: { _tag: Core.UNANSWERED } })
+          }
+          return undefined
+        })
+
+      /**
+       * Answer with `Unanswered` every call this run was given and has not replied to, in the
+       * order it took them, then every call still in its queue, in queue order. No record.
+       */
+      const abandonCalls = () => {
+        const unanswered = (invoke: number): Core.Input => ({ kind: "invoke.fail", invoke, error: { _tag: Core.UNANSWERED } })
+        for (const { answer, invoke } of given.values()) answer(unanswered(invoke))
+        given.clear()
+        for (let taken = Queue.takeUnsafe(queue); taken !== undefined && Exit.isSuccess(taken); taken = Queue.takeUnsafe(queue)) {
+          const input = taken.value
+          if (input.kind !== "call") continue
+          takeAnswer(input)?.(unanswered(input.invoke))
+        }
+      }
 
       const startInvoke = (command: Extract<Core.Command, { kind: "invoke.start" }>) => {
+        if (command.srcKind === "call") return makeCall(command)
         const token: CancelToken = {
           claimed: false,
           cancelled: false,
@@ -371,6 +416,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         Effect.withFiber((self) => {
           const children: Array<{ fiber: Fiber.Fiber<void>; token: CancelToken }> = []
           for (const id of ids) {
+            // A call only forgets its way to answer; nothing reaches the callee.
+            liveCalls.delete(id)
             const token = tokens.get(id)
             const fiber = invokes.get(id)
             tokens.delete(id)
@@ -399,6 +446,18 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             return startInvoke(command)
           case "invoke.cancel":
             return stopInvoke(command.invoke)
+          case "reply":
+            return Effect.sync(() => {
+              const key = callKey(command.to, command.invoke)
+              const answer = given.get(key)?.answer
+              given.delete(key)
+              answer?.(
+                command.outcome === "done"
+                  ? { kind: "invoke.done", invoke: command.invoke, value: command.value }
+                  : { kind: "invoke.fail", invoke: command.invoke, error: command.value as Core.Tagged }
+              )
+              return undefined
+            })
           case "timer.start": {
             const expiry = env.timer.sleep({ run: env.runId, timer: command.timer, delay: command.delay }).pipe(
               Effect.andThen(Queue.offer(queue, { kind: "after", timer: command.timer }))
@@ -484,8 +543,12 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           yield* SubscriptionRef.set(ref, snapshot)
         })
 
-      /** Idle: between steps, nothing queued, and no invoke running (execution.md, "Suspending"). */
-      const idle = () => Queue.sizeUnsafe(queue) - wakes === 0 && snapshot.invokes.length === 0
+      /**
+       * Idle: between steps, nothing queued, no invoke running and no pending call
+       * (execution.md, "Suspending").
+       */
+      const idle = () =>
+        Queue.sizeUnsafe(queue) - wakes === 0 && snapshot.invokes.length === 0 && snapshot.calls.length === 0
 
       /**
        * Stop an idle run that was asked to suspend, which the check that found it idle has
@@ -532,6 +595,12 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
               wakes -= 1
               continue
             }
+            // The driver keeps a call's way to answer from when it gives the call to its core
+            // until it carries out a `reply` for it, also if the step is cut short.
+            if (next.kind === "call") {
+              const answer = takeAnswer(next)
+              if (answer !== undefined) given.set(callKey(next.from, next.invoke), { invoke: next.invoke, answer })
+            }
             const stepped = Core.step(ir, snapshot, next, fns)
             // An invoke or timer is forgotten once its outcome or expiry is taken.
             if (next.kind === "invoke.done" || next.kind === "invoke.fail" || next.kind === "invoke.defect") {
@@ -559,11 +628,14 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         })
       })
 
-      // Ending a run: anything still queued is discarded, and every invoke it still holds is
-      // dropped as on `invoke.cancel` (a child run is cancelled and its cancel step waited for;
-      // a defect there changes nothing). Its timers are dropped when the scope closes.
+      // Ending a run: its pending and queued calls are answered `Unanswered`, anything else
+      // still queued is discarded, and every invoke it still holds is dropped as on
+      // `invoke.cancel` (a child run is cancelled and its cancel step waited for; a defect there
+      // changes nothing). Its timers are dropped when the scope closes.
       const end = Effect.suspend(() => {
         close()
+        abandonCalls()
+        liveCalls.clear()
         Queue.shutdownUnsafe(queue)
         return Effect.asVoid(stopInvokes([...tokens.keys()]))
       }).pipe(Effect.ensuring(Effect.suspend(() => Deferred.succeed(stopped, saved))))

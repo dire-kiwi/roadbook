@@ -65,6 +65,10 @@ impl Builtin {
 /// `ref Name` is a handle to a running machine `Name`, with the same suffix
 /// rules: `ref Inventory[]` is a list of handles. It is the one form with a
 /// space.
+///
+/// `call name` is a pending call of the machine's own call `name`: only the
+/// type of a machine variable and of the implicit `call` in `on name`, never
+/// with a suffix.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeRef {
     /// A built-in type such as `int`.
@@ -80,6 +84,9 @@ pub enum TypeRef {
     Named(String),
     /// `ref Name`: a handle to a running machine, a key of `machines`.
     Ref(String),
+    /// `call name`: a pending call of the machine's call `name`, a key of its
+    /// `calls`.
+    Call(String),
     /// `T[]`
     List(Box<TypeRef>),
     /// `T?`
@@ -140,6 +147,7 @@ impl fmt::Display for TypeRef {
             TypeRef::Builtin(b) => f.write_str(b.name()),
             TypeRef::Named(n) => f.write_str(n),
             TypeRef::Ref(n) => write!(f, "ref {n}"),
+            TypeRef::Call(n) => write!(f, "call {n}"),
             TypeRef::List(t) => write!(f, "{t}[]"),
             TypeRef::Optional(t) => write!(f, "{t}?"),
         }
@@ -157,8 +165,8 @@ impl fmt::Display for TypeRefError {
         write!(
             f,
             "`{}` is not a type: expected a built-in (string, int, float, bool, duration, json), \
-             an upper-case name, `Machine.Event` or `ref Machine`, followed by any number of \
-             `[]` and `?`",
+             an upper-case name, `Machine.Event`, `ref Machine` or `call name`, followed by any \
+             number of `[]` and `?`",
             self.input
         )
     }
@@ -173,6 +181,13 @@ pub(crate) fn is_upper_name(s: &str) -> bool {
         && chars.all(|c| c.is_ascii_alphanumeric())
 }
 
+/// True for `[a-z][A-Za-z0-9]*`, the grammar's `Lower`.
+fn is_lower_name(s: &str) -> bool {
+    let mut chars = s.chars();
+    matches!(chars.next(), Some(c) if c.is_ascii_lowercase())
+        && chars.all(|c| c.is_ascii_alphanumeric())
+}
+
 impl FromStr for TypeRef {
     type Err = TypeRefError;
 
@@ -180,19 +195,27 @@ impl FromStr for TypeRef {
         let err = || TypeRefError {
             input: s.to_owned(),
         };
-        let (is_ref, body) = match s.strip_prefix("ref ") {
-            Some(rest) => (true, rest),
-            None => (false, s),
+        let (prefix, body) = if let Some(rest) = s.strip_prefix("ref ") {
+            ("ref", rest)
+        } else if let Some(rest) = s.strip_prefix("call ") {
+            ("call", rest)
+        } else {
+            ("", s)
         };
         let base_len = body
             .find(|c: char| !c.is_ascii_alphanumeric() && c != '.')
             .unwrap_or(body.len());
         let (base, mut rest) = body.split_at(base_len);
-        let mut t = if is_ref {
+        let mut t = if prefix == "ref" {
             if !is_upper_name(base) {
                 return Err(err());
             }
             TypeRef::Ref(base.to_owned())
+        } else if prefix == "call" {
+            if !is_lower_name(base) {
+                return Err(err());
+            }
+            TypeRef::Call(base.to_owned())
         } else if let Some(b) = Builtin::from_name(base) {
             TypeRef::Builtin(b)
         } else if is_upper_name(base) {
@@ -252,6 +275,7 @@ mod tests {
             "ref Inventory",
             "ref Inventory[]?",
             "Upload.Progress",
+            "call reserve",
         ] {
             let t: TypeRef = s.parse().unwrap();
             assert_eq!(t.to_string(), s);
@@ -288,6 +312,9 @@ mod tests {
             "A.B.C",
             "int!",
             "Or_der",
+            "call Reserve",
+            "call  reserve",
+            "call re.serve",
         ] {
             assert!(s.parse::<TypeRef>().is_err(), "{s:?} should be rejected");
         }

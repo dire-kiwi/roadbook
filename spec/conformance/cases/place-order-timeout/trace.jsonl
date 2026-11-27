@@ -1,4 +1,4 @@
-{"input":{"draft":{"coupon":null,"items":[{"qty":2,"sku":"apple"}]},"token":"tok-1"},"ir":"sha256:ace006aac396f74c15f3f1bdbd5ae3b1472fd71186cca48d51948fb9f4be4cd5","kind":"started","machine":"PlaceOrder","run":"r1","t":0}
+{"input":{"draft":{"coupon":null,"items":[{"qty":2,"sku":"apple"}]},"token":"tok-1"},"ir":"sha256:291c63fa77ecad4cc703ef56d0616449de529e0fbd0cc7a76b2b4d8ba2f0c1c9","kind":"started","machine":"PlaceOrder","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"PlaceOrder","t":0}
 {"kind":"entered","run":"r1","state":"PlaceOrder.Authenticating","t":0}
 {"args":{"token":"tok-1"},"invoke":1,"kind":"invoke.started","run":"r1","src":"authenticate","state":"PlaceOrder.Authenticating","t":0}
@@ -31,7 +31,7 @@
 {"kind":"exited","run":"r1","state":"PlaceOrder.TimedOut","t":30010}
 {"kind":"exited","run":"r1","state":"PlaceOrder","t":30010}
 {"kind":"done","output":{"body":{"code":"timeout"},"status":504},"run":"r1","state":"PlaceOrder.TimedOut","t":30010}
-{"input":{"order":{"id":"o1","items":[{"qty":2,"sku":"apple"}],"totalCents":4200},"user":{"id":"u1","role":"Customer"}},"ir":"sha256:85d2fa798fcdf39774403671f8acf2fe20ae821217287610a108ce3096517ca7","kind":"started","machine":"Checkout","parent":"r1","run":"r1.4","t":30}
+{"input":{"order":{"id":"o1","items":[{"qty":2,"sku":"apple"}],"totalCents":4200},"user":{"id":"u1","role":"Customer"}},"ir":"sha256:fa80e6f614f8898e91e52357e8d5aefe10d597e5daa33a587c6510b20c174521","kind":"started","machine":"Checkout","parent":"r1","run":"r1.4","t":30}
 {"kind":"entered","parent":"r1","run":"r1.4","state":"Checkout","t":30}
 {"kind":"entered","parent":"r1","run":"r1.4","state":"Checkout.Charging","t":30}
 {"args":{"order":{"id":"o1","items":[{"qty":2,"sku":"apple"}],"totalCents":4200},"user":{"id":"u1","role":"Customer"}},"invoke":1,"kind":"invoke.started","parent":"r1","run":"r1.4","src":"chargeCard","state":"Checkout.Charging","t":30}
