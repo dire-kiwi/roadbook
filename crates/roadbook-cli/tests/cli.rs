@@ -252,7 +252,7 @@ fn check_counts_the_verdicts_of_checks_and_lists_them_with_checks() {
         "{stderr}"
     );
     assert!(
-        stderr.ends_with("\n1 error\nchecks: 2 proved, 2 if guards allow, 1 failed\n"),
+        stderr.ends_with("\n1 error\nchecks: 2 proved, 2 conditional, 1 failed\n"),
         "{stderr}"
     );
     let out = roadbook(&dir, &["check", "--checks"]);
@@ -261,15 +261,15 @@ fn check_counts_the_verdicts_of_checks_and_lists_them_with_checks() {
     let list = "\
 1 error
 pay.road:17: Pay: check reachable Idle: proved
-pay.road:19: Pay: check reachable Charged: if guards allow
+pay.road:19: Pay: check reachable Charged: conditional
     if `ok()` holds on the way
     Idle --Go [ok()]--> Paying --always--> Charged
 pay.road:20: Pay: check never Charged: failed
 pay.road:21: Pay: check Charged only after Paying: proved
-pay.road:22: Pay: check can finish: if guards allow
+pay.road:22: Pay: check can finish: conditional
     if `ok()` holds on the way
     Idle --Go [ok()]--> Paying --always--> Charged --Go--> Done
-checks: 2 proved, 2 if guards allow, 1 failed
+checks: 2 proved, 2 conditional, 1 failed
 ";
     assert!(stderr.ends_with(list), "{stderr}");
     // With no diagnostics, the summary line alone.
@@ -277,7 +277,7 @@ checks: 2 proved, 2 if guards allow, 1 failed
     let dir = project("checks-pass", &[("pay.road", &passing)]);
     let out = roadbook(&dir, &["check"]);
     assert_eq!(out.status.code(), Some(0));
-    assert_eq!(text(&out.stderr), "checks: 2 proved, 2 if guards allow\n");
+    assert_eq!(text(&out.stderr), "checks: 2 proved, 2 conditional\n");
     // No checks, no line.
     let dir = project("checks-none", &[("ok.road", OK)]);
     let out = roadbook(&dir, &["check", "--checks"]);
@@ -308,10 +308,10 @@ fn check_json_lists_every_check_with_its_verdict() {
         verdicts,
         [
             ("reachable Idle", "proved"),
-            ("reachable Charged", "ifGuardsAllow"),
+            ("reachable Charged", "conditional"),
             ("never Charged", "failed"),
             ("Charged only after Paying", "proved"),
-            ("can finish", "ifGuardsAllow"),
+            ("can finish", "conditional"),
         ]
     );
     assert_eq!(
@@ -320,8 +320,8 @@ fn check_json_lists_every_check_with_its_verdict() {
             "machine": "Pay", "check": "reachable Charged",
             "doc": "Charging needs the payment approved.",
             "file": "pay.road", "line": 19, "col": 3, "endLine": 19, "endCol": 26,
-            "verdict": "ifGuardsAllow",
-            "guards": ["ok() holds"],
+            "verdict": "conditional",
+            "assumptions": ["`ok()` holds"],
             "path": [
                 { "from": "Pay.Idle", "index": 0, "trigger": "Go", "guard": "ok()", "to": "Pay.Paying" },
                 { "from": "Pay.Paying", "index": 1, "trigger": "always", "guard": null, "to": "Pay.Charged" }
@@ -333,7 +333,10 @@ fn check_json_lists_every_check_with_its_verdict() {
     assert_eq!(checks[0]["path"], serde_json::json!([]));
     assert_eq!(checks[0]["doc"], serde_json::Value::Null);
     assert_eq!(checks[3]["path"], serde_json::json!([]));
-    assert_eq!(checks[2]["guards"], serde_json::json!(["ok() holds"]));
+    assert_eq!(
+        checks[2]["assumptions"],
+        serde_json::json!(["`ok()` holds"])
+    );
     assert_eq!(checks[2]["path"].as_array().unwrap().len(), 2);
     // `unchecked`: an option the command line does not have, so from the compiler.
     let options = roadbook_compiler::Options {

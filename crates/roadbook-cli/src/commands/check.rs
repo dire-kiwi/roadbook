@@ -18,8 +18,8 @@ pub struct Args {
     /// Print the diagnostics as JSON on standard output.
     #[arg(long)]
     json: bool,
-    /// List every `check` line with its verdict, and the guards and path of each that holds
-    /// only if guards allow.
+    /// List every `check` line with its verdict, and what each conditional one relies on and
+    /// its path.
     #[arg(long)]
     checks: bool,
     /// Turn on a warning that is off by default.

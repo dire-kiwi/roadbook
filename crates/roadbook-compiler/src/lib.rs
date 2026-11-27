@@ -117,7 +117,7 @@ impl Compilation {
         json::diagnostics_string(&self.diagnostics, &self.checks, &self.files)
     }
 
-    /// `checks: 6 proved, 2 if guards allow, 1 failed`, as `roadbook check` prints it after
+    /// `checks: 6 proved, 2 conditional, 1 failed`, as `roadbook check` prints it after
     /// the diagnostics; `None` if no check was evaluated.
     pub fn checks_summary(&self) -> Option<String> {
         properties::summary(&self.checks)

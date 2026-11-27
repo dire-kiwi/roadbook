@@ -510,15 +510,15 @@ error[RB0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
       "doc": "A card can be charged.",           // its doc comment, or null
       "file": "examples/pay.road",
       "line": 30, "col": 3, "endLine": 30, "endCol": 26,
-      "verdict": "ifGuardsAllow",                // "proved", "ifGuardsAllow", "failed" or "unchecked"
-      "guards": ["ok() holds"],                  // the guard outcomes the path relies on
+      "verdict": "conditional",                  // "proved", "conditional", "failed" or "unchecked"
+      "assumptions": ["`ok()` holds"],           // what the path relies on that the chart does not decide
       "path": [ { "from": "Pay.Idle", "index": 0, "trigger": "Go", "guard": "ok()", "to": "Pay.Charged" } ]
     }
   ]
 }
 ```
 
-Ranges are as in the IR: lines and columns are 1-based, columns count Unicode scalar values, and the end is exclusive. A fix is a set of edits that together resolve the diagnostic: replace each range with its `text` (an empty range inserts). The command exits with 0 when there are no errors (warnings allowed), 1 when there are errors and 2 on a usage or I/O error, such as a file that does not exist. In that last case the object has no diagnostics and `fatal` holds the error's message, which is also printed on standard error. `checks` lists every `check` line of the checked files with its verdict, whether it passed or not: a `failed` one is also an error among the diagnostics (`RB0501`–`RB0504`), and an `unchecked` one a warning (`RB0910`). `path` is the path the verdict rests on, from the initial configuration, as the transitions it takes, shaped as the steps of `roadbook paths --json` (`to` is `null` for an internal transition): the counterexample of a failed check, the witness of a `reachable` that holds, and for a `can finish` that holds only if guards allow, the way to the first configuration that cannot finish whatever the guards and on from there to a final state. It is `[]` when there is none, as for a proved `never`. `guards` are the guard outcomes that path relies on (for `can finish`, the part from that configuration), `"… holds"` or `"… fails"`.
+Ranges are as in the IR: lines and columns are 1-based, columns count Unicode scalar values, and the end is exclusive. A fix is a set of edits that together resolve the diagnostic: replace each range with its `text` (an empty range inserts). The command exits with 0 when there are no errors (warnings allowed), 1 when there are errors and 2 on a usage or I/O error, such as a file that does not exist. In that last case the object has no diagnostics and `fatal` holds the error's message, which is also printed on standard error. `checks` lists every `check` line of the checked files with its verdict, whether it passed or not: a `failed` one is also an error among the diagnostics (`RB0501`–`RB0504`), and an `unchecked` one a warning (`RB0910`). `path` is the path the verdict rests on, from the initial configuration, as the transitions it takes, shaped as the steps of `roadbook paths --json` (`to` is `null` for an internal transition): the counterexample of a failed check, the witness of a `reachable` that holds, and for a conditional `can finish`, the way to the first configuration that cannot finish unconditionally and on from there to a final state. It is `[]` when there is none, as for a proved `never`. `assumptions` are what that path relies on that the chart does not decide (for `can finish`, the part from that configuration): a guard's outcome ("`` `approved()` holds ``", "`` `ready` fails ``"), a timer expiring while others run ("`` `after 5s` in `A` expires before the other running timers ``"), or what another machine does ("`` `Checkout` (invoked in `Paying`) ends `done` ``", "`` peer `inventory` emits `Reserved` ``"). A check is `proved` only by a path, or for `can finish` from every configuration, that relies on none. Checks cover runs started from the chart: a run restored from a snapshot made by an earlier version of the chart may be in a configuration this one cannot reach, and a passing check says nothing about it.
 
 ### Definite assignment
 
@@ -698,7 +698,7 @@ The compiler's codes:
 | `RB0402` | A machine that invokes or spawns itself without waiting. | `state A { invoke M() { … } }` as `M`'s initial state |
 | `RB0403` | A read of a variable that might not be assigned yet. | `entry do log(n)` in the initial state, for `var n: int` |
 | `RB0501` | A `check never` whose state can be active, or whose states can be active together. | `check never Refunded` |
-| `RB0502` | A `check reachable` whose state no path reaches, even with every guard free. | `check reachable Charged` with nothing targeting `Charged` |
+| `RB0502` | A `check reachable` whose state no path reaches, even with every guard, timer order and other machine free. | `check reachable Charged` with nothing targeting `Charged` |
 | `RB0503` | A `check S only after T` where `S` can be active before `T` has been. | `check Refunded only after Charged` |
 | `RB0504` | A `check can finish` where the machine can reach a configuration from which no top-level final state can be reached. | `state Loop { on Go -> Loop }` |
 | `RB0901` | A state that can never be entered (warning). | a state nothing targets |
@@ -710,7 +710,7 @@ The compiler's codes:
 | `RB0907` | An `emits` that nothing in the checked files receives (warning). | `emits Progress` with no `on upload.Progress` anywhere |
 | `RB0908` | A history state that no transition targets (warning). | `history Previous` with no `-> Working.Previous` |
 | `RB0909` | A `children` collection that no `spawn` fills (warning). | `children sessions: Session by string` with no `spawn sessions[…]` |
-| `RB0910` | A machine whose checks were not evaluated: it has more than 100000 configurations (warning). | many parallel regions, each with deep history |
+| `RB0910` | A machine whose checks were not evaluated, as too large to explore: more than 100000 configurations, a peer's event expected through more than 16 `ref` names, or regions whose guard outcomes combine in too many ways (warning). | many parallel regions, each with deep history |
 
 ## Grammar
 

@@ -33,7 +33,7 @@ fn the_checks_of_passing_charts_hold() {
         );
         for c in &out.checks {
             assert!(
-                matches!(c.verdict, Verdict::Proved | Verdict::IfGuardsAllow),
+                matches!(c.verdict, Verdict::Proved | Verdict::Conditional),
                 "{}: check {} is {:?}",
                 case.name,
                 c.check,
@@ -52,13 +52,13 @@ fn the_checks_of_passing_charts_hold() {
         .iter()
         .map(|c| (c.check.as_str(), c.verdict))
         .collect();
-    use Verdict::{IfGuardsAllow, Proved};
+    use Verdict::{Conditional, Proved};
     assert_eq!(
         got,
         [
-            ("reachable Shipped", IfGuardsAllow),
+            ("reachable Shipped", Conditional),
             ("reachable Cancelled", Proved),
-            ("reachable Fulfilling.Work.Billing.Charged", IfGuardsAllow),
+            ("reachable Fulfilling.Work.Billing.Charged", Conditional),
             ("never Shipped and Cancelled", Proved),
             ("never Paused and Fulfilling.Work.Packing.Packed", Proved),
             ("Shipped only after Fulfilling.Work.Billing.Charged", Proved),

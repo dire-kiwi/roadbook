@@ -52,8 +52,8 @@ export interface Check extends Range {
   machine: string
   check: string
   doc: string | null
-  verdict: 'proved' | 'ifGuardsAllow' | 'failed' | 'unchecked'
-  guards: string[]
+  verdict: 'proved' | 'conditional' | 'failed' | 'unchecked'
+  assumptions: string[]
   path: CheckStep[]
 }
 

@@ -4,9 +4,23 @@
 //! [`explore`] runs a machine *abstractly*. It follows `spec/execution.md` microstep by
 //! microstep, except that it evaluates no data: every guard may hold or may not, and every
 //! input that could arrive may arrive. So every configuration a real run passes through is a
-//! node of the graph, and every microstep it takes is an edge. The converse does not hold: the
-//! data may rule out a path the graph has, which is why each edge says which guard outcomes
-//! it assumed ([`Edge::assumptions`]), and a counterexample that assumes none is real.
+//! node of the graph, and every microstep it takes is an edge. The converse does not hold:
+//! something other than the chart may rule out a path the graph has, which is why each edge
+//! says what it assumed of it ([`Edge::assumptions`], [`Assumption`]):
+//! - the outcome of each guard it relies on;
+//! - for a timer's expiry while another timer of the run is running, that it expires first,
+//!   since its delay might not be the shortest;
+//! - for an outcome of a child or spawned child machine, or an event that a child, a spawned
+//!   child or a peer emits, that the other machine does that.
+//!
+//! The machine's own events and the outcomes of tasks are the host's to give, and a timer
+//! that is the only one running expires whenever the run waits long enough, so those assume
+//! nothing. A path whose edges assume nothing is one a real run can take, whatever the data
+//! and whatever the other machines do.
+//!
+//! The graph covers runs started from the chart. A snapshot restored after a migration can be
+//! in a configuration the chart cannot reach, which is not in the graph, so a property of the
+//! graph says nothing about such a run.
 //!
 //! A **node** is the machine between two microsteps: its active states, what each history
 //! state has recorded, which invokes and timers of the active states have already been
@@ -38,9 +52,11 @@
 //! - A defect, a cancel and the `limit` on settling are not modelled: they end a run, and a
 //!   node's run only ever ends at a top-level final state.
 
+use std::cell::Cell;
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::fmt;
+use std::hash::{BuildHasher, RandomState};
 
 use indexmap::IndexMap;
 use roadbook_ir::{self as ir, AddressKind, Effect, InvokeKind, StateKind, Trigger};
@@ -92,18 +108,35 @@ pub struct TransitionRef {
     pub index: usize,
 }
 
-/// An outcome of a guard that an edge relies on.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Assumption {
-    /// The guarded transition.
-    pub transition: TransitionRef,
-    /// Whether its guard was assumed to hold (it was taken) or to fail (it was skipped, so the
-    /// search went on past it, or its completion was discarded).
-    pub holds: bool,
+/// Something an edge relies on that the chart does not decide.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Assumption {
+    /// The outcome of a guard.
+    Guard {
+        /// The guarded transition.
+        transition: TransitionRef,
+        /// Whether its guard was assumed to hold (it was taken) or to fail (it was skipped, so
+        /// the search went on past it, or its completion was discarded).
+        holds: bool,
+    },
+    /// The timer of the `after` block of `state` whose first transition is `index` expires
+    /// while another timer of the run is running: before it, though its delay might not be the
+    /// shortest.
+    TimerFirst {
+        /// The state of the `after` block.
+        state: StateIndex,
+        /// The index of the block's first transition.
+        index: usize,
+    },
+    /// Another machine does what the edge's input says: a child or spawned child machine ends
+    /// `done` or fails, or a child, a spawned child or a peer emits an event. Always the
+    /// edge's own input: [`Input::InvokeDone`] or [`Input::InvokeFail`] of a machine's invoke,
+    /// [`Input::Emitted`], [`Input::SpawnDone`] or [`Input::SpawnFail`].
+    Machine(Input),
 }
 
 /// Who sent an emitted event.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Sender {
     /// The child machine invoked (with `as`) by this state.
     Child(StateIndex),
@@ -117,7 +150,7 @@ pub enum Sender {
 
 /// What an edge's microstep was for: its input, or the kind of eventless transition settling
 /// took.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Input {
     /// One of the machine's events, from host code or as a message (`on Name`, `on *`).
     Event(String),
@@ -184,30 +217,69 @@ pub struct Edge {
     /// The transitions the microstep took, in the order of their `transition` records. Empty
     /// for a step that takes none.
     pub transitions: Vec<TransitionRef>,
-    /// The guard outcomes the step relies on: of the transitions taken, of the guarded ones
-    /// the search skipped on the way to them, and of the `done` transitions whose completion
-    /// was discarded. Empty when the step happens whatever the data.
+    /// What the step relies on, sorted: the outcomes of the guards of the transitions taken,
+    /// of the guarded ones the search skipped on the way to them, and of the `done`
+    /// transitions whose completion was discarded; and the order of timers or what another
+    /// machine does, for its input. Empty when the step can happen whatever the data and the
+    /// other machines.
     pub assumptions: Vec<Assumption>,
     /// Whether it is a step of settling, from a settling node.
     pub settling: bool,
 }
 
-/// The graph was not explored to the end: it has more than the budget of nodes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct TooLarge {
-    /// How many nodes had been found when exploring stopped: one more than the budget.
-    pub reached: usize,
+/// The graph was not explored to the end: it is larger than [`explore`] goes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TooLarge {
+    /// It has more than the budget of nodes.
+    Nodes {
+        /// How many nodes had been found when exploring stopped: one more than the budget.
+        reached: usize,
+    },
+    /// A peer's event `event` is expected through more `ref` names than
+    /// [`MAX_SENDER_NAMES`]: every set of them that may hold the sender would be an input.
+    Senders {
+        /// The event.
+        event: String,
+        /// How many names it is expected through.
+        names: usize,
+    },
+    /// The regions' outcomes for the inputs combine in more ways than the budget allows
+    /// ([`COMBINATIONS_PER_NODE`] for each node of the budget).
+    Combinations {
+        /// How many combinations were allowed.
+        budget: usize,
+    },
 }
 
 impl fmt::Display for TooLarge {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "the machine has more than {} configurations",
-            self.reached.saturating_sub(1)
-        )
+        match self {
+            TooLarge::Nodes { reached } => write!(
+                f,
+                "the machine has more than {} configurations",
+                reached.saturating_sub(1)
+            ),
+            TooLarge::Senders { event, names } => write!(
+                f,
+                "`{event}` is expected from a peer through {names} `ref` names, more than the {MAX_SENDER_NAMES} whose every set is explored"
+            ),
+            TooLarge::Combinations { budget } => write!(
+                f,
+                "the outcomes of its regions combine in more than {budget} ways"
+            ),
+        }
     }
 }
+
+/// The most `ref` names one peer's event may be expected through: each nonempty set of them
+/// that may hold the sender is an input of its own.
+pub const MAX_SENDER_NAMES: usize = 16;
+
+/// How many combinations of the walks' outcomes (one per region, roughly) [`explore`] tries
+/// beyond the first of each input, over the whole exploration, for each node of its budget.
+/// Only guards make more than one, so a chart with few guarded transitions on the same input
+/// in different regions spends next to none.
+pub const COMBINATIONS_PER_NODE: usize = 16;
 
 impl std::error::Error for TooLarge {}
 
@@ -215,11 +287,25 @@ impl std::error::Error for TooLarge {}
 pub const DEFAULT_MAX_NODES: usize = 100_000;
 
 /// Every configuration `machine` (a machine of `ir`) can be in, and the steps between them.
-/// Stops with [`TooLarge`] once it has found more than `max_nodes` nodes.
+/// Stops with [`TooLarge`] once it has found more than `max_nodes` nodes, or tried more than
+/// [`COMBINATIONS_PER_NODE`] times `max_nodes` combinations of outcomes, and fails at once
+/// for a peer's event expected through more than [`MAX_SENDER_NAMES`] names.
 pub fn explore(ir: &ir::Ir, machine: &ir::Machine, max_nodes: usize) -> Result<Graph, TooLarge> {
-    let chart = Chart::new(ir, machine);
+    let budget = max_nodes.saturating_mul(COMBINATIONS_PER_NODE);
+    let chart = Chart::new(ir, machine, budget);
+    if let Some((event, names)) = chart
+        .ref_events
+        .iter()
+        .find(|(_, names)| names.len() > MAX_SENDER_NAMES)
+    {
+        return Err(TooLarge::Senders {
+            event: event.to_string(),
+            names: names.len(),
+        });
+    }
     let mut b = Builder {
         ids: HashMap::new(),
+        hasher: RandomState::new(),
         configs: Vec::new(),
         edges: Vec::new(),
         max_nodes,
@@ -233,7 +319,11 @@ pub fn explore(ir: &ir::Ir, machine: &ir::Machine, max_nodes: usize) -> Result<G
     let mut next = 0;
     while next < b.configs.len() {
         let cfg = b.configs[next].clone();
-        for s in chart.successors(&cfg) {
+        let successors = chart.successors(&cfg);
+        if chart.exhausted() {
+            return Err(TooLarge::Combinations { budget });
+        }
+        for s in successors {
             let to = b.intern(s.config)?;
             b.edges.push(Edge {
                 from: NodeId(next as u32),
@@ -564,10 +654,15 @@ struct Chart<'a> {
     collection_errors: Vec<&'a [String]>,
     /// Whether each state has an `always` transition.
     has_always: Vec<bool>,
+    /// The events each state has an `on` for, and whether it has an `on *`.
+    on_events: Vec<Vec<&'a str>>,
+    on_any: Vec<bool>,
+    /// How many more combinations of the walks' outcomes may be tried.
+    combinations: Cell<usize>,
 }
 
 impl<'a> Chart<'a> {
-    fn new(ir: &'a ir::Ir, machine: &'a ir::Machine) -> Chart<'a> {
+    fn new(ir: &'a ir::Ir, machine: &'a ir::Machine, combinations: usize) -> Chart<'a> {
         let mut c = Chart {
             ir,
             machine,
@@ -596,6 +691,9 @@ impl<'a> Chart<'a> {
                 })
                 .collect(),
             has_always: Vec::new(),
+            on_events: Vec::new(),
+            on_any: Vec::new(),
+            combinations: Cell::new(combinations),
         };
         c.add(&machine.root, None);
         let index: HashMap<&str, u32> = c
@@ -691,6 +789,20 @@ impl<'a> Chart<'a> {
                 s.transitions
                     .iter()
                     .any(|t| matches!(t.trigger, Trigger::Always)),
+            );
+            c.on_events.push(
+                s.transitions
+                    .iter()
+                    .filter_map(|t| match &t.trigger {
+                        Trigger::Event { event } => Some(event.as_str()),
+                        _ => None,
+                    })
+                    .collect(),
+            );
+            c.on_any.push(
+                s.transitions
+                    .iter()
+                    .any(|t| matches!(t.trigger, Trigger::Any)),
             );
         }
         c.child_events = child_events;
@@ -1113,12 +1225,31 @@ impl<'a> Chart<'a> {
         let mut results: IndexMap<Vec<T>, Vec<(T, bool)>> = IndexMap::new();
         let mut enabled = Vec::new();
         let mut assumed = Vec::new();
-        self.combine(cfg, &walks, &mut enabled, &mut assumed, &mut results);
+        let mut leaves = 0;
+        self.combine(
+            cfg,
+            &walks,
+            &mut enabled,
+            &mut assumed,
+            &mut results,
+            &mut leaves,
+        );
+        if self.exhausted() {
+            // `explore` stops after this node: nothing to gain from the rest.
+            return Vec::new();
+        }
         results.into_iter().collect()
     }
 
+    /// Whether the budget of combinations has run out.
+    fn exhausted(&self) -> bool {
+        self.combinations.get() == 0
+    }
+
     /// Every consistent combination of the walks' outcomes: one guard has one outcome in one
-    /// selection, so two walks that search the same state see the same guards.
+    /// selection, so two walks that search the same state see the same guards. Each
+    /// combination after the first of a selection (`leaves` counts them) spends one of the
+    /// budget: a selection with no choice to make costs nothing.
     fn combine(
         &self,
         cfg: &Config,
@@ -1126,8 +1257,16 @@ impl<'a> Chart<'a> {
         enabled: &mut Vec<T>,
         assumed: &mut Vec<(T, bool)>,
         results: &mut IndexMap<Vec<T>, Vec<(T, bool)>>,
+        leaves: &mut usize,
     ) {
+        if self.exhausted() {
+            return;
+        }
         let Some((first, rest)) = walks.split_first() else {
+            if *leaves > 0 {
+                self.combinations.set(self.combinations.get() - 1);
+            }
+            *leaves += 1;
             let kept = self.remove_conflicts(&cfg.active, enabled);
             let mut a = assumed.clone();
             a.sort_unstable();
@@ -1156,7 +1295,7 @@ impl<'a> Chart<'a> {
                 enabled.push(t);
             }
             assumed.extend(choice.assumed.iter().copied());
-            self.combine(cfg, rest, enabled, assumed, results);
+            self.combine(cfg, rest, enabled, assumed, results, leaves);
             enabled.truncate(n_enabled);
             assumed.truncate(n_assumed);
         }
@@ -1278,9 +1417,8 @@ impl<'a> Chart<'a> {
         }
         // Peers' events, from every set of names that may hold the sender.
         for (event, names) in &self.ref_events {
-            // Every nonempty set of names. More than 16 names for one event of one machine is
-            // beyond any chart; past that only the sets of the first 16 are tried.
-            let n = names.len().min(16);
+            // Every nonempty set of names: `explore` refuses more than `MAX_SENDER_NAMES`.
+            let n = names.len();
             for mask in 1u32..(1 << n) {
                 let held: Vec<&str> = (0..n)
                     .filter(|i| mask & (1 << i) != 0)
@@ -1339,6 +1477,11 @@ impl<'a> Chart<'a> {
     /// The edges of an input selected by walks: one per distinct nonempty `T`. An input that
     /// enables nothing changes nothing and has no edge.
     fn by_walks(&self, cfg: &Config, input: Input, c: &Cand<'_>, out: &mut Vec<Successor>) {
+        // An input that no active state has a candidate for enables nothing: skip the search.
+        if !cfg.active.iter().any(|&s| self.has_candidate(s, c)) {
+            return;
+        }
+        let extra = self.input_assumption(cfg, &input);
         for (ts, assumed) in self.select_by_walks(cfg, c) {
             if ts.is_empty() {
                 continue;
@@ -1349,8 +1492,60 @@ impl<'a> Chart<'a> {
                 input.clone(),
                 &ts,
                 &assumed,
+                extra.clone(),
                 self.normalize(next),
             ));
+        }
+    }
+
+    /// Whether the timer of the `after` block at `a` certainly expires before the one at `b`,
+    /// while both run: they are blocks of one state, so `startWork` starts them together, `a`
+    /// first (it is written first), and both delays are literals, `a`'s the shorter. Its due
+    /// time is then earlier (`spec/execution.md`, "Time").
+    fn expires_first(&self, a: T, b: T) -> bool {
+        let delay = |t: T| match &self.transition(t).trigger {
+            Trigger::After { delay } => match delay.kind {
+                ir::ExprKind::Lit(ir::Literal::Duration(ms)) => Some(ms),
+                _ => None,
+            },
+            _ => None,
+        };
+        a.0 == b.0 && a.1 < b.1 && matches!((delay(a), delay(b)), (Some(x), Some(y)) if x < y)
+    }
+
+    /// Whether state `s` has a candidate for the search `c`.
+    fn has_candidate(&self, s: u32, c: &Cand<'_>) -> bool {
+        match c {
+            Cand::Event(n) => self.on_any[s as usize] || self.on_events[s as usize].contains(n),
+            _ => !self.candidates(s, c).is_empty(),
+        }
+    }
+
+    /// What an input assumes of things other than guards: that a timer expires before the
+    /// others running, or that another machine does what the input says.
+    fn input_assumption(&self, cfg: &Config, input: &Input) -> Option<Assumption> {
+        match input {
+            Input::InvokeDone { state } | Input::InvokeFail { state, .. } => {
+                let invoke = self.states[state.index()].invoke.as_ref()?;
+                (invoke.kind == InvokeKind::Machine).then(|| Assumption::Machine(input.clone()))
+            }
+            Input::Emitted { .. } | Input::SpawnDone { .. } | Input::SpawnFail { .. } => {
+                Some(Assumption::Machine(input.clone()))
+            }
+            Input::After { state, index } => {
+                let others = cfg.active.iter().any(|&s| {
+                    self.after_blocks[s as usize].iter().any(|&(group, i)| {
+                        (s, i) != (state.0, *index)
+                            && !cfg.consumed.contains(&(s, group))
+                            && !self.expires_first((state.0, *index), (s, i))
+                    })
+                });
+                others.then_some(Assumption::TimerFirst {
+                    state: *state,
+                    index: *index,
+                })
+            }
+            Input::Event(_) | Input::Always | Input::Done { .. } | Input::Settled => None,
         }
     }
 
@@ -1371,6 +1566,7 @@ impl<'a> Chart<'a> {
             .binary_search(&(s, slot))
             .unwrap_or_else(|e| e);
         consumed.consumed.insert(at, (s, slot));
+        let extra = self.input_assumption(cfg, &input);
         for choice in self.search(std::iter::once(s), c) {
             let mut next = consumed.clone();
             let ts: Vec<T> = choice.taken.into_iter().collect();
@@ -1378,7 +1574,13 @@ impl<'a> Chart<'a> {
                 self.microstep(&mut next, &ts);
                 next = self.normalize(next);
             }
-            out.push(Successor::new(input.clone(), &ts, &choice.assumed, next));
+            out.push(Successor::new(
+                input.clone(),
+                &ts,
+                &choice.assumed,
+                extra.clone(),
+                next,
+            ));
         }
     }
 
@@ -1393,6 +1595,7 @@ impl<'a> Chart<'a> {
                     Input::Always,
                     &ts,
                     &assumed,
+                    None,
                     self.normalize(next),
                 ));
                 continue;
@@ -1405,7 +1608,7 @@ impl<'a> Chart<'a> {
                     let mut next = cfg.clone();
                     next.queue.clear();
                     next.settling = false;
-                    out.push(Successor::new(Input::Settled, &[], &assumed, next));
+                    out.push(Successor::new(Input::Settled, &[], &assumed, None, next));
                     break;
                 }
                 let p = queue.remove(0);
@@ -1424,6 +1627,7 @@ impl<'a> Chart<'a> {
                                 },
                                 &[t],
                                 &a,
+                                None,
                                 self.normalize(next),
                             ));
                         }
@@ -1476,17 +1680,24 @@ struct Successor {
 }
 
 impl Successor {
-    fn new(input: Input, ts: &[T], assumed: &[(T, bool)], config: Config) -> Successor {
+    fn new(
+        input: Input,
+        ts: &[T],
+        assumed: &[(T, bool)],
+        extra: Option<Assumption>,
+        config: Config,
+    ) -> Successor {
         let tref = |&(s, index): &T| TransitionRef {
             state: StateIndex(s),
             index,
         };
         let mut assumptions: Vec<Assumption> = assumed
             .iter()
-            .map(|(t, holds)| Assumption {
+            .map(|(t, holds)| Assumption::Guard {
                 transition: tref(t),
                 holds: *holds,
             })
+            .chain(extra)
             .collect();
         assumptions.sort_unstable();
         assumptions.dedup();
@@ -1534,7 +1745,9 @@ impl Config {
 }
 
 struct Builder {
-    ids: HashMap<Config, NodeId>,
+    /// The nodes by the hash of their configuration, which is kept once, in `configs`.
+    ids: HashMap<u64, Vec<NodeId>>,
+    hasher: RandomState,
     configs: Vec<Config>,
     edges: Vec<Edge>,
     max_nodes: usize,
@@ -1542,16 +1755,19 @@ struct Builder {
 
 impl Builder {
     fn intern(&mut self, cfg: Config) -> Result<NodeId, TooLarge> {
-        if let Some(&id) = self.ids.get(&cfg) {
+        let hash = self.hasher.hash_one(&cfg);
+        if let Some(ids) = self.ids.get(&hash)
+            && let Some(&id) = ids.iter().find(|id| self.configs[id.index()] == cfg)
+        {
             return Ok(id);
         }
         if self.configs.len() >= self.max_nodes {
-            return Err(TooLarge {
+            return Err(TooLarge::Nodes {
                 reached: self.configs.len() + 1,
             });
         }
         let id = NodeId(self.configs.len() as u32);
-        self.ids.insert(cfg.clone(), id);
+        self.ids.entry(hash).or_default().push(id);
         self.configs.push(cfg);
         Ok(id)
     }
@@ -1654,7 +1870,10 @@ mod tests {
                 g.edge(e)
                     .assumptions
                     .iter()
-                    .map(|x| (x.transition.index, x.holds))
+                    .map(|x| match x {
+                        Assumption::Guard { transition, holds } => (transition.index, *holds),
+                        other => panic!("{other:?}"),
+                    })
                     .collect()
             })
             .collect();
@@ -1780,7 +1999,10 @@ mod tests {
             .find(|e| matches!(e.input, Input::Done { .. }))
             .unwrap();
         assert_eq!(done.assumptions.len(), 1);
-        assert!(!done.assumptions[0].holds);
+        assert!(matches!(
+            done.assumptions[0],
+            Assumption::Guard { holds: false, .. }
+        ));
         assert!(!s.iter().any(|x| x.starts_with("W.F --settled")));
     }
 
@@ -1848,8 +2070,8 @@ mod tests {
             "machine Kid() {\n  emits Ping\n  initial A\n  state A { entry emit Ping }\n}\nmachine M() {\n  initial W\n  state W {\n    invoke Kid() as kid {\n      done -> Gone\n    }\n    on kid.Ping -> W\n  }\n  state Gone {}\n}\n",
         );
         let s = steps(&g);
-        assert!(s.contains("W --Ping from the child of M.W--> W"));
-        assert!(s.contains("W --done of the invoke in M.W--> Gone"));
+        assert!(s.contains("W --Ping from the child of M.W?--> W"));
+        assert!(s.contains("W --done of the invoke in M.W?--> Gone"));
         assert!(!s.iter().any(|x| x.starts_with("Gone ")));
     }
 
@@ -1870,8 +2092,8 @@ mod tests {
         assert_ne!(go.to, start);
         assert_eq!(g.active(go.to), g.active(start));
         let s = steps(&g);
-        assert!(s.contains("A --kids.done--> B"));
-        assert!(s.contains("A --kids.fail Lost--> C"));
+        assert!(s.contains("A --kids.done?--> B"));
+        assert!(s.contains("A --kids.fail Lost?--> C"));
     }
 
     #[test]
@@ -1924,6 +2146,161 @@ mod tests {
         assert_eq!(g.shortest_path(g.start(), |_| false), None);
     }
 
+    /// The assumptions of the edges for `input` (as [`Graph::describe`] gives it), each edge's
+    /// as one list, in edge order.
+    fn assumed_by(g: &Graph, input: &str) -> Vec<Vec<Assumption>> {
+        edges(g)
+            .filter(|e| g.describe(&e.input) == input)
+            .map(|e| e.assumptions.clone())
+            .collect()
+    }
+
+    #[test]
+    fn a_timer_assumes_it_expires_first_unless_it_must() {
+        // The 1 s timer is written first and is the shorter: it expires first whatever
+        // happens. The 5 s one expires only if it beats it, which no run does.
+        let g = graph(
+            "machine M() {\n  initial A\n  state A {\n    after 1s -> B\n    after 5s -> C\n  }\n  state B { after 1s -> A }\n  final state C {}\n}\n",
+        );
+        let a = g.state_index("M.A").unwrap();
+        assert_eq!(assumed_by(&g, "the after at #0 of M.A"), vec![vec![]]);
+        assert_eq!(
+            assumed_by(&g, "the after at #1 of M.A"),
+            vec![vec![Assumption::TimerFirst { state: a, index: 1 }]]
+        );
+        // The only timer running.
+        assert_eq!(assumed_by(&g, "the after at #0 of M.B"), vec![vec![]]);
+        // Written the other way round, or with a delay that is not a literal, or in another
+        // state, neither is certain to come first.
+        for src in [
+            "machine M() {\n  initial A\n  state A {\n    after 5s -> C\n    after 1s -> B\n  }\n  state B {}\n  final state C {}\n}\n",
+            "fn d() -> duration\nmachine M() {\n  initial A\n  state A {\n    after d() -> B\n    after 5s -> C\n  }\n  state B {}\n  final state C {}\n}\n",
+            "machine M() {\n  initial W\n  state W {\n    initial A\n    after 5s -> C\n    state A { after 1s -> B }\n    state B {}\n  }\n  final state C {}\n}\n",
+        ] {
+            let g = graph(src);
+            let timers: Vec<&Edge> = edges(&g)
+                .filter(|e| matches!(e.input, Input::After { .. }) && e.from == g.start())
+                .collect();
+            assert_eq!(timers.len(), 2, "{src}");
+            for e in timers {
+                assert!(
+                    matches!(e.assumptions[..], [Assumption::TimerFirst { .. }]),
+                    "{src}: {:?}",
+                    e.assumptions
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn what_other_machines_do_is_assumed_and_what_the_host_does_is_not() {
+        let g = graph(
+            "error Lost\ntask work() -> int\nmachine Kid() -> int ! Lost {\n  emits Ping\n  initial A\n  state A { entry emit Ping }\n}\nmachine M(peer: ref Kid) {\n  event Go\n  children kids: Kid by string\n  initial A\n  state A {\n    invoke Kid() as kid {\n      done      -> T\n      fail Lost -> T\n    }\n    on kid.Ping -> A\n    on peer.Ping -> A\n    on Go -> T  spawn kids[\"a\"] = Kid()\n  }\n  state T {\n    invoke work() {\n      done -> T\n    }\n    on kids.done -> A\n    on kids.fail Lost -> A\n    on kids.Ping -> A\n  }\n}\n",
+        );
+        let machine =
+            |e: &Edge| matches!(&e.assumptions[..], [Assumption::Machine(i)] if *i == e.input);
+        let mut kinds = BTreeSet::new();
+        for e in edges(&g) {
+            let d = g.describe(&e.input);
+            match &e.input {
+                Input::Event(_) => assert!(e.assumptions.is_empty(), "{d}"),
+                // A task's outcome is the host's to give.
+                Input::InvokeDone { state } if g.state_id(*state) == "M.T" => {
+                    assert!(e.assumptions.is_empty(), "{d}")
+                }
+                _ => assert!(machine(e), "{d}: {:?}", e.assumptions),
+            }
+            kinds.insert(d);
+        }
+        assert_eq!(
+            kinds,
+            set(&[
+                "Go",
+                "done of the invoke in M.A",
+                "fail Lost of the invoke in M.A",
+                "Ping from the child of M.A",
+                "peer.Ping",
+                "done of the invoke in M.T",
+                "kids.done",
+                "kids.fail Lost",
+                "kids.Ping",
+            ])
+        );
+    }
+
+    #[test]
+    fn the_fewest_assumptions_come_before_the_fewest_edges() {
+        // To D: one step through a guard, two through a timer that might not come first, or
+        // three that assume nothing.
+        let g = graph(
+            "fn ok() -> bool\nmachine M() {\n  event Go\n  event Next\n  initial A\n  state A {\n    on Go if ok() -> D\n    on Next -> B\n    after 5s -> C\n    after 1s -> A\n  }\n  state B { on Next -> E }\n  state C { on Next -> D }\n  state E { on Next -> D }\n  state D {}\n}\n",
+        );
+        let d = g.state_index("M.D").unwrap();
+        let to_d = |n: NodeId| g.is_active(n, d);
+        let short = g.shortest_path(g.start(), to_d).unwrap();
+        assert_eq!(short.len(), 1);
+        let sure = g.fewest_assumptions_path(g.start(), to_d).unwrap();
+        let inputs: Vec<String> = sure.iter().map(|&e| g.describe(&g.edge(e).input)).collect();
+        assert_eq!(inputs, ["Next", "Next", "Next"]);
+        assert!(sure.iter().all(|&e| g.edge(e).assumptions.is_empty()));
+        // With one assumption needed whichever way, the shorter of those: the guard.
+        let g = graph(
+            "fn ok() -> bool\nmachine M() {\n  event Go\n  event Next\n  initial A\n  state A {\n    on Go if ok() -> D\n    after 5s -> C\n    after 1s -> A\n  }\n  state C { on Next -> D }\n  state D {}\n}\n",
+        );
+        let d = g.state_index("M.D").unwrap();
+        let path = g
+            .fewest_assumptions_path(g.start(), |n| g.is_active(n, d))
+            .unwrap();
+        assert_eq!(path.len(), 1);
+        assert!(matches!(
+            g.edge(path[0]).assumptions[..],
+            [Assumption::Guard { holds: true, .. }]
+        ));
+        assert_eq!(g.fewest_assumptions_path(g.start(), |_| true), Some(vec![]));
+        assert_eq!(g.fewest_assumptions_path(g.start(), |_| false), None);
+    }
+
+    #[test]
+    fn too_many_sender_names_or_combinations_are_not_explored() {
+        let names: Vec<String> = (1..=17).map(|i| format!("p{i}")).collect();
+        let params: Vec<String> = names.iter().map(|n| format!("{n}: ref P")).collect();
+        let ons: String = names
+            .iter()
+            .map(|n| format!("    on {n}.Ping -> A\n"))
+            .collect();
+        let src = format!(
+            "machine P() {{\n  emits Ping\n  initial A\n  state A {{ entry emit Ping }}\n}}\nmachine M({}) {{\n  initial A\n  state A {{\n{ons}  }}\n}}\n",
+            params.join(", ")
+        );
+        let out = crate::compile_source("m.road", &src, &Default::default());
+        assert!(!out.has_errors(), "{}", out.render());
+        let ir = out.ir.unwrap();
+        assert_eq!(
+            explore(&ir, &ir.machines["M"], DEFAULT_MAX_NODES).unwrap_err(),
+            TooLarge::Senders {
+                event: "Ping".into(),
+                names: 17
+            }
+        );
+        // Seven regions, each with a guarded `Go`: 128 combinations for the first input,
+        // more than a budget of one node allows.
+        let regions: String = (0..7)
+            .map(|i| format!("    state R{i} {{\n      initial A\n      state A {{ on Go if ok() -> B }}\n      state B {{}}\n    }}\n"))
+            .collect();
+        let src = format!(
+            "fn ok() -> bool\nmachine M() {{\n  event Go\n  initial P\n  parallel state P {{\n{regions}  }}\n}}\n"
+        );
+        let out = crate::compile_source("m.road", &src, &Default::default());
+        let ir = out.ir.unwrap();
+        assert_eq!(
+            explore(&ir, &ir.machines["M"], 1).unwrap_err(),
+            TooLarge::Combinations {
+                budget: COMBINATIONS_PER_NODE
+            }
+        );
+        assert!(explore(&ir, &ir.machines["M"], DEFAULT_MAX_NODES).is_ok());
+    }
+
     #[test]
     fn the_budget_stops_exploring() {
         let out = crate::compile_source(
@@ -1934,7 +2311,7 @@ mod tests {
         let ir = out.ir.unwrap();
         assert_eq!(
             explore(&ir, &ir.machines["M"], 1).unwrap_err(),
-            TooLarge { reached: 2 }
+            TooLarge::Nodes { reached: 2 }
         );
     }
 }

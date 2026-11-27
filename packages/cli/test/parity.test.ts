@@ -146,7 +146,7 @@ describe.skipIf(!rust)('the npm command line prints what the Rust one does', () 
     }
     const listed = same(['check', '--checks'], dir)
     expect(listed.status).toBe(1)
-    expect(listed.stderr).toContain('checks: 4 proved, 4 if guards allow, 1 failed\n')
+    expect(listed.stderr).toContain('checks: 4 proved, 4 conditional, 1 failed\n')
     expect(same(['check', 'passing.road'], dir).status).toBe(0)
     // The repository's own checks.
     same(['check', '--checks'])

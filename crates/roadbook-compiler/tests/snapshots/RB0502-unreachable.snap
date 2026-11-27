@@ -15,4 +15,4 @@ error[RB0502]: `Charged` cannot be reached, whatever the guards
 13 |   check reachable Charged
    |   ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: no path from the initial configuration enters it, even with each guard holding or failing as the path needs
+   = help: no path from the initial configuration enters it, even with each guard holding or failing as the path needs, any timer expiring first and other machines doing anything they can

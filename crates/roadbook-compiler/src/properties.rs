@@ -3,26 +3,31 @@
 //! entry file of each compilation. [`crate::compile`] evaluates none, so `gen`, `export` and
 //! the Rust macro never do.
 //!
-//! The graph keeps every guard free, so a check can be proved, refuted, or hold only if guards
-//! allow ([`Verdict`]):
+//! The graph keeps free what the chart does not decide (guards, which timer expires first,
+//! what other machines do: [`statespace::Assumption`]), so a check can be proved, refuted, or
+//! hold on conditions ([`Verdict`]):
 //!
 //! - `never S1 and … Sn` fails if some configuration, a transient one of settling or a final
 //!   one included, has every `Si` active; otherwise it is proved.
 //! - `reachable S` fails if no configuration has `S` active, which proves `S` unreachable
-//!   whatever the guards. It is proved if a path to `S` relies on no guard outcome, and holds
-//!   if guards allow otherwise.
+//!   whatever the guards and the other machines do. It is proved if a path to `S` relies on no
+//!   assumption, and conditional otherwise.
 //! - `S only after T` fails if some path reaches a configuration with `S` active without having
 //!   passed through one with `T` active: `T` active in the same configuration counts, and so
 //!   does the initial one. Otherwise it is proved.
 //! - `can finish` fails if some configuration cannot reach a top-level final state. It is
-//!   proved if every configuration can reach one through steps that rely on no guard outcome,
-//!   and holds if guards allow otherwise.
+//!   proved if every configuration can reach one through steps that rely on no assumption,
+//!   and conditional otherwise.
 //!
 //! A failure is an error at the check, `RB0501` to `RB0504`, with the counterexample that
-//! relies on the fewest guard outcomes (then the shortest): one label per transition, at its
-//! span, and the whole path as text in the help, with the guard outcomes it relies on, since
-//! the data may block it at run time. A machine with more configurations than the budget is
-//! not explored, and each of its checks gets the warning `RB0910`.
+//! relies on the fewest assumptions (then the shortest): one label per transition, at its
+//! span, and the whole path as text in the help, with the assumptions it relies on, since the
+//! data, the timers' delays or the other machines may block it at run time. A machine that is
+//! too large to explore gets the warning `RB0910` at each of its checks.
+//!
+//! The graph covers runs started from the chart: a run restored from a snapshot made by an
+//! earlier version of the chart may be in a configuration this one cannot reach, and a
+//! passing check says nothing about it.
 
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, VecDeque};
@@ -34,7 +39,8 @@ use roadbook_syntax::{Diagnostic, FileId, Pos, Span};
 use crate::checks::{Check, Property, StatePath};
 use crate::codes;
 use crate::statespace::{
-    self, Assumption, EdgeId, Graph, Input, NodeId, StateIndex, guard_text, trigger_text,
+    self, Assumption, EdgeId, Graph, Input, MAX_SENDER_NAMES, NodeId, Sender, StateIndex, TooLarge,
+    guard_text, trigger_text,
 };
 
 /// What evaluating a check found.
@@ -42,9 +48,10 @@ use crate::statespace::{
 pub enum Verdict {
     /// It holds whatever the data.
     Proved,
-    /// It holds only if some guards hold or fail as the path needs: a `reachable` or `can
-    /// finish` whose every witness relies on guard outcomes.
-    IfGuardsAllow,
+    /// It holds only on conditions the chart does not decide: a `reachable` or `can finish`
+    /// whose every witness relies on assumptions (guards, the order of timers, what other
+    /// machines do).
+    Conditional,
     /// It does not hold, even with every guard free: an error.
     Failed,
     /// The machine has too many configurations to explore (`RB0910`).
@@ -52,21 +59,21 @@ pub enum Verdict {
 }
 
 impl Verdict {
-    /// The JSON form: `proved`, `ifGuardsAllow`, `failed`, `unchecked`.
+    /// The JSON form: `proved`, `conditional`, `failed`, `unchecked`.
     pub fn as_str(self) -> &'static str {
         match self {
             Verdict::Proved => "proved",
-            Verdict::IfGuardsAllow => "ifGuardsAllow",
+            Verdict::Conditional => "conditional",
             Verdict::Failed => "failed",
             Verdict::Unchecked => "unchecked",
         }
     }
 
-    /// The text form: `proved`, `if guards allow`, `failed`, `not checked`.
+    /// The text form: `proved`, `conditional`, `failed`, `not checked`.
     pub fn text(self) -> &'static str {
         match self {
             Verdict::Proved => "proved",
-            Verdict::IfGuardsAllow => "if guards allow",
+            Verdict::Conditional => "conditional",
             Verdict::Failed => "failed",
             Verdict::Unchecked => "not checked",
         }
@@ -88,26 +95,6 @@ pub struct Step {
     pub to: Option<String>,
 }
 
-/// An outcome of a guard that a path relies on.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Outcome {
-    /// The guard's text: `x > 0`.
-    pub guard: String,
-    /// Whether it holds on the path, or fails.
-    pub holds: bool,
-}
-
-impl Outcome {
-    /// `x > 0 holds`, `ready fails`.
-    pub fn text(&self) -> String {
-        format!("{} {}", self.guard, self.verb())
-    }
-
-    fn verb(&self) -> &'static str {
-        if self.holds { "holds" } else { "fails" }
-    }
-}
-
 /// A check and its verdict.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckResult {
@@ -120,14 +107,15 @@ pub struct CheckResult {
     /// The check line.
     pub span: Span,
     pub verdict: Verdict,
-    /// The guard outcomes the path relies on, in path order, each once. For `can finish`,
-    /// those of the part of the path from the first configuration that cannot finish
-    /// unconditionally.
-    pub guards: Vec<Outcome>,
+    /// What the path relies on, in path order, each once: "`approved()` holds", "`after 5s` in
+    /// `A` expires before the other running timers", "peer `inventory` emits `Reserved`".
+    /// For `can finish`, those of the part of the path from the first configuration that
+    /// cannot finish unconditionally.
+    pub assumptions: Vec<String>,
     /// The transitions of the path from the initial configuration: the counterexample of a
-    /// failed check, the witness of a `reachable` that holds, and for a `can finish` that
-    /// holds if guards allow, the way to the first configuration that cannot finish
-    /// unconditionally and on to a final state. Empty when there is none.
+    /// failed check, the witness of a `reachable` that holds, and for a `can finish` that is
+    /// conditional, the way to the first configuration that cannot finish unconditionally and
+    /// on to a final state. Empty when there is none.
     pub path: Vec<Step>,
     /// The path as text, each configuration as its active leaves below the machine:
     /// `Idle --Go--> Paying.Charging + Log.Open`. Empty when there is no path.
@@ -164,17 +152,29 @@ pub(crate) fn evaluate(
                     out.push(eval.check(c, diags));
                 }
             }
-            Err(_) => {
+            Err(too_large) => {
+                let (message, help) = match &too_large {
+                    TooLarge::Nodes { .. } => (
+                        format!("not checked: `{name}` has more than {budget} configurations"),
+                        "a check explores every configuration the machine can be in, and gives up past this many; regions and history multiply them".to_string(),
+                    ),
+                    TooLarge::Senders { event, names } => (
+                        format!(
+                            "not checked: `{name}` expects `{event}` from a peer through {names} `ref` names, more than the {MAX_SENDER_NAMES} a check tries every set of"
+                        ),
+                        "any set of those names may hold the peer that sends it, and each set is an input of its own".to_string(),
+                    ),
+                    TooLarge::Combinations { budget } => (
+                        format!(
+                            "not checked: the transitions of `{name}`'s regions combine in more than {budget} ways"
+                        ),
+                        "each input is tried with every combination of the regions' guard outcomes; fewer regions with guards on the same input make fewer".to_string(),
+                    ),
+                };
                 for c in mine {
                     diags.push(
-                        Diagnostic::warning(
-                            codes::NOT_CHECKED,
-                            c.span,
-                            format!("not checked: `{name}` has more than {budget} configurations"),
-                        )
-                        .with_help(
-                            "a check explores every configuration the machine can be in, and gives up past this many; regions and history multiply them",
-                        ),
+                        Diagnostic::warning(codes::NOT_CHECKED, c.span, message.clone())
+                            .with_help(help.clone()),
                     );
                     out.push(result(c, Verdict::Unchecked, Vec::new(), None));
                 }
@@ -184,7 +184,12 @@ pub(crate) fn evaluate(
     out
 }
 
-fn result(c: &Check, verdict: Verdict, guards: Vec<Outcome>, path: Option<Shown>) -> CheckResult {
+fn result(
+    c: &Check,
+    verdict: Verdict,
+    assumptions: Vec<String>,
+    path: Option<Shown>,
+) -> CheckResult {
     let (path, path_text) = path.map_or((Vec::new(), String::new()), |p| (p.steps, p.text));
     CheckResult {
         machine: c.machine.clone(),
@@ -192,7 +197,7 @@ fn result(c: &Check, verdict: Verdict, guards: Vec<Outcome>, path: Option<Shown>
         doc: c.doc.clone(),
         span: c.span,
         verdict,
-        guards,
+        assumptions,
         path,
         path_text,
     }
@@ -269,18 +274,18 @@ impl<'a> Eval<'a> {
                             ),
                         )
                         .with_help(
-                            "no path from the initial configuration enters it, even with each guard holding or failing as the path needs",
+                            "no path from the initial configuration enters it, even with each guard holding or failing as the path needs, any timer expiring first and other machines doing anything they can",
                         ),
                     );
                     return result(c, Verdict::Failed, Vec::new(), None);
                 };
-                let guards = self.guards(&path);
-                let verdict = if guards.is_empty() {
+                let assumed = self.assumptions(&path);
+                let verdict = if assumed.is_empty() {
                     Verdict::Proved
                 } else {
-                    Verdict::IfGuardsAllow
+                    Verdict::Conditional
                 };
-                result(c, verdict, guards, Some(self.shown(&path)))
+                result(c, verdict, assumed, Some(self.shown(&path)))
             }
             Property::OnlyAfter { state, after } => {
                 let Some(path) = self.before(index(state), index(after)) else {
@@ -324,9 +329,9 @@ impl<'a> Eval<'a> {
                 let on = g
                     .fewest_assumptions_path(at, |n| g.is_final(n))
                     .expect("every configuration can reach a final state");
-                let guards = self.guards(&on);
+                let assumed = self.assumptions(&on);
                 path.extend(on);
-                result(c, Verdict::IfGuardsAllow, guards, Some(self.shown(&path)))
+                result(c, Verdict::Conditional, assumed, Some(self.shown(&path)))
             }
         }
     }
@@ -342,15 +347,15 @@ impl<'a> Eval<'a> {
         tail: &str,
         diags: &mut Vec<Diagnostic>,
     ) -> CheckResult {
-        let guards = self.guards(path);
+        let assumed = self.assumptions(path);
         let shown = self.shown(path);
         let mut help = if self.visible(path) {
             shown.text.clone()
         } else {
             format!("at the start: {}", shown.text)
         };
-        if !guards.is_empty() {
-            help.push_str(&format!(", {}", guard_phrase(&guards)));
+        if !assumed.is_empty() {
+            help.push_str(&format!(", {}", assumption_phrase(&assumed)));
         }
         help.push_str(tail);
         let mut d = Diagnostic::error(code, c.span, message);
@@ -358,7 +363,7 @@ impl<'a> Eval<'a> {
             d = d.with_secondary(span, label);
         }
         diags.push(d.with_help(help));
-        result(c, Verdict::Failed, guards, Some(shown))
+        result(c, Verdict::Failed, assumed, Some(shown))
     }
 
     /// A path from the start to a configuration with `s` active that has not passed through
@@ -539,25 +544,68 @@ impl<'a> Eval<'a> {
         out
     }
 
-    /// The guard outcomes a path relies on, in path order, each once.
-    fn guards(&self, path: &[EdgeId]) -> Vec<Outcome> {
-        let mut out: Vec<Outcome> = Vec::new();
+    /// What a path relies on, in path order, each once, as text.
+    fn assumptions(&self, path: &[EdgeId]) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
         for &e in path {
-            for &Assumption { transition, holds } in &self.graph.edge(e).assumptions {
-                let state = self.state(transition.state);
-                let Some(guard) = &state.transitions[transition.index].guard else {
-                    continue;
-                };
-                let g = Outcome {
-                    guard: guard.text.clone(),
-                    holds,
-                };
-                if !out.contains(&g) {
-                    out.push(g);
+            for a in &self.graph.edge(e).assumptions {
+                if let Some(text) = self.assumption(a)
+                    && !out.contains(&text)
+                {
+                    out.push(text);
                 }
             }
         }
         out
+    }
+
+    /// An assumption as text: "`approved()` holds", "`after 5s` in `A` expires before the
+    /// other running timers", "`Checkout` (invoked in `Paying`) ends `done`".
+    fn assumption(&self, a: &Assumption) -> Option<String> {
+        let invoked = |s: &StateIndex| {
+            let state = self.state(*s);
+            let src = state.invoke.as_ref().map_or("", |i| i.src.as_str());
+            format!(
+                "`{src}` (invoked in `{}`)",
+                self.relative(self.graph.state_id(*s))
+            )
+        };
+        Some(match a {
+            Assumption::Guard { transition, holds } => {
+                let state = self.state(transition.state);
+                let guard = state.transitions[transition.index].guard.as_ref()?;
+                let verb = if *holds { "holds" } else { "fails" };
+                format!("`{}` {verb}", guard.text)
+            }
+            Assumption::TimerFirst { state, index } => format!(
+                "`{}` in `{}` expires before the other running timers",
+                trigger_text(&self.state(*state).transitions[*index].trigger),
+                self.relative(self.graph.state_id(*state))
+            ),
+            Assumption::Machine(input) => match input {
+                Input::InvokeDone { state } => format!("{} ends `done`", invoked(state)),
+                Input::InvokeFail { state, error } => {
+                    format!("{} fails with `{error}`", invoked(state))
+                }
+                Input::Emitted { from, event } => match from {
+                    Sender::Child(s) => format!("{} emits `{event}`", invoked(s)),
+                    Sender::Refs(names) => {
+                        let names: Vec<String> = names.iter().map(|n| format!("`{n}`")).collect();
+                        if names.len() == 1 {
+                            format!("peer {} emits `{event}`", names[0])
+                        } else {
+                            format!("the peer that {} hold emits `{event}`", and_list(&names))
+                        }
+                    }
+                    Sender::Children(c) => format!("a child of `{c}` emits `{event}`"),
+                },
+                Input::SpawnDone { children } => format!("a child of `{children}` ends `done`"),
+                Input::SpawnFail { children, error } => {
+                    format!("a child of `{children}` fails with `{error}`")
+                }
+                other => self.graph.describe(other),
+            },
+        })
     }
 
     /// An IR span as a span of the compilation's files, with offsets.
@@ -595,12 +643,8 @@ fn pos(text: &str, line: u32, col: u32) -> Pos {
 }
 
 /// "if `x > 0` holds and `ready` fails on the way".
-fn guard_phrase(guards: &[Outcome]) -> String {
-    let parts: Vec<String> = guards
-        .iter()
-        .map(|o| format!("`{}` {}", o.guard, o.verb()))
-        .collect();
-    format!("if {} on the way", and_list(&parts))
+fn assumption_phrase(assumptions: &[String]) -> String {
+    format!("if {} on the way", and_list(assumptions))
 }
 
 /// "a", "a and b", "a, b and c".
@@ -612,7 +656,7 @@ fn and_list(items: &[String]) -> String {
     }
 }
 
-/// `checks: 6 proved, 2 if guards allow, 1 failed`: the nonzero counts of each verdict.
+/// `checks: 6 proved, 2 conditional, 1 failed`: the nonzero counts of each verdict.
 /// `None` when no check was evaluated.
 pub fn summary(results: &[CheckResult]) -> Option<String> {
     if results.is_empty() {
@@ -620,7 +664,7 @@ pub fn summary(results: &[CheckResult]) -> Option<String> {
     }
     let parts: Vec<String> = [
         Verdict::Proved,
-        Verdict::IfGuardsAllow,
+        Verdict::Conditional,
         Verdict::Failed,
         Verdict::Unchecked,
     ]
@@ -634,7 +678,7 @@ pub fn summary(results: &[CheckResult]) -> Option<String> {
 }
 
 /// Every check, one line each: `examples/pay.road:12: Pay: check never A and B: proved`. A
-/// check that holds if guards allow has the guards and its path beneath, indented.
+/// conditional check has what it relies on and its path beneath, indented.
 pub fn list(results: &[CheckResult], files: &[(String, String)]) -> String {
     let mut out = String::new();
     for r in results {
@@ -648,8 +692,8 @@ pub fn list(results: &[CheckResult], files: &[(String, String)]) -> String {
             r.check,
             r.verdict.text()
         ));
-        if r.verdict == Verdict::IfGuardsAllow {
-            out.push_str(&format!("    {}\n", guard_phrase(&r.guards)));
+        if r.verdict == Verdict::Conditional {
+            out.push_str(&format!("    {}\n", assumption_phrase(&r.assumptions)));
             out.push_str(&format!("    {}\n", r.path_text));
         }
     }
@@ -670,10 +714,6 @@ mod tests {
         let mut loader = MemoryLoader::new().with("m.road", src);
         let out = crate::check(&mut loader, &["m.road".to_string()], options).unwrap();
         (out.checks.clone(), out.render())
-    }
-
-    fn texts(guards: &[Outcome]) -> Vec<String> {
-        guards.iter().map(Outcome::text).collect()
     }
 
     /// The verdict of each check, by its text.
@@ -732,7 +772,7 @@ machine M() {
             ),
             "{rendered}"
         );
-        assert_eq!(texts(&r[0].guards), ["ok() holds"]);
+        assert_eq!(r[0].assumptions, ["`ok()` holds"]);
         let to = |s: &str| Some(s.to_string());
         assert_eq!(
             r[0].path,
@@ -763,11 +803,11 @@ machine M() {
     }
 
     #[test]
-    fn a_counterexample_with_no_guards_says_nothing_of_them() {
+    fn a_counterexample_with_no_assumptions_says_nothing_of_them() {
         let src = "machine M() {\n  event Go\n  initial A\n  state A { on Go -> B }\n  state B {}\n  check never B\n}\n";
         let (r, rendered) = run(src);
         assert_eq!(r[0].verdict, Verdict::Failed);
-        assert!(r[0].guards.is_empty());
+        assert!(r[0].assumptions.is_empty());
         assert!(rendered.contains("= help: A --Go--> B\n"), "{rendered}");
         // At the start: no steps.
         let (r, rendered) = run(&src.replace("never B", "never A"));
@@ -822,7 +862,7 @@ machine M() {
     }
 
     #[test]
-    fn reachable_is_proved_holds_if_guards_allow_or_fails() {
+    fn reachable_is_proved_conditional_or_fails() {
         let (r, rendered) = run(&chart(
             "  check reachable Idle\n  check reachable Charged\n  check reachable Refunded\n",
         ));
@@ -830,11 +870,11 @@ machine M() {
             verdicts(&r),
             [
                 ("reachable Idle", Verdict::Proved),
-                ("reachable Charged", Verdict::IfGuardsAllow),
+                ("reachable Charged", Verdict::Conditional),
                 ("reachable Refunded", Verdict::Failed)
             ]
         );
-        assert_eq!(texts(&r[1].guards), ["ok() holds"]);
+        assert_eq!(r[1].assumptions, ["`ok()` holds"]);
         assert_eq!(
             r[1].path_text,
             "Idle --Go [ok()]--> Paying --always--> Charged"
@@ -918,7 +958,7 @@ machine M() {
     }
 
     #[test]
-    fn can_finish_is_proved_holds_if_guards_allow_or_fails() {
+    fn can_finish_is_proved_conditional_or_fails() {
         let proved = "machine M() {\n  event Go\n  initial A\n  state A { on Go -> B }\n  final state B {}\n  check can finish\n}\n";
         let (r, _) = run(proved);
         assert_eq!(r[0].verdict, Verdict::Proved);
@@ -937,8 +977,8 @@ machine M() {
 }
 ";
         let (r, rendered) = run(guarded);
-        assert_eq!(r[0].verdict, Verdict::IfGuardsAllow, "{rendered}");
-        assert_eq!(texts(&r[0].guards), ["ok() holds"]);
+        assert_eq!(r[0].verdict, Verdict::Conditional, "{rendered}");
+        assert_eq!(r[0].assumptions, ["`ok()` holds"]);
         assert_eq!(r[0].path_text, "A --Go--> B --Go [ok()]--> C");
         assert!(rendered.is_empty(), "{rendered}");
 
@@ -976,6 +1016,88 @@ machine M() {
     }
 
     #[test]
+    fn a_timer_that_never_comes_first_makes_can_finish_conditional() {
+        // A real run loops A, B, A, …: the 1 s timer always expires before the 5 s one.
+        let src = "machine M() {\n  initial A\n  state A {\n    after 1s -> B\n    after 5s -> C\n  }\n  state B { after 1s -> A }\n  final state C {}\n  check can finish\n  check reachable B\n  check reachable C\n}\n";
+        let (r, rendered) = run(src);
+        assert!(rendered.is_empty(), "{rendered}");
+        assert_eq!(
+            verdicts(&r),
+            [
+                ("can finish", Verdict::Conditional),
+                ("reachable B", Verdict::Proved),
+                ("reachable C", Verdict::Conditional)
+            ]
+        );
+        let timer = "`after 5s` in `A` expires before the other running timers";
+        assert_eq!(r[0].assumptions, [timer]);
+        assert_eq!(r[0].path_text, "A --after 5s--> C");
+        assert_eq!(r[2].assumptions, [timer]);
+    }
+
+    #[test]
+    fn what_another_machine_does_is_an_assumption() {
+        let src = "\
+error Lost
+machine Kid() ! Lost {
+  emits Ping
+  initial A
+  state A { entry emit Ping }
+}
+machine M(peer: ref Kid) {
+  children kids: Kid by string
+  initial A
+  state A {
+    invoke Kid() as kid {
+      done      -> Bad
+      fail Lost -> Gone
+    }
+    on kid.Ping -> Pinged
+  }
+  state Pinged {
+    on peer.Ping -> Spawning
+  }
+  state Spawning {
+    entry spawn kids[\"a\"] = Kid()
+    on kids.done -> Bad
+  }
+  final state Bad {}
+  final state Gone {}
+  check never Bad
+  check reachable Gone
+  check reachable Spawning
+}
+";
+        let (r, rendered) = run(src);
+        assert_eq!(
+            verdicts(&r),
+            [
+                ("never Bad", Verdict::Failed),
+                ("reachable Gone", Verdict::Conditional),
+                ("reachable Spawning", Verdict::Conditional)
+            ],
+            "{rendered}"
+        );
+        assert!(
+            rendered.contains(
+                "help: A --done--> Bad, if `Kid` (invoked in `A`) ends `done` on the way"
+            ),
+            "{rendered}"
+        );
+        assert_eq!(
+            r[1].assumptions,
+            ["`Kid` (invoked in `A`) fails with `Lost`"]
+        );
+        assert_eq!(
+            r[2].assumptions,
+            [
+                "`Kid` (invoked in `A`) emits `Ping`",
+                "peer `peer` emits `Ping`"
+            ]
+        );
+    }
+
+    #[test]
     fn past_the_budget_checks_are_not_checked() {
         let src = "machine M() {\n  event Go\n  initial A\n  state A { on Go -> B }\n  state B { on Go -> A }\n  check reachable B\n  check can finish\n}\n";
         let options = Options {
@@ -996,6 +1118,21 @@ machine M() {
             "{rendered}"
         );
         assert_eq!(summary(&r).unwrap(), "checks: 2 not checked");
+        // A peer's event expected through 17 names.
+        let names: Vec<String> = (1..=17).map(|i| format!("p{i}: ref P")).collect();
+        let ons: String = (1..=17)
+            .map(|i| format!("    on p{i}.Ping -> A\n"))
+            .collect();
+        let src = format!(
+            "machine P() {{\n  emits Ping\n  initial A\n  state A {{ entry emit Ping }}\n}}\nmachine M({}) {{\n  initial A\n  state A {{\n{ons}  }}\n  check reachable A\n}}\n",
+            names.join(", ")
+        );
+        let (r, rendered) = run(&src);
+        assert_eq!(verdicts(&r), [("reachable A", Verdict::Unchecked)]);
+        assert!(
+            rendered.contains("not checked: `M` expects `Ping` from a peer through 17 `ref` names, more than the 16 a check tries every set of"),
+            "{rendered}"
+        );
     }
 
     #[test]
@@ -1034,7 +1171,7 @@ machine M() {
         ));
         assert_eq!(
             summary(&r).unwrap(),
-            "checks: 2 proved, 1 if guards allow, 1 failed"
+            "checks: 2 proved, 1 conditional, 1 failed"
         );
         assert_eq!(summary(&[]), None);
         let files = vec![("m.road".to_string(), String::new())];
@@ -1043,7 +1180,7 @@ machine M() {
             list(&r, &files),
             format!(
                 "m.road:{line}: M: check reachable Idle: proved\n\
-                 m.road:{}: M: check reachable Charged: if guards allow\n    if `ok()` holds on the way\n    Idle --Go [ok()]--> Paying --always--> Charged\n\
+                 m.road:{}: M: check reachable Charged: conditional\n    if `ok()` holds on the way\n    Idle --Go [ok()]--> Paying --always--> Charged\n\
                  m.road:{}: M: check never Refunded: proved\n\
                  m.road:{}: M: check never Charged: failed\n",
                 line + 1,

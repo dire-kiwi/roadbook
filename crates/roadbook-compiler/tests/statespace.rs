@@ -20,6 +20,15 @@
 //!   states and history records (the graph does not say which invokes are consumed, so it may
 //!   start from more nodes than one). A restored snapshot that no such node matches would be
 //!   skipped; [`UNREACHABLE_SNAPSHOTS`] lists them.
+//!
+//! Wherever a run waits for an input (before one, when it is suspended or cancelled, and at
+//! the end of its trace) it has settled, so the nodes it may be at must include a stable one.
+//!
+//! An event a peer emits is matched by the `ref` names that hold the sender: the run's
+//! arguments (`started`'s `input`, a restored snapshot's `input` and `vars`) and the `set`
+//! records of its variables say which name holds which run id, and the event's `from` names
+//! the sender. Where no name is known to hold it (a handle that came inside a record, say),
+//! the event is matched by its name alone, whichever names the edge assumed.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
@@ -143,6 +152,8 @@ struct Replay<'g> {
     invokes: HashMap<u64, StateIndex>,
     timers: HashMap<u64, (StateIndex, usize)>,
     spawns: HashMap<u64, String>,
+    /// The run id each parameter and variable holds, for those that hold a string.
+    holders: HashMap<String, String>,
     microsteps: usize,
 }
 
@@ -162,6 +173,7 @@ impl<'g> Replay<'g> {
             invokes: HashMap::new(),
             timers: HashMap::new(),
             spawns: HashMap::new(),
+            holders: HashMap::new(),
             microsteps: 0,
         }
     }
@@ -178,7 +190,14 @@ impl<'g> Replay<'g> {
             let kind = r["kind"].as_str().unwrap_or("");
             let was_in_transitions = std::mem::replace(&mut self.in_transitions, false);
             match kind {
-                "started" => {}
+                "started" => self.hold(&r["input"]),
+                "set" => {
+                    let var = r["var"].as_str().unwrap_or("").to_string();
+                    match r["value"].as_str() {
+                        Some(id) => self.holders.insert(var, id.to_string()),
+                        None => self.holders.remove(&var),
+                    };
+                }
                 "restored" => self.restore(&r["snapshot"])?,
                 "transition" => {
                     if !was_in_transitions {
@@ -256,9 +275,15 @@ impl<'g> Replay<'g> {
                     }
                     return Ok(());
                 }
-                "cancelled" | "defect" => return Ok(()),
+                // A cancel comes from outside, between macrosteps: the run had settled.
+                "cancelled" => {
+                    self.settled()?;
+                    return Ok(());
+                }
+                "defect" => return Ok(()),
                 "suspended" => {
                     self.close()?;
+                    self.settled()?;
                     return Ok(());
                 }
                 _ => {}
@@ -266,8 +291,18 @@ impl<'g> Replay<'g> {
         }
         if !self.ending {
             self.close()?;
+            self.settled()?;
         }
         Ok(())
+    }
+
+    /// Records which run each name of `values` holds (an object of names to values).
+    fn hold(&mut self, values: &Value) {
+        for (name, v) in values.as_object().into_iter().flatten() {
+            if let Some(id) = v.as_str() {
+                self.holders.insert(name.clone(), id.to_string());
+            }
+        }
     }
 
     /// Starts from the stable nodes that match a restored snapshot.
@@ -288,6 +323,8 @@ impl<'g> Replay<'g> {
             history.push((h, r));
         }
         history.sort();
+        self.hold(&snap["input"]);
+        self.hold(&snap["vars"]);
         // The work the snapshot holds: a timer already due is fired with no `timer.started`.
         let none = Vec::new();
         let list = |key: &str| snap[key].as_array().unwrap_or(&none).clone();
@@ -363,7 +400,18 @@ impl<'g> Replay<'g> {
             },
             "emitted" => {
                 let from = match event["invoke"].as_u64() {
-                    None => Sender::Refs(Vec::new()),
+                    // The names known to hold the sender, if any.
+                    None => {
+                        let sender = event["from"].as_str().unwrap_or("");
+                        let mut names: Vec<String> = self
+                            .holders
+                            .iter()
+                            .filter(|(_, id)| *id == sender)
+                            .map(|(n, _)| n.clone())
+                            .collect();
+                        names.sort();
+                        Sender::Refs(names)
+                    }
                     Some(id) => match (self.invokes.get(&id), self.spawns.get(&id)) {
                         (Some(&s), _) => Sender::Child(s),
                         (_, Some(c)) => Sender::Children(c.clone()),
@@ -376,22 +424,51 @@ impl<'g> Replay<'g> {
         })
     }
 
-    /// Whether an edge's input is the trace's. A peer's event matches whichever names the
-    /// edge assumed hold it: the trace does not say.
-    fn same_input(edge: &Input, trace: &Input) -> bool {
+    /// Whether an edge's input is the trace's. A peer's event matches the edge whose names
+    /// are those of the names known to hold the sender that a trigger expects it through, or,
+    /// with no name known to hold it, whichever names the edge assumed.
+    fn same_input(&self, edge: &Input, trace: &Input) -> bool {
         match (edge, trace) {
             (
                 Input::Emitted {
-                    from: Sender::Refs(_),
+                    from: Sender::Refs(assumed),
                     event: a,
                 },
                 Input::Emitted {
-                    from: Sender::Refs(_),
+                    from: Sender::Refs(holders),
                     event: b,
                 },
-            ) => a == b,
+            ) => {
+                if a != b {
+                    return false;
+                }
+                if holders.is_empty() {
+                    return true;
+                }
+                let expected = self.expected_names(a);
+                let want: BTreeSet<&String> =
+                    holders.iter().filter(|n| expected.contains(*n)).collect();
+                let have: BTreeSet<&String> = assumed.iter().collect();
+                want == have
+            }
             _ => edge == trace,
         }
+    }
+
+    /// Every name the graph's edges expect a peer's `event` through.
+    fn expected_names(&self, event: &str) -> BTreeSet<String> {
+        let mut out = BTreeSet::new();
+        for e in 0..self.g.edge_count() {
+            if let Input::Emitted {
+                from: Sender::Refs(names),
+                event: x,
+            } = &self.g.edge(statespace::EdgeId(e as u32)).input
+                && x == event
+            {
+                out.extend(names.iter().cloned());
+            }
+        }
+        out
     }
 
     /// Checks the start, the first time the run reaches a boundary between microsteps.
@@ -427,7 +504,7 @@ impl<'g> Replay<'g> {
             for &e in self.g.outgoing(n) {
                 let edge = self.g.edge(e);
                 let same_input = match &input {
-                    Some(i) => !edge.settling && Self::same_input(&edge.input, i),
+                    Some(i) => !edge.settling && self.same_input(&edge.input, i),
                     None => {
                         edge.settling && matches!(edge.input, Input::Always | Input::Done { .. })
                     }

@@ -19,21 +19,23 @@
 //!   "checks": [{
 //!     "machine": "Pay", "check": "reachable Charged", "doc": null,
 //!     "file": "pay.road", "line": 30, "col": 3, "endLine": 30, "endCol": 26,
-//!     "verdict": "ifGuardsAllow",
-//!     "guards": ["ok() holds"],
+//!     "verdict": "conditional",
+//!     "assumptions": ["`ok()` holds"],
 //!     "path": [{ "from": "Pay.Idle", "index": 0, "trigger": "Go", "guard": "ok()", "to": "Pay.Charged" }]
 //!   }]
 //! }
 //! ```
 //!
 //! `checks` lists every `check` line `roadbook check` evaluated, with its verdict:
-//! `proved`, `ifGuardsAllow`, `failed` (also an error among the diagnostics) or `unchecked`
-//! (with the warning `RB0910`). `guards` are the guard outcomes its path relies on, and
-//! `path` the transitions of that path from the initial configuration, shaped as the steps of
+//! `proved`, `conditional`, `failed` (also an error among the diagnostics) or `unchecked`
+//! (with the warning `RB0910`). `assumptions` are what its path relies on that the chart does
+//! not decide (guard outcomes, which timer expires first, what other machines do), and `path`
+//! the transitions of that path from the initial configuration, shaped as the steps of
 //! `roadbook paths --json`: the counterexample of a failed check, the witness of a
-//! `reachable` that holds, and for a `can finish` that holds if guards allow, the way to the
-//! first configuration that cannot finish unconditionally and on to a final state; `[]` when
-//! there is none.
+//! `reachable` that holds, and for a conditional `can finish`, the way to the first
+//! configuration that cannot finish unconditionally and on to a final state; `[]` when there
+//! is none. Checks cover runs started from the chart, not runs restored from a snapshot of an
+//! earlier version of it.
 
 use roadbook_syntax::diagnostic::Files;
 
@@ -113,7 +115,7 @@ struct CheckJson<'a> {
     #[serde(flatten)]
     range: Range<'a>,
     verdict: &'static str,
-    guards: Vec<String>,
+    assumptions: &'a [String],
     path: Vec<StepJson<'a>>,
 }
 
@@ -133,7 +135,7 @@ fn check<'a>(c: &'a CheckResult, files: &'a [(String, String)]) -> CheckJson<'a>
         doc: (!c.doc.is_empty()).then_some(c.doc.as_str()),
         range: range(c.span, files),
         verdict: c.verdict.as_str(),
-        guards: c.guards.iter().map(|g| g.text()).collect(),
+        assumptions: &c.assumptions,
         path: c
             .path
             .iter()
