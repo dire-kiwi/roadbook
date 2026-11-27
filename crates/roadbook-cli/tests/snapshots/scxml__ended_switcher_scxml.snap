@@ -1,0 +1,27 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Watches the warehouse its variable `current` holds: `a`, then `b` after
+  Swap. The end of a run `current` no longer holds is dropped.
+-->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Switcher" datamodel="roadbook" initial="Switcher_Watching">
+  <datamodel>
+    <data id="a" rb:type="ref Inventory" rb:param="true"/>
+    <data id="b" rb:type="ref Inventory" rb:param="true"/>
+    <data id="current" expr="a" rb:type="ref Inventory"/>
+  </datamodel>
+  <state id="Switcher_Watching">
+    <transition event="Swap" type="internal">
+      <assign location="current" expr="b"/>
+    </transition>
+    <transition event="current.ended" target="Switcher_Gone">
+      <rb:do action="note">
+        <param name="status" expr="event.status"/>
+      </rb:do>
+    </transition>
+  </state>
+  <final id="Switcher_Gone"/>
+</scxml>

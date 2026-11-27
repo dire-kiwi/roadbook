@@ -26,7 +26,8 @@
 //!   for, never a call; `after d` is a `<send>` of `roadbook.after.<state>.<group>` on entry,
 //!   cancelled on exit; `always` has no event; `done` is `done.state.<state>`; an invoke's `done`
 //!   is `done.invoke.<invoke>` and its `fail E` is `error.E.<invoke>`, `fail *` the declared
-//!   errors no other branch lists, and for a call `Unanswered` too.
+//!   errors no other branch lists, and for a call `Unanswered` too; `on x.ended`, a peer's end,
+//!   is `x.ended`.
 //! - **Effects** are executable content: `set` is `<assign>`; `send x.E` a `<send>` to the
 //!   child's invoke (`#_<invoke>`) or to the machine a `ref` holds (`targetexpr`); `emit E` a
 //!   `<send>` of type `urn:roadbook:emit`; `reply x done v` a `<send>` of type

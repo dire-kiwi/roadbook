@@ -861,6 +861,47 @@ fn export_mermaid_snapshots_calls() {
     insta::assert_snapshot!("calls_mermaid", text(&out.stdout));
 }
 
+/// A peer's end: `x.ended` on an edge with its guard (from the machine, for one in its body),
+/// and `on x.ended` in a state's description when it has no target, `ignore` included.
+#[test]
+fn export_mermaid_draws_a_peer_s_end() {
+    let chart = "action note(status: Ended)
+
+machine Peer() {
+  event Stop
+  initial A
+  state A { on Stop -> B }
+  final state B {}
+}
+
+machine Holder(peer: ref Peer, spare: ref Peer?) {
+  var current: ref Peer = peer
+  initial Watching
+  on peer.ended if event.status == Ended.Defect -> Alarm
+  state Watching {
+    on current.ended do note(event.status)
+    on spare.ended ignore
+  }
+  final state Alarm {}
+}
+";
+    let dir = project("mermaid-ended", &[("m.road", chart)]);
+    let out = roadbook(
+        &dir,
+        &["export", "mermaid", "m.road", "--machine", "Holder"],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let md = text(&out.stdout);
+    for line in [
+        "Holder_machine --> Alarm: peer.ended [event.status == Ended.Defect]",
+        "Watching: on current.ended / do note(event.status)",
+        "Watching: on spare.ended ignore",
+    ] {
+        assert!(md.contains(line), "no `{line}` in\n{md}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn export_mermaid_nests_and_splits_regions() {
     let out = roadbook(
