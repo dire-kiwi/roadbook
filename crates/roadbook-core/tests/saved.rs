@@ -83,7 +83,7 @@ fn refusals_come_in_the_spec_order() {
     // The schema and the version first, even for a snapshot of no machine.
     assert_eq!(reason(&p, with(&|v| v["extra"] = json!(1))), "invalid");
     assert_eq!(
-        reason(&p, with(&|v| v["snapshotVersion"] = json!(4))),
+        reason(&p, with(&|v| v["snapshotVersion"] = json!(5))),
         "invalid"
     );
     assert_eq!(
@@ -595,7 +595,7 @@ fn history_is_checked_against_the_history_states() {
     let c = roadbook_compiler::compile_source("h.road", HISTORY, &Default::default());
     let p = Program::new(c.ir.expect("the chart compiles")).unwrap();
     let base = history_saved(&p);
-    assert_eq!(base["snapshotVersion"], 3);
+    assert_eq!(base["snapshotVersion"], 4);
     assert_eq!(base["history"], json!({}));
     let with = |history: Value| {
         let mut v = base.clone();
@@ -640,7 +640,8 @@ fn history_is_checked_against_the_history_states() {
         assert_eq!(with(history.clone()), want, "{history}");
     }
 
-    // Version 1 has no `history` and no `spawned`, version 2 has `history`, version 3 both.
+    // Version 1 has no `history` and no `spawned`, version 2 has `history`, versions 3 and 4
+    // both.
     let mut v1 = base.clone();
     v1["snapshotVersion"] = json!(1);
     assert_eq!(reason(&p, v1.clone()), "invalid");
@@ -654,12 +655,14 @@ fn history_is_checked_against_the_history_states() {
     v2.as_object_mut().unwrap().remove("spawned");
     assert_eq!(reason(&p, v2), "ok");
     let mut v3 = base.clone();
+    v3["snapshotVersion"] = json!(3);
+    assert_eq!(reason(&p, v3.clone()), "ok");
     v3.as_object_mut().unwrap().remove("history");
     assert_eq!(reason(&p, v3), "invalid");
 }
 
 #[test]
-fn a_version_1_snapshot_restores_and_is_saved_again_as_version_3() {
+fn a_version_1_snapshot_restores_and_is_saved_again_as_version_4() {
     let c = roadbook_compiler::compile_source("h.road", HISTORY, &Default::default());
     let p = Program::new(c.ir.expect("the chart compiles")).unwrap();
     let mut v1 = history_saved(&p);
@@ -679,7 +682,236 @@ fn a_version_1_snapshot_restores_and_is_saved_again_as_version_3() {
     assert_eq!(snapshot.to_value(), v1);
     assert!(snap.history.is_empty());
     let again = Saved::new(&snap, |t| t.delay).to_value();
-    assert_eq!(again["snapshotVersion"], 3);
+    assert_eq!(again["snapshotVersion"], 4);
     assert_eq!(again["history"], json!({}));
     assert_eq!(again["spawned"], json!([]));
+}
+
+const KEPT: &str = r#"
+task fetch(n: int) -> int
+
+machine Tally(start: int) {
+  event Add { by: int }
+  var n: int = start
+  initial Counting
+  state Counting { after 5s -> Counting  on Add set n = n + event.by }
+}
+
+machine Desk(start: int) {
+  initial Open
+  state Open {
+    invoke Tally(start) as tally { done -> Closed }
+  }
+  final state Closed {}
+}
+
+machine Fetcher() {
+  initial Fetching
+  state Fetching { invoke fetch(1) { done -> Done } }
+  final state Done {}
+}
+
+machine Pool() {
+  children slots: Tally by int
+  initial Open
+  state Open {}
+}
+
+machine Peer(other: ref Tally?) {
+  initial X
+  state X {}
+}
+
+machine Lobby() {
+  var t: ref Tally?
+  initial S
+  state S { invoke Peer(t) { done -> E } }
+  final state E {}
+}
+"#;
+
+/// A saved `Desk` whose running `Tally` is nested in its invoke, and the program.
+fn desk() -> (Program, Value) {
+    let c = roadbook_compiler::compile_source("k.road", KEPT, &Default::default());
+    assert!(!c.has_errors(), "{}", c.render());
+    let p = Program::new(c.ir.unwrap()).unwrap();
+    let input = json!({"start": 1}).as_object().unwrap().clone();
+    let (desk, _) = p.start("Desk", "r1", input.clone(), &mut no_fns).unwrap();
+    let (tally, _) = p.start("Tally", "r1.1", input, &mut no_fns).unwrap();
+    let mut v = Saved::new(&desk, |t| t.delay).to_value();
+    v["invokes"][0]["child"] = Saved::new(&tally, |t| t.delay + 100).to_value();
+    (p, v)
+}
+
+#[test]
+fn nested_snapshots_are_checked_with_the_tree() {
+    let (p, base) = desk();
+    assert_eq!(reason(&p, base.clone()), "ok");
+    let with = |f: &dyn Fn(&mut Value)| {
+        let mut v = base.clone();
+        f(&mut v);
+        reason(&p, v)
+    };
+    let other = format!("sha256:{}", "0".repeat(64));
+    // By the schema: a nested snapshot is of version 4, and only version 4 nests one.
+    assert_eq!(
+        with(&|v| v["invokes"][0]["child"]["snapshotVersion"] = json!(3)),
+        "invalid"
+    );
+    assert_eq!(with(&|v| v["snapshotVersion"] = json!(3)), "invalid");
+    assert_eq!(
+        with(&|v| v["invokes"][0]["child"]["extra"] = json!(1)),
+        "invalid"
+    );
+    // A stale nested hash is `ir`, before an ended status or calls of the top-level one.
+    assert_eq!(
+        with(&|v| v["invokes"][0]["child"]["ir"] = json!(other)),
+        "ir"
+    );
+    assert_eq!(
+        with(&|v| {
+            v["invokes"][0]["child"]["ir"] = json!(other);
+            v["status"] = json!("cancelled");
+        }),
+        "ir"
+    );
+    // Its status, calls, machine and run are `invalid`, after the top-level reasons.
+    assert_eq!(
+        with(&|v| v["invokes"][0]["child"]["status"] = json!("cancelled")),
+        "invalid"
+    );
+    let calls = json!([{"from": "r9", "invoke": 1, "call": "c"}]);
+    assert_eq!(
+        with(&|v| v["invokes"][0]["child"]["calls"] = calls.clone()),
+        "invalid"
+    );
+    assert_eq!(
+        with(&|v| {
+            v["invokes"][0]["child"]["calls"] = calls.clone();
+            v["calls"] = calls.clone();
+        }),
+        "calls"
+    );
+    assert_eq!(
+        with(&|v| v["invokes"][0]["child"]["run"] = json!("r1.2")),
+        "invalid"
+    );
+    assert_eq!(
+        with(&|v| v["invokes"][0]["child"]["run"] = json!("r2.1")),
+        "invalid"
+    );
+    let desk = base.clone();
+    assert_eq!(
+        with(&|v| {
+            let mut d = desk.clone();
+            d["run"] = json!("r1.1");
+            d.as_object_mut().unwrap().remove("invokes");
+            d["invokes"] = json!([]);
+            d["ir"] = desk["ir"].clone();
+            v["invokes"][0]["child"] = d;
+        }),
+        // Of `Desk`, but its hash is checked against `Tally`'s first.
+        "ir"
+    );
+    // It must fit its own machine.
+    assert_eq!(
+        with(&|v| v["invokes"][0]["child"]["vars"] = json!({"n": "x"})),
+        "invalid"
+    );
+    assert_eq!(
+        with(&|v| v["invokes"][0]["child"]["active"] = json!(["Tally"])),
+        "invalid"
+    );
+    // A migration is called once for the whole tree when a nested hash is stale.
+    let mut stale = base.clone();
+    stale["invokes"][0]["child"]["ir"] = json!(other);
+    let mut calls = 0;
+    let mut migrate = |mut v: Value| {
+        calls += 1;
+        v["invokes"][0]["child"]["ir"] = base["invokes"][0]["child"]["ir"].clone();
+        Ok(v)
+    };
+    let (saved, migrated) = p.check_saved(stale, None, Some(&mut migrate)).unwrap();
+    assert_eq!(calls, 1);
+    assert_eq!(migrated.as_deref(), base["ir"].as_str());
+    assert!(saved.invokes[0].child.is_some());
+}
+
+#[test]
+fn a_child_on_a_task_or_holding_a_ref_is_refused() {
+    let (p, base) = desk();
+    let input = json!({}).as_object().unwrap().clone();
+    let (fetcher, _) = p.start("Fetcher", "r1", input, &mut no_fns).unwrap();
+    let mut v = Saved::new(&fetcher, |t| t.delay).to_value();
+    v["invokes"][0]["child"] = base["invokes"][0]["child"].clone();
+    assert_eq!(reason(&p, v), "invalid");
+    // An entry that starts a machine with a `ref` parameter, with a snapshot nested in it, is
+    // `ref`: by the machine it starts, not the nested snapshot's `machine`.
+    let none = json!({}).as_object().unwrap().clone();
+    let (lobby, _) = p.start("Lobby", "r1", none, &mut no_fns).unwrap();
+    let other = json!({"other": null}).as_object().unwrap().clone();
+    let (peer, _) = p.start("Peer", "r1.1", other, &mut no_fns).unwrap();
+    let mut v = Saved::new(&lobby, |t| t.delay).to_value();
+    v["invokes"][0]["child"] = Saved::new(&peer, |t| t.delay).to_value();
+    assert_eq!(reason(&p, v.clone()), "ref");
+    v["invokes"][0]["child"] = base["invokes"][0]["child"].clone();
+    v["invokes"][0]["child"]["ir"] = Saved::new(&peer, |t| t.delay).to_value()["ir"].clone();
+    assert_eq!(reason(&p, v), "ref");
+    // A `Peer` nested in the entry of a `Tally` is of another machine: `invalid`, not `ref`.
+    let mut v = base.clone();
+    let mut nested = Saved::new(&peer, |t| t.delay).to_value();
+    nested["ir"] = base["invokes"][0]["child"]["ir"].clone();
+    v["invokes"][0]["child"] = nested;
+    assert_eq!(reason(&p, v), "invalid");
+}
+
+#[test]
+fn restore_passes_each_nested_snapshot_to_its_start_command() {
+    let (p, base) = desk();
+    let (saved, _) = p.check_saved(base.clone(), None, None).unwrap();
+    let (_, commands) = p.restore(&saved, "r2", 0, None, &mut no_fns).unwrap();
+    let Some(Command::Trace {
+        record: Record::Restored { snapshot, .. },
+    }) = commands.first()
+    else {
+        panic!("no restored record first: {commands:?}");
+    };
+    // The record shows the snapshot without the nested one.
+    assert!(!snapshot.has_children());
+    assert_eq!(
+        snapshot.to_value()["invokes"],
+        json!([{"id": 1, "state": "Desk.Open", "src": "Tally"}])
+    );
+    let start = commands
+        .iter()
+        .find_map(|c| match c {
+            Command::InvokeStart { saved, .. } => Some(saved.clone()),
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(start.unwrap().to_value(), base["invokes"][0]["child"]);
+    // A spawned child's too.
+    let input = json!({}).as_object().unwrap().clone();
+    let (pool, _) = p.start("Pool", "r1", input, &mut no_fns).unwrap();
+    let mut v = Saved::new(&pool, |t| t.delay).to_value();
+    let mut child = base["invokes"][0]["child"].clone();
+    child["run"] = json!("r1.3");
+    v["nextInvoke"] = json!(4);
+    v["spawned"] =
+        json!([{"id": 3, "children": "slots", "key": 7, "args": {"start": 1}, "child": child}]);
+    let (saved, _) = p.check_saved(v, None, None).unwrap();
+    let (_, commands) = p.restore(&saved, "r2", 0, None, &mut no_fns).unwrap();
+    let spawn = commands.iter().find_map(|c| match c {
+        Command::SpawnStart { saved, .. } => Some(saved.clone()),
+        _ => None,
+    });
+    assert_eq!(spawn.unwrap().unwrap().to_value(), child);
+    // `start` and `step` never carry one.
+    let input = json!({"start": 1}).as_object().unwrap().clone();
+    let (_, commands) = p.start("Desk", "r3", input, &mut no_fns).unwrap();
+    assert!(
+        commands
+            .iter()
+            .all(|c| !matches!(c, Command::InvokeStart { saved: Some(_), .. }))
+    );
 }

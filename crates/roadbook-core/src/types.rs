@@ -483,6 +483,10 @@ pub enum Command {
         alias: Option<String>,
         /// Its arguments, keyed by parameter name.
         args: Object,
+        /// The saved snapshot of the invoke's child run, which the run that claims the invoke
+        /// restores instead of starting: only in the commands of
+        /// [`crate::Program::restore`], when the saved snapshot holds one.
+        saved: Option<Box<Saved>>,
     },
     /// Answer the call that run `to` made with its invoke `invoke`, without waiting for the
     /// caller.
@@ -515,6 +519,8 @@ pub enum Command {
         src: String,
         /// Its arguments, keyed by parameter name.
         args: Object,
+        /// The saved snapshot of the child run, as for [`Command::InvokeStart`].
+        saved: Option<Box<Saved>>,
     },
     /// Stop the spawned child and wait until it has stopped, as `invoke.cancel` does.
     #[serde(rename = "spawn.stop")]
@@ -817,18 +823,55 @@ pub struct SavedTimer {
     pub due: u64,
 }
 
+/// A running invoke in a saved snapshot: an [`InvokeEntry`] with, when its work is a child run
+/// that has claimed its invoke and is still open, that child's saved snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SavedInvoke {
+    /// Its id within the run.
+    pub id: u64,
+    /// The id of the state that owns it.
+    pub state: String,
+    /// The task's or machine's name, or for a call the address and the call's name.
+    pub src: String,
+    /// The saved snapshot of its child run (version 4), if it is one that is saved with it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub child: Option<Box<Saved>>,
+}
+
+/// A running spawned child in a saved snapshot: a [`SpawnedEntry`] with, when it is a child run
+/// that is still open, its saved snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SavedSpawned {
+    /// Its id within the run, from the sequence invokes take theirs from.
+    pub id: u64,
+    /// Its collection.
+    pub children: String,
+    /// Its key: a string or an integer.
+    pub key: Value,
+    /// The arguments it was spawned with, keyed by parameter name.
+    pub args: Object,
+    /// The saved snapshot of its child run (version 4), if it is one that is saved with it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub child: Option<Box<Saved>>,
+}
+
 /// A saved snapshot of a top-level run, the form host code stores
 /// (`spec/execution.md#the-saved-snapshot`, `spec/snapshot.schema.json`): the core's
-/// [`Snapshot`] with the format version and each timer's due time. Both runtimes save the
-/// same run as the same JSON, and either restores what the other saved.
+/// [`Snapshot`] with the format version and each timer's due time, and the saved snapshots of
+/// its running child runs nested in its `invokes` and `spawned` entries (`child`), to any
+/// depth. Both runtimes save the same run as the same JSON, and either restores what the other
+/// saved.
 ///
 /// Read one with [`Saved::from_json`] or [`Saved::from_value`], which check it against the
 /// schema; restoring checks the rest.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Saved {
-    /// The version of the format: `3`, or `2` or `1` for one written before keyed spawn or
-    /// history states.
+    /// The version of the format: `4`, or `3`, `2` or `1` for one written before child runs
+    /// were saved, before keyed spawn or before history states. A nested snapshot is always
+    /// version 4.
     pub snapshot_version: u64,
     /// The machine's name.
     pub machine: String,
@@ -845,7 +888,7 @@ pub struct Saved {
     /// Every variable that has a value.
     pub vars: Object,
     /// The running invokes, in the order they were started.
-    pub invokes: Vec<InvokeEntry>,
+    pub invokes: Vec<SavedInvoke>,
     /// The calls the run had taken and not answered, in the order it took them. Written
     /// only when there are some; a snapshot without the member has none.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -853,7 +896,7 @@ pub struct Saved {
     /// The running spawned children, in the order they were started. `None` only in a
     /// version 1 or 2 snapshot, which has no `spawned` member and restores with no children.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub spawned: Option<Vec<SpawnedEntry>>,
+    pub spawned: Option<Vec<SavedSpawned>>,
     /// The running timers, in the order they were started, with their due times.
     pub timers: Vec<SavedTimer>,
     /// The id the next invoke will get.
@@ -871,10 +914,10 @@ pub struct Saved {
 }
 
 impl Saved {
-    /// The version of the format this runtime writes. It reads this one and versions 1 and 2.
-    pub const VERSION: u64 = 3;
+    /// The version of the format this runtime writes. It reads this one and versions 1 to 3.
+    pub const VERSION: u64 = 4;
 
-    /// `snap` saved, with each timer due at `due(id)`.
+    /// `snap` saved, with each timer due at `due(id)`, and no child run nested in it.
     pub fn new(snap: &Snapshot, mut due: impl FnMut(&TimerEntry) -> u64) -> Saved {
         let mut saved = Saved {
             snapshot_version: Saved::VERSION,
@@ -885,9 +928,29 @@ impl Saved {
             active: snap.active.clone(),
             input: snap.input.clone(),
             vars: snap.vars.clone(),
-            invokes: snap.invokes.clone(),
+            invokes: snap
+                .invokes
+                .iter()
+                .map(|i| SavedInvoke {
+                    id: i.id,
+                    state: i.state.clone(),
+                    src: i.src.clone(),
+                    child: None,
+                })
+                .collect(),
             calls: snap.calls.clone(),
-            spawned: Some(snap.spawned.clone()),
+            spawned: Some(
+                snap.spawned
+                    .iter()
+                    .map(|c| SavedSpawned {
+                        id: c.id,
+                        children: c.children.clone(),
+                        key: c.key.clone(),
+                        args: c.args.clone(),
+                        child: None,
+                    })
+                    .collect(),
+            ),
             timers: snap
                 .timers
                 .iter()
@@ -910,9 +973,9 @@ impl Saved {
         saved
     }
 
-    /// The core's snapshot: without the version and the due times, as run `run`, with an
-    /// empty `history` for a version 1 snapshot and no spawned children for a version 1 or 2
-    /// one.
+    /// The core's snapshot: without the version, the due times and the nested child
+    /// snapshots, as run `run`, with an empty `history` for a version 1 snapshot and no spawned
+    /// children for a version 1 or 2 one.
     pub fn to_snapshot(&self, run: &str) -> Snapshot {
         Snapshot {
             machine: self.machine.clone(),
@@ -922,9 +985,27 @@ impl Saved {
             active: self.active.clone(),
             input: self.input.clone(),
             vars: self.vars.clone(),
-            invokes: self.invokes.clone(),
+            invokes: self
+                .invokes
+                .iter()
+                .map(|i| InvokeEntry {
+                    id: i.id,
+                    state: i.state.clone(),
+                    src: i.src.clone(),
+                })
+                .collect(),
             calls: self.calls.clone(),
-            spawned: self.spawned.clone().unwrap_or_default(),
+            spawned: self
+                .spawned
+                .iter()
+                .flatten()
+                .map(|c| SpawnedEntry {
+                    id: c.id,
+                    children: c.children.clone(),
+                    key: c.key.clone(),
+                    args: c.args.clone(),
+                })
+                .collect(),
             timers: self
                 .timers
                 .iter()
@@ -941,6 +1022,25 @@ impl Saved {
             history: self.history.clone().unwrap_or_default(),
             result: self.result.clone(),
         }
+    }
+
+    /// The snapshot without the child runs' snapshots nested in it: what a `restored` record
+    /// shows.
+    pub fn without_children(&self) -> Saved {
+        let mut shown = self.clone();
+        for inv in &mut shown.invokes {
+            inv.child = None;
+        }
+        for ch in shown.spawned.iter_mut().flatten() {
+            ch.child = None;
+        }
+        shown
+    }
+
+    /// Whether a child run's snapshot is nested in it.
+    pub fn has_children(&self) -> bool {
+        self.invokes.iter().any(|i| i.child.is_some())
+            || self.spawned.iter().flatten().any(|c| c.child.is_some())
     }
 
     /// The snapshot as JSON.

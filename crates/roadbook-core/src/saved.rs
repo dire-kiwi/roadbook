@@ -1,7 +1,8 @@
 //! Checking a saved snapshot before it is restored (`spec/execution.md#restoring-a-snapshot`):
 //! the schema, the machine, the hash and a migration, the status, `ref` parameters, pending
 //! calls, and whether it fits the machine. The checks are made in the order the spec lists
-//! them, and the first that fails gives the reason.
+//! them, each for the whole tree (the snapshot and every child run's snapshot nested in it)
+//! before the next, and the first that fails gives the reason.
 
 use std::collections::HashSet;
 use std::fmt;
@@ -15,20 +16,20 @@ use crate::{RunResult, Saved};
 /// Why a saved snapshot was refused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Refusal {
-    /// It does not match `snapshot.schema.json`, its version is not 1, 2 or 3, or it does not
-    /// fit the machine.
+    /// It does not match `snapshot.schema.json`, its version is not 1, 2, 3 or 4, or it (or a
+    /// snapshot nested in it) does not fit its machine.
     Invalid,
     /// The IR has no machine of its name, or it is not the machine asked for.
     Machine,
-    /// Its hash is not the machine's, and no migration was given (or the migration's result
-    /// has another hash too).
+    /// Its hash is not the machine's, or a nested snapshot's is not its entry's machine's, and
+    /// no migration was given (or the migration's result has such a hash too).
     Ir,
     /// The migration failed.
     Migration,
     /// Its status is not `running`.
     Ended,
-    /// The machine has a `ref` parameter: restoring a run that holds `ref`s is not specified
-    /// yet.
+    /// The machine, or the machine of a nested snapshot, has a `ref` parameter: restoring a
+    /// run that holds `ref`s is not specified yet.
     Ref,
     /// It has pending calls, whose callers belong to the process that saved it.
     Calls,
@@ -112,9 +113,11 @@ impl Program {
     /// Checks `saved` against the IR before restoring it, in the spec's order, and gives the
     /// snapshot to restore and, if `migrate` was called, the hash the snapshot had before.
     /// `machine` is the machine restore was asked to restore, or `None` for the one the
-    /// snapshot names. `migrate` is called at most once, and only when the hashes differ;
-    /// its result is checked from the top, without a second migration, as a snapshot of the
-    /// same machine: a migration cannot turn it into a snapshot of another (`machine`).
+    /// snapshot names. Each reason is checked for the whole tree, the snapshot and every child
+    /// run's snapshot nested in it, before the next. `migrate` is called at most once, for the
+    /// whole tree, and only when a hash in it differs; its result is checked from the top,
+    /// without a second migration, as a snapshot of the same machine: a migration cannot turn
+    /// it into a snapshot of another (`machine`).
     /// Numbers are read in any form: an integral one written as a float (`2.0`, `-0.0`) is
     /// the integer, and the snapshot given back has it in integer form.
     pub fn check_saved(
@@ -138,18 +141,11 @@ impl Program {
                 format!("it is a snapshot of `{name}`, not of `{want}`"),
             ));
         }
-        let hash = saved["ir"].as_str().unwrap_or_default();
-        if hash != m.hash {
+        if let Some(stale) = self.stale(&saved, name, &m.hash) {
             let Some(migrate) = migrate else {
-                return Err(RestoreError::new(
-                    Refusal::Ir,
-                    format!(
-                        "it was saved with `{name}` at {hash}, and the IR has it at {}",
-                        m.hash
-                    ),
-                ));
+                return Err(RestoreError::new(Refusal::Ir, stale));
             };
-            let old = hash.to_owned();
+            let old = saved["ir"].as_str().unwrap_or_default().to_owned();
             let want = machine.unwrap_or(name).to_owned();
             let new = migrate(saved).map_err(|e| {
                 RestoreError::new(Refusal::Migration, format!("the migration failed: {e}"))
@@ -163,15 +159,8 @@ impl Program {
                 format!("the run has ended: its status is {}", saved["status"]),
             ));
         }
-        if let Some(p) = m.params.iter().find(|p| self.holds_ref(&p.ty)) {
-            return Err(RestoreError::new(
-                Refusal::Ref,
-                format!(
-                    "`{name}` has the `ref` parameter `{}`; restoring a run that holds `ref`s \
-                     is not supported yet",
-                    p.name
-                ),
-            ));
+        if let Some(e) = self.holds_refs(&saved, name) {
+            return Err(e);
         }
         if let Some(calls) = saved.get("calls").and_then(Value::as_array)
             && !calls.is_empty()
@@ -186,8 +175,122 @@ impl Program {
         }
         let saved: Saved =
             serde_json::from_value(saved).map_err(|e| RestoreError::invalid(e.to_string()))?;
-        self.fits(&saved).map_err(RestoreError::invalid)?;
+        self.fits_tree(&saved).map_err(RestoreError::invalid)?;
         Ok((saved, None))
+    }
+
+    /// The child run snapshots nested in `saved`, a saved snapshot as JSON, each with the
+    /// machine its entry starts: an `invokes` entry's `src` when that is a machine, a
+    /// `spawned` entry's collection's machine when the collection is one of `machine`'s.
+    /// Entries whose work is not such a machine are left out: they are refused as `invalid`.
+    fn nested<'v>(&'v self, saved: &'v Value, machine: &str) -> Vec<(&'v Value, &'v str)> {
+        let mut out = Vec::new();
+        let entries = |k: &str| saved.get(k).and_then(Value::as_array).into_iter().flatten();
+        for inv in entries("invokes") {
+            let src = inv["src"].as_str().unwrap_or_default();
+            if let (Some(child), Some((name, _))) =
+                (inv.get("child"), self.ir().machines.get_key_value(src))
+            {
+                out.push((child, name.as_str()));
+            }
+        }
+        let collections = self.ir().machines.get(machine).map(|m| &m.children);
+        for ch in entries("spawned") {
+            let decl = collections.and_then(|c| c.get(ch["children"].as_str().unwrap_or_default()));
+            if let (Some(child), Some(decl)) = (ch.get("child"), decl) {
+                out.push((child, decl.machine.as_str()));
+            }
+        }
+        out
+    }
+
+    /// What is stale in the tree of `saved`, a snapshot of `machine` whose hash should be
+    /// `hash`: its own hash, or that of a snapshot nested in it, which should be the hash of
+    /// the machine its entry starts. `None` if every hash is current.
+    fn stale(&self, saved: &Value, machine: &str, hash: &str) -> Option<String> {
+        let had = saved["ir"].as_str().unwrap_or_default();
+        if had != hash {
+            let run = saved["run"].as_str().unwrap_or_default();
+            return Some(format!(
+                "{run} was saved with `{machine}` at {had}, and the IR has it at {hash}"
+            ));
+        }
+        self.nested(saved, machine)
+            .into_iter()
+            .find_map(|(child, of)| {
+                let hash = &self.ir().machines[of].hash;
+                self.stale(child, of, hash)
+            })
+    }
+
+    /// The `ref` refusal, if `machine`, the machine of `saved` (a snapshot as JSON), or the
+    /// machine an entry with a snapshot nested in it starts, at any depth, has a `ref`
+    /// parameter. A nested snapshot of an entry that starts no machine is left to the `invalid`
+    /// check.
+    fn holds_refs(&self, saved: &Value, machine: &str) -> Option<RestoreError> {
+        let m = self.ir().machines.get(machine)?;
+        if let Some(p) = m.params.iter().find(|p| self.holds_ref(&p.ty)) {
+            return Some(RestoreError::new(
+                Refusal::Ref,
+                format!(
+                    "`{machine}` has the `ref` parameter `{}`; restoring a run that holds \
+                     `ref`s is not supported yet",
+                    p.name
+                ),
+            ));
+        }
+        self.nested(saved, machine)
+            .into_iter()
+            .find_map(|(child, of)| self.holds_refs(child, of))
+    }
+
+    /// Whether `s` fits its machine, and each snapshot nested in it is one of the machine its
+    /// entry starts, of the child run `<run>.<id>`, running, with no calls, and fits too.
+    fn fits_tree(&self, s: &Saved) -> Result<(), String> {
+        self.fits(s)?;
+        let m = &self.ir().machines[&s.machine];
+        let nested = s
+            .invokes
+            .iter()
+            .filter_map(|i| Some((i.id, &i.src, i.child.as_deref()?)))
+            .chain(s.spawned.iter().flatten().filter_map(|c| {
+                Some((c.id, &m.children[&c.children].machine, c.child.as_deref()?))
+            }));
+        for (id, of, child) in nested {
+            if !self.ir().machines.contains_key(of) {
+                return Err(format!(
+                    "invoke {id} runs `{of}`, which is not a machine, but has a child run's \
+                     snapshot"
+                ));
+            }
+            if child.machine != *of {
+                return Err(format!(
+                    "the snapshot nested in entry {id} is of `{}`, not of `{of}`",
+                    child.machine
+                ));
+            }
+            let run = format!("{}.{id}", s.run);
+            if child.run != run {
+                return Err(format!(
+                    "the snapshot nested in entry {id} is of the run {}, not {run}",
+                    child.run
+                ));
+            }
+            if child.status != crate::Status::Running {
+                return Err(format!(
+                    "the snapshot nested in entry {id} is not running: its status is {}",
+                    serde_json::json!(child.status)
+                ));
+            }
+            if !child.calls.is_empty() {
+                return Err(format!(
+                    "the snapshot nested in entry {id} has calls, which a child run never takes"
+                ));
+            }
+            self.fits_tree(child)
+                .map_err(|e| format!("in the snapshot nested in entry {id}: {e}"))?;
+        }
+        Ok(())
     }
 
     /// Checks `event` as an event that host code gives a run of `machine`: one of the events
@@ -605,8 +708,8 @@ fn integer(v: &Value) -> Option<i64> {
 
 // ---- the schema ----------------------------------------------------------------------------
 
-/// The members every saved snapshot has. `history` (version 2 and 3) and `spawned` (version
-/// 3) are added by version; `calls` is optional in any version.
+/// The members every saved snapshot has. `history` (version 2 to 4) and `spawned` (version 3
+/// and 4) are added by version; `calls` is optional in any version.
 const MEMBERS: [&str; 14] = [
     "snapshotVersion",
     "machine",
@@ -628,31 +731,52 @@ const MEMBERS: [&str; 14] = [
 const MAX_SAFE: u64 = 9_007_199_254_740_991;
 
 /// Checks `v` against `spec/snapshot.schema.json`, including `snapshotVersion` being 1 (with
-/// no `history` and no `spawned`), 2 (with `history`) or 3 (with both).
+/// no `history` and no `spawned`), 2 (with `history`), 3 (with both) or 4 (with both, and
+/// child runs' snapshots nested in its entries, each of version 4 and checked the same way).
 pub(crate) fn schema(v: &Value) -> Result<(), String> {
+    schema_at(v, false)
+}
+
+fn schema_at(v: &Value, nested: bool) -> Result<(), String> {
     let o = v.as_object().ok_or("a saved snapshot is an object")?;
     let version = o.get("snapshotVersion").and_then(Value::as_u64);
     let mut members = MEMBERS.to_vec();
-    if matches!(version, Some(2 | 3)) {
+    if matches!(version, Some(2..=4)) {
         members.push("history");
     }
-    if version == Some(3) {
+    if matches!(version, Some(3 | 4)) {
         members.push("spawned");
     }
     let what = match version {
-        Some(v @ (1..=3)) => format!("a version {v} saved snapshot"),
+        Some(v @ (1..=4)) => format!("a version {v} saved snapshot"),
         _ => "a saved snapshot".to_owned(),
     };
     // `calls` is optional in any version.
     let mut required = o.clone();
     let calls = required.remove("calls");
     exactly(&required, &members, &what)?;
-    if !matches!(version, Some(1..=3)) {
+    if !matches!(version, Some(1..=4)) {
         return Err(format!(
-            "its snapshotVersion is {}, not 1, 2 or 3",
+            "its snapshotVersion is {}, not 1, 2, 3 or 4",
             o["snapshotVersion"]
         ));
     }
+    if nested && version != Some(4) {
+        return Err(format!(
+            "a child run's snapshot nested in a saved snapshot is of version 4, not {}",
+            o["snapshotVersion"]
+        ));
+    }
+    // A child run's snapshot, nested in an entry: only in version 4.
+    let child = |e: &mut Map<String, Value>, what: &str| -> Result<(), String> {
+        match e.remove("child") {
+            Some(_) if version != Some(4) => Err(format!(
+                "{what} has a child run's snapshot, which only version 4 has"
+            )),
+            Some(c) => schema_at(&c, true).map_err(|err| format!("in {what}'s child: {err}")),
+            None => Ok(()),
+        }
+    };
     if let Some(h) = o.get("history") {
         let h = h.as_object().ok_or("`history` is not an object")?;
         for (k, record) in h {
@@ -692,8 +816,9 @@ pub(crate) fn schema(v: &Value) -> Result<(), String> {
     args(&o["input"], "input")?;
     args(&o["vars"], "vars")?;
     for inv in o["invokes"].as_array().ok_or("`invokes` is not an array")? {
-        let inv = inv.as_object().ok_or("an invoke is not an object")?;
-        exactly(inv, &["id", "state", "src"], "an invoke")?;
+        let mut inv = inv.as_object().ok_or("an invoke is not an object")?.clone();
+        child(&mut inv, "an invoke")?;
+        exactly(&inv, &["id", "state", "src"], "an invoke")?;
         natural(&inv["id"], "an invoke's id", 1)?;
         string(&inv["state"], "an invoke's state", state_id)?;
         string(&inv["src"], "an invoke's src", |s| {
@@ -720,8 +845,12 @@ pub(crate) fn schema(v: &Value) -> Result<(), String> {
         None => &[],
     };
     for ch in spawned {
-        let ch = ch.as_object().ok_or("a spawned child is not an object")?;
-        exactly(ch, &["id", "children", "key", "args"], "a spawned child")?;
+        let mut ch = ch
+            .as_object()
+            .ok_or("a spawned child is not an object")?
+            .clone();
+        child(&mut ch, "a spawned child")?;
+        exactly(&ch, &["id", "children", "key", "args"], "a spawned child")?;
         natural(&ch["id"], "a spawned child's id", 1)?;
         string(&ch["children"], "a spawned child's collection", lower_name)?;
         if !(ch["key"].is_string() || ch["key"].is_i64() || ch["key"].is_u64()) {
