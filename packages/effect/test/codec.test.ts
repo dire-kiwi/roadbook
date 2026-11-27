@@ -7,7 +7,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Core from "@dire-kiwi/roadbook-core"
 import { Duration, Effect, Queue } from "effect"
 import { Codec, CodecError } from "../src/internal/codec.ts"
-import { registerHandle, type Wake } from "../src/internal/port.ts"
+import { registerHandle, type Item } from "../src/internal/port.ts"
 
 const span = { file: 0, line: 1, col: 1, endLine: 1, endCol: 1 }
 const field = (name: string, type: string) => ({ name, type, sensitive: false, doc: "" })
@@ -38,7 +38,7 @@ const handle = (id: string) =>
     id,
     machine: "Peer",
     hash,
-    queue: Effect.runSync(Queue.unbounded<Core.Input | Wake>()),
+    queue: Effect.runSync(Queue.unbounded<Item>()),
     open: true,
     subscribers: new Map(),
     closedAs: undefined

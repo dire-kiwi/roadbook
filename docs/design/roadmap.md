@@ -121,7 +121,7 @@ Progress is recorded on each milestone below as it finishes.
 
 **A peer's end.** *Done, 27 November 2026 (SM-25).* `on x.ended` for a holder of a `ref`, with `event.status` of the built-in enum `Ended` (`Done`, `Failed`, `Cancelled`, `Defect`, `Suspended`), as [actors and messaging](actors.md#supervision) decides. IR 0.8 adds the trigger kind `ended`, and changes no hash. The checks are `RB0027` and `RB0123`. Eight conformance cases (`peer-ended-*`) pass byte for byte in both runtimes and the durable driver. The viewer, the exporters, the tree-sitter grammar and the language server know the trigger.
 
-**Later.** A durable driver in Rust, durable runs across several cluster runners and of machines that declare or make calls, generated Rust state machines for hot paths, a Vite plugin that generates `.road.ts` files on the fly, bounded queues if load ever calls for them, `==` on records and lists, and a hard stop for a TypeScript run that skips its exit effects.
+**Later.** A durable driver in Rust, durable runs across several cluster runners, generated Rust state machines for hot paths, a Vite plugin that generates `.road.ts` files on the fly, bounded queues if load ever calls for them, `==` on records and lists, and a hard stop for a TypeScript run that skips its exit effects.
 
 M3 and M4 are independent once M1 is done and can run in parallel. M2 depends only on M1.
 

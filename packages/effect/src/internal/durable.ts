@@ -9,7 +9,7 @@ import * as Core from "@dire-kiwi/roadbook-core"
 import { Deferred, Effect, Exit, Option, Queue, Schema } from "effect"
 import { Activity, DurableClock, DurableDeferred, type Workflow, WorkflowEngine } from "effect/workflow"
 import { Defect, hostDefect } from "../Defect.ts"
-import { endedInput, endedStatus, type Port, registerHandle, tellEnded, type Wake } from "./port.ts"
+import { endedInput, endedStatus, type Item, type Port, registerHandle, tellEnded, type Wake } from "./port.ts"
 
 // ---- one execution ------------------------------------------------------------------------------
 
@@ -27,6 +27,8 @@ export interface Execution {
   /** Park an idle root run whose earliest timer is further than this (ms); never if undefined. */
   readonly park: number | undefined
   readonly registry: Registry
+  /** The registry entry of the execution's root run, through which its runs' calls are answered. */
+  readonly root: Entry
 }
 
 /** A run of an execution: the root run or one of its child runs. */
@@ -74,6 +76,54 @@ export const activity = (exec: Execution, name: string, effect: Effect.Effect<Co
     Core.Json
   >
 
+// ---- calls between durable runs ----------------------------------------------------------------
+
+/**
+ * The record of the answer to call invoke `invoke` of run `run`, in the run's execution: its
+ * outcome input, written once, by the callee (its `reply`, or `Unanswered` as it ends) or by the
+ * caller itself (`Unanswered`, for a callee that ended before it journalled the call). The first
+ * answer written is the one the caller takes.
+ */
+export const answerRecord = (run: string, invoke: number) => `${run}/answer/${invoke}`
+
+/** The record a caller writes once its callee has journalled call invoke `invoke`. */
+export const callRecord = (run: string, invoke: number) => `${run}/call/${invoke}`
+
+/** The outcome input that answers a call `Unanswered`. */
+export const unanswered = (invoke: number): Core.Input => ({
+  kind: "invoke.fail",
+  invoke,
+  error: { _tag: Core.UNANSWERED }
+})
+
+/**
+ * Answer the call that run `run`, of the execution whose root run is `root`, made with its
+ * invoke: record `outcome` there (a name already recorded keeps its first answer), then tell
+ * the run, if it is live in this process. Nothing is written for a caller that has ended here.
+ */
+export const answer = (exec: Execution, root: RunInfo, run: string, outcome: Core.Input): Effect.Effect<void> =>
+  Effect.suspend(() => {
+    const caller = entryOf(exec.registry, exec.engine, root)
+    if (caller.state === "ended") return Effect.void
+    const invoke = (outcome as { readonly invoke: number }).invoke
+    const name = answerRecord(run, invoke)
+    return inExecution(
+      exec,
+      exec.engine.deferredDone(recordOf(name), {
+        workflowName: root.workflow,
+        executionId: root.executionId,
+        deferredName: name,
+        exit: Exit.succeed(outcome as unknown as Core.Json)
+      })
+    ).pipe(Effect.orDie, Effect.andThen(Effect.sync(() => caller.answered(run, invoke))))
+  })
+
+/** The root run of the caller's execution, for each call input a durable caller gave a callee. */
+const vias = new WeakMap<Core.Input, RunInfo>()
+
+/** The root run of the execution of the durable run that made call input `input`, if one did. */
+export const viaOf = (input: Core.Input): RunInfo | undefined => vias.get(input)
+
 /** What an idle run waits for when it parks: its earliest timer's clock, or a wake. */
 export type ParkResult = "clock" | "wake"
 
@@ -83,19 +133,27 @@ const wakeRecord = (name: string) => DurableDeferred.make(`${name}/wake`, { succ
 export const parkRecord = (name: string) => `raceAll/${name}`
 
 /**
- * Park: suspend the execution until the clock (`delay` ms, if there is a timer) or a wake. The
- * engine interrupts the body and replays it when one of them completes; if one already has (a
- * replay reaching the same park), its result is given at once.
+ * Park: suspend the execution until the clock (`delay` ms, if there is a timer), a wake, or the
+ * answer to one of the run's calls (the records `answers`), which wakes it. The engine interrupts
+ * the body and replays it when one of them completes; if one already has (a replay reaching the
+ * same park), its result is given at once.
  */
-export const park = (exec: Execution, name: string, delay: number | undefined): Effect.Effect<ParkResult> => {
-  const wake = DurableDeferred.await(wakeRecord(name)).pipe(Effect.as("wake"))
+export const park = (
+  exec: Execution,
+  name: string,
+  delay: number | undefined,
+  answers: ReadonlyArray<string>
+): Effect.Effect<ParkResult> => {
+  const wake = DurableDeferred.await(wakeRecord(name)).pipe(Effect.as("wake" as const))
+  const answered = answers.map((answer) => DurableDeferred.await(recordOf(answer)).pipe(Effect.as("wake" as const)))
   const effects = delay === undefined
-    ? [wake] as const
+    ? [wake, ...answered] as const
     : [
       DurableClock.sleep({ name: `${name}/clock`, duration: Math.max(1, delay), inMemoryThreshold: 0 }).pipe(
-        Effect.as("clock")
+        Effect.as("clock" as const)
       ),
-      wake
+      wake,
+      ...answered
     ] as const
   return inExecution(
     exec,
@@ -146,7 +204,7 @@ export interface RunInfo {
 
 /** A live attempt of a root run: the queue of the body running it now. */
 export interface Attempt {
-  readonly queue: Queue.Queue<Core.Input | Wake>
+  readonly queue: Queue.Queue<Item>
   readonly save: () => Core.Saved
   readonly snapshot: () => Core.Snapshot
   /** Whether it has replayed its journal: its snapshot is then the run's, and no older one. */
@@ -165,8 +223,16 @@ export class Entry {
   state: "pending" | "live" | "parked" | "waking" | "ended" = "pending"
   attempt: Attempt | undefined = undefined
   mailbox: Array<Core.Input> = []
-  /** Inputs whose sender waits until the run has journalled them (or ended). */
-  readonly acks = new Map<Core.Input, Deferred.Deferred<void>>()
+  /**
+   * Inputs whose sender waits until the run has journalled them (true), or until it has ended
+   * (false): an event from host code, or a call from a durable caller.
+   */
+  readonly acks = new Map<Core.Input, Deferred.Deferred<boolean>>()
+  /**
+   * The runs of this entry's execution (its root run and its child runs) that are live in this
+   * process, each with what it does when the answer to one of its call invokes is recorded.
+   */
+  readonly callers = new Map<string, (invoke: number) => void>()
   cancelRequested = false
   /** The park the run is suspended in, while `parked`. */
   parkedAt: string | undefined = undefined
@@ -217,7 +283,7 @@ export class Entry {
       machine: info.machine,
       hash: info.hash,
       get queue() {
-        return entry.attempt?.queue as Queue.Queue<Core.Input | Wake>
+        return entry.attempt?.queue as Queue.Queue<Item>
       },
       get open() {
         return entry.state !== "ended"
@@ -320,11 +386,33 @@ export class Entry {
   deliverAcked(input: Core.Input): Effect.Effect<void> {
     return Effect.suspend(() => {
       if (this.state === "ended") return Effect.void
-      const ack = Deferred.makeUnsafe<void>()
+      const ack = Deferred.makeUnsafe<boolean>()
+      this.acks.set(input, ack)
+      this.deliver(input)
+      return Effect.asVoid(Deferred.await(ack))
+    })
+  }
+
+  /**
+   * Give the run call input `input` from a durable caller, whose execution's root run is `via`
+   * (where the answer goes), and wait until the run has journalled it (true) or has ended
+   * (false). A run that ended is waited for until its driver has answered the calls it had
+   * journalled, so that a caller answering itself `Unanswered` never answers before it.
+   */
+  deliverCall(input: Core.Input, via: RunInfo): Effect.Effect<boolean> {
+    return Effect.suspend(() => {
+      vias.set(input, via)
+      if (this.state === "ended") return Effect.as(Deferred.await(this.ended), false)
+      const ack = Deferred.makeUnsafe<boolean>()
       this.acks.set(input, ack)
       this.deliver(input)
       return Deferred.await(ack)
     })
+  }
+
+  /** The answer to call invoke `invoke` of run `run` (of this execution) has been recorded. */
+  answered(run: string, invoke: number) {
+    this.callers.get(run)?.(invoke)
   }
 
   /** Cancel the run (a cancel input, taken before what is queued) and wait for it to end. */
@@ -354,12 +442,12 @@ export class Entry {
     for (const input of waiting) Queue.offerUnsafe(this.attempt!.queue, input)
   }
 
-  /** The run journalled `input`: its sender stops waiting. */
+  /** The run journalled `input` (or had already): its sender stops waiting. */
   journalled(input: Core.Input) {
     const ack = this.acks.get(input)
     if (ack === undefined) return
     this.acks.delete(input)
-    Deferred.doneUnsafe(ack, Exit.void)
+    Deferred.doneUnsafe(ack, Exit.succeed(true))
   }
 
   /**
@@ -423,7 +511,7 @@ export class Entry {
     this.close()
     for (const listener of this.listeners) listener.end()
     this.listeners.clear()
-    for (const ack of this.acks.values()) Deferred.doneUnsafe(ack, Exit.void)
+    for (const ack of this.acks.values()) Deferred.doneUnsafe(ack, Exit.succeed(false))
     this.acks.clear()
     Deferred.doneUnsafe(this.ended, Exit.void)
   }

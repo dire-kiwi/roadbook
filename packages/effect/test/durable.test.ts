@@ -14,7 +14,7 @@ import { DurableDeferred, WorkflowEngine } from "effect/workflow"
 import { describe, expect, it } from "vitest"
 import { Durable } from "../src/entry-durable.ts"
 import * as Roadbook from "../src/index.ts"
-import { Asker, Desk, Host, Outer, Plain } from "./charts/durable-calls.road.ts"
+import { Asker, Desk, Host } from "./charts/durable-calls.road.ts"
 import { Adder, Counter, Parent, Pipeline, Watcher } from "./charts/durable.road.ts"
 
 const config = ShardingConfig.layer({
@@ -39,7 +39,10 @@ const makeWorld = () => {
   let patience = 10_000
   let deadline = 60_000
   const handlers = {
-    actions: { log: ({ text }: { text: string }) => Effect.sync(() => void logged.push(text)) },
+    actions: {
+      log: ({ text }: { text: string }) => Effect.sync(() => void logged.push(text)),
+      pause: ({ n }: { n: number }) => Deferred.await(gate(100 + n))
+    },
     tasks: {
       step: ({ n }: { n: number }) =>
         Effect.gen(function*() {
@@ -57,6 +60,8 @@ const makeWorld = () => {
     counts,
     count: (n: number) => counts.get(n) ?? 0,
     open: (n: number) => Deferred.doneUnsafe(gate(n), Exit.void),
+    /** Let the step held by `pause(n)` go on. */
+    unpause: (n: number) => Deferred.doneUnsafe(gate(100 + n), Exit.void),
     logged,
     records,
     handlers,
@@ -72,7 +77,14 @@ type World = ReturnType<typeof makeWorld>
 const machines = (world: World, options: Partial<Durable.Options<any>> = {}) => {
   const PipelineLive = Pipeline.implement(world.handlers as never)
   const ParentLive = Parent.implement({ ...world.handlers, machines: { Pipeline: PipelineLive } } as never)
+  const AskerLive = Asker.implement({})
   return {
+    desk: Durable.workflow(Desk.implement(world.handlers as never), { idempotencyKey: ({ id }) => `desk-${id}`, ...options }),
+    asker: Durable.workflow(AskerLive, { idempotencyKey: ({ id }) => `asker-${id}`, ...options }),
+    host: Durable.workflow(Host.implement({ machines: { Asker: AskerLive } }), {
+      idempotencyKey: ({ id }) => `host-${id}`,
+      ...options
+    }),
     pipeline: Durable.workflow(PipelineLive, { idempotencyKey: ({ id }) => id, ...options }),
     parent: Durable.workflow(ParentLive, { idempotencyKey: ({ id }) => id, ...options }),
     counter: Durable.workflow(Counter.implement({}), { idempotencyKey: () => "counter", ...options }),
@@ -108,13 +120,29 @@ const slowReads = (ms: number) =>
     }))
   ).pipe(Layer.provideMerge(engineLayer))
 
+/** The engine with every write of a record whose name `delayed` matches taking `ms`. */
+const slowWrites = (delayed: RegExp, ms: number) =>
+  Layer.effect(
+    WorkflowEngine.WorkflowEngine,
+    Effect.map(WorkflowEngine.WorkflowEngine, (engine): WorkflowEngine.WorkflowEngine["Service"] => ({
+      ...engine,
+      deferredDone: (deferred, options) =>
+        delayed.test(options.deferredName)
+          ? Effect.delay(engine.deferredDone(deferred, options), ms)
+          : engine.deferredDone(deferred, options)
+    }))
+  ).pipe(Layer.provideMerge(engineLayer))
+
+/** A process's engine: as it is, with slow reads (`slow` ms each), or another one. */
+type EngineChoice = number | Layer.Layer<WorkflowEngine.WorkflowEngine, never, any> | undefined
+
 /** One process, which registers the durable machines `only` names (default: all of them). */
-const startProcess = (storage: Storage, world: World, flows: Machines, slow?: number, only?: ReadonlyArray<keyof Machines>) =>
+const startProcess = (storage: Storage, world: World, flows: Machines, slow?: EngineChoice, only?: ReadonlyArray<keyof Machines>) =>
   Effect.gen(function*() {
     const scope = yield* Scope.make()
     const layers = (only ?? (Object.keys(flows) as Array<keyof Machines>)).map((name) => flows[name].layer)
     const layer = Layer.mergeAll(...(layers as [Layer.Layer<never, never, WorkflowEngine.WorkflowEngine>])).pipe(
-      Layer.provideMerge(slow === undefined ? engineLayer : slowReads(slow))
+      Layer.provideMerge(slow === undefined ? engineLayer : typeof slow === "number" ? slowReads(slow) : slow)
     )
     const context = yield* Layer.buildWithScope(layer, scope).pipe(
       Effect.provideContext(storage),
@@ -132,7 +160,7 @@ const startProcess = (storage: Storage, world: World, flows: Machines, slow?: nu
 const scenario = <A>(
   body: (t: {
     world: World
-    start: (flows?: Machines, slow?: number, only?: ReadonlyArray<keyof Machines>) => ReturnType<typeof startProcess>
+    start: (flows?: Machines, slow?: EngineChoice, only?: ReadonlyArray<keyof Machines>) => ReturnType<typeof startProcess>
     flows: Machines
     storage: Storage
   }) => Effect.Effect<A, unknown, Scope.Scope>,
@@ -595,65 +623,227 @@ describe("durable holders of a peer that ends", () => {
       })), 20_000)
 })
 
-describe("durable runs and calls", () => {
-  const DeskLive = Desk.implement({})
-  const HostLive = Host.implement({ machines: { Desk: DeskLive } })
-  const flows = {
-    desk: Durable.workflow(DeskLive, { idempotencyKey: () => "desk" }),
-    asker: Durable.workflow(Asker.implement({}), { idempotencyKey: () => "asker" }),
-    host: Durable.workflow(HostLive, { idempotencyKey: () => "host" }),
-    outer: Durable.workflow(Outer.implement({ machines: { Host: HostLive } }), { idempotencyKey: () => "outer" }),
-    plain: Durable.workflow(Plain.implement({}), { idempotencyKey: () => "plain" })
-  }
-  const inEngine = <A, E>(effect: Effect.Effect<A, E, WorkflowEngine.WorkflowEngine>) =>
-    Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-      const { asker, desk, host, outer, plain } = flows
-      const layer = Layer.mergeAll(desk.layer, asker.layer, host.layer, outer.layer, plain.layer).pipe(
-        Layer.provideMerge(WorkflowEngine.layerMemory)
+describe("calls between durable runs", () => {
+  /** Wait until the durable run `id` of `flow` has ended. */
+  const ended = (
+    process: { run: <A, E>(effect: Effect.Effect<A, E, WorkflowEngine.WorkflowEngine>) => Effect.Effect<A, E> },
+    flow: { readonly poll: (id: string) => Effect.Effect<Option.Option<unknown>, never, WorkflowEngine.WorkflowEngine> },
+    id: string
+  ) =>
+    Effect.gen(function*() {
+      for (let i = 0; i < 250; i++) {
+        if (Option.isSome(yield* process.run(flow.poll(id)))) return
+        yield* Effect.sleep(20)
+      }
+      return yield* Effect.die(new Error(`run ${id} did not end`))
+    })
+
+  it("a callee that crashes with a call pending answers it once it has recovered", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const deskId = yield* process.run(flows.desk.start({ id: "a" }))
+        const desk = yield* process.run(flows.desk.handle(deskId))
+        yield* process.run(flows.asker.start({ desk, id: "a", n: 2 }))
+        yield* until(() => world.logged.includes("held"))
+        yield* process.crash
+
+        world.records.length = 0
+        process = yield* start()
+        // The Desk replays the step that took the call: it knows whom to answer.
+        yield* process.run(flows.desk.send(deskId, { _tag: "Answer", by: 5 }))
+        expect(yield* process.run(flows.asker.run({ desk, id: "a", n: 2 }))).toBe(7)
+        // Neither run took the call, nor journalled its answer, twice.
+        expect(world.logged).toEqual(["held"])
+        const taken = world.records.filter((r) => r.kind === "event")
+        expect(taken.map((r) => (r as { event: { kind: string } }).event.kind)).toEqual(["event", "invoke.done"])
+        yield* process.crash
+      })), 20_000)
+
+  it("a caller that parks waiting for an answer wakes for it, also across a crash", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const deskId = yield* process.run(flows.desk.start({ id: "b" }))
+        const desk = yield* process.run(flows.desk.handle(deskId))
+        yield* process.run(flows.asker.start({ desk, id: "b1", n: 1 }))
+        yield* until(() => world.logged.includes("held"))
+        // Both park: the Desk waits for an event, the Asker for its answer.
+        yield* Effect.sleep(300)
+        const before = world.attempts()
+        yield* process.run(flows.desk.send(deskId, { _tag: "Answer", by: 1 }))
+        expect(yield* process.run(flows.asker.run({ desk, id: "b1", n: 1 }))).toBe(2)
+        expect(world.attempts()).toBeGreaterThan(before)
+
+        // Again, with a crash while both are parked.
+        yield* process.run(flows.asker.start({ desk, id: "b2", n: 3 }))
+        yield* until(() => world.logged.length === 2)
+        yield* Effect.sleep(300)
+        yield* process.crash
+
+        process = yield* start()
+        yield* process.run(flows.desk.send(deskId, { _tag: "Answer", by: 1 }))
+        expect(yield* process.run(flows.asker.run({ desk, id: "b2", n: 3 }))).toBe(4)
+        expect(world.logged).toEqual(["held", "held"])
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
+
+  it("a caller that crashes before it knows its call was journalled hands it over again, and it is taken once", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        // The Asker's record that its call was made is never written in this process.
+        let process = yield* start(undefined, slowWrites(/\/call\//, 60_000))
+        const deskId = yield* process.run(flows.desk.start({ id: "c" }))
+        const desk = yield* process.run(flows.desk.handle(deskId))
+        yield* process.run(flows.asker.start({ desk, id: "c", n: 2 }))
+        yield* until(() => world.logged.includes("held"))
+        yield* Effect.sleep(100)
+        yield* process.crash
+
+        process = yield* start()
+        yield* process.run(flows.desk.send(deskId, { _tag: "Answer", by: 1 }))
+        expect(yield* process.run(flows.asker.run({ desk, id: "c", n: 2 }))).toBe(3)
+        // The Desk dropped the call it was given again: it holds no second one.
+        expect(world.logged).toEqual(["held"])
+        yield* process.crash
+      })), 20_000)
+
+  it("a callee that ends answers Unanswered the calls it holds and those queued, durably", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const deskId = yield* process.run(flows.desk.start({ id: "d" }))
+        const desk = yield* process.run(flows.desk.handle(deskId))
+        yield* process.run(flows.asker.start({ desk, id: "d1", n: 1 }))
+        yield* until(() => world.logged.includes("held"))
+        yield* process.run(flows.asker.start({ desk, id: "d2", n: 2 }))
+        yield* until(() => world.logged.includes("extra"))
+        // Closing, the Desk pauses; meanwhile a Shut and then a third call queue up.
+        yield* process.run(flows.desk.send(deskId, { _tag: "Close" }))
+        const shut = yield* Effect.forkChild(process.run(flows.desk.send(deskId, { _tag: "Shut" })))
+        const third = yield* process.run(flows.asker.start({ desk, id: "d3", n: 3 }))
+        yield* until(() => world.records.some((r) => r.run === third && r.kind === "invoke.started"))
+        yield* Effect.sleep(200)
+        world.unpause(1)
+        yield* Fiber.join(shut)
+        for (const [id, n] of [["d1", 1], ["d2", 2], ["d3", 3]] as const) {
+          expect(yield* process.run(flows.asker.run({ desk, id, n }))).toBe(-1)
+        }
+        expect(world.logged).toEqual(["held", "extra"])
+        yield* process.crash
+
+        process = yield* start()
+        expect(yield* process.run(flows.asker.run({ desk, id: "d1", n: 1 }))).toBe(-1)
+        yield* process.crash
+      })), 20_000)
+
+  it("a callee that ends while its caller is parked, after a crash, answers it Unanswered", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const deskId = yield* process.run(flows.desk.start({ id: "e" }))
+        const desk = yield* process.run(flows.desk.handle(deskId))
+        yield* process.run(flows.asker.start({ desk, id: "e", n: 1 }))
+        yield* until(() => world.logged.includes("held"))
+        yield* Effect.sleep(300)
+        yield* process.crash
+
+        // In the new process the Asker stays parked until the Desk's answer wakes it.
+        process = yield* start()
+        yield* process.run(flows.desk.cancel(deskId))
+        expect(yield* process.run(flows.asker.run({ desk, id: "e", n: 1 }))).toBe(-1)
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
+
+  it("a call to a peer whose execution ended in an earlier process is answered Unanswered at once", () =>
+    scenario(({ flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const deskId = yield* process.run(flows.desk.start({ id: "f" }))
+        const desk = yield* process.run(flows.desk.handle(deskId))
+        yield* process.run(flows.desk.send(deskId, { _tag: "Close" }))
+        yield* ended(process, flows.desk, deskId)
+        yield* process.crash
+
+        // A new registry, which learns from the engine that the Desk has ended.
+        process = yield* start()
+        expect(yield* process.run(flows.asker.run({ desk, id: "f", n: 1 }))).toBe(-1)
+        yield* process.crash
+      })), 20_000)
+
+  it("a child run's call is answered through its root's execution, across a crash", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const deskId = yield* process.run(flows.desk.start({ id: "g" }))
+        const desk = yield* process.run(flows.desk.handle(deskId))
+        yield* process.run(flows.host.start({ desk, id: "g", n: 4 }))
+        yield* until(() => world.logged.includes("held"))
+        yield* process.crash
+
+        process = yield* start()
+        yield* process.run(flows.desk.send(deskId, { _tag: "Answer", by: 1 }))
+        expect(yield* process.run(flows.host.run({ desk, id: "g", n: 4 }))).toBe(5)
+        yield* process.crash
+      })), 20_000)
+
+  it("without replayTrace, a callee's replay writes no replied record", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const deskId = yield* process.run(flows.desk.start({ id: "h" }))
+        const desk = yield* process.run(flows.desk.handle(deskId))
+        expect(yield* Effect.gen(function*() {
+          yield* process.run(flows.asker.start({ desk, id: "h", n: 1 }))
+          yield* until(() => world.logged.includes("held"))
+          yield* process.run(flows.desk.send(deskId, { _tag: "Answer", by: 1 }))
+          return yield* process.run(flows.asker.run({ desk, id: "h", n: 1 }))
+        })).toBe(2)
+        expect(world.records.filter((r) => r.kind === "replied")).toHaveLength(1)
+        yield* process.crash
+
+        world.records.length = 0
+        process = yield* start()
+        // The Desk replays the step that replied, then takes the Close.
+        yield* process.run(flows.desk.send(deskId, { _tag: "Close" }))
+        yield* ended(process, flows.desk, deskId)
+        expect(world.records.filter((r) => r.kind === "replied")).toEqual([])
+        expect(world.records.some((r) => r.run === deskId && r.kind === "event")).toBe(true)
+        yield* process.crash
+      })), 20_000)
+
+  it("with replayTrace, a callee and a caller that recover write the trace an uninterrupted run does", async () => {
+    const strip = (records: ReadonlyArray<Core.TraceRecord>) =>
+      [...records].sort((a, b) => (a.run < b.run ? -1 : a.run > b.run ? 1 : 0)).map(({ t: _t, ...rest }) =>
+        Core.canonicalJson(rest as never)
       )
-      const context = yield* Layer.build(layer)
-      return yield* Effect.provideContext(effect, context as Context.Context<WorkflowEngine.WorkflowEngine>)
-    })))
-  /** The message of the host `Defect` that `effect` dies with. */
-  const refusal = <A, E>(effect: Effect.Effect<A, E, WorkflowEngine.WorkflowEngine>) =>
-    inEngine(Effect.map(Effect.exit(effect), (exit) => {
-      const die = Exit.isFailure(exit) ? exit.cause.reasons.find((r) => r._tag === "Die") : undefined
-      const defect = (die as { defect: unknown } | undefined)?.defect
-      expect(defect).toBeInstanceOf(Roadbook.Defect)
-      return (defect as Roadbook.Defect).defect
-    }))
-  const why = "a durable run does not carry out calls between machines"
-  // The refusal comes before the input is looked at, so these runs need no real `ref`.
-  const noDesk = { desk: undefined as never }
-
-  it("refuse, before they start, a machine that declares a call", async () => {
-    const message = `Desk cannot run durably: it declares \`call ask\`, and ${why}`
-    expect(await refusal(flows.desk.start({}))).toEqual({ kind: "host", message })
-    expect(await refusal(flows.desk.run({}))).toEqual({ kind: "host", message })
-    expect(await refusal(flows.desk.executionId({}))).toEqual({ kind: "host", message })
-    const saved = await Effect.runPromise(Effect.scoped(Effect.flatMap(DeskLive.spawn({}), (actor) => actor.save)))
-    expect(await refusal(flows.desk.restore(saved))).toEqual({ kind: "host", message })
-  })
-
-  it("refuse a machine that invokes a peer's call", async () => {
-    expect(await refusal(flows.asker.run(noDesk))).toEqual({
-      kind: "host",
-      message: `Asker cannot run durably: it makes the call \`invoke desk.ask(…)\` in state \`Asker.Asking\`, and ${why}`
-    })
-  })
-
-  it("refuse a machine whose invoked child, or grandchild, declares a call", async () => {
-    expect(await refusal(flows.host.run({}))).toEqual({
-      kind: "host",
-      message: `Host cannot run durably: Desk, which it starts, declares \`call ask\`, and ${why}`
-    })
-    expect(await refusal(flows.outer.run({}))).toEqual({
-      kind: "host",
-      message: `Outer cannot run durably: Desk, which it starts through Host, declares \`call ask\`, and ${why}`
-    })
-  })
-
-  it("run a machine with no calls", async () => {
-    expect(await inEngine(flows.plain.run({}))).toBe(7)
-  })
+    const drive = (crash: boolean) =>
+      scenario(({ world, flows, start }) =>
+        Effect.gen(function*() {
+          let process = yield* start()
+          const deskId = yield* process.run(flows.desk.start({ id: "i" }))
+          const desk = yield* process.run(flows.desk.handle(deskId))
+          yield* process.run(flows.asker.start({ desk, id: "i", n: 1 }))
+          yield* until(() => world.logged.includes("held"))
+          if (crash) {
+            yield* process.crash
+            world.records.length = 0
+            process = yield* start()
+          }
+          yield* process.run(flows.desk.send(deskId, { _tag: "Answer", by: 1 }))
+          yield* process.run(flows.asker.run({ desk, id: "i", n: 1 }))
+          yield* process.run(flows.desk.send(deskId, { _tag: "Close" }))
+          yield* ended(process, flows.desk, deskId)
+          yield* process.crash
+          return strip(world.records)
+        }), {
+          replayTrace: true,
+          park: false,
+          runId: (id) => `x${id.replace(/[^A-Za-z0-9]/g, "").slice(0, 16)}`
+        })
+    const uninterrupted = await drive(false)
+    const recovered = await drive(true)
+    expect(recovered).toEqual(uninterrupted)
+    expect(uninterrupted.filter((line) => line.includes('"kind":"replied"'))).toHaveLength(1)
+  }, 30_000)
 })

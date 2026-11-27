@@ -92,15 +92,12 @@ export const isSupported = (name: string): boolean => {
   return spec.requires.every((feature) => supported.includes(feature))
 }
 
-/**
- * Whether durable mode runs case `name`: not if it has `suspend` steps (durable runs park), nor
- * if it requires calls, which the durable driver does not carry out.
- */
+/** Whether durable mode runs case `name`: not if it has `suspend` steps (durable runs park). */
 export const isDurable = (name: string): boolean => {
   const spec = JSON.parse(fs.readFileSync(path.join(conformanceDir, "cases", name, "case.json"), "utf8")) as Case
   const suspends = (steps: ReadonlyArray<Step>): boolean =>
     steps.some((step) => "suspend" in step || ("together" in step && suspends(step.together)))
-  return !suspends(spec.script) && !spec.requires.includes("calls")
+  return !suspends(spec.script)
 }
 
 export const caseNames = (): Array<string> =>
