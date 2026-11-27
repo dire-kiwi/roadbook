@@ -7,7 +7,7 @@
  * opens, so it decides where each crash falls.
  */
 import * as Core from "@dire-kiwi/roadbook-core"
-import { Context, Deferred, Duration, Effect, Exit, Layer, Option, Schema, Scope } from "effect"
+import { Context, Deferred, Duration, Effect, Exit, Fiber, Layer, Option, Schema, Scope, Stream } from "effect"
 import { MessageStorage, RunnerHealth, Runners, RunnerStorage, Sharding, ShardingConfig } from "effect/cluster"
 import { ClusterWorkflowEngine } from "effect/cluster"
 import { DurableDeferred, WorkflowEngine } from "effect/workflow"
@@ -318,6 +318,28 @@ describe("durable runs across a crash", () => {
         expect(Option.isSome(polled) && Exit.isSuccess(polled.value)).toBe(true)
         yield* process.crash
       })), 20_000)
+})
+
+describe("host listeners of durable runs", () => {
+  it("hear each emitted event once, though a run that parks replays the steps that emitted it", () =>
+    scenario(({ flows, start, world }) =>
+      Effect.gen(function*() {
+        const process = yield* start()
+        const id = yield* process.run(flows.counter.start({}))
+        const heard = yield* process.run(flows.counter.emitted(id).pipe(Stream.runCollect, Effect.forkChild))
+        // The stream subscribes once the run has replayed in this process.
+        yield* Effect.sleep(100)
+        for (const by of [1, 2, 3]) {
+          yield* process.run(flows.counter.send(id, { _tag: "Add", by }))
+          // Idle, it parks; the next event wakes it and it replays every step before.
+          yield* Effect.sleep(250)
+        }
+        yield* process.run(flows.counter.send(id, { _tag: "Close" }))
+        const values = yield* Fiber.join(heard)
+        expect([...values]).toEqual([{ _tag: "Total", n: 1 }, { _tag: "Total", n: 3 }, { _tag: "Total", n: 6 }])
+        expect(world.attempts()).toBeGreaterThan(2)
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
 })
 
 describe("calls between durable runs", () => {

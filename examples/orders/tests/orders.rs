@@ -116,7 +116,13 @@ fn config(sink: &Arc<MemorySink>) -> Config {
 }
 
 /// A spawned `Inventory` run.
-type Stock = roadbook::Actor<inventory::Event, inventory::inventory::State, (), Infallible>;
+type Stock = roadbook::Actor<
+    inventory::Event,
+    inventory::inventory::State,
+    (),
+    Infallible,
+    inventory::inventory::Emitted,
+>;
 
 /// A warehouse holding `qty` of `s1`, restocked by host code through its handle.
 async fn stocked(sink: &Arc<MemorySink>, warehouse: &Arc<Warehouse>, qty: i64) -> Stock {

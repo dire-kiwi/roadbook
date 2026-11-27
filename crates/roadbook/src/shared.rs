@@ -12,6 +12,7 @@ use roadbook_core::{Defect, Input, Program, ReplyOutcome, Saved, Snapshot};
 use serde_json::Value;
 
 use crate::env::Config;
+use crate::listen::{Feed, Listeners, Subscription};
 
 /// How a run reported that it finished.
 #[derive(Debug, Clone, PartialEq)]
@@ -39,6 +40,9 @@ struct Inner {
     /// The open runs that hold a `ref` to this run, each with the events it emits that they
     /// receive: those their machine has an `on` for.
     subscribers: Vec<(Arc<Shared>, HashSet<String>)>,
+    /// Host code listening to what this run emits (`spec/execution.md#host-listeners`),
+    /// ended when the run finishes.
+    listeners: Listeners,
     /// Host code asked to suspend the run once it is idle.
     suspend: bool,
     /// The run's saved snapshot as its last step left it, once it has one.
@@ -303,6 +307,25 @@ impl Shared {
         open
     }
 
+    /// A new host listener of what this run emits, ended at once if the run has finished.
+    /// With `after_start` (an actor's), it hears nothing the start step emits.
+    pub fn listen(&self, after_start: bool) -> Arc<Feed> {
+        self.lock().listeners.add(after_start)
+    }
+
+    /// The run has carried out its start (or restore) step.
+    pub fn listeners_started(&self) {
+        self.lock().listeners.start();
+    }
+
+    /// Gives an event this run emits to its host listeners.
+    pub fn tell_listeners(&self, value: &Value) {
+        let feeds = self.lock().listeners.live();
+        for feed in feeds {
+            feed.push(value.clone());
+        }
+    }
+
     /// Neither closed nor finished.
     fn is_open(&self) -> bool {
         let g = self.lock();
@@ -386,7 +409,11 @@ impl Shared {
         let mut wakers = std::mem::take(&mut g.finish_wakers);
         wakers.append(&mut g.state_wakers);
         wakers.append(&mut g.saved_wakers);
+        let feeds = g.listeners.end();
         drop(g);
+        for feed in feeds {
+            feed.end();
+        }
         for w in wakers {
             w.wake();
         }
@@ -577,6 +604,14 @@ impl RunHandle {
     /// or `None` before it has carried out its start (or restore) step.
     pub fn save(&self) -> Option<Saved> {
         self.shared.saved().map(|s| (*s).clone())
+    }
+
+    /// Listens to what the run emits, as JSON values, from now until it ends or is suspended
+    /// (`spec/execution.md#host-listeners`). Called from [`crate::Config::on_run`], which
+    /// runs before the run's start step, it hears what that step emits too, also for a child
+    /// run or a run of `run`, which have no actor. Dropping the subscription unsubscribes.
+    pub fn subscribe(&self) -> Subscription<Value> {
+        Subscription::new(self.shared.listen(false), |v| v)
     }
 
     /// Whether the run has ended: it finished, was cancelled, or its future was dropped (a

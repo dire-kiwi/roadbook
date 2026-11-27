@@ -196,6 +196,11 @@ export class Entry {
    * answers them.
    */
   readonly given = new Map<string, { readonly invoke: number; readonly answer: Answer }>()
+  /**
+   * Host listeners of the run's emitted events (`DurableMachine.emitted`), each with the message
+   * id it hears from: an emit a replay carries out again is not heard again.
+   */
+  private readonly listeners = new Set<{ next: number; readonly emit: (value: Core.Tagged) => void; readonly end: () => void }>()
   readonly port: Port
   readonly handle: { readonly id: string; readonly machine: string; send: (event: unknown) => Effect.Effect<void> }
   private resumed = false
@@ -379,9 +384,27 @@ export class Entry {
     this.log.length = 0
   }
 
+  /**
+   * Listen to what the run emits from now on: from the message after the largest it has emitted
+   * (call it once `whenKnown` has completed). Ended when the run ends; at once if it has.
+   */
+  listen(emit: (value: Core.Tagged) => void, end: () => void): () => void {
+    if (Deferred.isDoneUnsafe(this.ended)) {
+      end()
+      return () => {}
+    }
+    const listener = { next: this.emitted + 1, emit, end }
+    this.listeners.add(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
   /** The run has ended: whoever waits for it stops waiting. */
   finish() {
     this.close()
+    for (const listener of this.listeners) listener.end()
+    this.listeners.clear()
     for (const ack of this.acks.values()) Deferred.doneUnsafe(ack, Exit.void)
     this.acks.clear()
     Deferred.doneUnsafe(this.ended, Exit.void)
@@ -402,6 +425,11 @@ export class Entry {
     if (message > this.emitted) {
       this.emitted = message
       this.log.push({ message, value })
+    }
+    for (const listener of this.listeners) {
+      if (message < listener.next) continue
+      listener.next = message + 1
+      listener.emit(value)
     }
     for (const { entry, from, heard } of this.subscribers.values()) {
       if (message >= from && heard.has(value._tag)) {

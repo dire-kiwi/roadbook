@@ -124,6 +124,12 @@ export class Program {
     return this.codec.encodeTagged(event, "the event", decl.fields)
   }
 
+  /** The host value of one of the machine's emitted events, in its JSON form. */
+  decodeEmitted(value: Core.Tagged): unknown {
+    const decl = Object.hasOwn(this.machine.emits, value._tag) ? this.machine.emits[value._tag] : undefined
+    return { _tag: value._tag, ...(decl === undefined ? {} : this.codec.decodeArgs(decl.fields, value)) }
+  }
+
   /** The host value a run with this snapshot ended with, as its Effect. */
   outcome(snapshot: Core.Snapshot): Effect.Effect<unknown, unknown> {
     const result = snapshot.result
@@ -215,8 +221,23 @@ export type Begin =
   }
   | { readonly kind: "restore"; readonly saved: Core.Saved; readonly migrated: string | null }
 
+/**
+ * A host listener of a run's emitted events (execution.md, "Host listeners"): given each event
+ * the run emits, in its JSON form, as the driver carries out the `emit`, and ended once when the
+ * run ends or is suspended.
+ */
+interface Listener {
+  readonly emit: (value: Core.Tagged) => void
+  readonly end: () => void
+}
+
 interface Instance {
   readonly handle: Handle<any>
+  /**
+   * Subscribe a listener until the returned function is called or the run ends. One that
+   * subscribes after the run has ended is ended at once.
+   */
+  readonly listen: (listener: Listener) => () => void
   readonly ref: SubscriptionRef.SubscriptionRef<Core.Snapshot>
   readonly started: Deferred.Deferred<void>
   /** Runs the machine to its end, or until it is suspended, and gives its outcome. */
@@ -320,6 +341,20 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       result: null
     }
     const ref = yield* SubscriptionRef.make(snapshot)
+    // Host listeners: not runs, so no filter and no record. Ended after the last step's
+    // commands, or when the run is suspended.
+    const listeners = new Set<Listener>()
+    let listening = true
+    const listen = (listener: Listener) => {
+      if (!listening) {
+        listener.end()
+        return () => {}
+      }
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    }
     /** Completed once the start step's commands have been carried out. */
     const started = yield* Deferred.make<void>()
 
@@ -349,6 +384,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       parent: env.parent,
       machine: name,
       snapshot: () => snapshot,
+      listen: (f) => listen({ emit: f, end: () => {} }),
       offerAll: (inputs) => Effect.asVoid(Queue.offerAll(queue, inputs))
     })
 
@@ -707,6 +743,9 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
                 if (heard.has(event)) push(subscriber, { kind: "emitted", from, invoke: null, message, value })
               }
               entry?.emit(message, value)
+              // A durable run's listeners hear an emit when its `emitted` record is written:
+              // not again when a replay carries out the step again.
+              if (!quiet) for (const listener of listeners) listener.emit(value)
               return undefined
             })
         }
@@ -1091,6 +1130,9 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       // through it, and the ones it took stay in its registry entry.
       const end = Effect.suspend(() => {
         close()
+        listening = false
+        for (const listener of listeners) listener.end()
+        listeners.clear()
         const mode = durable !== undefined && snapshot.status === "running" ? "stop" : "cancel"
         if (mode === "cancel") {
           abandonCalls()
@@ -1138,6 +1180,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
 
     return {
       handle,
+      listen,
       ref,
       started,
       loop,
@@ -1255,6 +1298,15 @@ const actorOf = <D extends MachineDef>(program: Program, begin: Begin) =>
         Stream.takeUntil(instance.isLast),
         Stream.map(toSnapshot<D>)
       ),
+      // Subscribed while the stream runs; the run's end, or its suspending, ends it.
+      emitted: Stream.callback<Core.Tagged>((queue) =>
+        Effect.acquireRelease(
+          Effect.sync(() =>
+            instance.listen({ emit: (value) => Queue.offerUnsafe(queue, value), end: () => Queue.endUnsafe(queue) })
+          ),
+          (unlisten) => Effect.sync(unlisten)
+        )
+      ).pipe(Stream.map((value) => program.decodeEmitted(value) as D["emits"])),
       result: Fiber.join(fiber) as Effect.Effect<D["output"], D["error"]>,
       cancel: Fiber.interrupt(fiber),
       save: instance.save,

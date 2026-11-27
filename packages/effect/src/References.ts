@@ -68,6 +68,12 @@ export interface RunHandle {
   /** The run's snapshot after its last step. */
   readonly snapshot: () => Core.Snapshot
   /**
+   * Call `f` with each event the run emits, in its JSON form, as the driver carries out the
+   * `emit`, from now until the returned function is called or the run ends or is suspended.
+   * Called before the run's start step, it hears what that step emits too. `f` must not throw.
+   */
+  readonly listen: (f: (value: Core.Tagged) => void) => () => void
+  /**
    * Append inputs to the run's queue in one operation, so that the run takes no step between
    * them. Inputs are the core's, in their JSON form; a cancel request is not an input here.
    */

@@ -10,7 +10,7 @@
  * ```
  */
 import * as Core from "@dire-kiwi/roadbook-core"
-import { Cause, Duration, Effect, Exit, Layer, Option, Schema } from "effect"
+import { Cause, Duration, Effect, Exit, Layer, Option, Queue, Schema, Stream } from "effect"
 import { DurableClock, Workflow, WorkflowEngine } from "effect/workflow"
 import { Defect, hostDefect } from "./Defect.ts"
 import { type Begin, check, type Env, Program, runDurable } from "./internal/driver.ts"
@@ -84,6 +84,14 @@ export interface DurableMachine<D extends MachineDef, R> {
   readonly snapshot: (executionId: string) => Effect.Effect<Saved, never, WorkflowEngine.WorkflowEngine>
   /** The run's handle: what a `ref` argument of another durable run takes. */
   readonly handle: (executionId: string) => Effect.Effect<Handle<D>, never, WorkflowEngine.WorkflowEngine>
+  /**
+   * The events the run emits, every one of them whatever any machine hears, as `actor.emitted`
+   * gives them: from when the stream starts (once the run has replayed in this process, waking
+   * it if it must, so that what it emitted before is known) until the run ends. Each is given
+   * once, also when a replay after a park carries out its step again. Listening lasts as long as
+   * this process; a stream started in a later one hears from then on.
+   */
+  readonly emitted: (executionId: string) => Stream.Stream<D["emits"], never, WorkflowEngine.WorkflowEngine>
 }
 
 /** The payload of a run's workflow: its key, and how it begins, in JSON. */
@@ -281,6 +289,17 @@ export const workflow = <D extends MachineDef, R>(
     cancel: (id) => Effect.flatMap(entryFor(id), (entry) => entry.cancel()),
     poll: poll as DurableMachine<D, R>["poll"],
     snapshot,
-    handle: (id) => Effect.map(entryFor(id), (entry) => entry.handle as unknown as Handle<D>)
+    handle: (id) => Effect.map(entryFor(id), (entry) => entry.handle as unknown as Handle<D>),
+    emitted: (id) =>
+      Stream.unwrap(Effect.map(entryFor(id), (entry) =>
+        Stream.callback<Core.Tagged>((queue) =>
+          Effect.acquireRelease(
+            Effect.andThen(
+              entry.whenKnown(),
+              Effect.sync(() => entry.listen((value) => Queue.offerUnsafe(queue, value), () => Queue.endUnsafe(queue)))
+            ),
+            (unlisten) => Effect.sync(unlisten)
+          )
+        ))).pipe(Stream.map((value) => program.decodeEmitted(value) as D["emits"]))
   }
 }

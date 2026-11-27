@@ -299,8 +299,19 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
     if (!spec.stub.includes(machine)) handleFor(machine)
   }
 
-  // Every run, as the driver reports it.
+  // Every run, as the driver reports it, each with a host listener from before its start step:
+  // what it hears must be exactly the values of the run's `emitted` records, redacted as they
+  // are. A durable run is reported again by each attempt of it; what its listeners hear adds up.
   const runs = new Map<string, Roadbook.RunHandle>()
+  const heard = new Map<string, Array<Core.Tagged>>()
+  const observer: Roadbook.RunObserver = {
+    started: (handle) => {
+      runs.set(handle.id, handle)
+      const values = heard.get(handle.id) ?? []
+      heard.set(handle.id, values)
+      handle.listen((value) => values.push(Core.copyJson(Core.redactEmitted(ir, handle.machine, value)) as Core.Tagged))
+    }
+  }
   const scheduler = new ManualScheduler()
   /** Wait until quiescent: in durable mode, until no promise brings a task either. */
   const settle = async () => {
@@ -326,7 +337,6 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
   const actors = new Map<string, TopRun>()
   const machineOf = new Map<string, string>()
   const sink: Roadbook.TraceSink = { write: (record) => records.push(record) }
-  const observer: Roadbook.RunObserver = { started: (handle) => runs.set(handle.id, handle) }
 
   // Durable mode: a durable machine per machine of the chart, on one in-memory engine, whose
   // bodies run with the runner's sink, timer and observer. Each execution's key is the run's
@@ -395,10 +405,10 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
     const actor = await exec(
       handleFor(machine).spawn(args).pipe(
         Scope.provide(scope),
-        Effect.provideService(Roadbook.TraceSink, { write: (record) => records.push(record) }),
+        Effect.provideService(Roadbook.TraceSink, sink),
         Effect.provideService(Roadbook.Timer, timer),
         Effect.provideService(Roadbook.RootRunId, () => run),
-        Effect.provideService(Roadbook.RunObserver, { started: (handle) => runs.set(handle.id, handle) })
+        Effect.provideService(Roadbook.RunObserver, observer)
       )
     )
     if (actor.handle.id !== run) fail(`the run of ${machine} was not named ${run}`)
@@ -629,6 +639,12 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
     }
   } catch (error) {
     if (!(error instanceof CaseFailure)) errors.push(String((error as Error)?.stack ?? error))
+  }
+  for (const [run, values] of heard) {
+    const emitted = records.flatMap((r) => (r.run === run && r.kind === "emitted" ? [r.value] : []))
+    if (JSON.stringify(values) !== JSON.stringify(emitted)) {
+      errors.push(`a listener of ${run} heard ${JSON.stringify(values)}, not its emitted records' ${JSON.stringify(emitted)}`)
+    }
   }
 
   const actual = arrange(records)
