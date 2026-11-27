@@ -432,8 +432,26 @@ impl Redactor<'_> {
         }
     }
 
-    /// Redacts the copy of a saved snapshot of a run of `m` that a `restored` record holds.
+    /// Redacts the copy of a saved snapshot of a run of `m` that a `restored` record holds,
+    /// and each child run's snapshot nested in it by the child's own machine (a `restored`
+    /// record holds none, but a redacted snapshot shows nothing wherever it is nested).
     fn saved(&self, m: &Machine, saved: &mut Saved) {
+        let nested = saved
+            .invokes
+            .iter_mut()
+            .filter_map(|i| i.child.as_deref_mut())
+            .chain(
+                saved
+                    .spawned
+                    .iter_mut()
+                    .flatten()
+                    .filter_map(|c| c.child.as_deref_mut()),
+            );
+        for child in nested {
+            if let Some(cm) = self.ir.machines.get(&child.machine) {
+                self.saved(cm, child);
+            }
+        }
         self.object(&m.params, &mut saved.input);
         for (name, value) in saved.vars.iter_mut() {
             self.var(m, name, value);

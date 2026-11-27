@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Roadbook saved snapshot",
-  "description": "A saved snapshot of a top-level run: the core's snapshot (spec/execution.md#snapshot) with the format version and each timer's due time. See spec/execution.md#saving-and-restoring for what each member means and how a runtime restores one. It holds real values, those of sensitive parameters and variables too: nothing in it is redacted (spec/trace.md#redaction). Every member is required but calls, history and spawned, and no other member is allowed. Version 1, written before history states, has neither history nor spawned; version 2 has history; version 3 has both. calls, written only when not empty, may be in any version.",
+  "description": "A saved snapshot of a top-level run: the core's snapshot (spec/execution.md#snapshot) with the format version and each timer's due time, and, in version 4, the saved snapshot of each child run that was running, nested in its invoke or spawned entry (child). See spec/execution.md#saving-and-restoring for what each member means and how a runtime restores one. It holds real values, those of sensitive parameters and variables too: nothing in it is redacted (spec/trace.md#redaction). Every member is required but calls, history and spawned, and no other member is allowed. Version 1, written before history states, has neither history nor spawned; version 2 has history; version 3 has both; version 4 has both and may have child members. calls, written only when not empty, may be in any version.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -22,18 +22,27 @@
   ],
   "allOf": [
     {
-      "if": { "properties": { "snapshotVersion": { "enum": [2, 3] } } },
+      "if": { "properties": { "snapshotVersion": { "enum": [2, 3, 4] } } },
       "then": { "required": ["history"] },
       "else": { "properties": { "history": false } }
     },
     {
-      "if": { "properties": { "snapshotVersion": { "const": 3 } } },
+      "if": { "properties": { "snapshotVersion": { "enum": [3, 4] } } },
       "then": { "required": ["spawned"] },
       "else": { "properties": { "spawned": false } }
+    },
+    {
+      "if": { "properties": { "snapshotVersion": { "enum": [1, 2, 3] } } },
+      "then": {
+        "properties": {
+          "invokes": { "items": { "properties": { "child": false } } },
+          "spawned": { "items": { "properties": { "child": false } } }
+        }
+      }
     }
   ],
   "properties": {
-    "snapshotVersion": { "description": "The version of this format: 3, or 2 for a snapshot written before keyed spawn, or 1 for one written before history states.", "enum": [1, 2, 3] },
+    "snapshotVersion": { "description": "The version of this format: 4, or 3 for a snapshot written before child runs were saved, 2 for one written before keyed spawn, or 1 for one written before history states.", "enum": [1, 2, 3, 4] },
     "machine": { "description": "The machine's name, a key of the IR's machines.", "$ref": "#/$defs/upperName" },
     "run": {
       "description": "The id the run had when it was saved. A restored run gets a new id.",
@@ -53,7 +62,7 @@
       "$ref": "#/$defs/args"
     },
     "invokes": {
-      "description": "The invokes running when the run was saved, in the order they were started.",
+      "description": "The invokes running when the run was saved, in the order they were started, each with its child run's snapshot if it is one.",
       "type": "array",
       "items": {
         "type": "object",
@@ -66,7 +75,8 @@
             "description": "The task or machine, or for a call the address and the call's name (inventory.reserve).",
             "type": "string",
             "pattern": "^([A-Za-z][A-Za-z0-9]*|[a-z][A-Za-z0-9]*\\.[a-z][A-Za-z0-9]*)$"
-          }
+          },
+          "child": { "$ref": "#/$defs/child" }
         }
       }
     },
@@ -86,7 +96,7 @@
       }
     },
     "spawned": {
-      "description": "The spawned children running when the run was saved, in the order they were started.",
+      "description": "The spawned children running when the run was saved, in the order they were started, each with its child run's snapshot if it is one.",
       "type": "array",
       "items": {
         "type": "object",
@@ -99,7 +109,8 @@
             "description": "The child's key: a string (a string or an enum variant) or an integer.",
             "oneOf": [{ "type": "string" }, { "type": "integer" }]
           },
-          "args": { "description": "The arguments it was spawned with.", "$ref": "#/$defs/args" }
+          "args": { "description": "The arguments it was spawned with.", "$ref": "#/$defs/args" },
+          "child": { "$ref": "#/$defs/child" }
         }
       }
     },
@@ -165,6 +176,10 @@
     }
   },
   "$defs": {
+    "child": {
+      "description": "The saved snapshot of this entry's child run, as its last step left it, when the entry's work was a child run that had claimed its invoke and was running: a saved snapshot of version 4 itself, nested to any depth. Written only in version 4 and only for such a child; an entry without it starts its work again on restore.",
+      "allOf": [{ "$ref": "#" }, { "properties": { "snapshotVersion": { "const": 4 } } }]
+    },
     "upperName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$" },
     "lowerName": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*$" },
     "name": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9]*$" },

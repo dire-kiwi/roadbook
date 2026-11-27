@@ -44,7 +44,7 @@
           "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }]
         },
         "snapshot": {
-          "description": "The saved snapshot the run was restored from, after any migration (spec/snapshot.schema.json), redacted like every value of a record (spec/trace.md#redaction): not a snapshot to restore.",
+          "description": "The saved snapshot the run was restored from, after any migration (spec/snapshot.schema.json), without the snapshots of child runs nested in it (child), redacted like every value of a record (spec/trace.md#redaction): not a snapshot to restore.",
           "type": "object",
           "required": ["snapshotVersion", "machine", "run", "ir", "status", "active", "input", "vars", "invokes", "timers", "nextInvoke", "nextTimer", "nextMessage", "result"]
         }
@@ -237,7 +237,7 @@
       "properties": { "kind": { "const": "cancelled" } }
     },
     {
-      "description": "The driver stopped the run, idle, after saving it. The last record of the run, which has not ended: it goes on from its saved snapshot.",
+      "description": "The driver stopped the run, idle, after saving it, or stopped a child run with its idle parent. The last record of the run, which has not ended: it goes on from its saved snapshot.",
       "properties": { "kind": { "const": "suspended" } }
     },
     {

@@ -450,7 +450,7 @@ fn a_call_invoke_names_its_peer_and_takes_unanswered() {
     assert_eq!(
         serde_json::to_value(start).unwrap(),
         json!({"kind": "invoke.start", "invoke": 1, "state": "C.W", "src": "ask",
-               "srcKind": "call", "to": "r1", "as": null, "args": {"n": 4}})
+               "srcKind": "call", "to": "r1", "as": null, "args": {"n": 4}, "saved": null})
     );
     assert!(records(&cmds).iter().any(|r| matches!(
         r, Record::InvokeStarted { src, .. } if src == "s.ask"

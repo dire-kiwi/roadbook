@@ -465,7 +465,7 @@ async fn a_run_returns_through_its_history_states_and_saves_what_they_recorded()
     first.send(Event::Help).await;
     until(&mut first, State::Help).await;
     let saved = first.save().await;
-    assert_eq!(saved.snapshot_version, 3);
+    assert_eq!(saved.snapshot_version, 4);
     assert_eq!(
         saved.history,
         Some(
@@ -503,7 +503,7 @@ async fn a_run_returns_through_its_history_states_and_saves_what_they_recorded()
     let old = Saved::from_value(old).unwrap();
     let mut copy = hist::editor::restore_with(config, Arc::new(Writer), old).unwrap();
     let again = copy.save().await;
-    assert_eq!(again.snapshot_version, 3);
+    assert_eq!(again.snapshot_version, 4);
     assert_eq!(again.history, Some(Default::default()));
     copy.send(Event::Back).await;
     until(&mut copy, State::Work(Work::Draft)).await;

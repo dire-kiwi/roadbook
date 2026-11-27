@@ -1,0 +1,40 @@
+{
+  "description": "A version 3 snapshot, written before child runs were saved, still restores: its invoke has no `child`, so the child machine starts again from the beginning. Saved again, the run gives version 4, with the restarted child's snapshot nested in it.",
+  "requires": [
+    "messaging",
+    "snapshots"
+  ],
+  "chart": "charts/kept.road",
+  "machine": "Desk",
+  "input": {
+    "start": 1
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "restore": "three",
+      "run": "r2",
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Bump",
+        "by": 1
+      },
+      "run": "r2"
+    },
+    {
+      "snapshot": "four",
+      "run": "r2"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "running"
+}

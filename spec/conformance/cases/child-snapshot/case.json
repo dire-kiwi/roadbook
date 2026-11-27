@@ -1,0 +1,51 @@
+{
+  "description": "A desk saved while its tally, a child invoked with `as`, runs: the saved snapshot has the child's own snapshot in the invoke's `child`, with its variables and its timer's due time. Restoring it restores the child where it was, as the child run `r2.1`, which writes `restored` in place of `started` and restarts its timer for the time left, so it expires with the original's. The restored child takes what its new parent sends it and ends with what it had counted.",
+  "requires": [
+    "messaging",
+    "snapshots"
+  ],
+  "chart": "charts/kept.road",
+  "machine": "Desk",
+  "input": {
+    "start": 1
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Bump",
+        "by": 2
+      }
+    },
+    {
+      "advance": 1000
+    },
+    {
+      "snapshot": "open"
+    },
+    {
+      "restore": "open",
+      "run": "r2",
+      "status": "done"
+    },
+    {
+      "advance": 4000
+    },
+    {
+      "event": {
+        "_tag": "Bump",
+        "by": 4
+      },
+      "run": "r2"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "running"
+}

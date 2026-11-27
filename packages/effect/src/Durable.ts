@@ -67,6 +67,8 @@ export interface DurableMachine<D extends MachineDef, R> {
   /**
    * Start a durable run from a saved snapshot (checked, and migrated with `options.migrate`, as
    * `restore` does), keyed by `idempotencyKey` of the snapshot's input. Gives its execution id.
+   * Each child run nested in it is restored where it was, and a replay restores it again from
+   * the same snapshot before it replays the child's own journal.
    */
   readonly restore: (
     saved: Saved,
@@ -84,7 +86,10 @@ export interface DurableMachine<D extends MachineDef, R> {
   readonly poll: (
     executionId: string
   ) => Effect.Effect<Option.Option<Exit.Exit<D["output"], D["error"]>>, never, WorkflowEngine.WorkflowEngine>
-  /** The run's saved snapshot as its last step in this process left it. Dies if it has none here. */
+  /**
+   * The run's saved snapshot as its last step in this process left it, with the snapshots of its
+   * running child runs nested in it, each as its own last step left it. Dies if it has none here.
+   */
   readonly snapshot: (executionId: string) => Effect.Effect<Saved, never, WorkflowEngine.WorkflowEngine>
   /** The run's handle: what a `ref` argument of another durable run takes. */
   readonly handle: (executionId: string) => Effect.Effect<Handle<D>, never, WorkflowEngine.WorkflowEngine>
@@ -183,7 +188,9 @@ export const workflow = <D extends MachineDef, R>(
         observer: yield* RunObserver,
         token: undefined,
         invoker: undefined,
-        durable: { exec, runId: info.run, entry }
+        durable: { exec, runId: info.run, entry },
+        restoreFrom: undefined,
+        tree: undefined
       }
       const { exit, snapshot } = yield* runDurable(program, begin, env)
       if (snapshot.status === "running") {

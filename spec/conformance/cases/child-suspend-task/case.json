@@ -1,0 +1,47 @@
+{
+  "description": "A child run that waits for a task is not idle, so suspend waits until the task has ended and the child holds its result. Saved while the task ran, the child's snapshot lists its running invoke with no `child`: restoring restores the child in its fetching state and starts the task again, with the same id, in the restored child run.",
+  "requires": [
+    "messaging",
+    "snapshots"
+  ],
+  "chart": "charts/kept.road",
+  "machine": "Errand",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "snapshot": "fetching"
+    },
+    {
+      "suspend": "held"
+    },
+    {
+      "task": "fetch",
+      "done": 9
+    },
+    {
+      "restore": "fetching",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "task": "fetch",
+      "run": "r2.1",
+      "done": 10
+    },
+    {
+      "restore": "held",
+      "run": "r3",
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Release"
+      },
+      "run": "r3"
+    }
+  ],
+  "status": "running"
+}

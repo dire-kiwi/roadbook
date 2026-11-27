@@ -1,0 +1,72 @@
+{
+  "description": "Nested snapshots are checked with the whole tree before anything runs. Refused as `ir`: a child's hash that is not its machine's, with no migration. Refused as `invalid`: a child of another machine than its invoke starts, one whose `run` is not its parent's and the invoke's id, one that has ended, one with `calls`, a child on a task's invoke, a `child` member in a version 3 snapshot, and a nested snapshot of version 3. A snapshot whose hashes are both stale is migrated once, for the whole tree, and its child restored where it was.",
+  "requires": [
+    "messaging",
+    "snapshots"
+  ],
+  "chart": "charts/kept.road",
+  "machine": "Desk",
+  "input": {
+    "start": 1
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Bump",
+        "by": 2
+      }
+    },
+    {
+      "snapshot": "open"
+    },
+    {
+      "restore": "stalechild",
+      "refused": "ir"
+    },
+    {
+      "restore": "otherchild",
+      "refused": "invalid"
+    },
+    {
+      "restore": "wrongrun",
+      "refused": "invalid"
+    },
+    {
+      "restore": "endedchild",
+      "refused": "invalid"
+    },
+    {
+      "restore": "childcalls",
+      "refused": "invalid"
+    },
+    {
+      "restore": "taskchild",
+      "refused": "invalid"
+    },
+    {
+      "restore": "oldversion",
+      "refused": "invalid"
+    },
+    {
+      "restore": "childversion",
+      "refused": "invalid"
+    },
+    {
+      "restore": "stale",
+      "migrate": "open",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Bump",
+        "by": 1
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "running"
+}

@@ -1,0 +1,60 @@
+{
+  "description": "A desk whose tally waits for events is idle, so suspend stops the whole tree at once: the child run writes `suspended` too, its timer is cancelled with no record, and the snapshot holds the child's. Resumed (restored, given an event, suspended again) it goes on where it was, and once more after that until it closes.",
+  "requires": [
+    "messaging",
+    "snapshots"
+  ],
+  "chart": "charts/kept.road",
+  "machine": "Desk",
+  "input": {
+    "start": 1
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Bump",
+        "by": 2
+      }
+    },
+    {
+      "advance": 1000
+    },
+    {
+      "suspend": "idle"
+    },
+    {
+      "restore": "idle",
+      "run": "r2",
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Bump",
+        "by": 3
+      },
+      "run": "r2"
+    },
+    {
+      "suspend": "again",
+      "run": "r2"
+    },
+    {
+      "restore": "again",
+      "run": "r3",
+      "status": "done"
+    },
+    {
+      "advance": 4000
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      },
+      "run": "r3"
+    }
+  ],
+  "status": "running"
+}

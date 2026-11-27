@@ -192,10 +192,11 @@ impl<Event, State: Clone, Output, Error, Emitted> Actor<Event, State, Output, Er
         }
     }
 
-    /// Waits until the run is idle (between steps, nothing queued, no running task or child
-    /// machine), taking inputs meanwhile as always, then stops it without running any exit
-    /// effect, writes `suspended` to the trace, and gives its saved snapshot: the request
-    /// handler's way to keep a run as data. A run that ends first gives its final snapshot
+    /// Waits until the run and its child runs are idle (between steps, nothing queued, no
+    /// running task, call or stub, every child run waiting the same way), taking inputs
+    /// meanwhile as always, then stops them without running any exit effect, writes
+    /// `suspended` to the trace for each, and gives its saved snapshot, with its child runs'
+    /// nested in it: the request handler's way to keep a run as data. A run that ends first gives its final snapshot
     /// (`done`, `failed` or `cancelled`) and writes nothing; one that ends with a defect
     /// resumes unwinding with the [`crate::Defect`].
     pub async fn suspend(mut self) -> Saved {

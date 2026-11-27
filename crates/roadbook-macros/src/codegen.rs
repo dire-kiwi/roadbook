@@ -1680,9 +1680,9 @@ impl<'a> Gen<'a> {
             "Like `restore`, set up by `config` (trace sink, timer, run id, migration).";
         let resume_doc = format!(
             "The request handler's operation on a saved `{name}`: restores `saved` as a new \
-             run, gives it `event` if there is one, waits until it is idle (its queue empty and \
-             no task or child machine running), stops it without exit effects and gives the \
-             new saved snapshot. Timers that fell due while it was saved expire before the \
+             run, gives it `event` if there is one, waits until it is idle (its queue empty, no \
+             task running, and each child run idle too), stops it and its child runs without \
+             exit effects and gives the new saved snapshot, theirs nested in it. Timers that fell due while it was saved expire before the \
              event. A run that ends gives its final snapshot (`done`, `failed` or \
              `cancelled`); one that ends with a defect resumes unwinding with the \
              `roadbook::Defect`. A refused snapshot is `Err` before anything starts. The \

@@ -1,0 +1,1843 @@
+{
+  "irVersion": "0.8",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/kept.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {
+    "fetch": {
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 32
+      }
+    }
+  },
+  "machines": {
+    "Tally": {
+      "doc": "Counts what its parent sends it, and naps after five seconds without news.",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 33,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "start",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "ref",
+            "path": [
+              "start"
+            ],
+            "type": "int",
+            "text": "start"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Add": {
+          "fields": [
+            {
+              "name": "by",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 27
+          }
+        },
+        "Finish": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {
+        "Added": {
+          "fields": [
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 26
+          }
+        }
+      },
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Tally",
+        "name": "Tally",
+        "kind": "compound",
+        "doc": "Counts what its parent sends it, and naps after five seconds without news.",
+        "span": {
+          "file": 0,
+          "line": 9,
+          "col": 1,
+          "endLine": 33,
+          "endCol": 2
+        },
+        "initial": "Tally.Counting",
+        "states": [
+          {
+            "id": "Tally.Counting",
+            "name": "Counting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 18,
+              "col": 3,
+              "endLine": 23,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 5000,
+                    "type": "duration",
+                    "text": "5s"
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Tally.Napping",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 19,
+                  "col": 5,
+                  "endLine": 19,
+                  "endCol": 24
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Add"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "by"
+                          ],
+                          "type": "int",
+                          "text": "event.by"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "n + event.by"
+                    }
+                  },
+                  {
+                    "kind": "emit",
+                    "event": "Added",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "n",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "n"
+                            ],
+                            "type": "int",
+                            "text": "n"
+                          }
+                        }
+                      ],
+                      "type": "Added",
+                      "text": "Added { n: n }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 5,
+                  "endLine": 21,
+                  "endCol": 65
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Finish"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Tally.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 22,
+                  "endCol": 22
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Tally.Napping",
+            "name": "Napping",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 25,
+              "col": 3,
+              "endLine": 30,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "nap",
+                    "type": "string",
+                    "text": "\"nap\""
+                  }
+                ]
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Add"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Tally.Counting",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "by"
+                          ],
+                          "type": "int",
+                          "text": "event.by"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "n + event.by"
+                    }
+                  },
+                  {
+                    "kind": "emit",
+                    "event": "Added",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "n",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "n"
+                            ],
+                            "type": "int",
+                            "text": "n"
+                          }
+                        }
+                      ],
+                      "type": "Added",
+                      "text": "Added { n: n }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 69
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Finish"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Tally.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 29,
+                  "col": 5,
+                  "endLine": 29,
+                  "endCol": 22
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Tally.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 32,
+              "col": 3,
+              "endLine": 32,
+              "endCol": 32
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "n"
+              ],
+              "type": "int",
+              "text": "n"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:6c3d6c87fc61f9541cf792d0b26e005ff71226f6971df2485397f5127bce2462"
+    },
+    "Desk": {
+      "doc": "Keeps a Tally, passes on what it is told, and hears what it counts.",
+      "span": {
+        "file": 0,
+        "line": 36,
+        "col": 1,
+        "endLine": 55,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "start",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "heard",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 40,
+            "col": 3,
+            "endLine": 40,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Bump": {
+          "fields": [
+            {
+              "name": "by",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 37,
+            "col": 3,
+            "endLine": 37,
+            "endCol": 26
+          }
+        },
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 38,
+            "col": 3,
+            "endLine": 38,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Desk",
+        "name": "Desk",
+        "kind": "compound",
+        "doc": "Keeps a Tally, passes on what it is told, and hears what it counts.",
+        "span": {
+          "file": 0,
+          "line": 36,
+          "col": 1,
+          "endLine": 55,
+          "endCol": 2
+        },
+        "initial": "Desk.Open",
+        "states": [
+          {
+            "id": "Desk.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 44,
+              "col": 3,
+              "endLine": 52,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "machine",
+              "src": "Tally",
+              "to": null,
+              "as": "tally",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "start"
+                  ],
+                  "type": "int",
+                  "text": "start"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 45,
+                "col": 5,
+                "endLine": 47,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Desk.Closed",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "heard",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 46,
+                  "col": 7,
+                  "endLine": 46,
+                  "endCol": 41
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Bump"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "child",
+                      "name": "tally",
+                      "machine": "Tally",
+                      "state": "Desk.Open"
+                    },
+                    "key": null,
+                    "event": "Add",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "by",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "by"
+                            ],
+                            "type": "int",
+                            "text": "event.by"
+                          }
+                        }
+                      ],
+                      "type": "Tally.Add",
+                      "text": "Add { by: event.by }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 49,
+                  "col": 5,
+                  "endLine": 49,
+                  "endCol": 51
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 2,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "child",
+                      "name": "tally",
+                      "machine": "Tally",
+                      "state": "Desk.Open"
+                    },
+                    "key": null,
+                    "event": "Finish",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Tally.Finish",
+                      "text": "Finish"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 50,
+                  "col": 5,
+                  "endLine": 50,
+                  "endCol": 37
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "child",
+                    "name": "tally",
+                    "machine": "Tally",
+                    "state": "Desk.Open"
+                  },
+                  "event": "Added"
+                },
+                "group": 3,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "heard",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "n"
+                      ],
+                      "type": "int",
+                      "text": "event.n"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 51,
+                  "col": 5,
+                  "endLine": 51,
+                  "endCol": 39
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Desk.Closed",
+            "name": "Closed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 54,
+              "col": 3,
+              "endLine": 54,
+              "endCol": 38
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "heard"
+              ],
+              "type": "int",
+              "text": "heard"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:2bc68756a08a15caa00d90095d1496785585775d743e60ad0a8a9996bb08cf30"
+    },
+    "Office": {
+      "doc": "Keeps a Desk: two levels of child runs.",
+      "span": {
+        "file": 0,
+        "line": 58,
+        "col": 1,
+        "endLine": 74,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Bump": {
+          "fields": [
+            {
+              "name": "by",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 59,
+            "col": 3,
+            "endLine": 59,
+            "endCol": 26
+          }
+        },
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 60,
+            "col": 3,
+            "endLine": 60,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Office",
+        "name": "Office",
+        "kind": "compound",
+        "doc": "Keeps a Desk: two levels of child runs.",
+        "span": {
+          "file": 0,
+          "line": 58,
+          "col": 1,
+          "endLine": 74,
+          "endCol": 2
+        },
+        "initial": "Office.Working",
+        "states": [
+          {
+            "id": "Office.Working",
+            "name": "Working",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 64,
+              "col": 3,
+              "endLine": 71,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "machine",
+              "src": "Desk",
+              "to": null,
+              "as": "desk",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": 1,
+                  "type": "int",
+                  "text": "1"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 65,
+                "col": 5,
+                "endLine": 67,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Office.Shut",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "shut",
+                        "type": "string",
+                        "text": "\"shut\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 66,
+                  "col": 7,
+                  "endLine": 66,
+                  "endCol": 35
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Bump"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "child",
+                      "name": "desk",
+                      "machine": "Desk",
+                      "state": "Office.Working"
+                    },
+                    "key": null,
+                    "event": "Bump",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "by",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "by"
+                            ],
+                            "type": "int",
+                            "text": "event.by"
+                          }
+                        }
+                      ],
+                      "type": "Desk.Bump",
+                      "text": "Bump { by: event.by }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 69,
+                  "col": 5,
+                  "endLine": 69,
+                  "endCol": 45
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 2,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "child",
+                      "name": "desk",
+                      "machine": "Desk",
+                      "state": "Office.Working"
+                    },
+                    "key": null,
+                    "event": "Close",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Desk.Close",
+                      "text": "Close"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 70,
+                  "col": 5,
+                  "endLine": 70,
+                  "endCol": 29
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Office.Shut",
+            "name": "Shut",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 73,
+              "col": 3,
+              "endLine": 73,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:f084aec249adc9525a34a40389ecf60c7538fccadaee94e02c3859999fd04328"
+    },
+    "Fetcher": {
+      "doc": "Fetches a number, then holds it until it is released.",
+      "span": {
+        "file": 0,
+        "line": 77,
+        "col": 1,
+        "endLine": 93,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "got",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 80,
+            "col": 3,
+            "endLine": 80,
+            "endCol": 19
+          }
+        }
+      ],
+      "events": {
+        "Release": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 78,
+            "col": 3,
+            "endLine": 78,
+            "endCol": 16
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Fetcher",
+        "name": "Fetcher",
+        "kind": "compound",
+        "doc": "Fetches a number, then holds it until it is released.",
+        "span": {
+          "file": 0,
+          "line": 77,
+          "col": 1,
+          "endLine": 93,
+          "endCol": 2
+        },
+        "initial": "Fetcher.Fetching",
+        "states": [
+          {
+            "id": "Fetcher.Fetching",
+            "name": "Fetching",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 84,
+              "col": 3,
+              "endLine": 88,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "fetch",
+              "to": null,
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "n"
+                  ],
+                  "type": "int",
+                  "text": "n"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 85,
+                "col": 5,
+                "endLine": 87,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Fetcher.Holding",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "got",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 86,
+                  "col": 7,
+                  "endLine": 86,
+                  "endCol": 40
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Fetcher.Holding",
+            "name": "Holding",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 90,
+              "col": 3,
+              "endLine": 90,
+              "endCol": 39
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Release"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Fetcher.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 90,
+                  "col": 19,
+                  "endLine": 90,
+                  "endCol": 37
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Fetcher.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 92,
+              "col": 3,
+              "endLine": 92,
+              "endCol": 34
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "got"
+              ],
+              "type": "int",
+              "text": "got"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:48a3a23226983b9586b3a3370c735ea4f3729017683c5390d5c336f312af17b5"
+    },
+    "Errand": {
+      "doc": "Keeps a Fetcher, and releases it when told.",
+      "span": {
+        "file": 0,
+        "line": 96,
+        "col": 1,
+        "endLine": 110,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Release": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 97,
+            "col": 3,
+            "endLine": 97,
+            "endCol": 16
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Errand",
+        "name": "Errand",
+        "kind": "compound",
+        "doc": "Keeps a Fetcher, and releases it when told.",
+        "span": {
+          "file": 0,
+          "line": 96,
+          "col": 1,
+          "endLine": 110,
+          "endCol": 2
+        },
+        "initial": "Errand.Waiting",
+        "states": [
+          {
+            "id": "Errand.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 101,
+              "col": 3,
+              "endLine": 107,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "machine",
+              "src": "Fetcher",
+              "to": null,
+              "as": "fetcher",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": 3,
+                  "type": "int",
+                  "text": "3"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 102,
+                "col": 5,
+                "endLine": 104,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Errand.Finished",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 103,
+                  "col": 7,
+                  "endLine": 103,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Release"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "child",
+                      "name": "fetcher",
+                      "machine": "Fetcher",
+                      "state": "Errand.Waiting"
+                    },
+                    "key": null,
+                    "event": "Release",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Fetcher.Release",
+                      "text": "Release"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 106,
+                  "col": 5,
+                  "endLine": 106,
+                  "endCol": 36
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Errand.Finished",
+            "name": "Finished",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 109,
+              "col": 3,
+              "endLine": 109,
+              "endCol": 26
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:d83f1559c51adebcc7e63ff411a2f2a194cdbe11f677c2b5442cc09de01a6829"
+    },
+    "Safe": {
+      "doc": "Keeps a secret given to it, and what it was last told.",
+      "span": {
+        "file": 0,
+        "line": 113,
+        "col": 1,
+        "endLine": 127,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "code",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "last",
+          "type": "string",
+          "sensitive": true,
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 117,
+            "col": 3,
+            "endLine": 117,
+            "endCol": 34
+          }
+        }
+      ],
+      "events": {
+        "Tell": {
+          "fields": [
+            {
+              "name": "note",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 114,
+            "col": 3,
+            "endLine": 114,
+            "endCol": 40
+          }
+        },
+        "Shut": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 115,
+            "col": 3,
+            "endLine": 115,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Safe",
+        "name": "Safe",
+        "kind": "compound",
+        "doc": "Keeps a secret given to it, and what it was last told.",
+        "span": {
+          "file": 0,
+          "line": 113,
+          "col": 1,
+          "endLine": 127,
+          "endCol": 2
+        },
+        "initial": "Safe.Locked",
+        "states": [
+          {
+            "id": "Safe.Locked",
+            "name": "Locked",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 121,
+              "col": 3,
+              "endLine": 124,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Tell"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "last",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "note"
+                      ],
+                      "type": "string",
+                      "text": "event.note"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 122,
+                  "col": 5,
+                  "endLine": 122,
+                  "endCol": 43
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Shut"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Safe.Gone",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 123,
+                  "col": 5,
+                  "endLine": 123,
+                  "endCol": 20
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Safe.Gone",
+            "name": "Gone",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 126,
+              "col": 3,
+              "endLine": 126,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:046db11ba9ec867aaa6d618e11a252a322a1c5afb106517d71430790849a4d08"
+    },
+    "Vault": {
+      "doc": "Keeps a Safe, and passes on what it is told.",
+      "span": {
+        "file": 0,
+        "line": 130,
+        "col": 1,
+        "endLine": 146,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "code",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Tell": {
+          "fields": [
+            {
+              "name": "note",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 131,
+            "col": 3,
+            "endLine": 131,
+            "endCol": 40
+          }
+        },
+        "Shut": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 132,
+            "col": 3,
+            "endLine": 132,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Vault",
+        "name": "Vault",
+        "kind": "compound",
+        "doc": "Keeps a Safe, and passes on what it is told.",
+        "span": {
+          "file": 0,
+          "line": 130,
+          "col": 1,
+          "endLine": 146,
+          "endCol": 2
+        },
+        "initial": "Vault.Holding",
+        "states": [
+          {
+            "id": "Vault.Holding",
+            "name": "Holding",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 136,
+              "col": 3,
+              "endLine": 143,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "machine",
+              "src": "Safe",
+              "to": null,
+              "as": "safe",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "code"
+                  ],
+                  "type": "string",
+                  "text": "code"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 137,
+                "col": 5,
+                "endLine": 139,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Vault.Empty",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 138,
+                  "col": 7,
+                  "endLine": 138,
+                  "endCol": 20
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Tell"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "child",
+                      "name": "safe",
+                      "machine": "Safe",
+                      "state": "Vault.Holding"
+                    },
+                    "key": null,
+                    "event": "Tell",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "note",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "note"
+                            ],
+                            "type": "string",
+                            "text": "event.note"
+                          }
+                        }
+                      ],
+                      "type": "Safe.Tell",
+                      "text": "Tell { note: event.note }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 141,
+                  "col": 5,
+                  "endLine": 141,
+                  "endCol": 48
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Shut"
+                },
+                "group": 2,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "child",
+                      "name": "safe",
+                      "machine": "Safe",
+                      "state": "Vault.Holding"
+                    },
+                    "key": null,
+                    "event": "Shut",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Safe.Shut",
+                      "text": "Shut"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 142,
+                  "col": 5,
+                  "endLine": 142,
+                  "endCol": 27
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Vault.Empty",
+            "name": "Empty",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 145,
+              "col": 3,
+              "endLine": 145,
+              "endCol": 23
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:26f6fd54a84c0d2ddd127686c7ec6491c5c4dfb096d79d068cb3c916d9ed48ad"
+    }
+  }
+}

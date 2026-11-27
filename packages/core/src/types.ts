@@ -95,21 +95,34 @@ export interface SavedTimer extends TimerEntry {
 
 /**
  * A saved snapshot (execution.md, "The saved snapshot"): the core's snapshot as a run's last
- * step left it, with the format version and each timer's due time. Plain JSON, matching
+ * step left it, with the format version, each timer's due time and, in version 4, the saved
+ * snapshot of each running child run nested in its entry (`child`). Plain JSON, matching
  * `spec/snapshot.schema.json`; both runtimes save the same run as the same document. A run is
- * always saved as version 3; version 2, written before keyed spawn, has no `spawned` and
+ * always saved as version 4; version 3, written before child runs were saved, has no `child`
+ * and restarts its children; version 2, written before keyed spawn, has no `spawned` and
  * restores with no children, and version 1, written before history states, has no `history`
  * either and restores as if it had `{}`.
  */
-export interface Saved extends Omit<Snapshot, "timers" | "calls" | "history" | "spawned"> {
-  readonly snapshotVersion: 1 | 2 | 3
+export interface Saved extends Omit<Snapshot, "invokes" | "timers" | "calls" | "history" | "spawned"> {
+  readonly snapshotVersion: 1 | 2 | 3 | 4
+  readonly invokes: ReadonlyArray<SavedInvoke>
   /** Written only when the run has pending calls, in any version; a snapshot without it has none. */
   readonly calls?: ReadonlyArray<CallEntry>
   readonly timers: ReadonlyArray<SavedTimer>
-  /** Set exactly in versions 2 and 3. */
+  /** Set exactly in versions 2 to 4. */
   readonly history?: History
-  /** Set exactly in version 3. */
-  readonly spawned?: ReadonlyArray<SpawnedEntry>
+  /** Set exactly in versions 3 and 4. */
+  readonly spawned?: ReadonlyArray<SavedSpawned>
+}
+
+/** An invoke of a saved snapshot, with its child run's saved snapshot if it is one (version 4). */
+export interface SavedInvoke extends InvokeEntry {
+  readonly child?: Saved
+}
+
+/** A spawned child of a saved snapshot, with its child run's saved snapshot (version 4). */
+export interface SavedSpawned extends SpawnedEntry {
+  readonly child?: Saved
 }
 
 /** A tagged record: an event or an error value. */
@@ -246,6 +259,11 @@ export type Command =
     /** The invoke's `as` name, or `null`. */
     readonly as: string | null
     readonly args: { readonly [param: string]: Json }
+    /**
+     * The saved snapshot the child run that claims the invoke restores instead of starting
+     * (execution.md, "Restoring a child run"); `null` but from `restore`.
+     */
+    readonly saved: Saved | null
   }
   /**
    * Answer the call run `to` made with its invoke `invoke`: `done` with the result `value`, or
@@ -269,6 +287,8 @@ export type Command =
     readonly spawn: number
     readonly src: string
     readonly args: { readonly [param: string]: Json }
+    /** The saved snapshot the child run restores instead of starting; `null` but from `restore`. */
+    readonly saved: Saved | null
   }
   /** Stop spawned child `spawn` and wait for its cancel step, as `invoke.cancel` does. */
   | { readonly kind: "spawn.stop"; readonly spawn: number }

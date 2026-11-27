@@ -73,8 +73,11 @@ pub enum Outcome {
 ///
 /// Polled inside an invoke context whose token is unclaimed (that is, from a machine
 /// invoke's future), it claims the token and becomes that invoke's child run: it writes to
-/// the parent's trace sink on the parent's timer, and its parent cancels it gracefully. Else
-/// it is a root run with `Config::default()`.
+/// the parent's trace sink on the parent's timer, and its parent cancels it gracefully. When
+/// its parent was restored from a snapshot that holds this child run's, it restores that
+/// snapshot instead of starting, and `input` is not used; a snapshot of another machine (or
+/// of another version of it) is a host defect before its first record. Else it is a root run
+/// with `Config::default()`.
 ///
 /// Returns the output (`Ok`) or the error (`Err`). A run that ends with a defect resumes
 /// unwinding with a [`Defect`] payload. A cancelled child run never returns: it reports
@@ -146,8 +149,8 @@ async fn finish(end: RunEnd, cancelled_child: bool) -> Result<Value, Value> {
         RunEnd::Done(v) => Ok(v),
         RunEnd::Failed(e) => Err(e),
         RunEnd::Defect(defect) if !cancelled_child => std::panic::resume_unwind(Box::new(defect)),
-        // Reported through the token (or, for a suspended run, impossible: these runs ignore
-        // suspend requests); the parent drops this future.
+        // Reported through the token: a child run cancelled, or stopped with its suspended
+        // tree (a root run of `run` ignores suspend requests). The parent drops this future.
         _ => std::future::pending().await,
     }
 }

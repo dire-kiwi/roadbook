@@ -151,15 +151,20 @@ export interface Actor<D extends MachineDef> {
    */
   readonly cancel: Effect.Effect<void>
   /**
-   * The run's saved snapshot, as its last step left it, as a copy of its own. The run carries on.
+   * The run's saved snapshot, as its last step left it, as a copy of its own, with the snapshot
+   * of each running child run (invoked or spawned) nested in its entry as that child's last step
+   * left it, to any depth. What is in flight between the runs (a message sent and not taken yet)
+   * is in none of them. The run carries on.
    */
   readonly save: Effect.Effect<Saved>
   /**
-   * Wait until the run is idle (between steps, nothing queued, no invoke running), then stop it
-   * without exit effects, write `suspended` and give its saved snapshot, whose status is still
-   * `running`. A run that has ended gives its final snapshot instead, and one that ended with a
-   * defect dies with the `Defect`. Once suspended, the actor takes no more events, its `result`
-   * is interrupted, and closing its scope does nothing more.
+   * Wait until the run's tree is idle (between steps, nothing queued, no pending call, and no
+   * work running but child runs that are idle themselves: a task, a call or a stub is waited
+   * for), then stop the whole tree without exit effects, each run writing `suspended`, and give
+   * its saved snapshot, with its child runs' nested in it, whose status is still `running`. A
+   * hub whose children wait for events is idle. A run that has ended gives its final snapshot
+   * instead, and one that ended with a defect dies with the `Defect`. Once suspended, the actor
+   * takes no more events, its `result` is interrupted, and closing its scope does nothing more.
    */
   readonly suspend: Effect.Effect<Saved>
 }
@@ -181,8 +186,11 @@ export interface Implemented<D extends MachineDef, R> extends Runnable<D["input"
   readonly spawn: (input: D["input"]) => Effect.Effect<Actor<D>, never, R | Scope.Scope>
   /**
    * Start a new long-lived instance from a saved snapshot, with a new run id: its invokes start
-   * again, its timers keep their deadlines. Fails with a `RestoreError` before starting
-   * anything when the snapshot is refused. Closing the scope cancels it.
+   * again, its timers keep their deadlines, and each child run nested in it is restored where it
+   * was by the run that claims its invoke (host code around the child's `run` runs again, as a
+   * task does; a stub starts again). The snapshot is checked, the nested ones too, and fails
+   * with a `RestoreError` before starting anything when it is refused. Closing the scope cancels
+   * it.
    */
   readonly restore: (saved: Saved, options?: RestoreOptions) => Effect.Effect<Actor<D>, RestoreError, R | Scope.Scope>
   /**

@@ -144,7 +144,10 @@ impl Program {
     /// `restored`, restarts the invokes that were running and the timers not yet due (for the
     /// time that remains until their `due`), and queues the expiry of those already due at
     /// `now` with `timer.fire`, the earliest first. `migrated` is the hash the snapshot had
-    /// before a migration. No state is entered or exited and the run does not settle.
+    /// before a migration. No state is entered or exited and the run does not settle. The
+    /// `restored` record shows the snapshot without the child runs' snapshots nested in it,
+    /// and each `spawn.start` and `invoke.start` carries its entry's (`saved`), for the child
+    /// run that claims it to restore.
     pub fn restore(
         &self,
         saved: &Saved,
@@ -161,7 +164,7 @@ impl Program {
             machine: saved.machine.clone(),
             ir: m.hash.clone(),
             migrated,
-            snapshot: Box::new(saved.clone()),
+            snapshot: Box::new(saved.without_children()),
         };
         let mut cx = Ctx::new(self, m, idx, snap.clone(), fns);
         cx.trace(restored.clone());
@@ -315,13 +318,24 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
 
     fn restart(&mut self, saved: &Saved, now: u64) -> R {
         for ch in self.snap.spawned.clone() {
-            self.start_child(&ch);
+            let child = saved
+                .spawned
+                .iter()
+                .flatten()
+                .find(|c| c.id == ch.id)
+                .and_then(|c| c.child.clone());
+            self.start_child(&ch, child);
         }
         for s in self.active.clone() {
             let state = self.state(s);
             if let Some(inv) = self.snap.invokes.iter().find(|i| i.state == state.id) {
                 let id = inv.id;
-                self.start_invoke(s, id)?;
+                let child = saved
+                    .invokes
+                    .iter()
+                    .find(|i| i.id == id)
+                    .and_then(|i| i.child.clone());
+                self.start_invoke(s, id, child)?;
             }
             let mut timers: Vec<_> = saved
                 .timers
@@ -1352,8 +1366,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         self.pending.clear();
     }
 
-    /// Writes `spawn.started` for spawned child `ch` and starts it.
-    fn start_child(&mut self, ch: &SpawnedEntry) {
+    /// Writes `spawn.started` for spawned child `ch` and starts it, restoring its child run
+    /// from `saved` if that is given.
+    fn start_child(&mut self, ch: &SpawnedEntry, saved: Option<Box<Saved>>) {
         let src = self.collection_machine(&ch.children).to_owned();
         self.trace(Record::SpawnStarted {
             spawn: ch.id,
@@ -1366,6 +1381,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             spawn: ch.id,
             src,
             args: ch.args.clone(),
+            saved,
         });
     }
 
@@ -1413,7 +1429,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             };
             self.snap.next_invoke += 1;
             self.snap.spawned.push(ch.clone());
-            self.start_child(&ch);
+            self.start_child(&ch, None);
         }
         for s in self.active.clone() {
             if !self.entered[s] {
@@ -1428,7 +1444,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     state: state.id.clone(),
                     src: inv.callee(),
                 });
-                self.start_invoke(s, id)?;
+                self.start_invoke(s, id, None)?;
             }
             let mut seen = Vec::new();
             for (i, t) in state.transitions.iter().enumerate() {
@@ -1467,8 +1483,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     }
 
     /// Evaluates the arguments of state `s`'s invoke and starts it as invoke `id`: its
-    /// `invoke.started` record and `invoke.start` command.
-    fn start_invoke(&mut self, s: usize, id: u64) -> R {
+    /// `invoke.started` record and `invoke.start` command, which carries `saved`, the saved
+    /// snapshot of its child run when it is restored.
+    fn start_invoke(&mut self, s: usize, id: u64, saved: Option<Box<Saved>>) -> R {
         let state = self.state(s);
         let Some(inv) = &state.invoke else {
             return Ok(());
@@ -1510,6 +1527,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             to,
             alias: inv.alias.clone(),
             args,
+            saved,
         });
         Ok(())
     }

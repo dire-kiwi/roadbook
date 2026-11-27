@@ -21,7 +21,9 @@ import {
   start,
   step,
   type Stepped,
-  toSaved
+  toSaved,
+  withChildren,
+  withoutChildren
 } from "../src/index.ts"
 
 const charts = path.resolve(import.meta.dirname, "../../../spec/conformance/charts")
@@ -121,7 +123,8 @@ describe("start and step", () => {
       srcKind: "task",
       to: null,
       as: null,
-      args: input
+      args: input,
+      saved: null
     })
     const receipt = { chargeId: "c1", amountCents: 4200 }
     const done = step(ir, started.snapshot, { kind: "invoke.done", invoke: 1, value: receipt }, noFns)
@@ -209,7 +212,8 @@ describe("calls", () => {
       srcKind: "call",
       to: "r1",
       as: null,
-      args: { orderId: "o1", items }
+      args: { orderId: "o1", items },
+      saved: null
     })
     const unanswered = step(ir, started.snapshot, { kind: "invoke.fail", invoke: 1, error: { _tag: "Unanswered" } }, noFns)
     expect(unanswered.snapshot.status).toBe("failed")
@@ -442,9 +446,9 @@ describe("restoring history", () => {
   }
   const withHistory = (history: unknown) => ({ ...helped(), history })
 
-  it("saves version 3 with history, and restores it", () => {
+  it("saves version 4 with history, and restores it", () => {
     const saved = helped()
-    expect(saved.snapshotVersion).toBe(3)
+    expect(saved.snapshotVersion).toBe(4)
     expect(saved.history).toEqual({
       "Editor.Work.Deep": ["Editor.Work.Review.Read"],
       "Editor.Work.Shallow": ["Editor.Work.Review"]
@@ -509,10 +513,12 @@ describe("restoring history", () => {
     expect(reason({ ...v2, snapshotVersion: 2, history, spawned })).toBe("invalid")
     expect(reason({ ...v2, snapshotVersion: 3, history })).toBe("invalid")
     expect(reason({ ...v2, snapshotVersion: 3, history, spawned })).toBe("ok")
-    expect(reason({ ...v2, snapshotVersion: 4, history, spawned })).toBe("invalid")
+    expect(reason({ ...v2, snapshotVersion: 4, history })).toBe("invalid")
+    expect(reason({ ...v2, snapshotVersion: 4, history, spawned })).toBe("ok")
+    expect(reason({ ...v2, snapshotVersion: 5, history, spawned })).toBe("invalid")
   })
 
-  it("restores a version 1 snapshot with no records, traces it as given and saves it as version 3", () => {
+  it("restores a version 1 snapshot with no records, traces it as given and saves it as version 4", () => {
     const { history: _, spawned: __, ...v2 } = helped()
     const v1 = { ...v2, snapshotVersion: 1 }
     const checked = checkSaved(ir, "Editor", v1)
@@ -524,7 +530,7 @@ describe("restoring history", () => {
     })
     expect(restored.snapshot.history).toEqual({})
     const resaved = toSaved(restored.snapshot, () => 0)
-    expect(resaved.snapshotVersion).toBe(3)
+    expect(resaved.snapshotVersion).toBe(4)
     expect(resaved.history).toEqual({})
     expect(resaved.spawned).toEqual([])
     expect(reason(resaved)).toBe("ok")
@@ -533,5 +539,108 @@ describe("restoring history", () => {
     if (!fromV2.ok) throw new Error(fromV2.message)
     const kept: Snapshot = restore(ir, fromV2.saved, "r3", 0, null, noFns).snapshot
     expect(kept.history).toEqual(helped().history)
+  })
+})
+
+describe("child runs in a saved snapshot (version 4)", () => {
+  const ir = readIr("kept.ir.json")
+  const reasonOf = (json: unknown, migrate?: Parameters<typeof checkSaved>[3]) => {
+    const checked = checkSaved(ir, "Desk", json, migrate)
+    return checked.ok ? "ok" : checked.reason
+  }
+  /** A desk saved with its tally's own snapshot nested in its invoke. */
+  const tree = () => {
+    const desk = start(ir, "Desk", "r1", { start: 1 }, noFns)
+    const tally = start(ir, "Tally", "r1.1", { start: 1 }, noFns)
+    const child = toSaved(tally.snapshot, () => 5000)
+    return withChildren(toSaved(desk.snapshot, () => 0), (id) => (id === 1 ? child : undefined))
+  }
+  type Mutable = { -readonly [K in keyof Saved]: any }
+  const changed = (f: (top: Mutable, child: Mutable) => void) => {
+    const s = JSON.parse(JSON.stringify(tree()))
+    f(s, s.invokes[0].child)
+    return s
+  }
+
+  it("nests the child's snapshot in its invoke, and restores it through invoke.start", () => {
+    const saved = tree()
+    expect(saved.snapshotVersion).toBe(4)
+    expect(saved.invokes[0]!.child).toMatchObject({ snapshotVersion: 4, machine: "Tally", run: "r1.1" })
+    const checked = checkSaved(ir, "Desk", saved)
+    if (!checked.ok) throw new Error(checked.message)
+    const restored = restore(ir, checked.saved, "r2", 1000, null, noFns)
+    const record = restored.commands[0]
+    expect(record).toMatchObject({ kind: "trace", record: { kind: "restored", snapshot: withoutChildren(saved) } })
+    expect(JSON.stringify(record)).not.toContain("child")
+    const command = restored.commands.find((c) => c.kind === "invoke.start")
+    expect(command).toMatchObject({ kind: "invoke.start", invoke: 1, saved: saved.invokes[0]!.child })
+    expect(restored.snapshot.invokes).toEqual([{ id: 1, state: "Desk.Open", src: "Tally" }])
+    // The child restores from it as its own run, its timer for the time left.
+    const child = restore(ir, (command as { saved: Saved }).saved, "r2.1", 1000, null, noFns)
+    expect(child.commands.map((c) => c.kind === "trace" ? c.record.kind : c.kind)).toEqual([
+      "restored",
+      "timer.started",
+      "timer.start"
+    ])
+    expect(child.commands.at(-1)).toEqual({ kind: "timer.start", timer: 1, delay: 4000 })
+    // start and step never restore a child.
+    expect(start(ir, "Desk", "r3", { start: 1 }, noFns).commands.find((c) => c.kind === "invoke.start"))
+      .toMatchObject({ saved: null })
+  })
+
+  it("strips nested snapshots only where there are some", () => {
+    const plain = toSaved(start(ir, "Desk", "r1", { start: 1 }, noFns).snapshot, () => 0)
+    expect(withoutChildren(plain)).toBe(plain)
+    expect(withoutChildren(tree())).toEqual(plain)
+  })
+
+  it("checks the whole tree: shape, hashes, then the fit of each nested snapshot", () => {
+    expect(reasonOf(tree())).toBe("ok")
+    expect(reasonOf(changed((_, c) => (c.ir = ir.machines["Office"]!.hash)))).toBe("ir")
+    expect(reasonOf(changed((_, c) => (c.machine = "Desk")))).toBe("invalid")
+    expect(reasonOf(changed((_, c) => (c.run = "r1.2")))).toBe("invalid")
+    expect(reasonOf(changed((_, c) => {
+      c.status = "done"
+      c.active = []
+      c.timers = []
+      c.result = { output: 1 }
+    }))).toBe("invalid")
+    expect(reasonOf(changed((_, c) => (c.calls = [{ from: "r9", invoke: 1, call: "ask" }])))).toBe("invalid")
+    expect(reasonOf(changed((t) => (t.snapshotVersion = 3)))).toBe("invalid")
+    expect(reasonOf(changed((_, c) => (c.snapshotVersion = 3)))).toBe("invalid")
+    expect(reasonOf(changed((_, c) => (c.vars = { n: "one" })))).toBe("invalid")
+    // A schema refusal comes before a hash one anywhere in the tree.
+    expect(reasonOf(changed((t, c) => {
+      t.ir = ir.machines["Office"]!.hash
+      c.snapshotVersion = 3
+    }))).toBe("invalid")
+  })
+
+  it("refuses a child on a task's invoke", () => {
+    const errand = start(ir, "Errand", "r1", {}, noFns)
+    const fetcher = start(ir, "Fetcher", "r1.1", { n: 3 }, noFns)
+    const tally = toSaved(start(ir, "Tally", "r1.1.1", { start: 1 }, noFns).snapshot, () => 0)
+    const nested = withChildren(toSaved(fetcher.snapshot, () => 0), () => tally)
+    const saved = withChildren(toSaved(errand.snapshot, () => 0), () => nested)
+    expect(checkSaved(ir, "Errand", withChildren(toSaved(errand.snapshot, () => 0), () => toSaved(fetcher.snapshot, () => 0))).ok)
+      .toBe(true)
+    expect(checkSaved(ir, "Errand", saved)).toMatchObject({ ok: false, reason: "invalid" })
+  })
+
+  it("migrates the whole tree once when a nested hash differs", () => {
+    const stale = changed((t, c) => {
+      t.ir = `sha256:${"0".repeat(64)}`
+      c.ir = `sha256:${"1".repeat(64)}`
+    })
+    let calls = 0
+    const checked = checkSaved(ir, "Desk", stale, () => {
+      calls += 1
+      return { value: tree() as never }
+    })
+    expect(calls).toBe(1)
+    expect(checked).toMatchObject({ ok: true, migrated: `sha256:${"0".repeat(64)}` })
+    // A migration that leaves a nested hash stale is refused as `ir`.
+    const half = checkSaved(ir, "Desk", stale, () => ({ value: changed((_, c) => (c.ir = stale.ir)) as never }))
+    expect(half).toMatchObject({ ok: false, reason: "ir" })
   })
 })
