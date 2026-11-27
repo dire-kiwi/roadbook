@@ -125,3 +125,74 @@ machine Watcher(counter: ref Counter) -> int {
 
   final state Done { output seen }
 }
+
+/// One session of a Hub: adds up the pings it is sent, does a step of work when asked, and
+/// gives up once it has waited `patience()` for anything.
+machine Session(name: string) -> int {
+  var total: int = 0
+  var work:  int = 0
+
+  event Ping  { by: int }
+  event Work  { n: int }
+  event Leave
+
+  initial Waiting
+
+  state Waiting {
+    on Ping                      set total = total + event.by
+    on Work          -> Working  set work = event.n
+    on Leave         -> Left
+    after patience() -> Expired
+  }
+
+  state Working {
+    invoke step(work) {
+      done -> Waiting  set total = total + result
+    }
+  }
+
+  final state Left    { output total }
+  final state Expired { output -1 }
+}
+
+/// Spawns a Session per key and passes pings, work and leaving on to it. Adds up what the
+/// sessions that end give, and gives the sum when it is finished.
+machine Hub(id: string) -> int {
+  var total: int = 0
+
+  event Join   { key: string }
+  event Tell   { key: string, by: int }
+  event Assign { key: string, n: int }
+  event Part   { key: string }
+  event Finish
+
+  children sessions: Session by string
+
+  initial Serving
+
+  state Serving {
+    on Join                   spawn sessions[event.key] = Session(event.key)
+    on Tell                   send sessions[event.key].Ping { by: event.by }
+    on Assign                 send sessions[event.key].Work { n: event.n }
+    on Part                   send sessions[event.key].Leave
+    on sessions.done          set total = total + result  do log(key)
+    on Finish        -> Done
+  }
+
+  final state Done { output total }
+}
+
+/// Runs an Adder as its child, which hears the Counter.
+machine Relay(counter: ref Counter, goal: int) -> int {
+  var got: int = 0
+
+  initial Running
+
+  state Running {
+    invoke Adder(counter, goal) {
+      done -> Done  set got = result
+    }
+  }
+
+  final state Done { output got }
+}

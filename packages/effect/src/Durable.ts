@@ -34,7 +34,8 @@ export interface Options<D extends MachineDef> {
   /**
    * Whether an idle run parks: suspends on a `DurableClock` for its earliest timer, holding no
    * memory, when that timer is further than `after` (default: `DurableClock.InMemoryThreshold`,
-   * 60 seconds). `false` keeps every run in memory until it ends.
+   * 60 seconds). A run parks with its child runs, once its whole tree is idle, for the earliest
+   * timer of any run in it. `false` keeps every run in memory until it ends.
    */
   readonly park?: false | { readonly after?: Duration.Input }
   /** Whether a replay writes the trace records of the steps it takes again. Default `false`. */

@@ -15,7 +15,8 @@ import { describe, expect, it } from "vitest"
 import { Durable } from "../src/entry-durable.ts"
 import * as Roadbook from "../src/index.ts"
 import { Asker, Desk, Host } from "./charts/durable-calls.road.ts"
-import { Adder, Counter, Parent, Pipeline, Watcher } from "./charts/durable.road.ts"
+import { Adder, Counter, Hub, Parent, Pipeline, Relay, Session, Watcher } from "./charts/durable.road.ts"
+import { registryOf } from "../src/internal/durable.ts"
 
 const config = ShardingConfig.layer({
   entityTerminationTimeout: 0,
@@ -78,6 +79,8 @@ const machines = (world: World, options: Partial<Durable.Options<any>> = {}) => 
   const PipelineLive = Pipeline.implement(world.handlers as never)
   const ParentLive = Parent.implement({ ...world.handlers, machines: { Pipeline: PipelineLive } } as never)
   const AskerLive = Asker.implement({})
+  const AdderLive = Adder.implement(world.handlers as never)
+  const SessionLive = Session.implement(world.handlers as never)
   return {
     desk: Durable.workflow(Desk.implement(world.handlers as never), { idempotencyKey: ({ id }) => `desk-${id}`, ...options }),
     asker: Durable.workflow(AskerLive, { idempotencyKey: ({ id }) => `asker-${id}`, ...options }),
@@ -88,7 +91,15 @@ const machines = (world: World, options: Partial<Durable.Options<any>> = {}) => 
     pipeline: Durable.workflow(PipelineLive, { idempotencyKey: ({ id }) => id, ...options }),
     parent: Durable.workflow(ParentLive, { idempotencyKey: ({ id }) => id, ...options }),
     counter: Durable.workflow(Counter.implement({}), { idempotencyKey: () => "counter", ...options }),
-    adder: Durable.workflow(Adder.implement(world.handlers as never), {
+    hub: Durable.workflow(Hub.implement({ ...world.handlers, machines: { Session: SessionLive } } as never), {
+      idempotencyKey: ({ id }) => `hub-${id}`,
+      ...options
+    }),
+    relay: Durable.workflow(Relay.implement({ machines: { Adder: AdderLive } }), {
+      idempotencyKey: ({ goal }) => `relay-${goal}`,
+      ...options
+    }),
+    adder: Durable.workflow(AdderLive, {
       idempotencyKey: ({ goal }) => `adder-${goal}`,
       ...options
     }),
@@ -177,6 +188,20 @@ const scenario = <A>(
       start: (given, slow, only) => startProcess(storage, world, given ?? flows, slow, only)
     })
   })))
+
+/** The state of durable root run `run` as the process's registry knows it. */
+const stateOf = (process: Effect.Success<ReturnType<typeof startProcess>>, run: string) =>
+  process.run(Effect.map(WorkflowEngine.WorkflowEngine, (engine) => registryOf(engine).runs.get(run)?.state))
+
+/** Wait until durable root run `run` is parked in `process`; fail after `ms`. */
+const untilParked = (process: Effect.Success<ReturnType<typeof startProcess>>, run: string, ms = 5000) =>
+  Effect.gen(function*() {
+    const deadline = Date.now() + ms
+    while ((yield* stateOf(process, run)) !== "parked") {
+      if (Date.now() > deadline) return yield* Effect.die(new Error(`timed out waiting for ${run} to park`))
+      yield* Effect.sleep(10)
+    }
+  })
 
 /** Wait until `condition` holds, polling; fail after `ms`. */
 const until = (condition: () => boolean, ms = 5000) =>
@@ -496,7 +521,153 @@ describe("parking", () => {
       }), { park: { after: 100 } }), 20_000)
 })
 
+describe("parking a tree whose child runs are idle", () => {
+  it("a hub whose sessions wait for events parks, and an event wakes it: the sessions replay their journals", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        const process = yield* start()
+        const id = yield* process.run(flows.hub.start({ id: "a" }))
+        yield* process.run(flows.hub.send(id, { _tag: "Join", key: "x" }))
+        yield* process.run(flows.hub.send(id, { _tag: "Join", key: "y" }))
+        yield* process.run(flows.hub.send(id, { _tag: "Tell", key: "x", by: 2 }))
+        yield* process.run(flows.hub.send(id, { _tag: "Tell", key: "y", by: 3 }))
+        yield* untilParked(process, id)
+        // Parked: no attempt starts while the tree waits.
+        const before = world.attempts()
+        yield* Effect.sleep(300)
+        expect(world.attempts()).toBe(before)
+        expect(yield* stateOf(process, id)).toBe("parked")
+
+        // An event to the hub, passed on to a session: the hub and both sessions replay.
+        yield* process.run(flows.hub.send(id, { _tag: "Tell", key: "x", by: 5 }))
+        expect(world.attempts()).toBeGreaterThanOrEqual(before + 3)
+        yield* process.run(flows.hub.send(id, { _tag: "Part", key: "x" }))
+        yield* process.run(flows.hub.send(id, { _tag: "Part", key: "y" }))
+        yield* until(() => world.logged.includes("x") && world.logged.includes("y"))
+        yield* process.run(flows.hub.send(id, { _tag: "Finish" }))
+        expect(yield* process.run(flows.hub.run({ id: "a" }))).toBe(10)
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
+
+  it("a session running a task keeps its tree live; a crash once it has parked loses nothing", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const id = yield* process.run(flows.hub.start({ id: "b" }))
+        yield* process.run(flows.hub.send(id, { _tag: "Join", key: "x" }))
+        yield* process.run(flows.hub.send(id, { _tag: "Tell", key: "x", by: 2 }))
+        yield* process.run(flows.hub.send(id, { _tag: "Assign", key: "x", n: 1 }))
+        yield* until(() => world.count(1) === 1)
+        // The session's task is in flight: the tree does not park.
+        yield* Effect.sleep(400)
+        expect(yield* stateOf(process, id)).toBe("live")
+        world.open(1)
+        yield* untilParked(process, id)
+        yield* process.crash
+
+        // The hub and its session replay, park again, and wake for the next event.
+        process = yield* start()
+        yield* process.run(flows.hub.send(id, { _tag: "Tell", key: "x", by: 3 }))
+        yield* process.run(flows.hub.send(id, { _tag: "Part", key: "x" }))
+        yield* until(() => world.logged.includes("x"))
+        yield* process.run(flows.hub.send(id, { _tag: "Finish" }))
+        expect(yield* process.run(flows.hub.run({ id: "b" }))).toBe(15)
+        expect(world.count(1)).toBe(1)
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
+
+  it("a session's timer wakes its parked tree when it is due, and the session takes its expiry", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        world.setPatience(1500)
+        const process = yield* start()
+        const id = yield* process.run(flows.hub.start({ id: "c" }))
+        yield* process.run(flows.hub.send(id, { _tag: "Join", key: "x" }))
+        yield* process.run(flows.hub.send(id, { _tag: "Tell", key: "x", by: 4 }))
+        yield* untilParked(process, id)
+        const before = world.attempts()
+        // The hub has no timer of its own: its park waits for the session's.
+        yield* until(() => world.logged.includes("x"), 8000)
+        expect(world.attempts()).toBeGreaterThan(before)
+        yield* process.run(flows.hub.send(id, { _tag: "Finish" }))
+        expect(yield* process.run(flows.hub.run({ id: "c" }))).toBe(-1)
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
+
+  it("a parked hub's snapshot nests its sessions' snapshots", () =>
+    scenario(({ flows, start }) =>
+      Effect.gen(function*() {
+        const process = yield* start()
+        const id = yield* process.run(flows.hub.start({ id: "d" }))
+        yield* process.run(flows.hub.send(id, { _tag: "Join", key: "x" }))
+        yield* process.run(flows.hub.send(id, { _tag: "Tell", key: "x", by: 6 }))
+        yield* untilParked(process, id)
+        const saved = yield* process.run(flows.hub.snapshot(id))
+        const child = saved.spawned?.[0]?.child
+        expect(child?.machine).toBe("Session")
+        expect(child?.vars).toEqual({ total: 6, work: 0 })
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
+
+  it("a child run's call wakes its parked tree when it is answered, also across a crash", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        let process = yield* start()
+        const deskId = yield* process.run(flows.desk.start({ id: "p" }))
+        const desk = yield* process.run(flows.desk.handle(deskId))
+        const host = yield* process.run(flows.host.start({ desk, id: "p1", n: 4 }))
+        yield* until(() => world.logged.includes("held"))
+        // The Host's child waits for its answer: the tree parks.
+        yield* untilParked(process, host)
+        yield* process.run(flows.desk.send(deskId, { _tag: "Answer", by: 1 }))
+        expect(yield* process.run(flows.host.run({ desk, id: "p1", n: 4 }))).toBe(5)
+
+        const host2 = yield* process.run(flows.host.start({ desk, id: "p2", n: 3 }))
+        yield* until(() => world.logged.length === 2)
+        yield* untilParked(process, host2)
+        yield* process.crash
+
+        process = yield* start()
+        yield* process.run(flows.desk.send(deskId, { _tag: "Answer", by: 1 }))
+        expect(yield* process.run(flows.host.run({ desk, id: "p2", n: 3 }))).toBe(4)
+        expect(world.logged).toEqual(["held", "held"])
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
+
+  it("a child run that hears a peer keeps its tree live, so that it misses nothing the peer emits", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        const process = yield* start()
+        const counterId = yield* process.run(flows.counter.start({}))
+        const counter = yield* process.run(flows.counter.handle(counterId))
+        const relay = yield* process.run(flows.relay.start({ counter, goal: 15 }))
+        world.open(1)
+        // The Adder has sent its 10 and waits for the Counter's total to reach 15.
+        yield* until(() => world.count(1) === 1)
+        yield* Effect.sleep(400)
+        expect(yield* stateOf(process, relay)).toBe("live")
+        yield* process.run(flows.counter.send(counterId, { _tag: "Add", by: 5 }))
+        expect(yield* process.run(flows.relay.run({ counter, goal: 15 }))).toBe(15)
+        yield* process.crash
+      }), { park: { after: 100 } }), 20_000)
+})
+
 describe("durable runs, with slow storage reads", () => {
+  it("take an answer to a child run's call that arrives while its tree decides to park", () =>
+    scenario(({ world, flows, start }) =>
+      Effect.gen(function*() {
+        const process = yield* start(undefined, 200)
+        const deskId = yield* process.run(flows.desk.start({ id: "q" }))
+        const desk = yield* process.run(flows.desk.handle(deskId))
+        yield* process.run(flows.host.start({ desk, id: "q", n: 7 }))
+        yield* until(() => world.logged.includes("held"), 10_000)
+        // While the Host reads its park records and its child's answer record before parking.
+        yield* Effect.sleep(250)
+        yield* process.run(flows.desk.send(deskId, { _tag: "Answer", by: 1 }))
+        expect(yield* process.run(flows.host.run({ desk, id: "q", n: 7 }).pipe(Effect.timeout(10_000)))).toBe(8)
+        yield* process.crash
+      }), { park: { after: 100 } }), 30_000)
+
   it("take an event that arrives while they decide to park", () =>
     scenario(({ world, flows, start }) =>
       Effect.gen(function*() {
