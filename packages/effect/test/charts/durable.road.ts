@@ -1644,6 +1644,1120 @@ const ir: unknown = {
         "fail": null
       },
       "hash": "sha256:6240d39ddb464367c293a9566b91c6c1ed94646d2b37d9a5020a36b49a86520e"
+    },
+    "Session": {
+      "doc": "One session of a Hub: adds up the pings it is sent, does a step of work when asked, and\ngives up once it has waited `patience()` for anything.",
+      "span": {
+        "file": 0,
+        "line": 131,
+        "col": 1,
+        "endLine": 156,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "total",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 132,
+            "col": 3,
+            "endLine": 132,
+            "endCol": 21
+          }
+        },
+        {
+          "name": "work",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 133,
+            "col": 3,
+            "endLine": 133,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Ping": {
+          "fields": [
+            {
+              "name": "by",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 135,
+            "col": 3,
+            "endLine": 135,
+            "endCol": 26
+          }
+        },
+        "Work": {
+          "fields": [
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 136,
+            "col": 3,
+            "endLine": 136,
+            "endCol": 25
+          }
+        },
+        "Leave": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 137,
+            "col": 3,
+            "endLine": 137,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Session",
+        "name": "Session",
+        "kind": "compound",
+        "doc": "One session of a Hub: adds up the pings it is sent, does a step of work when asked, and\ngives up once it has waited `patience()` for anything.",
+        "span": {
+          "file": 0,
+          "line": 131,
+          "col": 1,
+          "endLine": 156,
+          "endCol": 2
+        },
+        "initial": "Session.Waiting",
+        "states": [
+          {
+            "id": "Session.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 141,
+              "col": 3,
+              "endLine": 146,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Ping"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "total",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "total"
+                          ],
+                          "type": "int",
+                          "text": "total"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "by"
+                          ],
+                          "type": "int",
+                          "text": "event.by"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "total + event.by"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 142,
+                  "col": 5,
+                  "endLine": 142,
+                  "endCol": 62
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Work"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Session.Working",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "work",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "n"
+                      ],
+                      "type": "int",
+                      "text": "event.n"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 143,
+                  "col": 5,
+                  "endLine": 143,
+                  "endCol": 52
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Leave"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Session.Left",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 144,
+                  "col": 5,
+                  "endLine": 144,
+                  "endCol": 29
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "call",
+                    "fn": "patience",
+                    "args": [],
+                    "type": "duration",
+                    "text": "patience()"
+                  }
+                },
+                "group": 3,
+                "guard": null,
+                "target": "Session.Expired",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 145,
+                  "col": 5,
+                  "endLine": 145,
+                  "endCol": 32
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Session.Working",
+            "name": "Working",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 148,
+              "col": 3,
+              "endLine": 152,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "step",
+              "to": null,
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "work"
+                  ],
+                  "type": "int",
+                  "text": "work"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 149,
+                "col": 5,
+                "endLine": 151,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Session.Waiting",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "total",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "total"
+                          ],
+                          "type": "int",
+                          "text": "total"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "result"
+                          ],
+                          "type": "int",
+                          "text": "result"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "total + result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 150,
+                  "col": 7,
+                  "endLine": 150,
+                  "endCol": 50
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Session.Left",
+            "name": "Left",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 154,
+              "col": 3,
+              "endLine": 154,
+              "endCol": 39
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "total"
+              ],
+              "type": "int",
+              "text": "total"
+            },
+            "fail": null
+          },
+          {
+            "id": "Session.Expired",
+            "name": "Expired",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 155,
+              "col": 3,
+              "endLine": 155,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "op",
+              "op": "neg",
+              "args": [
+                {
+                  "kind": "lit",
+                  "value": 1,
+                  "type": "int",
+                  "text": "1"
+                }
+              ],
+              "type": "int",
+              "text": "-1"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:1127b87728bb290c6ebe98e72aeab695f2c4234e9b4a59476c80f0a7d8f50fda"
+    },
+    "Hub": {
+      "doc": "Spawns a Session per key and passes pings, work and leaving on to it. Adds up what the\nsessions that end give, and gives the sum when it is finished.",
+      "span": {
+        "file": 0,
+        "line": 160,
+        "col": 1,
+        "endLine": 183,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "total",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 161,
+            "col": 3,
+            "endLine": 161,
+            "endCol": 21
+          }
+        }
+      ],
+      "events": {
+        "Join": {
+          "fields": [
+            {
+              "name": "key",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 163,
+            "col": 3,
+            "endLine": 163,
+            "endCol": 31
+          }
+        },
+        "Tell": {
+          "fields": [
+            {
+              "name": "key",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            },
+            {
+              "name": "by",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 164,
+            "col": 3,
+            "endLine": 164,
+            "endCol": 40
+          }
+        },
+        "Assign": {
+          "fields": [
+            {
+              "name": "key",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            },
+            {
+              "name": "n",
+              "type": "int",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 165,
+            "col": 3,
+            "endLine": 165,
+            "endCol": 39
+          }
+        },
+        "Part": {
+          "fields": [
+            {
+              "name": "key",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 166,
+            "col": 3,
+            "endLine": 166,
+            "endCol": 31
+          }
+        },
+        "Finish": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 167,
+            "col": 3,
+            "endLine": 167,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {
+        "sessions": {
+          "machine": "Session",
+          "key": "string",
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 169,
+            "col": 3,
+            "endLine": 169,
+            "endCol": 39
+          }
+        }
+      },
+      "root": {
+        "id": "Hub",
+        "name": "Hub",
+        "kind": "compound",
+        "doc": "Spawns a Session per key and passes pings, work and leaving on to it. Adds up what the\nsessions that end give, and gives the sum when it is finished.",
+        "span": {
+          "file": 0,
+          "line": 160,
+          "col": 1,
+          "endLine": 183,
+          "endCol": 2
+        },
+        "initial": "Hub.Serving",
+        "states": [
+          {
+            "id": "Hub.Serving",
+            "name": "Serving",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 173,
+              "col": 3,
+              "endLine": 180,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Join"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "spawn",
+                    "children": "sessions",
+                    "machine": "Session",
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "key"
+                      ],
+                      "type": "string",
+                      "text": "event.key"
+                    },
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "key"
+                        ],
+                        "type": "string",
+                        "text": "event.key"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 174,
+                  "col": 5,
+                  "endLine": 174,
+                  "endCol": 77
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Tell"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "children",
+                      "name": "sessions",
+                      "machine": "Session",
+                      "state": null
+                    },
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "key"
+                      ],
+                      "type": "string",
+                      "text": "event.key"
+                    },
+                    "event": "Ping",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "by",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "by"
+                            ],
+                            "type": "int",
+                            "text": "event.by"
+                          }
+                        }
+                      ],
+                      "type": "Session.Ping",
+                      "text": "Ping { by: event.by }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 175,
+                  "col": 5,
+                  "endLine": 175,
+                  "endCol": 77
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Assign"
+                },
+                "group": 2,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "children",
+                      "name": "sessions",
+                      "machine": "Session",
+                      "state": null
+                    },
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "key"
+                      ],
+                      "type": "string",
+                      "text": "event.key"
+                    },
+                    "event": "Work",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "n",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "n"
+                            ],
+                            "type": "int",
+                            "text": "event.n"
+                          }
+                        }
+                      ],
+                      "type": "Session.Work",
+                      "text": "Work { n: event.n }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 176,
+                  "col": 5,
+                  "endLine": 176,
+                  "endCol": 75
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Part"
+                },
+                "group": 3,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "children",
+                      "name": "sessions",
+                      "machine": "Session",
+                      "state": null
+                    },
+                    "key": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "key"
+                      ],
+                      "type": "string",
+                      "text": "event.key"
+                    },
+                    "event": "Leave",
+                    "value": {
+                      "kind": "record",
+                      "fields": [],
+                      "type": "Session.Leave",
+                      "text": "Leave"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 177,
+                  "col": 5,
+                  "endLine": 177,
+                  "endCol": 61
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "spawn.done",
+                  "children": "sessions"
+                },
+                "group": 4,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "total",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "total"
+                          ],
+                          "type": "int",
+                          "text": "total"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "result"
+                          ],
+                          "type": "int",
+                          "text": "result"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "total + result"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "key"
+                        ],
+                        "type": "string",
+                        "text": "key"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 178,
+                  "col": 5,
+                  "endLine": 178,
+                  "endCol": 70
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Finish"
+                },
+                "group": 5,
+                "guard": null,
+                "target": "Hub.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 179,
+                  "col": 5,
+                  "endLine": 179,
+                  "endCol": 29
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Hub.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 182,
+              "col": 3,
+              "endLine": 182,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "total"
+              ],
+              "type": "int",
+              "text": "total"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:48878b5e309446de938c9a97593478e699623f4d045043262ab52b66df655c8d"
+    },
+    "Relay": {
+      "doc": "Runs an Adder as its child, which hears the Counter.",
+      "span": {
+        "file": 0,
+        "line": 186,
+        "col": 1,
+        "endLine": 198,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "counter",
+          "type": "ref Counter",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "goal",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "int",
+      "errors": [],
+      "vars": [
+        {
+          "name": "got",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 187,
+            "col": 3,
+            "endLine": 187,
+            "endCol": 19
+          }
+        }
+      ],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Relay",
+        "name": "Relay",
+        "kind": "compound",
+        "doc": "Runs an Adder as its child, which hears the Counter.",
+        "span": {
+          "file": 0,
+          "line": 186,
+          "col": 1,
+          "endLine": 198,
+          "endCol": 2
+        },
+        "initial": "Relay.Running",
+        "states": [
+          {
+            "id": "Relay.Running",
+            "name": "Running",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 191,
+              "col": 3,
+              "endLine": 195,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "machine",
+              "src": "Adder",
+              "to": null,
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "counter"
+                  ],
+                  "type": "ref Counter",
+                  "text": "counter"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "goal"
+                  ],
+                  "type": "int",
+                  "text": "goal"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 192,
+                "col": 5,
+                "endLine": 194,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Relay.Done",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "got",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "int",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 193,
+                  "col": 7,
+                  "endLine": 193,
+                  "endCol": 37
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Relay.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 197,
+              "col": 3,
+              "endLine": 197,
+              "endCol": 34
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "got"
+              ],
+              "type": "int",
+              "text": "got"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:d60cedc07d477e69337a56e98b398717194e91e83457c8e5299b9cc9a5191aee"
     }
   }
 }
@@ -1770,3 +2884,113 @@ export interface WatcherDef extends Roadbook.MachineDef {
  * running it crash.
  */
 export const Watcher = Roadbook.make<WatcherDef>(ir, "Watcher", errors)
+
+// ---- machine: Session ----
+
+export const Ping = Schema.TaggedStruct("Ping", { by: Schema.Int })
+export type Ping = typeof Ping.Type
+
+export const Work = Schema.TaggedStruct("Work", { n: Schema.Int })
+export type Work = typeof Work.Type
+
+export const Leave = Schema.TaggedStruct("Leave", {})
+export type Leave = typeof Leave.Type
+
+export interface SessionDef extends Roadbook.MachineDef {
+  readonly name: "Session"
+  readonly input: { readonly name: string }
+  readonly output: number
+  readonly error: never
+  readonly event: Ping | Work | Leave
+  readonly emits: never
+  readonly state:
+    | "Session"
+    | "Session.Waiting"
+    | "Session.Working"
+    | "Session.Left"
+    | "Session.Expired"
+  readonly fns: { readonly patience: { readonly args: {}; readonly returns: Duration.Duration } }
+  readonly actions: {}
+  readonly tasks: {
+    readonly step: {
+      readonly args: { readonly n: number }
+      readonly success: number
+      readonly error: never
+    }
+  }
+  readonly machines: {}
+}
+
+/**
+ * One session of a Hub: adds up the pings it is sent, does a step of work when asked, and
+ * gives up once it has waited `patience()` for anything.
+ */
+export const Session = Roadbook.make<SessionDef>(ir, "Session", errors)
+
+// ---- machine: Hub ----
+
+export const Join = Schema.TaggedStruct("Join", { key: Schema.String })
+export type Join = typeof Join.Type
+
+export const Tell = Schema.TaggedStruct("Tell", { key: Schema.String, by: Schema.Int })
+export type Tell = typeof Tell.Type
+
+export const Assign = Schema.TaggedStruct("Assign", { key: Schema.String, n: Schema.Int })
+export type Assign = typeof Assign.Type
+
+export const Part = Schema.TaggedStruct("Part", { key: Schema.String })
+export type Part = typeof Part.Type
+
+export const Finish = Schema.TaggedStruct("Finish", {})
+export type Finish = typeof Finish.Type
+
+export interface HubDef extends Roadbook.MachineDef {
+  readonly name: "Hub"
+  readonly input: { readonly id: string }
+  readonly output: number
+  readonly error: never
+  readonly event: Join | Tell | Assign | Part | Finish
+  readonly emits: never
+  readonly state: "Hub" | "Hub.Serving" | "Hub.Done"
+  readonly fns: {}
+  readonly actions: { readonly log: { readonly text: string } }
+  readonly tasks: {}
+  readonly machines: {
+    readonly Session: {
+      readonly args: { readonly name: string }
+      readonly success: number
+      readonly error: never
+    }
+  }
+}
+
+/**
+ * Spawns a Session per key and passes pings, work and leaving on to it. Adds up what the
+ * sessions that end give, and gives the sum when it is finished.
+ */
+export const Hub = Roadbook.make<HubDef>(ir, "Hub", errors)
+
+// ---- machine: Relay ----
+
+export interface RelayDef extends Roadbook.MachineDef {
+  readonly name: "Relay"
+  readonly input: { readonly counter: Roadbook.Handle<CounterDef>; readonly goal: number }
+  readonly output: number
+  readonly error: never
+  readonly event: never
+  readonly emits: never
+  readonly state: "Relay" | "Relay.Running" | "Relay.Done"
+  readonly fns: {}
+  readonly actions: {}
+  readonly tasks: {}
+  readonly machines: {
+    readonly Adder: {
+      readonly args: { readonly counter: Roadbook.Handle<CounterDef>; readonly goal: number }
+      readonly success: number
+      readonly error: never
+    }
+  }
+}
+
+/** Runs an Adder as its child, which hears the Counter. */
+export const Relay = Roadbook.make<RelayDef>(ir, "Relay", errors)

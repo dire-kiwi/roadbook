@@ -89,6 +89,21 @@ export interface CancelToken {
   halt: (() => void) | undefined
   /** The parent stops the child with its idle tree (suspend) rather than cancelling it. */
   stopping: boolean
+  /**
+   * Set by a durable child run: what its tree's park needs from it if it is durably idle, its
+   * own child runs too (typescript.md, "Parking"), or `undefined` if it is not.
+   */
+  park: (() => TreePark | undefined) | undefined
+}
+
+/**
+ * A durable run whose tree is idle, as its root's park needs it: the earliest due time of any
+ * timer in the tree, and the calls of its runs still waiting for an answer, whose answer
+ * records the park races.
+ */
+export interface TreePark {
+  readonly earliest: number | undefined
+  readonly calls: ReadonlyArray<{ readonly run: string; readonly invoke: number }>
 }
 
 /**
@@ -97,6 +112,8 @@ export interface CancelToken {
  */
 export interface Tree {
   readonly suspending: () => boolean
+  /** Whether the top-level run is a durable root run that parks once its tree is idle. */
+  readonly parks: () => boolean
   readonly poke: () => void
 }
 
@@ -477,6 +494,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
     let suspended = false
     let waiting = false
     let wakes = 0
+    /** A durable root run: a child run's poke is queued and not taken yet. */
+    let poked = false
     /** The copy of the snapshot set when the run was suspended. */
     let last: Core.Snapshot | undefined
     /** Completed with the run's last saved snapshot once it has stopped: ended or suspended. */
@@ -488,9 +507,14 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
      */
     const tree: Tree = env.tree ?? {
       suspending: () => suspendRequested && !suspended,
+      parks: () => entry !== undefined && durable?.exec.park !== undefined,
       poke: () => {
         if (!waiting) return
-        wakes += 1
+        if (durable !== undefined) {
+          // A durable root checks again whether its tree can park: one wake at a time will do.
+          if (poked) return
+          poked = true
+        } else wakes += 1
         Queue.offerUnsafe(queue, WAKE)
       }
     }
@@ -647,6 +671,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             else yield* answerCall(exec, exec.root.info, env.runId, unanswered(invoke))
           }).pipe(Effect.ensuring(Effect.sync(() => {
             handing.delete(invoke)
+            // Handed over: the run's root checks again whether its tree can park.
+            if (tree.parks()) tree.poke()
           })))
           const fiber = yield* Effect.forkDetach(hand, { startImmediately: true })
           if (fiber.pollUnsafe() === undefined) handing.set(invoke, fiber)
@@ -694,7 +720,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           save: undefined,
           idle: undefined,
           halt: undefined,
-          stopping: false
+          stopping: false,
+          park: undefined
         }
         tokens.set(invoke, token)
         return token
@@ -1010,6 +1037,43 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         Queue.sizeUnsafe(queue) - wakes === 0 && snapshot.calls.length === 0 &&
         snapshot.invokes.every((inv) => childIdle(inv.id)) && snapshot.spawned.every((ch) => childIdle(ch.id))
 
+      /**
+       * A durable child run that hears a peer's events or end is never durably idle: it hears
+       * them through its port, only while it is live, so a park would lose them.
+       */
+      const hearsPeers = [...peers].some((peer) => Core.heard(ir, name, peer.machine).size > 0)
+
+      /**
+       * Durably idle (typescript.md, "Parking"): open, nothing queued, no cancel asked of it, no
+       * call its callee has not journalled yet, and the work of every invoke and spawned child a
+       * child run that is durably idle itself and waits in its queue. Pending calls do not count,
+       * since their answers are recorded. Gives the tree's earliest due time and its calls still
+       * waiting for an answer; synchronous, so that the root decides and parks at once.
+       */
+      const treePark = (): TreePark | undefined => {
+        if (!port.open || Queue.sizeUnsafe(queue) > 0 || handing.size > 0 || deferredInvokes.size > 0) return undefined
+        if (entry?.cancelRequested || env.token?.cancelRequested || (env.token !== undefined && hearsPeers)) {
+          return undefined
+        }
+        let earliest = dues.size === 0 ? undefined : Math.min(...dues.values())
+        const calls = [...liveCalls].map((invoke) => ({ run: env.runId, invoke }))
+        for (const id of invokes.keys()) {
+          const token = tokens.get(id)
+          const child = token?.claimed ? token.park?.() : undefined
+          if (child === undefined) return undefined
+          if (child.earliest !== undefined && (earliest === undefined || child.earliest < earliest)) {
+            earliest = child.earliest
+          }
+          calls.push(...child.calls)
+        }
+        return { earliest, calls }
+      }
+
+      /** Whether two idle trees' calls are the same calls, in the same order. */
+      const sameCalls = (a: TreePark, b: TreePark) =>
+        a.calls.length === b.calls.length &&
+        a.calls.every((call, i) => call.run === b.calls[i]?.run && call.invoke === b.calls[i]?.invoke)
+
       /** Close this run and its child runs, at once: its tree stops, idle. */
       const halt = () => {
         suspended = true
@@ -1047,6 +1111,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         token.save = () => (port.open || suspended ? saveTree() : undefined)
         token.idle = () => port.open && waiting && idle()
         token.halt = halt
+        if (durable !== undefined) token.park = () => (waiting ? treePark() : undefined)
       }
 
       const begun = (now: Effect.Effect<number>) =>
@@ -1283,7 +1348,8 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
 
       /**
        * The next input of a live durable run: a cancel request first, then the queue, dropping
-       * what it already took. An idle root run parks first, if its earliest timer is far enough.
+       * what it already took. A root run whose tree is idle parks first, if the tree's earliest
+       * timer is far enough.
        */
       const takeLive = (
         d: DurableRun,
@@ -1298,10 +1364,12 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           const { exec } = d
           while (true) {
             if (entry?.cancelRequested || env.token?.cancelRequested) return { kind: "cancel" } as const
-            if (
-              entry !== undefined && exec.park !== undefined && Queue.sizeUnsafe(queue) === 0 && invokes.size === 0 &&
-              handing.size === 0
-            ) {
+            // A root run whose whole tree is durably idle parks, if its tree's earliest timer is
+            // far enough. Its child runs park with it: the engine replays the root, which starts
+            // them again, and each replays its own journal.
+            const after = exec.park
+            const idleTree = entry !== undefined && after !== undefined ? treePark() : undefined
+            if (entry !== undefined && after !== undefined && idleTree !== undefined) {
               if (parkAt() !== position) {
                 // The parks a replay passes again at this position: each has its result.
                 let seq = 1
@@ -1309,31 +1377,37 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
                 setPark(position, seq)
               }
               const now = yield* env.timer.now
-              const earliest = dues.size === 0 ? undefined : Math.min(...dues.values())
-              const delay = earliest === undefined ? undefined : earliest - now
-              if (delay === undefined || delay > exec.park) {
-                // An answer already recorded is taken instead of parking, and the park races the
-                // answers still to come: the engine wakes a parked run for a record written while
-                // it was parking only if the park awaits it.
-                const answers = [...liveCalls].map((invoke) => answerRecord(env.runId, invoke))
-                for (const invoke of liveCalls) {
-                  if ((yield* peek(exec, answerRecord(env.runId, invoke))) !== undefined) heard(invoke)
+              const far = (tree: TreePark) => tree.earliest === undefined || tree.earliest - now > after
+              if (far(idleTree)) {
+                // An answer already recorded is taken instead of parking, by the run that made
+                // the call, and the park races the answers still to come: the engine wakes a
+                // parked run for a record written while it was parking only if the park awaits it.
+                for (const { invoke, run } of idleTree.calls) {
+                  if ((yield* peek(exec, answerRecord(run, invoke))) !== undefined) entry.answered(run, invoke)
                 }
                 const at = `${env.runId}/park/${position}/${nextPark()}`
-                // Deciding and parking at once: what reached the queue while the records above
-                // were read is taken instead, and a park number is used only by a park.
-                if (entry.parking(at)) {
+                // Deciding and parking at once: what reached a queue of the tree while the records
+                // above were read is taken instead, and a park number is used only by a park. A
+                // tree whose timers or calls changed meanwhile is considered again.
+                const still = treePark()
+                if (still !== undefined && far(still) && sameCalls(still, idleTree) && entry.parking(at)) {
                   usePark()
-                  yield* restore(park(exec, at, delay, answers))
+                  const delay = still.earliest === undefined ? undefined : still.earliest - now
+                  yield* restore(park(exec, at, delay, still.calls.map(({ invoke, run }) => answerRecord(run, invoke))))
                   entry.unparked()
                 }
                 continue
               }
             }
             waiting = true
+            // A durable child run between steps: its root checks whether its tree can park.
+            if (env.token !== undefined && tree.parks()) tree.poke()
             let item = yield* restore(Queue.take(queue))
             waiting = false
-            if (item.kind === "wake") continue
+            if (item.kind === "wake") {
+              poked = false
+              continue
+            }
             if (item.kind === "answered") {
               // The answer the record holds: the first one given, whoever gave it.
               const found = yield* peek(exec, answerRecord(env.runId, item.invoke))
