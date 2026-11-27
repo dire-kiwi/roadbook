@@ -6,7 +6,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { canonicalJson } from '@roadbook/core'
+import { canonicalJson } from '@dire-kiwi/roadbook-core'
 import { describe, expect, it } from 'vitest'
 import type { Machine, State } from '../src/ir.ts'
 import { layoutMachine } from '../src/layout.ts'

@@ -1,5 +1,5 @@
 {
-  "name": "@roadbook/cli",
+  "name": "@dire-kiwi/roadbook-cli",
   "version": "0.1.0",
   "private": true,
   "description": "The Roadbook compiler for Node, as WebAssembly: the `roadbook` command (check, fmt, gen, export ir) and an API for build tools",

@@ -1,6 +1,6 @@
 /** The driver's behaviour beyond the conformance cases: the Effect-facing parts of the API. */
 import { assert, describe, it } from "@effect/vitest"
-import * as Core from "@roadbook/core"
+import * as Core from "@dire-kiwi/roadbook-core"
 import { Deferred, Duration, Effect, Exit, Fiber, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import * as fs from "node:fs"

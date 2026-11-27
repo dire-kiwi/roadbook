@@ -3,7 +3,7 @@
 // calls, and step back and forward through the choices. The model is src/sim.ts; this file
 // only draws it and wires up the forms.
 
-import type { Json, Tagged } from '@roadbook/core'
+import type { Json, Tagged } from '@dire-kiwi/roadbook-core'
 import type { Field } from '../ir.ts'
 import { own } from '../ir.ts'
 import { findState, triggerText } from '../model.ts'
@@ -83,7 +83,7 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
     const m = s.def
     const refused = refusal(ir, s.machine)
     let h = `<div class="rb-mode-head"><h2>Simulate <span class="rb-mono">${esc(s.machine)}</span></h2>${s.current ? `<span class="rb-chip rb-status-${esc(s.current.snapshot.status)}">${esc(s.current.snapshot.status)}</span>` : ''}</div>`
-    h += `<p class="rb-mode-note">Runs <code>@roadbook/core</code> in this page, on a virtual clock. You are the host: you give the input, events, calls from other runs, the outcome of each task, child machine and call it makes, and the results of functions. Actions do nothing; <code>send</code>, <code>emit</code> and <code>reply</code> show as records only.</p>`
+    h += `<p class="rb-mode-note">Runs <code>@dire-kiwi/roadbook-core</code> in this page, on a virtual clock. You are the host: you give the input, events, calls from other runs, the outcome of each task, child machine and call it makes, and the results of functions. Actions do nothing; <code>send</code>, <code>emit</code> and <code>reply</code> show as records only.</p>`
     if (refused) {
       h += `<div class="rb-refusal" role="alert"><strong>Cannot simulate ${esc(s.machine)}.</strong> The core refused it: ${esc(refused)}. Explore and Replay still work for this chart.</div>`
       el.innerHTML = h

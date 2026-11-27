@@ -7,7 +7,7 @@
  * form, `{from, invoke}`, both ways.
  * The conversion is driven by the IR's type references.
  */
-import { callName, type Field, type Ir, isRunId, type Json, parseTypeRef, refMachine, type Tagged } from "@roadbook/core"
+import { callName, type Field, type Ir, isRunId, type Json, parseTypeRef, refMachine, type Tagged } from "@dire-kiwi/roadbook-core"
 import { Duration, Predicate } from "effect"
 import { portOf } from "./port.ts"
 

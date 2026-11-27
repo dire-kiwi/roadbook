@@ -1,5 +1,5 @@
 {
-  "name": "@roadbook/core",
+  "name": "@dire-kiwi/roadbook-core",
   "version": "0.1.0",
   "private": true,
   "description": "The Roadbook interpreter: pure start/step over the IR, no dependencies",

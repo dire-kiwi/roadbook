@@ -5,7 +5,7 @@
 //   wasm/roadbook_wasm.js, .d.ts  its glue, made by the `wasm-bindgen` command
 //   wasm/SOURCES                  what it was built from (below)
 //
-// Rebuild and commit whenever a compiler crate changes: `pnpm --filter @roadbook/cli build`.
+// Rebuild and commit whenever a compiler crate changes: `pnpm --filter @dire-kiwi/roadbook-cli build`.
 // It needs the `wasm32-unknown-unknown` target (`rustup target add wasm32-unknown-unknown`) and
 // the `wasm-bindgen` command of the version crates/roadbook-wasm pins
 // (`cargo install wasm-bindgen-cli --version <it>`).
@@ -158,7 +158,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   if (process.argv.includes('--check')) {
     const why = staleness()
     if (why) {
-      console.error(`packages/cli/wasm is stale (${why}): run \`pnpm --filter @roadbook/cli build\` and commit it`)
+      console.error(`packages/cli/wasm is stale (${why}): run \`pnpm --filter @dire-kiwi/roadbook-cli build\` and commit it`)
       process.exit(1)
     }
     console.error('packages/cli/wasm is up to date')

@@ -2,7 +2,7 @@
  * Saved snapshots at the API: `Saved`, the plain JSON a store keeps (execution.md, "The saved
  * snapshot"), and `RestoreError`, why `restore` or `resume` refused one.
  */
-import * as Core from "@roadbook/core"
+import * as Core from "@dire-kiwi/roadbook-core"
 import { Schema } from "effect"
 
 /**

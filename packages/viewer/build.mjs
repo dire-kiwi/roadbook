@@ -1,10 +1,10 @@
 // Builds the browser viewer into the one script `roadbook viz` embeds:
 //   crates/roadbook-cli/assets/roadbook-viewer.js
 // The CLI includes that file at compile time, so `cargo build` needs no Node. Rebuild and
-// commit it whenever packages/viewer changes: `pnpm --filter @roadbook/viewer build`.
+// commit it whenever packages/viewer changes: `pnpm --filter @dire-kiwi/roadbook-viewer build`.
 // `node build.mjs --check` (and the tests) fail when the committed file is stale. The Rust
 // test `viewer_asset_is_fresh` checks the header without Node: the sources' hash (this
-// package's and `@roadbook/core`'s, which simulate mode runs), the versions of elkjs and
+// package's and `@dire-kiwi/roadbook-core`'s, which simulate mode runs), the versions of elkjs and
 // esbuild in pnpm-lock.yaml, and the hash of the script after the header.
 
 import { createHash } from 'node:crypto'
@@ -89,7 +89,7 @@ export async function bundle() {
   })
   const js = result.outputFiles[0].text
   const body = createHash('sha256').update(js).digest('hex')
-  return `/* @roadbook/viewer, built by packages/viewer/build.mjs. Do not edit. sources sha256:${sourcesHash()} deps ${depsText()} body sha256:${body} */\n${js}`
+  return `/* @dire-kiwi/roadbook-viewer, built by packages/viewer/build.mjs. Do not edit. sources sha256:${sourcesHash()} deps ${depsText()} body sha256:${body} */\n${js}`
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -97,7 +97,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   if (process.argv.includes('--check')) {
     const current = fs.existsSync(ASSET) ? fs.readFileSync(ASSET, 'utf8') : ''
     if (current !== text) {
-      console.error(`${path.relative(process.cwd(), ASSET)} is stale: run \`pnpm --filter @roadbook/viewer build\` and commit it`)
+      console.error(`${path.relative(process.cwd(), ASSET)} is stale: run \`pnpm --filter @dire-kiwi/roadbook-viewer build\` and commit it`)
       process.exit(1)
     }
     console.error('viewer asset is up to date')

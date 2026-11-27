@@ -7,7 +7,7 @@
 // variables and work; a suspended run ends with `suspended`. A callee's view keeps the calls it
 // has taken and not yet answered (`replied`). Pure and DOM-free.
 
-import type { Json } from '@roadbook/core'
+import type { Json } from '@dire-kiwi/roadbook-core'
 import type { Ir, Machine, State } from './ir.ts'
 import { own } from './ir.ts'
 import { allStates } from './model.ts'

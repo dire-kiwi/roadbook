@@ -24,10 +24,10 @@ crates/
   roadbook-conformance      loads and checks the conformance cases
   roadbook-wasm             the compiler as WebAssembly, for packages/cli
 packages/
-  core                     @roadbook/core: pure interpreter, no dependencies
-  effect                   @roadbook/effect: Effect v4 driver and API
+  core                     @dire-kiwi/roadbook-core: pure interpreter, no dependencies
+  effect                   @dire-kiwi/roadbook-effect: Effect v4 driver and API
   viewer                   the viewer, built to one script the CLI embeds
-  cli                      @roadbook/cli: the npm distribution of the CLI, on the WebAssembly compiler
+  cli                      @dire-kiwi/roadbook-cli: the npm distribution of the CLI, on the WebAssembly compiler
 examples/
   shop/                    the example used throughout these documents
 editors/
@@ -50,7 +50,7 @@ editors/
 | `roadbook paths <Machine> [file] [--json] [--max N]` | List the paths through a machine, from its initial state to each final state, each state with no way out and each point where going on would repeat a transition, each loop taken at most once, for test generation and coverage. |
 | `roadbook lsp` | The language server, on standard input and output, for editors: diagnostics, go to definition, references, rename, hover, formatting, outline, and the `roadbook/ir` request the VS Code preview compiles charts with. |
 
-The npm package [`@roadbook/cli`](../../packages/cli) runs `check`, `fmt`, `gen` and `export ir` on the compiler built as WebAssembly, printing what the native command does byte for byte, with no Rust toolchain; it also has an API for build tools.
+The npm package [`@dire-kiwi/roadbook-cli`](../../packages/cli) runs `check`, `fmt`, `gen` and `export ir` on the compiler built as WebAssembly, printing what the native command does byte for byte, with no Rust toolchain; it also has an API for build tools.
 
 ## Milestones
 
@@ -75,11 +75,11 @@ Progress is recorded on each milestone below as it finishes.
 
 **M2. Viewer.** `roadbook viz` in explore mode, built from the spike: layout, drill-down into child machines, details panel, project index. `export mermaid`. At this point the project already delivers its main promise for charts that are written but not yet run.
 
-*Done.* `packages/viewer` (`@roadbook/viewer`) is built into one script that `roadbook viz` embeds; pages in one output directory share it, or `--self-contained` inlines it. Explore mode has pan, zoom, fit, collapse and expand, a details panel, drill-down into child machines with a trail, search, light and dark themes, and a project index of which machine invokes which. `roadbook viz --watch` serves the output locally and reloads, and `roadbook export mermaid` is checked against Mermaid's own parser. The spike's problems are handled (see the visualization page), and the 46-state `examples/large` opens with its deep levels collapsed. The pages were checked in a browser in both themes, and an independent review's findings (Mermaid syntax, link escaping, container widths, the watch server's host check) are fixed. The spike viewer and compiler are deleted.
+*Done.* `packages/viewer` (`@dire-kiwi/roadbook-viewer`) is built into one script that `roadbook viz` embeds; pages in one output directory share it, or `--self-contained` inlines it. Explore mode has pan, zoom, fit, collapse and expand, a details panel, drill-down into child machines with a trail, search, light and dark themes, and a project index of which machine invokes which. `roadbook viz --watch` serves the output locally and reloads, and `roadbook export mermaid` is checked against Mermaid's own parser. The spike's problems are handled (see the visualization page), and the 46-state `examples/large` opens with its deep levels collapsed. The pages were checked in a browser in both themes, and an independent review's findings (Mermaid syntax, link escaping, container widths, the watch server's host check) are fixed. The spike viewer and compiler are deleted.
 
-**M3. TypeScript runtime.** `@roadbook/core`, `@roadbook/effect`, `gen`, the trace, and the first conformance cases. The shop example serves requests from Express.
+**M3. TypeScript runtime.** `@dire-kiwi/roadbook-core`, `@dire-kiwi/roadbook-effect`, `gen`, the trace, and the first conformance cases. The shop example serves requests from Express.
 
-*Done.* `@roadbook/core` (the pure interpreter, no dependencies) and `@roadbook/effect` (the Effect v4 driver and API), `roadbook gen [--check]` with the generator in `crates/roadbook-gen-ts`, and the shop served by Express. The behavioural contract (`spec/execution.md`, the trace format and 24 conformance cases) was written before both runtimes, reviewed, and checked by two throwaway independent implementations. The runtime passes every case byte for byte through its production driver, and `tsc`-checked tests keep the type-level guarantees of the API page. An independent review's findings (task cancellation waiting for the task, the shop's error handling, generated error fields that clash with `Error`) are fixed.
+*Done.* `@dire-kiwi/roadbook-core` (the pure interpreter, no dependencies) and `@dire-kiwi/roadbook-effect` (the Effect v4 driver and API), `roadbook gen [--check]` with the generator in `crates/roadbook-gen-ts`, and the shop served by Express. The behavioural contract (`spec/execution.md`, the trace format and 24 conformance cases) was written before both runtimes, reviewed, and checked by two throwaway independent implementations. The runtime passes every case byte for byte through its production driver, and `tsc`-checked tests keep the type-level guarantees of the API page. An independent review's findings (task cancellation waiting for the task, the shop's error handling, generated error fields that clash with `Error`) are fixed.
 
 **M4. Rust runtime.** `roadbook-core`, the macro, the driver. The same example serves requests from axum and passes the same conformance cases.
 
@@ -91,7 +91,7 @@ Progress is recorded on each milestone below as it finishes.
 
 **M6. Depth.** Definite assignment analysis. Parallel states. Saving and restoring snapshots (`resume`), with the IR hash check. Simulate and replay modes in the viewer, which need the TypeScript core and the trace.
 
-*Done.* Definite assignment (`RB0403`): a forward analysis over the chart, conservative in a few documented places, about 100 ms on a 1,000-state chart; it found two real bugs in a compiler test chart, and the runtime check stays as a backstop. Parallel states and snapshots (`restore`, `save`, `suspend`, `resume`, with the IR hash check and migrations) are specified in `spec/execution.md` and `spec/snapshot.schema.json`, with conformance cases checked by an independent throwaway implementation, and built in both runtimes: they write identical traces and byte-identical snapshot files for all 49 cases, so a snapshot saved by one runtime restores in the other. The viewer has simulate mode (it runs `@roadbook/core` in the page and asks the reader for task outcomes and function results) and replay mode (`roadbook viz --trace`, or a trace dropped on the page). Independent reviews found a suspend/cancel race in each runtime, aliased snapshot objects, and several places the runtimes disagreed on restore; all are fixed, several as new conformance cases.
+*Done.* Definite assignment (`RB0403`): a forward analysis over the chart, conservative in a few documented places, about 100 ms on a 1,000-state chart; it found two real bugs in a compiler test chart, and the runtime check stays as a backstop. Parallel states and snapshots (`restore`, `save`, `suspend`, `resume`, with the IR hash check and migrations) are specified in `spec/execution.md` and `spec/snapshot.schema.json`, with conformance cases checked by an independent throwaway implementation, and built in both runtimes: they write identical traces and byte-identical snapshot files for all 49 cases, so a snapshot saved by one runtime restores in the other. The viewer has simulate mode (it runs `@dire-kiwi/roadbook-core` in the page and asks the reader for task outcomes and function results) and replay mode (`roadbook viz --trace`, or a trace dropped on the page). Independent reviews found a suspend/cancel race in each runtime, aliased snapshot objects, and several places the runtimes disagreed on restore; all are fixed, several as new conformance cases.
 
 **M7. Review tooling.** Diff mode and coverage mode in the viewer. A CI recipe that attaches the diff viewer to a pull request.
 
@@ -120,11 +120,11 @@ M3 and M4 are independent once M1 is done and can run in parallel. M2 depends on
 
 ## Decided questions
 
-The first draft left seven questions open, each with a default the design assumed. They were decided on 27 November 2026 and moved into the pages they belong to. Four of the decisions need code, which is not written yet; until it is, the pages say what is decided and what is built.
+The first draft left seven questions open, each with a default the design assumed. They were decided on 27 November 2026 and moved into the pages they belong to. Three of the decisions need code, which is not written yet; until it is, the pages say what is decided and what is built.
 
 | Question | Decision | Built | Where |
 | --- | --- | --- | --- |
-| The name | Roadbook, published under the `@dire-kiwi` npm scope | No: the packages still say `@roadbook` | [Below](#the-name) |
+| The name | Roadbook, published under the `@dire-kiwi` npm scope | Yes | [Below](#the-name) |
 | Parameter style in TypeScript | One object, as now | Yes | [TypeScript](typescript.md#implementing-a-machine) |
 | Strict events | An opt-in `strict` modifier on a machine | No | [Language](language.md#strict-machines) |
 | Exit actions on cancellation | They run, as now, and must be quick | Yes | [Semantics](semantics.md#cancelling-from-outside) |
@@ -137,9 +137,9 @@ The first draft left seven questions open, each with a default the design assume
 Roadbook stays. It replaced the first working name, Waymark, which another workflow engine already uses. Availability was checked on 26 and 27 November 2026; nothing has been reserved.
 
 - **crates.io:** `roadbook` and every `roadbook-*` name the workspace uses are free. The crates keep their names.
-- **npm:** the bare `roadbook` is free, but the `@roadbook` scope belongs to an npm user of that name, who has published nothing, and a user's scope is not handed over. The packages are published under the `@dire-kiwi` scope instead, which was unclaimed: `@dire-kiwi/roadbook` and names that start with it. The exact names of the four packages (now `@roadbook/cli`, `core`, `effect` and `viewer`, all `private`) are settled when they are renamed.
+- **npm:** the bare `roadbook` is free, but the `@roadbook` scope belongs to an npm user of that name, who has published nothing, and a user's scope is not handed over. The packages are published under the `@dire-kiwi` scope instead, which was unclaimed, each named `roadbook-` and what it is, like the crates: `@dire-kiwi/roadbook-cli` (the `roadbook` command as WebAssembly), `@dire-kiwi/roadbook-core` (the interpreter), `@dire-kiwi/roadbook-effect` (the runtime the generated modules import) and `@dire-kiwi/roadbook-viewer`, all still `private`; the shop example is `@dire-kiwi/roadbook-example-shop`. `@dire-kiwi/roadbook` itself is left for a package that gathers them, if one is wanted.
 - **GitHub:** `roadbook` is a personal account, inactive since 2021. The repository is `github.com/dire-kiwi/roadbook`.
 - **Domains:** `roadbook.com` (a UK travel publisher), `.dev`, `.io` and `.org` are registered; `roadbook.sh` was not.
 - **Trademarks:** a web search, not a legal clearance, found no registration of the word alone. MOBILEYE ROADBOOK (US Reg. 6348237) is registered for autonomous-driving software, in the same class, and "roadbook" is a common word in rallying. A proper trademark search is due before a public 1.0.
 
-Nothing is published yet, so renaming the scope moves no users. It changes `@roadbook/` wherever it appears, including the runtime import that `roadbook-gen-ts` writes into every generated module, so every committed `.road.ts` file and the WebAssembly build of the CLI are regenerated with it.
+Nothing was published, so renaming the scope moved no users. The packages were renamed wherever they appeared, including the runtime import that `roadbook-gen-ts` writes into every generated module, and every committed `.road.ts` file and the WebAssembly build of the CLI were regenerated with it. Neither the scope nor any name has been reserved on npm yet.

@@ -1,4 +1,4 @@
-// Simulate mode's model: one run of a machine, driven by hand through `@roadbook/core`, with the
+// Simulate mode's model: one run of a machine, driven by hand through `@dire-kiwi/roadbook-core`, with the
 // history of every choice so the reader can step back. Pure and DOM-free; the page
 // (app/simulate.ts) draws it, and the tests drive it with a conformance case's script.
 //
@@ -11,8 +11,8 @@
 // made to emit one of its events by hand, and the machine's own calls can be made to it by a
 // simulated caller, whose answer (`reply`) shows as its `replied` record only.
 
-import { canonicalJson, getMachine, IrError, start as coreStart, step as coreStep } from '@roadbook/core'
-import type { Command, Fns, FnResult, Input, Ir as CoreIr, Json, Snapshot, Stepped, Tagged, TraceRecord } from '@roadbook/core'
+import { canonicalJson, getMachine, IrError, start as coreStart, step as coreStep } from '@dire-kiwi/roadbook-core'
+import type { Command, Fns, FnResult, Input, Ir as CoreIr, Json, Snapshot, Stepped, Tagged, TraceRecord } from '@dire-kiwi/roadbook-core'
 import type { Field, FunctionDecl, Ir, Machine } from './ir.ts'
 import { own } from './ir.ts'
 import { findState } from './model.ts'

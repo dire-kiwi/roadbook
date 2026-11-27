@@ -2,8 +2,8 @@
 // sample value of a type, to prefill a form, and a check that a value the reader typed is of
 // the type, so the core is only ever given well-formed inputs. Pure and DOM-free.
 
-import { parseTypeRef, refMachine } from '@roadbook/core'
-import type { Json } from '@roadbook/core'
+import { parseTypeRef, refMachine } from '@dire-kiwi/roadbook-core'
+import type { Json } from '@dire-kiwi/roadbook-core'
 import type { Field, Ir } from './ir.ts'
 import { own } from './ir.ts'
 

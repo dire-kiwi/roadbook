@@ -4,7 +4,7 @@
  * emits. Pushing checks the flag and offers synchronously, so it is one operation with respect
  * to the run's closing, which also happens synchronously in the run's own fiber.
  */
-import type * as Core from "@roadbook/core"
+import type * as Core from "@dire-kiwi/roadbook-core"
 import { Queue } from "effect"
 
 export interface Port {

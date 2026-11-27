@@ -2,7 +2,7 @@
 
 import { Schema } from "effect"
 import type { Duration } from "effect"
-import * as Roadbook from "@roadbook/effect"
+import * as Roadbook from "@dire-kiwi/roadbook-effect"
 import {
   Category,
   Classification,
