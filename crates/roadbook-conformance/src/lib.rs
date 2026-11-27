@@ -769,12 +769,23 @@ pub fn restamp_hashes(records: &[Value], ir: &Ir) -> Vec<Value> {
 }
 
 /// A saved snapshot with its `ir` member replaced by its machine's hash in
-/// `ir`, for the snapshot files a runtime writes or a migration gives.
+/// `ir`, for the snapshot files a runtime writes or a migration gives, and
+/// those of the snapshots nested in it (the `child` of its `invokes` and
+/// `spawned` entries), to any depth.
 pub fn restamp_snapshot(snapshot: &Value, ir: &Ir) -> Value {
     let mut s = snapshot.clone();
     let machine = s.get("machine").and_then(Value::as_str).unwrap_or("");
     if let Some(m) = ir.machines.get(machine) {
         s["ir"] = Value::String(m.hash.clone());
+    }
+    for list in ["invokes", "spawned"] {
+        if let Some(entries) = s.get_mut(list).and_then(Value::as_array_mut) {
+            for entry in entries {
+                if let Some(child) = entry.get("child") {
+                    entry["child"] = restamp_snapshot(child, ir);
+                }
+            }
+        }
     }
     s
 }

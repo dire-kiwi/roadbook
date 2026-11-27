@@ -66,6 +66,9 @@ struct Run {
     calls: Vec<(String, u64, String)>,
     /// A call just dropped, which a `replied` with `Unanswered` must follow.
     dropped_call: Option<(String, u64, String)>,
+    /// For a suspended run, the ids of the invokes and spawned children still
+    /// running: child runs suspended with it.
+    suspended_with: Vec<u64>,
 }
 
 /// A call one run took, or an answer it gave, for checking against the
@@ -181,8 +184,10 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
             };
             if kind == "restored" {
                 let snap = &r["snapshot"];
-                if r.get("parent").is_some() {
-                    bad(format!("restored run {id} is a child run"));
+                // A child run restored from a snapshot nested in its
+                // parent's: the migration, if any, is its top-level run's.
+                if r.get("parent").is_some() && !r["migrated"].is_null() {
+                    bad(format!("restored child run {id} has `migrated`"));
                 }
                 if snap["machine"] != r["machine"] || snap["ir"] != r["ir"] {
                     bad("`restored` has another machine or hash than its snapshot".to_owned());
@@ -645,14 +650,14 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
                 }
             }
             "suspended" => {
-                if run.parent.is_some() {
-                    bad(format!("child run {id} is suspended"));
-                }
-                if !run.invokes.is_empty() || !run.spawned.is_empty() {
-                    bad(format!(
-                        "run {id} is suspended with an invoke or a spawned child running"
-                    ));
-                }
+                // What is still running must be child runs that are suspended
+                // with it (checked below, once their records are read).
+                run.suspended_with = run
+                    .invokes
+                    .keys()
+                    .chain(run.spawned.keys())
+                    .copied()
+                    .collect();
                 if !run.calls.is_empty() {
                     bad(format!("run {id} is suspended with a call pending"));
                 }
@@ -684,10 +689,41 @@ pub fn lint_runs(records: &[Value], statuses: &[(String, Status)], ir: Option<&I
         }
     }
 
+    // A suspended run's tree is suspended with it: each invoke or spawned
+    // child still running is a child run that is suspended too, and a
+    // suspended child run's parent is suspended.
+    let suspended = |id: &str| {
+        runs.get(id)
+            .and_then(|r| r.end.as_ref())
+            .is_some_and(|e| str_of(e, "kind") == "suspended")
+    };
+    for id in &order {
+        let run = &runs[id];
+        for n in &run.suspended_with {
+            if !suspended(&format!("{id}.{n}")) {
+                problems.push(format!(
+                    "run {id} is suspended with invoke or spawned child {n} running, which is not a suspended child run"
+                ));
+            }
+        }
+        if let Some(parent) = &run.parent
+            && suspended(id)
+            && !suspended(parent)
+        {
+            problems.push(format!(
+                "child run {id} is suspended, but its parent {parent} is not"
+            ));
+        }
+    }
+
     // How each run ended, and whether its parent saw it.
     for id in &order {
         let run = &runs[id];
         let Some(parent) = &run.parent else { continue };
+        // Suspended with its parent: no outcome.
+        if suspended(id) {
+            continue;
+        }
         let n: u64 = id
             .rsplit_once('.')
             .and_then(|(_, n)| n.parse().ok())
