@@ -16,7 +16,7 @@ use crate::check::{Checker, Sig, SigKind, UNANSWERED, doc, ir_span, unanswered_m
 use crate::codes;
 use crate::index::{SymbolId, SymbolKind};
 use crate::names::{Found, is_type, kind_phrase, suggest};
-use crate::sensitive::Dest;
+use crate::sensitive::{Dest, Sensitive};
 use crate::types::{BOOL, DURATION, Ty, ir_type};
 
 mod retry;
@@ -2356,6 +2356,7 @@ impl<'p> Cx<'_, 'p> {
                         sig.as_ref(),
                         SigKind::Action,
                         scope,
+                        None,
                     );
                     out.push(ir::Effect::Do {
                         action: c.name.name.clone(),
@@ -2411,6 +2412,7 @@ impl<'p> Cx<'_, 'p> {
                         sig.as_ref(),
                         SigKind::Machine,
                         scope,
+                        None,
                     );
                     if c.is_some() {
                         out.push(ir::Effect::Spawn {
@@ -2482,8 +2484,9 @@ impl<'p> Cx<'_, 'p> {
         let value = match (r.outcome, &r.value, &sig) {
             (ReplyOutcome::Done, Some(v), Some((c, s))) => match &s.returns {
                 Some(want) => {
+                    // A `replied` record shows the value, redacted by the result's type.
                     let what = format!("the result of call `{c}`");
-                    Some(self.expect(v, scope, &want.clone(), &what))
+                    Some(self.expect_to(v, scope, &want.clone(), &what, Dest::Shown))
                 }
                 None => {
                     self.ck.diags.push(
@@ -2514,6 +2517,9 @@ impl<'p> Cx<'_, 'p> {
             }
             (ReplyOutcome::Fail, Some(v), Some((c, s))) => {
                 let (ie, t) = self.expr(v, scope);
+                // A `replied` record shows the error, redacting only its sensitive fields.
+                let what = format!("the error of call `{c}`");
+                self.check_dest(v, &ie.text.clone(), &t, &t, &what, &Dest::Shown);
                 let ok = match self.ck.env.expand(&t) {
                     Ty::Unknown => true,
                     Ty::Named(n) => s.errors.contains(&n),
@@ -2664,7 +2670,9 @@ impl<'p> Cx<'_, 'p> {
         }
     }
 
-    /// Checks arguments against a signature (if known) and lowers them.
+    /// Checks arguments against a signature (if known) and lowers them. `call` is, for a call
+    /// invoke `peer.c(…)`, the `ref` it goes through and that ref's machine, whose call `c`'s
+    /// parameters the arguments go to.
     pub(crate) fn args(
         &mut self,
         name: &Ident,
@@ -2673,7 +2681,15 @@ impl<'p> Cx<'_, 'p> {
         sig: Option<&Sig>,
         kind: SigKind,
         scope: &Scope,
+        call: Option<(&str, &str)>,
     ) -> Vec<ir::Expr> {
+        let (owner, shown) = match call {
+            Some((to, machine)) => (
+                Sensitive::call(machine, &name.name),
+                format!("{to}.{}", name.name),
+            ),
+            None => (name.name.clone(), name.name.clone()),
+        };
         if let Some(sig) = sig
             && sig.params.len() != args.len()
         {
@@ -2707,14 +2723,14 @@ impl<'p> Cx<'_, 'p> {
             .map(|(i, a)| match sig.and_then(|s| s.params.get(i)) {
                 Some((p, t)) => {
                     let t = t.clone();
-                    let what = format!("argument `{p}` of `{}`", name.name);
+                    let what = format!("argument `{p}` of `{shown}`");
                     if kind == SigKind::Fn {
                         // Function calls are not traced.
                         self.expect(a, scope, &t, &what)
                     } else {
                         let to = dest(
-                            self.ck.sensitive.is(&name.name, p),
-                            format!("parameter `{p}` of `{}`", name.name),
+                            self.ck.sensitive.is(&owner, p),
+                            format!("parameter `{p}` of `{shown}`"),
                         );
                         self.expect_to(a, scope, &t, &what, to)
                     }
@@ -2756,6 +2772,7 @@ impl<'p> Cx<'_, 'p> {
                 SigKind::Task
             },
             &Scope::none(),
+            to.as_ref().map(|a| (a.name.as_str(), a.machine.as_str())),
         );
         let arg_reads = std::mem::take(&mut self.reads);
         // What the invoke can fail with: a call also with `Unanswered`.

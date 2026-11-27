@@ -1,0 +1,38 @@
+// A call's parameters are its own: a task named like the call marks nothing for it. Its
+// arguments reach the callee as `event`'s fields, sensitive where the parameter is, and its
+// reply shows in a `replied` record.
+error Refused { sensitive why: string, code: int }
+
+task reserve(pin: string)
+
+machine Bank() {
+  call reserve(sensitive pin: string, note: string) -> string ! Refused
+  sensitive var refusal: Refused = Refused { why: "", code: 0 }
+  var last:              string = ""
+  initial A
+  state A {
+    on reserve {
+      if event.note == "keep" -> A  set last = event.pin
+      if event.note == "echo" -> A  reply call done event.pin
+      if event.note == "show" -> A  reply call done event.note
+      else                    -> A  reply call fail refusal
+    }
+  }
+}
+
+machine M(sensitive pin: string, bank: ref Bank) {
+  initial A
+  state A {
+    invoke bank.reserve(pin, pin) {
+      done            -> B
+      fail Refused    -> B
+      fail Unanswered -> B
+    }
+  }
+  final state B {}
+}
+
+// expect: RB0320 at 15:48
+// expect: RB0320 at 16:53
+// expect: RB0320 at 18:53
+// expect: RB0320 at 26:30

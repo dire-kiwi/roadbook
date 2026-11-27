@@ -11,7 +11,7 @@ use crate::codes;
 use crate::index::SymbolId;
 use crate::machine::{Cx, Implicit, Scope};
 use crate::names::{Found, is_type, suggest};
-use crate::sensitive::Dest;
+use crate::sensitive::{Dest, Sensitive};
 use crate::types::{BOOL, Ty, TypeDef};
 
 const INT: Ty = Ty::Builtin(Builtin::Int);
@@ -211,6 +211,10 @@ impl Cx<'_, '_> {
                     unreachable!("matched above")
                 };
                 let ty = self.call_argument(c, f);
+                self.sens = self
+                    .ck
+                    .sensitive
+                    .is(&Sensitive::call(&self.machine, c), &f.name);
                 let path = vec!["event".to_string(), f.name.clone()];
                 (node(K::Ref { path }, &ty, e), ty)
             }
@@ -237,7 +241,15 @@ impl Cx<'_, '_> {
             }
             ExprKind::Call(c) => {
                 let sig = self.callee(&c.name, SigKind::Fn);
-                let args = self.args(&c.name, c.span, &c.args, sig.as_ref(), SigKind::Fn, scope);
+                let args = self.args(
+                    &c.name,
+                    c.span,
+                    &c.args,
+                    sig.as_ref(),
+                    SigKind::Fn,
+                    scope,
+                    None,
+                );
                 let ty = sig.and_then(|s| s.returns).unwrap_or(Ty::Unknown);
                 let kind = K::Call {
                     func: c.name.name.clone(),
