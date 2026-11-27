@@ -59,6 +59,7 @@ pub(crate) struct Interface {
 
 /// The built-in error every call can fail with besides its declared ones.
 pub(crate) const UNANSWERED: &str = roadbook_ir::UNANSWERED;
+pub(crate) const ENDED: &str = roadbook_ir::ENDED;
 
 pub(crate) struct Checker<'p> {
     pub names: Names<'p>,
@@ -91,6 +92,9 @@ pub(crate) struct Checker<'p> {
     /// of an enum, and the parameters, variables, events and emitted events of a machine. The
     /// first declared wins, as it does for the compiler.
     members: HashMap<(SymbolId, String), SymbolId>,
+    /// Whether some type as written, `Ended.X` value or read of `event.status` names the
+    /// built-in enum [`ENDED`], which the IR then has in `types`.
+    pub uses_ended: bool,
 }
 
 pub(crate) fn ir_span(s: Span) -> ir::Span {
@@ -207,7 +211,12 @@ impl<'p> Checker<'p> {
             index: SymbolIndex::default(),
             decl_symbols: Vec::new(),
             members: HashMap::new(),
+            uses_ended: false,
         };
+        c.env.defs.insert(
+            ENDED.to_string(),
+            TypeDef::Enum(ir::ENDED_VARIANTS.iter().map(|v| v.to_string()).collect()),
+        );
         c.sensitive = Sensitive::build(c.decls().into_iter().map(|(_, d)| d));
         c.index_declarations();
         c.resolve_types();
@@ -950,6 +959,10 @@ impl<'p> Checker<'p> {
             ));
             return Ty::Unknown;
         }
+        if n.name == ENDED && matches!(found, Found::Missing) {
+            self.uses_ended = true;
+            return Ty::Named(ENDED.to_string());
+        }
         match found {
             Found::Decl(id) if is_type(&self.names.decl(id).kind) => Ty::Named(n.name.clone()),
             Found::Decl(id) => {
@@ -1341,6 +1354,27 @@ impl<'p> Checker<'p> {
                 _ => {}
             }
         }
+        // The built-in enum, after the declared types, when anything names it. It is declared
+        // nowhere, so its span is empty, at the start of the entry file.
+        if self.uses_ended {
+            let start = ir::Span {
+                file: 0,
+                line: 1,
+                col: 1,
+                end_line: 1,
+                end_col: 1,
+            };
+            out.types.insert(
+                ENDED.to_string(),
+                ir::TypeDecl {
+                    def: ir::TypeDef::Enum {
+                        variants: ir::ENDED_VARIANTS.iter().map(|v| v.to_string()).collect(),
+                    },
+                    doc: ENDED_DOC.to_string(),
+                    span: start,
+                },
+            );
+        }
         out
     }
 }
@@ -1358,6 +1392,10 @@ pub(crate) fn call_type_not_allowed(t: &ast::TypeRef, n: &Ident) -> Diagnostic {
     )
     .with_help("a pending call never leaves its run: keep it in a `var` of type `call <name>` (not optional, not a list, not through an alias) and answer it with `reply`")
 }
+
+/// The doc of the built-in enum `Ended` in the IR.
+pub(crate) const ENDED_DOC: &str =
+    "How a peer's run ended: the type of `event.status` in `on name.ended`. Built in.";
 
 /// The built-in error `Unanswered` where it cannot be.
 pub(crate) fn unanswered_misused(span: Span, message: &str) -> Diagnostic {

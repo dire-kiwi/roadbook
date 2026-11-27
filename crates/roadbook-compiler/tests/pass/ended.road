@@ -1,0 +1,52 @@
+// Every form of a peer's end, `on name.ended`, with no diagnostics.
+
+/// A list of warehouses.
+type Warehouses = ref Inventory[]
+
+/// Record how a peer ended.
+action log(status: Ended)
+
+/// Gives a priority to each way a peer can end.
+fn rank(status: Ended) -> int
+
+machine Inventory() {
+  event Close
+
+  initial Open
+  state Open         { on Close -> Closed }
+  final state Closed {}
+}
+
+machine Order(inventory: ref Inventory, spare: ref Inventory?, all: Warehouses) -> Ended {
+  var current: ref Inventory = inventory
+  var how:     Ended = Ended.Done
+  var worst:   int = 0
+
+  event Swap
+  event Pause
+
+  initial Waiting
+
+  // In the machine body, like any `on`, with a guard on `event.status`.
+  on inventory.ended {
+    if event.status == Ended.Defect -> Alarm  set how = event.status
+    else                            -> Gone   set how = event.status  do log(event.status)
+  }
+
+  state Waiting {
+    on Swap                                                    set current = inventory
+    on spare.ended                                             set worst = rank(event.status)
+    on all.ended if event.status != Ended.Suspended            set worst = worst + 1
+    on current.ended                                -> Gone    set how = event.status
+    on Pause                                        -> Paused
+  }
+
+  // Taken here, before the machine body's `on inventory.ended`, and does nothing.
+  state Paused {
+    on inventory.ended ignore
+    on Swap            -> Waiting
+  }
+
+  final state Alarm { output how }
+  final state Gone  { output how }
+}

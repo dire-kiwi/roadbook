@@ -1,0 +1,112 @@
+// Conformance chart: a peer's end. An Inventory ends in each of the ways a run
+// can, and the runs that hold a `ref` to it are told with `on inventory.ended`,
+// `event.status` saying how: Done, Failed, Cancelled, Defect or Suspended.
+
+/// The warehouse shut for good.
+error Shut
+
+/// Record how a peer ended.
+action note(status: Ended)
+
+/// Something that can fail with a host defect.
+action crash()
+
+/// The stock of one warehouse, which ends when asked to: done on Close, failed
+/// on Fail, with a defect on Crash (when `crash` has one).
+machine Inventory(warehouse: string) -> string ! Shut {
+  event Reserve { orderId: string }
+  event Close
+  event Fail
+  event Crash
+
+  initial Open
+
+  on Reserve ignore
+
+  state Open {
+    on Close -> Closed
+    on Fail  -> Broken
+    on Crash            do crash()
+  }
+
+  final state Closed { output warehouse }
+  final state Broken { fail Shut }
+}
+
+/// Asks the warehouse for stock and waits for it, until it ends or 5s pass.
+/// How the warehouse ended decides where the order goes.
+machine Order(id: string, inventory: ref Inventory) {
+  initial Waiting
+
+  state Waiting {
+    entry send inventory.Reserve { orderId: id }
+    on inventory.ended {
+      if event.status == Ended.Done   -> Closed
+      if event.status == Ended.Defect -> Alarm     do note(event.status)
+      else                            -> Gone      do note(event.status)
+    }
+    after 5s                          -> TimedOut
+  }
+
+  final state Closed   {}
+  final state Alarm    {}
+  final state Gone     {}
+  final state TimedOut {}
+}
+
+/// Holds a `ref` to the warehouse but has no `on inventory.ended`: it is not
+/// told when the warehouse ends.
+machine Clerk(inventory: ref Inventory) {
+  event Stop
+
+  initial Open
+
+  state Open { on Stop -> Stopped }
+
+  final state Stopped {}
+}
+
+/// Hears the warehouse's end only while it is Watching: an end that arrives
+/// while it is Idle is dropped.
+machine Picker(inventory: ref Inventory) {
+  event Go
+
+  initial Idle
+
+  state Idle { on Go -> Watching }
+
+  state Watching { on inventory.ended -> Gone }
+
+  final state Gone {}
+}
+
+/// As Picker, but strict: an end that no transition takes is still dropped,
+/// never `unhandled`.
+strict machine Guard(inventory: ref Inventory) {
+  event Go
+
+  initial Idle
+
+  state Idle { on Go -> Watching }
+
+  state Watching { on inventory.ended -> Gone }
+
+  final state Gone {}
+}
+
+/// Watches the warehouse its variable `current` holds: `a`, then `b` after
+/// Swap. The end of a run `current` no longer holds is dropped.
+machine Switcher(a: ref Inventory, b: ref Inventory) {
+  var current: ref Inventory = a
+
+  event Swap
+
+  initial Watching
+
+  state Watching {
+    on Swap                   set current = b
+    on current.ended -> Gone  do note(event.status)
+  }
+
+  final state Gone {}
+}

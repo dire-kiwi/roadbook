@@ -238,8 +238,8 @@ pub(crate) fn run(
 
         // States entered without waiting: through `always`, `done` and invoke outcomes,
         // which can come at once. Only `on` (a spawned child's `on name.done` and
-        // `on name.fail` included: no child exists until something spawned it) and `after`
-        // wait.
+        // `on name.fail` included: no child exists until something spawned it, and a peer's
+        // `on name.ended`, which arrives on the queue) and `after` wait.
         let waits = |t: &ir::Transition| {
             matches!(
                 t.trigger,
@@ -250,6 +250,7 @@ pub(crate) fn run(
                     | Trigger::After { .. }
                     | Trigger::SpawnDone { .. }
                     | Trigger::SpawnFail { .. }
+                    | Trigger::Ended { .. }
             )
         };
         let eager = tree.reachable(|t| !waits(t));

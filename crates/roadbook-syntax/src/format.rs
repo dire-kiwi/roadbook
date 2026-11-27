@@ -804,6 +804,7 @@ fn trigger(t: &Trigger) -> String {
         Trigger::Call(n) => format!("on {}", n.name),
         Trigger::ChildDone { from } => format!("on {}.done", from.name),
         Trigger::ChildFail { from, error } => format!("on {}.fail {}", from.name, pattern(error)),
+        Trigger::Ended { from } => format!("on {}.ended", from.name),
         Trigger::After(e) if bare_record(e) => format!("after ({})", expr(e)),
         Trigger::After(e) => format!("after {}", expr(e)),
         Trigger::Always => "always".into(),

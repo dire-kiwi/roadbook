@@ -1,0 +1,18 @@
+machine Peer() {
+  initial A
+  final state A {}
+}
+
+machine M(peer: ref Peer) {
+  initial A
+  state A {
+    on peer.end -> B
+    on peer.closed -> B
+    on peer.reserved -> B
+  }
+  final state B {}
+}
+
+// expect: RB0027 at 9:13
+// expect: RB0027 at 10:13
+// expect: RB0027 at 11:13

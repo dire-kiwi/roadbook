@@ -134,7 +134,7 @@ fn export_ir_writes_the_fixture() {
     let out = roadbook(&dir, &["export", "ir", "m.road", "-o", "m.ir.json"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let written = std::fs::read_to_string(dir.join("m.ir.json")).unwrap();
-    assert!(written.contains("\"irVersion\": \"0.7\""));
+    assert!(written.contains("\"irVersion\": \"0.8\""));
 }
 
 #[test]

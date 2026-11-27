@@ -1,0 +1,23 @@
+machine Upload() {
+  initial A
+  final state A {}
+}
+
+machine M() {
+  children uploads: Upload by string
+  initial A
+  on uploads.ended -> A
+  state A {
+    invoke Upload() as upload {
+      done -> B
+    }
+    on upload.ended -> B
+  }
+  state B {
+    on upload.ended -> A
+  }
+}
+
+// expect: RB0123 at 9:6
+// expect: RB0123 at 14:8
+// expect: RB0123 at 17:8

@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0309]: `event` in `on name.ended` is read only through its field `status`
+  --> RB0309-ended-event.road:11:32
+   |
+11 |     on peer.ended -> B  do log(event)
+   |                                ^^^^^
+   |
+   = help: read how the peer's run ended: `event.status`, an `Ended`

@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0013]: `Ended` is the built-in enum of how a peer's run ended (`event.status` in `on name.ended`), and cannot be declared
+ --> RB0013-ended.road:1:6
+  |
+1 | enum Ended { Closed, Open }
+  |      ^^^^^
+  |
+  = help: choose another name
+
+error[RB0013]: `Ended` is the built-in enum of how a peer's run ended (`event.status` in `on name.ended`), and cannot be declared
+ --> RB0013-ended.road:4:9
+  |
+4 |   emits Ended
+  |         ^^^^^
+  |
+  = help: choose another name

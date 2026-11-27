@@ -1,0 +1,16 @@
+machine Peer() {
+  initial A
+  final state A {}
+}
+
+machine M(inventory: ref Peer) {
+  initial A
+  state A {
+    on inventry.ended -> B
+    on nobody.ended -> B
+  }
+  final state B {}
+}
+
+// expect: RB0115 at 9:8
+// expect: RB0115 at 10:8

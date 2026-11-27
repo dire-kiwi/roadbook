@@ -582,6 +582,7 @@ fn trigger_text(t: &Trigger) -> String {
         Trigger::InvokeFail { error } => format!("fail {error}"),
         Trigger::SpawnDone { children } => format!("{children}.done"),
         Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
+        Trigger::Ended { from } => format!("{}.ended", from.name),
     }
 }
 

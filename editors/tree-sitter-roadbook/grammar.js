@@ -269,7 +269,15 @@ module.exports = grammar({
     on_transition: ($) => seq('on', field('trigger', $._trigger), $._branches),
 
     _trigger: ($) =>
-      choice($.event_pattern, $._wildcard, $.received_event, $.call_pattern, $.child_done, $.child_fail),
+      choice(
+        $.event_pattern,
+        $._wildcard,
+        $.received_event,
+        $.call_pattern,
+        $.child_done,
+        $.child_fail,
+        $.peer_ended,
+      ),
 
     event_pattern: ($) => field('event', $.type_identifier),
 
@@ -291,6 +299,10 @@ module.exports = grammar({
         'fail',
         field('error', choice($.type_identifier, $._wildcard)),
       ),
+
+    // `on inventory.ended`: the run a `ref` holds closed. `ended` is not reserved: it means
+    // something only after the dot, where an event name is upper case.
+    peer_ended: ($) => seq(field('from', $.identifier), '.', 'ended'),
 
     after_transition: ($) => seq('after', field('delay', $._expression), $._branches),
 

@@ -553,6 +553,10 @@ pub enum Trigger {
         from: Ident,
         error: Pattern,
     },
+    /// `on name.ended`: the run a `ref` parameter or variable `name` holds closed.
+    Ended {
+        from: Ident,
+    },
     /// `after expr`
     After(Expr),
     Always,

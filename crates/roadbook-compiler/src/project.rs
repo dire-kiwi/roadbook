@@ -225,6 +225,10 @@ impl Project {
             ..
         } = ir;
         for (name, mut d) in types {
+            // The built-in enum, which this compilation names itself if it uses it.
+            if name == ir::ENDED {
+                continue;
+            }
             if let Some(f) = target(&d.span) {
                 remap(&mut d.span);
                 let kind = match &d.def {

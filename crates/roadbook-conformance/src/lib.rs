@@ -49,6 +49,7 @@ pub const FEATURES: &[&str] = &[
     "calls",
     "history",
     "spawn",
+    "ended",
 ];
 
 /// `spec/conformance` in this repository.

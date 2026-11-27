@@ -264,6 +264,22 @@ fn top_level_runs_are_started_in_order() {
                 "{}: `requires` must list `history` exactly when its chart has a history state",
                 c.name
             );
+            fn has_ended(s: &roadbook_ir::State) -> bool {
+                s.transitions
+                    .iter()
+                    .any(|t| matches!(t.trigger, roadbook_ir::Trigger::Ended { .. }))
+                    || s.states.iter().any(has_ended)
+            }
+            let ended = ir.machines.values().any(|m| has_ended(&m.root));
+            assert_eq!(
+                ended,
+                requires("ended"),
+                "{}: `requires` must list `ended` exactly when a machine of its chart has an `on name.ended`",
+                c.name
+            );
+            if ended {
+                assert!(messaging, "{}: `ended` needs `messaging` too", c.name);
+            }
         }
     }
 }

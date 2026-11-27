@@ -72,3 +72,6 @@
 
 (child_fail
   from: (identifier) @local.reference)
+
+(peer_ended
+  from: (identifier) @local.reference)

@@ -494,6 +494,7 @@ impl Writer<'_> {
             Trigger::Done => Some(format!("done.state.{}", xml_id(&s.id))),
             Trigger::InvokeDone => Some(format!("done.invoke.{}", invoke_id(&s.id))),
             Trigger::SpawnDone { children } => Some(format!("done.spawn.{children}")),
+            Trigger::Ended { from } => Some(format!("{}.ended", from.name)),
             Trigger::SpawnFail { children, error } => {
                 let errors: Vec<&str> = if error == "*" {
                     let listed: Vec<&str> = s

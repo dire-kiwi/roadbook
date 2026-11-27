@@ -1,0 +1,20 @@
+machine Peer() {
+  initial A
+  final state A {}
+}
+
+type Peers = map<string, ref Peer>
+
+machine M(count: int, peers: Peers, maybe: ref Peer[]?) {
+  initial A
+  state A {
+    on count.ended -> B
+    on peers.ended -> B
+    on maybe.ended -> B
+  }
+  final state B {}
+}
+
+// expect: RB0315 at 11:8
+// expect: RB0315 at 12:8
+// expect: RB0315 at 13:8

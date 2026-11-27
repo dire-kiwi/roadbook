@@ -393,6 +393,7 @@ fn trigger(t: &Trigger) -> String {
         Trigger::InvokeFail { error } => format!("fail {error}"),
         Trigger::SpawnDone { children } => format!("{children}.done"),
         Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
+        Trigger::Ended { from } => format!("{}.ended", from.name),
     }
 }
 
@@ -444,7 +445,8 @@ fn description(s: &State) -> Vec<String> {
             | Trigger::Emitted { .. }
             | Trigger::Call { .. }
             | Trigger::SpawnDone { .. }
-            | Trigger::SpawnFail { .. } => {
+            | Trigger::SpawnFail { .. }
+            | Trigger::Ended { .. } => {
                 format!("on {}", trigger(&t.trigger))
             }
             other => trigger(other),

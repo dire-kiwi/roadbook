@@ -26,6 +26,7 @@
   "by"
   "state"
   "history"
+  "ended"
   "initial"
   "entry"
   "exit"
@@ -321,6 +322,9 @@
   from: (identifier) @variable)
 
 (child_fail
+  from: (identifier) @variable)
+
+(peer_ended
   from: (identifier) @variable)
 
 ; A name read in an expression.

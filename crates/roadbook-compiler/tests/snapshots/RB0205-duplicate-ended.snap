@@ -1,0 +1,12 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0205]: trigger `on peer.ended` is written twice in `M`
+ --> RB0205-duplicate-ended.road:9:3
+  |
+8 |   on peer.ended if event.status == Ended.Defect -> A
+  |   ------------- first written here
+9 |   on peer.ended -> A
+  |   ^^^^^^^^^^^^^
+  |
+  = help: put every branch in one block, where their order is explicit: `on peer.ended { if … -> A  else -> B }`

@@ -20,7 +20,7 @@
 //!   tasks invoked by the machines in M.
 //! - R is every machine outside M that the machines in M, F, A and K name
 //!   without invoking it: by a `ref` type, by the address of a `send`, of
-//!   an `emitted` trigger or of a call invoke, or by a dotted event type
+//!   an `emitted` or `ended` trigger or of a call invoke, or by a dotted event type
 //!   `Machine.Event`. Only its interface, its `events`, `emits` and `calls`,
 //!   is part of the view, so a change to how a peer works inside does not
 //!   change the machines that talk to it.
@@ -271,7 +271,7 @@ impl Walker<'_> {
                 {
                     self.type_name(error)?
                 }
-                Trigger::Emitted { from, .. } => self.address(from)?,
+                Trigger::Emitted { from, .. } | Trigger::Ended { from } => self.address(from)?,
                 _ => {}
             }
             if let Some(g) = &t.guard {

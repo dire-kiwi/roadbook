@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0315]: `count` is `int`, not a `ref`
+  --> RB0315-ended-not-a-ref.road:11:8
+   |
+11 |     on count.ended -> B
+   |        ^^^^^
+   |
+   = help: `on name.ended` is taken when the run that a parameter or variable of type `ref Machine`, `ref Machine?` or `ref Machine[]` holds ends
+
+error[RB0315]: `peers` is `Peers`, not a `ref`
+  --> RB0315-ended-not-a-ref.road:12:8
+   |
+12 |     on peers.ended -> B
+   |        ^^^^^
+   |
+   = help: `on name.ended` is taken when the run that a parameter or variable of type `ref Machine`, `ref Machine?` or `ref Machine[]` holds ends
+
+error[RB0315]: `maybe` is `ref Peer[]?`, not a `ref`
+  --> RB0315-ended-not-a-ref.road:13:8
+   |
+13 |     on maybe.ended -> B
+   |        ^^^^^
+   |
+   = help: `on name.ended` is taken when the run that a parameter or variable of type `ref Machine`, `ref Machine?` or `ref Machine[]` holds ends

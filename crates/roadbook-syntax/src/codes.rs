@@ -50,6 +50,8 @@ pub const UNKNOWN_BUILTIN_TYPE: Code = Code(24);
 pub const NESTED_TOO_DEEPLY: Code = Code(25);
 /// `ignore` outside an `on` transition, or together with a target or effects.
 pub const MISPLACED_IGNORE: Code = Code(26);
+/// `on name.word` with a lower-case `word` other than `done`, `fail` and `ended`.
+pub const UNKNOWN_LIFECYCLE_TRIGGER: Code = Code(27);
 
 #[cfg(test)]
 mod tests {
