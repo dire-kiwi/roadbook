@@ -13,6 +13,7 @@ use crate::driver::{Driver, RunEnd};
 use crate::dynamic::Host;
 use crate::env::Config;
 use crate::handle::Ref;
+use crate::listen::Subscription;
 use crate::shared::{RunHandle, Shared};
 
 /// How a spawned run ended without an output.
@@ -43,11 +44,12 @@ impl<E: fmt::Debug + fmt::Display> std::error::Error for Stopped<E> {}
 /// The conversions between a machine's Rust types and the driver's values, which the
 /// generated `spawn` supplies.
 #[doc(hidden)]
-pub struct Codec<Event, State, Output, Error> {
+pub struct Codec<Event, State, Output, Error, Emitted> {
     pub event: fn(&Event) -> Result<Value, Defect>,
     pub state: fn(&str) -> Option<State>,
     pub output: fn(Value) -> Output,
     pub error: fn(Value) -> Error,
+    pub emitted: fn(Value) -> Emitted,
 }
 
 /// A running machine instance that takes events, made by a generated `spawn`.
@@ -56,25 +58,27 @@ pub struct Codec<Event, State, Output, Error> {
 /// future of `run`: no exit effects run and the trace has no final record. So does dropping
 /// the future of [`Actor::result`] before it is ready, since it owns the actor.
 /// [`Actor::cancel`] stops it gracefully instead.
-pub struct Actor<Event, State, Output, Error> {
+pub struct Actor<Event, State, Output, Error, Emitted> {
     shared: Arc<Shared>,
     id: String,
     program: &'static Program,
     machine: &'static str,
     #[cfg(feature = "tokio")]
     task: Option<tokio::task::JoinHandle<RunEnd>>,
-    codec: Codec<Event, State, Output, Error>,
+    codec: Codec<Event, State, Output, Error, Emitted>,
     initial: State,
     seen: u64,
 }
 
-impl<Event, State, Output, Error> fmt::Debug for Actor<Event, State, Output, Error> {
+impl<Event, State, Output, Error, Emitted> fmt::Debug
+    for Actor<Event, State, Output, Error, Emitted>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Actor").finish_non_exhaustive()
     }
 }
 
-impl<Event, State, Output, Error> Actor<Event, State, Output, Error> {
+impl<Event, State, Output, Error, Emitted> Actor<Event, State, Output, Error, Emitted> {
     /// A handle to the run, which host code can send through and pass to other runs as the
     /// chart's `ref Machine` argument. It can be cloned and outlives the actor; once the run
     /// has ended, what is sent through it is ignored (or, from a machine, `undelivered`).
@@ -92,9 +96,21 @@ impl<Event, State, Output, Error> Actor<Event, State, Output, Error> {
     pub fn id(&self) -> &str {
         &self.id
     }
+
+    /// Listens to the events the run emits (the machine's `Emitted`), every one of them
+    /// whatever any machine hears, from now until the run ends (after its last step's
+    /// commands, so a final state's or a cancel step's exit `emit`s are in it) or is
+    /// suspended (`spec/execution.md#host-listeners`). What the run emitted before is not in
+    /// it, nor is what its start step emits, even if the run's task has not taken that step
+    /// yet when this is called. Nothing waits for the subscription, and what it has not
+    /// taken yet is kept without bound; dropping it unsubscribes. Listening writes nothing to
+    /// the trace.
+    pub fn subscribe(&self) -> Subscription<Emitted> {
+        Subscription::new(self.shared.listen(true), self.codec.emitted)
+    }
 }
 
-impl<Event, State: Clone, Output, Error> Actor<Event, State, Output, Error> {
+impl<Event, State: Clone, Output, Error, Emitted> Actor<Event, State, Output, Error, Emitted> {
     /// Queues an event. Events are taken one at a time, in the order sent. An event sent
     /// after the run ended is ignored.
     ///
@@ -213,7 +229,7 @@ impl<Event, State: Clone, Output, Error> Actor<Event, State, Output, Error> {
 }
 
 #[cfg(feature = "tokio")]
-impl<Event, State, Output, Error> Drop for Actor<Event, State, Output, Error> {
+impl<Event, State, Output, Error, Emitted> Drop for Actor<Event, State, Output, Error, Emitted> {
     fn drop(&mut self) {
         if let Some(task) = self.task.take() {
             task.abort();
@@ -249,14 +265,14 @@ fn initial_leaf(program: &Program, machine: &str) -> Option<String> {
 /// before starting anything ([`crate::dynamic::restore`]).
 #[doc(hidden)]
 #[cfg_attr(not(feature = "tokio"), allow(unused_variables))]
-pub fn spawn_restored<Event, State, Output, Error>(
+pub fn spawn_restored<Event, State, Output, Error, Emitted>(
     config: Config,
     program: &'static Program,
     machine: &'static str,
     saved: &Saved,
     host: Box<dyn Host + 'static>,
-    codec: Codec<Event, State, Output, Error>,
-) -> Result<Actor<Event, State, Output, Error>, RestoreError> {
+    codec: Codec<Event, State, Output, Error, Emitted>,
+) -> Result<Actor<Event, State, Output, Error, Emitted>, RestoreError> {
     let checked = crate::driver::check(program, Some(machine), saved, &config)?;
     let shared = Shared::claimed();
     let id = config.root_id();
@@ -301,15 +317,15 @@ pub fn spawn_restored<Event, State, Output, Error>(
 /// it reaches the run even if its task has not started yet.
 #[doc(hidden)]
 #[cfg_attr(not(feature = "tokio"), allow(unused_variables))]
-pub fn spawn<Event, State, Output, Error>(
+pub fn spawn<Event, State, Output, Error, Emitted>(
     config: Config,
     program: &'static Program,
     machine: &'static str,
     input: Result<Object, Defect>,
     refs: Vec<RunHandle>,
     host: Box<dyn Host + 'static>,
-    codec: Codec<Event, State, Output, Error>,
-) -> Actor<Event, State, Output, Error> {
+    codec: Codec<Event, State, Output, Error, Emitted>,
+) -> Actor<Event, State, Output, Error, Emitted> {
     let shared = Shared::claimed();
     let id = config.root_id();
     let leaf = initial_leaf(program, machine).expect("the program has the machine");

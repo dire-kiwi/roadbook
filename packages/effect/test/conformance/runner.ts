@@ -260,8 +260,18 @@ export const runCase = (name: string): CaseResult => {
     if (!spec.stub.includes(machine)) handleFor(machine)
   }
 
-  // Every run, as the driver reports it.
+  // Every run, as the driver reports it, each with a host listener from before its start step:
+  // what it hears must be exactly the values of the run's `emitted` records.
   const runs = new Map<string, Roadbook.RunHandle>()
+  const heard = new Map<string, Array<Core.Tagged>>()
+  const observer: Roadbook.RunObserver = {
+    started: (handle) => {
+      runs.set(handle.id, handle)
+      const values: Array<Core.Tagged> = []
+      heard.set(handle.id, values)
+      handle.listen((value) => values.push(Core.copyJson(value)))
+    }
+  }
   const scheduler = new ManualScheduler()
   const exec = <A, E>(effect: Effect.Effect<A, E>): A => {
     const fiber = Effect.runFork(effect, { scheduler })
@@ -288,7 +298,7 @@ export const runCase = (name: string): CaseResult => {
         Effect.provideService(Roadbook.TraceSink, { write: (record) => records.push(record) }),
         Effect.provideService(Roadbook.Timer, timer),
         Effect.provideService(Roadbook.RootRunId, () => run),
-        Effect.provideService(Roadbook.RunObserver, { started: (handle) => runs.set(handle.id, handle) })
+        Effect.provideService(Roadbook.RunObserver, observer)
       )
     )
     if (actor.handle.id !== run) fail(`the run of ${machine} was not named ${run}`)
@@ -348,7 +358,7 @@ export const runCase = (name: string): CaseResult => {
         Effect.provideService(Roadbook.TraceSink, { write: (record) => records.push(record) }),
         Effect.provideService(Roadbook.Timer, timer),
         Effect.provideService(Roadbook.RootRunId, () => run),
-        Effect.provideService(Roadbook.RunObserver, { started: (handle) => runs.set(handle.id, handle) })
+        Effect.provideService(Roadbook.RunObserver, observer)
       )
     ))
     if (step.migrate !== undefined && calls !== 1) fail(`the migration was called ${calls} times, not once`)
@@ -509,6 +519,12 @@ export const runCase = (name: string): CaseResult => {
     }
   } catch (error) {
     if (!(error instanceof CaseFailure)) errors.push(String((error as Error)?.stack ?? error))
+  }
+  for (const [run, values] of heard) {
+    const emitted = records.flatMap((r) => (r.run === run && r.kind === "emitted" ? [r.value] : []))
+    if (JSON.stringify(values) !== JSON.stringify(emitted)) {
+      errors.push(`a listener of ${run} heard ${JSON.stringify(values)}, not its emitted records' ${JSON.stringify(emitted)}`)
+    }
   }
 
   const actual = arrange(records)

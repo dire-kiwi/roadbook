@@ -32,7 +32,8 @@ use std::task::{Context, Poll, Wake, Waker};
 
 use roadbook::dynamic::{self, Host, Invocation, Outcome};
 use roadbook::{
-    BoxFuture, Config, Defect, Input, MemorySink, Program, RunEnd, RunHandle, Saved, Timer,
+    BoxFuture, Config, Defect, Input, MemorySink, Program, RunEnd, RunHandle, Saved, Subscription,
+    Timer,
 };
 use roadbook_conformance::{
     LoadedCase, Outcome as ScriptOutcome, Status, Step, arrange, compare_run_ids, conformance_dir,
@@ -490,6 +491,9 @@ fn advance(timer: &VirtualTimer, runner: &mut Runner<'_>, d: u64) -> Result<(), 
 }
 
 /// Runs one case and gives its trace in the compared form.
+/// A host listener of each run, by run id.
+type Listeners = Vec<(String, Subscription<Value>)>;
+
 fn run_case(c: &LoadedCase) -> Result<String, String> {
     let ir =
         c.ir.clone()
@@ -510,10 +514,18 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
     let sink = Arc::new(MemorySink::new());
     let handles: Arc<Mutex<HashMap<String, RunHandle>>> = Arc::default();
     let seen = handles.clone();
+    // A host listener of every run from before its start step: what it hears must be exactly
+    // the values of the run's `emitted` records (`spec/execution.md#host-listeners`).
+    let listeners: Arc<Mutex<Listeners>> = Arc::default();
+    let listening = listeners.clone();
     let config = Config::new()
         .sink(sink.clone())
         .timer(Arc::new(TimerHandle(timer.clone())))
         .on_run(move |id, h| {
+            listening
+                .lock()
+                .unwrap()
+                .push((id.to_owned(), h.subscribe()));
             seen.lock().unwrap().insert(id.to_owned(), h);
         });
     let root_config = config.clone().run_id(roadbook_conformance::ROOT_RUN);
@@ -755,6 +767,22 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
         return Err(problems.join("; "));
     }
     let records: Vec<Value> = sink.records().iter().map(|r| r.to_json()).collect();
+    for (run, sub) in listeners.lock().unwrap().iter_mut() {
+        let mut heard = Vec::new();
+        while let Some(v) = sub.try_next() {
+            heard.push(v);
+        }
+        let emitted: Vec<Value> = records
+            .iter()
+            .filter(|r| r["run"] == run.as_str() && r["kind"] == "emitted")
+            .map(|r| r["value"].clone())
+            .collect();
+        if heard != emitted {
+            return Err(format!(
+                "a listener of {run} heard {heard:?}, not its emitted records' {emitted:?}"
+            ));
+        }
+    }
     let text = to_lines(&arrange(records));
     for run in &runner.runs {
         let status = status_of(&run.end);

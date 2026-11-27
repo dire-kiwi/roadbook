@@ -141,7 +141,7 @@ let order = order::spawn(app, id, draft, stock.handle());   // the chart's `inve
 stock.handle().send(inventory::Event::Restock { sku, qty }).await;
 ```
 
-Host code cannot receive what a run emits through its handle: which of a run's emitted events host code would see, and how, is not specified yet.
+Host code that spawned a run receives what it emits through its actor: `actor.subscribe()` in Rust, `actor.emitted` (a `Stream`) in TypeScript. It hears every event the machine emits, from when it subscribes until the run ends, whatever any machine hears, and it writes nothing to the trace ([host listeners](../../spec/execution.md#host-listeners)). A handle passed to host code is only for sending.
 
 TypeScript works the same way with packages: the chart imports `"@shop/inventory/inventory.road"`, and the generated file imports types from that package's generated file.
 
