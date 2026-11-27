@@ -18,7 +18,12 @@ describe('on disk', () => {
 
   it('checks the examples', () => {
     const out = check(['examples'], { cwd: repo })
-    expect(out.report).toEqual({ diagnostics: [], errors: 0, warnings: 0, fatal: null, checks: [] })
+    const { checks, ...rest } = out.report
+    expect(rest).toEqual({ diagnostics: [], errors: 0, warnings: 0, fatal: null })
+    // The examples' `check` lines all hold: some proved, the rest conditional on their guards.
+    expect(checks.length).toBeGreaterThan(0)
+    expect(checks.filter((c) => c.verdict !== 'proved' && c.verdict !== 'conditional')).toEqual([])
+    expect(checks.find((c) => c.check === 'Confirmed only after Processing.Paying')?.verdict).toBe('proved')
     expect(out.json).toBe(JSON.stringify(out.report, null, 2))
   })
 

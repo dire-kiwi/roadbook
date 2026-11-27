@@ -115,7 +115,8 @@ fn packages_are_found_through_roadbook_toml_and_node_modules() {
 fn the_shop_checks_and_formats_clean() {
     let out = roadbook(&repo(), &["check", "examples/shop"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
-    assert_eq!(text(&out.stderr), "");
+    // No diagnostics: only the verdicts of `place_order.road`'s checks.
+    assert_eq!(text(&out.stderr), "checks: 2 proved, 1 conditional\n");
     assert_eq!(text(&out.stdout), "");
     let out = roadbook(&repo(), &["fmt", "--check", "examples/shop"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stdout));

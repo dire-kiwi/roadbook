@@ -93,4 +93,11 @@ machine PaymentWebhook(body: string, signature: string, secret: string) -> ApiRe
   final state BadSignature { output problem(401, "bad_signature") }
   final state Malformed    { output problem(400, "malformed_payload") }
   final state Unavailable  { output problem(503, "database_busy") }
+
+  /// A refund is recorded only for a payload that was checked for duplicates.
+  check Applying.RecordingRefund only after CheckingDuplicate
+  /// Nothing is applied before the payload is parsed.
+  check Applying only after Parsing
+  check reachable Applying.RecordingRefund
+  check can finish
 }

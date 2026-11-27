@@ -86,7 +86,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | `parallel state Name { ... }` | All children are active at once (regions). A region may be any kind of state. |
 | `final state Name { ... }` | Ends the enclosing compound state, or the machine at the top level. |
 | `history Name`, `deep history Name` | In a state with children: a [history state](#history-states), a target that returns to where the state was when it was last left. |
-| `check property` | Only directly in a machine body: an assertion about the machine's states, `never A and B`, `reachable A`, `A only after B` or `can finish`, for `roadbook check` to verify. A state path is written from the machine body, like a target at machine level, and may name any state but a history state. Checks are not part of the IR. |
+| `check property` | Only directly in a machine body: an assertion about the machine's states, `never A and B`, `reachable A`, `A only after B` or `can finish`, for `roadbook check` to verify (see [checking properties](#checking-properties)). A state path is written from the machine body, like a target at machine level, and may name any state but a history state. Checks are not part of the IR. |
 
 ## Inside a state
 
@@ -387,6 +387,106 @@ machine Vault(login: Credentials, sensitive pin: int) -> Profile ! Locked {
 - **What it does not.** Nothing but traces changes. The machine, host code and **saved snapshots see and keep the real values**: a restored run goes on with them, so a stored snapshot needs the protection the data needs. Types do not change either, in the generated TypeScript and Rust or anywhere else. On a function's parameter the mark changes nothing, since function calls are not traced; it can still say what the function handles. A marked field does not change a machine's [hash](../../spec/ir.md#the-machine-hash), so marking one later does not invalidate saved snapshots.
 - **Keeping it marked.** A runtime redacts a value by its declared type. So a value read from a sensitive place (`password`, `event.pin`, a field of a sensitive variable) can only go to a place that is also sensitive, or that no trace shows: a guard, a function's argument. Assigning it to a variable that is not sensitive, passing it to an action, task or machine parameter that is not, putting it in a field that is not, or making it an `output`, a `fail`, an `after` delay, a retry's delay or a spawned child's key is an error (`RB0317`). So is an operator's result with a sensitive operand: `pin + 0`, `not flag` and `pin == 1234` are sensitive too. A value whose type has sensitive fields cannot go where `json` is expected, since `json` has no fields to redact by (`RB0318`), unless that place is itself sensitive; that includes a map or list of such values, an instance such as `Page<Login>`, and a `Page<Login>` where a `Page<json>` is expected. Redaction follows maps and type arguments: the `password` of every `Login` in a `map<string, Login>` or a `Page<Login>` is redacted. A function's result is not sensitive: a `fn` is how a chart derives what may be shown (`last4(card)`), on purpose.
 - **What is never covered.** A host defect's message is whatever host code raised, and the trace shows it as it is: a function that is given a sensitive value should not put it in an exception (`JSON.parse` quotes its input). And a run redacts by the IR it was built from: runs that talk to each other should be built from the same charts, since a mark does not change the hash their handles are checked by.
+
+## Checking properties
+
+A machine can state what must be true of its states, as `check` lines in its body, and `roadbook check` proves or refutes each one. They are assertions about the chart, not run-time assertions: nothing runs, and they are not part of the IR, so adding or changing one changes no machine hash.
+
+```
+machine PaymentWebhook(body: string, signature: string, secret: string) -> ApiResponse {
+  …
+  /// A refund is recorded only for a payload that was checked for duplicates.
+  check Applying.RecordingRefund only after CheckingDuplicate
+  /// Nothing is applied before the payload is parsed.
+  check Applying only after Parsing
+  check reachable Applying.RecordingRefund
+  check can finish
+}
+```
+
+| Check | Holds when |
+| --- | --- |
+| `check never S` | `S` is never active. |
+| `check never A and B …` | The states are never all active at once: useful with the regions of a parallel state. |
+| `check S only after T` | Whenever `S` becomes active, `T` has been active at some point before, or is active in the same configuration. |
+| `check reachable S` | `S` can be active. |
+| `check can finish` | From every configuration the machine can be in, some path leads to a top-level final state: it has no dead end and no trap it can't leave. |
+
+A state is written as a path from the machine body, as a target written at machine level is (`Applying.RecordingRefund`). It may name any state, including a region, a final state, or the `Attempt` and `Backoff` states a [`retry`](#what-retry-compiles-to) writes out, but not a history state, which is never active. A check is written only directly in a machine body (`RB0015` in a state, `RB0016` at the top level of a file), and an unknown state is `RB0121`. A `///` doc comment documents the check, and is shown in `--checks` and the JSON.
+
+### How checks are decided
+
+The compiler explores every configuration the machine can be in, following [the execution rules](../../spec/execution.md) exactly: the walks that select transitions in each region, conflicts, exit and entry sets, history recorded on exit, settling (`always` before `done`, completions in order), timers and invokes started on entry and consumed by their expiry or outcome, events emitted by children and peers, spawned children's outcomes, and the transitions written in the machine body. A configuration passed through while settling counts: a state entered by an `always` and left at once was still active. What it does not know is data. Every guard may hold or fail each time it is evaluated, every declared event may arrive at any time, a task may finish or fail with any of its declared errors, a child machine may do anything its declaration allows, and any running timer may expire.
+
+That set of paths includes every path a real run can take, and more. So:
+
+- **A `never` or `only after` that passes is a proof**, whatever the data: no run started from the chart can do it.
+- **A `reachable` that fails is a proof** that no run can reach the state.
+- **A `reachable` or `can finish` that passes is `proved`** when the path it found relies on nothing the chart can't show: only the machine's own events, task outcomes, and timers that are sure to expire first (the only one running, or an `after` with a literal delay shorter than the literal delays of the `after`s written after it in the same state). Otherwise it is **`conditional`**, and the report lists what the path assumes: a guard holding or failing, a timer expiring before the other running timers (its delay might not be the shortest), or another machine finishing, failing or emitting.
+- **A failing check is an error**, and the error shows a counterexample: of those with the fewest assumptions, the shortest. When the counterexample relies on assumptions, the error lists them: the path may be blocked at run time by a guard, but the chart can't show that, so to pass, the chart must change.
+
+The checks cover runs started from the chart. A snapshot restored after a [migration](../../spec/execution.md#restoring-a-snapshot) can be in any configuration the migration wrote, reachable or not.
+
+A machine with more than 100,000 configurations, or one too large to explore for another reason (an event expected from a peer through more than 16 `ref` names, or more than 1.6 million combinations of guard outcomes tried across its regions), is not checked: each of its checks gets the warning `RB0910` and the verdict `unchecked`. Only machines with checks are explored, so a chart without checks costs nothing. Checks are evaluated for the files `roadbook check` is given, never for another package's charts.
+
+### Reports
+
+Checks are evaluated by `roadbook check`, by the language server (a failing check is a diagnostic in the editor, with its path as related information), and by `@roadbook/cli check`. `gen`, `export`, `viz`, `paths` and the Rust macro don't evaluate them, so a failing check fails CI, not a build.
+
+```
+fn approved() -> bool
+
+machine Payment() {
+  event Pay
+  event Refund
+
+  initial Idle
+
+  state Idle {
+    on Pay {
+      if approved() -> Charged
+      else          -> Declined
+    }
+  }
+  state Charged        { on Refund -> Refunded }
+  final state Refunded {}
+  final state Declined {}
+
+  check never Refunded
+  check reachable Declined
+}
+```
+
+`roadbook check --checks payment.road` prints:
+
+```
+error[RB0501]: `never Refunded` does not hold: `Refunded` can be active
+  --> payment.road:19:3
+   |
+11 |       if approved() -> Charged
+   |       ------------------------ 1. Pay [approved()] -> Charged
+...
+15 |   state Charged        { on Refund -> Refunded }
+   |                          --------------------- 2. Refund -> Refunded
+...
+19 |   check never Refunded
+   |   ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Idle --Pay [approved()]--> Charged --Refund--> Refunded, if `approved()` holds on the way
+
+1 error
+payment.road:19: Payment: check never Refunded: failed
+payment.road:20: Payment: check reachable Declined: conditional
+    if `approved()` fails on the way
+    Idle --Pay [else]--> Declined
+checks: 1 conditional, 1 failed
+```
+
+Each label is a transition on the counterexample, numbered, at that transition in the source; the help is the whole path in [`roadbook paths`](roadmap.md#command-line)' style, each configuration written as its active states joined with `+` when there are regions. When any check was evaluated, `roadbook check` ends with a summary line on standard error, such as `checks: 6 proved, 5 conditional`, and `roadbook check --checks` lists every check above it, each `conditional` one with its assumptions and path. The exit code is 1 when a check fails, as for any error. `--json` has every verdict in its `checks` member ([below](#diagnostics-as-json)).
+
+A project's CI needs nothing more than the `roadbook check` (or `npx @roadbook/cli check`) it already runs.
+
+The codes are `RB0501` to `RB0504` for the four kinds of failure and `RB0910` for a machine not checked, listed with the others under [diagnostic codes](#diagnostic-codes).
 
 ## Projects
 
