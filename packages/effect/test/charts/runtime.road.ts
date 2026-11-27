@@ -1098,6 +1098,344 @@ const ir: unknown = {
         "fail": null
       },
       "hash": "sha256:0fe2be0f3220371aab90ac6fad5c04c72ed69614a5d13280df2d780e39b23ec6"
+    },
+    "Beacon": {
+      "doc": "Emits as it starts, on each `Ping`, after `log` on `Boom`, and as it leaves `Up`.",
+      "span": {
+        "file": 0,
+        "line": 103,
+        "col": 1,
+        "endLine": 125,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "n",
+          "type": "int",
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 111,
+            "col": 3,
+            "endLine": 111,
+            "endCol": 17
+          }
+        }
+      ],
+      "events": {
+        "Ping": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 107,
+            "col": 3,
+            "endLine": 107,
+            "endCol": 13
+          }
+        },
+        "Boom": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 108,
+            "col": 3,
+            "endLine": 108,
+            "endCol": 13
+          }
+        },
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 109,
+            "col": 3,
+            "endLine": 109,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {
+        "Beat": {
+          "fields": [
+            {
+              "name": "n",
+              "type": "int",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 104,
+            "col": 3,
+            "endLine": 104,
+            "endCol": 24
+          }
+        },
+        "Bye": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 105,
+            "col": 3,
+            "endLine": 105,
+            "endCol": 12
+          }
+        }
+      },
+      "calls": {},
+      "root": {
+        "id": "Beacon",
+        "name": "Beacon",
+        "kind": "compound",
+        "doc": "Emits as it starts, on each `Ping`, after `log` on `Boom`, and as it leaves `Up`.",
+        "span": {
+          "file": 0,
+          "line": 103,
+          "col": 1,
+          "endLine": 125,
+          "endCol": 2
+        },
+        "initial": "Beacon.Up",
+        "states": [
+          {
+            "id": "Beacon.Up",
+            "name": "Up",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 115,
+              "col": 3,
+              "endLine": 122,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "emit",
+                "event": "Beat",
+                "value": {
+                  "kind": "record",
+                  "fields": [
+                    {
+                      "name": "n",
+                      "value": {
+                        "kind": "lit",
+                        "value": 0,
+                        "type": "int",
+                        "text": "0"
+                      }
+                    }
+                  ],
+                  "type": "Beat",
+                  "text": "Beat { n: 0 }"
+                }
+              }
+            ],
+            "exit": [
+              {
+                "kind": "emit",
+                "event": "Bye",
+                "value": {
+                  "kind": "record",
+                  "fields": [],
+                  "type": "Bye",
+                  "text": "Bye"
+                }
+              }
+            ],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Ping"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "n",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "n + 1"
+                    }
+                  },
+                  {
+                    "kind": "emit",
+                    "event": "Beat",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "n",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "n"
+                            ],
+                            "type": "int",
+                            "text": "n"
+                          }
+                        }
+                      ],
+                      "type": "Beat",
+                      "text": "Beat { n: n }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 119,
+                  "col": 5,
+                  "endLine": 119,
+                  "endCol": 55
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Boom"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "boom",
+                        "type": "string",
+                        "text": "\"boom\""
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "emit",
+                    "event": "Beat",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "n",
+                          "value": {
+                            "kind": "op",
+                            "op": "neg",
+                            "args": [
+                              {
+                                "kind": "lit",
+                                "value": 1,
+                                "type": "int",
+                                "text": "1"
+                              }
+                            ],
+                            "type": "int",
+                            "text": "-1"
+                          }
+                        }
+                      ],
+                      "type": "Beat",
+                      "text": "Beat { n: -1 }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 120,
+                  "col": 5,
+                  "endLine": 120,
+                  "endCol": 57
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Beacon.Over",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 121,
+                  "col": 5,
+                  "endLine": 121,
+                  "endCol": 20
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Beacon.Over",
+            "name": "Over",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 124,
+              "col": 3,
+              "endLine": 124,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:73e383011c00e5d22339cd4f3a1dd05bb151e9b1d7cbf40fc4901583a8838117"
     }
   }
 }
@@ -1228,3 +1566,37 @@ export interface AskerDef extends Roadbook.MachineDef {
 
 /** Asks the desk for `n`; 0 when the desk does not answer. */
 export const Asker = Roadbook.make<AskerDef>(ir, "Asker", errors)
+
+// ---- machine: Beacon ----
+
+export const Ping = Schema.TaggedStruct("Ping", {})
+export type Ping = typeof Ping.Type
+
+export const Boom = Schema.TaggedStruct("Boom", {})
+export type Boom = typeof Boom.Type
+
+export const Stop = Schema.TaggedStruct("Stop", {})
+export type Stop = typeof Stop.Type
+
+export const Beat = Schema.TaggedStruct("Beat", { n: Schema.Int })
+export type Beat = typeof Beat.Type
+
+export const Bye = Schema.TaggedStruct("Bye", {})
+export type Bye = typeof Bye.Type
+
+export interface BeaconDef extends Roadbook.MachineDef {
+  readonly name: "Beacon"
+  readonly input: {}
+  readonly output: void
+  readonly error: never
+  readonly event: Ping | Boom | Stop
+  readonly emits: Beat | Bye
+  readonly state: "Beacon" | "Beacon.Up" | "Beacon.Over"
+  readonly fns: {}
+  readonly actions: { readonly log: { readonly what: string } }
+  readonly tasks: {}
+  readonly machines: {}
+}
+
+/** Emits as it starts, on each `Ping`, after `log` on `Boom`, and as it leaves `Up`. */
+export const Beacon = Roadbook.make<BeaconDef>(ir, "Beacon", errors)

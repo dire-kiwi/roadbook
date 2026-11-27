@@ -1,6 +1,6 @@
 // Charts for the driver's tests (test/driver.test.ts): the defects the core raises and the
 // conformance cases leave out, work left over when a step is cut short, `json` values from
-// host code, and calls a callee cannot answer.
+// host code, calls a callee cannot answer, and host listeners of emitted events.
 
 fn payload()             -> json
 action log(what: string)
@@ -97,4 +97,29 @@ machine Asker(desk: ref Desk, n: int) -> int {
 
   final state Got  { output got }
   final state Gave { output 0 }
+}
+
+/// Emits as it starts, on each `Ping`, after `log` on `Boom`, and as it leaves `Up`.
+machine Beacon() {
+  emits Beat { n: int }
+  emits Bye
+
+  event Ping
+  event Boom
+  event Stop
+
+  var n: int = 0
+
+  initial Up
+
+  state Up {
+    entry emit Beat { n: 0 }
+    exit emit Bye
+
+    on Ping          set n = n + 1  emit Beat { n: n }
+    on Boom          do log("boom")  emit Beat { n: -1 }
+    on Stop -> Over
+  }
+
+  final state Over {}
 }

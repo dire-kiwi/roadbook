@@ -132,6 +132,14 @@ export interface Actor<D extends MachineDef> {
    */
   readonly changes: Stream.Stream<Snapshot<D>>
   /**
+   * The events the run emits (`emits`), every one of them whatever any machine hears, from
+   * when the stream starts until the run ends, after its last step, or is suspended. What the
+   * run emitted before (its start step included, since the actor exists only after it) is not
+   * in it. Each run of the stream is a listener of its own; nothing waits for it, and what it
+   * has not taken yet is kept without bound. Listening writes nothing to the trace.
+   */
+  readonly emitted: Stream.Stream<D["emits"]>
+  /**
    * Completes when the run ends: with the output on `done`, the error on `failed`; it dies with
    * a `Defect` on a defect and is interrupted if the run was cancelled.
    */

@@ -6,7 +6,23 @@ import { TestClock } from "effect/testing"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import * as Roadbook from "../src/index.ts"
-import { Asker, Close, Desk, Early, Go, Leftover, Overflow, Payload, Settle } from "./charts/runtime.road.ts"
+import {
+  Asker,
+  type Beat,
+  Beacon,
+  Boom,
+  type Bye,
+  Close,
+  Desk,
+  Early,
+  Go,
+  Leftover,
+  Overflow,
+  Payload,
+  Ping,
+  Settle,
+  Stop
+} from "./charts/runtime.road.ts"
 
 const charts = path.resolve(import.meta.dirname, "../../../spec/conformance/charts")
 const readIr = (file: string): unknown => JSON.parse(fs.readFileSync(path.join(charts, file), "utf8"))
@@ -532,5 +548,109 @@ describe("calls", () => {
       yield* desk.send(Close.make({}))
       yield* desk.result
       assert.strictEqual(yield* AskerLive.run({ desk: desk.handle, n: 3 }), 0)
+    }).pipe(Effect.scoped))
+})
+
+describe("host listeners", () => {
+  const live = (log: () => Effect.Effect<void> = () => Effect.void) => Beacon.implement({ actions: { log } })
+  const emittedValues = (records: ReadonlyArray<Core.TraceRecord>) =>
+    records.flatMap((r) => (r.kind === "emitted" ? [r.value] : []))
+
+  /** Spawn, optionally listen, send Ping, Ping, Stop: what was heard and the trace. */
+  const pings = (listening: boolean) =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      const actor = yield* live().spawn({}).pipe(
+        Effect.provideService(Roadbook.TraceSink, sink),
+        Effect.provideService(Roadbook.RootRunId, () => "b")
+      )
+      const stream: Stream.Stream<Beat | Bye> = actor.emitted
+      const seen = listening ? yield* Effect.forkChild(Stream.runCollect(stream)) : undefined
+      yield* Effect.yieldNow
+      yield* actor.send(Ping.make({}))
+      yield* actor.send(Ping.make({}))
+      yield* actor.send(Stop.make({}))
+      yield* actor.result
+      return { heard: seen === undefined ? [] : yield* Fiber.join(seen), records }
+    }).pipe(Effect.scoped)
+
+  it.effect("emitted gives what the run emits after it subscribes, typed and in order, and writes nothing", () =>
+    Effect.gen(function*() {
+      const { heard, records } = yield* pings(true)
+      // The start step's Beat came before the actor, so the stream does not have it.
+      assert.deepStrictEqual(heard, [{ _tag: "Beat", n: 1 }, { _tag: "Beat", n: 2 }, { _tag: "Bye" }])
+      assert.deepStrictEqual(emittedValues(records), [
+        { _tag: "Beat", n: 0 },
+        { _tag: "Beat", n: 1 },
+        { _tag: "Beat", n: 2 },
+        { _tag: "Bye" }
+      ])
+      assert.deepStrictEqual(records, (yield* pings(false)).records)
+    }))
+
+  it.effect("each subscriber hears from when it subscribes; one after the end hears nothing", () =>
+    Effect.gen(function*() {
+      const actor = yield* live().spawn({})
+      const early = yield* Effect.forkChild(Stream.runCollect(actor.emitted))
+      yield* Effect.yieldNow
+      yield* actor.send(Ping.make({}))
+      yield* Effect.yieldNow
+      const late = yield* Effect.forkChild(Stream.runCollect(actor.emitted))
+      yield* Effect.yieldNow
+      yield* actor.send(Ping.make({}))
+      yield* actor.send(Stop.make({}))
+      yield* actor.result
+      assert.deepStrictEqual((yield* Fiber.join(early)).map((e) => e._tag === "Beat" ? e.n : e._tag), [1, 2, "Bye"])
+      assert.deepStrictEqual((yield* Fiber.join(late)).map((e) => e._tag === "Beat" ? e.n : e._tag), [2, "Bye"])
+      assert.deepStrictEqual(yield* Stream.runCollect(actor.emitted), [])
+    }).pipe(Effect.scoped))
+
+  it.effect("a cancelled run's exit effects reach the stream, then it ends", () =>
+    Effect.gen(function*() {
+      const actor = yield* live().spawn({})
+      const seen = yield* Effect.forkChild(Stream.runCollect(actor.emitted))
+      yield* Effect.yieldNow
+      yield* actor.cancel
+      assert.deepStrictEqual(yield* Fiber.join(seen), [{ _tag: "Bye" }])
+    }).pipe(Effect.scoped))
+
+  it.effect("suspending ends the stream without exit effects", () =>
+    Effect.gen(function*() {
+      const actor = yield* live().spawn({})
+      const seen = yield* Effect.forkChild(Stream.runCollect(actor.emitted))
+      yield* Effect.yieldNow
+      yield* actor.send(Ping.make({}))
+      yield* actor.suspend
+      assert.deepStrictEqual(yield* Fiber.join(seen), [{ _tag: "Beat", n: 1 }])
+    }).pipe(Effect.scoped))
+
+  it.effect("an emit after an action's host defect is not carried out, so no listener hears it", () =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      const actor = yield* live(() => Effect.die(new Error("boom"))).spawn({}).pipe(
+        Effect.provideService(Roadbook.TraceSink, sink)
+      )
+      const seen = yield* Effect.forkChild(Stream.runCollect(actor.emitted))
+      yield* Effect.yieldNow
+      yield* actor.send(Boom.make({}))
+      assert.isTrue(Exit.hasDies(yield* Effect.exit(actor.result)))
+      assert.deepStrictEqual(yield* Fiber.join(seen), [])
+      assert.deepStrictEqual(emittedValues(records), [{ _tag: "Beat", n: 0 }])
+    }).pipe(Effect.scoped))
+
+  it.effect("a tools listener from the RunObserver hears the start step too: exactly the emitted records", () =>
+    Effect.gen(function*() {
+      const { records, sink } = collect()
+      const heard: Array<Core.Tagged> = []
+      const observer: Roadbook.RunObserver = { started: (run) => void run.listen((value) => heard.push(value)) }
+      const actor = yield* live().spawn({}).pipe(
+        Effect.provideService(Roadbook.TraceSink, sink),
+        Effect.provideService(Roadbook.RunObserver, observer)
+      )
+      yield* actor.send(Ping.make({}))
+      yield* actor.send(Stop.make({}))
+      yield* actor.result
+      assert.deepStrictEqual(heard, emittedValues(records))
+      assert.strictEqual(heard.length, 3)
     }).pipe(Effect.scoped))
 })
