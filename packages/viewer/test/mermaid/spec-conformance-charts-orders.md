@@ -1,6 +1,6 @@
 ## Inventory
 
-`spec/conformance/charts/orders.road:34`
+`spec/conformance/charts/orders.road:35`
 
 ```text
 The stock of one warehouse, shared by every order. It answers a request by
@@ -29,7 +29,7 @@ stateDiagram-v2
 
 ## Order
 
-`spec/conformance/charts/orders.road:68`
+`spec/conformance/charts/orders.road:69`
 
 ```text
 Reserve the items with the warehouse, then take the payment.
@@ -51,4 +51,21 @@ stateDiagram-v2
   Paid --> [*]
   Unavailable --> [*]
   Declined --> [*]
+```
+
+## Supplier
+
+`spec/conformance/charts/orders.road:96`
+
+```text
+Passes deliveries on to the warehouse. It has no `on` for what the Inventory
+emits, so it is sent none of it.
+```
+
+```mermaid
+stateDiagram-v2
+  Open: on Deliver / send inventory.Restock { sku#58; event.sku, qty#58; event.qty }
+  [*] --> Open
+  Open --> Stopped: Stop
+  Stopped --> [*]
 ```

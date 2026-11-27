@@ -24,9 +24,9 @@
       "doc": "One line of an order: a product and how many of it.",
       "span": {
         "file": 0,
-        "line": 6,
+        "line": 7,
         "col": 1,
-        "endLine": 6,
+        "endLine": 7,
         "endCol": 36
       }
     },
@@ -47,9 +47,9 @@
       "doc": "What the customer is buying.",
       "span": {
         "file": 0,
-        "line": 9,
+        "line": 10,
         "col": 1,
-        "endLine": 9,
+        "endLine": 10,
         "endCol": 48
       }
     },
@@ -70,9 +70,9 @@
       "doc": "Proof of payment.",
       "span": {
         "file": 0,
-        "line": 12,
+        "line": 13,
         "col": 1,
-        "endLine": 12,
+        "endLine": 13,
         "endCol": 45
       }
     },
@@ -88,9 +88,9 @@
       "doc": "The warehouse cannot supply every item.",
       "span": {
         "file": 0,
-        "line": 15,
+        "line": 16,
         "col": 1,
-        "endLine": 15,
+        "endLine": 16,
         "endCol": 36
       }
     },
@@ -100,9 +100,9 @@
       "doc": "The card was refused.",
       "span": {
         "file": 0,
-        "line": 18,
+        "line": 19,
         "col": 1,
-        "endLine": 18,
+        "endLine": 19,
         "endCol": 22
       }
     }
@@ -125,9 +125,9 @@
       "doc": "Put the items held for an order back on the shelf.",
       "span": {
         "file": 0,
-        "line": 24,
+        "line": 25,
         "col": 1,
-        "endLine": 24,
+        "endLine": 25,
         "endCol": 56
       }
     },
@@ -152,9 +152,9 @@
       "doc": "Record a delivery.",
       "span": {
         "file": 0,
-        "line": 27,
+        "line": 28,
         "col": 1,
-        "endLine": 27,
+        "endLine": 28,
         "endCol": 58
       }
     }
@@ -185,9 +185,9 @@
       "doc": "Hold `items` for an order, or fail if the warehouse cannot supply them all.",
       "span": {
         "file": 0,
-        "line": 21,
+        "line": 22,
         "col": 1,
-        "endLine": 21,
+        "endLine": 22,
         "endCol": 82
       }
     },
@@ -211,9 +211,9 @@
       "doc": "Charge the customer for the order.",
       "span": {
         "file": 0,
-        "line": 30,
+        "line": 31,
         "col": 1,
-        "endLine": 30,
+        "endLine": 31,
         "endCol": 77
       }
     }
@@ -223,9 +223,9 @@
       "doc": "The stock of one warehouse, shared by every order. It answers a request by\nemitting Reserved or Rejected with the order's id.",
       "span": {
         "file": 0,
-        "line": 34,
+        "line": 35,
         "col": 1,
-        "endLine": 65,
+        "endLine": 66,
         "endCol": 2
       },
       "strict": false,
@@ -246,9 +246,9 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 35,
+            "line": 36,
             "col": 3,
-            "endLine": 35,
+            "endLine": 36,
             "endCol": 22
           }
         },
@@ -259,9 +259,9 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 36,
+            "line": 37,
             "col": 3,
-            "endLine": 36,
+            "endLine": 37,
             "endCol": 22
           }
         }
@@ -283,9 +283,9 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 38,
+            "line": 39,
             "col": 3,
-            "endLine": 38,
+            "endLine": 39,
             "endCol": 52
           }
         },
@@ -300,9 +300,9 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 39,
+            "line": 40,
             "col": 3,
-            "endLine": 39,
+            "endLine": 40,
             "endCol": 37
           }
         },
@@ -322,9 +322,9 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 40,
+            "line": 41,
             "col": 3,
-            "endLine": 40,
+            "endLine": 41,
             "endCol": 43
           }
         },
@@ -333,9 +333,9 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 41,
+            "line": 42,
             "col": 3,
-            "endLine": 41,
+            "endLine": 42,
             "endCol": 14
           }
         }
@@ -352,9 +352,9 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 42,
+            "line": 43,
             "col": 3,
-            "endLine": 42,
+            "endLine": 43,
             "endCol": 37
           }
         },
@@ -374,9 +374,9 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 43,
+            "line": 44,
             "col": 3,
-            "endLine": 43,
+            "endLine": 44,
             "endCol": 53
           }
         }
@@ -389,9 +389,9 @@
         "doc": "The stock of one warehouse, shared by every order. It answers a request by\nemitting Reserved or Rejected with the order's id.",
         "span": {
           "file": 0,
-          "line": 34,
+          "line": 35,
           "col": 1,
-          "endLine": 65,
+          "endLine": 66,
           "endCol": 2
         },
         "initial": "Inventory.Ready",
@@ -403,9 +403,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 50,
+              "line": 51,
               "col": 3,
-              "endLine": 53,
+              "endLine": 54,
               "endCol": 4
             },
             "initial": null,
@@ -452,9 +452,9 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 51,
+                  "line": 52,
                   "col": 5,
-                  "endLine": 51,
+                  "endLine": 52,
                   "endCol": 78
                 }
               },
@@ -469,9 +469,9 @@
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 52,
+                  "line": 53,
                   "col": 5,
-                  "endLine": 52,
+                  "endLine": 53,
                   "endCol": 25
                 }
               }
@@ -486,9 +486,9 @@
             "doc": "One request at a time: another that arrives meanwhile is turned away.",
             "span": {
               "file": 0,
-              "line": 56,
+              "line": 57,
               "col": 3,
-              "endLine": 62,
+              "endLine": 63,
               "endCol": 4
             },
             "initial": null,
@@ -528,9 +528,9 @@
               ],
               "span": {
                 "file": 0,
-                "line": 57,
+                "line": 58,
                 "col": 5,
-                "endLine": 60,
+                "endLine": 61,
                 "endCol": 6
               }
             },
@@ -568,9 +568,9 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 58,
+                  "line": 59,
                   "col": 7,
-                  "endLine": 58,
+                  "endLine": 59,
                   "endCol": 67
                 }
               },
@@ -620,9 +620,9 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 59,
+                  "line": 60,
                   "col": 7,
-                  "endLine": 59,
+                  "endLine": 60,
                   "endCol": 89
                 }
               },
@@ -670,9 +670,9 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 61,
+                  "line": 62,
                   "col": 5,
-                  "endLine": 61,
+                  "endLine": 62,
                   "endCol": 72
                 }
               }
@@ -687,9 +687,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 64,
+              "line": 65,
               "col": 3,
-              "endLine": 64,
+              "endLine": 65,
               "endCol": 24
             },
             "initial": null,
@@ -741,9 +741,9 @@
             ],
             "span": {
               "file": 0,
-              "line": 47,
+              "line": 48,
               "col": 3,
-              "endLine": 47,
+              "endLine": 48,
               "endCol": 55
             }
           },
@@ -791,9 +791,9 @@
             ],
             "span": {
               "file": 0,
-              "line": 48,
+              "line": 49,
               "col": 3,
-              "endLine": 48,
+              "endLine": 49,
               "endCol": 58
             }
           }
@@ -807,9 +807,9 @@
       "doc": "Reserve the items with the warehouse, then take the payment.",
       "span": {
         "file": 0,
-        "line": 68,
+        "line": 69,
         "col": 1,
-        "endLine": 91,
+        "endLine": 92,
         "endCol": 2
       },
       "strict": false,
@@ -843,9 +843,9 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 69,
+            "line": 70,
             "col": 3,
-            "endLine": 69,
+            "endLine": 70,
             "endCol": 23
           }
         },
@@ -856,9 +856,9 @@
           "doc": "",
           "span": {
             "file": 0,
-            "line": 70,
+            "line": 71,
             "col": 3,
-            "endLine": 70,
+            "endLine": 71,
             "endCol": 26
           }
         }
@@ -873,9 +873,9 @@
         "doc": "Reserve the items with the warehouse, then take the payment.",
         "span": {
           "file": 0,
-          "line": 68,
+          "line": 69,
           "col": 1,
-          "endLine": 91,
+          "endLine": 92,
           "endCol": 2
         },
         "initial": "Order.Reserving",
@@ -887,9 +887,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 74,
+              "line": 75,
               "col": 3,
-              "endLine": 79,
+              "endLine": 80,
               "endCol": 4
             },
             "initial": null,
@@ -980,9 +980,9 @@
                 "effects": [],
                 "span": {
                   "file": 0,
-                  "line": 76,
+                  "line": 77,
                   "col": 5,
-                  "endLine": 76,
+                  "endLine": 77,
                   "endCol": 59
                 }
               },
@@ -1051,9 +1051,9 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 77,
+                  "line": 78,
                   "col": 5,
-                  "endLine": 77,
+                  "endLine": 78,
                   "endCol": 115
                 }
               },
@@ -1094,9 +1094,9 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 78,
+                  "line": 79,
                   "col": 5,
-                  "endLine": 78,
+                  "endLine": 79,
                   "endCol": 133
                 }
               }
@@ -1111,9 +1111,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 81,
+              "line": 82,
               "col": 3,
-              "endLine": 86,
+              "endLine": 87,
               "endCol": 4
             },
             "initial": null,
@@ -1145,9 +1145,9 @@
               ],
               "span": {
                 "file": 0,
-                "line": 82,
+                "line": 83,
                 "col": 5,
-                "endLine": 85,
+                "endLine": 86,
                 "endCol": 6
               }
             },
@@ -1175,9 +1175,9 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 83,
+                  "line": 84,
                   "col": 7,
-                  "endLine": 83,
+                  "endLine": 84,
                   "endCol": 61
                 }
               },
@@ -1221,9 +1221,9 @@
                 ],
                 "span": {
                   "file": 0,
-                  "line": 84,
+                  "line": 85,
                   "col": 7,
-                  "endLine": 84,
+                  "endLine": 85,
                   "endCol": 79
                 }
               }
@@ -1238,9 +1238,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 88,
+              "line": 89,
               "col": 3,
-              "endLine": 88,
+              "endLine": 89,
               "endCol": 45
             },
             "initial": null,
@@ -1266,9 +1266,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 89,
+              "line": 90,
               "col": 3,
-              "endLine": 89,
+              "endLine": 90,
               "endCol": 43
             },
             "initial": null,
@@ -1294,9 +1294,9 @@
             "doc": "",
             "span": {
               "file": 0,
-              "line": 90,
+              "line": 91,
               "col": 3,
-              "endLine": 90,
+              "endLine": 91,
               "endCol": 51
             },
             "initial": null,
@@ -1322,6 +1322,206 @@
         "fail": null
       },
       "hash": "sha256:0ef6fba526e5b56a5d48801b7ff7740f574f1bc189fbe5dbee9c7f3f018e4b40"
+    },
+    "Supplier": {
+      "doc": "Passes deliveries on to the warehouse. It has no `on` for what the Inventory\nemits, so it is sent none of it.",
+      "span": {
+        "file": 0,
+        "line": 96,
+        "col": 1,
+        "endLine": 108,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "inventory",
+          "type": "ref Inventory",
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Deliver": {
+          "fields": [
+            {
+              "name": "sku",
+              "type": "string",
+              "doc": ""
+            },
+            {
+              "name": "qty",
+              "type": "int",
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 97,
+            "col": 3,
+            "endLine": 97,
+            "endCol": 42
+          }
+        },
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 98,
+            "col": 3,
+            "endLine": 98,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "root": {
+        "id": "Supplier",
+        "name": "Supplier",
+        "kind": "compound",
+        "doc": "Passes deliveries on to the warehouse. It has no `on` for what the Inventory\nemits, so it is sent none of it.",
+        "span": {
+          "file": 0,
+          "line": 96,
+          "col": 1,
+          "endLine": 108,
+          "endCol": 2
+        },
+        "initial": "Supplier.Open",
+        "states": [
+          {
+            "id": "Supplier.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 102,
+              "col": 3,
+              "endLine": 105,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Deliver"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "ref",
+                      "name": "inventory",
+                      "machine": "Inventory",
+                      "state": null
+                    },
+                    "event": "Restock",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "sku",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "sku"
+                            ],
+                            "type": "string",
+                            "text": "event.sku"
+                          }
+                        },
+                        {
+                          "name": "qty",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "qty"
+                            ],
+                            "type": "int",
+                            "text": "event.qty"
+                          }
+                        }
+                      ],
+                      "type": "Inventory.Restock",
+                      "text": "Restock { sku: event.sku, qty: event.qty }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 103,
+                  "col": 5,
+                  "endLine": 103,
+                  "endCol": 85
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Supplier.Stopped",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 104,
+                  "col": 5,
+                  "endLine": 104,
+                  "endCol": 26
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Supplier.Stopped",
+            "name": "Stopped",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 107,
+              "col": 3,
+              "endLine": 107,
+              "endCol": 25
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:2648cd18140a938c3dffa1ef679fd4946d622df5cbdab174394ff0fab2c3535d"
     }
   }
 }

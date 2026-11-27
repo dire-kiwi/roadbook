@@ -387,4 +387,4 @@ Version 0.2 adds messaging between machines ([actors and messaging](../docs/desi
 - A list of effects is every `set`, then the other effects in the order written (in 0.1, the `do`s).
 - The [semantic view](#the-machine-hash) has `interfaces`.
 
-What a runtime does with the new members (queues, delivery to the invoker and to every holder of a reference, sending to a stopped machine, the trace records) is in [`execution.md`](execution.md#messages-between-runs) and [`trace.md`](trace.md#messages). A runtime that does not implement messaging refuses a machine that uses any of it before running it: in Rust, `Machine::messaging` names the first construct that does.
+What a runtime does with the new members (queues, delivery to the invoker and to the holders of a reference that have an `on` for the event, sending to a stopped machine, the trace records) is in [`execution.md`](execution.md#messages-between-runs) and [`trace.md`](trace.md#messages). A runtime that does not implement messaging refuses a machine that uses any of it before running it: in Rust, `Machine::messaging` names the first construct that does.

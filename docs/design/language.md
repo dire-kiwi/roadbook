@@ -78,7 +78,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | --- | --- |
 | `var name: T [= expr]` | A machine variable. |
 | `event Name [{ fields }]` | An event the machine accepts from outside. |
-| `emits Name [{ fields }]` | An event the machine emits, to whoever invoked it and every machine holding a reference to it. |
+| `emits Name [{ fields }]` | An event the machine emits, to whoever invoked it and every machine holding a reference to it, of those that have an `on` for it. |
 | `call name(params) [-> T] [! E]` | A request the machine answers for any machine holding a reference to it (see [calls between machines](#calls-between-machines)). |
 | `initial Name` | The child state entered first. Required, once, in a state that has children, except a `parallel state`, which has none: all its children are entered. |
 | `state Name { ... }` | A state. Atomic if it has no children, compound if it does. |
@@ -201,7 +201,7 @@ state Uploading {
 ```
 
 - **`send name.Event { fields }`** queues the event for another machine and carries on. `name` is an `invoke … as name` in scope, or a parameter or variable of type `ref Machine`. The event must be one the machine declares with `event`, with every field and the right types, as a record value. A field-less event is written bare: `send upload.Pause`.
-- **`emit Event { fields }`** emits one of the machine's own `emits`, to whoever invoked it and to every machine holding a reference to it. The machine does not receive its own emitted events.
+- **`emit Event { fields }`** emits one of the machine's own `emits`, to whoever invoked it and to every machine holding a reference to it, of those that have an `on` for it ([who receives emitted events](actors.md#who-receives-emitted-events)). The machine does not receive its own emitted events.
 - **`on name.Event`** is taken for an event that `name`'s machine emits. `name` is resolved as for `send`, and `Event` must be one that machine declares with `emits`.
 - **An `as` name is in scope in the invoking state and the states inside it**, which is while the child runs: elsewhere it is an error (`RB0115`). A `send` to the child must also find it running (`RB0213`): not in the invoking state's own `entry` (the child starts once the step has settled), `exit` (it has been stopped) or invoke outcomes (it has ended), and not in a transition that leaves the invoking state, since leaving stops the child before the transition's effects run. A transition with no target, or one written in a state inside the invoking state whose target is also inside it, can send. Two states may use the same `as` name when neither contains the other.
 - **Names.** An `as` name shares the machine's namespace with its parameters and variables, and cannot be the name of an `as` around it. It is not a value: it is used only in `send name.Event` and `on name.Event`. A machine's `event` and `emits` names share one namespace, and like events, emitted events cannot have the name of a type, error or machine.

@@ -238,6 +238,26 @@ fn an_optional_alias_var_starts_as_null() {
     assert_eq!(s.vars.get("s"), Some(&Value::Null));
 }
 
+#[test]
+fn a_machine_hears_the_emitted_events_it_has_an_on_for_anywhere() {
+    let p = program(concat!(
+        "machine P() {\n  emits A\n  emits B\n  emits C\n  initial S\n  state S {}\n}\n",
+        "machine Q(p: ref P, other: ref P) {\n  initial Outer\n  on p.A -> Outer\n  state Outer {\n    initial Inner\n    state Inner { on other.B -> Inner }\n  }\n}\n",
+        "machine R() {\n  initial S\n  state S {\n    invoke P() as kid { done -> S }\n    on kid.C -> S\n  }\n}\n",
+    ));
+    let heard = |m: &str, sender: &str| {
+        let mut events: Vec<_> = p.heard(m, sender).into_iter().collect();
+        events.sort();
+        events
+    };
+    // By machine, not by name: an `on` under either parameter is enough, at any depth.
+    assert_eq!(heard("Q", "P"), ["A", "B"]);
+    assert_eq!(heard("R", "P"), ["C"]);
+    assert!(heard("P", "Q").is_empty());
+    assert!(heard("Q", "R").is_empty());
+    assert!(heard("Missing", "P").is_empty());
+}
+
 /// A callee that keeps a pending call in a variable, and a caller.
 const CALLS: &str = "error Nope {}\n\
 machine S() {\n  call ask(n: int) -> int ! Nope\n  var p: call ask\n  var m: int = 0\n  event Go\n  event Again\n  \

@@ -55,7 +55,8 @@ use crate::{Exit, report};
 pub const RB_NS: &str = "urn:roadbook:scxml";
 /// The `<invoke type>` of a task.
 pub const TASK_TYPE: &str = "urn:roadbook:task";
-/// The `<send type>` of `emit`: to the invoker and every holder of a `ref`.
+/// The `<send type>` of `emit`: to the invoker and every holder of a `ref`, those with an `on`
+/// for the event.
 pub const EMIT_TYPE: &str = "urn:roadbook:emit";
 /// The `<invoke type>` of a call of the run a `ref` holds.
 pub const CALL_TYPE: &str = "urn:roadbook:call";

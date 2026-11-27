@@ -1242,7 +1242,8 @@ impl<'a> Gen<'a> {
         } else {
             format!(
                 "The events machine `{machine}` emits (`emits`), which its invoker (if it \
-                 named it with `as`) and every machine holding a `ref` to it receive. In JSON \
+                 named it with `as`) and every machine holding a `ref` to it receive, if they \
+                 have an `on` for them. In JSON \
                  an event is an object with `\"_tag\": \"Name\"` and its fields."
             )
         };

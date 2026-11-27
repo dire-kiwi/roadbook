@@ -1,0 +1,68 @@
+{
+  "description": "A Supplier, r2, holds a `ref` to the Inventory, r1, only to send to it: it passes a delivery on as Restock and has no `on` for what the Inventory emits. An Order, r3, holds a `ref` to r1 too and handles its replies. The Reserved that r1 emits for the Order is delivered to r3 alone: r2 is not sent it, so its trace has no `dropped` record for it.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/orders.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Supplier",
+      "run": "r2",
+      "input": {
+        "inventory": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "start": "Order",
+      "run": "r3",
+      "input": {
+        "id": "o1",
+        "draft": {
+          "items": [
+            {
+              "sku": "s1",
+              "qty": 2
+            }
+          ],
+          "card": "4242"
+        },
+        "inventory": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Deliver",
+        "sku": "s1",
+        "qty": 5
+      },
+      "run": "r2"
+    },
+    {
+      "task": "reserveStock",
+      "done": null
+    },
+    {
+      "task": "charge",
+      "done": {
+        "orderId": "o1",
+        "total": 4200
+      }
+    },
+    {
+      "event": {
+        "_tag": "Stop"
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "running"
+}

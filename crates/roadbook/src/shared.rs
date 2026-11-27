@@ -4,7 +4,7 @@
 //! invoke context.
 
 use std::cell::RefCell;
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::{BTreeSet, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::task::Waker;
 
@@ -36,8 +36,9 @@ struct Inner {
     /// The run's core has returned a snapshot that is not `running`: nothing more is
     /// delivered to it.
     closed: bool,
-    /// The open runs that hold a `ref` to this run, which receive what it emits.
-    subscribers: Vec<Arc<Shared>>,
+    /// The open runs that hold a `ref` to this run, each with the events it emits that they
+    /// receive: those their machine has an `on` for.
+    subscribers: Vec<(Arc<Shared>, HashSet<String>)>,
     /// Host code asked to suspend the run once it is idle.
     suspend: bool,
     /// The run's saved snapshot as its last step left it, once it has one.
@@ -237,30 +238,33 @@ impl Shared {
         true
     }
 
-    /// Subscribes `run` to what this run emits.
-    pub fn subscribe(&self, run: Arc<Shared>) {
-        self.lock().subscribers.push(run);
+    /// Subscribes `run` to the events in `events` that this run emits.
+    pub fn subscribe(&self, run: Arc<Shared>, events: HashSet<String>) {
+        self.lock().subscribers.push((run, events));
     }
 
     /// Ends the subscription of `run`.
     pub fn unsubscribe(&self, run: &Arc<Shared>) {
-        self.lock().subscribers.retain(|s| !Arc::ptr_eq(s, run));
+        self.lock()
+            .subscribers
+            .retain(|(s, _)| !Arc::ptr_eq(s, run));
     }
 
-    /// The runs subscribed to what this run emits. Runs that have closed without
+    /// The runs subscribed to `event` when this run emits it. Runs that have closed without
     /// unsubscribing (one stopped before its driver was first polled) are forgotten here.
-    pub fn subscribers(&self) -> Vec<Arc<Shared>> {
+    pub fn subscribers(&self, event: &str) -> Vec<Arc<Shared>> {
         // Not holding this run's lock while taking theirs.
         let (open, gone): (Vec<_>, Vec<_>) = self
             .lock()
             .subscribers
-            .clone()
-            .into_iter()
+            .iter()
+            .filter(|(_, events)| events.contains(event))
+            .map(|(s, _)| s.clone())
             .partition(|s| s.is_open());
         if !gone.is_empty() {
             self.lock()
                 .subscribers
-                .retain(|s| !gone.iter().any(|g| Arc::ptr_eq(g, s)));
+                .retain(|(s, _)| !gone.iter().any(|g| Arc::ptr_eq(g, s)));
         }
         open
     }
@@ -559,10 +563,11 @@ pub(crate) struct InvokeContext {
     /// The child run's [`Shared`], once a run claims it. Until then its inbox holds the
     /// messages the parent sends to the invoke.
     pub token: Arc<Shared>,
-    /// The parent's own, which the child pushes what it emits onto when `alias` is set.
+    /// The parent's own, which the child pushes what it emits onto when the parent receives it.
     pub parent_queue: Arc<Shared>,
-    /// The invoke's `as` name.
-    pub alias: Option<String>,
+    /// The child's emitted events that the parent receives: those its machine has an `on`
+    /// for, and none when the invoke has no `as` name.
+    pub heard: HashSet<String>,
 }
 
 thread_local! {

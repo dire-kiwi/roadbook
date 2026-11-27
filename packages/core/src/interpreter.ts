@@ -173,6 +173,11 @@ class MachineIndex {
   readonly params: ReadonlySet<string>
   readonly vars: ReadonlySet<string>
   readonly machine: Machine
+  /**
+   * The emitted events the machine has an `on x.E` for, anywhere in it, by the sender's
+   * machine. A run receives no others.
+   */
+  readonly hears = new Map<string, Set<string>>()
 
   constructor(machine: Machine) {
     this.machine = machine
@@ -182,6 +187,12 @@ class MachineIndex {
       this.states.set(state.id, state)
       this.parents.set(state.id, parent)
       this.order.set(state.id, this.order.size)
+      for (const t of state.transitions) {
+        if (t.trigger.kind !== "emitted") continue
+        const events = this.hears.get(t.trigger.from.machine) ?? new Set()
+        events.add(t.trigger.event)
+        this.hears.set(t.trigger.from.machine, events)
+      }
       for (const child of state.states) walk(child, state)
     }
     walk(machine.root, undefined)
@@ -235,6 +246,16 @@ const machineIndex = (ir: Ir, name: string): MachineIndex => {
   }
   return index
 }
+
+const NOTHING: ReadonlySet<string> = new Set()
+
+/**
+ * The events of a run of machine `sender` that a run of `machine` receives when the sender emits
+ * them: those `machine` has an `on x.E` for, where `x` is a run of `sender`, in any state
+ * (execution.md, "Messages between runs").
+ */
+export const heard = (ir: Ir, machine: string, sender: string): ReadonlySet<string> =>
+  machineIndex(ir, machine).hears.get(sender) ?? NOTHING
 
 // ---- one macrostep ---------------------------------------------------------------------------
 
