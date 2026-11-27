@@ -368,6 +368,10 @@ impl<'a> Driver<'a> {
         )
     }
 
+    /// The child run of the invoke context `ctx`, which it has claimed. When the context holds
+    /// a saved snapshot, the run restores it instead of starting, if it is a snapshot of
+    /// `machine` as `program` has it (`spec/execution.md#restoring-a-child-run`); else it ends
+    /// with a host defect before its first record.
     pub fn child(
         program: &'a Program,
         machine: &'a str,
@@ -377,10 +381,35 @@ impl<'a> Driver<'a> {
         ctx: &Arc<InvokeContext>,
     ) -> Self {
         let id = format!("{}.{}", ctx.parent, ctx.invoke);
-        let peers = open(program, machine, &input, refs, &ctx.token);
+        let (begin, peers) = match &ctx.saved {
+            None => {
+                let peers = open(program, machine, &input, refs, &ctx.token);
+                (Begin::Start(machine, input), peers)
+            }
+            Some(saved) => {
+                let hash = program.ir().machines.get(machine).map(|m| m.hash.as_str());
+                let peers = if saved.machine != machine {
+                    Err(Defect::host(format!(
+                        "the invoke restores a snapshot of `{}`, but its implementation runs \
+                         `{machine}`",
+                        saved.machine
+                    )))
+                } else if hash != Some(saved.ir.as_str()) {
+                    Err(Defect::host(format!(
+                        "the invoke restores a snapshot of `{machine}` at {}, but its \
+                         implementation runs it at {}",
+                        saved.ir,
+                        hash.unwrap_or("no hash")
+                    )))
+                } else {
+                    Ok(Opened::default())
+                };
+                (Begin::Restore(saved.clone(), None), peers)
+            }
+        };
         Self::new(
             program,
-            Begin::Start(machine, input),
+            begin,
             peers,
             host,
             ctx.config.clone(),
@@ -572,34 +601,40 @@ impl<'a> Driver<'a> {
     }
 
     /// The next input: a cancel request if there is one, else the front of the queue; or, for
-    /// a top-level run asked to suspend, the stop once it is idle.
+    /// a top-level run asked to suspend, the stop once its tree is idle, and for a child run,
+    /// the stop its parent asked for when it stopped the tree.
     async fn take(&mut self) -> Next {
         poll_fn(|cx| {
             loop {
+                if self.parent.is_some() && self.shared.stop_requested() {
+                    return Poll::Ready(Next::Suspend);
+                }
                 self.poll_sources(cx);
                 if self.cancel_requested {
                     self.cancel_taken = true;
+                    self.shared.set_idle(false);
                     return Poll::Ready(Next::Input(Input::Cancel));
                 }
-                if self.queue.is_empty()
-                    && self.snap.invokes.is_empty()
-                    && self.snap.calls.is_empty()
-                    && self.snap.spawned.is_empty()
-                    && self.parent.is_none()
-                    && self.suspendable
-                    && self.shared.suspend_requested()
-                {
-                    // Idle as far as the inbox drained above shows. The run closes only if
-                    // nothing has arrived since (an event, a message, a cancel request): that
-                    // check and the close are one operation, so what was pushed while the
-                    // run was still open is taken, not discarded with the closed inbox.
-                    if self.shared.close_if_idle() {
+                let idle = self.queue.is_empty() && self.idle_but_queue();
+                if self.parent.is_some() {
+                    // What its parent decides with: as this poll found it.
+                    self.shared.set_idle(idle);
+                } else if idle && self.suspendable && self.shared.suspend_requested() {
+                    // The tree is idle as far as the inboxes drained above show. It closes
+                    // only if nothing has arrived since at any run of it (an event, a message,
+                    // a cancel request): that check and the close are one operation, so what
+                    // was pushed while a run was still open is taken, not discarded with the
+                    // closed inbox.
+                    if self.shared.close_tree_if_idle() {
                         return Poll::Ready(Next::Suspend);
                     }
                     continue;
                 }
                 return match self.queue.pop_front() {
-                    Some(input) => Poll::Ready(Next::Input(input)),
+                    Some(input) => {
+                        self.shared.set_idle(false);
+                        Poll::Ready(Next::Input(input))
+                    }
                     None => Poll::Pending,
                 };
             }
@@ -607,9 +642,34 @@ impl<'a> Driver<'a> {
         .await
     }
 
-    /// Stops an idle run that was asked to suspend: closes it, cancels its timers through the
+    /// Whether the run is idle but for its queue (`spec/execution.md#suspending-and-resume`):
+    /// no cancel request, no pending call, and the work of every invoke and spawned child a
+    /// child run that has claimed its invoke, is open, and is idle itself. A task, a call, a
+    /// stub or an unclaimed machine is work in flight.
+    fn idle_but_queue(&self) -> bool {
+        !self.cancel_requested
+            && self.snap.calls.is_empty()
+            && self
+                .snap
+                .invokes
+                .iter()
+                .map(|i| i.id)
+                .chain(self.snap.spawned.iter().map(|c| c.id))
+                .all(|id| {
+                    self.invokes.contains_key(&id)
+                        && self
+                            .contexts
+                            .get(&id)
+                            .is_some_and(|c| c.token.is_idle_child())
+                })
+    }
+
+    /// Stops a run of an idle tree that was asked to suspend, which is closed already: stops
+    /// its child runs (each writes its own `suspended` first), cancels its timers through the
     /// timer without records (they are in the snapshot), writes `suspended`, tells its holders
-    /// that hear its end with `Suspended`, and gives the saved snapshot. No exit effect runs.
+    /// that hear its end with `Suspended` (a top-level run's: a child run has none), reports
+    /// through its token, and gives the saved snapshot, its child runs' last snapshots nested
+    /// in it. No exit effect runs.
     async fn suspend(mut self) -> (RunEnd, bool) {
         self.close();
         // An idle run has no pending call, and nothing queued.
@@ -617,14 +677,16 @@ impl<'a> Driver<'a> {
         self.queue.clear();
         self.contexts.clear();
         for (_, slot) in std::mem::take(&mut self.invokes) {
-            let _ = self.cancel_slot(slot).await;
+            self.stop_slot(slot).await;
         }
         for (timer, fut) in std::mem::take(&mut self.timers) {
             drop(fut);
             self.config.timer.cancel(&self.id, timer);
         }
         self.write(Record::Suspended);
-        self.shared.tell_ended(&self.id, Ended::Suspended);
+        if self.parent.is_none() {
+            self.shared.tell_ended(&self.id, Ended::Suspended);
+        }
         let saved = self
             .shared
             .saved()
@@ -782,15 +844,22 @@ impl<'a> Driver<'a> {
                 src_kind,
                 alias,
                 args,
+                saved,
                 ..
             } => {
-                self.start_invoke(invoke, src, src_kind, alias.is_some(), args, false);
+                let delivers = alias.is_some();
+                self.start_invoke(invoke, src, src_kind, delivers, args, false, saved);
                 Ok(())
             }
             // A spawned child is a machine invoke whose emitted events reach this run, as an
             // `as` child's do: those this run's machine has an `on` for.
-            Command::SpawnStart { spawn, src, args } => {
-                self.start_invoke(spawn, src, SrcKind::Machine, true, args, true);
+            Command::SpawnStart {
+                spawn,
+                src,
+                args,
+                saved,
+            } => {
+                self.start_invoke(spawn, src, SrcKind::Machine, true, args, true, saved);
                 Ok(())
             }
             Command::InvokeCancel { invoke } | Command::SpawnStop { spawn: invoke } => {
@@ -921,7 +990,9 @@ impl<'a> Driver<'a> {
 
     /// Starts an invoke, or (`spawn`) a spawned child, whose outcome is then a `spawn.*` input.
     /// A child run that `delivers` (invoked with `as`, or spawned) delivers to this run the
-    /// events it emits that this run's machine has an `on` for.
+    /// events it emits that this run's machine has an `on` for. A machine's child run restores
+    /// `saved` if that is given.
+    #[allow(clippy::too_many_arguments)]
     fn start_invoke(
         &mut self,
         invoke: u64,
@@ -930,6 +1001,7 @@ impl<'a> Driver<'a> {
         delivers: bool,
         args: Object,
         spawn: bool,
+        saved: Option<Box<Saved>>,
     ) {
         let ctx = (src_kind == SrcKind::Machine).then(|| {
             Arc::new(InvokeContext {
@@ -937,6 +1009,7 @@ impl<'a> Driver<'a> {
                 parent: self.id.clone(),
                 invoke,
                 token: Arc::new(Shared::default()),
+                saved,
                 parent_queue: self.shared.clone(),
                 heard: if delivers {
                     self.program.heard(&self.snap.machine, &src)
@@ -947,6 +1020,7 @@ impl<'a> Driver<'a> {
         });
         if let Some(ctx) = &ctx {
             self.contexts.insert(invoke, ctx.clone());
+            self.shared.add_kid(invoke, ctx.token.clone());
         }
         let ir = self.program.ir();
         let params = match src_kind {
@@ -1020,6 +1094,34 @@ impl<'a> Driver<'a> {
             Finished::Ok => Ok(()),
             Finished::Defect(d) => Err(d),
         }
+    }
+
+    /// Stops a child run with its tree: signals its token with a stop and polls it until it
+    /// reports that it has stopped (written `suspended`, its last snapshot published), then
+    /// drops its future. A task's or stub's future is dropped at once.
+    async fn stop_slot(&mut self, mut slot: Slot<'a>) {
+        let Some(ctx) = slot.ctx.clone() else {
+            let _ = drop_caught(slot);
+            return;
+        };
+        if ctx.token.is_claimed() && ctx.token.finished().is_none() {
+            ctx.token.request_stop();
+            poll_fn(|cx| {
+                if ctx.token.finished().is_some() {
+                    return Poll::Ready(());
+                }
+                let polled = with_context(Some(&ctx), || {
+                    catch_unwind(AssertUnwindSafe(|| slot.fut.as_mut().poll(cx)))
+                });
+                match polled {
+                    Ok(Poll::Pending) if ctx.token.finished().is_none() => Poll::Pending,
+                    // Stopped, or the host code ended without its run reporting.
+                    _ => Poll::Ready(()),
+                }
+            })
+            .await;
+        }
+        let _ = drop_caught(slot);
     }
 
     fn write(&mut self, record: Record) {
@@ -1238,5 +1340,227 @@ mod tests {
             lost, 0,
             "rounds that lost an accepted event ({raced} rounds raced)"
         );
+    }
+
+    /// A parent that keeps the counter as a child run, and so is idle when the counter is.
+    fn keeper() -> Program {
+        const CHART: &str = "machine C() {\n  var n: int = 0\n  event Add { by: int }\n  \
+                             initial S\n  state S { on Add set n = n + event.by }\n}\n\
+                             machine P() {\n  initial S\n  state S { invoke C() { done -> E } }\n  \
+                             final state E {}\n}\n";
+        let c = roadbook_compiler::compile_source("p.road", CHART, &Default::default());
+        assert!(!c.has_errors(), "{}", c.render());
+        Program::new(c.ir.unwrap()).unwrap()
+    }
+
+    /// Runs every invoked machine from the chart, as the invoke's child run.
+    struct Kids<'p>(&'p Program);
+
+    impl Host for Kids<'_> {
+        fn function(&self, name: &str, _: Vec<Value>) -> Result<Value, Defect> {
+            Err(Defect::host(format!("no function {name}")))
+        }
+
+        fn action<'a>(&'a self, _: &str, _: Object) -> BoxFuture<'a, Result<(), Defect>> {
+            Box::pin(async { Ok(()) })
+        }
+
+        fn invoke<'a>(&'a self, call: Invocation) -> BoxFuture<'a, Outcome> {
+            Box::pin(async move {
+                match crate::dynamic::run(self.0, &call.src, call.args, &call.refs, self).await {
+                    Ok(v) => Outcome::Done(v),
+                    Err(e) => Outcome::Fail(e),
+                }
+            })
+        }
+    }
+
+    /// The same as `an_event_that_arrives_while_a_run_suspends_is_taken_or_refused`, for an
+    /// event pushed onto a child run while its tree decides to suspend: it is either taken
+    /// before the tree stops (and is in the child's nested snapshot) or refused, never
+    /// accepted and then discarded.
+    #[test]
+    fn an_event_that_arrives_at_a_child_while_its_tree_suspends_is_taken_or_refused() {
+        let program = keeper();
+        let add = || Input::Event {
+            value: json!({"_tag": "Add", "by": 1}),
+        };
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let (mut lost, mut raced) = (0, 0);
+        for round in 0..2000_u64 {
+            let shared = Shared::claimed();
+            let child: Arc<std::sync::Mutex<Option<RunHandle>>> = Arc::default();
+            let seen = child.clone();
+            let config = Config::new()
+                .sink(Arc::new(MemorySink::new()))
+                .run_id("r1")
+                .on_run(move |id, h| {
+                    if id == "r1.1" {
+                        *seen.lock().unwrap() = Some(h);
+                    }
+                });
+            let host = Kids(&program);
+            let driver = Driver::root(
+                &program,
+                "P",
+                Object::new(),
+                &[],
+                &host,
+                &config,
+                "r1".into(),
+                shared.clone(),
+            );
+            let accepted = AtomicU64::new(0);
+            let end = std::thread::scope(|s| {
+                let pusher = s.spawn(|| {
+                    let handle = loop {
+                        if let Some(h) = child.lock().unwrap().clone() {
+                            break h;
+                        }
+                        std::thread::yield_now();
+                    };
+                    shared.request_suspend();
+                    for i in 0..50 {
+                        for _ in 0..(round * 7 + i * 13) % 300 {
+                            std::hint::spin_loop();
+                        }
+                        if handle.shared.deliver(add()) {
+                            accepted.fetch_add(1, Ordering::SeqCst);
+                        }
+                    }
+                });
+                let end = rt.block_on(driver.drive());
+                pusher.join().unwrap();
+                end
+            });
+            let RunEnd::Suspended(saved) = end else {
+                panic!("the run was not suspended: {end:?}");
+            };
+            let kept = saved.invokes[0]
+                .child
+                .as_ref()
+                .expect("the child run's snapshot is nested in its invoke");
+            let taken = kept.vars["n"].as_u64().unwrap();
+            let accepted = accepted.load(Ordering::SeqCst);
+            if taken != accepted {
+                lost += 1;
+            }
+            if accepted < 50 {
+                raced += 1;
+            }
+        }
+        assert_eq!(
+            lost, 0,
+            "rounds that lost an accepted event ({raced} rounds raced)"
+        );
+        assert!(raced > 0, "no round raced: the test did not test the race");
+    }
+
+    /// Binds every invoke of `C` to a run of `as_machine` instead.
+    struct Rebound<'p>(&'p Program, &'static str);
+
+    impl Host for Rebound<'_> {
+        fn function(&self, name: &str, _: Vec<Value>) -> Result<Value, Defect> {
+            Err(Defect::host(format!("no function {name}")))
+        }
+
+        fn action<'a>(&'a self, _: &str, _: Object) -> BoxFuture<'a, Result<(), Defect>> {
+            Box::pin(async { Ok(()) })
+        }
+
+        fn invoke<'a>(&'a self, call: Invocation) -> BoxFuture<'a, Outcome> {
+            Box::pin(async move {
+                match crate::dynamic::run(self.0, self.1, call.args, &call.refs, self).await {
+                    Ok(v) => Outcome::Done(v),
+                    Err(e) => Outcome::Fail(e),
+                }
+            })
+        }
+    }
+
+    /// A child run that claims an invoke holding a snapshot of another machine ends with a
+    /// host defect before its first record, which its parent takes as the invoke's defect; one
+    /// of the snapshot's machine restores it and goes on where it was.
+    #[test]
+    fn a_child_run_restores_only_a_snapshot_of_its_own_machine() {
+        let program = keeper();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        // A tree saved with the child's counter at 2.
+        let shared = Shared::claimed();
+        let child: Arc<std::sync::Mutex<Option<RunHandle>>> = Arc::default();
+        let seen = child.clone();
+        let config = Config::new()
+            .sink(Arc::new(MemorySink::new()))
+            .run_id("r1")
+            .on_run(move |id, h| {
+                if id == "r1.1" {
+                    *seen.lock().unwrap() = Some(h);
+                }
+            });
+        let host = Kids(&program);
+        let driver = Driver::root(
+            &program,
+            "P",
+            Object::new(),
+            &[],
+            &host,
+            &config,
+            "r1".into(),
+            shared.clone(),
+        );
+        let saved = rt.block_on(async {
+            let mut fut = Box::pin(driver.drive());
+            let mut pushed = false;
+            poll_fn(|cx| {
+                let polled = fut.as_mut().poll(cx);
+                // Once the child run has claimed its invoke, it is sent an event, and the tree
+                // asked to suspend.
+                if !pushed && let Some(h) = child.lock().unwrap().clone() {
+                    h.send(json!({"_tag": "Add", "by": 2}));
+                    shared.request_suspend();
+                    pushed = true;
+                }
+                polled.map(|end| match end {
+                    RunEnd::Suspended(saved) => *saved,
+                    end => panic!("not suspended: {end:?}"),
+                })
+            })
+            .await
+        });
+        assert_eq!(saved.invokes[0].child.as_ref().unwrap().vars["n"], json!(2));
+
+        for (machine, restores) in [("P", false), ("C", true)] {
+            let sink = Arc::new(MemorySink::new());
+            let config = Config::new().sink(sink.clone()).run_id("r2");
+            let host = Rebound(&program, machine);
+            let (fut, handle) =
+                crate::dynamic::restore(&config, &program, None, &saved, &host).unwrap();
+            handle.suspend();
+            let end = rt.block_on(fut);
+            let child: Vec<_> = sink
+                .records()
+                .into_iter()
+                .filter(|r| r.run == "r2.1")
+                .collect();
+            if restores {
+                assert!(matches!(end, RunEnd::Suspended(_)), "{end:?}");
+                assert!(
+                    matches!(child[0].record, Record::Restored { .. }),
+                    "{child:?}"
+                );
+            } else {
+                assert!(child.is_empty(), "the child run wrote {child:?}");
+                let RunEnd::Defect(Defect::Host { message }) = end else {
+                    panic!("not a host defect: {end:?}");
+                };
+                assert!(message.contains("restores a snapshot of `C`"), "{message}");
+            }
+        }
     }
 }

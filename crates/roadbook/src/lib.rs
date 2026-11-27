@@ -36,10 +36,11 @@
 //!   callee's `reply` pushes the answer onto the caller's queue as the invoke's outcome. A
 //!   call to a closed peer, and every call a run has not answered when it ends (or is
 //!   dropped), is answered `Unanswered`.
-//! - A top-level run can be saved ([`Saved`], `actor.save()`), suspended once idle
-//!   (`actor.suspend()`), and restored from a saved snapshot as a new run (a generated
-//!   `restore` or `resume`, [`dynamic::restore`], [`dynamic::resume`]); a snapshot that does
-//!   not fit is refused with a [`RestoreError`].
+//! - A top-level run can be saved with its running child runs ([`Saved`], `actor.save()`),
+//!   suspended once it and its child runs are idle (`actor.suspend()`), and restored from a
+//!   saved snapshot as a new run, its child runs where they were (a generated `restore` or
+//!   `resume`, [`dynamic::restore`], [`dynamic::resume`]); a snapshot that does not fit is
+//!   refused with a [`RestoreError`].
 //! - [`dynamic`] is the erased interface the generated code adapts to, for hosts that call
 //!   host code by name.
 
@@ -68,7 +69,7 @@ pub use handle::Ref;
 pub use listen::Subscription;
 pub use roadbook_core::{
     Defect, Ended, Input, InvokeEntry, Program, RUN_ID_PATTERN, Record, Refusal, RestoreError,
-    RunResult, Saved, SavedTimer, Status, is_run_id,
+    RunResult, Saved, SavedInvoke, SavedSpawned, SavedTimer, Status, is_run_id,
 };
 pub use roadbook_macros::include;
 pub use shared::RunHandle;

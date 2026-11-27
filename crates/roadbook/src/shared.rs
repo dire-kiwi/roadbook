@@ -1,14 +1,15 @@
 //! What a run shares with the outside: its inbox, its cancel flag, whether it is open, the
 //! runs subscribed to what it emits and to its end, the calls it waits for and those it was
-//! given, how it closed and how it finished, and the state it is in. For a child run this is also the cancel token of the
-//! invoke context.
+//! given, how it closed and how it finished, and the state it is in, its child runs' tokens and
+//! whether it is idle. For a child run this is also the cancel (and stop) token of the invoke
+//! context.
 
 use std::cell::RefCell;
-use std::collections::{BTreeSet, HashSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::task::Waker;
 
-use roadbook_core::{Defect, Ended, Input, Program, ReplyOutcome, Saved, Snapshot};
+use roadbook_core::{Defect, Ended, Input, Program, ReplyOutcome, Saved, Snapshot, Status};
 use serde_json::Value;
 
 use crate::env::Config;
@@ -58,6 +59,19 @@ struct Inner {
     /// The calls other runs made of this run that it has not answered yet, queued or taken,
     /// in the order they arrived: each caller's run id, its invoke, and the way to answer.
     answers: Vec<(String, u64, Answer)>,
+    /// The token of each machine invoke and spawned child of this run's published snapshot,
+    /// by id: where its child run's own `Shared` is once it claims it, for saving the tree
+    /// and deciding that it is idle.
+    kids: BTreeMap<u64, Arc<Shared>>,
+    /// A child run that is waiting between steps, its queue empty, with no cancel request,
+    /// no pending call, and only idle child runs as its work: set by its driver each time it
+    /// finds nothing to take, cleared when it takes something.
+    idle: bool,
+    /// The run's parent stopped it with its tree, as a suspend stops it: it takes no more
+    /// steps, and is kept in its parent's saved snapshot.
+    stop: bool,
+    /// The run was closed by its tree being stopped, not by ending.
+    stopped: bool,
 }
 
 /// The way to answer a call (`spec/execution.md#carrying-out-calls`): push an outcome for the
@@ -268,16 +282,70 @@ impl Shared {
         g.inbox.clear();
     }
 
-    /// Closes the run if its inbox is empty and no cancel was requested, and says whether it
-    /// did: the last check of a run about to suspend, made under the lock that pushing takes,
-    /// so that nothing pushed while the run was open is discarded.
-    pub fn close_if_idle(&self) -> bool {
-        let mut g = self.lock();
-        if !g.inbox.is_empty() || g.cancel {
+    /// Closes this run and every child run of its tree if nothing has been pushed onto any of
+    /// them and no cancel was requested, each child run still being idle, and says whether it
+    /// did: the last check of a top-level run about to suspend. The runs are locked in
+    /// pre-order (a parent before its children, children by id) and checked and closed under
+    /// all those locks, the locks that pushing takes, so that nothing pushed while one was
+    /// open is discarded. Each child run is then asked to stop.
+    pub fn close_tree_if_idle(self: &Arc<Self>) -> bool {
+        let mut tree = Vec::new();
+        self.collect_tree(&mut tree);
+        let mut guards: Vec<MutexGuard<'_, Inner>> = tree.iter().map(|s| s.lock()).collect();
+        let quiet = |g: &Inner| g.inbox.is_empty() && !g.cancel;
+        let child_idle = |g: &Inner| g.claimed && g.idle && !g.closed && g.finished.is_none();
+        if !quiet(&guards[0]) || !guards[1..].iter().all(|g| quiet(g) && child_idle(g)) {
             return false;
         }
-        g.closed = true;
+        for (i, g) in guards.iter_mut().enumerate() {
+            g.closed = true;
+            g.stopped = true;
+            g.stop = i > 0;
+        }
         true
+    }
+
+    /// This run and its claimed child runs, to any depth, in pre-order.
+    fn collect_tree(self: &Arc<Self>, out: &mut Vec<Arc<Shared>>) {
+        out.push(self.clone());
+        let kids: Vec<Arc<Shared>> = self.lock().kids.values().cloned().collect();
+        for kid in kids.iter().filter(|k| k.is_claimed()) {
+            kid.collect_tree(out);
+        }
+    }
+
+    /// Keeps `token`, the token of this run's machine invoke or spawned child `id`.
+    pub fn add_kid(&self, id: u64, token: Arc<Shared>) {
+        self.lock().kids.insert(id, token);
+    }
+
+    /// Whether this child run is idle as its driver last found it, and nothing has been
+    /// pushed onto it since.
+    pub fn is_idle_child(&self) -> bool {
+        let g = self.lock();
+        g.claimed && g.idle && !g.closed && g.finished.is_none() && g.inbox.is_empty() && !g.cancel
+    }
+
+    /// Says whether the child run is idle, as its driver has just found it.
+    pub fn set_idle(&self, idle: bool) {
+        self.lock().idle = idle;
+    }
+
+    /// Asks a child run to stop with its tree (`spec/execution.md#child-runs`, "Suspending
+    /// it").
+    pub fn request_stop(&self) {
+        let waker = {
+            let mut g = self.lock();
+            g.stop = true;
+            g.waker.take()
+        };
+        if let Some(w) = waker {
+            w.wake();
+        }
+    }
+
+    pub fn stop_requested(&self) -> bool {
+        self.lock().stop
     }
 
     /// Subscribes `run` to the events in `events` that this run emits, and to its end if
@@ -395,26 +463,64 @@ impl Shared {
     }
 
     /// Publishes the run's saved snapshot as `Saved::new(snap, …)` with `dues`, each timer's
-    /// due time in order, built when it is first read.
+    /// due time in order, built when it is first read. The tokens of invokes and spawned
+    /// children no longer in `snap` are forgotten.
     pub fn publish(&self, snap: Arc<Snapshot>, dues: Vec<u64>) {
         let mut g = self.lock();
+        g.kids.retain(|id, _| {
+            snap.invokes.iter().any(|i| i.id == *id) || snap.spawned.iter().any(|c| c.id == *id)
+        });
         g.saved = Some(Published::Step { snap, dues });
         Inner::wake_saved(g);
     }
 
+    /// The run's saved snapshot as its last step left it, with the saved snapshot of each of
+    /// its child runs that has claimed its invoke and is still open (or was stopped with its
+    /// tree) nested in its entry, as that child's last step left it, and so on below it
+    /// (`spec/execution.md#saved-child-runs`).
     pub fn saved(&self) -> Option<Arc<Saved>> {
-        self.lock().saved()
+        let (saved, kids) = {
+            let mut g = self.lock();
+            (g.saved()?, g.kids.clone())
+        };
+        if kids.is_empty() {
+            return Some(saved);
+        }
+        let mut tree = (*saved).clone();
+        for inv in &mut tree.invokes {
+            inv.child = kids.get(&inv.id).and_then(|k| k.kept()).map(Box::new);
+        }
+        for ch in tree.spawned.iter_mut().flatten() {
+            ch.child = kids.get(&ch.id).and_then(|k| k.kept()).map(Box::new);
+        }
+        Some(Arc::new(tree))
     }
 
-    /// The saved snapshot, `Some(None)` if the run finished without one, or `None` after
-    /// registering `waker` for it.
-    pub fn poll_saved(&self, waker: &Waker) -> Option<Option<Arc<Saved>>> {
-        let mut g = self.lock();
-        if g.saved.is_some() || g.finished.is_some() {
-            return Some(g.saved());
+    /// This child run's saved snapshot, to nest in its parent's, if it is one that is kept: a
+    /// run that has claimed its invoke and published a running snapshot, and that is open or
+    /// was stopped with its tree.
+    fn kept(&self) -> Option<Saved> {
+        {
+            let g = self.lock();
+            if !g.claimed || (g.closed && !g.stopped) {
+                return None;
+            }
         }
-        remember(&mut g.saved_wakers, waker);
-        None
+        let saved = self.saved()?;
+        (saved.status == Status::Running).then(|| (*saved).clone())
+    }
+
+    /// The saved snapshot ([`Shared::saved`]), `Some(None)` if the run finished without one, or
+    /// `None` after registering `waker` for it.
+    pub fn poll_saved(&self, waker: &Waker) -> Option<Option<Arc<Saved>>> {
+        {
+            let mut g = self.lock();
+            if g.saved.is_none() && g.finished.is_none() {
+                remember(&mut g.saved_wakers, waker);
+                return None;
+            }
+        }
+        Some(self.saved())
     }
 
     pub fn request_cancel(&self) {
@@ -631,16 +737,18 @@ impl RunHandle {
         }
     }
 
-    /// Asks a top-level run to suspend: once it is idle (between steps, nothing queued, no
-    /// running invoke, no pending call) it stops without exit effects, writes `suspended`, and its future
-    /// ends with [`crate::RunEnd::Suspended`]. A run that ends first ends as it would have.
-    /// A child run ignores the request.
+    /// Asks a top-level run to suspend: once it and its child runs are idle (between steps,
+    /// nothing queued, no pending call, no running task, call or stub, every child run waiting
+    /// the same way) they stop without exit effects, each writing `suspended`, and its future
+    /// ends with [`crate::RunEnd::Suspended`], its child runs' snapshots nested in its own. A
+    /// run that ends first ends as it would have. A child run ignores the request.
     pub fn suspend(&self) {
         self.shared.request_suspend();
     }
 
     /// The run's saved snapshot as its last step left it (`spec/execution.md#saving-and-restoring`),
-    /// or `None` before it has carried out its start (or restore) step.
+    /// with the snapshot of each of its running child runs nested in it as the child's last
+    /// step left it, or `None` before it has carried out its start (or restore) step.
     pub fn save(&self) -> Option<Saved> {
         self.shared.saved().map(|s| (*s).clone())
     }
@@ -675,6 +783,10 @@ pub(crate) struct InvokeContext {
     /// The child run's [`Shared`], once a run claims it. Until then its inbox holds the
     /// messages the parent sends to the invoke.
     pub token: Arc<Shared>,
+    /// The saved snapshot the run that claims the token restores instead of starting
+    /// (`spec/execution.md#restoring-a-child-run`), from the `invoke.start` or `spawn.start`
+    /// command of the parent's restore.
+    pub saved: Option<Box<Saved>>,
     /// The parent's own, which the child pushes what it emits onto when the parent receives it.
     pub parent_queue: Arc<Shared>,
     /// The child's emitted events that the parent receives: those its machine has an `on`

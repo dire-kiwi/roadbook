@@ -964,13 +964,16 @@ fn restore_and_go_on(c: &LoadedCase, name: &str, text: &str) -> Result<bool, Str
     };
     runner.settle()?;
     // Saved again as the current version: a version 1 snapshot gains an empty `history`, and
-    // a version 1 or 2 one an empty `spawned`.
+    // a version 1 or 2 one an empty `spawned`. Each nested child run is restored as the child
+    // run of its new parent; one that was not saved (a version 3 snapshot's) starts again, so
+    // its new snapshot is not compared.
     let mut expected = saved.clone();
-    expected.run = "x1".into();
+    renumber(&mut expected, "x1");
     expected.snapshot_version = Saved::VERSION;
     expected.history.get_or_insert_default();
     expected.spawned.get_or_insert_default();
-    let again = handle.save().ok_or("no saved snapshot after restoring")?;
+    let mut again = handle.save().ok_or("no saved snapshot after restoring")?;
+    drop_restarted(&mut again, &expected);
     if again.to_canonical() != expected.to_canonical() {
         return Err(format!(
             "saved right after restoring:\n  expected {}\n  actual   {}",
@@ -1010,6 +1013,46 @@ fn restore_and_go_on(c: &LoadedCase, name: &str, text: &str) -> Result<bool, Str
         return Err(problems.join("; "));
     }
     Ok(true)
+}
+
+/// Gives `saved` and the child runs' snapshots nested in it the run ids they have when
+/// `saved` is restored as run `run`.
+fn renumber(saved: &mut Saved, run: &str) {
+    saved.run = run.to_owned();
+    for inv in &mut saved.invokes {
+        if let Some(c) = &mut inv.child {
+            renumber(c, &format!("{run}.{}", inv.id));
+        }
+    }
+    for ch in saved.spawned.iter_mut().flatten() {
+        if let Some(c) = &mut ch.child {
+            renumber(c, &format!("{run}.{}", ch.id));
+        }
+    }
+}
+
+/// Removes from `again` the nested snapshots of child runs that `expected` has none of, at
+/// any depth: those started again from the beginning.
+fn drop_restarted(again: &mut Saved, expected: &Saved) {
+    for inv in &mut again.invokes {
+        let had = expected.invokes.iter().find(|i| i.id == inv.id);
+        match (&mut inv.child, had.and_then(|i| i.child.as_deref())) {
+            (Some(c), Some(e)) => drop_restarted(c, e),
+            (child, _) => *child = None,
+        }
+    }
+    let had = expected.spawned.iter().flatten();
+    let had: Vec<_> = had.collect();
+    for ch in again.spawned.iter_mut().flatten() {
+        let e = had
+            .iter()
+            .find(|c| c.id == ch.id)
+            .and_then(|c| c.child.as_deref());
+        match (&mut ch.child, e) {
+            (Some(c), Some(e)) => drop_restarted(c, e),
+            (child, _) => *child = None,
+        }
+    }
 }
 
 /// The cross-runtime check: every saved snapshot file of the cases is what both runtimes
