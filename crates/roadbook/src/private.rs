@@ -32,8 +32,30 @@ pub fn encode<T: Serialize + ?Sized>(value: &T) -> Result<Value, Defect> {
 }
 
 /// An argument or result decoded as its Rust type, or a host defect.
+///
+/// The defect's message names the value's JSON kind, never the value: a defect is written to
+/// the trace as it is, and the value may be sensitive (`serde_json`'s own message quotes it).
 pub fn decode<T: DeserializeOwned>(value: Value, what: &str) -> Result<T, Defect> {
-    serde_json::from_value(value).map_err(|e| Defect::host(format!("{what} does not decode: {e}")))
+    let kind = json_kind(&value);
+    serde_json::from_value(value).map_err(|e| {
+        let at = match e.classify() {
+            serde_json::error::Category::Data => "its Rust type does not accept it",
+            _ => "it is not JSON its Rust type reads",
+        };
+        Defect::host(format!("{what} does not decode: {kind}, and {at}"))
+    })
+}
+
+/// What kind of JSON value `v` is, without its contents: `a string`, `an object`.
+pub(crate) fn json_kind(v: &Value) -> &'static str {
+    match v {
+        Value::Null => "null",
+        Value::Bool(_) => "a bool",
+        Value::Number(_) => "a number",
+        Value::String(_) => "a string",
+        Value::Array(_) => "a list",
+        Value::Object(_) => "an object",
+    }
 }
 
 /// Takes argument `name` out of `args` and decodes it.
@@ -134,13 +156,18 @@ fn integer(v: &Value) -> Option<i64> {
 }
 
 /// `#[serde(with = "…::wire")]` for fields whose type is built from `int`, `float` and
-/// `duration` with `Option` and `Vec`: an `int` accepts any integral JSON number, a
-/// `duration` is whole milliseconds, and a non-finite `float` is refused rather than
-/// written as `null`.
+/// `duration` with `Option`, `Vec` and `BTreeMap`, and for fields of a generic type whose type
+/// names a type parameter: an `int` accepts any integral JSON number, a `duration` is whole
+/// milliseconds, and a non-finite `float` is refused rather than written as `null`.
 pub mod wire {
+    use std::collections::BTreeMap;
+
     use super::*;
 
-    /// A type built from `i64`, `f64` and `Duration` with `Option` and `Vec`.
+    /// A value with a JSON form: `i64`, `f64` and `Duration` in theirs (above), `String`,
+    /// `bool` and `serde_json::Value`, `Option`, `Vec`, `Box` and `BTreeMap<String, _>` of
+    /// such values, and every type `roadbook::include!` generates or binds to an
+    /// `extern type`, through serde. The bound of a generic type's parameters.
     pub trait Wire: Sized {
         /// The JSON form, or why there is none.
         fn to_wire(&self) -> Result<Value, String>;
@@ -153,7 +180,7 @@ pub mod wire {
             Ok(Value::from(*self))
         }
         fn from_wire(v: Value) -> Result<Self, String> {
-            integer(&v).ok_or_else(|| format!("{v} is not an int"))
+            integer(&v).ok_or_else(|| format!("{} is not an int", super::json_kind(&v)))
         }
     }
 
@@ -164,7 +191,8 @@ pub mod wire {
                 .ok_or_else(|| format!("{self} is not a finite float"))
         }
         fn from_wire(v: Value) -> Result<Self, String> {
-            v.as_f64().ok_or_else(|| format!("{v} is not a float"))
+            v.as_f64()
+                .ok_or_else(|| format!("{} is not a float", super::json_kind(&v)))
         }
     }
 
@@ -177,7 +205,61 @@ pub mod wire {
                 .and_then(|i| u64::try_from(i).ok())
                 .or_else(|| v.as_u64())
                 .map(Duration::from_millis)
-                .ok_or_else(|| format!("{v} is not a duration in milliseconds"))
+                .ok_or_else(|| {
+                    format!("{} is not a duration in milliseconds", super::json_kind(&v))
+                })
+        }
+    }
+
+    /// [`Wire::to_wire`] through the type's `Serialize`.
+    pub fn by_serde<T: Serialize>(v: &T) -> Result<Value, String> {
+        serde_json::to_value(v).map_err(|e| e.to_string())
+    }
+
+    /// [`Wire::from_wire`] through the type's `Deserialize`.
+    pub fn from_serde<T: DeserializeOwned>(v: Value) -> Result<T, String> {
+        serde_json::from_value(v).map_err(|e| e.to_string())
+    }
+
+    macro_rules! by_serde {
+        ($($t:ty),*) => {$(
+            impl Wire for $t {
+                fn to_wire(&self) -> Result<Value, String> {
+                    by_serde(self)
+                }
+                fn from_wire(v: Value) -> Result<Self, String> {
+                    from_serde(v)
+                }
+            }
+        )*};
+    }
+
+    by_serde!(String, bool, Value);
+
+    impl<T: Wire> Wire for Box<T> {
+        fn to_wire(&self) -> Result<Value, String> {
+            T::to_wire(self)
+        }
+        fn from_wire(v: Value) -> Result<Self, String> {
+            T::from_wire(v).map(Box::new)
+        }
+    }
+
+    impl<T: Wire> Wire for BTreeMap<String, T> {
+        fn to_wire(&self) -> Result<Value, String> {
+            self.iter()
+                .map(|(k, v)| Ok((k.clone(), v.to_wire()?)))
+                .collect::<Result<_, String>>()
+                .map(Value::Object)
+        }
+        fn from_wire(v: Value) -> Result<Self, String> {
+            match v {
+                Value::Object(entries) => entries
+                    .into_iter()
+                    .map(|(k, v)| Ok((k, T::from_wire(v)?)))
+                    .collect(),
+                v => Err(format!("{v} is not a map")),
+            }
         }
     }
 
@@ -203,7 +285,7 @@ pub mod wire {
         fn from_wire(v: Value) -> Result<Self, String> {
             match v {
                 Value::Array(items) => items.into_iter().map(T::from_wire).collect(),
-                v => Err(format!("{v} is not a list")),
+                v => Err(format!("{} is not a list", super::json_kind(&v))),
             }
         }
     }

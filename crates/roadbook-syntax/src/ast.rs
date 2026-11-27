@@ -112,12 +112,16 @@ pub struct Decl {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum DeclKind {
-    /// `type Name { fields }`
+    /// `type Name<params> { fields }`. `params` is empty unless the type is generic.
     Record {
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        params: Vec<Ident>,
         fields: Vec<Field>,
     },
-    /// `type Name = T`
+    /// `type Name<params> = T`
     Alias {
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        params: Vec<Ident>,
         target: TypeRef,
     },
     /// `enum Name { A, B }`
@@ -164,9 +168,12 @@ impl DeclKind {
     }
 }
 
-/// `name: T`, in records, errors, events and parameter lists.
+/// `[sensitive] name: T`, in records, errors, events and parameter lists.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Field {
+    /// Written `sensitive name: T`: the value is redacted in trace records.
+    #[serde(skip_serializing_if = "is_false")]
+    pub sensitive: bool,
     pub name: Ident,
     pub ty: TypeRef,
     #[serde(skip)]
@@ -185,8 +192,13 @@ pub struct TypeRef {
 #[serde(rename_all = "camelCase")]
 pub enum TypeKind {
     Builtin(Builtin),
-    /// A declared type: record, alias, enum, error or extern.
+    /// A declared type: record, alias, enum, error or extern; or, inside a generic
+    /// declaration, one of its type parameters.
     Named(Ident),
+    /// `Name<A, B>`: a generic declared type with its type arguments.
+    Generic(Ident, Vec<TypeRef>),
+    /// `map<K, V>`
+    Map(Box<TypeRef>, Box<TypeRef>),
     /// `T[]`
     List(Box<TypeRef>),
     /// `T?`
@@ -286,10 +298,28 @@ impl Body {
             }
         })
     }
+    pub fn children(&self) -> impl Iterator<Item = &ChildrenDecl> {
+        self.items.iter().filter_map(|i| {
+            if let Item::Children(c) = i {
+                Some(c)
+            } else {
+                None
+            }
+        })
+    }
     pub fn initials(&self) -> impl Iterator<Item = &Ident> {
         self.items.iter().filter_map(|i| {
             if let Item::Initial(n) = i {
                 Some(n)
+            } else {
+                None
+            }
+        })
+    }
+    pub fn histories(&self) -> impl Iterator<Item = &History> {
+        self.items.iter().filter_map(|i| {
+            if let Item::History(h) = i {
+                Some(h)
             } else {
                 None
             }
@@ -339,8 +369,8 @@ impl Body {
     }
 }
 
-/// An item of a machine or state body. `Var`, `Event`, `Emits` and `Call` occur only in a
-/// machine body; `Invoke`, `Output`, `Fail` and `done` transitions only in a state.
+/// An item of a machine or state body. `Var`, `Event`, `Emits`, `Call` and `Children` occur
+/// only in a machine body; `Invoke`, `Output`, `Fail` and `done` transitions only in a state.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Item {
@@ -350,6 +380,8 @@ pub enum Item {
     Emits(EventDecl),
     /// `call name(params) [-> T] [! E | F]`
     Call(CallDecl),
+    /// `children name: Machine by Key`
+    Children(ChildrenDecl),
     /// `initial Name`
     Initial(Ident),
     State(State),
@@ -361,6 +393,8 @@ pub enum Item {
     Output(FinalValue),
     /// `fail expr`
     Fail(FinalValue),
+    /// `[deep] history Name`
+    History(History),
 }
 
 impl Item {
@@ -369,21 +403,26 @@ impl Item {
             Item::Var(v) => v.span,
             Item::Event(e) | Item::Emits(e) => e.span,
             Item::Call(c) => c.span,
+            Item::Children(c) => c.span,
             Item::Initial(n) => n.span,
             Item::State(s) => s.span,
             Item::Entry(h) | Item::Exit(h) => h.span,
             Item::Transition(t) => t.span,
             Item::Invoke(i) => i.span,
             Item::Output(v) | Item::Fail(v) => v.span,
+            Item::History(h) => h.span,
         }
     }
 }
 
-/// `var name: T [= expr]`
+/// `[sensitive] var name: T [= expr]`
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Var {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub doc: Option<Doc>,
+    /// Written `sensitive var`: the value is redacted in trace records.
+    #[serde(skip_serializing_if = "is_false")]
+    pub sensitive: bool,
     pub name: Ident,
     pub ty: TypeRef,
     pub init: Option<Expr>,
@@ -416,6 +455,18 @@ pub struct CallDecl {
     pub span: Span,
 }
 
+/// `children name: Machine by Key`: a keyed collection of spawned children.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct ChildrenDecl {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc: Option<Doc>,
+    pub name: Ident,
+    pub machine: Ident,
+    pub key: TypeRef,
+    #[serde(skip)]
+    pub span: Span,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum StateKind {
@@ -433,6 +484,19 @@ pub struct State {
     pub kind: StateKind,
     pub name: Ident,
     pub body: Body,
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `history Name` or `deep history Name`: a history pseudo-state of the state it is written
+/// in.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct History {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc: Option<Doc>,
+    pub deep: bool,
+    pub name: Ident,
+    /// From `history` or `deep` to the end of the name.
     #[serde(skip)]
     pub span: Span,
 }
@@ -473,13 +537,22 @@ pub struct Transition {
 pub enum Trigger {
     /// `on Event` or `on *`
     On(Pattern),
-    /// `on name.Event`: an event emitted by an invoked child or a `ref`.
+    /// `on name.Event`: an event emitted by an invoked child, a `ref` or a spawned child.
     Receive {
         from: Ident,
         event: Ident,
     },
     /// `on name`: a call of the machine's call `name` (a lower-case name, no dot).
     Call(Ident),
+    /// `on name.done`: a spawned child of the collection `name` ended with an output.
+    ChildDone {
+        from: Ident,
+    },
+    /// `on name.fail Error` or `on name.fail *`: a spawned child of `name` failed.
+    ChildFail {
+        from: Ident,
+        error: Pattern,
+    },
     /// `after expr`
     After(Expr),
     Always,
@@ -569,6 +642,10 @@ pub enum Effect {
     Emit(Message),
     /// `reply name done [value]` or `reply name fail error`
     Reply(Reply),
+    /// `spawn name[key] = Machine(args)`
+    Spawn(Spawn),
+    /// `stop name[key]`
+    Stop(Stop),
 }
 
 impl Effect {
@@ -578,6 +655,8 @@ impl Effect {
             Effect::Do(c) => c.span,
             Effect::Send(m) | Effect::Emit(m) => m.span,
             Effect::Reply(r) => r.span,
+            Effect::Spawn(s) => s.span,
+            Effect::Stop(s) => s.span,
         }
     }
 }
@@ -618,6 +697,9 @@ pub struct Message {
     /// The receiver of a `send`; `None` for an `emit`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub to: Option<Ident>,
+    /// `[key]` or `.*` after the receiver of a `send` to a children collection.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key: Option<SendKey>,
     pub event: Ident,
     /// The fields of the record body, in the order written. Empty without a body.
     pub fields: Vec<FieldValue>,
@@ -625,6 +707,41 @@ pub struct Message {
     #[serde(skip)]
     pub value_span: Span,
     /// After `send` or `emit`, to the end.
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// Which children of a collection a `send` goes to.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SendKey {
+    /// `send name[key].Event`
+    Key(Expr),
+    /// `send name.*.Event`
+    All {
+        #[serde(skip)]
+        span: Span,
+    },
+}
+
+/// `spawn name[key] = Machine(args)`
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Spawn {
+    pub children: Ident,
+    pub key: Expr,
+    pub machine: Ident,
+    pub args: Vec<Expr>,
+    /// From `spawn` to the closing `)`.
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `stop name[key]`
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Stop {
+    pub children: Ident,
+    pub key: Expr,
+    /// From `stop` to the closing `]`.
     #[serde(skip)]
     pub span: Span,
 }
@@ -659,8 +776,29 @@ pub struct Invoke {
     /// `as name`: the name the state uses to talk to the invoked machine.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alias: Option<Ident>,
+    /// `retry N [on E | …] [after delay]`, after the arguments and any `as`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retry: Option<Retry>,
     /// `done` and `fail` transitions, in source order.
     pub outcomes: Vec<Transition>,
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `retry N [on E | …] [after delay]` on an invoke: run it again, up to `count` more times,
+/// when it fails with one of `errors` (every declared error if empty), waiting `delay` first.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Retry {
+    pub count: i64,
+    #[serde(skip)]
+    pub count_span: Span,
+    /// The errors after `on`, in the order written; empty without `on`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<Ident>,
+    /// The delay after `after`, in which `attempt` is in scope.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delay: Option<Expr>,
+    /// From `retry` to the end of the clause.
     #[serde(skip)]
     pub span: Span,
 }
@@ -851,4 +989,8 @@ impl Expr {
             | ExprKind::Enum(..) => {}
         }
     }
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
 }

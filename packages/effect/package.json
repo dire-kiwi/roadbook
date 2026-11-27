@@ -5,7 +5,8 @@
   "description": "The Roadbook driver and public API on Effect v4",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./durable": "./src/entry-durable.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.examples.json --noEmit",

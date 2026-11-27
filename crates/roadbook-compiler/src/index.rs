@@ -65,6 +65,11 @@ pub enum SymbolKind {
     /// A `call` a machine answers; its parent is the machine, and its parameters are its
     /// members.
     Call,
+    /// A type parameter of a generic record or alias (`T` in `type Page<T>`); its parent is
+    /// the declaration.
+    TypeParameter,
+    /// A `children` collection of a machine; its parent is the machine.
+    Children,
 }
 
 impl SymbolKind {
@@ -100,6 +105,7 @@ impl SymbolKind {
                 | SymbolKind::Event
                 | SymbolKind::EmittedEvent
                 | SymbolKind::State
+                | SymbolKind::TypeParameter
         )
     }
 
@@ -124,6 +130,8 @@ impl SymbolKind {
             SymbolKind::State => "state",
             SymbolKind::InvokeName => "invoked machine's name",
             SymbolKind::Call => "call",
+            SymbolKind::TypeParameter => "type parameter",
+            SymbolKind::Children => "children collection",
         }
     }
 }
@@ -293,7 +301,12 @@ impl SymbolIndex {
 
 /// `name: T`, as in a parameter list or a record.
 pub(crate) fn field_text(f: &Field) -> String {
-    field_text_of(&f.name, &f.ty)
+    let text = field_text_of(&f.name, &f.ty);
+    if f.sensitive {
+        format!("sensitive {text}")
+    } else {
+        text
+    }
 }
 
 pub(crate) fn field_text_of(name: &Ident, ty: &TypeRef) -> String {
@@ -330,14 +343,26 @@ pub(crate) fn result_text(returns: Option<&TypeRef>, errors: &[Ident]) -> String
     s
 }
 
+/// `<T, U>`, or nothing for a declaration that is not generic.
+fn type_params(params: &[Ident]) -> String {
+    if params.is_empty() {
+        return String::new();
+    }
+    let names: Vec<&str> = params.iter().map(|p| p.name.as_str()).collect();
+    format!("<{}>", names.join(", "))
+}
+
 /// The kind and one-line signature of a top-level declaration, as in [`Symbol::signature`].
 pub fn declaration(d: &Decl) -> (SymbolKind, String) {
     let n = &d.name.name;
     match &d.kind {
-        DeclKind::Record { fields } => (SymbolKind::Record, format!("type {n}{}", braces(fields))),
-        DeclKind::Alias { target } => (
+        DeclKind::Record { params, fields } => (
+            SymbolKind::Record,
+            format!("type {n}{}{}", type_params(params), braces(fields)),
+        ),
+        DeclKind::Alias { params, target } => (
             SymbolKind::Alias,
-            format!("type {n} = {}", type_text(target)),
+            format!("type {n}{} = {}", type_params(params), type_text(target)),
         ),
         DeclKind::Enum { variants } => {
             let vs: Vec<&str> = variants.iter().map(|v| v.name.as_str()).collect();

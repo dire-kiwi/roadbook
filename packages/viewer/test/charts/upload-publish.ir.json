@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -13,15 +13,18 @@
   "types": {
     "Draft": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "title",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -36,15 +39,18 @@
     },
     "Post": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "title",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "url",
           "type": "Url",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -59,15 +65,18 @@
     },
     "File": {
       "kind": "record",
+      "params": [],
       "fields": [
         {
           "name": "name",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "size",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -82,6 +91,7 @@
     },
     "Url": {
       "kind": "alias",
+      "params": [],
       "type": "string",
       "doc": "Where a stored file can be fetched.",
       "span": {
@@ -98,6 +108,7 @@
         {
           "name": "reason",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -117,11 +128,13 @@
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -140,11 +153,13 @@
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -165,6 +180,7 @@
         {
           "name": "percent",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -184,11 +200,13 @@
         {
           "name": "title",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "url",
           "type": "Url",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -208,11 +226,13 @@
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -234,6 +254,7 @@
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -266,6 +287,7 @@
         {
           "name": "draft",
           "type": "Draft",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -277,6 +299,7 @@
         {
           "name": "percent",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -295,6 +318,7 @@
         {
           "name": "url",
           "type": "Url",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -308,6 +332,7 @@
         {
           "name": "post",
           "type": "Post",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -321,6 +346,7 @@
         {
           "name": "failure",
           "type": "UploadFailed",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -358,6 +384,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -489,6 +516,7 @@
                       "machine": "Upload",
                       "state": "Publish.Uploading"
                     },
+                    "key": null,
                     "event": "Pause",
                     "value": {
                       "kind": "record",
@@ -523,6 +551,7 @@
                       "machine": "Upload",
                       "state": "Publish.Uploading"
                     },
+                    "key": null,
                     "event": "Resume",
                     "value": {
                       "kind": "record",
@@ -758,6 +787,7 @@
         {
           "name": "file",
           "type": "File",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -769,6 +799,7 @@
         {
           "name": "offset",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -787,6 +818,7 @@
         {
           "name": "url",
           "type": "Url",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -800,6 +832,7 @@
         {
           "name": "failure",
           "type": "UploadFailed",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -841,6 +874,7 @@
             {
               "name": "percent",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -855,6 +889,7 @@
         }
       },
       "calls": {},
+      "children": {},
       "root": {
         "id": "Upload",
         "name": "Upload",

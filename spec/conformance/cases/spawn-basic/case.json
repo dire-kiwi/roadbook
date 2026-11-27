@@ -1,0 +1,67 @@
+{
+  "description": "A hub spawns two sessions under keys, as spawned children r1.1 and r1.2 that start once the step has settled. A send by key reaches one child, whose emitted event the hub takes with `key` bound to that child's key; `send sessions.*` sends a message of its own to each running child, in the order they started. A child that ends by itself emits from its exit effects, then its outcome reaches `on sessions.done` with its key. `stop` stops a child: its cancel step runs, and what it emits there is stale for the hub. When the hub finishes, it runs its exit effects, then stops the child still running.",
+  "requires": [
+    "messaging",
+    "spawn"
+  ],
+  "chart": "charts/hub.road",
+  "machine": "Hub",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Join",
+        "id": "a",
+        "name": "Ann"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Join",
+        "id": "b",
+        "name": "Bob"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Tell",
+        "id": "a",
+        "text": "hi"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Shout",
+        "text": "all"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Leave",
+        "id": "b"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Kick",
+        "id": "a"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Join",
+        "id": "c",
+        "name": "Cid"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    }
+  ],
+  "status": "done"
+}

@@ -12,6 +12,10 @@ pub const CASES: &[(&str, &str)] = &[
         "records_and_aliases",
         "type A { x: int, y: string[]?, z: B? }\ntype Id = string\ntype Empty {}\ntype Lists = int[][]\n",
     ),
+    (
+        "generics_and_maps",
+        "type Page<T> { items: T[], next: string? }\ntype Pair<A, B,> { first: A, second: B }\ntype Dict<T> = map<string, T>\ntype Deep = map<UserId, Page<Pair<int, map<string, bool[]>?>>[]>?\nfn f(m: Dict<int>, p: Page<Order>[]) -> map<string, int,>\n",
+    ),
     ("enum", "enum Role { Customer, Admin, }\n"),
     (
         "errors",
@@ -35,6 +39,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  var a: int = 1\n  var b: string?\n  var c: Order[]\n  event Go\n  event Change { value: int, note: string }\n  initial S\n  state S {}\n}\n",
     ),
     (
+        "sensitive",
+        "type Login { user: string, sensitive password: string, sensitive: bool }\nerror Denied { sensitive token: string }\ntask check(sensitive password: string) -> bool\nmachine M(sensitive key: string) {\n  /// The session.\n  sensitive var token: string?\n  var sensitive: int = 0\n  event Submit { sensitive sensitive: string }\n  emits Done { sensitive code: int }\n  initial S\n  state S {}\n}\n",
+    ),
+    (
         "states",
         "machine M() {\n  initial A\n  state A {\n    initial Inner\n    state Inner { on Go -> Done }\n    final state Done {}\n  }\n  parallel state P {\n    state R1 {}\n    state R2 {}\n  }\n  final state Z {}\n}\n",
     ),
@@ -55,8 +63,16 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  state A {\n    invoke charge(order, user) {\n      done -> B  set r = result\n      fail CardDeclined -> C  set d = error\n      fail * -> D\n      fail Gateway {\n        if attempts < 3 -> Backoff\n        else -> GaveUp\n      }\n    }\n  }\n  state B {\n    invoke Checkout() {\n      done -> A\n    }\n  }\n}\n",
     ),
     (
+        "retry",
+        "machine M() {\n  state A {\n    invoke charge(order) retry 3 on Gateway | Timeout after backoff(attempt) {\n      done -> B\n      fail * -> C\n    }\n  }\n  state B {\n    invoke Checkout() retry 1 {\n      done -> A\n    }\n  }\n  state C {\n    invoke fetch() retry 2 after (Cfg { ms: 5 }) {\n      done -> A\n    }\n  }\n}\n",
+    ),
+    (
         "messaging",
         "machine M(peer: ref Peer, peers: ref Peer[]?) {\n  emits Progress { percent: int }\n  emits Done\n  state A {\n    invoke Upload(file) as upload {\n      done -> B  emit Done\n    }\n    on Pause send upload.Pause\n    on upload.Progress set p = event.percent  emit Progress { percent: p, }\n    on peer.Reserved -> B  send peer.Ack { id: 1 }  do log()\n    entry send peer.Hello {}\n  }\n}\n",
+    ),
+    (
+        "spawn",
+        "machine M() {\n  /// The sessions.\n  children sessions: Session by string\n  children children: Job by int\n  on Connected spawn sessions[event.id] = Session(event.socket, 1)\n  on Gone stop sessions[event.id]  stop children[2]\n  on All send sessions.*.Notify { text: \"hi\" }\n  on One send sessions[event.id].Notify { text: event.text, }\n  on sessions.Typing do log(key)\n  on sessions.done -> A  set n = n - 1\n  on sessions.fail Lost do log(key)\n  on children.fail * do log(error)\n  state A {}\n}\n",
     ),
     (
         "final_states",

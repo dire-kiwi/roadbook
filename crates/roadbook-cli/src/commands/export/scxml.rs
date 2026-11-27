@@ -34,6 +34,11 @@
 //!   `reply x fail e` the same with the event `error.E`, `E` the error's type; `do f(…)` the
 //!   extension element `<rb:do>`. Event fields, a record reply's fields and arguments are
 //!   `<param>`s; any other value is the `<content>`.
+//! - **Spawned children**, which SCXML has no word for: a `children` collection is a `<data>`
+//!   with `rb:children` (its machine) and `rb:key`; `spawn c[k] = M(…)` the element `<rb:spawn>`
+//!   and `stop c[k]` `<rb:stop>`, each with `children` and `key`; `send c[k].E` and
+//!   `send c.*.E` a `<send>` with `targetexpr` `c[k]` or `c.*`; `on c.done` is the event
+//!   `done.spawn.c`, `on c.fail E` is `error.E.spawn.c`, and `on c.E` is `c.E`.
 //! - **Invokes** of a task have type `urn:roadbook:task` and the task's name as `src`; of a
 //!   machine, SCXML's type and `src="<Machine>.scxml"`; of a call, type `urn:roadbook:call` and
 //!   `src="x.c"`, the `ref` and the call as the invoke writes them. A final state's `output` is
@@ -202,7 +207,7 @@ pub fn document(ir: &Ir, name: &str, m: &Machine) -> String {
         attrs.push(("rb:strict", "true".into()));
     }
     w.open(0, "scxml", &attrs, false);
-    if !m.params.is_empty() || !m.vars.is_empty() {
+    if !m.params.is_empty() || !m.vars.is_empty() || !m.children.is_empty() {
         w.open(1, "datamodel", &[], false);
         for p in &m.params {
             w.comment(2, &p.doc);
@@ -220,6 +225,15 @@ pub fn document(ir: &Ir, name: &str, m: &Machine) -> String {
                 attrs.push(("expr", init.text.clone()));
             }
             attrs.push(("rb:type", v.ty.to_string()));
+            w.open(2, "data", &attrs, true);
+        }
+        for (name, c) in &m.children {
+            w.comment(2, &c.doc);
+            let attrs = [
+                ("id", name.clone()),
+                ("rb:children", c.machine.clone()),
+                ("rb:key", c.key.to_string()),
+            ];
             w.open(2, "data", &attrs, true);
         }
         w.close(1, "datamodel");
@@ -298,6 +312,9 @@ impl Writer<'_> {
             StateKind::Atomic | StateKind::Compound => "state",
             StateKind::Parallel => "parallel",
             StateKind::Final => "final",
+            StateKind::History | StateKind::DeepHistory => {
+                unreachable!("history states are written by `history`")
+            }
         };
         let mut attrs = vec![("id", xml_id(&s.id))];
         if let Some(initial) = &s.initial {
@@ -395,7 +412,11 @@ impl Writer<'_> {
             self.transition(s, t, d);
         }
         for c in &s.states {
-            self.state(c, d);
+            if c.kind.is_history() {
+                self.history(s, c, d);
+            } else {
+                self.state(c, d);
+            }
         }
         if let Some(output) = &s.output {
             self.open(d, "donedata", &[], false);
@@ -403,6 +424,39 @@ impl Writer<'_> {
             self.close(d, "donedata");
         }
         self.close(depth, tag);
+    }
+
+    /// `<history>`, with the default transition SCXML requires: the parent's default entry,
+    /// which is what Roadbook enters when the history state has recorded nothing.
+    fn history(&mut self, parent: &State, h: &State, depth: usize) {
+        self.comment(depth, &h.doc);
+        let ty = if h.kind == StateKind::DeepHistory {
+            "deep"
+        } else {
+            "shallow"
+        };
+        self.open(
+            depth,
+            "history",
+            &[("id", xml_id(&h.id)), ("type", ty.to_string())],
+            false,
+        );
+        let targets: Vec<String> = match &parent.initial {
+            Some(initial) => vec![xml_id(initial)],
+            None => parent
+                .states
+                .iter()
+                .filter(|c| !c.kind.is_history())
+                .map(|c| xml_id(&c.id))
+                .collect(),
+        };
+        self.open(
+            depth + 1,
+            "transition",
+            &[("target", targets.join(" "))],
+            true,
+        );
+        self.close(depth, "history");
     }
 
     fn transition(&mut self, s: &State, t: &Transition, depth: usize) {
@@ -439,6 +493,47 @@ impl Writer<'_> {
             Trigger::Always => None,
             Trigger::Done => Some(format!("done.state.{}", xml_id(&s.id))),
             Trigger::InvokeDone => Some(format!("done.invoke.{}", invoke_id(&s.id))),
+            Trigger::SpawnDone { children } => Some(format!("done.spawn.{children}")),
+            Trigger::SpawnFail { children, error } => {
+                let errors: Vec<&str> = if error == "*" {
+                    let listed: Vec<&str> = s
+                        .transitions
+                        .iter()
+                        .filter_map(|o| match &o.trigger {
+                            Trigger::SpawnFail { children: c, error }
+                                if c == children && error != "*" =>
+                            {
+                                Some(error.as_str())
+                            }
+                            _ => None,
+                        })
+                        .collect();
+                    self.m
+                        .children
+                        .get(children)
+                        .and_then(|c| self.ir.machines.get(&c.machine))
+                        .map(|m| m.errors.as_slice())
+                        .unwrap_or_default()
+                        .iter()
+                        .map(String::as_str)
+                        .filter(|e| !listed.contains(e))
+                        .collect()
+                } else {
+                    vec![error.as_str()]
+                };
+                if errors.is_empty() {
+                    self.comment(
+                        depth,
+                        "fail * matches no error here: another branch lists each",
+                    );
+                    return;
+                }
+                let names: Vec<String> = errors
+                    .iter()
+                    .map(|e| format!("error.{e}.spawn.{children}"))
+                    .collect();
+                Some(names.join(" "))
+            }
             Trigger::InvokeFail { error } => {
                 let errors: Vec<&str> = if error == "*" {
                     let listed: Vec<&str> = s
@@ -536,11 +631,20 @@ impl Writer<'_> {
                         self.close(depth, "rb:do");
                     }
                 }
-                Effect::Send { to, event, value } => {
+                Effect::Send {
+                    to,
+                    key,
+                    event,
+                    value,
+                } => {
                     let target = match (to.kind, &to.state) {
                         (AddressKind::Child, Some(state)) => {
                             ("target", format!("#_{}", invoke_id(state)))
                         }
+                        (AddressKind::Children, _) => match key {
+                            Some(k) => ("targetexpr", format!("{}[{}]", to.name, k.text)),
+                            None => ("targetexpr", format!("{}.*", to.name)),
+                        },
                         _ => ("targetexpr", to.name.clone()),
                     };
                     self.send(depth, vec![("event", event.clone()), target], value);
@@ -570,6 +674,29 @@ impl Writer<'_> {
                         Some(value) => self.send(depth, attrs, value),
                         None => self.open(depth, "send", &attrs, true),
                     }
+                }
+                Effect::Spawn {
+                    children,
+                    machine,
+                    key,
+                    args,
+                } => {
+                    let params = self.ir.machines.get(machine).map(|m| &m.params);
+                    let attrs = [
+                        ("children", children.clone()),
+                        ("key", key.text.clone()),
+                        ("src", format!("{machine}.scxml")),
+                    ];
+                    let empty = args.is_empty();
+                    self.open(depth, "rb:spawn", &attrs, empty);
+                    if !empty {
+                        self.params(params, args, depth + 1);
+                        self.close(depth, "rb:spawn");
+                    }
+                }
+                Effect::Stop { children, key } => {
+                    let attrs = [("children", children.clone()), ("key", key.text.clone())];
+                    self.open(depth, "rb:stop", &attrs, true);
                 }
             }
         }

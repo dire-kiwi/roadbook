@@ -87,6 +87,19 @@ describe('scopes', () => {
     expect(await scopesAt('strict machine Lock() {', 'strict')).toContain('storage.modifier.strict.roadbook')
     expect(await scopesAt('strict machine Lock() {', 'Lock')).toContain('entity.name.type.machine.roadbook')
     expect(await scopesAt('    on Knock if event.loud ignore', 'ignore')).toContain('keyword.control.ignore.roadbook')
+    expect(await scopesAt('type Page<T> { items: map<string, T> }', 'map')).toContain('support.type.primitive.roadbook')
+    expect(await scopesAt('type Page<T> { items: map<string, T> }', 'Page')).toContain('entity.name.type.roadbook')
+  })
+
+  it('marks history states, and history and deep as names elsewhere', async () => {
+    expect(await scopesAt('    history Last', 'history')).toContain('storage.type.history.roadbook')
+    expect(await scopesAt('    history Last', 'Last')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt('    deep history All', 'deep')).toContain('storage.modifier.deep.roadbook')
+    expect(await scopesAt('    deep history All', 'history')).toContain('storage.type.history.roadbook')
+    expect(await scopesAt('    deep history All', 'All')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt('  var history: int', 'history')).toContain('variable.other.definition.roadbook')
+    expect(await scopesAt('    always set deep = history + 1', 'history')).toContain('variable.other.roadbook')
+    expect(await scopesAt('    always set deep = history + 1', 'deep')).not.toContain('storage.modifier.deep.roadbook')
   })
 
   it('marks states, events, calls and values', async () => {
@@ -116,6 +129,30 @@ describe('scopes', () => {
     expect(await scopesAt('invoke inventory.reserve(id) {', 'reserve')).toContain('entity.name.function.call.roadbook')
     expect(await scopesAt('fail Unanswered -> A', 'Unanswered')).toContain('support.type.builtin.error.roadbook')
     expect(await scopesAt('fail OutOfStock -> A', 'OutOfStock')).toContain('entity.name.type.error.roadbook')
+  })
+
+  it('marks keyed spawn only where it is keyed spawn', async () => {
+    const decl = '  children sessions: Session by SessionId'
+    expect(await scopesAt(decl, 'children')).toContain('storage.type.children.roadbook')
+    expect(await scopesAt(decl, 'sessions')).toContain('variable.other.definition.roadbook')
+    expect(await scopesAt(decl, 'Session')).toContain('entity.name.type.machine.roadbook')
+    expect(await scopesAt(decl, 'by')).toContain('keyword.other.by.roadbook')
+    expect(await scopesAt('type T { children: int, by: string }', 'children')).toContain('variable.other.property.roadbook')
+    const spawn = 'on J spawn sessions[event.id] = Session(key)  stop sessions[key]'
+    expect(await scopesAt(spawn, 'spawn')).toContain('keyword.other.effect.roadbook')
+    expect(await scopesAt(spawn, 'stop')).toContain('keyword.other.effect.roadbook')
+    expect(await scopesAt(spawn, 'sessions')).toContain('variable.other.roadbook')
+    expect(await scopesAt(spawn, 'key')).toContain('variable.language.roadbook')
+    expect(await scopesAt('action stop()', 'stop')).toContain('entity.name.function.roadbook')
+    expect(await scopesAt('on X do stop()', 'stop')).toContain('entity.name.function.call.roadbook')
+    expect(await scopesAt('send sessions[key].Notify', 'Notify')).toContain('entity.name.type.event.roadbook')
+    expect(await scopesAt('send sessions.*.Notify', '*')).toContain('keyword.operator.wildcard.roadbook')
+    expect(await scopesAt('send sessions.*.Notify', 'Notify')).toContain('entity.name.type.event.roadbook')
+    expect(await scopesAt('on sessions.done do f(key)', 'done')).toContain('keyword.control.done.roadbook')
+    expect(await scopesAt('on sessions.fail Lost -> A', 'fail')).toContain('keyword.control.fail.roadbook')
+    expect(await scopesAt('on sessions.fail Lost -> A', 'Lost')).toContain('entity.name.type.error.roadbook')
+    expect(await scopesAt('emit E { key: event.text }', 'key')).toContain('variable.other.property.roadbook')
+    expect(await scopesAt('emit E { k: event.key }', 'key')).toContain('variable.other.property.roadbook')
   })
 
   it('marks literals', async () => {

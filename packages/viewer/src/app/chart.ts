@@ -34,6 +34,12 @@ import { Viewport } from './viewport.ts'
 
 type ChartData = Extract<PageData, { kind: 'chart' }>
 
+/** How a machine opened from another was reached: drilled into from an invoke or a spawn, or followed. */
+type Via = 'invoke' | 'spawn' | 'link'
+
+/** A button's `data-via`: `invoke` or `spawn` when it drills into a child, else a link. */
+const via = (b: HTMLElement): Via => (b.dataset.via === 'invoke' || b.dataset.via === 'spawn' ? b.dataset.via : 'link')
+
 const SHELL = `
 <header class="rb-top">
   <a class="rb-brand" id="rb-brand">Roadbook<small id="rb-source"></small></a>
@@ -226,15 +232,16 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
   }
 
   /**
-   * Opens a machine. `invoke`: drilled into from an invoke, `link`: reached from a ref or a
-   * message, both added to the trail; `tab`: a fresh trail.
+   * Opens a machine. `invoke`: drilled into from an invoke, `spawn`: from a spawn or a
+   * collection of children, `link`: reached from a ref or a message, all added to the trail;
+   * `tab`: a fresh trail.
    */
-  function openMachine(name: string, how: 'invoke' | 'link' | 'tab', select: Selection = null) {
+  function openMachine(name: string, how: Via | 'tab', select: Selection = null) {
     if (!own(ir.machines, name)) return
     if (how === 'tab') trail = [{ name, via: '' }]
     else {
       const at = trail.findIndex((t) => t.name === name)
-      trail = at >= 0 ? trail.slice(0, at + 1) : [...trail, { name, via: how === 'invoke' ? 'invokes ›' : '›' }]
+      trail = at >= 0 ? trail.slice(0, at + 1) : [...trail, { name, via: how === 'invoke' ? 'invokes ›' : how === 'spawn' ? 'spawns ›' : '›' }]
     }
     return show(name, { select })
   }
@@ -442,7 +449,8 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
       r.setAttribute('y', String(-gap))
       r.setAttribute('width', String(w + 2 * gap))
       r.setAttribute('height', String(ht + 2 * gap))
-      r.setAttribute('rx', String(8 + gap))
+      // As round as the box: a history state's circle gets a round ring.
+      r.setAttribute('rx', String(Math.max(8, Number(box.getAttribute('rx')) || 0) + gap))
       g.insertBefore(r, box)
     }
     const root = own(ir.machines, current)?.root.id
@@ -461,6 +469,8 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     if (msg) return openEvent(msg.dataset.event!)
     const link = target.closest<SVGElement>('.rb-machine-link')
     if (link) return void openMachine(link.dataset.machine!, 'invoke')
+    const spawn = target.closest<SVGElement>('.rb-spawn')
+    if (spawn) return void openMachine(spawn.dataset.machine!, 'spawn')
     const tr = target.closest<SVGElement>('[data-transition]')
     if (tr) {
       const owner = tr.closest<SVGElement>('[data-state]')
@@ -492,10 +502,10 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     trail = trail.slice(0, Number(b.dataset.trail) + 1)
     void show(trail[trail.length - 1]!.name)
   })
-  // The signature's `ref Machine` types open that machine.
+  // The signature's `ref Machine` types, and the machines of its collections of children, open that machine.
   $(root, '#rb-machine-head').addEventListener('click', (ev) => {
     const b = (ev.target as Element).closest<HTMLElement>('[data-open-machine]')
-    if (b) void openMachine(b.dataset.openMachine!, 'link')
+    if (b) void openMachine(b.dataset.openMachine!, via(b))
   })
   aside.addEventListener('click', (ev) => {
     const b = (ev.target as Element).closest<HTMLElement>('button')
@@ -507,8 +517,8 @@ export function mountChart(data: ChartData, elk: ElkLike, measure: Measure) {
     }
     if (b.closest('.rb-mode-panel')) return // the mode's own controls
     if (b.dataset.openMachine) {
-      // Drilling into an invoke, or following a ref, a message or a caller.
-      void openMachine(b.dataset.openMachine, b.dataset.via === 'invoke' ? 'invoke' : 'link')
+      // Drilling into an invoke or a spawn, or following a ref, a message or a caller.
+      void openMachine(b.dataset.openMachine, via(b))
     } else if (b.dataset.openEvent) openEvent(b.dataset.openEvent)
     else if (b.dataset.goto) {
       const [machine, sel] = JSON.parse(b.dataset.goto) as [string, Selection]

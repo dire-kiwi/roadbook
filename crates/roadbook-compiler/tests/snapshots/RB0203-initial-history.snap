@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0203]: `initial Last`: `M.Work.Last` is a history state
+ --> RB0203-initial-history.road:5:13
+  |
+5 |     initial Last
+  |             ^^^^
+  |
+  = help: `initial` names the child state entered when `M.Work` is entered with no history; a history state is only a transition's target

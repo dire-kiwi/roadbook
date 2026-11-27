@@ -14,7 +14,7 @@ function page(over: Partial<PageOptions> = {}): string {
     bridgeUri: 'https://file+.vscode-resource.vscode-cdn.net/ext/dist/bridge.js',
     title: 'Preview checkout.road',
     entry: 'examples/shop/checkout.road',
-    irText: '{"irVersion":"0.5","sources":[],"machines":{"M":{"doc":"</script><script>alert(1)</script><!--"}}}',
+    irText: '{"irVersion":"0.7","sources":[],"machines":{"M":{"doc":"</script><script>alert(1)</script><!--"}}}',
     config: { theme: 'dark', view: { machine: 'M', selection: null }, uri: 'file:///x/checkout.road' },
     ...over,
   })

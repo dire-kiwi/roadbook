@@ -147,7 +147,10 @@ fn state_exprs_mut(s: &mut State, f: &mut impl FnMut(&mut Expr)) {
                 Effect::Do { args, .. } => {
                     args.iter_mut().for_each(|a| exprs_mut(a, &mut |x| f(x)))
                 }
-                Effect::Send { value, .. } | Effect::Emit { value, .. } => {
+                Effect::Send { key, value, .. } => {
+                    if let Some(k) = key {
+                        exprs_mut(k, &mut |x| f(x));
+                    }
                     exprs_mut(value, &mut |x| f(x))
                 }
                 Effect::Reply { call, value, .. } => {
@@ -156,6 +159,12 @@ fn state_exprs_mut(s: &mut State, f: &mut impl FnMut(&mut Expr)) {
                         exprs_mut(v, &mut |x| f(x));
                     }
                 }
+                Effect::Emit { value, .. } => exprs_mut(value, &mut |x| f(x)),
+                Effect::Spawn { key, args, .. } => {
+                    exprs_mut(key, &mut |x| f(x));
+                    args.iter_mut().for_each(|a| exprs_mut(a, &mut |x| f(x)))
+                }
+                Effect::Stop { key, .. } => exprs_mut(key, &mut |x| f(x)),
             }
         }
     };
@@ -396,7 +405,7 @@ fn a_peer_contributes_only_its_interface_to_the_hash() {
     changed.machines["Inventory"].calls["reserve"].params.pop();
     assert_ne!(machine_hash(&changed, "Order").unwrap(), order);
     let mut changed = ir.clone();
-    let roadbook_ir::TypeDef::Record { fields } = &mut changed.types["Item"].def else {
+    let roadbook_ir::TypeDef::Record { fields, .. } = &mut changed.types["Item"].def else {
         panic!("Item is a record")
     };
     fields[1].ty = "float".parse().unwrap();
@@ -406,4 +415,32 @@ fn a_peer_contributes_only_its_interface_to_the_hash() {
     let mut missing = ir.clone();
     missing.machines.shift_remove("Inventory");
     assert!(machine_hash(&missing, "Order").is_err());
+}
+
+/// An alias that refers to itself, which only a hand-written IR can have, is found, through
+/// type arguments and maps too; the compiled IR has none.
+#[test]
+fn alias_cycles_are_found() {
+    let mut ir = fixture();
+    assert_eq!(ir.alias_cycle(), None);
+    let span = ir.types["Order"].span;
+    let alias = |params: &[&str], ty: &str| roadbook_ir::TypeDecl {
+        def: roadbook_ir::TypeDef::Alias {
+            params: params.iter().map(|p| p.to_string()).collect(),
+            ty: ty.parse().unwrap(),
+        },
+        doc: String::new(),
+        span,
+    };
+    let (a, b) = (
+        alias(&["T"], "Boom<Pair<T, T>>"),
+        alias(&[], "map<string, Loop>[]"),
+    );
+    ir.types.insert("Boom".into(), a);
+    assert_eq!(ir.alias_cycle(), Some("Boom"));
+    ir.types.shift_remove("Boom");
+    let c = alias(&[], "Twice");
+    ir.types.insert("Loop".into(), b);
+    ir.types.insert("Twice".into(), c);
+    assert!(matches!(ir.alias_cycle(), Some("Loop" | "Twice")));
 }

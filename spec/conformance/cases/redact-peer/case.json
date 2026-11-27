@@ -1,0 +1,41 @@
+{
+  "description": "A run holding a `ref`: its send (`sent`) and the peer's `message` input; the peer's `emitted` event, and the holder's `emitted` input (`invoke` null), redacted as every machine that emits an event of that name would redact it; a send to the peer once it has ended, whose `undelivered` record, written by the driver, repeats the redacted `sent`.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/teller.road",
+  "machine": "Teller",
+  "input": {
+    "code": "c0de",
+    "owner": {
+      "user": "ada",
+      "password": "hunter2"
+    }
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Caller",
+      "run": "r2",
+      "input": {
+        "secret": "s3cret",
+        "teller": "r1"
+      },
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Bye"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Hang"
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "done"
+}

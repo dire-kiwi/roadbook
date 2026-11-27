@@ -54,17 +54,19 @@
 
 mod eval;
 mod program;
+mod redact;
 mod run;
 mod saved;
 mod types;
 
 pub use eval::Fns;
 pub use program::{Program, ProgramError};
+pub use redact::REDACTED;
 pub use run::{StepResult, UnknownMachine};
 pub use saved::{Migration, RUN_ID_PATTERN, Refusal, RestoreError, is_run_id};
 pub use types::{
-    CallEntry, Command, Defect, Input, InvokeEntry, Object, Record, ReplyOutcome, RunResult, Saved,
-    SavedTimer, Snapshot, SrcKind, Status, TimerEntry,
+    CallEntry, Command, Defect, History, Input, InvokeEntry, Object, Record, ReplyOutcome,
+    RunResult, Saved, SavedTimer, Snapshot, SpawnedEntry, SrcKind, Status, TimerEntry,
 };
 
 /// The most microsteps settling may take for one input before it is a `limit` defect.

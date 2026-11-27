@@ -4,6 +4,9 @@ import { Codec, type ErrorClass } from "./internal/codec.ts"
 import { type AnyHandlers, Program, restore, resume, run, spawn } from "./internal/driver.ts"
 import type { Actor, Implemented, Machine, MachineDef } from "./Machine.ts"
 
+/** Where an implemented machine keeps its bound program, for `Durable.workflow`. */
+export const ProgramOf: unique symbol = Symbol.for("@dire-kiwi/roadbook-effect/Program") as never
+
 /**
  * The typed handle for machine `name` of the compiled chart `ir`. The generated `.road.ts`
  * module calls this for each machine it declares, with the module's error classes, so that the
@@ -24,6 +27,7 @@ export const make = <D extends MachineDef>(
     implement: (handlers) => {
       const program = new Program(codec, name, handlers as AnyHandlers)
       return {
+        [ProgramOf]: program,
         def: machine,
         run: (input: D["input"]) => run(program, input),
         spawn: (input: D["input"]) => spawn<D>(program, input) as Effect.Effect<Actor<D>, never, Scope.Scope>,

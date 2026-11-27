@@ -1,0 +1,909 @@
+{
+  "irVersion": "0.6",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/vault.road",
+      "package": null
+    },
+    {
+      "path": "spec/conformance/charts/vault_types.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Credentials": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "user",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "password",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "doc": "A login, as the user typed it.",
+      "span": {
+        "file": 1,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 62
+      }
+    },
+    "Login": {
+      "kind": "alias",
+      "params": [],
+      "type": "Credentials",
+      "doc": "The same, as the machines name it.",
+      "span": {
+        "file": 1,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 25
+      }
+    },
+    "Logins": {
+      "kind": "alias",
+      "params": [],
+      "type": "Login[]",
+      "doc": "An alias of a list of an alias.",
+      "span": {
+        "file": 1,
+        "line": 11,
+        "col": 1,
+        "endLine": 11,
+        "endCol": 22
+      }
+    },
+    "Session": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "token",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        },
+        {
+          "name": "expires",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "A signed-in session.",
+      "span": {
+        "file": 1,
+        "line": 14,
+        "col": 1,
+        "endLine": 14,
+        "endCol": 67
+      }
+    },
+    "Card": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "last4",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "number",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "doc": "A payment card.",
+      "span": {
+        "file": 1,
+        "line": 17,
+        "col": 1,
+        "endLine": 17,
+        "endCol": 54
+      }
+    },
+    "Profile": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "name",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "cards",
+          "type": "Card[]",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "backup",
+          "type": "Session?",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "logins",
+          "type": "Logins",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "What the vault loads once signed in: marks inside a list, an optional and an aliased list.",
+      "span": {
+        "file": 1,
+        "line": 20,
+        "col": 1,
+        "endLine": 20,
+        "endCol": 79
+      }
+    },
+    "Locked": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "user",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "hint",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "doc": "Too many attempts.",
+      "span": {
+        "file": 1,
+        "line": 23,
+        "col": 1,
+        "endLine": 23,
+        "endCol": 54
+      }
+    }
+  },
+  "functions": {
+    "both": {
+      "params": [
+        {
+          "name": "session",
+          "type": "Session",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Session[]",
+      "doc": "The sessions to keep: the one given, twice.",
+      "span": {
+        "file": 0,
+        "line": 21,
+        "col": 1,
+        "endLine": 21,
+        "endCol": 39
+      }
+    }
+  },
+  "actions": {
+    "audit": {
+      "params": [
+        {
+          "name": "who",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "login",
+          "type": "Login",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "Note a sign-in attempt.",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 40
+      }
+    },
+    "remember": {
+      "params": [
+        {
+          "name": "secret",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        },
+        {
+          "name": "sessions",
+          "type": "Session[]",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "Keep a session's secret, and the sessions it belongs to.",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 12,
+        "endCol": 63
+      }
+    }
+  },
+  "tasks": {
+    "signIn": {
+      "params": [
+        {
+          "name": "login",
+          "type": "Login",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "pin",
+          "type": "int",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "returns": "Session",
+      "errors": [
+        "Locked"
+      ],
+      "doc": "Check a login and its PIN.",
+      "span": {
+        "file": 0,
+        "line": 15,
+        "col": 1,
+        "endLine": 15,
+        "endCol": 66
+      }
+    },
+    "loadProfile": {
+      "params": [
+        {
+          "name": "session",
+          "type": "Session",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Profile",
+      "errors": [],
+      "doc": "Load the profile a session belongs to.",
+      "span": {
+        "file": 0,
+        "line": 18,
+        "col": 1,
+        "endLine": 18,
+        "endCol": 46
+      }
+    }
+  },
+  "machines": {
+    "Vault": {
+      "doc": "Signs a user in, with a retry after a lockout, and loads their profile.",
+      "span": {
+        "file": 0,
+        "line": 24,
+        "col": 1,
+        "endLine": 59,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "login",
+          "type": "Login",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "pin",
+          "type": "int",
+          "sensitive": true,
+          "doc": ""
+        },
+        {
+          "name": "extra",
+          "type": "Logins",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "backup",
+          "type": "Session?",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Profile",
+      "errors": [
+        "Locked"
+      ],
+      "vars": [
+        {
+          "name": "current",
+          "type": "int",
+          "sensitive": true,
+          "init": {
+            "kind": "ref",
+            "path": [
+              "pin"
+            ],
+            "type": "int",
+            "text": "pin"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 28,
+            "col": 3,
+            "endLine": 28,
+            "endCol": 35
+          }
+        },
+        {
+          "name": "session",
+          "type": "Session",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 29,
+            "col": 3,
+            "endLine": 29,
+            "endCol": 33
+          }
+        },
+        {
+          "name": "profile",
+          "type": "Profile",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 30,
+            "col": 3,
+            "endLine": 30,
+            "endCol": 33
+          }
+        },
+        {
+          "name": "locked",
+          "type": "Locked",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 31,
+            "col": 3,
+            "endLine": 31,
+            "endCol": 32
+          }
+        }
+      ],
+      "events": {
+        "Retry": {
+          "fields": [
+            {
+              "name": "pin",
+              "type": "int",
+              "sensitive": true,
+              "doc": ""
+            },
+            {
+              "name": "note",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 25,
+            "col": 3,
+            "endLine": 25,
+            "endCol": 51
+          }
+        },
+        "Nudge": {
+          "fields": [
+            {
+              "name": "why",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 26,
+            "col": 3,
+            "endLine": 26,
+            "endCol": 40
+          }
+        }
+      },
+      "emits": {},
+      "children": {},
+      "root": {
+        "id": "Vault",
+        "name": "Vault",
+        "kind": "compound",
+        "doc": "Signs a user in, with a retry after a lockout, and loads their profile.",
+        "span": {
+          "file": 0,
+          "line": 24,
+          "col": 1,
+          "endLine": 59,
+          "endCol": 2
+        },
+        "initial": "Vault.SigningIn",
+        "states": [
+          {
+            "id": "Vault.SigningIn",
+            "name": "SigningIn",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 35,
+              "col": 3,
+              "endLine": 41,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "audit",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "login",
+                      "user"
+                    ],
+                    "type": "string",
+                    "text": "login.user"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "login"
+                    ],
+                    "type": "Login",
+                    "text": "login"
+                  }
+                ]
+              }
+            ],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "signIn",
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "login"
+                  ],
+                  "type": "Login",
+                  "text": "login"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "current"
+                  ],
+                  "type": "int",
+                  "text": "current"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 37,
+                "col": 5,
+                "endLine": 40,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Vault.Loading",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "session",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "Session",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 38,
+                  "col": 7,
+                  "endLine": 38,
+                  "endCol": 51
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "error": "Locked"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Vault.Waiting",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "locked",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "error"
+                      ],
+                      "type": "Locked",
+                      "text": "error"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 39,
+                  "col": 7,
+                  "endLine": 39,
+                  "endCol": 49
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Vault.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 43,
+              "col": 3,
+              "endLine": 47,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Retry"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Vault.SigningIn",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "current",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "pin"
+                      ],
+                      "type": "int",
+                      "text": "event.pin"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 44,
+                  "endCol": 66
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Nudge"
+                },
+                "group": 1,
+                "guard": {
+                  "kind": "op",
+                  "op": "<",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "current"
+                      ],
+                      "type": "int",
+                      "text": "current"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 0,
+                      "type": "int",
+                      "text": "0"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "current < 0"
+                },
+                "target": "Vault.GaveUp",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 45,
+                  "col": 5,
+                  "endLine": 45,
+                  "endCol": 38
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Vault.GaveUp",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 46,
+                  "col": 5,
+                  "endLine": 46,
+                  "endCol": 38
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Vault.Loading",
+            "name": "Loading",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 49,
+              "col": 3,
+              "endLine": 55,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "remember",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "session",
+                      "token"
+                    ],
+                    "type": "string",
+                    "text": "session.token"
+                  },
+                  {
+                    "kind": "call",
+                    "fn": "both",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "session"
+                        ],
+                        "type": "Session",
+                        "text": "session"
+                      }
+                    ],
+                    "type": "Session[]",
+                    "text": "both(session)"
+                  }
+                ]
+              }
+            ],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "loadProfile",
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "session"
+                  ],
+                  "type": "Session",
+                  "text": "session"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 51,
+                "col": 5,
+                "endLine": 53,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Vault.Loaded",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "profile",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "Profile",
+                      "text": "result"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 52,
+                  "col": 7,
+                  "endLine": 52,
+                  "endCol": 43
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Retry"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Vault.Loading",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 54,
+                  "col": 5,
+                  "endLine": 54,
+                  "endCol": 24
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Vault.Loaded",
+            "name": "Loaded",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 57,
+              "col": 3,
+              "endLine": 57,
+              "endCol": 40
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "profile"
+              ],
+              "type": "Profile",
+              "text": "profile"
+            },
+            "fail": null
+          },
+          {
+            "id": "Vault.GaveUp",
+            "name": "GaveUp",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 58,
+              "col": 3,
+              "endLine": 58,
+              "endCol": 37
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "ref",
+              "path": [
+                "locked"
+              ],
+              "type": "Locked",
+              "text": "locked"
+            }
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:11bcdc4f47569a073243b132fdfb56b6f4d8b536e360c13138c2132c647df2e1"
+    }
+  }
+}

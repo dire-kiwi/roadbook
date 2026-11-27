@@ -44,6 +44,8 @@ enum Group {
     Callable,
     Var,
     Event,
+    /// `children` lines: the machine, then `by` and the key.
+    Children,
     /// One-line states.
     State,
     /// Transitions and invoke outcomes, including the lines of their branch blocks.
@@ -371,7 +373,10 @@ impl Formatter<'_> {
     fn fields(fields: &[Field]) -> Vec<(Span, String)> {
         fields
             .iter()
-            .map(|f| (f.span, format!("{}: {}", f.name.name, ty(&f.ty))))
+            .map(|f| {
+                let sensitive = if f.sensitive { "sensitive " } else { "" };
+                (f.span, format!("{sensitive}{}: {}", f.name.name, ty(&f.ty)))
+            })
             .collect()
     }
 
@@ -430,9 +435,17 @@ impl Formatter<'_> {
         let start = d.span.start.offset;
         let whole = off(d.span);
         let kw = d.kind.keyword();
-        let head = format!("{kw} {name}");
+        let head = match &d.kind {
+            DeclKind::Record { params, .. } | DeclKind::Alias { params, .. }
+                if !params.is_empty() =>
+            {
+                let names: Vec<&str> = params.iter().map(|p| p.name.as_str()).collect();
+                format!("{kw} {name}<{}>", names.join(", "))
+            }
+            _ => format!("{kw} {name}"),
+        };
         match &d.kind {
-            DeclKind::Record { fields } | DeclKind::Error { fields }
+            DeclKind::Record { fields, .. } | DeclKind::Error { fields }
                 if !fields.is_empty() || kw == "type" =>
             {
                 if let Some(text) = self.brace_list(
@@ -455,7 +468,7 @@ impl Formatter<'_> {
             DeclKind::Record { .. } | DeclKind::Error { .. } | DeclKind::Extern => {
                 self.row(whole, 0, vec![head], "", Some(Group::Data))
             }
-            DeclKind::Alias { target } => self.row(
+            DeclKind::Alias { target, .. } => self.row(
                 whole,
                 0,
                 vec![head, format!("= {}", ty(target))],
@@ -534,11 +547,29 @@ impl Formatter<'_> {
                 self.row(
                     whole,
                     indent,
-                    vec![format!("var {}:", v.name.name), t],
+                    vec![
+                        format!(
+                            "{}var {}:",
+                            if v.sensitive { "sensitive " } else { "" },
+                            v.name.name
+                        ),
+                        t,
+                    ],
                     "",
                     Some(Group::Var),
                 );
             }
+            Item::Children(c) => self.row(
+                whole,
+                indent,
+                vec![
+                    format!("children {}:", c.name.name),
+                    c.machine.name.clone(),
+                    format!("by {}", ty(&c.key)),
+                ],
+                "",
+                Some(Group::Children),
+            ),
             Item::Event(e) | Item::Emits(e) => {
                 let kw = if let Item::Emits(_) = item {
                     "emits"
@@ -581,7 +612,11 @@ impl Formatter<'_> {
                     args_end = a.span.end.offset;
                 }
                 let rparen = self.find(args_end, Punct::RParen);
-                let open = self.find(rparen.span.end.offset, Punct::LBrace);
+                let head_end = inv
+                    .retry
+                    .as_ref()
+                    .map_or(rparen.span.end.offset, |r| r.span.end.offset);
+                let open = self.find(head_end, Punct::LBrace);
                 let to = inv
                     .to
                     .as_ref()
@@ -589,6 +624,9 @@ impl Formatter<'_> {
                 let mut head = format!("invoke {to}{}({})", inv.callee.name, exprs(&inv.args));
                 if let Some(a) = &inv.alias {
                     head += &format!(" as {}", a.name);
+                }
+                if let Some(r) = &inv.retry {
+                    head += &retry_text(r);
                 }
                 self.row(
                     (whole.0, open.span.end.offset),
@@ -604,6 +642,16 @@ impl Formatter<'_> {
                 self.close_block((whole.1 - 1, whole.1), indent, "}".into(), None);
             }
             Item::Transition(t) => self.transition(t, indent),
+            Item::History(h) => {
+                let kw = if h.deep { "deep history" } else { "history" };
+                self.row(
+                    whole,
+                    indent,
+                    vec![format!("{kw} {}", h.name.name)],
+                    "",
+                    None,
+                );
+            }
             _ => {
                 let text = inline_item(item).expect("every other item is one line");
                 self.row(whole, indent, vec![text], "", None);
@@ -697,7 +745,8 @@ fn state_prefix(kind: StateKind) -> &'static str {
     }
 }
 
-/// The text of an item that fits on one line, or `None` for states, invokes and branch blocks.
+/// The text of an item that fits on one line, or `None` for states, invokes, branch blocks
+/// and history states, which keep a line of their own.
 fn inline_item(item: &Item) -> Option<String> {
     Some(match item {
         Item::Initial(n) => format!("initial {}", n.name),
@@ -721,8 +770,10 @@ fn inline_item(item: &Item) -> Option<String> {
         | Item::Event(_)
         | Item::Emits(_)
         | Item::Call(_)
+        | Item::Children(_)
         | Item::State(_)
         | Item::Invoke(_)
+        | Item::History(_)
         | Item::Transition(_) => {
             return None;
         }
@@ -751,12 +802,29 @@ fn trigger(t: &Trigger) -> String {
         Trigger::On(p) => format!("on {}", pattern(p)),
         Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
         Trigger::Call(n) => format!("on {}", n.name),
+        Trigger::ChildDone { from } => format!("on {}.done", from.name),
+        Trigger::ChildFail { from, error } => format!("on {}.fail {}", from.name, pattern(error)),
         Trigger::After(e) if bare_record(e) => format!("after ({})", expr(e)),
         Trigger::After(e) => format!("after {}", expr(e)),
         Trigger::Always => "always".into(),
         Trigger::Done => "done".into(),
         Trigger::Fail(p) => format!("fail {}", pattern(p)),
     }
+}
+
+/// ` retry N [on E | F] [after delay]`, with a leading space.
+fn retry_text(r: &Retry) -> String {
+    let mut text = format!(" retry {}", r.count);
+    if !r.errors.is_empty() {
+        let names: Vec<&str> = r.errors.iter().map(|e| e.name.as_str()).collect();
+        text += &format!(" on {}", names.join(" | "));
+    }
+    match &r.delay {
+        Some(e) if bare_record(e) => text += &format!(" after ({})", expr(e)),
+        Some(e) => text += &format!(" after {}", expr(e)),
+        None => {}
+    }
+    text
 }
 
 /// Whether an `after` delay has a record value outside any parentheses, which would read as
@@ -771,9 +839,9 @@ fn bare_record(e: &Expr) -> bool {
 }
 
 /// Consecutive `set`s, and consecutive `do`s, share a clause; clauses are separated by two
-/// spaces. Every `set` comes first, then the `do`, `send`, `emit` and `reply` effects, each in
-/// the order written: the order they run in. A `send`, `emit` or `reply` is a clause of its
-/// own.
+/// spaces. Every `set` comes first, then the `do`, `send`, `emit`, `reply`, `spawn` and `stop`
+/// effects, each in the order written: the order they run in. A `send`, `emit`, `reply`,
+/// `spawn` or `stop` is a clause of its own.
 fn effects(effects: &[Effect]) -> String {
     let mut out = String::new();
     let mut last: Option<&'static str> = None;
@@ -786,6 +854,8 @@ fn effects(effects: &[Effect]) -> String {
             Effect::Send(_) => "send",
             Effect::Emit(_) => "emit",
             Effect::Reply(_) => "reply",
+            Effect::Spawn(_) => "spawn",
+            Effect::Stop(_) => "stop",
         };
         if last == Some(kw) && matches!(kw, "set" | "do") {
             out.push_str(", ");
@@ -807,6 +877,14 @@ fn effects(effects: &[Effect]) -> String {
                     out.push_str(&expr(v));
                 }
             }
+            Effect::Spawn(sp) => out.push_str(&format!(
+                "{}[{}] = {}({})",
+                sp.children.name,
+                expr(&sp.key),
+                sp.machine.name,
+                exprs(&sp.args)
+            )),
+            Effect::Stop(st) => out.push_str(&format!("{}[{}]", st.children.name, expr(&st.key))),
         }
         last = Some(kw);
     }
@@ -818,6 +896,11 @@ fn message(m: &Message) -> String {
     let mut out = String::new();
     if let Some(to) = &m.to {
         out.push_str(&to.name);
+        match &m.key {
+            Some(SendKey::Key(k)) => out.push_str(&format!("[{}]", expr(k))),
+            Some(SendKey::All { .. }) => out.push_str(".*"),
+            None => {}
+        }
         out.push('.');
     }
     out.push_str(&message_value(m));
@@ -850,6 +933,11 @@ fn ty(t: &TypeRef) -> String {
     match &t.kind {
         TypeKind::Builtin(b) => b.as_str().into(),
         TypeKind::Named(n) => n.name.clone(),
+        TypeKind::Generic(n, args) => {
+            let args: Vec<String> = args.iter().map(ty).collect();
+            format!("{}<{}>", n.name, args.join(", "))
+        }
+        TypeKind::Map(k, v) => format!("map<{}, {}>", ty(k), ty(v)),
         TypeKind::List(t) => format!("{}[]", ty(t)),
         TypeKind::Optional(t) => format!("{}?", ty(t)),
         TypeKind::Ref(n) => format!("ref {}", n.name),

@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0323]: a map's keys are strings: `Count` is not `string` or an alias of it
+ --> RB0323-map-key.road:5:25
+  |
+5 | type Bad { byCount: map<Count, string>, byRole: map<Role, int>, byName: map<Name, int> }
+  |                         ^^^^^
+  |
+  = help: a map is a JSON object, whose keys are strings; write `map<string, …>`
+
+error[RB0323]: a map's keys are strings: `Role` is not `string` or an alias of it
+ --> RB0323-map-key.road:5:53
+  |
+5 | type Bad { byCount: map<Count, string>, byRole: map<Role, int>, byName: map<Name, int> }
+  |                                                     ^^^^
+  |
+  = help: a map is a JSON object, whose keys are strings; write `map<string, …>`
+
+error[RB0323]: a map's keys are strings: `int` is not `string` or an alias of it
+ --> RB0323-map-key.road:7:22
+  |
+7 | machine M(byInt: map<int, string>) {
+  |                      ^^^
+  |
+  = help: a map is a JSON object, whose keys are strings; write `map<string, …>`

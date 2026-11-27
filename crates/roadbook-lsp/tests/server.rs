@@ -731,6 +731,294 @@ fn as_names_of_states_side_by_side_may_be_the_same() {
     c.shutdown();
 }
 
+const HUB: &str = r#"error Lost { reason: string }
+action log(what: string)
+
+machine Session(name: string) -> int ! Lost {
+  event Notify { text: string }
+  emits Typing { key: string }
+  initial Open
+  state Open {
+    on Notify -> Left  emit Typing { key: event.text }
+  }
+  final state Left { output 1 }
+}
+
+machine Hub(greeting: string) {
+  event Join { id: string }
+  event Kick { id: string }
+  event Shout
+  event Close
+  /// The open sessions.
+  children sessions: Session by string
+  var open: int = 0
+  initial Serving
+  state Serving {
+    on Join            spawn sessions[event.id] = Session(greeting)  send sessions[event.id].Notify { text: "hi" }
+    on Kick            stop sessions[event.id]
+    on Shout           send sessions.*.Notify { text: greeting }
+    on sessions.Typing do log(key)
+    on sessions.done   set open = open - 1
+    on sessions.fail * do log(error.reason)
+    on Close           -> Closed
+  }
+  final state Closed {}
+}
+"#;
+
+#[test]
+fn children_collections() {
+    let p = Project::new("children", &[("c.road", HUB)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, HUB);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // Every use of the collection goes to its declaration.
+    let uses = [
+        "spawn ^sessions[",
+        "send ^sessions[",
+        "stop ^sessions[",
+        "send ^sessions.*",
+        "on ^sessions.Typing",
+        "on ^sessions.done",
+        "on ^sessions.fail",
+    ];
+    for from in uses {
+        let loc = c
+            .request("textDocument/definition", at(&uri, HUB, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(HUB, "children ^sessions"),
+            "{from}"
+        );
+    }
+    let mut params = at(&uri, HUB, "children ^sessions");
+    params["context"] = json!({ "includeDeclaration": false });
+    let refs = c.request("textDocument/references", params).unwrap();
+    assert_eq!(refs.as_array().unwrap().len(), uses.len(), "{refs}");
+
+    // Hover: the declaration, what it belongs to and its doc comment.
+    let hover = c
+        .request("textDocument/hover", at(&uri, HUB, "stop ^sessions"))
+        .unwrap();
+    let value = hover["contents"]["value"].as_str().unwrap();
+    assert!(
+        value.starts_with("```roadbook\nchildren sessions: Session by string\n```"),
+        "{value}"
+    );
+    assert!(value.contains("children collection of `Hub`"), "{value}");
+    assert!(value.contains("The open sessions."), "{value}");
+
+    // The outline lists it among the machine's members.
+    let symbols = c
+        .request(
+            "textDocument/documentSymbol",
+            json!({ "textDocument": { "uri": uri } }),
+        )
+        .unwrap();
+    let hub = symbols
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["name"] == "Hub")
+        .unwrap();
+    let names: Vec<&str> = hub["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "greeting", "Join", "Kick", "Shout", "Close", "sessions", "open", "Serving", "Closed"
+        ]
+    );
+    let sessions = &hub["children"][5];
+    assert_eq!(sessions["detail"], "Session by string");
+    assert_eq!(slice(HUB, &sessions["selectionRange"]), "sessions");
+
+    // Rename: a collection shares the machine's namespace with its parameters, variables
+    // and `as` names, and cannot be called `key`.
+    let why = rename_error(&mut c, &uri, HUB, "children ^sessions", "key");
+    assert!(why.contains("reserved"), "{why}");
+    let why = rename_error(&mut c, &uri, HUB, "children ^sessions", "Sessions");
+    assert!(why.contains("lower-case"), "{why}");
+    let why = rename_error(&mut c, &uri, HUB, "children ^sessions", "open");
+    assert!(
+        why.contains("already the name of a variable `Hub.open`"),
+        "{why}"
+    );
+    let why = rename_error(&mut c, &uri, HUB, "children ^sessions", "greeting");
+    assert!(
+        why.contains("already the name of a parameter `Hub.greeting`"),
+        "{why}"
+    );
+    let why = rename_error(&mut c, &uri, HUB, "var ^open", "sessions");
+    assert!(
+        why.contains("already the name of a children collection `Hub.sessions`"),
+        "{why}"
+    );
+    let why = rename_error(&mut c, &uri, HUB, "var ^open", "key");
+    assert!(why.contains("reserved"), "{why}");
+    let out = rename(&mut c, &uri, HUB, "children ^sessions", "conns");
+    assert_eq!(out.matches("conns").count(), 8, "{out}");
+    for e in [
+        "children conns: Session",
+        "spawn conns[event.id]",
+        "send conns[event.id].Notify",
+        "stop conns[event.id]",
+        "send conns.*.Notify",
+        "on conns.Typing",
+        "on conns.done",
+        "on conns.fail *",
+    ] {
+        assert!(out.contains(e), "no `{e}` in\n{out}");
+    }
+    // `key` can still name a field.
+    let out = rename(&mut c, &uri, HUB, "^key: string", "id");
+    assert!(out.contains("emit Typing { id: event.text }"), "{out}");
+    c.shutdown();
+}
+
+const HISTORY: &str = r#"machine M() {
+  var history: int = 0
+  event Go
+  event Back
+  initial Work
+  state Work {
+    initial A
+    /// Back to where `Work` was.
+    history Last
+    deep history All
+    state A { on Go -> B }
+    state B { on Back -> Last }
+    on Back -> Away
+  }
+  state Away {
+    on Go -> Work.Last  set history = history + 1
+    on Back -> Work.All
+  }
+}
+"#;
+
+#[test]
+fn history_states() {
+    error_free(&[("c.road", HISTORY)]);
+    let p = Project::new("history", &[("c.road", HISTORY)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, HISTORY);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // Targets lead to the history state, and back.
+    for (from, to) in [
+        ("-> ^Last }", "history ^Last"),
+        ("Work.^Last", "history ^Last"),
+        ("Work.^All", "deep history ^All"),
+        ("set ^history", "var ^history"),
+    ] {
+        let loc = c
+            .request("textDocument/definition", at(&uri, HISTORY, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(HISTORY, to),
+            "{from} -> {to}"
+        );
+    }
+    let mut params = at(&uri, HISTORY, "history ^Last");
+    params["context"] = json!({ "includeDeclaration": false });
+    let refs = c.request("textDocument/references", params).unwrap();
+    let lines: Vec<u64> = refs
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["range"]["start"]["line"].as_u64().unwrap() + 1)
+        .collect();
+    assert_eq!(lines, [12, 16]);
+
+    // Hover shows which kind of history state it is, its parent and its doc comment.
+    let hover = c
+        .request("textDocument/hover", at(&uri, HISTORY, "Work.^Last"))
+        .unwrap();
+    let value = hover["contents"]["value"].as_str().unwrap();
+    assert!(value.contains("history M.Work.Last"), "{value}");
+    assert!(value.contains("state of `M.Work`"), "{value}");
+    assert!(value.contains("Back to where `Work` was."), "{value}");
+    let hover = c
+        .request("textDocument/hover", at(&uri, HISTORY, "deep history ^All"))
+        .unwrap();
+    let value = hover["contents"]["value"].as_str().unwrap();
+    assert!(value.contains("deep history M.Work.All"), "{value}");
+
+    // The outline shows them among their parent's states.
+    let symbols = c
+        .request(
+            "textDocument/documentSymbol",
+            json!({ "textDocument": { "uri": uri } }),
+        )
+        .unwrap();
+    let work = symbols[0]["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["name"] == "Work")
+        .unwrap();
+    let children: Vec<(&str, &str)> = work["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| (s["name"].as_str().unwrap(), s["detail"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        children,
+        [
+            ("Last", "history"),
+            ("All", "deep history"),
+            ("A", "state"),
+            ("B", "state")
+        ]
+    );
+    assert_eq!(
+        slice(HISTORY, &work["children"][1]["range"]),
+        "deep history All"
+    );
+    assert_eq!(
+        slice(HISTORY, &work["children"][1]["selectionRange"]),
+        "All"
+    );
+
+    // Rename, from the declaration and from a target; `history` the variable stays.
+    let text = rename(&mut c, &uri, HISTORY, "history ^Last", "Before");
+    for e in [
+        "history Before\n",
+        "on Back -> Before }",
+        "-> Work.Before  set history = history + 1",
+    ] {
+        assert!(text.contains(e), "no `{e}` in\n{text}");
+    }
+    c.change(&uri, 2, &text);
+    let text = rename(&mut c, &uri, &text, "Work.^All", "Everything");
+    assert!(text.contains("deep history Everything\n"), "{text}");
+    assert!(text.contains("-> Work.Everything\n"), "{text}");
+    c.change(&uri, 3, &text);
+    // A history state shares the names of its sibling states.
+    let why = rename_error(&mut c, &uri, &text, "history ^Before", "A");
+    assert!(
+        why.contains("already the name of a state `M.Work.A`"),
+        "{why}"
+    );
+    let why = rename_error(&mut c, &uri, &text, "state ^B ", "Everything");
+    assert!(
+        why.contains("already the name of a state `M.Work.Everything`"),
+        "{why}"
+    );
+    c.shutdown();
+}
+
 #[test]
 fn an_untitled_document_is_a_file_of_its_own() {
     let uri = "untitled:Untitled-1";
@@ -814,5 +1102,27 @@ fn ir_compiles_the_editor_s_text_as_export_ir_would() {
         )
         .unwrap();
     assert!(main["ir"].is_string(), "{main}");
+    c.shutdown();
+}
+
+#[test]
+fn the_errors_of_a_retry_are_references() {
+    let text = "error Busy\nerror Gone\nfn backoff(n: int) -> duration\ntask ping() ! Busy | Gone\n\nmachine M() {\n  var tries: int = 0\n\n  initial A\n\n  state A {\n    invoke ping() retry 2 on Busy after backoff(attempt) {\n      done      -> B  set tries = 1\n      fail Busy -> B\n      fail Gone -> B\n    }\n  }\n\n  final state B {}\n}\n";
+    let p = Project::new("retry", &[("c.road", text)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, text);
+    assert!(c.diagnostics(&uri).is_empty());
+    let loc = c
+        .request("textDocument/definition", at(&uri, text, "on ^Busy"))
+        .unwrap();
+    assert_eq!(loc["range"]["start"], position(text, "error ^Busy"));
+    let out = rename(&mut c, &uri, text, "error ^Busy", "Throttled");
+    assert!(out.contains("retry 2 on Throttled after"), "{out}");
+    assert!(out.contains("fail Throttled -> B"), "{out}");
+    // `attempt` in the delay counts the failed attempts: a variable named so would make it
+    // ambiguous.
+    let why = rename_error(&mut c, &uri, text, "var ^tries", "attempt");
+    assert!(why.contains("`attempt` is ambiguous"), "{why}");
     c.shutdown();
 }

@@ -11,7 +11,7 @@ use roadbook_core::{
     Command, Defect, Input, Object, Program, Record, RestoreError, RunResult, Saved, Snapshot,
     SrcKind, Status,
 };
-use roadbook_ir::{Field, TypeDef, TypeRef};
+use roadbook_ir::{Field, TypeRef};
 use serde_json::{Map, Value};
 
 use crate::defect::defect_from_panic;
@@ -57,10 +57,12 @@ enum Next {
     Suspend,
 }
 
-/// A running invoke: its future and, for a machine invoke, the context it is polled in.
+/// A running invoke or spawned child: its future and, for a machine, the context it is
+/// polled in. `spawn` says that its outcome is a `spawn.*` input.
 struct Slot<'a> {
     fut: BoxFuture<'a, Outcome>,
     ctx: Option<Arc<InvokeContext>>,
+    spawn: bool,
 }
 
 pub(crate) struct Driver<'a> {
@@ -87,13 +89,16 @@ pub(crate) struct Driver<'a> {
     dues: BTreeMap<u64, u64>,
     /// The due times of the snapshot this run was restored from, for `timer.fire`.
     restored_dues: BTreeMap<u64, u64>,
-    snap: Snapshot,
+    snap: Arc<Snapshot>,
     final_state: Option<String>,
     cancel_requested: bool,
     cancel_taken: bool,
     /// Whether a suspend request stops the run: a top-level run's does, unless it was
     /// started to run to its end (`run`, `run_with`). A child run ignores it.
     suspendable: bool,
+    /// The message and value of the last `sent` record: the core writes it, redacted, right
+    /// before the `send` command, and an `undelivered` record repeats it.
+    last_sent: Option<(u64, Value)>,
 }
 
 /// Calls a host function with no invoke context and the run's handles in scope, catching a
@@ -112,28 +117,19 @@ fn call_function(
     })
 }
 
-/// `ty` with aliases expanded at the top, transitively.
-fn resolve<'t>(program: &'t Program, mut ty: &'t TypeRef) -> &'t TypeRef {
-    for _ in 0..64 {
-        match ty {
-            TypeRef::Named(n) => match program.ir().types.get(n).map(|d| &d.def) {
-                Some(TypeDef::Alias { ty: t }) => ty = t,
-                _ => break,
-            },
-            _ => break,
-        }
-    }
-    ty
-}
-
 /// The run ids in `value`, a value of type `ty`, each with the machine its `ref` type names:
 /// the `ref`s in it.
 fn ref_ids(program: &Program, ty: &TypeRef, value: &Value, out: &mut Vec<(String, String)>) {
-    match (resolve(program, ty), value) {
+    match (&*program.ir().expand_top(ty), value) {
         (TypeRef::Ref(m), Value::String(id)) => out.push((id.clone(), m.clone())),
         (TypeRef::Optional(t), v) if !v.is_null() => ref_ids(program, t, v, out),
         (TypeRef::List(t), Value::Array(items)) => {
             for v in items {
+                ref_ids(program, t, v, out);
+            }
+        }
+        (TypeRef::Map(_, t), Value::Object(entries)) => {
+            for v in entries.values() {
                 ref_ids(program, t, v, out);
             }
         }
@@ -272,10 +268,12 @@ fn blank() -> Snapshot {
         vars: Map::new(),
         invokes: Vec::new(),
         calls: Vec::new(),
+        spawned: Vec::new(),
         timers: Vec::new(),
         next_invoke: 1,
         next_timer: 1,
         next_message: 1,
+        history: Default::default(),
         result: None,
     }
 }
@@ -402,11 +400,12 @@ impl<'a> Driver<'a> {
             timers: BTreeMap::new(),
             dues: BTreeMap::new(),
             restored_dues: BTreeMap::new(),
-            snap: blank(),
+            snap: Arc::new(blank()),
             final_state: None,
             cancel_requested: false,
             cancel_taken: false,
             suspendable: true,
+            last_sent: None,
         }
     }
 
@@ -476,7 +475,8 @@ impl<'a> Driver<'a> {
                 Next::Input(input) => input,
                 Next::Suspend => return self.suspend().await,
             };
-            let (invoke, timer) = (input.invoke_id(), input.timer_id());
+            let invoke = input.invoke_id().or(input.spawn_id());
+            let timer = input.timer_id();
             let (snap, commands) = self.program.step(&self.snap, input, &mut |n, a| {
                 call_function(host, &peers, n, a)
             });
@@ -503,7 +503,7 @@ impl<'a> Driver<'a> {
     /// Takes the core's snapshot. A run closes as soon as its core gives a snapshot that is
     /// not `running`, before that step's commands are carried out.
     fn set_snapshot(&mut self, snap: Snapshot) {
-        self.snap = snap;
+        self.snap = Arc::new(snap);
         if self.snap.status != Status::Running {
             self.close();
         }
@@ -531,10 +531,11 @@ impl<'a> Driver<'a> {
         let timers = &self.snap.timers;
         self.dues.retain(|id, _| timers.iter().any(|t| t.id == *id));
         let now = self.config.timer.now();
-        let saved = Saved::new(&self.snap, |t| {
-            self.dues.get(&t.id).copied().unwrap_or(due(now, t.delay))
-        });
-        self.shared.set_saved(saved);
+        let dues = timers
+            .iter()
+            .map(|t| self.dues.get(&t.id).copied().unwrap_or(due(now, t.delay)))
+            .collect();
+        self.shared.publish(self.snap.clone(), dues);
     }
 
     /// The next input: a cancel request if there is one, else the front of the queue; or, for
@@ -550,6 +551,7 @@ impl<'a> Driver<'a> {
                 if self.queue.is_empty()
                     && self.snap.invokes.is_empty()
                     && self.snap.calls.is_empty()
+                    && self.snap.spawned.is_empty()
                     && self.parent.is_none()
                     && self.suspendable
                     && self.shared.suspend_requested()
@@ -627,15 +629,29 @@ impl<'a> Driver<'a> {
         for (invoke, mut outcome) in ended {
             // A future that panics while it is dropped after giving its outcome is host code
             // failing before its invoke ended: the outcome is that host defect.
+            let mut spawn = false;
             if let Some(slot) = self.invokes.remove(&invoke) {
+                spawn = slot.spawn;
                 if let Err(d) = drop_caught(slot) {
                     outcome = Outcome::Defect(d);
                 }
             }
-            self.queue.push_back(match outcome {
-                Outcome::Done(value) => Input::InvokeDone { invoke, value },
-                Outcome::Fail(error) => Input::InvokeFail { invoke, error },
-                Outcome::Defect(defect) => Input::InvokeDefect { invoke, defect },
+            self.queue.push_back(match (outcome, spawn) {
+                (Outcome::Done(value), false) => Input::InvokeDone { invoke, value },
+                (Outcome::Fail(error), false) => Input::InvokeFail { invoke, error },
+                (Outcome::Defect(defect), false) => Input::InvokeDefect { invoke, defect },
+                (Outcome::Done(value), true) => Input::SpawnDone {
+                    spawn: invoke,
+                    value,
+                },
+                (Outcome::Fail(error), true) => Input::SpawnFail {
+                    spawn: invoke,
+                    error,
+                },
+                (Outcome::Defect(defect), true) => Input::SpawnDefect {
+                    spawn: invoke,
+                    defect,
+                },
             });
         }
         let mut fired = Vec::new();
@@ -682,6 +698,9 @@ impl<'a> Driver<'a> {
     async fn carry(&mut self, c: Command) -> Result<(), Defect> {
         match c {
             Command::Trace { record } => {
+                if let Record::Sent { message, value, .. } = &record {
+                    self.last_sent = Some((*message, value.clone()));
+                }
                 self.write(record);
                 Ok(())
             }
@@ -731,56 +750,16 @@ impl<'a> Driver<'a> {
                 args,
                 ..
             } => {
-                let ctx = (src_kind == SrcKind::Machine).then(|| {
-                    Arc::new(InvokeContext {
-                        config: self.config.clone(),
-                        parent: self.id.clone(),
-                        invoke,
-                        token: Arc::new(Shared::default()),
-                        parent_queue: self.shared.clone(),
-                        heard: match alias {
-                            Some(_) => self.program.heard(&self.snap.machine, &src),
-                            None => HashSet::new(),
-                        },
-                    })
-                });
-                if let Some(ctx) = &ctx {
-                    self.contexts.insert(invoke, ctx.clone());
-                }
-                let ir = self.program.ir();
-                let params = match src_kind {
-                    SrcKind::Task => ir.tasks.get(&src).map(|t| &t.params[..]),
-                    SrcKind::Machine => ir.machines.get(&src).map(|m| &m.params[..]),
-                    // Made by `make_call`, above.
-                    SrcKind::Call => None,
-                };
-                let refs = arg_ref_ids(self.program, params.unwrap_or_default(), &args)
-                    .iter()
-                    .filter_map(|(id, _)| self.peers.get(id).cloned())
-                    .collect();
-                let call = Invocation {
-                    kind: src_kind,
-                    src,
-                    args,
-                    refs,
-                    run: self.id.clone(),
-                    invoke,
-                };
-                let host = self.host;
-                let peers = self.peers.clone();
-                let created = with_context(ctx.as_ref(), || {
-                    with_scope(Some(&peers), || {
-                        catch_unwind(AssertUnwindSafe(|| host.invoke(call)))
-                    })
-                });
-                let fut = created.unwrap_or_else(|p| {
-                    let d = defect_from_panic(p);
-                    Box::pin(async move { Outcome::Defect(d) })
-                });
-                self.invokes.insert(invoke, Slot { fut, ctx });
+                self.start_invoke(invoke, src, src_kind, alias.is_some(), args, false);
                 Ok(())
             }
-            Command::InvokeCancel { invoke } => {
+            // A spawned child is a machine invoke whose emitted events reach this run, as an
+            // `as` child's do: those this run's machine has an `on` for.
+            Command::SpawnStart { spawn, src, args } => {
+                self.start_invoke(spawn, src, SrcKind::Machine, true, args, true);
+                Ok(())
+            }
+            Command::InvokeCancel { invoke } | Command::SpawnStop { spawn: invoke } => {
                 // A call is abandoned: its answer, if it comes, is not pushed.
                 self.shared.forget_call(invoke);
                 self.contexts.remove(&invoke);
@@ -819,6 +798,12 @@ impl<'a> Driver<'a> {
                     None => self.peers.get(&to).is_some_and(|p| p.shared.deliver(input)),
                 };
                 if !delivered {
+                    // The value as the `sent` record showed it, redacted. The core always
+                    // writes that record first; were it missing, only the event's tag is shown.
+                    let value = match self.last_sent.take() {
+                        Some((m, shown)) if m == message => shown,
+                        _ => serde_json::json!({ "_tag": value.get("_tag") }),
+                    };
                     self.write(Record::Undelivered {
                         message,
                         to: Some(to),
@@ -898,6 +883,68 @@ impl<'a> Driver<'a> {
         }
     }
 
+    /// Starts an invoke, or (`spawn`) a spawned child, whose outcome is then a `spawn.*` input.
+    /// A child run that `delivers` (invoked with `as`, or spawned) delivers to this run the
+    /// events it emits that this run's machine has an `on` for.
+    fn start_invoke(
+        &mut self,
+        invoke: u64,
+        src: String,
+        src_kind: SrcKind,
+        delivers: bool,
+        args: Object,
+        spawn: bool,
+    ) {
+        let ctx = (src_kind == SrcKind::Machine).then(|| {
+            Arc::new(InvokeContext {
+                config: self.config.clone(),
+                parent: self.id.clone(),
+                invoke,
+                token: Arc::new(Shared::default()),
+                parent_queue: self.shared.clone(),
+                heard: if delivers {
+                    self.program.heard(&self.snap.machine, &src)
+                } else {
+                    HashSet::new()
+                },
+            })
+        });
+        if let Some(ctx) = &ctx {
+            self.contexts.insert(invoke, ctx.clone());
+        }
+        let ir = self.program.ir();
+        let params = match src_kind {
+            SrcKind::Task => ir.tasks.get(&src).map(|t| &t.params[..]),
+            SrcKind::Machine => ir.machines.get(&src).map(|m| &m.params[..]),
+            // Made by `make_call`.
+            SrcKind::Call => None,
+        };
+        let refs = arg_ref_ids(self.program, params.unwrap_or_default(), &args)
+            .iter()
+            .filter_map(|(id, _)| self.peers.get(id).cloned())
+            .collect();
+        let call = Invocation {
+            kind: src_kind,
+            src,
+            args,
+            refs,
+            run: self.id.clone(),
+            invoke,
+        };
+        let host = self.host;
+        let peers = self.peers.clone();
+        let created = with_context(ctx.as_ref(), || {
+            with_scope(Some(&peers), || {
+                catch_unwind(AssertUnwindSafe(|| host.invoke(call)))
+            })
+        });
+        let fut = created.unwrap_or_else(|p| {
+            let d = defect_from_panic(p);
+            Box::pin(async move { Outcome::Defect(d) })
+        });
+        self.invokes.insert(invoke, Slot { fut, ctx, spawn });
+    }
+
     /// Stops a running invoke. A task's or stub's future is dropped at once. A child run is
     /// signalled through its token and polled until it reports that its cancel step is
     /// done; only then is its future dropped. What a cancelled invoke does is ignored, so a
@@ -942,6 +989,9 @@ impl<'a> Driver<'a> {
     fn write(&mut self, record: Record) {
         if let Record::Done { state, .. } | Record::Failed { state, .. } = &record {
             self.final_state = Some(state.clone());
+        }
+        if !self.config.sink.enabled() {
+            return;
         }
         let record = TraceRecord {
             t: self.config.timer.now(),

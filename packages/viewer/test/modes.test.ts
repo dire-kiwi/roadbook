@@ -5,13 +5,14 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { canonicalJson } from '@dire-kiwi/roadbook-core'
+import { canonicalJson, REDACTED } from '@dire-kiwi/roadbook-core'
 import type { Json, Tagged } from '@dire-kiwi/roadbook-core'
 import { describe, expect, it } from 'vitest'
 import type { Ir } from '../src/ir.ts'
 import { findState, signatureText, stateRows } from '../src/model.ts'
 import { panelHtml } from '../src/panel.ts'
 import { Replay, parseTrace, recordText } from '../src/replay.ts'
+import { variablesHtml } from '../src/app/modes.ts'
 import { Simulation, refusal } from '../src/sim.ts'
 import type { Outcome } from '../src/sim.ts'
 import { checkFields, checkValue, sampleFields, sampleValue } from '../src/values.ts'
@@ -77,17 +78,18 @@ function simulate(c: Case): { sim: Simulation; asked: string[] } | null {
     else if ('event' in s) ok(sim.send(s.event as Tagged))
     else if ('cancel' in s) ok(sim.cancel())
     else if ('task' in s) {
-      const inv = sim.choices().invokes.find((i) => i.src === s.task)
+      const choices = sim.choices()
+      const inv = choices.invokes.find((i) => i.src === s.task) ?? choices.spawned.find((i) => i.src === s.task)
       // A task of a child run: the page runs only the root.
       if (!inv) return null
-      if (inv.srcKind === 'machine' && !c.stub.includes(inv.src)) return null
+      if (('srcKind' in inv ? inv.srcKind === 'machine' : true) && !c.stub.includes(inv.src)) return null
       if ('done' in s) ok(sim.complete(inv.id, { done: s.done as Json }))
       else if ('fail' in s) ok(sim.complete(inv.id, { fail: s.fail as Tagged }))
       else ok(sim.complete(inv.id, { defect: s.defect as string }))
     } else throw new Error(`unknown step ${JSON.stringify(s)}`)
   }
-  // A child machine run from the chart would have written records the page does not.
-  if (sim.records().some((r) => r.kind === 'invoke.started' && own(ir, r.src) && !c.stub.includes(r.src))) return null
+  // A child machine run from the chart, invoked or spawned, would have written records the page does not.
+  if (sim.records().some((r) => (r.kind === 'invoke.started' || r.kind === 'spawn.started') && own(ir, r.src) && !c.stub.includes(r.src))) return null
   return { sim, asked }
 }
 
@@ -117,6 +119,8 @@ describe('simulate', () => {
     for (const name of ['place-order-checkout-stubbed', 'checkout-retry', 'gate-guards']) expect(played).toContain(name)
     // Parallel states: regions entered and exited in order, events taken in several regions.
     for (const name of ['parallel-entry-exit', 'parallel-two-regions', 'parallel-work']) expect(played).toContain(name)
+    // History states: a deep one restoring a final state, one in a region, one while settling.
+    for (const name of ['history-final', 'history-region', 'history-settle']) expect(played).toContain(name)
     expect(played.length).toBeGreaterThanOrEqual(8)
   })
 
@@ -262,6 +266,23 @@ describe('replay', () => {
       if (run.id === 'r1') expect(view.status).toBe(c.status)
       if (view.status === 'done' || view.status === 'failed' || view.status === 'cancelled') expect(view.active).toEqual([])
     }
+  })
+
+  it('shows what a trace redacted as redacted, and the rest of a value as it was', () => {
+    const c = readCase('redact-snapshot')
+    const replay = new Replay(caseIr(c), readTrace('redact-snapshot'))
+    expect(replay.problems).toEqual([])
+    // The restored run goes on from the snapshot as the `restored` record shows it.
+    const at = replay.records.findIndex((r) => r.kind === 'restored')
+    const view = replay.viewAt(at, 'r2')
+    expect(view.input.pin).toBe(REDACTED)
+    expect(view.vars.current).toBe(REDACTED)
+    expect(view.vars.session).toEqual({ id: 's1', token: REDACTED, expires: 60 })
+    const html = variablesHtml(caseIr(c).machines.Vault!, view.input, view.vars, true)
+    expect(html).toContain('<dt>pin</dt><dd><span class="rb-redacted"')
+    expect(html).toContain('sensitive param')
+    expect(html).toContain('&quot;token&quot;:&quot;&lt;redacted&gt;&quot;')
+    expect(html).not.toContain('tok-s1')
   })
 
   it('follows a child run and lights up what each record names', () => {

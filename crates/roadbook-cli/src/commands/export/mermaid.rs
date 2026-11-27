@@ -14,6 +14,9 @@
 //! `fail E` and `fail Unanswered` branches as a task's. Mermaid allows no description on a
 //! state with states inside, so a compound or parallel state (and the machine, when it is drawn
 //! as a state) has them in a note beside it.
+//! Mermaid has no history states: one is a small state labelled `H` (or `H*` for a deep one)
+//! inside its parent, which transitions target as any state; in a parallel state it is in the
+//! first region's part of the box, since every state there is in one.
 //! What it loses: the line styles of the kinds of transition, the details panel, drill-down
 //! into invoked machines, and the viewer's layout.
 //!
@@ -27,7 +30,7 @@ use std::path::PathBuf;
 
 use roadbook_compiler::Ir;
 use roadbook_ir::{
-    Effect, InvokeKind, Machine, ReplyOutcome, State, StateKind, Transition, Trigger,
+    AddressKind, Effect, InvokeKind, Machine, ReplyOutcome, State, StateKind, Transition, Trigger,
 };
 
 use crate::workspace::Workspace;
@@ -217,7 +220,13 @@ impl Writer<'_> {
     /// The states inside `container`, its initial arrow, and every transition whose source
     /// and target meet first in it.
     fn body(&mut self, container: &State, depth: usize) {
-        for (i, child) in container.states.iter().enumerate() {
+        // History states first: in a parallel state, the lines before the first `--` are its
+        // first region's part, and a history state is not a region.
+        for h in container.states.iter().filter(|c| c.kind.is_history()) {
+            self.state(h, depth);
+        }
+        let children = container.states.iter().filter(|c| !c.kind.is_history());
+        for (i, child) in children.enumerate() {
             if container.kind == StateKind::Parallel && i > 0 {
                 self.line(depth, "--");
             }
@@ -264,6 +273,17 @@ impl Writer<'_> {
 
     fn state(&mut self, s: &State, depth: usize) {
         let id = self.id(&s.id);
+        if s.kind.is_history() {
+            // No notation in Mermaid: a state labelled `H` or `H*`.
+            let mark = if s.kind == StateKind::DeepHistory {
+                "H*"
+            } else {
+                "H"
+            };
+            let line = format!("state \"{mark}\" as {id}");
+            self.line(depth, &line);
+            return;
+        }
         if id != s.name {
             let line = format!("state \"{}\" as {id}", s.name);
             self.line(depth, &line);
@@ -321,7 +341,14 @@ fn effect(e: &Effect) -> String {
             let args: Vec<&str> = args.iter().map(|a| a.text.as_str()).collect();
             format!("do {action}({})", args.join(", "))
         }
-        Effect::Send { to, value, .. } => format!("send {}.{}", to.name, value.text),
+        Effect::Send { to, key, value, .. } => {
+            let which = match (to.kind, key) {
+                (AddressKind::Children, Some(k)) => format!("[{}]", k.text),
+                (AddressKind::Children, None) => ".*".into(),
+                _ => String::new(),
+            };
+            format!("send {}{which}.{}", to.name, value.text)
+        }
         Effect::Emit { value, .. } => format!("emit {}", value.text),
         Effect::Reply {
             call,
@@ -337,6 +364,20 @@ fn effect(e: &Effect) -> String {
                 .map_or(String::new(), |v| format!(" {}", v.text));
             format!("reply {} {outcome}{value}", call.text)
         }
+        Effect::Spawn {
+            children,
+            machine,
+            key,
+            args,
+        } => {
+            let args: Vec<&str> = args.iter().map(|a| a.text.as_str()).collect();
+            format!(
+                "spawn {children}[{}] = {machine}({})",
+                key.text,
+                args.join(", ")
+            )
+        }
+        Effect::Stop { children, key } => format!("stop {children}[{}]", key.text),
     }
 }
 
@@ -350,6 +391,8 @@ fn trigger(t: &Trigger) -> String {
         Trigger::Always => "always".into(),
         Trigger::Done | Trigger::InvokeDone => "done".into(),
         Trigger::InvokeFail { error } => format!("fail {error}"),
+        Trigger::SpawnDone { children } => format!("{children}.done"),
+        Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
     }
 }
 
@@ -397,7 +440,11 @@ fn description(s: &State) -> Vec<String> {
     out.extend(s.exit.iter().map(|e| format!("exit {}", effect(e))));
     for t in s.transitions.iter().filter(|t| t.target.is_none()) {
         let head = match &t.trigger {
-            Trigger::Event { .. } | Trigger::Emitted { .. } | Trigger::Call { .. } => {
+            Trigger::Event { .. }
+            | Trigger::Emitted { .. }
+            | Trigger::Call { .. }
+            | Trigger::SpawnDone { .. }
+            | Trigger::SpawnFail { .. } => {
                 format!("on {}", trigger(&t.trigger))
             }
             other => trigger(other),

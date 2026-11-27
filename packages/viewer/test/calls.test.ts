@@ -67,6 +67,7 @@ describe('model text', () => {
   it('says which calls a machine makes, in document order', () => {
     expect(talks(orders, 'Order')).toEqual({
       invokes: [],
+      spawns: [],
       refs: [{ machine: 'Inventory', names: ['inventory'] }],
       sends: [{ machine: 'Inventory', events: ['Release'] }],
       receives: [],

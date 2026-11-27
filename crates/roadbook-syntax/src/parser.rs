@@ -11,7 +11,7 @@ use crate::diagnostic::Diagnostic;
 use crate::lexer::{
     Comment, CommentKind, Keyword as K, Punct as P, Token, TokenKind as T, lex, unescape,
 };
-use crate::span::{FileId, Span};
+use crate::span::{FileId, Pos, Span};
 
 /// Parse one file. Always returns a tree; after syntax errors it is partial.
 pub fn parse_file(file: FileId, src: &str) -> (File, Vec<Diagnostic>) {
@@ -135,7 +135,11 @@ impl Parser<'_> {
     }
 
     fn nth(&self, n: usize) -> T {
-        self.tokens[(self.pos + n).min(self.tokens.len() - 1)].kind
+        self.nth_tok(n).kind
+    }
+
+    fn nth_tok(&self, n: usize) -> Token {
+        self.tokens[(self.pos + n).min(self.tokens.len() - 1)]
     }
 
     fn bump(&mut self) -> Token {
@@ -336,6 +340,12 @@ impl Parser<'_> {
     }
 
     /// A variable or parameter name: lower-case, and not the implicit name `result`.
+    /// Whether the current token is the word `sensitive` used as a modifier: followed by
+    /// `next` (a field or parameter name, or `var`).
+    fn at_sensitive(&self, next: T) -> bool {
+        self.at(T::Lower) && self.text(self.tok()) == "sensitive" && self.nth(1) == next
+    }
+
     fn binding(&mut self, what: &str) -> PResult<Ident> {
         let id = self.lower(what)?;
         if id.name == "result" {
@@ -394,7 +404,7 @@ impl Parser<'_> {
                 };
                 self.diags.push(
                     Diagnostic::error(codes::DOC_COMMENT_DOCUMENTS_NOTHING, c.span, "this doc comment does not document anything")
-                        .with_help("`///` documents the declaration, machine, state, event or variable that follows it; use `//` for other comments")
+                        .with_help("`///` documents the declaration, machine, state, history state, event or variable that follows it; use `//` for other comments")
                         .with_fix("make it a plain comment", slashes, "//"),
                 );
             }
@@ -538,16 +548,26 @@ impl Parser<'_> {
         Ok(match k {
             K::Type => {
                 let name = self.upper("a type name")?;
+                let params = if self.at_p(P::Lt) {
+                    self.angle_list("the type parameters", |p| p.upper("a type parameter"))?
+                } else {
+                    Vec::new()
+                };
                 let kind = if self.eat_p(P::Eq).is_some() {
                     DeclKind::Alias {
+                        params,
                         target: self.type_ref()?,
                     }
                 } else if self.at_p(P::LBrace) {
                     DeclKind::Record {
+                        params,
                         fields: self.fields("the fields of `type`")?,
                     }
                 } else {
-                    return Err(self.unexpected(&format!("`=` or `{{` after `type {}`", name.name)));
+                    let after = if params.is_empty() { "" } else { "<…>" };
+                    return Err(
+                        self.unexpected(&format!("`=` or `{{` after `type {}{after}`", name.name))
+                    );
                 };
                 (name, kind)
             }
@@ -706,6 +726,11 @@ impl Parser<'_> {
     }
 
     fn field(&mut self, param: bool) -> PResult<Field> {
+        let start = self.tok().span;
+        let sensitive = self.at_sensitive(T::Lower);
+        if sensitive {
+            self.bump();
+        }
         let name = if param {
             self.binding("a parameter name")?
         } else {
@@ -714,16 +739,118 @@ impl Parser<'_> {
         self.expect_p(P::Colon, &format!(" and a type after `{}`", name.name))?;
         let ty = self.type_ref()?;
         Ok(Field {
-            span: name.span.to(ty.span),
+            span: start.to(ty.span),
+            sensitive,
             name,
             ty,
         })
     }
 
+    /// A non-empty comma-separated list between `<` and `>`, trailing comma allowed. A `>=`
+    /// where the `>` is expected is split in two, so `var m: map<string, int>= f()` reads as
+    /// written.
+    fn angle_list<E>(
+        &mut self,
+        what: &str,
+        mut elem: impl FnMut(&mut Self) -> PResult<E>,
+    ) -> PResult<Vec<E>> {
+        let open = self.expect_p(P::Lt, &format!(" to start {what}"))?;
+        let mut out = Vec::new();
+        loop {
+            if !out.is_empty() && self.close_angle() {
+                break;
+            }
+            if self.at(T::Eof) || self.at_decl_start() {
+                return Err(self.unclosed(open, what));
+            }
+            out.push(elem(self)?);
+            if self.eat_p(P::Comma).is_none() {
+                if self.close_angle() {
+                    break;
+                }
+                return Err(self.unexpected("`,` or `>`"));
+            }
+        }
+        Ok(out)
+    }
+
+    /// Takes a `>`, or the `>` of a `>=` (leaving its `=`), if the next token starts with one.
+    fn close_angle(&mut self) -> bool {
+        if self.eat_p(P::Gt).is_some() {
+            return true;
+        }
+        if self.at_p(P::Ge) {
+            let t = self.tok();
+            let mid = Pos {
+                offset: t.span.start.offset + 1,
+                line: t.span.start.line,
+                col: t.span.start.col + 1,
+            };
+            self.tokens[self.pos] = Token {
+                kind: T::Punct(P::Eq),
+                span: Span {
+                    start: mid,
+                    ..t.span
+                },
+            };
+            self.tokens.insert(
+                self.pos,
+                Token {
+                    kind: T::Punct(P::Gt),
+                    span: Span { end: mid, ..t.span },
+                },
+            );
+            self.bump();
+            return true;
+        }
+        false
+    }
+
+    /// A type argument: a type one level deeper.
+    fn type_arg(&mut self) -> PResult<TypeRef> {
+        let base = self.depth;
+        self.deeper()?;
+        let t = self.type_ref();
+        self.depth = base;
+        t
+    }
+
     fn type_ref(&mut self) -> PResult<TypeRef> {
         let t = self.tok();
         let kind = match t.kind {
-            T::Upper => TypeKind::Named(self.bump_ident()),
+            T::Upper => {
+                let name = self.bump_ident();
+                if self.at_p(P::Lt) {
+                    TypeKind::Generic(
+                        name,
+                        self.angle_list("the type arguments", |p| p.type_arg())?,
+                    )
+                } else {
+                    TypeKind::Named(name)
+                }
+            }
+            T::Lower if self.text(t) == "map" && self.nth(1) == T::Punct(P::Lt) => {
+                self.bump();
+                let open = self.tok();
+                let mut args =
+                    self.angle_list("the key and value types of `map`", |p| p.type_arg())?;
+                if args.len() != 2 {
+                    let d = Diagnostic::error(
+                        codes::UNEXPECTED_TOKEN,
+                        open.span.to(self.prev()),
+                        format!(
+                            "`map` takes a key type and a value type, not {}",
+                            args.len()
+                        ),
+                    )
+                    .with_help("write `map<string, T>`");
+                    self.error(d);
+                    return Err(Fail);
+                }
+                let v = args.pop().expect("two");
+                let k = args.pop().expect("two");
+                TypeKind::Map(Box::new(k), Box::new(v))
+            }
             T::Lower if self.text(t) == "ref" && self.nth(1) == T::Upper => {
                 self.bump();
                 TypeKind::Ref(self.bump_ident())
@@ -828,14 +955,55 @@ impl Parser<'_> {
     /// One body item. `Ok(None)` is a well-formed item in the wrong kind of body, reported and
     /// left out of the tree.
     fn item(&mut self, kind: BodyKind) -> PResult<Option<Item>> {
-        let t = self.tok();
+        // Nested states recurse through here, so a state is parsed before entering the large
+        // frame of `other_item`: the deepest nesting allowed must fit a thread's stack in a
+        // debug build.
+        if matches!(self.peek(), T::Keyword(K::State | K::Final | K::Parallel)) {
+            return Ok(Some(Item::State(self.state()?)));
+        }
+        self.other_item(kind)
+    }
+
+    /// A body item other than a state.
+    #[inline(never)]
+    fn other_item(&mut self, kind: BodyKind) -> PResult<Option<Item>> {
+        if let Some(deep) = self.at_history() {
+            let h = self.history(deep)?;
+            if kind == BodyKind::Machine {
+                let word = if deep { "deep history" } else { "history" };
+                let d = Diagnostic::error(
+                    codes::NOT_IN_MACHINE_BODY,
+                    h.span,
+                    format!("`{word}` is only allowed in a state with child states, not directly in a machine body"),
+                )
+                .with_help("the machine is never left, so it has nothing to return to; put the history state in the state it returns to");
+                self.error(d);
+                return Ok(None);
+            }
+            return Ok(Some(Item::History(h)));
+        }
+        let mut t = self.tok();
+        if self.at_children() {
+            let decl = self.children()?;
+            if kind == BodyKind::State {
+                let d = Diagnostic::error(codes::NOT_IN_STATE, t.span, "`children` is only allowed directly in a machine body")
+                    .with_help("move the `children` to the top of the machine; a collection belongs to the machine, not to a state");
+                self.error(d);
+                return Ok(None);
+            }
+            return Ok(Some(Item::Children(decl)));
+        }
+        // `sensitive var`: `sensitive` is not reserved, so it is a modifier only here.
+        if self.at_sensitive(T::Keyword(K::Var)) {
+            t = self.nth_tok(1);
+        }
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
-                    "a machine item (`var`, `event`, `emits`, `call`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`) or `}`"
+                    "a machine item (`var`, `event`, `emits`, `call`, `children`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`) or `}`"
                 }
                 BodyKind::State => {
-                    "a state item (`initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
+                    "a state item (`initial`, `state`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
                 }
             };
             return Err(self.unexpected(expected));
@@ -857,7 +1025,7 @@ impl Parser<'_> {
                 let effects = self.effects()?;
                 if effects.is_empty() {
                     let expected = format!(
-                        "`set`, `do`, `send`, `emit` or `reply` after `{}`",
+                        "`set`, `do`, `send`, `emit`, `reply`, `spawn` or `stop` after `{}`",
                         self.text(t)
                     );
                     return Err(self.unexpected(&expected));
@@ -877,9 +1045,18 @@ impl Parser<'_> {
                 let trigger = if self.at(T::Lower) && self.nth(1) == T::Punct(P::Dot) {
                     let from = self.bump_ident();
                     self.bump();
-                    let event =
-                        self.upper(&format!("the name of an event `{}` emits", from.name))?;
-                    Trigger::Receive { from, event }
+                    if self.eat_kw(K::Done).is_some() {
+                        Trigger::ChildDone { from }
+                    } else if self.eat_kw(K::Fail).is_some() {
+                        let error = self.pattern("an error name or `*`")?;
+                        Trigger::ChildFail { from, error }
+                    } else {
+                        let event = self.upper(&format!(
+                            "the name of an event `{}` emits, `done` or `fail`",
+                            from.name
+                        ))?;
+                        Trigger::Receive { from, event }
+                    }
                 } else if self.at(T::Lower) {
                     Trigger::Call(self.bump_ident())
                 } else {
@@ -971,9 +1148,80 @@ impl Parser<'_> {
         Ok(Some(item))
     }
 
-    fn var(&mut self) -> PResult<Var> {
+    /// `children` is not reserved: it starts a collection only as `children name:`.
+    fn at_children(&self) -> bool {
+        self.at(T::Lower)
+            && self.text(self.tok()) == "children"
+            && self.nth(1) == T::Lower
+            && self.nth(2) == T::Punct(P::Colon)
+    }
+
+    /// `children name: Machine by Key`
+    fn children(&mut self) -> PResult<ChildrenDecl> {
         let doc = self.take_doc();
         let start = self.bump().span;
+        let name = self.binding("the name of a children collection")?;
+        self.expect_p(
+            P::Colon,
+            &format!(" and a machine after `children {}`", name.name),
+        )?;
+        let machine = self.upper("the machine of the collection's children")?;
+        if !(self.at(T::Lower) && self.text(self.tok()) == "by") {
+            return Err(self.unexpected(&format!(
+                "`by` and the key type after `children {}: {}`",
+                name.name, machine.name
+            )));
+        }
+        self.bump();
+        let key = self.type_ref()?;
+        Ok(ChildrenDecl {
+            doc,
+            name,
+            machine,
+            key,
+            span: self.since(start),
+        })
+    }
+
+    /// `Some(deep)` at the start of `history Name` or `deep history`. Both words are
+    /// contextual: no name can start an item, so they are not reserved.
+    fn at_history(&self) -> Option<bool> {
+        if !self.at(T::Lower) {
+            return None;
+        }
+        match self.text(self.tok()) {
+            "history" if self.nth(1) == T::Upper => Some(false),
+            "deep" if matches!(self.nth(1), T::Lower | T::Upper) => Some(true),
+            _ => None,
+        }
+    }
+
+    fn history(&mut self, deep: bool) -> PResult<History> {
+        let doc = self.take_doc();
+        let start = self.bump().span;
+        if deep {
+            if !(self.at(T::Lower) && self.text(self.tok()) == "history") {
+                return Err(self.unexpected("`history` after `deep`"));
+            }
+            self.bump();
+        }
+        let name = self.upper("the name of the history state")?;
+        Ok(History {
+            doc,
+            deep,
+            name,
+            span: self.since(start),
+        })
+    }
+
+    fn var(&mut self) -> PResult<Var> {
+        let doc = self.take_doc();
+        let start = self.tok().span;
+        let sensitive = self.at_sensitive(T::Keyword(K::Var));
+        if sensitive {
+            self.bump();
+        }
+        self.bump();
         let name = self.binding("a variable name")?;
         self.expect_p(P::Colon, &format!(" and a type after `var {}`", name.name))?;
         let ty = self.type_ref()?;
@@ -984,6 +1232,7 @@ impl Parser<'_> {
         };
         Ok(Var {
             doc,
+            sensitive,
             name,
             ty,
             init,
@@ -1224,12 +1473,12 @@ impl Parser<'_> {
         if target.is_none() && effects.is_empty() {
             let (expected, help) = if ignore {
                 (
-                    "`-> Target`, `set`, `do`, `send`, `emit`, `reply` or `ignore`",
+                    "`-> Target`, `set`, `do`, `send`, `emit`, `reply`, `spawn`, `stop` or `ignore`",
                     "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`) or a reply (`reply call done`), or write `ignore` to take the event and do nothing",
                 )
             } else {
                 (
-                    "`-> Target`, `set`, `do`, `send`, `emit` or `reply`",
+                    "`-> Target`, `set`, `do`, `send`, `emit`, `reply`, `spawn` or `stop`",
                     "give it a target (`-> State`), assignments (`set x = …`), actions (`do f(…)`), messages (`send child.Event`, `emit Event`) or a reply (`reply call done`)",
                 )
             };
@@ -1261,7 +1510,8 @@ impl Parser<'_> {
         Ok(Target { path, span })
     }
 
-    /// Zero or more `set …`, `do …`, `send …`, `emit …` and `reply …` clauses.
+    /// Zero or more `set …`, `do …`, `send …`, `emit …`, `reply …`, `spawn …` and `stop …`
+    /// clauses.
     fn effects(&mut self) -> PResult<Vec<Effect>> {
         let mut out = Vec::new();
         loop {
@@ -1271,12 +1521,64 @@ impl Parser<'_> {
             }
             if let Some(kw) = self.eat_kw(K::Send) {
                 let to = self.lower("the name of the machine to send to")?;
+                let key = if self.at_p(P::LBracket) {
+                    Some(SendKey::Key(self.key()?))
+                } else if self.at_p(P::Dot) && self.nth(1) == T::Punct(P::Star) {
+                    self.bump();
+                    let star = self.bump();
+                    Some(SendKey::All { span: star.span })
+                } else {
+                    None
+                };
                 self.expect_p(
                     P::Dot,
                     &format!(" and the event to send after `send {}`", to.name),
                 )?;
                 let event = self.upper("an event name")?;
-                out.push(Effect::Send(self.message(kw.span, Some(to), event)?));
+                let mut message = self.message(kw.span, Some(to), event)?;
+                message.key = key;
+                out.push(Effect::Send(message));
+                continue;
+            }
+            if self.at_contextual("spawn") {
+                let kw = self.bump();
+                let children = self.lower("the children collection to spawn into")?;
+                if !self.at_p(P::LBracket) {
+                    return Err(self
+                        .unexpected(&format!("`[` and the key after `spawn {}`", children.name)));
+                }
+                let key = self.key()?;
+                self.expect_p(P::Eq, &format!(" after `spawn {}[…]`", children.name))?;
+                let machine = self.upper("the machine to spawn")?;
+                if !self.at_p(P::LParen) {
+                    return Err(
+                        self.unexpected(&format!("`(` and the arguments of `{}`", machine.name))
+                    );
+                }
+                let (args, _) = self.list(P::LParen, "the argument list", |p| p.expr(false))?;
+                out.push(Effect::Spawn(Spawn {
+                    children,
+                    key,
+                    machine,
+                    args,
+                    span: self.since(kw.span),
+                }));
+                continue;
+            }
+            if self.at_contextual("stop") {
+                let kw = self.bump();
+                let children = self.lower("the children collection to stop a child of")?;
+                if !self.at_p(P::LBracket) {
+                    return Err(
+                        self.unexpected(&format!("`[` and the key after `stop {}`", children.name))
+                    );
+                }
+                let key = self.key()?;
+                out.push(Effect::Stop(Stop {
+                    children,
+                    key,
+                    span: self.since(kw.span),
+                }));
                 continue;
             }
             if let Some(kw) = self.eat_kw(K::Emit) {
@@ -1371,6 +1673,28 @@ impl Parser<'_> {
         })
     }
 
+    /// `spawn` and `stop` are not reserved: they start an effect only where an effect can
+    /// start, followed by a name (`spawn name[`, `stop name[`). No expression or other item
+    /// can go on with a lower-case name there, so a missing `[` is reported as such.
+    fn at_contextual(&self, word: &str) -> bool {
+        self.at(T::Lower) && self.text(self.tok()) == word && self.nth(1) == T::Lower
+    }
+
+    /// `[expr]`: the key of a spawned child.
+    fn key(&mut self) -> PResult<Expr> {
+        let open = self.bump();
+        self.deeper()?;
+        let key = self.expr(false)?;
+        self.depth -= 1;
+        if self.eat_p(P::RBracket).is_none() {
+            if self.at(T::Eof) {
+                return Err(self.unclosed(open, "the key"));
+            }
+            return Err(self.unexpected("`]` after the key"));
+        }
+        Ok(key)
+    }
+
     /// The rest of a `send` or `emit`: the optional record body after the event's name.
     fn message(&mut self, start: Span, to: Option<Ident>, event: Ident) -> PResult<Message> {
         let mut fields = Vec::new();
@@ -1380,6 +1704,7 @@ impl Parser<'_> {
         }
         Ok(Message {
             to,
+            key: None,
             value_span: event.span.to(self.prev()),
             event,
             fields,
@@ -1454,6 +1779,11 @@ impl Parser<'_> {
         } else {
             None
         };
+        let retry = if self.at(T::Lower) && self.text(self.tok()) == "retry" {
+            Some(self.retry()?)
+        } else {
+            None
+        };
         let open = self.expect_p(P::LBrace, " and the invoke's outcomes (`done`, `fail`)")?;
         let mut outcomes = Vec::new();
         let errors_before = self.diags.len();
@@ -1490,7 +1820,39 @@ impl Parser<'_> {
             callee,
             args,
             alias,
+            retry,
             outcomes,
+            span: self.since(start),
+        })
+    }
+
+    /// `retry N [on E | …] [after delay]`, at `retry`.
+    fn retry(&mut self) -> PResult<Retry> {
+        let start = self.bump().span;
+        if !self.at(T::Int) {
+            return Err(self.unexpected("the number of retries after `retry`"));
+        }
+        let t = self.bump();
+        let count = self.text(t).parse().unwrap_or(i64::MAX);
+        let mut errors = Vec::new();
+        if self.eat_kw(K::On).is_some() {
+            errors.push(self.upper("an error name")?);
+            while self.eat_p(P::Pipe).is_some() {
+                errors.push(self.upper("an error name")?);
+            }
+        }
+        let delay = if self.eat_kw(K::After).is_some() {
+            let delay = self.expr(true)?;
+            self.check_record_after(&delay)?;
+            Some(delay)
+        } else {
+            None
+        };
+        Ok(Retry {
+            count,
+            count_span: t.span,
+            errors,
+            delay,
             span: self.since(start),
         })
     }

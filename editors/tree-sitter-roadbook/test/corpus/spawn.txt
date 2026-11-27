@@ -1,0 +1,299 @@
+================================================================================
+Children collections
+================================================================================
+
+machine Hub() {
+  /// The open sessions.
+  children sessions: Session by SessionId
+  children jobs:     Job     by string
+  initial A
+  state A {}
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (doc_comment)
+      (children_declaration
+        (identifier)
+        (type_identifier)
+        (type_identifier))
+      (children_declaration
+        (identifier)
+        (type_identifier)
+        (builtin_type))
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body)))))
+
+================================================================================
+Spawn, stop and send by key or to all
+================================================================================
+
+machine Hub() {
+  initial A
+  exit send sessions.*.Leave
+  state A {
+    entry spawn jobs[Lane.Fast] = Job(Lane.Fast)
+    on Connected     spawn sessions[event.id] = Session(event.id, "hi")  send sessions[event.id].Notify { text: "hi" }
+    on Disconnected  stop sessions[event.id]
+    on Broadcast     send sessions.*.Notify { text: event.text }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (exit
+        (send
+          (identifier)
+          (wildcard)
+          (type_identifier)))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (entry
+            (spawn
+              (identifier)
+              (enum_value
+                (type_identifier)
+                (type_identifier))
+              (type_identifier)
+              (arguments
+                (enum_value
+                  (type_identifier)
+                  (type_identifier)))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (spawn
+              (identifier)
+              (field_expression
+                (implicit_name)
+                (identifier))
+              (type_identifier)
+              (arguments
+                (field_expression
+                  (implicit_name)
+                  (identifier))
+                (string
+                  (string_content))))
+            (send
+              (identifier)
+              (field_expression
+                (implicit_name)
+                (identifier))
+              (type_identifier)
+              (record_body
+                (field_value
+                  (identifier)
+                  (string
+                    (string_content))))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (stop
+              (identifier)
+              (field_expression
+                (implicit_name)
+                (identifier))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (send
+              (identifier)
+              (wildcard)
+              (type_identifier)
+              (record_body
+                (field_value
+                  (identifier)
+                  (field_expression
+                    (implicit_name)
+                    (identifier)))))))))))
+
+================================================================================
+Triggers on a collection's children, and key
+================================================================================
+
+machine Hub() {
+  initial A
+  state A {
+    on sessions.Typing                      do note(key, event.text)
+    on sessions.done                        set open = open - 1  do note(key, result)
+    on sessions.fail Lost if error.reason == "idle"  do log(key)
+    on sessions.fail *                      -> A
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (received_event
+              (identifier)
+              (type_identifier))
+            (do
+              (call
+                (identifier)
+                (arguments
+                  (implicit_name)
+                  (field_expression
+                    (implicit_name)
+                    (identifier))))))
+          (on_transition
+            (child_done
+              (identifier))
+            (set
+              (assignment
+                (identifier)
+                (binary_expression
+                  (identifier)
+                  (integer))))
+            (do
+              (call
+                (identifier)
+                (arguments
+                  (implicit_name)
+                  (implicit_name)))))
+          (on_transition
+            (child_fail
+              (identifier)
+              (type_identifier))
+            (guard
+              (binary_expression
+                (field_expression
+                  (implicit_name)
+                  (identifier))
+                (string
+                  (string_content))))
+            (do
+              (call
+                (identifier)
+                (arguments
+                  (implicit_name)))))
+          (on_transition
+            (child_fail
+              (identifier)
+              (wildcard))
+            (target
+              (type_identifier))))))))
+
+================================================================================
+children, by, spawn, stop and key as names
+================================================================================
+
+type T { children: int, by: string, spawn: bool, stop: int, key: string }
+
+action stop()
+action spawn(key: string)
+
+machine M(children: int, by: string) {
+  var spawn: int = 0
+  entry do stop(), spawn(children), children()  set spawn = by.key, stop = 1,
+  initial A
+  state A {
+    on X send stop.Go { key: children }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (type_declaration
+    (type_identifier)
+    (fields
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))))
+  (action_declaration
+    (identifier)
+    (parameters))
+  (action_declaration
+    (identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type))))
+  (machine_declaration
+    (type_identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type))
+      (parameter
+        (identifier)
+        (builtin_type)))
+    (machine_body
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (integer))
+      (entry
+        (do
+          (call
+            (identifier)
+            (arguments))
+          (call
+            (identifier)
+            (arguments
+              (identifier)))
+          (call
+            (identifier)
+            (arguments)))
+        (set
+          (assignment
+            (identifier)
+            (field_expression
+              (identifier)
+              (identifier)))
+          (assignment
+            (identifier)
+            (integer))))
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (send
+              (identifier)
+              (type_identifier)
+              (record_body
+                (field_value
+                  (identifier)
+                  (identifier))))))))))

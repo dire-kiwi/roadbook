@@ -74,6 +74,85 @@ fn export_scxml_snapshots_calls() {
     }
 }
 
+/// History states are `<history type="shallow|deep">` in their parent, with the default
+/// transition SCXML requires: the parent's default entry, its `initial` or every region.
+#[test]
+fn export_scxml_writes_history_states() {
+    for (chart, machine, snapshot) in [
+        (
+            "spec/conformance/charts/history.road",
+            "Editor",
+            "history_editor_scxml",
+        ),
+        (
+            "spec/conformance/charts/history-regions.road",
+            "Panels",
+            "history_panels_scxml",
+        ),
+    ] {
+        let out = roadbook(&repo(), &["export", "scxml", chart, "--machine", machine]);
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        let xml = text(&out.stdout);
+        let doc = roxmltree::Document::parse(&xml).unwrap_or_else(|e| panic!("{e}\n{xml}"));
+        let histories: Vec<(&str, &str, &str, String)> = doc
+            .descendants()
+            .filter(|n| n.has_tag_name((SCXML, "history")))
+            .map(|n| {
+                let parent = n.parent_element().unwrap();
+                let default = n
+                    .children()
+                    .find(|c| c.has_tag_name((SCXML, "transition")))
+                    .and_then(|t| t.attribute("target"))
+                    .unwrap_or_default()
+                    .to_string();
+                (
+                    parent.attribute("id").unwrap(),
+                    n.attribute("id").unwrap(),
+                    n.attribute("type").unwrap(),
+                    default,
+                )
+            })
+            .collect();
+        match machine {
+            "Editor" => assert_eq!(
+                histories,
+                [
+                    (
+                        "Editor_Work",
+                        "Editor_Work_Shallow",
+                        "shallow",
+                        "Editor_Work_Draft".to_string()
+                    ),
+                    (
+                        "Editor_Work",
+                        "Editor_Work_Deep",
+                        "deep",
+                        "Editor_Work_Draft".to_string()
+                    )
+                ]
+            ),
+            _ => assert_eq!(
+                histories,
+                [
+                    (
+                        "Panels_Both",
+                        "Panels_Both_Deep",
+                        "deep",
+                        "Panels_Both_L Panels_Both_R".to_string()
+                    ),
+                    (
+                        "Panels_Both",
+                        "Panels_Both_Shallow",
+                        "shallow",
+                        "Panels_Both_L Panels_Both_R".to_string()
+                    )
+                ]
+            ),
+        }
+        insta::assert_snapshot!(snapshot, xml);
+    }
+}
+
 fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
     for e in std::fs::read_dir(dir).unwrap() {
         let e = e.unwrap();
@@ -139,15 +218,17 @@ fn export_scxml_is_well_formed_and_keeps_every_state_and_target() {
                     continue;
                 }
                 match n.tag_name().name() {
-                    "state" | "parallel" | "final" => {
+                    "state" | "parallel" | "final" | "history" => {
                         assert!(
                             ids.insert(n.attribute("id").unwrap().to_string()),
                             "{rel}: duplicate id"
                         );
                     }
                     "transition" => {
+                        // A history state's default transition targets every region of a
+                        // parallel parent.
                         if let Some(t) = n.attribute("target") {
-                            targets.insert(t.to_string());
+                            targets.extend(t.split_whitespace().map(str::to_string));
                         }
                     }
                     _ => {}

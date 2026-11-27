@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.5) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.7) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -12,6 +12,8 @@ export interface Span {
 export interface Field {
   name: string
   type: string
+  /** Marked `sensitive`: traces show its value as "<redacted>". */
+  sensitive: boolean
   doc: string
 }
 
@@ -22,9 +24,10 @@ export interface Expr {
   text: string
 }
 
+/** A declared type. A record or an alias is generic when it has `params`. */
 export type TypeDecl =
-  | { kind: 'record'; fields: Field[]; doc: string; span: Span }
-  | { kind: 'alias'; type: string; doc: string; span: Span }
+  | { kind: 'record'; params: string[]; fields: Field[]; doc: string; span: Span }
+  | { kind: 'alias'; params: string[]; type: string; doc: string; span: Span }
   | { kind: 'enum'; variants: string[]; doc: string; span: Span }
   | { kind: 'error'; fields: Field[]; doc: string; span: Span }
   | { kind: 'extern'; doc: string; span: Span }
@@ -53,6 +56,8 @@ export interface TaskDecl {
 export interface Var {
   name: string
   type: string
+  /** Marked `sensitive`: traces show its value as "<redacted>". */
+  sensitive: boolean
   init: Expr | null
   doc: string
   span: Span
@@ -64,7 +69,12 @@ export interface EventDecl {
   span: Span
 }
 
-export type StateKind = 'atomic' | 'compound' | 'parallel' | 'final'
+/**
+ * `history` and `deepHistory` are history pseudo-states (`history Name`, `deep history Name`):
+ * in their parent's `states`, never active, only ever a transition's target. A state's
+ * children and a parallel state's regions are its other `states`.
+ */
+export type StateKind = 'atomic' | 'compound' | 'parallel' | 'final' | 'history' | 'deepHistory'
 
 export interface Invoke {
   kind: 'task' | 'machine' | 'call'
@@ -79,13 +89,26 @@ export interface Invoke {
 
 /** Another running machine: the receiver of a `send`, the sender of an `emitted` trigger. */
 export interface Address {
-  /** `child`: an `invoke … as name`; `ref`: a parameter or variable of type `ref Machine`. */
-  kind: 'child' | 'ref'
+  /**
+   * `child`: an `invoke … as name`; `ref`: a parameter or variable of type `ref Machine`;
+   * `children`: the spawned children of the collection `name` (which of them, the item says).
+   */
+  kind: 'child' | 'ref' | 'children'
   name: string
   /** The machine at the other end, a key of `machines`. */
   machine: string
-  /** For a child, the id of the invoking state; null for a ref. */
+  /** For a child, the id of the invoking state; null for a ref and for children. */
   state: string | null
+}
+
+/** A collection of spawned children (`children name: Machine by Key`), keyed by its name. */
+export interface ChildrenDecl {
+  /** The machine its children run, a key of `machines`. */
+  machine: string
+  /** The type of its keys. */
+  key: string
+  doc: string
+  span: Span
 }
 
 export type Trigger =
@@ -98,13 +121,22 @@ export type Trigger =
   | { kind: 'invoke.done' }
   | { kind: 'invoke.fail'; error: string }
   | { kind: 'call'; call: string }
+  /** `on name.done`: a spawned child of the collection `children` ended with an output. */
+  | { kind: 'spawn.done'; children: string }
+  /** `on name.fail E`: a spawned child of the collection failed with `error`, or `*`. */
+  | { kind: 'spawn.fail'; children: string; error: string }
 
 export type Effect =
   | { kind: 'set'; var: string; value: Expr }
   | { kind: 'do'; action: string; args: Expr[] }
-  | { kind: 'send'; to: Address; event: string; value: Expr }
+  /** `key`: for a `children` address, the key (`send name[key].E`), or null for every child (`send name.*.E`); null otherwise. */
+  | { kind: 'send'; to: Address; key: Expr | null; event: string; value: Expr }
   | { kind: 'emit'; event: string; value: Expr }
   | { kind: 'reply'; call: Expr; outcome: 'done' | 'fail'; value: Expr | null }
+  /** `spawn name[key] = Machine(args)` */
+  | { kind: 'spawn'; children: string; machine: string; key: Expr; args: Expr[] }
+  /** `stop name[key]` */
+  | { kind: 'stop'; children: string; key: Expr }
 
 export interface Transition {
   trigger: Trigger
@@ -154,6 +186,8 @@ export interface Machine {
   emits: Record<string, EventDecl>
   /** Calls the machine answers (`call name(params) -> T ! E`). */
   calls: Record<string, CallDecl>
+  /** The collections of spawned children, keyed by name. */
+  children: Record<string, ChildrenDecl>
   root: State
   hash: string
 }
@@ -179,4 +213,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.5'
+export const IR_VERSION = '0.7'

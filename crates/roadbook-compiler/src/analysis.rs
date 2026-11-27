@@ -55,6 +55,21 @@ impl<'a> Tree<'a> {
         out
     }
 
+    /// The states a transition written in `from` with target `to` leaves, among `from` and the
+    /// states containing it: those below the deepest state that strictly contains both.
+    fn left_by(&self, from: &'a str, to: &'a str) -> Vec<&'a str> {
+        let from_anc = self.ancestors(from);
+        let domain = self
+            .ancestors(to)
+            .into_iter()
+            .find(|a| from_anc.contains(a))
+            .unwrap_or(self.root);
+        std::iter::once(from)
+            .chain(from_anc.iter().copied())
+            .take_while(|&s| s != domain && s != self.root)
+            .collect()
+    }
+
     /// `id` and the states entered with it: the initial child of a compound state, every
     /// child of a parallel state, recursively.
     fn enter_down(&self, id: &'a str, out: &mut Vec<&'a str>) {
@@ -69,7 +84,7 @@ impl<'a> Tree<'a> {
                 }
             }
             StateKind::Parallel => {
-                for c in &s.states {
+                for c in s.states.iter().filter(|c| !c.kind.is_history()) {
                     self.enter_down(&c.id, out);
                 }
             }
@@ -81,6 +96,9 @@ impl<'a> Tree<'a> {
     /// deepest state that strictly contains both (the machine root at most), down to `to`,
     /// with the other regions of any parallel state on the way, then `to`'s initial chain. A
     /// transition to the state itself or to an ancestor leaves and re-enters it.
+    ///
+    /// A transition to a history state enters its parent's default entry: a history state
+    /// only restores states that were entered before.
     fn entry_set(&self, from: &'a str, to: &'a str) -> Vec<&'a str> {
         let from_anc = self.ancestors(from);
         let domain = self
@@ -88,6 +106,19 @@ impl<'a> Tree<'a> {
             .into_iter()
             .find(|a| from_anc.contains(a))
             .unwrap_or(self.root);
+        let to = if self.states[to].kind.is_history() {
+            let parent = self.parent[to];
+            if parent == domain {
+                // From inside the parent, which is not left: its default entry, below it.
+                let mut out = vec![parent];
+                self.enter_down(parent, &mut out);
+                out.drain(..2);
+                return out;
+            }
+            parent
+        } else {
+            to
+        };
         let mut path = vec![to];
         let mut cur = to;
         while let Some(&p) = self.parent.get(cur) {
@@ -103,7 +134,11 @@ impl<'a> Tree<'a> {
             if let Some(&parent) = self.parent.get(p)
                 && self.states[parent].kind == StateKind::Parallel
             {
-                for c in &self.states[parent].states {
+                for c in self.states[parent]
+                    .states
+                    .iter()
+                    .filter(|c| !c.kind.is_history())
+                {
                     if c.id != p {
                         self.enter_down(&c.id, &mut out);
                     }
@@ -116,6 +151,35 @@ impl<'a> Tree<'a> {
             }
         }
         out
+    }
+
+    /// Every state history state `h` could restore: each child of its parent with its
+    /// default entry for a shallow one, every state below the parent for a deep one. A loop
+    /// through a history state goes back into what it recorded, so the cycle check counts
+    /// all of these, not only the parent's default entry.
+    fn could_restore(&self, h: &'a str) -> Vec<&'a str> {
+        let parent = self.states[self.parent[h]];
+        let mut out = Vec::new();
+        for c in parent.states.iter().filter(|c| !c.kind.is_history()) {
+            if self.states[h].kind == StateKind::DeepHistory {
+                self.below(&c.id, &mut out);
+            } else {
+                self.enter_down(&c.id, &mut out);
+            }
+        }
+        out
+    }
+
+    /// `id` and every state below it, history states left out.
+    fn below(&self, id: &'a str, out: &mut Vec<&'a str>) {
+        out.push(id);
+        for c in self.states[id]
+            .states
+            .iter()
+            .filter(|c| !c.kind.is_history())
+        {
+            self.below(&c.id, out);
+        }
     }
 
     /// The states that can become active, starting from the initial configuration and
@@ -172,26 +236,73 @@ pub(crate) fn run(
             message_warnings(doc, m, info, root_file, diags);
         }
 
-        // States entered without waiting: through `always`, `done` and invoke outcomes.
-        let eager = tree.reachable(|t| {
-            !matches!(
+        // States entered without waiting: through `always`, `done` and invoke outcomes,
+        // which can come at once. Only `on` (a spawned child's `on name.done` and
+        // `on name.fail` included: no child exists until something spawned it) and `after`
+        // wait.
+        let waits = |t: &ir::Transition| {
+            matches!(
                 t.trigger,
                 Trigger::Event { .. }
                     | Trigger::Emitted { .. }
                     | Trigger::Call { .. }
                     | Trigger::Any
                     | Trigger::After { .. }
+                    | Trigger::SpawnDone { .. }
+                    | Trigger::SpawnFail { .. }
             )
-        });
+        };
+        let eager = tree.reachable(|t| !waits(t));
         let mut edges = Vec::new();
         for id in &tree.order {
             let s = tree.states[id];
-            if eager.contains(id)
-                && let Some(inv) = &s.invoke
+            if !eager.contains(id) {
+                continue;
+            }
+            let si = info.states.get(*id);
+            if let Some(inv) = &s.invoke
                 && inv.kind == InvokeKind::Machine
-                && let Some(span) = info.states.get(*id).and_then(|i| i.invoke_span)
+                && let Some(span) = si.and_then(|i| i.invoke_span)
             {
                 edges.push((inv.src.as_str(), span));
+            }
+            // A spawn in the `entry` of a state entered without waiting, or in a transition
+            // taken without waiting, starts its machine without waiting too; so does one in
+            // the `exit` of the state such a transition is written in, or of a state around
+            // it that it leaves. (A transition to a top-level final state ends the run, and
+            // what its exits spawn never starts.)
+            if let Some(si) = si {
+                for target in spawned(m, &s.entry) {
+                    edges.push((target, si.name_span));
+                }
+                for (i, t) in s.transitions.iter().enumerate() {
+                    if waits(t) {
+                        continue;
+                    }
+                    let Some(r) = si.transition_reads.get(i) else {
+                        continue;
+                    };
+                    for target in spawned(m, &t.effects) {
+                        edges.push((target, r.span));
+                    }
+                    let Some((&to, _)) = t
+                        .target
+                        .as_deref()
+                        .and_then(|to| tree.states.get_key_value(to))
+                    else {
+                        continue;
+                    };
+                    let ends = tree.parent.get(to) == Some(&tree.root)
+                        && tree.states[to].kind == StateKind::Final;
+                    if ends {
+                        continue;
+                    }
+                    for left in tree.left_by(id, to) {
+                        for target in spawned(m, &tree.states[left].exit) {
+                            edges.push((target, r.span));
+                        }
+                    }
+                }
             }
         }
         invokes_eagerly.push((name.as_str(), edges));
@@ -253,7 +364,11 @@ fn always_cycles(tree: &Tree<'_>, info: &MachineInfo, diags: &mut Vec<Diagnostic
             Some(to) => {
                 if let Some((&to, _)) = tree.states.get_key_value(to) {
                     nodes.push(id);
-                    edges.insert(id, tree.entry_set(id, to));
+                    let mut entered = tree.entry_set(id, to);
+                    if tree.states[to].kind.is_history() {
+                        entered.extend(tree.could_restore(to));
+                    }
+                    edges.insert(id, entered);
                 }
             }
         }
@@ -339,6 +454,19 @@ fn cycles<'a>(nodes: &[&'a str], graph: &HashMap<&'a str, Vec<&'a str>>) -> Vec<
     out
 }
 
+/// The machines the `spawn` effects of a list start.
+fn spawned<'m>(m: &'m ir::Machine, effects: &'m [ir::Effect]) -> Vec<&'m str> {
+    effects
+        .iter()
+        .filter_map(|e| match e {
+            ir::Effect::Spawn { children, .. } => {
+                m.children.get(children).map(|c| c.machine.as_str())
+            }
+            _ => None,
+        })
+        .collect()
+}
+
 fn recursion(edges: &[(&str, Vec<(&str, Span)>)], diags: &mut Vec<Diagnostic>) {
     let nodes: Vec<&str> = edges.iter().map(|(m, _)| *m).collect();
     let graph: HashMap<&str, Vec<&str>> = edges
@@ -363,13 +491,9 @@ fn recursion(edges: &[(&str, Vec<(&str, Span)>)], diags: &mut Vec<Diagnostic>) {
             continue;
         };
         let what = if cycle.len() == 1 {
-            format!("`{}` invokes itself", cycle[0])
+            format!("`{}` starts itself", cycle[0])
         } else {
-            format!(
-                "`{}` invokes itself through {}",
-                cycle[0],
-                path.join(" -> ")
-            )
+            format!("`{}` starts itself through {}", cycle[0], path.join(" -> "))
         };
         let mut d = Diagnostic::error(
             codes::UNBOUNDED_RECURSION,
@@ -377,10 +501,12 @@ fn recursion(edges: &[(&str, Vec<(&str, Span)>)], diags: &mut Vec<Diagnostic>) {
             format!("{what} without waiting for an event or an `after` (unbounded recursion)"),
         )
         .with_label("entered without waiting")
-        .with_help("put an `on` or `after` transition on the way to the state that invokes it");
+        .with_help(
+            "put an `on` or `after` transition on the way to the state that invokes or spawns it",
+        );
         for (i, m) in cycle.iter().enumerate().skip(1) {
             if let Some(s) = span(m, next(i)) {
-                d = d.with_secondary(s, format!("then `{m}` invokes `{}`", next(i)));
+                d = d.with_secondary(s, format!("then `{m}` starts `{}`", next(i)));
             }
         }
         diags.push(d);
@@ -395,17 +521,46 @@ fn warnings(
     diags: &mut Vec<Diagnostic>,
 ) {
     let reach = tree.reachable(|_| true);
+    // A `retry`'s own branches are not a way out: they stop once the retries run out.
     let leaves = |s: &ir::State| {
-        s.transitions
-            .iter()
-            .any(|t| t.target.is_some() && !matches!(t.trigger, Trigger::Done))
+        let added = info.states.get(&s.id).map(|i| &i.retry_branches);
+        s.transitions.iter().enumerate().any(|(i, t)| {
+            t.target.is_some()
+                && !matches!(t.trigger, Trigger::Done)
+                && !added.is_some_and(|a| a.contains(&i))
+        })
     };
+    let targeted: HashSet<&str> = tree
+        .order
+        .iter()
+        .flat_map(|id| &tree.states[id].transitions)
+        .filter_map(|t| t.target.as_deref())
+        .collect();
     for &id in &tree.order[1..] {
         let s = tree.states[id];
         let Some(si) = info.states.get(id) else {
             continue;
         };
         let parent = tree.parent[id];
+        if s.kind.is_history() {
+            // Never entered itself: only whether anything goes to it matters.
+            if !targeted.contains(id) {
+                let word = if s.kind == StateKind::DeepHistory {
+                    "deep history"
+                } else {
+                    "history"
+                };
+                diags.push(
+                    Diagnostic::warning(
+                        codes::UNUSED_HISTORY,
+                        si.name_span,
+                        format!("{word} state `{id}` is never used"),
+                    )
+                    .with_help(format!("no transition targets it; a transition to it returns to where `{parent}` was when it was last left")),
+                );
+            }
+            continue;
+        }
         if !reach.contains(id) {
             if reach.contains(parent) {
                 diags.push(
@@ -429,7 +584,10 @@ fn warnings(
                 Diagnostic::warning(
                     codes::NO_WAY_OUT,
                     si.name_span,
-                    format!("state `{id}` has no way out"),
+                    format!(
+                        "state `{}` has no way out",
+                        si.written_as.as_deref().unwrap_or(id)
+                    ),
                 )
                 .with_help("nothing leaves it or a state containing it; add a transition, or make it a `final state`"),
             );
@@ -455,6 +613,20 @@ fn warnings(
                     ),
                 );
             }
+        }
+    }
+    for (c, span) in &info.children {
+        if root_file && !info.spawned.contains(c) {
+            diags.push(
+                Diagnostic::warning(
+                    codes::NEVER_SPAWNED,
+                    *span,
+                    format!("no `spawn` fills the collection `{c}`"),
+                )
+                .with_help(format!(
+                    "start its children with `spawn {c}[key] = Machine(…)`, or remove it"
+                )),
+            );
         }
     }
     for (e, span) in &info.events {

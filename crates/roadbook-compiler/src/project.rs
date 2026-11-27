@@ -228,10 +228,12 @@ impl Project {
             if let Some(f) = target(&d.span) {
                 remap(&mut d.span);
                 let kind = match &d.def {
-                    ir::TypeDef::Record { fields } => DeclKind::Record {
+                    ir::TypeDef::Record { params, fields } => DeclKind::Record {
+                        params: params.iter().map(|p| ident(p, d.span)).collect(),
                         fields: ast_fields(fields, d.span),
                     },
-                    ir::TypeDef::Alias { ty } => DeclKind::Alias {
+                    ir::TypeDef::Alias { params, ty } => DeclKind::Alias {
+                        params: params.iter().map(|p| ident(p, d.span)).collect(),
                         target: ast_type(ty, d.span),
                     },
                     ir::TypeDef::Enum { variants } => DeclKind::Enum {
@@ -458,6 +460,13 @@ fn ast_type(t: &ir::TypeRef, span: ir::Span) -> ast::TypeRef {
             ast::TypeKind::Builtin(ast::Builtin::lookup(b.name()).unwrap_or(ast::Builtin::Json))
         }
         ir::TypeRef::Named(n) => ast::TypeKind::Named(ident(n, span)),
+        ir::TypeRef::Generic(n, args) => ast::TypeKind::Generic(
+            ident(n, span),
+            args.iter().map(|a| ast_type(a, span)).collect(),
+        ),
+        ir::TypeRef::Map(k, v) => {
+            ast::TypeKind::Map(Box::new(ast_type(k, span)), Box::new(ast_type(v, span)))
+        }
         ir::TypeRef::Ref(n) => ast::TypeKind::Ref(ident(n, span)),
         ir::TypeRef::Call(n) => ast::TypeKind::Call(ident(n, span)),
         ir::TypeRef::List(e) => ast::TypeKind::List(Box::new(ast_type(e, span))),
@@ -473,6 +482,7 @@ fn ast_fields(fields: &[ir::Field], span: ir::Span) -> Vec<ast::Field> {
     fields
         .iter()
         .map(|f| ast::Field {
+            sensitive: f.sensitive,
             name: ident(&f.name, span),
             ty: ast_type(&f.ty, span),
             span: ast_span(span),

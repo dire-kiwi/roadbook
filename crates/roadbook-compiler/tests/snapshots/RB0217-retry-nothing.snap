@@ -1,0 +1,26 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0217]: `retry 0` retries nothing
+ --> RB0217-retry-nothing.road:9:25
+  |
+9 |     invoke ping() retry 0 on Busy | Gone | Busy {
+  |                         ^
+  |
+  = help: give the number of retries after the first attempt, or remove `retry`
+
+error[RB0217]: `Busy` is listed twice
+ --> RB0217-retry-nothing.road:9:44
+  |
+9 |     invoke ping() retry 0 on Busy | Gone | Busy {
+  |                                            ^^^^
+  |
+  = help: list each retried error once
+
+error[RB0217]: `quiet` declares no errors, so there is nothing to retry
+  --> RB0217-retry-nothing.road:16:20
+   |
+16 |     invoke quiet() retry 1 {
+   |                    ^^^^^^^
+   |
+   = help: only a declared error is retried; a host defect never is

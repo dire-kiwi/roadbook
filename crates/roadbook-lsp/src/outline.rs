@@ -1,6 +1,7 @@
 //! The outline of a file: its declarations, and in a machine its parameters, variables,
-//! events and states, nested as they are written. Built from the syntax tree alone, so it
-//! is there even when the file does not compile.
+//! events, `children` collections and states (history states among them), nested as they
+//! are written. Built from the syntax tree alone, so it is there even when the file does not
+//! compile.
 
 use lsp_types::{DocumentSymbol, SymbolKind as Kind};
 use roadbook_compiler::index::{declaration, type_text};
@@ -19,7 +20,7 @@ pub fn outline(text: &str, enc: Encoding) -> Vec<DocumentSymbol> {
         .map(|d| {
             let (_, detail) = declaration(d);
             let (kind, children) = match &d.kind {
-                DeclKind::Record { fields } => (Kind::STRUCT, o.fields(fields)),
+                DeclKind::Record { fields, .. } => (Kind::STRUCT, o.fields(fields)),
                 DeclKind::Error { fields } => (Kind::STRUCT, o.fields(fields)),
                 DeclKind::Alias { .. } => (Kind::TYPE_PARAMETER, Vec::new()),
                 DeclKind::Enum { variants } => (
@@ -138,7 +139,24 @@ impl Outline<'_> {
                     c.name.span,
                     self.fields(&c.params),
                 )),
+                Item::Children(c) => out.push(self.symbol(
+                    &c.name.name,
+                    Kind::ARRAY,
+                    Some(format!("{} by {}", c.machine.name, type_text(&c.key))),
+                    c.span,
+                    c.name.span,
+                    vec![],
+                )),
                 Item::State(s) => out.push(self.state(s)),
+                // A pseudo-state, shown among the states it returns to.
+                Item::History(h) => out.push(self.symbol(
+                    &h.name.name,
+                    Kind::OBJECT,
+                    Some(if h.deep { "deep history" } else { "history" }.into()),
+                    h.span,
+                    h.name.span,
+                    vec![],
+                )),
                 _ => {}
             }
         }

@@ -17,7 +17,7 @@ export type Rec = { kind: string; run: string; t: number; parent?: string } & { 
 
 const KINDS = new Set([
   'started', 'restored', 'suspended', 'entered', 'exited', 'event', 'dropped', 'stale', 'transition', 'set', 'action', 'sent', 'emitted', 'undelivered',
-  'invoke.started', 'invoke.cancelled', 'replied', 'timer.started', 'timer.cancelled', 'done', 'failed', 'cancelled', 'defect',
+  'invoke.started', 'invoke.cancelled', 'replied', 'spawn.started', 'spawn.stopped', 'timer.started', 'timer.cancelled', 'done', 'failed', 'cancelled', 'defect',
 ])
 /** The records after which a run writes nothing more. */
 const ENDS = new Set(['done', 'failed', 'cancelled', 'defect', 'suspended'])
@@ -89,6 +89,8 @@ export interface RunView {
   invokes: { id: number; state: string; src: string }[]
   /** The calls taken and not answered yet, oldest first: the caller's run, its invoke, the call. */
   calls: { from: string; invoke: number; call: string }[]
+  /** The running spawned children: id, collection, key and machine. */
+  spawned: { id: number; children: string; key: Json; src: string }[]
   timers: { id: number; state: string; index: number; delay: number }[]
   /** The last transition the run took. */
   taken: { state: string; index: number } | null
@@ -134,6 +136,18 @@ export class Replay {
         this.warnings.push(`Run ${run.id} was recorded from another version of ${run.machine}: the trace has IR ${short(run.hash)}, the chart on screen ${short(m.hash)}. States and transitions may not match.`)
     }
     this.problems.push(...this.check())
+  }
+
+  /**
+   * Whether the child run `run` (`r1.4`) is a spawned child of its parent, rather than an
+   * invoked one: its parent wrote a `spawn.started` with its id.
+   */
+  spawned(run: string): boolean {
+    const dot = run.lastIndexOf('.')
+    if (dot < 0) return false
+    const parent = run.slice(0, dot)
+    const id = Number(run.slice(dot + 1))
+    return this.records.some((r) => r.run === parent && r.kind === 'spawn.started' && r.spawn === id)
   }
 
   machineOf(run: string): Machine | undefined {
@@ -253,6 +267,11 @@ export class Replay {
             if (input?.kind === 'call' && !own(m.calls, str(input.call))) out.push(`${at}: ${view.machine} has no call ${str(input.call)}`)
             break
           }
+          case 'spawn.started': {
+            const c = own(m.children, str(r.children))
+            if (!c || c.machine !== r.src) out.push(`${at}: ${view.machine} has no children ${str(r.children)} of ${str(r.src)}`)
+            break
+          }
           case 'timer.started': {
             const t = state(r.state)?.transitions[num(r.index)]
             if (t?.trigger.kind !== 'after') out.push(`${at}: ${str(r.state)} has no after at ${String(r.index)}`)
@@ -261,6 +280,7 @@ export class Replay {
         }
       }
       if (r.kind === 'invoke.cancelled' && !view.invokes.some((x) => x.id === r.invoke)) out.push(`${at}: invoke ${String(r.invoke)} is not running`)
+      if (r.kind === 'spawn.stopped' && !view.spawned.some((x) => x.id === r.spawn)) out.push(`${at}: spawned child ${String(r.spawn)} is not running`)
       if (r.kind === 'timer.cancelled' && !view.timers.some((x) => x.id === r.timer)) out.push(`${at}: timer ${String(r.timer)} is not running`)
       if (r.kind === 'replied') {
         // A reply answers a pending call, or the call dropped by the record just before it.
@@ -271,9 +291,10 @@ export class Replay {
           out.push(`${at}: no pending call ${str(r.call)} from ${str(r.to)}'s invoke ${String(r.invoke)}`)
       }
       if (r.kind === 'event') {
-        const input = r.event as { kind?: string; invoke?: number; timer?: number } | undefined
+        const input = r.event as { kind?: string; invoke?: number; spawn?: number; timer?: number } | undefined
         if (input?.kind === 'after' && !view.timers.some((x) => x.id === input.timer)) out.push(`${at}: timer ${String(input.timer)} is not running`)
         if (input?.kind?.startsWith('invoke.') && !view.invokes.some((x) => x.id === input.invoke)) out.push(`${at}: invoke ${String(input.invoke)} is not running`)
+        if (input?.kind?.startsWith('spawn.') && !view.spawned.some((x) => x.id === input.spawn)) out.push(`${at}: spawned child ${String(input.spawn)} is not running`)
       }
       apply(view, r)
       if (ENDS.has(r.kind)) ended.add(r.run)
@@ -293,6 +314,7 @@ const emptyView = (run: string, machine: string): RunView => ({
   result: null,
   invokes: [],
   calls: [],
+  spawned: [],
   timers: [],
   taken: null,
 })
@@ -347,6 +369,13 @@ function apply(view: RunView, r: Rec) {
     case 'invoke.cancelled':
       view.invokes = view.invokes.filter((x) => x.id !== r.invoke)
       break
+    case 'spawn.started':
+      // A restored child restarts with the id it was saved with: the record replaces it.
+      view.spawned = [...view.spawned.filter((x) => x.id !== r.spawn), { id: num(r.spawn), children: str(r.children), key: (r.key ?? null) as Json, src: str(r.src) }]
+      break
+    case 'spawn.stopped':
+      view.spawned = view.spawned.filter((x) => x.id !== r.spawn)
+      break
     case 'timer.started':
       // A restored timer restarts with the id it was saved with: the record replaces it.
       view.timers = [
@@ -360,9 +389,10 @@ function apply(view: RunView, r: Rec) {
     case 'event':
     case 'dropped': {
       // An outcome or an expiry is consumed whether or not it enabled a transition.
-      const input = r.event as { kind?: string; invoke?: number; timer?: number; from?: unknown; call?: unknown } | undefined
+      const input = r.event as { kind?: string; invoke?: number; spawn?: number; timer?: number; from?: unknown; call?: unknown } | undefined
       if (input?.kind === 'after') view.timers = view.timers.filter((x) => x.id !== input.timer)
       if (input?.kind?.startsWith('invoke.')) view.invokes = view.invokes.filter((x) => x.id !== input.invoke)
+      if (input?.kind?.startsWith('spawn.')) view.spawned = view.spawned.filter((x) => x.id !== input.spawn)
       // A call taken is pending until a reply answers it; a dropped one is answered at once.
       if (input?.kind === 'call' && r.kind === 'event') view.calls = [...view.calls, { from: str(input.from), invoke: num(input.invoke), call: str(input.call) }]
       break
@@ -392,6 +422,7 @@ function apply(view: RunView, r: Rec) {
       view.status = 'defect'
       view.result = (r.defect ?? null) as Json
       view.invokes = []
+      view.spawned = []
       view.timers = []
       view.calls = []
       break
@@ -447,6 +478,12 @@ export function inputText(input: unknown): string {
       return `invoke ${String(i.invoke)} fail ${tag(i.error)}${fields(i.error)}`
     case 'invoke.defect':
       return `invoke ${String(i.invoke)} defect ${jsonText(i.defect, 100)}`
+    case 'spawn.done':
+      return `spawned child ${String(i.spawn)} done ${jsonText(i.value, 100)}`
+    case 'spawn.fail':
+      return `spawned child ${String(i.spawn)} fail ${tag(i.error)}${fields(i.error)}`
+    case 'spawn.defect':
+      return `spawned child ${String(i.spawn)} defect ${jsonText(i.defect, 100)}`
     case 'after':
       return `timer ${String(i.timer)} expired`
     default:
@@ -499,6 +536,10 @@ export function recordText(r: { kind: string; [member: string]: unknown }): stri
       return `invoke ${String(r.invoke)} started: ${str(r.src)}(${args(r.args)}) in ${stateName(r.state)}`
     case 'invoke.cancelled':
       return `invoke ${String(r.invoke)} cancelled: ${str(r.src)} in ${stateName(r.state)}`
+    case 'spawn.started':
+      return `spawned child ${String(r.spawn)} started: ${str(r.children)}[${jsonText(r.key, 60)}] = ${str(r.src)}(${args(r.args)})`
+    case 'spawn.stopped':
+      return `spawned child ${String(r.spawn)} stopped: ${str(r.children)}[${jsonText(r.key, 60)}]`
     case 'timer.started':
       return `timer ${String(r.timer)} started: ${String(r.delay)} ms in ${stateName(r.state)}`
     case 'timer.cancelled':

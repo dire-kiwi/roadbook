@@ -1,0 +1,12 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0107]: type parameter `Order` has the name of a record type `Order`
+ --> RB0107-type-parameter-named-like-a-type.road:2:11
+  |
+1 | type Order { id: string }
+  |      ----- declared here
+2 | type Page<Order> { items: Order[] }
+  |           ^^^^^
+  |
+  = help: a type parameter cannot have the name of a declaration; `T`, `U` and so on are usual

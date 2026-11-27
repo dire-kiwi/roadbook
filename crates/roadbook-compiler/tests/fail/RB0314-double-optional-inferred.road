@@ -1,0 +1,17 @@
+// A record value's inferred type arguments, and an optional passed through a transparent
+// alias under a `?`, are checked like written ones.
+type Pair<T> { first: T, second: T? }
+type Id<T> = T
+type Opt<T> { v: Id<T>? }
+
+fn mi() -> int?
+fn describe(value: json) -> string
+
+machine M(o: Opt<string?>) {
+  var text: string = describe(Pair { first: mi(), second: mi() })
+  initial Done
+  final state Done {}
+}
+
+// expect: RB0314 at 10:14
+// expect: RB0314 at 11:31

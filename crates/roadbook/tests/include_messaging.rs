@@ -1,6 +1,7 @@
 //! Messaging through `roadbook::include!`: the upload example (a parent that sends `Pause`
-//! and `Resume` to the child it invokes `as upload` and shows the `Progress` it emits), a
-//! `ref` passed on to an invoked child, and a `ref` given to an action.
+//! and `Resume` to the child it invokes `as upload` and shows the `Progress` it emits), the
+//! batch example (an upload spawned per file, keyed by its name), a `ref` passed on to an
+//! invoked child, and a `ref` given to an action.
 
 #![deny(warnings)]
 
@@ -11,6 +12,10 @@ use roadbook::{BoxFuture, Config, MemorySink, Stopped, Timer, TraceRecord};
 
 mod up {
     roadbook::include!("../../examples/upload/publish.road");
+}
+
+mod batch {
+    roadbook::include!("../../examples/upload/batch.road");
 }
 
 mod workers {
@@ -169,6 +174,153 @@ async fn a_parent_pauses_and_resumes_its_child_and_shows_its_progress() {
         .filter(|r| r.run == parent && r.to_json()["event"]["kind"] == "emitted")
         .count();
     assert_eq!(progress, 3);
+}
+
+// ---- batch: an upload per file, by key ---------------------------------------------------------
+
+/// Each chunk takes 10ms; every chunk of a file called "bad" is refused.
+#[derive(Default)]
+struct Uploads {
+    shown: Mutex<Vec<String>>,
+}
+
+impl Uploads {
+    fn shown(&self) -> Vec<String> {
+        self.shown.lock().unwrap().clone()
+    }
+}
+
+impl batch::upload::Handlers for Uploads {
+    async fn send_chunk(
+        &self,
+        file: &batch::File,
+        offset: i64,
+    ) -> Result<i64, batch::SendChunkError> {
+        if file.name == "bad" {
+            return Err(batch::UploadFailed {
+                reason: "refused".into(),
+            }
+            .into());
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        Ok((offset + 100).min(file.size))
+    }
+
+    async fn finish_upload(
+        &self,
+        file: &batch::File,
+    ) -> Result<batch::Url, batch::FinishUploadError> {
+        Ok(format!("https://files.example/{}", file.name))
+    }
+
+    fn percent_of(&self, file: &batch::File, offset: i64) -> i64 {
+        offset * 100 / file.size
+    }
+
+    fn complete(&self, file: &batch::File, offset: i64) -> bool {
+        offset >= file.size
+    }
+}
+
+impl batch::batch::Handlers for Uploads {
+    async fn show_file_progress(&self, name: &str, percent: i64) {
+        self.shown.lock().unwrap().push(format!("{name} {percent}"));
+    }
+
+    async fn show_uploaded(&self, name: &str, url: &batch::Url) {
+        self.shown.lock().unwrap().push(format!("{name} at {url}"));
+    }
+
+    async fn report_failure(&self, name: &str, reason: &str) {
+        self.shown
+            .lock()
+            .unwrap()
+            .push(format!("{name} failed: {reason}"));
+    }
+
+    async fn upload(&self, file: &batch::File) -> Result<batch::Url, batch::UploadError> {
+        batch::upload::run(self, file.clone()).await
+    }
+}
+
+fn file(name: &str, size: i64) -> batch::File {
+    batch::File {
+        name: name.into(),
+        size,
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_batch_spawns_an_upload_per_file_and_hears_from_each_by_key() {
+    use batch::batch::Event;
+    let sink = Arc::new(MemorySink::new());
+    let uploads = Arc::new(Uploads::default());
+    let actor = batch::batch::spawn_with(config(&sink), uploads.clone());
+    let run = actor.id().to_owned();
+    actor
+        .send(Event::Add {
+            file: file("a.jpg", 200),
+        })
+        .await;
+    actor
+        .send(Event::Add {
+            file: file("b.jpg", 100),
+        })
+        .await;
+    actor
+        .send(Event::Add {
+            file: file("bad", 100),
+        })
+        .await;
+    until(|| uploads.shown().len() == 4).await;
+    let mut first = uploads.shown();
+    first.sort();
+    assert_eq!(
+        first,
+        [
+            "a.jpg 50",
+            "b.jpg 100",
+            "b.jpg at https://files.example/b.jpg",
+            "bad failed: refused"
+        ]
+    );
+
+    // Paused: the chunk in flight is cancelled, and nothing more is sent until they resume.
+    actor.send(Event::PauseAll).await;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+    assert_eq!(uploads.shown().len(), 4);
+    actor.send(Event::ResumeAll).await;
+    until(|| uploads.shown().len() == 6).await;
+    assert_eq!(
+        uploads.shown()[4..],
+        ["a.jpg 100", "a.jpg at https://files.example/a.jpg"]
+    );
+
+    // An upload cancelled before it finishes; closing ends the batch.
+    actor
+        .send(Event::Add {
+            file: file("c.jpg", 300),
+        })
+        .await;
+    actor
+        .send(Event::Cancel {
+            name: "c.jpg".into(),
+        })
+        .await;
+    actor.send(Event::Close).await;
+    assert_eq!(actor.result().await.unwrap(), 2);
+
+    let records = sink.records();
+    let of = |kind: &str| -> Vec<serde_json::Value> {
+        records
+            .iter()
+            .filter(|r| r.run == run && r.to_json()["kind"] == kind)
+            .map(|r| r.to_json()["key"].clone())
+            .collect()
+    };
+    assert_eq!(of("spawn.started"), ["a.jpg", "b.jpg", "bad", "c.jpg"]);
+    assert_eq!(of("spawn.stopped"), ["c.jpg"]);
+    assert!(has(&records, &format!("{run}.4"), "exited", "Upload"));
 }
 
 // ---- a ref passed on to an invoked child ---------------------------------------------------

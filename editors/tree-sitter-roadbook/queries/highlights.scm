@@ -22,7 +22,10 @@
   "var"
   "event"
   "emits"
+  "children"
+  "by"
   "state"
+  "history"
   "initial"
   "entry"
   "exit"
@@ -32,6 +35,7 @@
   "done"
   "invoke"
   "as"
+  "retry"
   "output"
   "fail"
   "set"
@@ -39,6 +43,8 @@
   "send"
   "emit"
   "reply"
+  "spawn"
+  "stop"
   "ref"
 ] @keyword
 
@@ -58,9 +64,12 @@
   "final"
   "parallel"
   "strict"
+  "deep"
 ] @keyword.modifier
 
 (ignore) @keyword
+
+(sensitive) @keyword.modifier
 
 [
   "if"
@@ -76,6 +85,24 @@
 ; ─── Types ───
 
 (builtin_type) @type.builtin
+
+(map_type
+  "map" @type.builtin)
+
+(type_parameters
+  parameter: (type_identifier) @type.parameter)
+
+(generic_type
+  name: (type_identifier) @type)
+
+(type_arguments
+  argument: (type_identifier) @type)
+
+(map_type
+  key: (type_identifier) @type)
+
+(map_type
+  value: (type_identifier) @type)
 
 (type_declaration
   name: (type_identifier) @type.definition)
@@ -137,6 +164,9 @@
   error: (type_identifier) @type.builtin
   (#eq? @type.builtin "Unanswered"))
 
+(child_fail
+  error: (type_identifier) @type)
+
 (import
   name: (type_identifier) @type)
 
@@ -144,9 +174,22 @@
 (invoke
   callee: (type_identifier) @type)
 
+; A collection's machine and key type, and a machine started by `spawn`.
+(children_declaration
+  machine: (type_identifier) @type)
+
+(children_declaration
+  key: (type_identifier) @type)
+
+(spawn
+  machine: (type_identifier) @type)
+
 ; ─── States and events ───
 
 (state_declaration
+  name: (type_identifier) @label)
+
+(history_state
   name: (type_identifier) @label)
 
 (initial
@@ -265,6 +308,20 @@
 
 (reply
   call: (identifier) @variable)
+(children_declaration
+  name: (identifier) @variable)
+
+(spawn
+  collection: (identifier) @variable)
+
+(stop
+  collection: (identifier) @variable)
+
+(child_done
+  from: (identifier) @variable)
+
+(child_fail
+  from: (identifier) @variable)
 
 ; A name read in an expression.
 (_
@@ -284,6 +341,9 @@
 
 (_
   delay: (identifier) @variable)
+
+(_
+  key: (identifier) @variable)
 
 (arguments
   (identifier) @variable)

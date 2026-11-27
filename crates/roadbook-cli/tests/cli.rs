@@ -134,7 +134,7 @@ fn export_ir_writes_the_fixture() {
     let out = roadbook(&dir, &["export", "ir", "m.road", "-o", "m.ir.json"]);
     assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
     let written = std::fs::read_to_string(dir.join("m.ir.json")).unwrap();
-    assert!(written.contains("\"irVersion\": \"0.5\""));
+    assert!(written.contains("\"irVersion\": \"0.7\""));
 }
 
 #[test]
@@ -505,22 +505,11 @@ fn viz_trace_is_embedded_and_opens_in_replay() {
     let dir = out_dir("trace-files");
     std::fs::create_dir_all(&dir).unwrap();
     let other = dir.join("other.jsonl");
-    std::fs::write(
-        &other,
-        // PlaceOrder's `started` record, with the first digits of its hash zeroed.
-        std::fs::read_to_string(repo().join(trace))
-            .unwrap()
-            .lines()
-            .map(|l| match l.find("\"ir\":\"sha256:") {
-                Some(i) if l.contains("\"kind\":\"started\",\"machine\":\"PlaceOrder\"") => {
-                    let at = i + "\"ir\":\"sha256:".len();
-                    format!("{}0000{}\n", &l[..at], &l[at + 4..])
-                }
-                _ => format!("{l}\n"),
-            })
-            .collect::<String>(),
-    )
-    .unwrap();
+    let records = std::fs::read_to_string(repo().join(trace)).unwrap();
+    let first: serde_json::Value = serde_json::from_str(records.lines().next().unwrap()).unwrap();
+    let hash = first["ir"].as_str().unwrap();
+    let zeros = format!("sha256:{}", "0".repeat(64));
+    std::fs::write(&other, records.replace(hash, &zeros)).unwrap();
     let res = roadbook(
         &repo(),
         &[
@@ -635,7 +624,7 @@ fn viz_names_pages_after_their_entries_and_reports_errors() {
     }
     let index = page_data(&std::fs::read_to_string(out.join("index.html")).unwrap());
     let machines = index["index"]["machines"].as_array().unwrap();
-    assert_eq!(machines.len(), 11);
+    assert_eq!(machines.len(), 12);
     // Who talks to whom (`projectIndex` in packages/viewer/src/project.ts builds the same).
     let at = |name: &str| machines.iter().position(|m| m["name"] == name).unwrap();
     let (order, inventory) = (&machines[at("Order")], at("Inventory"));
@@ -663,10 +652,25 @@ fn viz_names_pages_after_their_entries_and_reports_errors() {
         publish["receives"],
         serde_json::json!([{ "from": upload, "events": ["Progress"] }])
     );
+    // A machine that spawns children: spawns, sends to and receives from them by collection.
+    let batch = &machines[at("Batch")];
+    assert_eq!(batch["invokes"], serde_json::json!([]));
+    assert_eq!(
+        batch["spawns"],
+        serde_json::json!([{ "to": upload, "names": ["uploads"] }])
+    );
+    assert_eq!(
+        batch["sends"],
+        serde_json::json!([{ "to": upload, "events": ["Pause", "Resume"] }])
+    );
+    assert_eq!(
+        batch["receives"],
+        serde_json::json!([{ "from": upload, "events": ["Progress"] }])
+    );
     // A machine of another package is named by its package and its path in it.
     assert_eq!(machines[inventory]["source"], "inventory/inventory.road:18");
     for m in machines {
-        if m["name"] != "Order" && m["name"] != "Publish" {
+        if m["name"] != "Order" && m["name"] != "Publish" && m["name"] != "Batch" {
             assert_eq!(m["sends"], serde_json::json!([]), "{m}");
             assert_eq!(m["receives"], serde_json::json!([]), "{m}");
         }
@@ -1010,7 +1014,9 @@ fn viewer_test_charts_are_fresh() {
         ("examples/orders/orders.road", "orders-orders"),
         ("packages/viewer/test/charts/stress.road", "charts-stress"),
         ("packages/viewer/test/charts/edges.road", "charts-edges"),
+        ("packages/viewer/test/charts/spawn.road", "charts-spawn"),
         ("packages/viewer/test/charts/escape.road", "charts-escape"),
+        ("packages/viewer/test/charts/history.road", "charts-history"),
     ] {
         let out = roadbook(&repo(), &["export", "ir", chart]);
         assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
@@ -1848,6 +1854,59 @@ fn diff_summary(dir: &Path, name: &str) -> (PathBuf, serde_json::Value, String) 
 const TICKET: &str = "type Ticket { id: string }\n";
 const DESK: &str = "import { Ticket } from \"./ticket.road\"\n\nmachine Desk(t: Ticket) {\n  event Next\n  initial Open\n  state Open { on Next -> Closed }\n  final state Closed {}\n}\n";
 const LAMP: &str = "machine Lamp() {\n  event Flip\n  initial Off\n  state Off { on Flip -> On }\n  final state On {}\n}\n";
+
+const EDITOR: &str = "machine Editor() {\n  event Help\n  event Back\n  initial Work\n  state Work {\n    initial Draft\n    history Last\n    history Old\n    state Draft {}\n    on Help -> Help\n  }\n  state Help { on Back -> Work.Last }\n}\n";
+
+#[test]
+fn viz_diff_summarises_history_states() {
+    // `Last` becomes deep, `Old` goes and `New` comes: history states counted with the states,
+    // and on their own.
+    let dir = diff_repo("diff-history", &[("editor.road", EDITOR)]);
+    let after = EDITOR
+        .replace("    history Last\n", "    deep history Last\n")
+        .replace("    history Old\n", "    history New\n");
+    std::fs::write(dir.join("editor.road"), after).unwrap();
+    let (out, json, md) = diff_summary(&dir, "diff-history");
+    let counts = serde_json::json!({ "added": 1, "removed": 1, "changed": 1 });
+    assert_eq!(json["states"], counts);
+    assert_eq!(json["historyStates"], counts);
+    assert_eq!(json["changes"][0]["historyStates"], counts);
+    assert!(
+        md.contains(
+            "States: 1 added, 1 removed, 1 changed (history states: 1 added, 1 removed, 1 changed)."
+        ),
+        "{md}"
+    );
+    assert!(
+        md.contains(
+            "| ~ changed | `Editor` | `editor.road` | +1 −1 ~1 (history +1 −1 ~1) | none |"
+        ),
+        "{md}"
+    );
+    let data = page_data(&std::fs::read_to_string(out.join("editor.html")).unwrap());
+    let editor = &data["diff"]["machines"]["Editor"];
+    assert_eq!(editor["counts"]["history"], counts);
+    assert_eq!(
+        editor["states"]["Editor.Work.Last"]["changes"][0],
+        serde_json::json!({ "what": "kind", "before": "history", "after": "deep history" })
+    );
+    assert_eq!(editor["states"]["Editor.Work.Old"]["status"], "removed");
+    assert_eq!(editor["states"]["Editor.Work.New"]["status"], "added");
+
+    // A chart with no history state says nothing of them in Markdown.
+    let dir = diff_repo("diff-no-history", &[("lamp.road", LAMP)]);
+    std::fs::write(
+        dir.join("lamp.road"),
+        LAMP.replace("on Flip -> On", "on Flip -> On\n  }\n  state Dim {"),
+    )
+    .unwrap();
+    let (_, json, md) = diff_summary(&dir, "diff-no-history");
+    assert_eq!(
+        json["historyStates"],
+        serde_json::json!({ "added": 0, "removed": 0, "changed": 0 })
+    );
+    assert!(!md.contains("history"), "{md}");
+}
 
 #[test]
 fn viz_diff_matches_machines_across_files() {

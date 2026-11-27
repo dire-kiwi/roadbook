@@ -1,0 +1,10 @@
+{"input":{},"ir":"sha256:93e999cafd03194cfabbfb19d6c1fdcfd679b30e52153ddff96e0d7f308b40dc","kind":"started","machine":"Pool","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Pool","t":0}
+{"kind":"entered","run":"r1","state":"Pool.Running","t":0}
+{"event":{"kind":"event","value":{"_tag":"Open","n":7,"name":"x"}},"kind":"event","run":"r1","t":0}
+{"from":"Pool.Running","index":0,"kind":"transition","run":"r1","t":0,"to":null}
+{"args":{"name":"x"},"children":"slots","key":7,"kind":"spawn.started","run":"r1","spawn":1,"src":"Session","t":0}
+{"event":{"kind":"spawn.done","spawn":1,"value":3},"kind":"event","run":"r1","t":0}
+{"from":"Pool.Running","index":4,"kind":"transition","run":"r1","t":0,"to":null}
+{"action":"log","args":{"what":"left"},"kind":"action","run":"r1","t":0}
+{"kind":"suspended","run":"r1","t":0}

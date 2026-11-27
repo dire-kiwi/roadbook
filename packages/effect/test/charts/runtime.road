@@ -1,6 +1,6 @@
 // Charts for the driver's tests (test/driver.test.ts): the defects the core raises and the
 // conformance cases leave out, work left over when a step is cut short, `json` values from
-// host code, and calls a callee cannot answer.
+// host code, calls a callee cannot answer, and maps and generic records through the codec.
 
 fn payload()             -> json
 action log(what: string)
@@ -97,4 +97,18 @@ machine Asker(desk: ref Desk, n: int) -> int {
 
   final state Got  { output got }
   final state Gave { output 0 }
+}
+
+type Box<T>   { value: T }
+type Boxes<T> = map<string, Box<T>>
+// Not used by a machine: here so that `tsc` checks the schema of a recursive generic type.
+type Tree<T> { value: T, children: Tree<T>[], parent: Tree<T>? }
+
+fn withLongest(boxes: Boxes<duration>) -> Boxes<duration>
+
+/// Ends with what the host's `withLongest` makes of its map of generic records of durations.
+machine Generic(boxes: Boxes<duration>) -> Boxes<duration> {
+  initial Over
+
+  final state Over { output withLongest(boxes) }
 }

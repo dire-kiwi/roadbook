@@ -1,0 +1,1229 @@
+{
+  "irVersion": "0.6",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/history.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 25
+      }
+    }
+  },
+  "tasks": {
+    "fetch": {
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 13
+      }
+    }
+  },
+  "machines": {
+    "Editor": {
+      "doc": "Shallow and deep history of one compound state.",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 63,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Next": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 13
+          }
+        },
+        "Deeper": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 12,
+            "col": 3,
+            "endLine": 12,
+            "endCol": 15
+          }
+        },
+        "Edit": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 13
+          }
+        },
+        "Jump": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 13
+          }
+        },
+        "Restart": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 16
+          }
+        },
+        "Help": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 13
+          }
+        },
+        "Back": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 13
+          }
+        },
+        "BackDeep": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 18,
+            "col": 3,
+            "endLine": 18,
+            "endCol": 17
+          }
+        }
+      },
+      "emits": {},
+      "children": {},
+      "root": {
+        "id": "Editor",
+        "name": "Editor",
+        "kind": "compound",
+        "doc": "Shallow and deep history of one compound state.",
+        "span": {
+          "file": 0,
+          "line": 10,
+          "col": 1,
+          "endLine": 63,
+          "endCol": 2
+        },
+        "initial": "Editor.Work",
+        "states": [
+          {
+            "id": "Editor.Work",
+            "name": "Work",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 22,
+              "col": 3,
+              "endLine": 57,
+              "endCol": 4
+            },
+            "initial": "Editor.Work.Draft",
+            "states": [
+              {
+                "id": "Editor.Work.Shallow",
+                "name": "Shallow",
+                "kind": "history",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 5,
+                  "endLine": 27,
+                  "endCol": 20
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Editor.Work.Deep",
+                "name": "Deep",
+                "kind": "deepHistory",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 22
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Editor.Work.Draft",
+                "name": "Draft",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 30,
+                  "col": 5,
+                  "endLine": 35,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "enter Draft",
+                        "type": "string",
+                        "text": "\"enter Draft\""
+                      }
+                    ]
+                  }
+                ],
+                "exit": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "exit Draft",
+                        "type": "string",
+                        "text": "\"exit Draft\""
+                      }
+                    ]
+                  }
+                ],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Next"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Editor.Work.Review",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 33,
+                      "col": 7,
+                      "endLine": 33,
+                      "endCol": 24
+                    }
+                  },
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Jump"
+                    },
+                    "group": 1,
+                    "guard": null,
+                    "target": "Editor.Work.Shallow",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 34,
+                      "col": 7,
+                      "endLine": 34,
+                      "endCol": 25
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Editor.Work.Review",
+                "name": "Review",
+                "kind": "compound",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 53,
+                  "endCol": 6
+                },
+                "initial": "Editor.Work.Review.Read",
+                "states": [
+                  {
+                    "id": "Editor.Work.Review.Read",
+                    "name": "Read",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 43,
+                      "col": 7,
+                      "endLine": 43,
+                      "endCol": 42
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": null,
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Deeper"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Editor.Work.Review.Comment",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 43,
+                          "col": 20,
+                          "endLine": 43,
+                          "endCol": 40
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Editor.Work.Review.Comment",
+                    "name": "Comment",
+                    "kind": "atomic",
+                    "doc": "",
+                    "span": {
+                      "file": 0,
+                      "line": 45,
+                      "col": 7,
+                      "endLine": 50,
+                      "endCol": 8
+                    },
+                    "initial": null,
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invoke": {
+                      "kind": "task",
+                      "src": "fetch",
+                      "as": null,
+                      "args": [],
+                      "span": {
+                        "file": 0,
+                        "line": 46,
+                        "col": 9,
+                        "endLine": 48,
+                        "endCol": 10
+                      }
+                    },
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "invoke.done"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "target": "Editor.Work.Review.Read",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 47,
+                          "col": 11,
+                          "endLine": 47,
+                          "endCol": 23
+                        }
+                      },
+                      {
+                        "trigger": {
+                          "kind": "after",
+                          "delay": {
+                            "kind": "lit",
+                            "value": 1000,
+                            "type": "duration",
+                            "text": "1s"
+                          }
+                        },
+                        "group": 1,
+                        "guard": null,
+                        "target": "Editor.Work.Review.Read",
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 49,
+                          "col": 9,
+                          "endLine": 49,
+                          "endCol": 25
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "enter Review",
+                        "type": "string",
+                        "text": "\"enter Review\""
+                      }
+                    ]
+                  }
+                ],
+                "exit": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "exit Review",
+                        "type": "string",
+                        "text": "\"exit Review\""
+                      }
+                    ]
+                  }
+                ],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Edit"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Editor.Work.Draft",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 52,
+                      "col": 7,
+                      "endLine": 52,
+                      "endCol": 23
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "enter Work",
+                    "type": "string",
+                    "text": "\"enter Work\""
+                  }
+                ]
+              }
+            ],
+            "exit": [
+              {
+                "kind": "do",
+                "action": "log",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "exit Work",
+                    "type": "string",
+                    "text": "\"exit Work\""
+                  }
+                ]
+              }
+            ],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Help"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Editor.Help",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 55,
+                  "col": 5,
+                  "endLine": 55,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Restart"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Editor.Work.Deep",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 56,
+                  "col": 5,
+                  "endLine": 56,
+                  "endCol": 28
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Editor.Help",
+            "name": "Help",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 59,
+              "col": 3,
+              "endLine": 62,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Back"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Editor.Work.Shallow",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 60,
+                  "col": 5,
+                  "endLine": 60,
+                  "endCol": 32
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "BackDeep"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Editor.Work.Deep",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 61,
+                  "col": 5,
+                  "endLine": 61,
+                  "endCol": 29
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:e3214dc83df18e56295753fd9fd004d705a2385336e96db90639fe5a0531f391"
+    },
+    "Steps": {
+      "doc": "A deep history state that restores a final state, completing its parent.",
+      "span": {
+        "file": 0,
+        "line": 66,
+        "col": 1,
+        "endLine": 93,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "ready",
+          "type": "bool",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": false,
+            "type": "bool",
+            "text": "false"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 67,
+            "col": 3,
+            "endLine": 67,
+            "endCol": 26
+          }
+        }
+      ],
+      "events": {
+        "Finish": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 69,
+            "col": 3,
+            "endLine": 69,
+            "endCol": 15
+          }
+        },
+        "Pause": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 70,
+            "col": 3,
+            "endLine": 70,
+            "endCol": 14
+          }
+        },
+        "Ready": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 71,
+            "col": 3,
+            "endLine": 71,
+            "endCol": 14
+          }
+        },
+        "Resume": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 72,
+            "col": 3,
+            "endLine": 72,
+            "endCol": 15
+          }
+        }
+      },
+      "emits": {},
+      "children": {},
+      "root": {
+        "id": "Steps",
+        "name": "Steps",
+        "kind": "compound",
+        "doc": "A deep history state that restores a final state, completing its parent.",
+        "span": {
+          "file": 0,
+          "line": 66,
+          "col": 1,
+          "endLine": 93,
+          "endCol": 2
+        },
+        "initial": "Steps.Flow",
+        "states": [
+          {
+            "id": "Steps.Flow",
+            "name": "Flow",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 76,
+              "col": 3,
+              "endLine": 85,
+              "endCol": 4
+            },
+            "initial": "Steps.Flow.S1",
+            "states": [
+              {
+                "id": "Steps.Flow.H",
+                "name": "H",
+                "kind": "deepHistory",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 78,
+                  "col": 5,
+                  "endLine": 78,
+                  "endCol": 19
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Steps.Flow.S1",
+                "name": "S1",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 80,
+                  "col": 5,
+                  "endLine": 80,
+                  "endCol": 39
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Finish"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Steps.Flow.S2",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 80,
+                      "col": 22,
+                      "endLine": 80,
+                      "endCol": 37
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Steps.Flow.S2",
+                "name": "S2",
+                "kind": "final",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 81,
+                  "col": 5,
+                  "endLine": 81,
+                  "endCol": 22
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "done"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "ref",
+                  "path": [
+                    "ready"
+                  ],
+                  "type": "bool",
+                  "text": "ready"
+                },
+                "target": "Steps.Finished",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 83,
+                  "col": 5,
+                  "endLine": 83,
+                  "endCol": 30
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Pause"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Steps.Paused",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 84,
+                  "col": 5,
+                  "endLine": 84,
+                  "endCol": 28
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Steps.Paused",
+            "name": "Paused",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 87,
+              "col": 3,
+              "endLine": 90,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Ready"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "ready",
+                    "value": {
+                      "kind": "lit",
+                      "value": true,
+                      "type": "bool",
+                      "text": "true"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 88,
+                  "col": 5,
+                  "endLine": 88,
+                  "endCol": 42
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Resume"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Steps.Flow.H",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 89,
+                  "col": 5,
+                  "endLine": 89,
+                  "endCol": 24
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Steps.Finished",
+            "name": "Finished",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 92,
+              "col": 3,
+              "endLine": 92,
+              "endCol": 26
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:f8c04d16fc7ccb7ce7ce84af6840177314298584af7bc5e82b1ad54fd20ed0e5"
+    },
+    "Bounce": {
+      "doc": "A parent left and returned to through its history state while settling.",
+      "span": {
+        "file": 0,
+        "line": 96,
+        "col": 1,
+        "endLine": 112,
+        "endCol": 2
+      },
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "n",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 97,
+            "col": 3,
+            "endLine": 97,
+            "endCol": 17
+          }
+        }
+      ],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 99,
+            "col": 3,
+            "endLine": 99,
+            "endCol": 11
+          }
+        }
+      },
+      "emits": {},
+      "children": {},
+      "root": {
+        "id": "Bounce",
+        "name": "Bounce",
+        "kind": "compound",
+        "doc": "A parent left and returned to through its history state while settling.",
+        "span": {
+          "file": 0,
+          "line": 96,
+          "col": 1,
+          "endLine": 112,
+          "endCol": 2
+        },
+        "initial": "Bounce.P",
+        "states": [
+          {
+            "id": "Bounce.P",
+            "name": "P",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 103,
+              "col": 3,
+              "endLine": 109,
+              "endCol": 4
+            },
+            "initial": "Bounce.P.A",
+            "states": [
+              {
+                "id": "Bounce.P.H",
+                "name": "H",
+                "kind": "history",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 105,
+                  "col": 5,
+                  "endLine": 105,
+                  "endCol": 14
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Bounce.P.A",
+                "name": "A",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 107,
+                  "col": 5,
+                  "endLine": 107,
+                  "endCol": 27
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Go"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": "Bounce.P.B",
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 107,
+                      "col": 15,
+                      "endLine": 107,
+                      "endCol": 25
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Bounce.P.B",
+                "name": "B",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 108,
+                  "col": 5,
+                  "endLine": 108,
+                  "endCol": 49
+                },
+                "initial": null,
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "always"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "op",
+                      "op": "==",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "n"
+                          ],
+                          "type": "int",
+                          "text": "n"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 0,
+                          "type": "int",
+                          "text": "0"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "n == 0"
+                    },
+                    "target": "Bounce.Q",
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "n",
+                        "value": {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 108,
+                      "col": 15,
+                      "endLine": 108,
+                      "endCol": 47
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Bounce.Q",
+            "name": "Q",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 111,
+              "col": 3,
+              "endLine": 111,
+              "endCol": 44
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Bounce.P.H",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "back",
+                        "type": "string",
+                        "text": "\"back\""
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 111,
+                  "col": 13,
+                  "endLine": 111,
+                  "endCol": 42
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:a2fad9d0612503465e8cbdb139bcd289b0b018fd63df24da09726c05cbc22615"
+    }
+  }
+}

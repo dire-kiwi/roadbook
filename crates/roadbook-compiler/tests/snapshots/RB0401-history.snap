@@ -1,0 +1,21 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0401]: unguarded `always` transitions form a cycle: `M.P.B` -> `M.Out` -> `M.P.B`
+  --> RB0401-history.road:8:15
+   |
+ 8 |     state B { always -> Out }
+   |               ^^^^^^
+...
+10 |   state Out { always -> P.H }
+   |               ------ then `M.Out`
+   |
+   = help: the machine would never settle; guard one of them with `if`
+
+error[RB0401]: unguarded `always` transitions form a cycle: `N.P.R.B` -> `N.P.R.B`
+  --> RB0401-history.road:21:17
+   |
+21 |       state B { always -> D }
+   |                 ^^^^^^
+   |
+   = help: the machine would never settle; guard one of them with `if`

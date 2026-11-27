@@ -1,0 +1,91 @@
+// Keyed spawn: a hub of sessions, one per connection, by key.
+
+error Lost { reason: string }
+
+action log(what: string)
+action boom(name: string)
+
+/// One connection. It counts what it is told, and says back what it is asked to echo.
+machine Session(name: string) -> int ! Lost {
+  event Notify { text: string }
+  event Echo   { text: string }
+  event Leave
+  event Drop
+  event Crash
+  emits Said   { text: string }
+
+  var count: int = 0
+
+  initial Open
+  exit emit Said { text: "bye" }
+  state Open {
+    on Notify             set count = count + 1
+    on Echo               emit Said { text: event.text }
+    on Leave  -> Left
+    on Drop   -> Dropped
+    on Crash              do boom(name)
+  }
+  final state Left    { output count }
+  final state Dropped { fail Lost { reason: name } }
+}
+
+/// Spawns, addresses and stops sessions by key.
+machine Hub() -> int {
+  event Join      { id: string, name: string }
+  event JoinTell  { id: string, name: string, text: string }
+  event JoinTwice { id: string }
+  event Kick      { id: string }
+  event Tell      { id: string, text: string }
+  event Shout     { text: string }
+  event Leave     { id: string }
+  event Drop      { id: string }
+  event Crash     { id: string }
+  event Close
+  event CloseJoin { id: string }
+
+  children sessions: Session by string
+
+  var said: int = 0
+
+  initial Serving
+  exit do log("closing")
+  state Serving {
+    on Join                       spawn sessions[event.id] = Session(event.name)
+    on JoinTell                   spawn sessions[event.id] = Session(event.name)  send sessions[event.id].Echo { text: event.text }
+    on JoinTwice                  spawn sessions[event.id] = Session("first")  spawn sessions[event.id] = Session("second")
+    on Kick                       stop sessions[event.id]
+    on Tell                       send sessions[event.id].Echo { text: event.text }
+    on Shout                      send sessions.*.Notify { text: event.text }
+    on Leave                      send sessions[event.id].Leave
+    on Drop                       send sessions[event.id].Drop
+    on Crash                      send sessions[event.id].Crash
+    on sessions.Said              set said = said + 1  do log(key)
+    on sessions.done              do log(key)
+    on sessions.fail *            do log(error.reason)
+    on Close           -> Closed
+    on CloseJoin       -> Closed  spawn sessions[event.id] = Session("late")
+  }
+  final state Closed { output said }
+}
+
+/// Keyed by number: handles only its children's ending, and can be saved while they run.
+machine Pool() {
+  event Open   { n: int, name: string }
+  event Close  { n: int }
+  event Leave  { n: int }
+  event Drop   { n: int }
+  event Finish
+
+  children slots: Session by int
+
+  initial Running
+  state Running {
+    on Open                    spawn slots[event.n] = Session(event.name)
+    on Close                   stop slots[event.n]
+    on Leave                   send slots[event.n].Leave
+    on Drop                    send slots[event.n].Drop
+    on slots.done              do log("left")
+    on Finish     -> Finished
+  }
+  final state Finished {}
+}

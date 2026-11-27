@@ -11,7 +11,7 @@
       "description": "Features the case needs beyond the first version's. A runner skips a case that requires a feature it does not implement.",
       "type": "array",
       "uniqueItems": true,
-      "items": { "enum": ["messaging", "parallel", "snapshots", "calls"] }
+      "items": { "enum": ["messaging", "parallel", "snapshots", "calls", "history", "spawn"] }
     },
     "chart": {
       "description": "The entry .road file, relative to spec/conformance. Its IR is the file next to it with .road replaced by .ir.json.",

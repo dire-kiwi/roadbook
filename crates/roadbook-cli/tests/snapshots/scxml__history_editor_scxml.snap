@@ -1,0 +1,73 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Shallow and deep history of one compound state. -->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Editor" datamodel="roadbook" initial="Editor_Work">
+  <state id="Editor_Work" initial="Editor_Work_Draft">
+    <onentry>
+      <rb:do action="log">
+        <param name="what" expr="&quot;enter Work&quot;"/>
+      </rb:do>
+    </onentry>
+    <onexit>
+      <rb:do action="log">
+        <param name="what" expr="&quot;exit Work&quot;"/>
+      </rb:do>
+    </onexit>
+    <transition event="Help" target="Editor_Help"/>
+    <transition event="Restart" target="Editor_Work_Deep"/>
+    <history id="Editor_Work_Shallow" type="shallow">
+      <transition target="Editor_Work_Draft"/>
+    </history>
+    <history id="Editor_Work_Deep" type="deep">
+      <transition target="Editor_Work_Draft"/>
+    </history>
+    <state id="Editor_Work_Draft">
+      <onentry>
+        <rb:do action="log">
+          <param name="what" expr="&quot;enter Draft&quot;"/>
+        </rb:do>
+      </onentry>
+      <onexit>
+        <rb:do action="log">
+          <param name="what" expr="&quot;exit Draft&quot;"/>
+        </rb:do>
+      </onexit>
+      <transition event="Next" target="Editor_Work_Review"/>
+      <transition event="Jump" target="Editor_Work_Shallow"/>
+    </state>
+    <state id="Editor_Work_Review" initial="Editor_Work_Review_Read">
+      <onentry>
+        <rb:do action="log">
+          <param name="what" expr="&quot;enter Review&quot;"/>
+        </rb:do>
+      </onentry>
+      <onexit>
+        <rb:do action="log">
+          <param name="what" expr="&quot;exit Review&quot;"/>
+        </rb:do>
+      </onexit>
+      <transition event="Edit" target="Editor_Work_Draft"/>
+      <state id="Editor_Work_Review_Read">
+        <transition event="Deeper" target="Editor_Work_Review_Comment"/>
+      </state>
+      <state id="Editor_Work_Review_Comment">
+        <onentry>
+          <send id="Editor_Work_Review_Comment_after_1" event="roadbook.after.Editor_Work_Review_Comment.1" delay="1000ms"/>
+        </onentry>
+        <onexit>
+          <cancel sendid="Editor_Work_Review_Comment_after_1"/>
+        </onexit>
+        <invoke id="Editor_Work_Review_Comment_invoke" type="urn:roadbook:task" src="fetch"/>
+        <transition event="done.invoke.Editor_Work_Review_Comment_invoke" target="Editor_Work_Review_Read"/>
+        <transition event="roadbook.after.Editor_Work_Review_Comment.1" target="Editor_Work_Review_Read"/>
+      </state>
+    </state>
+  </state>
+  <state id="Editor_Help">
+    <transition event="Back" target="Editor_Work_Shallow"/>
+    <transition event="BackDeep" target="Editor_Work_Deep"/>
+  </state>
+</scxml>

@@ -1,0 +1,28 @@
+machine M() {
+  event Go
+  initial P
+  state P {
+    initial A
+    history H
+    state A { on Go -> B }
+    state B { always -> Out }
+  }
+  state Out { always -> P.H }
+}
+
+machine N() {
+  event Go
+  initial P
+  parallel state P {
+    deep history D
+    state R {
+      initial A
+      state A { on Go -> B }
+      state B { always -> D }
+    }
+    state S { on Go -> S }
+  }
+}
+
+// expect: RB0401 at 8:15
+// expect: RB0401 at 21:17

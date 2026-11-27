@@ -1,0 +1,14 @@
+error Busy
+task ping() ! Busy
+machine M() {
+  var x: int = 0
+  initial A
+  state A {
+    invoke ping() retry 2 {
+      done      set x = 1
+      fail Busy set x = 2
+    }
+  }
+}
+
+// expect: RB0902 at 7:5

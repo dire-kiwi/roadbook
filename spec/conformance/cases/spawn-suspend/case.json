@@ -1,0 +1,33 @@
+{
+  "description": "Suspending waits while a spawned child runs: the pool, whose child is a stubbed `Session`, is not idle until the child's outcome has been taken, and then suspends with no spawned child.",
+  "requires": [
+    "messaging",
+    "spawn",
+    "snapshots"
+  ],
+  "chart": "charts/hub.road",
+  "machine": "Pool",
+  "input": {},
+  "stub": [
+    "Session"
+  ],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Open",
+        "n": 7,
+        "name": "x"
+      }
+    },
+    {
+      "suspend": "waited"
+    },
+    {
+      "task": "Session",
+      "done": 3
+    }
+  ],
+  "status": "running"
+}

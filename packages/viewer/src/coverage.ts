@@ -1,6 +1,8 @@
 // Coverage mode's model: many traces (spec/trace.md), from a test run or from production, read
 // against the chart on screen, counting how often each transition was taken (its `transition`
 // records) and each state entered (its `entered` records), across every run of each machine,
+// and each history state, which is never entered, returned to (a `transition` record whose `to`
+// is the history state),
 // child runs included. A run recorded from another version of its machine (the `ir` of its
 // `started` or `restored` record differs from the machine's hash) is left out, and its records
 // counted in a warning, since its states and transitions may not be the chart's. Pure and
@@ -8,14 +10,14 @@
 
 import type { Ir, Machine } from './ir.ts'
 import { own } from './ir.ts'
-import { allStates, transitionId } from './model.ts'
+import { allStates, isHistory, transitionId } from './model.ts'
 import type { Annotations, Mark } from './render.ts'
 import { parseTrace } from './replay.ts'
 
 export interface MachineCoverage {
   /** Runs of the machine counted. */
   runs: number
-  /** Times each state was entered, by id. */
+  /** Times each state was entered, by id; for a history state, times a transition to it was taken. */
   states: Record<string, number>
   /** Times each transition was taken, by `stateId#index`. */
   transitions: Record<string, number>
@@ -58,6 +60,13 @@ export function coverage(ir: Ir, traces: { name: string; text: string }[]): Cove
     machines: dict(),
   }
   for (const name of Object.keys(ir.machines)) out.machines[name] = { runs: 0, states: dict(), transitions: dict() }
+  // The ids of each machine's history states.
+  const histories = new Map<string, Set<string>>()
+  const historiesOf = (machine: string) => {
+    let set = histories.get(machine)
+    if (!set) histories.set(machine, (set = new Set(allStates(own(ir.machines, machine)!).filter(isHistory).map((s) => s.id))))
+    return set
+  }
   for (const t of traces) {
     const { records, problems } = parseTrace(t.text)
     out.problems.push(...problems.map((p) => `${t.name}: ${p}`))
@@ -93,6 +102,7 @@ export function coverage(ir: Ir, traces: { name: string; text: string }[]): Cove
       else if (r.kind === 'transition' && typeof r.from === 'string' && typeof r.index === 'number') {
         const key = transitionId(r.from, r.index)
         mc.transitions[key] = (mc.transitions[key] ?? 0) + 1
+        if (typeof r.to === 'string' && historiesOf(run.machine).has(r.to)) mc.states[r.to] = (mc.states[r.to] ?? 0) + 1
       }
     }
   }
@@ -106,11 +116,14 @@ export function transitionCounts(m: Machine, mc: MachineCoverage | undefined): {
   return out
 }
 
-/** Every state of a machine but its root, with how often it was entered. */
-export function stateCounts(m: Machine, mc: MachineCoverage | undefined): { state: string; count: number }[] {
+/**
+ * Every state of a machine but its root, with how often it was entered (a history state: how
+ * often a transition to it was taken), and whether it is a history state.
+ */
+export function stateCounts(m: Machine, mc: MachineCoverage | undefined): { state: string; count: number; history: boolean }[] {
   return allStates(m)
     .filter((s) => s !== m.root)
-    .map((s) => ({ state: s.id, count: mc?.states[s.id] ?? 0 }))
+    .map((s) => ({ state: s.id, count: mc?.states[s.id] ?? 0, history: isHistory(s) }))
 }
 
 /**
@@ -134,14 +147,18 @@ export function coverageAnnotations(ir: Ir, cov: Coverage, machine: string): Ann
   const tmax = Math.max(0, ...Object.values(mc.transitions))
   const smax = Math.max(0, ...Object.values(mc.states))
   const runs = `${mc.runs} run${mc.runs === 1 ? '' : 's'}`
+  const histories = new Set(allStates(m).filter(isHistory).map((s) => s.id))
   return {
     state(id): Mark | null {
       if (id === m.root.id) return null
       const n = mc.states[id] ?? 0
       const s = shade(n, smax)
+      // A history state is never entered: it counts the transitions taken to it.
+      const did = histories.has(id) ? 'returned to through a transition' : 'entered'
+      const never = histories.has(id) ? 'no transition to it taken' : 'never entered'
       return n
-        ? { cls: `rb-cov-${s}`, badge: `×${n}`, title: `entered ${times(n)} in ${runs}` }
-        : { cls: 'rb-cov-never', badge: 'never', title: `never entered in ${runs}` }
+        ? { cls: `rb-cov-${s}`, badge: `×${n}`, title: `${did} ${times(n)} in ${runs}` }
+        : { cls: 'rb-cov-never', badge: 'never', title: `${never} in ${runs}` }
     },
     transition(state, index): Mark | null {
       const n = mc.transitions[transitionId(state, index)] ?? 0

@@ -1,0 +1,42 @@
+{
+  "description": "Keys are compared by value: an `int` key given as `1.0` or `-0.0` is the integer 1 or 0, so a stop with the key `1` or `0` finds the child spawned under it, and the records write the keys in integer form.",
+  "requires": [
+    "messaging",
+    "spawn"
+  ],
+  "chart": "charts/hub.road",
+  "machine": "Pool",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Open",
+        "n": 1.0,
+        "name": "x"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Open",
+        "n": -0.0,
+        "name": "y"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Close",
+        "n": 1
+      }
+    },
+    {
+      "event": {
+        "_tag": "Close",
+        "n": 0
+      }
+    }
+  ],
+  "status": "running"
+}

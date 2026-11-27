@@ -1,0 +1,29 @@
+// Conformance chart: redaction through maps and generic types. A sensitive field
+// is redacted inside a map's values and inside an instance of a generic type, by
+// the declared type with the type arguments substituted; a sensitive field whose
+// type is a type parameter is redacted whole, whatever the argument.
+
+type Login      { user: string, sensitive password: string }
+type Page<T>    { items: T[], next: string? }
+type Pair<A, B> { first: A, second: B }
+type Vault<T>   { label: string, sensitive secret: T }
+type Logins     = map<string, Login>
+
+action log(page: Page<Pair<string, Login>>)
+
+task fetch(users: Logins) -> Page<Pair<string, Login>>
+
+/// Fetches a page of the users' logins, and gives it back.
+machine Keep(users: Logins, vault: Vault<map<string, int>>) -> Page<Pair<string, Login>> {
+  var page: Page<Pair<string, Login>>
+
+  initial Fetching
+
+  state Fetching {
+    invoke fetch(users) {
+      done -> Done  set page = result  do log(result)
+    }
+  }
+
+  final state Done { output page }
+}

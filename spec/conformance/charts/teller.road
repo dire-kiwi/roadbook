@@ -1,0 +1,64 @@
+// Conformance chart: redaction in messages between runs: sent, received, emitted and
+// undelivered events with sensitive fields. vault.road has the rest.
+
+import { Credentials } from "./vault_types.road"
+
+/// Answers questions from whoever invoked it with what it was asked.
+machine Teller(sensitive code: string, owner: Credentials) {
+  event Ask  { sensitive question: string }
+  event Bye
+  emits Told { sensitive answer: string, to: string }
+
+  initial Listening
+
+  state Listening {
+    on Ask          emit Told { answer: event.question, to: owner.user }
+    on Bye -> Gone
+  }
+
+  final state Gone {}
+}
+
+/// Invokes a Teller and asks it a question: before it runs, and once it does.
+machine Keeper(owner: Credentials, sensitive code: string) {
+  event Go   { sensitive question: string }
+  event Stop
+
+  sensitive var answer: string = ""
+
+  initial Asking
+
+  state Asking {
+    invoke Teller(code, owner) as teller {
+      done -> Finished
+    }
+    initial Ready
+    state Ready {
+      entry send teller.Ask { question: code }
+      on Go send teller.Ask { question: event.question }
+    }
+    on teller.Told              set answer = event.answer
+    on Stop        -> Finished
+  }
+
+  final state Finished {}
+}
+
+/// Asks a Teller it holds a `ref` to, and keeps the answer.
+machine Caller(sensitive secret: string, teller: ref Teller) {
+  event Hang
+  event Leave
+
+  sensitive var heard: string = ""
+
+  initial Asking
+
+  state Asking {
+    entry send teller.Ask { question: secret }
+    on teller.Told          set heard = event.answer
+    on Hang                 send teller.Ask { question: secret }
+    on Leave       -> Done
+  }
+
+  final state Done {}
+}

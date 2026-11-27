@@ -1,0 +1,1030 @@
+{
+  "irVersion": "0.6",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/teller.road",
+      "package": null
+    },
+    {
+      "path": "spec/conformance/charts/vault_types.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Credentials": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "user",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "password",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "doc": "A login, as the user typed it.",
+      "span": {
+        "file": 1,
+        "line": 5,
+        "col": 1,
+        "endLine": 5,
+        "endCol": 62
+      }
+    },
+    "Login": {
+      "kind": "alias",
+      "params": [],
+      "type": "Credentials",
+      "doc": "The same, as the machines name it.",
+      "span": {
+        "file": 1,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 25
+      }
+    },
+    "Logins": {
+      "kind": "alias",
+      "params": [],
+      "type": "Login[]",
+      "doc": "An alias of a list of an alias.",
+      "span": {
+        "file": 1,
+        "line": 11,
+        "col": 1,
+        "endLine": 11,
+        "endCol": 22
+      }
+    },
+    "Session": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "token",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        },
+        {
+          "name": "expires",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "A signed-in session.",
+      "span": {
+        "file": 1,
+        "line": 14,
+        "col": 1,
+        "endLine": 14,
+        "endCol": 67
+      }
+    },
+    "Card": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "last4",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "number",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "doc": "A payment card.",
+      "span": {
+        "file": 1,
+        "line": 17,
+        "col": 1,
+        "endLine": 17,
+        "endCol": 54
+      }
+    },
+    "Profile": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "name",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "cards",
+          "type": "Card[]",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "backup",
+          "type": "Session?",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "logins",
+          "type": "Logins",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "What the vault loads once signed in: marks inside a list, an optional and an aliased list.",
+      "span": {
+        "file": 1,
+        "line": 20,
+        "col": 1,
+        "endLine": 20,
+        "endCol": 79
+      }
+    },
+    "Locked": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "user",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "hint",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "doc": "Too many attempts.",
+      "span": {
+        "file": 1,
+        "line": 23,
+        "col": 1,
+        "endLine": 23,
+        "endCol": 54
+      }
+    }
+  },
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Teller": {
+      "doc": "Answers questions from whoever invoked it with what it was asked.",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 20,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "code",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        },
+        {
+          "name": "owner",
+          "type": "Credentials",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Ask": {
+          "fields": [
+            {
+              "name": "question",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 44
+          }
+        },
+        "Bye": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 12
+          }
+        }
+      },
+      "emits": {
+        "Told": {
+          "fields": [
+            {
+              "name": "answer",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            },
+            {
+              "name": "to",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 54
+          }
+        }
+      },
+      "children": {},
+      "root": {
+        "id": "Teller",
+        "name": "Teller",
+        "kind": "compound",
+        "doc": "Answers questions from whoever invoked it with what it was asked.",
+        "span": {
+          "file": 0,
+          "line": 7,
+          "col": 1,
+          "endLine": 20,
+          "endCol": 2
+        },
+        "initial": "Teller.Listening",
+        "states": [
+          {
+            "id": "Teller.Listening",
+            "name": "Listening",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 14,
+              "col": 3,
+              "endLine": 17,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Ask"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "emit",
+                    "event": "Told",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "answer",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "question"
+                            ],
+                            "type": "string",
+                            "text": "event.question"
+                          }
+                        },
+                        {
+                          "name": "to",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "owner",
+                              "user"
+                            ],
+                            "type": "string",
+                            "text": "owner.user"
+                          }
+                        }
+                      ],
+                      "type": "Told",
+                      "text": "Told { answer: event.question, to: owner.user }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 15,
+                  "col": 5,
+                  "endLine": 15,
+                  "endCol": 73
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Bye"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Teller.Gone",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 16,
+                  "col": 5,
+                  "endLine": 16,
+                  "endCol": 19
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Teller.Gone",
+            "name": "Gone",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 19,
+              "col": 3,
+              "endLine": 19,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:e5ad0c44d49416e05ab5d32425728b01d6343ab6f6ac406e9830e9a3518c85aa"
+    },
+    "Keeper": {
+      "doc": "Invokes a Teller and asks it a question: before it runs, and once it does.",
+      "span": {
+        "file": 0,
+        "line": 23,
+        "col": 1,
+        "endLine": 45,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "owner",
+          "type": "Credentials",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "code",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "answer",
+          "type": "string",
+          "sensitive": true,
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 27,
+            "col": 3,
+            "endLine": 27,
+            "endCol": 36
+          }
+        }
+      ],
+      "events": {
+        "Go": {
+          "fields": [
+            {
+              "name": "question",
+              "type": "string",
+              "sensitive": true,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 24,
+            "col": 3,
+            "endLine": 24,
+            "endCol": 44
+          }
+        },
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 25,
+            "col": 3,
+            "endLine": 25,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "children": {},
+      "root": {
+        "id": "Keeper",
+        "name": "Keeper",
+        "kind": "compound",
+        "doc": "Invokes a Teller and asks it a question: before it runs, and once it does.",
+        "span": {
+          "file": 0,
+          "line": 23,
+          "col": 1,
+          "endLine": 45,
+          "endCol": 2
+        },
+        "initial": "Keeper.Asking",
+        "states": [
+          {
+            "id": "Keeper.Asking",
+            "name": "Asking",
+            "kind": "compound",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 31,
+              "col": 3,
+              "endLine": 42,
+              "endCol": 4
+            },
+            "initial": "Keeper.Asking.Ready",
+            "states": [
+              {
+                "id": "Keeper.Asking.Ready",
+                "name": "Ready",
+                "kind": "atomic",
+                "doc": "",
+                "span": {
+                  "file": 0,
+                  "line": 36,
+                  "col": 5,
+                  "endLine": 39,
+                  "endCol": 6
+                },
+                "initial": null,
+                "states": [],
+                "entry": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "child",
+                      "name": "teller",
+                      "machine": "Teller",
+                      "state": "Keeper.Asking"
+                    },
+                    "key": null,
+                    "event": "Ask",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "question",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "code"
+                            ],
+                            "type": "string",
+                            "text": "code"
+                          }
+                        }
+                      ],
+                      "type": "Teller.Ask",
+                      "text": "Ask { question: code }"
+                    }
+                  }
+                ],
+                "exit": [],
+                "invoke": null,
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Go"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "target": null,
+                    "effects": [
+                      {
+                        "kind": "send",
+                        "to": {
+                          "kind": "child",
+                          "name": "teller",
+                          "machine": "Teller",
+                          "state": "Keeper.Asking"
+                        },
+                        "key": null,
+                        "event": "Ask",
+                        "value": {
+                          "kind": "record",
+                          "fields": [
+                            {
+                              "name": "question",
+                              "value": {
+                                "kind": "ref",
+                                "path": [
+                                  "event",
+                                  "question"
+                                ],
+                                "type": "string",
+                                "text": "event.question"
+                              }
+                            }
+                          ],
+                          "type": "Teller.Ask",
+                          "text": "Ask { question: event.question }"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 38,
+                      "col": 7,
+                      "endLine": 38,
+                      "endCol": 57
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "machine",
+              "src": "Teller",
+              "as": "teller",
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "code"
+                  ],
+                  "type": "string",
+                  "text": "code"
+                },
+                {
+                  "kind": "ref",
+                  "path": [
+                    "owner"
+                  ],
+                  "type": "Credentials",
+                  "text": "owner"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 32,
+                "col": 5,
+                "endLine": 34,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Keeper.Finished",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 7,
+                  "endLine": 33,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "child",
+                    "name": "teller",
+                    "machine": "Teller",
+                    "state": "Keeper.Asking"
+                  },
+                  "event": "Told"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "answer",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "answer"
+                      ],
+                      "type": "string",
+                      "text": "event.answer"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 40,
+                  "col": 5,
+                  "endLine": 40,
+                  "endCol": 58
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Keeper.Finished",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 41,
+                  "col": 5,
+                  "endLine": 41,
+                  "endCol": 31
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Keeper.Finished",
+            "name": "Finished",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 44,
+              "col": 3,
+              "endLine": 44,
+              "endCol": 26
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:7e15052a519c66d1eb735842247c5a415606eae5484cf40b85be328e8a1dac77"
+    },
+    "Caller": {
+      "doc": "Asks a Teller it holds a `ref` to, and keeps the answer.",
+      "span": {
+        "file": 0,
+        "line": 48,
+        "col": 1,
+        "endLine": 64,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "secret",
+          "type": "string",
+          "sensitive": true,
+          "doc": ""
+        },
+        {
+          "name": "teller",
+          "type": "ref Teller",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "heard",
+          "type": "string",
+          "sensitive": true,
+          "init": {
+            "kind": "lit",
+            "value": "",
+            "type": "string",
+            "text": "\"\""
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 52,
+            "col": 3,
+            "endLine": 52,
+            "endCol": 35
+          }
+        }
+      ],
+      "events": {
+        "Hang": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 49,
+            "col": 3,
+            "endLine": 49,
+            "endCol": 13
+          }
+        },
+        "Leave": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 50,
+            "col": 3,
+            "endLine": 50,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "children": {},
+      "root": {
+        "id": "Caller",
+        "name": "Caller",
+        "kind": "compound",
+        "doc": "Asks a Teller it holds a `ref` to, and keeps the answer.",
+        "span": {
+          "file": 0,
+          "line": 48,
+          "col": 1,
+          "endLine": 64,
+          "endCol": 2
+        },
+        "initial": "Caller.Asking",
+        "states": [
+          {
+            "id": "Caller.Asking",
+            "name": "Asking",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 56,
+              "col": 3,
+              "endLine": 61,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "send",
+                "to": {
+                  "kind": "ref",
+                  "name": "teller",
+                  "machine": "Teller",
+                  "state": null
+                },
+                "key": null,
+                "event": "Ask",
+                "value": {
+                  "kind": "record",
+                  "fields": [
+                    {
+                      "name": "question",
+                      "value": {
+                        "kind": "ref",
+                        "path": [
+                          "secret"
+                        ],
+                        "type": "string",
+                        "text": "secret"
+                      }
+                    }
+                  ],
+                  "type": "Teller.Ask",
+                  "text": "Ask { question: secret }"
+                }
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "emitted",
+                  "from": {
+                    "kind": "ref",
+                    "name": "teller",
+                    "machine": "Teller",
+                    "state": null
+                  },
+                  "event": "Told"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "heard",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "answer"
+                      ],
+                      "type": "string",
+                      "text": "event.answer"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 58,
+                  "col": 5,
+                  "endLine": 58,
+                  "endCol": 53
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Hang"
+                },
+                "group": 1,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "send",
+                    "to": {
+                      "kind": "ref",
+                      "name": "teller",
+                      "machine": "Teller",
+                      "state": null
+                    },
+                    "key": null,
+                    "event": "Ask",
+                    "value": {
+                      "kind": "record",
+                      "fields": [
+                        {
+                          "name": "question",
+                          "value": {
+                            "kind": "ref",
+                            "path": [
+                              "secret"
+                            ],
+                            "type": "string",
+                            "text": "secret"
+                          }
+                        }
+                      ],
+                      "type": "Teller.Ask",
+                      "text": "Ask { question: secret }"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 59,
+                  "col": 5,
+                  "endLine": 59,
+                  "endCol": 65
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Leave"
+                },
+                "group": 2,
+                "guard": null,
+                "target": "Caller.Done",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 60,
+                  "col": 5,
+                  "endLine": 60,
+                  "endCol": 27
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Caller.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 63,
+              "col": 3,
+              "endLine": 63,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:cf600ac8d40c6f069c1830427338e22264aaf6ad95282542ddf1530b4142fb02"
+    }
+  }
+}

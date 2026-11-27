@@ -1,0 +1,104 @@
+{"input":{},"ir":"sha256:e3214dc83df18e56295753fd9fd004d705a2385336e96db90639fe5a0531f391","kind":"started","machine":"Editor","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Editor","t":0}
+{"kind":"entered","run":"r1","state":"Editor.Work","t":0}
+{"action":"log","args":{"what":"enter Work"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Editor.Work.Draft","t":0}
+{"action":"log","args":{"what":"enter Draft"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Jump"}},"kind":"event","run":"r1","t":0}
+{"from":"Editor.Work.Draft","index":1,"kind":"transition","run":"r1","t":0,"to":"Editor.Work.Shallow"}
+{"action":"log","args":{"what":"exit Draft"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Editor.Work.Draft","t":0}
+{"kind":"entered","run":"r1","state":"Editor.Work.Draft","t":0}
+{"action":"log","args":{"what":"enter Draft"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Next"}},"kind":"event","run":"r1","t":0}
+{"from":"Editor.Work.Draft","index":0,"kind":"transition","run":"r1","t":0,"to":"Editor.Work.Review"}
+{"action":"log","args":{"what":"exit Draft"},"kind":"action","run":"r1","t":0}
+{"kind":"exited","run":"r1","state":"Editor.Work.Draft","t":0}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review","t":0}
+{"action":"log","args":{"what":"enter Review"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review.Read","t":0}
+{"event":{"kind":"event","value":{"_tag":"Deeper"}},"kind":"event","run":"r1","t":0}
+{"from":"Editor.Work.Review.Read","index":0,"kind":"transition","run":"r1","t":0,"to":"Editor.Work.Review.Comment"}
+{"kind":"exited","run":"r1","state":"Editor.Work.Review.Read","t":0}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review.Comment","t":0}
+{"args":{},"invoke":1,"kind":"invoke.started","run":"r1","src":"fetch","state":"Editor.Work.Review.Comment","t":0}
+{"delay":1000,"index":1,"kind":"timer.started","run":"r1","state":"Editor.Work.Review.Comment","t":0,"timer":1}
+{"event":{"kind":"event","value":{"_tag":"Restart"}},"kind":"event","run":"r1","t":400}
+{"from":"Editor.Work","index":1,"kind":"transition","run":"r1","t":400,"to":"Editor.Work.Deep"}
+{"invoke":1,"kind":"invoke.cancelled","run":"r1","src":"fetch","state":"Editor.Work.Review.Comment","t":400}
+{"index":1,"kind":"timer.cancelled","run":"r1","state":"Editor.Work.Review.Comment","t":400,"timer":1}
+{"kind":"exited","run":"r1","state":"Editor.Work.Review.Comment","t":400}
+{"action":"log","args":{"what":"exit Review"},"kind":"action","run":"r1","t":400}
+{"kind":"exited","run":"r1","state":"Editor.Work.Review","t":400}
+{"action":"log","args":{"what":"exit Work"},"kind":"action","run":"r1","t":400}
+{"kind":"exited","run":"r1","state":"Editor.Work","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work","t":400}
+{"action":"log","args":{"what":"enter Work"},"kind":"action","run":"r1","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review","t":400}
+{"action":"log","args":{"what":"enter Review"},"kind":"action","run":"r1","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review.Comment","t":400}
+{"args":{},"invoke":2,"kind":"invoke.started","run":"r1","src":"fetch","state":"Editor.Work.Review.Comment","t":400}
+{"delay":1000,"index":1,"kind":"timer.started","run":"r1","state":"Editor.Work.Review.Comment","t":400,"timer":2}
+{"event":{"kind":"event","value":{"_tag":"Help"}},"kind":"event","run":"r1","t":400}
+{"from":"Editor.Work","index":0,"kind":"transition","run":"r1","t":400,"to":"Editor.Help"}
+{"invoke":2,"kind":"invoke.cancelled","run":"r1","src":"fetch","state":"Editor.Work.Review.Comment","t":400}
+{"index":1,"kind":"timer.cancelled","run":"r1","state":"Editor.Work.Review.Comment","t":400,"timer":2}
+{"kind":"exited","run":"r1","state":"Editor.Work.Review.Comment","t":400}
+{"action":"log","args":{"what":"exit Review"},"kind":"action","run":"r1","t":400}
+{"kind":"exited","run":"r1","state":"Editor.Work.Review","t":400}
+{"action":"log","args":{"what":"exit Work"},"kind":"action","run":"r1","t":400}
+{"kind":"exited","run":"r1","state":"Editor.Work","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Help","t":400}
+{"event":{"kind":"event","value":{"_tag":"Back"}},"kind":"event","run":"r1","t":400}
+{"from":"Editor.Help","index":0,"kind":"transition","run":"r1","t":400,"to":"Editor.Work.Shallow"}
+{"kind":"exited","run":"r1","state":"Editor.Help","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work","t":400}
+{"action":"log","args":{"what":"enter Work"},"kind":"action","run":"r1","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review","t":400}
+{"action":"log","args":{"what":"enter Review"},"kind":"action","run":"r1","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review.Read","t":400}
+{"event":{"kind":"event","value":{"_tag":"Edit"}},"kind":"event","run":"r1","t":400}
+{"from":"Editor.Work.Review","index":0,"kind":"transition","run":"r1","t":400,"to":"Editor.Work.Draft"}
+{"kind":"exited","run":"r1","state":"Editor.Work.Review.Read","t":400}
+{"action":"log","args":{"what":"exit Review"},"kind":"action","run":"r1","t":400}
+{"kind":"exited","run":"r1","state":"Editor.Work.Review","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work.Draft","t":400}
+{"action":"log","args":{"what":"enter Draft"},"kind":"action","run":"r1","t":400}
+{"event":{"kind":"event","value":{"_tag":"Jump"}},"kind":"event","run":"r1","t":400}
+{"from":"Editor.Work.Draft","index":1,"kind":"transition","run":"r1","t":400,"to":"Editor.Work.Shallow"}
+{"action":"log","args":{"what":"exit Draft"},"kind":"action","run":"r1","t":400}
+{"kind":"exited","run":"r1","state":"Editor.Work.Draft","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review","t":400}
+{"action":"log","args":{"what":"enter Review"},"kind":"action","run":"r1","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review.Read","t":400}
+{"event":{"kind":"event","value":{"_tag":"Deeper"}},"kind":"event","run":"r1","t":400}
+{"from":"Editor.Work.Review.Read","index":0,"kind":"transition","run":"r1","t":400,"to":"Editor.Work.Review.Comment"}
+{"kind":"exited","run":"r1","state":"Editor.Work.Review.Read","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review.Comment","t":400}
+{"args":{},"invoke":3,"kind":"invoke.started","run":"r1","src":"fetch","state":"Editor.Work.Review.Comment","t":400}
+{"delay":1000,"index":1,"kind":"timer.started","run":"r1","state":"Editor.Work.Review.Comment","t":400,"timer":3}
+{"event":{"kind":"event","value":{"_tag":"Help"}},"kind":"event","run":"r1","t":400}
+{"from":"Editor.Work","index":0,"kind":"transition","run":"r1","t":400,"to":"Editor.Help"}
+{"invoke":3,"kind":"invoke.cancelled","run":"r1","src":"fetch","state":"Editor.Work.Review.Comment","t":400}
+{"index":1,"kind":"timer.cancelled","run":"r1","state":"Editor.Work.Review.Comment","t":400,"timer":3}
+{"kind":"exited","run":"r1","state":"Editor.Work.Review.Comment","t":400}
+{"action":"log","args":{"what":"exit Review"},"kind":"action","run":"r1","t":400}
+{"kind":"exited","run":"r1","state":"Editor.Work.Review","t":400}
+{"action":"log","args":{"what":"exit Work"},"kind":"action","run":"r1","t":400}
+{"kind":"exited","run":"r1","state":"Editor.Work","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Help","t":400}
+{"event":{"kind":"event","value":{"_tag":"BackDeep"}},"kind":"event","run":"r1","t":400}
+{"from":"Editor.Help","index":1,"kind":"transition","run":"r1","t":400,"to":"Editor.Work.Deep"}
+{"kind":"exited","run":"r1","state":"Editor.Help","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work","t":400}
+{"action":"log","args":{"what":"enter Work"},"kind":"action","run":"r1","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review","t":400}
+{"action":"log","args":{"what":"enter Review"},"kind":"action","run":"r1","t":400}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review.Comment","t":400}
+{"args":{},"invoke":4,"kind":"invoke.started","run":"r1","src":"fetch","state":"Editor.Work.Review.Comment","t":400}
+{"delay":1000,"index":1,"kind":"timer.started","run":"r1","state":"Editor.Work.Review.Comment","t":400,"timer":4}
+{"event":{"kind":"after","timer":4},"kind":"event","run":"r1","t":1400}
+{"from":"Editor.Work.Review.Comment","index":1,"kind":"transition","run":"r1","t":1400,"to":"Editor.Work.Review.Read"}
+{"invoke":4,"kind":"invoke.cancelled","run":"r1","src":"fetch","state":"Editor.Work.Review.Comment","t":1400}
+{"kind":"exited","run":"r1","state":"Editor.Work.Review.Comment","t":1400}
+{"kind":"entered","run":"r1","state":"Editor.Work.Review.Read","t":1400}

@@ -1,0 +1,34 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0322]: a collection's key cannot be `float`
+  --> RB0322-bad-key-type.road:12:30
+   |
+12 |   children byFloat: Child by float
+   |                              ^^^^^
+   |
+   = help: keys are compared by value: use `string`, `int` or an enum (or an alias of one)
+
+error[RB0322]: a collection's key cannot be `Point`
+  --> RB0322-bad-key-type.road:13:30
+   |
+13 |   children byPoint: Child by Point
+   |                              ^^^^^
+   |
+   = help: keys are compared by value: use `string`, `int` or an enum (or an alias of one)
+
+error[RB0322]: a collection's key cannot be `string[]`
+  --> RB0322-bad-key-type.road:14:30
+   |
+14 |   children byList:  Child by string[]
+   |                              ^^^^^^^^
+   |
+   = help: keys are compared by value: use `string`, `int` or an enum (or an alias of one)
+
+error[RB0322]: a collection's key cannot be `string?`
+  --> RB0322-bad-key-type.road:15:30
+   |
+15 |   children byMaybe: Child by string?
+   |                              ^^^^^^^
+   |
+   = help: keys are compared by value: use `string`, `int` or an enum (or an alias of one)

@@ -1,0 +1,50 @@
+action log(n: int)
+
+/// History states: shallow and deep, in compound and parallel states, targeted from outside
+/// and from inside their parent.
+machine Histories() {
+  var n: int
+  event Go
+  event Pause
+  event Resume
+  event Reset
+
+  initial Work
+
+  state Work {
+    initial A
+    /// Back to where `Work` was.
+    history Last
+    deep history All
+
+    state A { on Go -> B  set n = 1 }
+    state B {
+      initial B1
+      entry do log(n)
+      state B1 { on Go -> B2 }
+      state B2 { on Reset -> Last }
+    }
+    on Pause -> Paused
+  }
+
+  state Paused {
+    on Resume -> Work.All
+    on Go -> Work.Last
+    on Reset -> Both
+  }
+
+  parallel state Both {
+    deep history Again
+    state Left {
+      initial L1
+      state L1 { on Go -> L2 }
+      state L2 { on Pause -> Away }
+    }
+    state Right {
+      initial R1
+      state R1 { on Resume -> R1 }
+    }
+  }
+
+  state Away { on Resume -> Both.Again }
+}

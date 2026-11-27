@@ -1,0 +1,68 @@
+// Maps and generic types: declarations, instances, field reads through instances, record
+// values whose type arguments come from the expected type or from their fields, aliases.
+
+type UserId = string
+
+/// A page of results.
+type Page<T> {
+  // The items on this page.
+  items: T[],
+  next: string?
+}
+
+type Pair<A, B>  { first: A, second: B }
+type Tree<T>     { value: T, children: Tree<T>[] }
+type Dict<T>     = map<string, T>
+type Scores      = map<UserId, int>
+type Node        { label: string, kids: Page<Node> }
+type Maybe<T>    = T?
+type OrderPage   = Page<Pair<string, int>>
+type Labelled<T> { label: Pair<json, json>, value: T }
+type Bag<T>      { items: Dict<T>, nested: Page<Maybe<T>> }
+
+fn scoresFor(ids: UserId[])                    -> Scores
+fn total(scores: map<string, int>)             -> int
+fn firstOf(page: Page<int>)                    -> int
+fn describe(value: json)                       -> string
+fn emptyTree()                                 -> Tree<Pair<string, duration>>
+fn delays(byName: Dict<duration>)              -> duration
+fn none()                                      -> string?
+fn leaves()                                    -> Node[]
+fn numbers(scores: Scores)                     -> int[]
+fn waitsOf(tree: Tree<Pair<string, duration>>) -> map<string, duration>
+fn counts()                                    -> map<string, int>
+fn maybes()                                    -> Page<int?>
+
+machine Report(ids: UserId[], counts: map<string, int[]>, pages: OrderPage[]) -> Page<int> {
+  var scores: Scores
+  var named:  Dict<int> = scoresFor(ids)
+  var page:   Page<int>
+  var maybe:  Page<int?>?
+  var pair:   Pair<string, Maybe<int>>
+  var tree:   Tree<Pair<string, duration>> = emptyTree()
+  var waits:  map<string, duration>?
+  var node:   Node
+
+  initial Scoring
+
+  state Scoring {
+    entry set scores = scoresFor(ids), page = Page { items: numbers(scores), next: none() }
+    always {
+      if total(scores) > 0 -> Paging  set maybe = Page { items: numbers(named), next: none() }
+      else                 -> Done
+    }
+  }
+
+  state Paging {
+    entry set waits = waitsOf(tree), pair = Pair { first: tree.value.first, second: firstOf(page) }
+    after delays(waitsOf(tree)) -> Done  set node = Node { label: describe(Pair { first: 1, second: tree }), kids: Page { items: leaves(), next: none() } }
+  }
+
+  // `T` is inferred through the generic aliases `Dict<T>` and `Maybe<T>`.
+  entry set node = Node { label: describe(Bag { items: counts(), nested: maybes() }), kids: Page { items: leaves(), next: none() } }
+
+  // `label` names no parameter, so its value takes its type: `Pair<json, json>`.
+  exit set node = Node { label: describe(Labelled { label: Pair { first: 1, second: "one" }, value: 2 }), kids: Page { items: leaves(), next: none() } }
+
+  final state Done { output Page { items: page.items, next: page.next } }
+}

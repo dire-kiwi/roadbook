@@ -1,0 +1,627 @@
+{
+  "irVersion": "0.6",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/generic.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Page": {
+      "kind": "record",
+      "params": [
+        "T"
+      ],
+      "fields": [
+        {
+          "name": "items",
+          "type": "T[]",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "next",
+          "type": "string?",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 44
+      }
+    },
+    "Timed": {
+      "kind": "record",
+      "params": [
+        "T"
+      ],
+      "fields": [
+        {
+          "name": "value",
+          "type": "T",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "wait",
+          "type": "duration",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 11,
+        "col": 1,
+        "endLine": 11,
+        "endCol": 43
+      }
+    },
+    "First": {
+      "kind": "alias",
+      "params": [
+        "T"
+      ],
+      "type": "T",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 12,
+        "endCol": 18
+      }
+    },
+    "Dict": {
+      "kind": "alias",
+      "params": [
+        "T"
+      ],
+      "type": "map<string, T>",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 13,
+        "col": 1,
+        "endLine": 13,
+        "endCol": 31
+      }
+    }
+  },
+  "functions": {
+    "longest": {
+      "params": [
+        {
+          "name": "waits",
+          "type": "Dict<duration>",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Timed<string>",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 15,
+        "col": 1,
+        "endLine": 15,
+        "endCol": 61
+      }
+    },
+    "merge": {
+      "params": [
+        {
+          "name": "a",
+          "type": "map<string, int>",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "b",
+          "type": "Dict<int>",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "map<string, int>",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 16,
+        "col": 1,
+        "endLine": 16,
+        "endCol": 64
+      }
+    }
+  },
+  "actions": {
+    "log": {
+      "params": [
+        {
+          "name": "total",
+          "type": "map<string, int>",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "page",
+          "type": "Page<Timed<int>>",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 18,
+        "col": 1,
+        "endLine": 18,
+        "endCol": 60
+      }
+    }
+  },
+  "tasks": {
+    "fetch": {
+      "params": [
+        {
+          "name": "from",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Page<Timed<int>>",
+      "errors": [],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 20,
+        "col": 1,
+        "endLine": 20,
+        "endCol": 45
+      }
+    }
+  },
+  "machines": {
+    "Gather": {
+      "doc": "Waits for more counts or for the longest wait, then fetches a page after the\nlongest one.",
+      "span": {
+        "file": 0,
+        "line": 24,
+        "col": 1,
+        "endLine": 47,
+        "endCol": 2
+      },
+      "params": [
+        {
+          "name": "waits",
+          "type": "map<string, duration>",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "counts",
+          "type": "Dict<int>",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Page<Timed<int>>",
+      "errors": [],
+      "vars": [
+        {
+          "name": "total",
+          "type": "map<string, int>",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 25,
+            "col": 3,
+            "endLine": 25,
+            "endCol": 30
+          }
+        },
+        {
+          "name": "best",
+          "type": "Timed<string>",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 26,
+            "col": 3,
+            "endLine": 26,
+            "endCol": 27
+          }
+        },
+        {
+          "name": "page",
+          "type": "Page<Timed<int>>",
+          "sensitive": false,
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 27,
+            "col": 3,
+            "endLine": 27,
+            "endCol": 30
+          }
+        },
+        {
+          "name": "adds",
+          "type": "First<int>",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 28,
+            "col": 3,
+            "endLine": 28,
+            "endCol": 28
+          }
+        }
+      ],
+      "events": {
+        "Add": {
+          "fields": [
+            {
+              "name": "more",
+              "type": "map<string, int>",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 30,
+            "col": 3,
+            "endLine": 30,
+            "endCol": 39
+          }
+        }
+      },
+      "emits": {},
+      "children": {},
+      "root": {
+        "id": "Gather",
+        "name": "Gather",
+        "kind": "compound",
+        "doc": "Waits for more counts or for the longest wait, then fetches a page after the\nlongest one.",
+        "span": {
+          "file": 0,
+          "line": 24,
+          "col": 1,
+          "endLine": 47,
+          "endCol": 2
+        },
+        "initial": "Gather.Waiting",
+        "states": [
+          {
+            "id": "Gather.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 34,
+              "col": 3,
+              "endLine": 38,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "set",
+                "var": "best",
+                "value": {
+                  "kind": "call",
+                  "fn": "longest",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "waits"
+                      ],
+                      "type": "map<string, duration>",
+                      "text": "waits"
+                    }
+                  ],
+                  "type": "Timed<string>",
+                  "text": "longest(waits)"
+                }
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Add"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Gather.Fetching",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "total",
+                    "value": {
+                      "kind": "call",
+                      "fn": "merge",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "counts"
+                          ],
+                          "type": "Dict<int>",
+                          "text": "counts"
+                        },
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "event",
+                            "more"
+                          ],
+                          "type": "map<string, int>",
+                          "text": "event.more"
+                        }
+                      ],
+                      "type": "map<string, int>",
+                      "text": "merge(counts, event.more)"
+                    }
+                  },
+                  {
+                    "kind": "set",
+                    "var": "adds",
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "adds"
+                          ],
+                          "type": "First<int>",
+                          "text": "adds"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "adds + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 36,
+                  "col": 5,
+                  "endLine": 36,
+                  "endCol": 88
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "ref",
+                    "path": [
+                      "best",
+                      "wait"
+                    ],
+                    "type": "duration",
+                    "text": "best.wait"
+                  }
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Gather.Fetching",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "total",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "counts"
+                      ],
+                      "type": "Dict<int>",
+                      "text": "counts"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 37,
+                  "col": 5,
+                  "endLine": 37,
+                  "endCol": 52
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Gather.Fetching",
+            "name": "Fetching",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 40,
+              "col": 3,
+              "endLine": 44,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": {
+              "kind": "task",
+              "src": "fetch",
+              "as": null,
+              "args": [
+                {
+                  "kind": "ref",
+                  "path": [
+                    "best",
+                    "value"
+                  ],
+                  "type": "string",
+                  "text": "best.value"
+                }
+              ],
+              "span": {
+                "file": 0,
+                "line": 41,
+                "col": 5,
+                "endLine": 43,
+                "endCol": 6
+              }
+            },
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Gather.Done",
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "page",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "result"
+                      ],
+                      "type": "Page<Timed<int>>",
+                      "text": "result"
+                    }
+                  },
+                  {
+                    "kind": "do",
+                    "action": "log",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "total"
+                        ],
+                        "type": "map<string, int>",
+                        "text": "total"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "result"
+                        ],
+                        "type": "Page<Timed<int>>",
+                        "text": "result"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 42,
+                  "col": 7,
+                  "endLine": 42,
+                  "endCol": 61
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Gather.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 46,
+              "col": 3,
+              "endLine": 46,
+              "endCol": 75
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "record",
+              "fields": [
+                {
+                  "name": "items",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "page",
+                      "items"
+                    ],
+                    "type": "Timed<int>[]",
+                    "text": "page.items"
+                  }
+                },
+                {
+                  "name": "next",
+                  "value": {
+                    "kind": "ref",
+                    "path": [
+                      "best",
+                      "value"
+                    ],
+                    "type": "string",
+                    "text": "best.value"
+                  }
+                }
+              ],
+              "type": "Page<Timed<int>>",
+              "text": "Page { items: page.items, next: best.value }"
+            },
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:bb2036a69631bf4a90876f6d3600ec778b471a3acd9358d49854a7b81144cc53"
+    }
+  }
+}

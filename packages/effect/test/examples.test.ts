@@ -1,6 +1,7 @@
 /**
  * The messaging examples end to end, under a virtual clock: examples/upload (a parent that
- * pauses and resumes the child it invokes, and shows the child's progress) and examples/orders
+ * pauses and resumes the child it invokes, and shows the child's progress; and a batch that
+ * spawns an upload per file, keyed by its name) and examples/orders
  * (orders calling a spawned Inventory peer they are given by handle). Every task sleeps on
  * Effect's `Clock`, so `TestClock` drives them.
  */
@@ -9,6 +10,7 @@ import { Cause, Duration, Effect, Exit, Fiber } from "effect"
 import { TestClock } from "effect/testing"
 import { Inventory, type InventoryDef, OutOfStock } from "../../../examples/inventory/inventory.road.ts"
 import { Order, PaymentDeclined } from "../../../examples/orders/orders.road.ts"
+import { Batch } from "../../../examples/upload/batch.road.ts"
 import { Publish, type PublishDef } from "../../../examples/upload/publish.road.ts"
 import { Upload, UploadFailed } from "../../../examples/upload/upload.road.ts"
 import * as Roadbook from "../src/index.ts"
@@ -89,6 +91,53 @@ describe("examples/upload", () => {
       ])
       const received = records.filter((r) => r.run === "publish" && r.kind === "event" && r.event.kind === "emitted")
       assert.strictEqual(received.length, 3)
+    }).pipe(Effect.scoped))
+
+  it.effect("a batch spawns an upload per file, pauses them all, and hears from each by key", () =>
+    Effect.gen(function*() {
+      const shown: Array<string> = []
+      const { records, sink } = collect()
+      const BatchLive = Batch.implement({
+        actions: {
+          showFileProgress: ({ name, percent }) => Effect.sync(() => void shown.push(`${name} ${percent}`)),
+          showUploaded: ({ name, url }) => Effect.sync(() => void shown.push(`${name} at ${url}`)),
+          reportFailure: ({ name, reason }) => Effect.sync(() => void shown.push(`${name} failed: ${reason}`))
+        },
+        machines: { Upload: UploadLive }
+      })
+      const actor = yield* BatchLive.spawn({}).pipe(
+        Effect.provideService(Roadbook.TraceSink, sink),
+        Effect.provideService(Roadbook.RootRunId, () => "batch")
+      )
+      yield* actor.send({ _tag: "Add", file: { name: "a.jpg", size: 200 } })
+      yield* actor.send({ _tag: "Add", file: { name: "b.jpg", size: 100 } })
+      yield* actor.send({ _tag: "Add", file: { name: "bad", size: 100 } })
+      yield* settle
+      assert.deepStrictEqual(shown, ["bad failed: refused"])
+      yield* advance(10)
+      assert.deepStrictEqual(shown.slice(1).sort(), ["a.jpg 50", "b.jpg 100", "b.jpg at https://files.example/b.jpg"])
+
+      // Paused: nothing more is sent until every upload resumes.
+      yield* actor.send({ _tag: "PauseAll" })
+      yield* settle
+      yield* advance(1000)
+      assert.strictEqual(shown.length, 4)
+      yield* actor.send({ _tag: "ResumeAll" })
+      yield* settle
+      yield* advance(10)
+      assert.deepStrictEqual(shown.slice(4), ["a.jpg 100", "a.jpg at https://files.example/a.jpg"])
+
+      // A new upload of "c.jpg", cancelled before it finishes; then closing ends the batch.
+      yield* actor.send({ _tag: "Add", file: { name: "c.jpg", size: 300 } })
+      yield* actor.send({ _tag: "Cancel", name: "c.jpg" })
+      yield* settle
+      yield* actor.send({ _tag: "Close" })
+      assert.strictEqual(yield* actor.result, 2)
+      const spawned = records.flatMap((r) => r.run === "batch" && r.kind === "spawn.started" ? [[r.spawn, r.key]] : [])
+      assert.deepStrictEqual(spawned, [[1, "a.jpg"], [2, "b.jpg"], [3, "bad"], [4, "c.jpg"]])
+      const stopped = records.flatMap((r) => r.run === "batch" && r.kind === "spawn.stopped" ? [r.key] : [])
+      assert.deepStrictEqual(stopped, ["c.jpg"])
+      assert.isTrue(records.some((r) => r.run === "batch.4" && r.kind === "cancelled"))
     }).pipe(Effect.scoped))
 
   it.effect("a child's failure fails the parent through its chart", () =>

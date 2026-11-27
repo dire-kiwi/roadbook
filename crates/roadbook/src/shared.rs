@@ -8,7 +8,7 @@ use std::collections::{BTreeSet, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::task::Waker;
 
-use roadbook_core::{Defect, Input, Program, ReplyOutcome, Saved};
+use roadbook_core::{Defect, Input, Program, ReplyOutcome, Saved, Snapshot};
 use serde_json::Value;
 
 use crate::env::Config;
@@ -42,7 +42,7 @@ struct Inner {
     /// Host code asked to suspend the run once it is idle.
     suspend: bool,
     /// The run's saved snapshot as its last step left it, once it has one.
-    saved: Option<Arc<Saved>>,
+    saved: Option<Published>,
     saved_wakers: Vec<Waker>,
     /// The invokes of this run that made a call and still wait for its answer: an answer to
     /// one that is not here (cancelled, or answered already) is not pushed.
@@ -92,6 +92,40 @@ impl Answer {
             ReplyOutcome::Fail,
             serde_json::json!({ "_tag": roadbook_ir::UNANSWERED }),
         );
+    }
+}
+
+/// A published saved snapshot. The driver publishes one after every step, and few are ever
+/// read, so a step's is built only when it is first read.
+enum Published {
+    Saved(Arc<Saved>),
+    /// The core's snapshot, and each of its timers' due time, in order.
+    Step {
+        snap: Arc<Snapshot>,
+        dues: Vec<u64>,
+    },
+}
+
+impl Inner {
+    /// The published snapshot, built now if it was not yet.
+    fn saved(&mut self) -> Option<Arc<Saved>> {
+        let saved = match self.saved.take()? {
+            Published::Saved(saved) => saved,
+            Published::Step { snap, dues } => {
+                let mut dues = dues.into_iter();
+                Arc::new(Saved::new(&snap, |_| dues.next().unwrap_or(0)))
+            }
+        };
+        self.saved = Some(Published::Saved(saved.clone()));
+        Some(saved)
+    }
+
+    fn wake_saved(mut g: MutexGuard<'_, Inner>) {
+        let wakers = std::mem::take(&mut g.saved_wakers);
+        drop(g);
+        for w in wakers {
+            w.wake();
+        }
     }
 }
 
@@ -294,16 +328,20 @@ impl Shared {
     /// Publishes the run's saved snapshot.
     pub fn set_saved(&self, saved: Saved) {
         let mut g = self.lock();
-        g.saved = Some(Arc::new(saved));
-        let wakers = std::mem::take(&mut g.saved_wakers);
-        drop(g);
-        for w in wakers {
-            w.wake();
-        }
+        g.saved = Some(Published::Saved(Arc::new(saved)));
+        Inner::wake_saved(g);
+    }
+
+    /// Publishes the run's saved snapshot as `Saved::new(snap, …)` with `dues`, each timer's
+    /// due time in order, built when it is first read.
+    pub fn publish(&self, snap: Arc<Snapshot>, dues: Vec<u64>) {
+        let mut g = self.lock();
+        g.saved = Some(Published::Step { snap, dues });
+        Inner::wake_saved(g);
     }
 
     pub fn saved(&self) -> Option<Arc<Saved>> {
-        self.lock().saved.clone()
+        self.lock().saved()
     }
 
     /// The saved snapshot, `Some(None)` if the run finished without one, or `None` after
@@ -311,7 +349,7 @@ impl Shared {
     pub fn poll_saved(&self, waker: &Waker) -> Option<Option<Arc<Saved>>> {
         let mut g = self.lock();
         if g.saved.is_some() || g.finished.is_some() {
-            return Some(g.saved.clone());
+            return Some(g.saved());
         }
         remember(&mut g.saved_wakers, waker);
         None
@@ -566,7 +604,7 @@ pub(crate) struct InvokeContext {
     /// The parent's own, which the child pushes what it emits onto when the parent receives it.
     pub parent_queue: Arc<Shared>,
     /// The child's emitted events that the parent receives: those its machine has an `on`
-    /// for, and none when the invoke has no `as` name.
+    /// for, and none when the invoke has no `as` name (a spawned child always has them).
     pub heard: HashSet<String>,
 }
 

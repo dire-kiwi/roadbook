@@ -25,21 +25,27 @@
 //!   is part of the view, so a change to how a peer works inside does not
 //!   change the machines that talk to it.
 //! - T is every type named by the machines in M, by F, A and K and by the
-//!   interfaces of R, closed under the types their declarations name. A type is named by the base of
-//!   any TypeRef (parameters, results, variables, event fields, alias
+//!   interfaces of R, closed under the types their declarations name. A type is named by any name
+//!   in any TypeRef (its base, type arguments and map key and value) (parameters, results, variables, event fields, alias
 //!   targets, record fields and every expression's `type`), by an entry of
 //!   an `errors` list and by an `invoke.fail` trigger's `error` other than
 //!   `"*"` and the built-in `Unanswered`. A name that is an event of the
 //!   machine being walked (the type of a bare `event`, or of an `emit`
 //!   value), or a dotted event type, is not a type and is skipped.
-//! - `strip` removes every member named `doc`, `span` or `text` from every
-//!   object, recursively, except the keys of a `calls` map. The name-keyed
-//!   maps inside these values are a machine's `events` and `emits`, whose
-//!   keys are upper-case, and its `calls`, whose keys are call names and are
-//!   kept, so no user-chosen name is ever stripped.
+//! - `strip` removes every member named `doc`, `span`, `text` or
+//!   `sensitive` from every object, recursively, except the keys of a
+//!   machine's `calls` and `children` maps, which are names the chart chose
+//!   and are kept as they are. The other name-keyed maps inside these values
+//!   are a machine's `events` and `emits`, whose keys are upper-case, so no
+//!   user-chosen name is ever stripped. It also removes a machine's
+//!   `children` when it is empty and a `send` effect's `key` when it is
+//!   `null`, and a type declaration's `params` is removed when it is `[]`, so
+//!   a machine that uses neither keyed spawn nor generic types hashes as it
+//!   did before they existed. `calls` and `strict` are always kept.
 //!
-//! Comments, formatting, source positions and unused declarations therefore
-//! do not change a hash; any change to behaviour or to a type a machine uses
+//! Comments, formatting, source positions, `sensitive` marks and unused
+//! declarations therefore do not change a hash (a mark changes only what
+//! traces show, so a snapshot saved before it was added still restores); any change to behaviour or to a type a machine uses
 //! does, including in a child machine.
 
 use std::collections::BTreeSet;
@@ -112,6 +118,8 @@ struct Walker<'a> {
     /// The machine being walked and its events.
     machine: String,
     events: BTreeSet<String>,
+    /// The type parameters of the generic declaration being walked: names that are not types.
+    params: Vec<String>,
 }
 
 impl Walker<'_> {
@@ -157,10 +165,20 @@ impl Walker<'_> {
     }
 
     fn type_ref(&mut self, t: &TypeRef) -> Result<(), HashError> {
-        match t.base() {
+        match t {
+            TypeRef::Named(n) if self.params.contains(n) => Ok(()),
             TypeRef::Named(n) => self.type_name(n),
+            TypeRef::Generic(n, args) => {
+                self.type_name(n)?;
+                args.iter().try_for_each(|a| self.type_ref(a))
+            }
+            TypeRef::Map(k, v) => {
+                self.type_ref(k)?;
+                self.type_ref(v)
+            }
+            TypeRef::List(t) | TypeRef::Optional(t) => self.type_ref(t),
             TypeRef::Ref(m) => self.named_machine(m),
-            _ => Ok(()),
+            TypeRef::Builtin(_) | TypeRef::Call(_) => Ok(()),
         }
     }
 
@@ -205,6 +223,13 @@ impl Walker<'_> {
             self.fields(&e.fields)?;
         }
         self.calls(m.calls.values())?;
+        for c in m.children.values() {
+            self.type_ref(&c.key)?;
+            if !self.ir.machines.contains_key(&c.machine) {
+                return Err(self.unresolved("machine", &c.machine));
+            }
+            self.pending_machines.push(c.machine.clone());
+        }
         self.state(&m.root)
     }
 
@@ -241,7 +266,11 @@ impl Walker<'_> {
         for t in &s.transitions {
             match &t.trigger {
                 Trigger::After { delay } => self.expr(delay)?,
-                Trigger::InvokeFail { error } if error != "*" => self.type_name(error)?,
+                Trigger::InvokeFail { error } | Trigger::SpawnFail { error, .. }
+                    if error != "*" =>
+                {
+                    self.type_name(error)?
+                }
                 Trigger::Emitted { from, .. } => self.address(from)?,
                 _ => {}
             }
@@ -267,8 +296,11 @@ impl Walker<'_> {
                     self.out.actions.insert(action.clone());
                     args.iter().try_for_each(|a| self.expr(a))?;
                 }
-                Effect::Send { to, value, .. } => {
+                Effect::Send { to, key, value, .. } => {
                     self.address(to)?;
+                    if let Some(k) = key {
+                        self.expr(k)?;
+                    }
                     self.expr(value)?;
                 }
                 Effect::Emit { value, .. } => self.expr(value)?,
@@ -278,6 +310,11 @@ impl Walker<'_> {
                         self.expr(v)?;
                     }
                 }
+                Effect::Spawn { key, args, .. } => {
+                    self.expr(key)?;
+                    args.iter().try_for_each(|a| self.expr(a))?;
+                }
+                Effect::Stop { key, .. } => self.expr(key)?,
             }
         }
         Ok(())
@@ -311,6 +348,7 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
         pending_machines: vec![name.to_owned()],
         machine: name.to_owned(),
         events: BTreeSet::new(),
+        params: Vec::new(),
     };
     while let Some(m) = w.pending_machines.pop() {
         if w.out.machines.insert(m.clone()) {
@@ -349,10 +387,18 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
         while let Some(t) = pending.pop() {
             let before = w.out.types.clone();
             match &ir.types[&t].def {
-                TypeDef::Record { fields } | TypeDef::Error { fields } => w.fields(fields)?,
-                TypeDef::Alias { ty } => w.type_ref(ty)?,
+                TypeDef::Record { params, fields } => {
+                    w.params = params.clone();
+                    w.fields(fields)?;
+                }
+                TypeDef::Error { fields } => w.fields(fields)?,
+                TypeDef::Alias { params, ty } => {
+                    w.params = params.clone();
+                    w.type_ref(ty)?;
+                }
                 TypeDef::Enum { .. } | TypeDef::Extern => {}
             }
+            w.params.clear();
             pending.extend(w.out.types.difference(&before).cloned());
         }
         let peers: Vec<String> = w
@@ -382,19 +428,34 @@ fn closure(ir: &Ir, name: &str) -> Result<Closure, HashError> {
     Ok(w.out)
 }
 
-/// Removes every `doc`, `span` and `text` member, recursively, keeping the keys
-/// of `calls` maps.
+/// Removes every `doc`, `span`, `text` and `sensitive` member, recursively, except the keys
+/// of a machine's `calls` and `children` maps, which are names the chart chose (a call or a
+/// collection may be named `text`). Also removes what keyed spawn added where it says nothing: a machine's empty
+/// `children` and a `send` effect's `null` `key`, so a machine that spawns nothing keeps the
+/// hash it had before keyed spawn.
 fn strip(v: &mut Value) {
     match v {
         Value::Object(m) => {
-            for key in ["doc", "span", "text"] {
+            for key in ["doc", "span", "text", "sensitive"] {
                 m.remove(key);
             }
-            for (k, v) in m.iter_mut() {
-                match v {
-                    // Keyed by call names, which may be `doc`, `span` or `text`.
-                    Value::Object(calls) if k == "calls" => calls.values_mut().for_each(strip),
-                    v => strip(v),
+            if m.contains_key("root")
+                && m.get("children")
+                    .is_some_and(|c| c.as_object().is_some_and(Map::is_empty))
+            {
+                m.remove("children");
+            }
+            if m.get("kind").and_then(Value::as_str) == Some("send")
+                && m.get("key").is_some_and(Value::is_null)
+            {
+                m.remove("key");
+            }
+            for (key, value) in m.iter_mut() {
+                match value {
+                    Value::Object(named) if key == "calls" || key == "children" => {
+                        named.values_mut().for_each(strip)
+                    }
+                    value => strip(value),
                 }
             }
         }
@@ -432,7 +493,19 @@ pub fn semantic_view(ir: &Ir, name: &str) -> Result<Value, HashError> {
     let mut view = Map::new();
     view.insert("machine".into(), Value::String(name.to_owned()));
     view.insert("machines".into(), machines);
-    view.insert("types".into(), section(&c.types, |n| &ir.types[n]));
+    let mut types = section(&c.types, |n| &ir.types[n]);
+    // A type that is not generic has the hash it had before `params` existed.
+    if let Value::Object(map) = &mut types {
+        for t in map.values_mut() {
+            if let Value::Object(t) = t
+                && t.get("params")
+                    .is_some_and(|p| p.as_array().is_some_and(Vec::is_empty))
+            {
+                t.remove("params");
+            }
+        }
+    }
+    view.insert("types".into(), types);
     view.insert(
         "functions".into(),
         section(&c.functions, |n| &ir.functions[n]),

@@ -3,7 +3,11 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use roadbook_ir::{Ir, Machine, State, Trigger, TypeDef, TypeRef};
+use std::borrow::Cow;
+
+use roadbook_ir::{Ir, Machine, State, Trigger, TypeRef};
+
+use crate::redact::{Marks, Redactor};
 
 /// An IR document, checked and indexed for the interpreter.
 ///
@@ -13,6 +17,7 @@ use roadbook_ir::{Ir, Machine, State, Trigger, TypeDef, TypeRef};
 pub struct Program {
     ir: Ir,
     machines: HashMap<String, MachineIndex>,
+    marks: Marks,
 }
 
 /// The states of one machine, in document order: a state's index is its position in a
@@ -23,9 +28,14 @@ pub(crate) struct MachineIndex {
     paths: Vec<Vec<usize>>,
     /// For each state, its parent's index (`None` for the root).
     pub parents: Vec<Option<usize>>,
-    /// For each state, its children's indices.
+    /// For each state, its children's indices, in document order. A history state is not a
+    /// child: it is never active.
     pub children: Vec<Vec<usize>>,
     pub by_id: HashMap<String, usize>,
+    /// For each state, its transitions' targets' indices, in order (`None`: no target).
+    pub targets: Vec<Vec<Option<usize>>>,
+    /// For each state, its initial child's index, if it names one.
+    pub initial: Vec<Option<usize>>,
     /// The emitted events the machine has an `on x.E` for, anywhere in it, by the sender's
     /// machine. A run receives no others.
     hears: HashMap<String, HashSet<String>>,
@@ -49,8 +59,14 @@ impl fmt::Display for ProgramError {
 impl std::error::Error for ProgramError {}
 
 impl Program {
-    /// Indexes `ir`.
+    /// Indexes `ir`. An IR whose transition targets or initial states name states their
+    /// machine does not have is refused.
     pub fn new(ir: Ir) -> Result<Program, ProgramError> {
+        if let Some(alias) = ir.alias_cycle() {
+            return Err(ProgramError::Read(format!(
+                "type alias `{alias}` refers to itself, so it cannot be expanded"
+            )));
+        }
         let mut machines = HashMap::new();
         for (name, m) in &ir.machines {
             let mut idx = MachineIndex {
@@ -58,12 +74,48 @@ impl Program {
                 parents: Vec::new(),
                 children: Vec::new(),
                 by_id: HashMap::new(),
+                targets: Vec::new(),
+                initial: Vec::new(),
                 hears: HashMap::new(),
             };
             walk(&m.root, None, &mut Vec::new(), &mut idx);
+            // A target or initial state the machine does not have: refused here, since the
+            // interpreter would have nothing to enter.
+            let index = |id: &String, what: &str, of: &str| {
+                idx.by_id.get(id).copied().ok_or_else(|| {
+                    ProgramError::Read(format!(
+                        "{what} `{id}` of state `{of}` is not a state of machine `{name}`"
+                    ))
+                })
+            };
+            for i in 0..idx.paths.len() {
+                let s = idx.state(m, i);
+                let targets = s
+                    .transitions
+                    .iter()
+                    .map(|t| {
+                        t.target
+                            .as_ref()
+                            .map(|id| index(id, "the target", &s.id))
+                            .transpose()
+                    })
+                    .collect::<Result<_, _>>()?;
+                let initial = s
+                    .initial
+                    .as_ref()
+                    .map(|id| index(id, "the initial state", &s.id))
+                    .transpose()?;
+                idx.targets.push(targets);
+                idx.initial.push(initial);
+            }
             machines.insert(name.clone(), idx);
         }
-        Ok(Program { ir, machines })
+        let marks = Marks::new(&ir);
+        Ok(Program {
+            ir,
+            machines,
+            marks,
+        })
     }
 
     /// Reads an IR document ([`Ir::from_json`]) and indexes it.
@@ -77,30 +129,30 @@ impl Program {
         &self.ir
     }
 
-    /// `t` with aliases expanded at the top, transitively: `Money` for `type Money = int` is
-    /// `int`, and `S` for `type S = string?` is `string?`. The compiler rejects alias
-    /// cycles; the bound only keeps a hand-written IR from looping.
-    pub(crate) fn resolve<'t>(&'t self, mut t: &'t TypeRef) -> &'t TypeRef {
-        for _ in 0..64 {
-            match t {
-                TypeRef::Named(n) => match self.ir.types.get(n).map(|d| &d.def) {
-                    Some(TypeDef::Alias { ty }) => t = ty,
-                    _ => break,
-                },
-                _ => break,
-            }
+    pub(crate) fn redactor(&self) -> Redactor<'_> {
+        Redactor {
+            ir: &self.ir,
+            marks: &self.marks,
         }
-        t
+    }
+
+    /// `t` with aliases expanded at the top, transitively ([`Ir::expand_top`]).
+    pub(crate) fn resolve<'t>(&'t self, t: &'t TypeRef) -> Cow<'t, TypeRef> {
+        self.ir.expand_top(t)
     }
 
     /// `t` with aliases and `?` removed: the type whose operators an operand of type `t`
     /// uses.
-    pub(crate) fn scalar<'t>(&'t self, mut t: &'t TypeRef) -> &'t TypeRef {
+    pub(crate) fn scalar<'t>(&'t self, t: &'t TypeRef) -> Cow<'t, TypeRef> {
+        let mut t = self.resolve(t);
         for _ in 0..64 {
-            match self.resolve(t) {
-                TypeRef::Optional(inner) => t = inner,
+            t = match t {
+                Cow::Borrowed(TypeRef::Optional(inner)) => self.resolve(inner),
+                Cow::Owned(TypeRef::Optional(inner)) => {
+                    Cow::Owned(self.resolve(&inner).into_owned())
+                }
                 other => return other,
-            }
+            };
         }
         t
     }
@@ -128,7 +180,9 @@ fn walk(s: &State, parent: Option<usize>, path: &mut Vec<usize>, idx: &mut Machi
         path.push(i);
         let ci = walk(c, Some(me), path, idx);
         path.pop();
-        idx.children[me].push(ci);
+        if !c.kind.is_history() {
+            idx.children[me].push(ci);
+        }
     }
     me
 }

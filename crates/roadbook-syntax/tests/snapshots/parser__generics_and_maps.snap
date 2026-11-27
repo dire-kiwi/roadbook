@@ -1,0 +1,84 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: Page
+      kind:
+        record:
+          params:
+            - T
+          fields:
+            - name: items
+              ty:
+                list:
+                  named: T
+            - name: next
+              ty:
+                optional:
+                  builtin: string
+  - decl:
+      name: Pair
+      kind:
+        record:
+          params:
+            - A
+            - B
+          fields:
+            - name: first
+              ty:
+                named: A
+            - name: second
+              ty:
+                named: B
+  - decl:
+      name: Dict
+      kind:
+        alias:
+          params:
+            - T
+          target:
+            map:
+              - builtin: string
+              - named: T
+  - decl:
+      name: Deep
+      kind:
+        alias:
+          target:
+            optional:
+              map:
+                - named: UserId
+                - list:
+                    generic:
+                      - Page
+                      - - generic:
+                            - Pair
+                            - - builtin: int
+                              - optional:
+                                  map:
+                                    - builtin: string
+                                    - list:
+                                        builtin: bool
+  - decl:
+      name: f
+      kind:
+        fn:
+          params:
+            - name: m
+              ty:
+                generic:
+                  - Dict
+                  - - builtin: int
+            - name: p
+              ty:
+                list:
+                  generic:
+                    - Page
+                    - - named: Order
+          returns:
+            map:
+              - builtin: string
+              - builtin: int
+comments: []

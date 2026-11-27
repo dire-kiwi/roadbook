@@ -43,7 +43,14 @@ use serde_json::Value;
 
 /// The features of `spec/conformance/case.schema.json`'s `requires` this runtime
 /// implements.
-const SUPPORTED: &[&str] = &["messaging", "parallel", "snapshots", "calls"];
+const SUPPORTED: &[&str] = &[
+    "messaging",
+    "parallel",
+    "snapshots",
+    "calls",
+    "history",
+    "spawn",
+];
 
 // ---- the executor ------------------------------------------------------------------------
 
@@ -755,6 +762,13 @@ fn run_case(c: &LoadedCase) -> Result<String, String> {
         return Err(problems.join("; "));
     }
     let records: Vec<Value> = sink.records().iter().map(|r| r.to_json()).collect();
+    // `JsonLines` writes `to_canonical`, straight from the record: the same text.
+    for (r, v) in sink.records().iter().zip(&records) {
+        let direct = r.to_canonical();
+        if direct != roadbook_ir::jcs::to_canonical_string(v) {
+            return Err(format!("to_canonical writes {direct} for {v}"));
+        }
+    }
     let text = to_lines(&arrange(records));
     for run in &runner.runs {
         let status = status_of(&run.end);
@@ -838,9 +852,14 @@ fn every_case_passes_byte_for_byte() {
 /// canonical snapshot it stands for.
 fn restore_and_go_on(c: &LoadedCase, name: &str, text: &str) -> Result<bool, String> {
     let value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+    let must_refuse = c.case.script.iter().find_map(|s| match s {
+        Step::Restore(r) if r.name == name && r.migrate.is_none() => r.refused.clone(),
+        _ => None,
+    });
+    // A file only restored to be refused as `invalid` may break the schema on purpose.
     let errors =
         roadbook_conformance::schema_errors(&roadbook_conformance::snapshot_validator(), &value);
-    if !errors.is_empty() {
+    if !errors.is_empty() && must_refuse.as_deref() != Some("invalid") {
         return Err(format!("not a saved snapshot: {}", errors.join("; ")));
     }
     let written = c
@@ -851,10 +870,6 @@ fn restore_and_go_on(c: &LoadedCase, name: &str, text: &str) -> Result<bool, Str
     if written && snapshot_text(&value) != text {
         return Err("not in canonical form".into());
     }
-    let must_refuse = c.case.script.iter().find_map(|s| match s {
-        Step::Restore(r) if r.name == name && r.migrate.is_none() => r.refused.clone(),
-        _ => None,
-    });
     let saved = match (Saved::from_json(text), &must_refuse) {
         (Ok(saved), _) => saved,
         (Err(e), Some(reason)) if e.reason() == reason => return Ok(false),
@@ -909,8 +924,13 @@ fn restore_and_go_on(c: &LoadedCase, name: &str, text: &str) -> Result<bool, Str
         flag: Arc::new(Flag::default()),
     };
     runner.settle()?;
+    // Saved again as the current version: a version 1 snapshot gains an empty `history`, and
+    // a version 1 or 2 one an empty `spawned`.
     let mut expected = saved.clone();
     expected.run = "x1".into();
+    expected.snapshot_version = Saved::VERSION;
+    expected.history.get_or_insert_default();
+    expected.spawned.get_or_insert_default();
     let again = handle.save().ok_or("no saved snapshot after restoring")?;
     if again.to_canonical() != expected.to_canonical() {
         return Err(format!(
@@ -1117,6 +1137,38 @@ fn the_saved_snapshot_check_agrees_with_the_schema() {
             "timers",
             serde_json::json!([{"id": 1, "state": "A.B", "index": 0, "delay": 0, "due": 0}]),
         ),
+        ("snapshotVersion", serde_json::json!(1)),
+        ("snapshotVersion", serde_json::json!(3)),
+        ("snapshotVersion", serde_json::json!(4)),
+        ("spawned", serde_json::json!({})),
+        (
+            "spawned",
+            serde_json::json!([{"id": 1, "children": "c", "key": 1}]),
+        ),
+        (
+            "spawned",
+            serde_json::json!([{"id": 0, "children": "c", "key": 1, "args": {}}]),
+        ),
+        (
+            "spawned",
+            serde_json::json!([{"id": 1, "children": "C", "key": 1, "args": {}}]),
+        ),
+        (
+            "spawned",
+            serde_json::json!([{"id": 1, "children": "c", "key": 1.5, "args": {}}]),
+        ),
+        (
+            "spawned",
+            serde_json::json!([{"id": 1, "children": "c", "key": true, "args": {}}]),
+        ),
+        ("history", serde_json::json!({})),
+        ("history", serde_json::json!([])),
+        ("history", serde_json::json!({"A.H": ["A.B"]})),
+        ("history", serde_json::json!({"A.H": []})),
+        ("history", serde_json::json!({"A.H": ["A.B", "A.B"]})),
+        ("history", serde_json::json!({"A.H": "A.B"})),
+        ("history", serde_json::json!({"a": ["A.B"]})),
+        ("history", serde_json::json!({"A.H": ["A.b"]})),
     ];
     let mut checked = 0;
     for c in &cases {
