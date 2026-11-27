@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/orders.road",
@@ -228,6 +228,7 @@
         "endLine": 66,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "warehouse",
@@ -800,7 +801,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:019dfc294192de134a30a44df3d0016d3c79140bc35649d3ff890b75386f6023"
+      "hash": "sha256:a7591362e4409841f15312a6c959d2de8ec8463658d9ae5cca2c37ab5039deb4"
     },
     "Order": {
       "doc": "Reserve the items with the warehouse, then take the payment.",
@@ -811,6 +812,7 @@
         "endLine": 92,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "id",
@@ -1319,7 +1321,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:65aab51d235122b03dc6c2755e86256e54eca9914b1832f2c8052d403f70b018"
+      "hash": "sha256:0ef6fba526e5b56a5d48801b7ff7740f574f1bc189fbe5dbee9c7f3f018e4b40"
     },
     "Supplier": {
       "doc": "Passes deliveries on to the warehouse. It has no `on` for what the Inventory\nemits, so it is sent none of it.",
@@ -1330,6 +1332,7 @@
         "endLine": 108,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "inventory",
@@ -1518,7 +1521,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:32ab16325f02be4610d4beee2c777c2f83ceb9c51f9c8e31c78e33e356587e03"
+      "hash": "sha256:2648cd18140a938c3dffa1ef679fd4946d622df5cbdab174394ff0fab2c3535d"
     }
   }
 }

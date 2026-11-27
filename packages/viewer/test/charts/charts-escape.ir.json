@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "packages/viewer/test/charts/escape.road",
@@ -86,6 +86,7 @@
         "endLine": 60,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "s",
@@ -1035,7 +1036,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:8198e33276f74b1a5066df0b51765dc781cd31f72a562f918e40a1156e2b32d3"
+      "hash": "sha256:a126d29b59723be10fdb3535ea2293708f06fc7966c1a927186e9aa90f6f7042"
     },
     "EscapePeer": {
       "doc": "Peer doc <img src=x onerror=alert(14)> & \"q\"",
@@ -1046,6 +1047,7 @@
         "endLine": 74,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "s",
@@ -1203,7 +1205,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:92369ee554619197cd25caf78e616f3b023f834e2b6268b7994425543780ef48"
+      "hash": "sha256:dfbb7935d654f73ae06bf90c4ba966597be16a727ecbb3fbccd3b8658711d2a2"
     }
   }
 }

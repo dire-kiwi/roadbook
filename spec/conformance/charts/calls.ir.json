@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/calls.road",
@@ -117,6 +117,7 @@
         "endLine": 61,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "warehouse",
@@ -825,7 +826,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:a015abdc1b2b860c38e605fe18de2da2d30bd1dfdecc70fba504fcb5790bd8c6"
+      "hash": "sha256:571e83a513a6f95ddaf2ae3fc6ffee26a9dcf1396d9f179079d22c2e6ea96bca"
     },
     "Order": {
       "doc": "Reserve the items with the warehouse, giving up after 5s.",
@@ -836,6 +837,7 @@
         "endLine": 81,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "id",
@@ -1163,7 +1165,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:079a66f479f9c41a26730dc35020da21255628123c4d472db7801f83d779cf8a"
+      "hash": "sha256:dba99cfba5ec0ea3d465474076211303351d2434b8e8a8587445bea4ea532bdf"
     },
     "Counter": {
       "doc": "Ask the warehouse how many reservations it holds; 0 if it cannot say.",
@@ -1174,6 +1176,7 @@
         "endLine": 98,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "inventory",
@@ -1363,7 +1366,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:783a8bdc6c9544701a012db278c2233ba2b631e2f63d3eb4699c9191a35b7ca2"
+      "hash": "sha256:291921d8cd4200fb156a288debb23bf28c52e126079de4fc239e49d7596c9b78"
     }
   }
 }

@@ -227,7 +227,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -912,6 +912,7 @@ const ir: unknown = {
         "endLine": 268,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "ticket",
@@ -4384,7 +4385,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:0ec5f18f1be220069e824b8cb0960d1fdc540004c6f869488b6e4e6b3d8e2734"
+      "hash": "sha256:30fd463681592918319ff50bc6832a919f7b71adad871f3287cf0cbc147078aa"
     },
     "SatisfactionSurvey": {
       "doc": "Send a satisfaction survey and wait up to a week for the answer.",
@@ -4395,6 +4396,7 @@ const ir: unknown = {
         "endLine": 33,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "ticket",
@@ -4861,7 +4863,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:8a187ad1e1c904789981af62fae9381f227c0ca24ce4b6bd35ac3ddab730a887"
+      "hash": "sha256:4bad4fa37e01fef6c65c4fc357c92569cc91e8a5408308502e395824537f44d6"
     }
   }
 }

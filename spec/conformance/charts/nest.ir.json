@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/nest.road",
@@ -63,6 +63,7 @@
         "endLine": 56,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -758,7 +759,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d72fd0686064c7bfd50de0cd1b816084b12300792f3e2cf516f22ee2ace03675"
+      "hash": "sha256:24668878ec0e9f890806694d9dd2e01d7c804ec8bff52a87dc81ca8f300da0d6"
     }
   }
 }

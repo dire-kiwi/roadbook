@@ -62,7 +62,7 @@ export interface ImportJobDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/import-job/import.road",
@@ -320,6 +320,7 @@ const ir: unknown = {
         "endLine": 73,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "upload",
@@ -1403,7 +1404,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:f717ccc64f45861802fe2180ba7ab86250943322a54f58dc5d83fb98e272fcf9"
+      "hash": "sha256:21d82553ffea4015cfbb74de7733947daccb26206e16967959d6cd7cd6294172"
     }
   }
 }

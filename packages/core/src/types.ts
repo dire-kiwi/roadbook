@@ -13,6 +13,8 @@ export type Defect =
   | { readonly kind: "overflow"; readonly expr: string }
   | { readonly kind: "undeclared"; readonly error: string }
   | { readonly kind: "limit" }
+  /** A `strict` machine was given one of its own events, a message or a call that enabled no transition. */
+  | { readonly kind: "unhandled"; readonly event: Extract<Input, { readonly kind: "event" | "message" | "call" }> }
   /** A `reply` was given a pending-call value whose call `call` is not pending. */
   | { readonly kind: "answered"; readonly call: string }
 

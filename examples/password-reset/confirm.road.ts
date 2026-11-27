@@ -77,7 +77,7 @@ export interface ConfirmPasswordResetDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/password-reset/confirm.road",
@@ -390,6 +390,7 @@ const ir: unknown = {
         "endLine": 69,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "token",
@@ -1163,7 +1164,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:c3c5dfe6a5090131e0fb028f65ac6d2aa89d236522d0e1e11d4ad39d17349004"
+      "hash": "sha256:bcfdba99eb3e41381ec269a581de43f01c0c34e9e9692f5ff917bb11c39574f3"
     }
   }
 }

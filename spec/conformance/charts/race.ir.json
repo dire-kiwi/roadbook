@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/race.road",
@@ -47,6 +47,7 @@
         "endLine": 28,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "int",
       "errors": [],
@@ -280,7 +281,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:5cc4f4c459421f78c4b04aa70dcb9b515b95b5ff02296d772384247f7201df5f"
+      "hash": "sha256:320a4a0fdf932886d5508c4514b8548adeac7e69426a1155fe5c7c8977744c63"
     }
   }
 }

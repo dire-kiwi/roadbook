@@ -1,4 +1,4 @@
-{"input":{"id":"a1"},"ir":"sha256:f17de1010330fcac506c3478f1c8dfa78527557d4d794bc528c32dac7f7a6519","kind":"started","machine":"Fetch","run":"r1","t":0}
+{"input":{"id":"a1"},"ir":"sha256:cc0b5daeb145e7ed8ecda6ec9f000fdfe07f566d7bd27cc5f69cb06190434768","kind":"started","machine":"Fetch","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Fetch","t":0}
 {"kind":"entered","run":"r1","state":"Fetch.Loading","t":0}
 {"args":{"id":"a1"},"invoke":1,"kind":"invoke.started","run":"r1","src":"fetch","state":"Fetch.Loading","t":0}

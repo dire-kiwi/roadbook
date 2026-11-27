@@ -46,7 +46,7 @@ export interface CheckoutDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/shop/checkout.road",
@@ -517,6 +517,7 @@ const ir: unknown = {
         "endLine": 32,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "order",
@@ -934,7 +935,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ae8f0faea257c1aaea9e2aacea4af27f730ddc9f1c292d1adfa3d2439f9e7341"
+      "hash": "sha256:fa80e6f614f8898e91e52357e8d5aefe10d597e5daa33a587c6510b20c174521"
     }
   }
 }

@@ -151,6 +151,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "ignore",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -213,6 +223,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "ignore",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -611,6 +631,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "ignore",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -836,6 +866,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "ignore",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -878,6 +918,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "ignore",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -1294,6 +1344,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "ignore",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -1862,6 +1922,16 @@
           }
         ]
       },
+      "modifier": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "strict",
+            "named": false
+          }
+        ]
+      },
       "name": {
         "multiple": false,
         "required": true,
@@ -2144,6 +2214,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "ignore",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -3233,6 +3313,10 @@
     "named": false
   },
   {
+    "type": "ignore",
+    "named": true
+  },
+  {
     "type": "implicit_name",
     "named": true
   },
@@ -3302,6 +3386,10 @@
   },
   {
     "type": "state",
+    "named": false
+  },
+  {
+    "type": "strict",
     "named": false
   },
   {

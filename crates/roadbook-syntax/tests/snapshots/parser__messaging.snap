@@ -7,6 +7,7 @@ items:
       name: M
       kind:
         machine:
+          strict: false
           params:
             - name: peer
               ty:
@@ -48,6 +49,7 @@ items:
                                 - emit:
                                     event: Done
                                     fields: []
+                              ignore: false
                   - transition:
                       trigger:
                         "on":
@@ -61,6 +63,7 @@ items:
                                 to: upload
                                 event: Pause
                                 fields: []
+                          ignore: false
                   - transition:
                       trigger:
                         receive:
@@ -83,6 +86,7 @@ items:
                                   - name: percent
                                     value:
                                       var: p
+                          ignore: false
                   - transition:
                       trigger:
                         receive:
@@ -104,6 +108,7 @@ items:
                             - do:
                                 name: log
                                 args: []
+                          ignore: false
                   - entry:
                       - send:
                           to: peer

@@ -25,10 +25,10 @@ module.exports = grammar({
   // names are not, because they mean something only where no name can appear.
   reserved: {
     global: (_) => [
-      'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'var',
-      'event', 'emits', 'initial', 'state', 'final', 'parallel', 'entry', 'exit', 'on', 'after',
-      'always', 'done', 'invoke', 'output', 'fail', 'if', 'else', 'set', 'do', 'send', 'emit',
-      'and', 'or', 'not', 'true', 'false', 'call', 'reply',
+      'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'strict',
+      'var', 'event', 'emits', 'initial', 'state', 'final', 'parallel', 'entry', 'exit', 'on',
+      'after', 'always', 'done', 'invoke', 'output', 'fail', 'if', 'else', 'set', 'do', 'send',
+      'emit', 'ignore', 'and', 'or', 'not', 'true', 'false', 'call', 'reply',
     ],
   },
 
@@ -142,6 +142,7 @@ module.exports = grammar({
 
     machine_declaration: ($) =>
       seq(
+        optional(field('modifier', 'strict')),
         'machine',
         field('name', $.type_identifier),
         field('parameters', $.parameters),
@@ -276,7 +277,13 @@ module.exports = grammar({
 
     else_branch: ($) => seq('else', $._action),
 
-    _action: ($) => choice(seq('->', field('target', $.target), optional($._effects)), $._effects),
+    // `ignore` takes an event and does nothing. The compiler accepts it only in an `on`
+    // transition (RB0026); the grammar accepts it in any branch, as it does other misplaced
+    // items the compiler rejects.
+    _action: ($) =>
+      choice(seq('->', field('target', $.target), optional($._effects)), $._effects, $.ignore),
+
+    ignore: (_) => 'ignore',
 
     target: ($) => seq(field('state', $.type_identifier), repeat(seq('.', field('state', $.type_identifier)))),
 

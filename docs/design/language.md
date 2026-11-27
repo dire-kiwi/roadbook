@@ -93,6 +93,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | `exit set ...` / `exit do ...` | Run when the state is left. |
 | `on Event ...` | Transition on an external event. `on *` matches any of the machine's own events this state has no `on` for. |
 | `on name.Event ...` | Transition on an event emitted by the machine `name` addresses: an invoked child (`invoke … as name`) or a `ref` parameter or variable. |
+| `on Event ignore` | Take the event and do nothing. See [strict machines](#strict-machines). |
 | `on name ...` | Transition taking a call of the machine's own `call name`, from another machine. |
 | `after 30s ...` | Transition after the state has been active for a duration. The delay is an expression. |
 | `always ...` | Transition taken as soon as its guard holds (no event). |
@@ -100,7 +101,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | `invoke name(args) [as name] { done ...  fail Err ... }` | Run a task or machine while the state is active. At most one per state. `fail *` matches the declared errors not listed. `as` names an invoked machine, so that the state can send to it and receive what it emits. `invoke x.name(args)` calls the call `name` of the machine the `ref` `x` holds. |
 | `output expr` / `fail expr` | Final states at the top level only: the machine's result. |
 
-A transition has up to four parts, all optional except that it must do something:
+A transition has up to four parts, all optional except that it must do something (or, for an `on`, say `ignore`):
 
 ```
 on Submit if isValid(order) -> Paying  set attempts = 0  do audit("submitted", order)
@@ -249,6 +250,38 @@ state Reserving {
 - **`Unanswered`** is a built-in error with no fields: the callee was not running, ended before answering, or had no transition for the call. It is reserved: nothing can be declared with its name, and it appears only in a call invoke's `fail Unanswered` outcome, never in a `!` list, as a type or as a value (`RB0119`).
 
 What a runtime does with a call is in [execution](../../spec/execution.md#calls-between-runs).
+## Strict machines
+
+By default an input that enables no transition is dropped and written as `dropped` in the trace, and that stays the default: the events real charts get race with their state (a `Cancel` while an order authenticates, a `Pause` while an import validates), every example machine that accepts events has states where some event is not handled, and a holder of a reference keeps only its own replies by a guard. A machine can opt into failing instead, and say where it ignores an event on purpose:
+
+```
+strict machine Lock() {
+  event Open
+  event Close
+  event Knock { loud: bool }
+
+  initial Closed
+
+  on Knock if event.loud ignore
+
+  state Closed {
+    on Open  -> Opened
+    on Close ignore
+  }
+
+  state Opened {
+    on Close -> Closed
+    on Knock ignore
+  }
+}
+```
+
+- **What is strict.** In a `strict machine`, one of its own events (from host code, or a `send` from another machine) that enables no transition ends the run with an `unhandled` defect instead of being dropped. The defect names the input, with its sender for a message ([`spec/execution.md`](../../spec/execution.md#defects)). Above, a quiet `Knock` while `Closed` is a defect: the machine body's `on Knock` takes only a loud one. A [call](#calls-between-machines) that no `on name` takes is the same defect, and the callee's caller gets `Unanswered` as the callee ends.
+- **What is not.** Emitted events from other machines, invoke outcomes whose guarded branches all fail, and guarded `after` expiries are still dropped and traced. They arrive when another machine or the clock decides, so failing on them would make an ordinary race fatal. A `send` from a strict machine that reaches no running machine is [undelivered](actors.md#semantics), as from any machine: strict is about what a machine receives, and a peer that has ended is the same kind of race as an emitted event.
+- **`ignore`.** `on Event ignore` takes the event and does nothing: nothing is left or entered, and no effect runs. It can have a guard (`on Knock if event.loud ignore`) and be a branch of a block (`if busy ignore`), and it stands alone: a branch with `ignore` has no target and no effects. It is a transition like any other, so the trace shows the event as taken, with a `transition` record that goes nowhere, and an inner state's `ignore` is taken before an outer state's `on` for the same event, as `Opened`'s `on Knock ignore` is above. Only an event's `on` transition can ignore (`RB0026`): a timer, `always` or `done` with nothing to do can be removed, and a call is answered with `reply`, so `on reserve ignore` is an error too. `ignore` is allowed in any machine, not only a strict one; elsewhere it documents that an event is meant to be ignored, and turns a `dropped` record into a taken one.
+- **The viewer** writes `strict` in the machine's signature, shows an `ignore` inside its state like any internal transition, and in simulate mode says of an event no active state handles that the run would end with a defect rather than drop it.
+
+Decided on 27 November 2026 and built in IR 0.5: `strict` is the machine's `strict` member in the [IR](../../spec/ir.md#machines), so adding or removing it changes the machine's hash, and an `ignore` is a transition with no target and no effects.
 
 ## Projects
 
@@ -460,7 +493,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0014` | `done`, `invoke`, `output` or `fail` directly in a machine body. | `machine M() { done -> A }` |
 | `RB0015` | `var`, `event`, `emits` or `call` inside a state. | `state A { var x: int }` |
 | `RB0016` | A machine item at the top level of a file. | `state A {}` outside a machine |
-| `RB0017` | A transition with no target and no effects. | `on Go` |
+| `RB0017` | A transition with no target, `set`, `do`, `send`, `emit`, `reply` or `ignore`. | `on Go` |
 | `RB0018` | A record value as an `after` delay without parentheses. | `after Cfg { ms: 5 } -> A` |
 | `RB0019` | An invoke outcome outside `invoke { }`. | `fail CardDeclined -> Declined` in a state |
 | `RB0020` | Something other than an outcome inside `invoke { }`. | `fail declined`, `on Go -> A` in an invoke |
@@ -469,6 +502,7 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0023` | A `///` comment that documents nothing. | `/// note` above a transition |
 | `RB0024` | A lower-case type name that is not a built-in type. | `x: integer` |
 | `RB0025` | Nesting more than 64 levels deep. | 65 nested states, or `((((…))))` |
+| `RB0026` | `ignore` outside an event's `on` transition (a call's too), or with a target or effects. | `after 5s ignore`, `on Go ignore -> A` |
 
 The compiler's codes:
 
@@ -563,7 +597,7 @@ taskDecl    = "task" lower params [ "->" type ] [ errors ] ;
 params      = "(" [ field { "," field } ] ")" ;
 errors      = "!" Upper { "|" Upper } ;
 
-machineDecl = "machine" Upper params [ "->" type ] [ errors ] "{" { machineItem } "}" ;
+machineDecl = [ "strict" ] "machine" Upper params [ "->" type ] [ errors ] "{" { machineItem } "}" ;
 machineItem = varDecl | eventDecl | emitsDecl | callDecl | commonItem ;
 varDecl     = "var" lower ":" type [ "=" expr ] ;
 eventDecl   = "event" Upper [ fields ] ;
@@ -589,7 +623,8 @@ outcome     = "done" branches
 branches    = [ "if" expr ] action
             | "{" "if" expr action { "if" expr action } [ "else" action ] "}" ;
 action      = "->" target [ effects ]
-            | effects ;
+            | effects
+            | "ignore" ;
 effects     = effect { effect } ;
 effect      = "set" assign { "," assign }
             | "do" call { "," call }
@@ -629,7 +664,7 @@ comment     = "//" … end of line ;        doc comment = "///" … end of line 
 Rules the grammar does not express:
 
 - Every comma-separated list accepts a trailing comma.
-- All keywords are reserved: `import type enum error extern fn action task machine var event emits call initial state final parallel entry exit on after always done invoke output fail if else set do send emit reply and or not true false`. `from`, `as`, `ref` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments, and at the start of a type. `event`, `error`, `result` and `call` are the implicit names inside transitions and cannot be used for variables or parameters. `Unanswered` is the built-in error of calls and cannot be declared.
+- All keywords are reserved: `import type enum error extern fn action task machine strict var event emits call initial state final parallel entry exit on after always done invoke output fail if else set do send emit reply ignore and or not true false`. `from`, `as`, `ref` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments, and at the start of a type. `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters.
 - A `///` comment documents the declaration, machine, state, event or variable that follows it. A `///` anywhere else is an error: use `//`.
 - A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust. A `{` after the event of a `send` or `emit` is always its record body.
 - `on name.Event` is told from `on Event` by the lower-case name and the `.` after it, and `on name`, which takes a call, by a lower-case name with no `.`. Likewise `invoke x.name(…)` is a call, told from `invoke name(…)` by the `.`.
@@ -639,6 +674,7 @@ Rules the grammar does not express:
 - A type is optional at most once: `T??` is an error.
 - Nesting is at most 64 levels deep, counting states, parentheses, operators (each `+` in `a + b + c` is a level), field reads and type suffixes (`[]`, `?`), so every tool that walks the tree stays within its stack.
 - A final state holds only `entry`, `exit`, `output` and `fail`.
+- `ignore` is an action only in an `on` transition (`on Event`, `on *`, `on name.Event`).
 - Declaration names are unique among the files compiled together: an entry file and everything it imports, directly or not, because the IR is keyed by name. Two charts that do not import one another may use the same names. A file can use only what it declares or imports. An event cannot have the name of a type, error or machine either, because the IR names the type of `event` in `on Name` by the event's name.
 
 Common mistakes, each reported by the compiler but easy to make:
@@ -659,19 +695,4 @@ Each of these has a planned shape, and the grammar leaves room for it.
 - **History states.** `history` and `deep history` pseudo-states, as in SCXML.
 - **Generic types and maps.** `map<string, T>` and user-defined generics.
 - **Retry sugar.** `invoke chargeCard(order) retry 3` as shorthand for the `Backoff` pattern above. The explicit states stay available and are what the diagram shows either way.
-- **Strict machines** and **`call` declarations**, both decided on 27 November 2026: below, and on the [actors and messaging](actors.md#asking-a-peer) page.
-
-### Strict machines
-
-Decided on 27 November 2026, not built. By default an input that enables no transition is dropped and written as `dropped` in the trace, and that stays the default: the events real charts get race with their state (a `Cancel` while an order authenticates, a `Pause` while an import validates), every example machine that accepts events has states where some event is not handled, and a holder of a reference keeps only its own replies by a guard. A machine can opt into failing instead:
-
-```
-strict machine Checkout(order: Order, user: User) -> Receipt ! PaymentDeclined {
-  // …
-}
-```
-
-- **What is strict.** In a `strict` machine, one of its own events (from host code, or a `send` from another machine) that enables no transition fails the run with a defect instead of being dropped.
-- **What is not.** Emitted events from other machines, invoke outcomes whose guarded branches all fail, and guarded `after` expiries are still dropped and traced. They arrive when another machine or the clock decides, so failing on them would make an ordinary race fatal.
-- **Ignoring an event on purpose.** A strict machine needs a way to accept an event in a state and do nothing, which `RB0017` (a transition must do something) forbids today. The form is left to the implementation, as is whether a strict machine also fails on a `send` that is [undelivered](actors.md#semantics).
-- **What it changes:** a reserved word, the grammar, the formatter, the tree-sitter grammar and the language server; a `strict` member in the IR, with a new IR version, so every machine's hash changes, traces are written with new hashes and saved snapshots need a migration; a new kind of defect in both runtimes, [`spec/execution.md`](../../spec/execution.md) and both schemas; new conformance cases; and the viewer's wording in simulate mode, which marks an event that would be dropped. No existing chart changes, since it is opt-in.
+- **`call` declarations**, decided on 27 November 2026: on the [actors and messaging](actors.md#asking-a-peer) page.

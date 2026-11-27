@@ -1,4 +1,4 @@
-{"input":{"warehouse":"w1"},"ir":"sha256:019dfc294192de134a30a44df3d0016d3c79140bc35649d3ff890b75386f6023","kind":"started","machine":"Inventory","run":"r1","t":0}
+{"input":{"warehouse":"w1"},"ir":"sha256:a7591362e4409841f15312a6c959d2de8ec8463658d9ae5cca2c37ab5039deb4","kind":"started","machine":"Inventory","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Inventory","t":0}
 {"kind":"entered","run":"r1","state":"Inventory.Ready","t":0}
 {"event":{"from":"r3","kind":"message","message":1,"value":{"_tag":"Reserve","items":[{"qty":2,"sku":"s1"}],"orderId":"o1"}},"kind":"event","run":"r1","t":0}
@@ -16,7 +16,7 @@
 {"kind":"exited","run":"r1","state":"Inventory.Reserving","t":0}
 {"kind":"emitted","message":1,"run":"r1","t":0,"value":{"_tag":"Reserved","orderId":"o1"}}
 {"kind":"entered","run":"r1","state":"Inventory.Ready","t":0}
-{"input":{"inventory":"r1"},"ir":"sha256:32ab16325f02be4610d4beee2c777c2f83ceb9c51f9c8e31c78e33e356587e03","kind":"started","machine":"Supplier","run":"r2","t":0}
+{"input":{"inventory":"r1"},"ir":"sha256:2648cd18140a938c3dffa1ef679fd4946d622df5cbdab174394ff0fab2c3535d","kind":"started","machine":"Supplier","run":"r2","t":0}
 {"kind":"entered","run":"r2","state":"Supplier","t":0}
 {"kind":"entered","run":"r2","state":"Supplier.Open","t":0}
 {"event":{"kind":"event","value":{"_tag":"Deliver","qty":5,"sku":"s1"}},"kind":"event","run":"r2","t":0}
@@ -29,7 +29,7 @@
 {"kind":"exited","run":"r2","state":"Supplier.Stopped","t":0}
 {"kind":"exited","run":"r2","state":"Supplier","t":0}
 {"kind":"done","output":null,"run":"r2","state":"Supplier.Stopped","t":0}
-{"input":{"draft":{"card":"4242","items":[{"qty":2,"sku":"s1"}]},"id":"o1","inventory":"r1"},"ir":"sha256:65aab51d235122b03dc6c2755e86256e54eca9914b1832f2c8052d403f70b018","kind":"started","machine":"Order","run":"r3","t":0}
+{"input":{"draft":{"card":"4242","items":[{"qty":2,"sku":"s1"}]},"id":"o1","inventory":"r1"},"ir":"sha256:0ef6fba526e5b56a5d48801b7ff7740f574f1bc189fbe5dbee9c7f3f018e4b40","kind":"started","machine":"Order","run":"r3","t":0}
 {"kind":"entered","run":"r3","state":"Order","t":0}
 {"kind":"entered","run":"r3","state":"Order.Reserving","t":0}
 {"kind":"sent","message":1,"run":"r3","t":0,"to":"r1","value":{"_tag":"Reserve","items":[{"qty":2,"sku":"s1"}],"orderId":"o1"}}

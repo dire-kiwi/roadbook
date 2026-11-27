@@ -7,6 +7,7 @@ items:
       name: M
       kind:
         machine:
+          strict: false
           params: []
           returns: ~
           errors: []
@@ -25,6 +26,7 @@ items:
                           target:
                             - B
                           effects: []
+                          ignore: false
                   - transition:
                       trigger:
                         "on":
@@ -35,6 +37,7 @@ items:
                           target:
                             - C
                           effects: []
+                          ignore: false
                   - transition:
                       trigger:
                         "on":
@@ -57,6 +60,7 @@ items:
                                     - +
                                     - var: n
                                     - int: 1
+                          ignore: false
                   - transition:
                       trigger:
                         "on":
@@ -70,6 +74,7 @@ items:
                                 name: log
                                 args:
                                   - string: poked
+                          ignore: false
                   - transition:
                       trigger:
                         after:
@@ -82,6 +87,7 @@ items:
                           target:
                             - Late
                           effects: []
+                          ignore: false
                   - transition:
                       trigger:
                         after:
@@ -95,6 +101,7 @@ items:
                           target:
                             - Late
                           effects: []
+                          ignore: false
                   - transition:
                       trigger:
                         after:
@@ -110,6 +117,7 @@ items:
                           target:
                             - Late
                           effects: []
+                          ignore: false
                   - transition:
                       trigger: always
                       branches:
@@ -121,6 +129,7 @@ items:
                             - Deep
                             - Path
                           effects: []
+                          ignore: false
                   - transition:
                       trigger: done
                       branches:
@@ -129,4 +138,5 @@ items:
                           target:
                             - Next
                           effects: []
+                          ignore: false
 comments: []

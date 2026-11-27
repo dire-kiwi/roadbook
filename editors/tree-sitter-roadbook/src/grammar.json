@@ -766,6 +766,22 @@
       "type": "SEQ",
       "members": [
         {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "modifier",
+              "content": {
+                "type": "STRING",
+                "value": "strict"
+              }
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
           "type": "STRING",
           "value": "machine"
         },
@@ -1697,8 +1713,16 @@
         {
           "type": "SYMBOL",
           "name": "_effects"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "ignore"
         }
       ]
+    },
+    "ignore": {
+      "type": "STRING",
+      "value": "ignore"
     },
     "target": {
       "type": "SEQ",
@@ -2940,6 +2964,10 @@
       },
       {
         "type": "STRING",
+        "value": "strict"
+      },
+      {
+        "type": "STRING",
         "value": "var"
       },
       {
@@ -3025,6 +3053,10 @@
       {
         "type": "STRING",
         "value": "emit"
+      },
+      {
+        "type": "STRING",
+        "value": "ignore"
       },
       {
         "type": "STRING",

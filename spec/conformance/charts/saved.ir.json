@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "spec/conformance/charts/saved.road",
@@ -140,6 +140,7 @@
         "endLine": 27,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "start",
@@ -359,7 +360,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:4fec4922d7bc7293026394e711380c40884a5d12fec9a1ad35c2e9cc2174a0eb"
+      "hash": "sha256:5da1c120a6f28f381771715a4441e9dd466f233a6ae4f8fa4ead219a026c112b"
     },
     "Shop": {
       "doc": "Pays through a child machine.",
@@ -370,6 +371,7 @@
         "endLine": 42,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "amount",
@@ -525,7 +527,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:5f98ff5cd657a6a67379dc1d3c10483c356eaa5ba821c07ddb849c0d592d6a9a"
+      "hash": "sha256:e29e9077eacce2156048301eee4906c8530fa6106462f6dbd8fbb656ddd7ed89"
     },
     "Pay": {
       "doc": "Quotes a price, then charges it.",
@@ -536,6 +538,7 @@
         "endLine": 64,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "amount",
@@ -782,7 +785,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:9cca509376b93cab06cfef7aad10fb70fd95b6b52674a0f59929375b14de7cc8"
+      "hash": "sha256:6cee8b8413746e1be7009557a83e123067b83615da4159ae06c44ce60e2ffcdd"
     },
     "Reminder": {
       "doc": "Rings a second after it starts waiting.",
@@ -793,6 +796,7 @@
         "endLine": 79,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -930,7 +934,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:6f83fd3a9469662848dbcdb7c9100c9d22d972b3e3524740568e87a79af5d741"
+      "hash": "sha256:21fae7191d5a4c3d50e3006203feb5e386e3599be0b939befc085920b1215afb"
     },
     "Order": {
       "doc": "An order kept as a snapshot between requests: it waits three days for\npayment, ships, and waits for delivery.",
@@ -941,6 +945,7 @@
         "endLine": 109,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "id",
@@ -1313,7 +1318,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:0ece17382da865ed3465edce3ac15a2747827caf9075af2673b228be67d98baf"
+      "hash": "sha256:ae13a1cbfd0628710d70f5579e435045fa1e3e70a5dcd27f7eda5f97d52a8792"
     }
   }
 }

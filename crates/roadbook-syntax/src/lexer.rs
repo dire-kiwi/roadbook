@@ -23,6 +23,7 @@ pub enum Keyword {
     Action,
     Task,
     Machine,
+    Strict,
     Var,
     Event,
     Emits,
@@ -46,6 +47,7 @@ pub enum Keyword {
     Do,
     Send,
     Emit,
+    Ignore,
     Reply,
     And,
     Or,
@@ -55,7 +57,7 @@ pub enum Keyword {
 }
 
 impl Keyword {
-    pub const ALL: [Keyword; 38] = [
+    pub const ALL: [Keyword; 40] = [
         Keyword::Import,
         Keyword::Type,
         Keyword::Enum,
@@ -65,6 +67,7 @@ impl Keyword {
         Keyword::Action,
         Keyword::Task,
         Keyword::Machine,
+        Keyword::Strict,
         Keyword::Var,
         Keyword::Event,
         Keyword::Emits,
@@ -88,6 +91,7 @@ impl Keyword {
         Keyword::Do,
         Keyword::Send,
         Keyword::Emit,
+        Keyword::Ignore,
         Keyword::Reply,
         Keyword::And,
         Keyword::Or,
@@ -107,6 +111,7 @@ impl Keyword {
             Keyword::Action => "action",
             Keyword::Task => "task",
             Keyword::Machine => "machine",
+            Keyword::Strict => "strict",
             Keyword::Var => "var",
             Keyword::Event => "event",
             Keyword::Emits => "emits",
@@ -130,6 +135,7 @@ impl Keyword {
             Keyword::Do => "do",
             Keyword::Send => "send",
             Keyword::Emit => "emit",
+            Keyword::Ignore => "ignore",
             Keyword::Reply => "reply",
             Keyword::And => "and",
             Keyword::Or => "or",

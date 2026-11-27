@@ -1,0 +1,61 @@
+{
+  "description": "Two strict machines. A loud `Knock` that Visitor r2 sends to Door r1 is a message, taken by `Shut`'s `ignore`. Door's emitted `Opened` reaches r2 in `Idle`, which has no `on door.Opened`: an emitted event is not one of r2's own, so it is dropped, not a defect. A quiet `Knock` is ignored in `Ajar`; back in `Shut`, one ends r1 with an `unhandled` defect whose input is the message, with its sender and message id. r2's next send finds r1 ended and is `undelivered`, which does not fail a strict sender.",
+  "requires": [
+    "messaging"
+  ],
+  "chart": "charts/strict-messages.road",
+  "machine": "Door",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Visitor",
+      "run": "r2",
+      "input": {
+        "door": "r1"
+      },
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Go",
+        "loud": true
+      },
+      "run": "r2"
+    },
+    {
+      "event": {
+        "_tag": "Open"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Go",
+        "loud": false
+      },
+      "run": "r2"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Go",
+        "loud": false
+      },
+      "run": "r2"
+    },
+    {
+      "event": {
+        "_tag": "Go",
+        "loud": true
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "defect"
+}

@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.4) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.5) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -143,6 +143,8 @@ export interface CallDecl {
 export interface Machine {
   doc: string
   span: Span
+  /** Written `strict machine`: an event of its own, a message or a call that enables no transition is an `unhandled` defect, not dropped. */
+  strict: boolean
   params: Field[]
   returns: string | null
   errors: string[]
@@ -177,4 +179,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.4'
+export const IR_VERSION = '0.5'

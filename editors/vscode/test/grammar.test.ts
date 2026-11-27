@@ -84,6 +84,9 @@ describe('scopes', () => {
     expect(await scopesAt('task chargeCard(order: Order) -> Receipt ! CardDeclined', 'chargeCard')).toContain('entity.name.function.roadbook')
     expect(await scopesAt('  final state Charged { output receipt }', 'Charged')).toContain('entity.name.type.state.roadbook')
     expect(await scopesAt('  event Cancel', 'Cancel')).toContain('entity.name.type.event.roadbook')
+    expect(await scopesAt('strict machine Lock() {', 'strict')).toContain('storage.modifier.strict.roadbook')
+    expect(await scopesAt('strict machine Lock() {', 'Lock')).toContain('entity.name.type.machine.roadbook')
+    expect(await scopesAt('    on Knock if event.loud ignore', 'ignore')).toContain('keyword.control.ignore.roadbook')
   })
 
   it('marks states, events, calls and values', async () => {

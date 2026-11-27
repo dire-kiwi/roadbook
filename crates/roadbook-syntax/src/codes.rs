@@ -48,6 +48,8 @@ pub const DOC_COMMENT_DOCUMENTS_NOTHING: Code = Code(23);
 pub const UNKNOWN_BUILTIN_TYPE: Code = Code(24);
 /// States, expressions or types nested more than [`crate::MAX_DEPTH`] levels deep.
 pub const NESTED_TOO_DEEPLY: Code = Code(25);
+/// `ignore` outside an `on` transition, or together with a target or effects.
+pub const MISPLACED_IGNORE: Code = Code(26);
 
 #[cfg(test)]
 mod tests {

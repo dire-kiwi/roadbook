@@ -90,7 +90,7 @@ export interface PlaceOrderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "examples/shop/place_order.road",
@@ -565,6 +565,7 @@ const ir: unknown = {
         "endLine": 73,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "token",
@@ -1473,7 +1474,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:520c3954bcefb582adc970923d878001877cd1eafc6a7797851d674c2b96f2b0"
+      "hash": "sha256:291c63fa77ecad4cc703ef56d0616449de529e0fbd0cc7a76b2b4d8ba2f0c1c9"
     },
     "Checkout": {
       "doc": "Charge the customer's card, retrying while the payment gateway is down.",
@@ -1484,6 +1485,7 @@ const ir: unknown = {
         "endLine": 32,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "order",
@@ -1901,7 +1903,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ae8f0faea257c1aaea9e2aacea4af27f730ddc9f1c292d1adfa3d2439f9e7341"
+      "hash": "sha256:fa80e6f614f8898e91e52357e8d5aefe10d597e5daa33a587c6510b20c174521"
     }
   }
 }

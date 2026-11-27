@@ -171,7 +171,11 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
     if (c.events.length) {
       h += '<h4>Send an event</h4>'
       for (const e of c.events) {
-        const note = e.handled ? '' : '<span class="rb-cnote">no <code>on</code> for it here: it would be dropped</span>'
+        const note = e.handled
+          ? ''
+          : m.strict
+            ? '<span class="rb-cnote">no <code>on</code> for it here: this machine is strict, so the run would end with a defect</span>'
+            : '<span class="rb-cnote">no <code>on</code> for it here: it would be dropped</span>'
         h += tagged(k(`event:${e.name}`), `send ${e.name}`, e.name, e.fields, (v) => s.send(v), note)
       }
     }
@@ -180,7 +184,7 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
       h += `<h4>Take a call <span class="rb-h-note">from ${esc(from)}, a simulated caller</span></h4>`
       for (const call of c.calls) {
         const note =
-          `<span class="rb-cnote">${call.handled ? '' : `no <code>on ${esc(call.name)}</code> here: it would be dropped and answered <code>Unanswered</code>. `}` +
+          `<span class="rb-cnote">${call.handled ? '' : m.strict ? `no <code>on ${esc(call.name)}</code> here: this machine is strict, so the run would end with a defect and the call be answered <code>Unanswered</code>. ` : `no <code>on ${esc(call.name)}</code> here: it would be dropped and answered <code>Unanswered</code>. `}` +
           `There is no real caller: the answer shows as a <code>replied</code> record.</span>`
         const label = `call ${call.name}`
         const key = k(`call:${call.name}`)

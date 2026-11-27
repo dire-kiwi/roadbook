@@ -20,7 +20,7 @@ export interface OverflowDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.4",
+  "irVersion": "0.5",
   "sources": [
     {
       "path": "packages/effect/test/charts/runtime.road",
@@ -103,6 +103,7 @@ const ir: unknown = {
         "endLine": 17,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "int",
       "errors": [],
@@ -193,7 +194,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ac357e07ee4caa64c3884f23611c7cc02bbf7ee137ea07fb4485d8278500de44"
+      "hash": "sha256:8b67f81655f43f88763ad85a3bc107092fba696d89431d1599d4d688121efb79"
     },
     "Settle": {
       "doc": "Settles forever: every microstep takes the `always` again.",
@@ -204,6 +205,7 @@ const ir: unknown = {
         "endLine": 30,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -338,7 +340,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:643e5f6eaf215c04c29c07d76b9ee97570900afbe22bd9fe8703eeb00f8c42f0"
+      "hash": "sha256:fb0743df55118478f78349eb0bda9cf0685af67640cf04caf70688885a00dc12"
     },
     "Early": {
       "doc": "Reads `a` before it has a value, in `b`'s initial value.",
@@ -349,6 +351,7 @@ const ir: unknown = {
         "endLine": 40,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "int",
       "errors": [],
@@ -454,7 +457,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:bd6740c689085edbca24bbb3bce1ea55eb9e8bce769b5e99805d1969b7461b91"
+      "hash": "sha256:7de0904240876c03f3273696467aad5ffe7b3456a0aabfb11fe9a2b319cf8878"
     },
     "Leftover": {
       "doc": "Outer's work is cancelled after Inner's exit effect, so a defect there leaves it running.",
@@ -465,6 +468,7 @@ const ir: unknown = {
         "endLine": 60,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -630,7 +634,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:32dd45bbc26b7a1f2019bff4c59627e04c0b79bb443f07a8af83896004936aaa"
+      "hash": "sha256:448bfdc4e94578e51e16e9207835e87e7fca381bf35b21ea91c885d5ff6b1f32"
     },
     "Payload": {
       "doc": "Ends with whatever the host's `payload` returns, which must be JSON.",
@@ -641,6 +645,7 @@ const ir: unknown = {
         "endLine": 67,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "json",
       "errors": [],
@@ -697,7 +702,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:03436e23a6d784a4dcbb898c3569a3fb48c6de8211d34d11c6580d64ac016320"
+      "hash": "sha256:b8467f09a0f8ce264df87c301cf7d9971b3c887fd44988084a777f4c8fb40a67"
     },
     "Desk": {
       "doc": "Answers `ask` with its argument once `hold` has run for it, one call at a time.",
@@ -708,6 +713,7 @@ const ir: unknown = {
         "endLine": 83,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -883,7 +889,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:8042b6a86a20573c0f0b206c5c30944982d5f75e2f1f057f710d20db685df0e5"
+      "hash": "sha256:6695210e1cab20050ffe47fdb0dd46206a7eabe69bc4b3b288af0ab269d6748f"
     },
     "Asker": {
       "doc": "Asks the desk for `n`; 0 when the desk does not answer.",
@@ -894,6 +900,7 @@ const ir: unknown = {
         "endLine": 100,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "desk",
@@ -1097,7 +1104,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:0fe2be0f3220371aab90ac6fad5c04c72ed69614a5d13280df2d780e39b23ec6"
+      "hash": "sha256:f4b9343856abd75c9e05030e6a7a0e2177d49e2473bc07dd4c7de2021dd1e1b9"
     }
   }
 }
