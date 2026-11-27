@@ -8,7 +8,7 @@ On 27 November 2026 the user approved six additions: reacting to a peer's end, p
 
 | Feature | Recommendation | Why |
 | --- | --- | --- |
-| Learning that a peer ended (`on peer.ended`) | **Add** (approved) | A holder of a `ref` cannot react to a peer's end today. It shares a design with keyed spawn's `on name.done` and `on name.fail`, which now exist. |
+| Learning that a peer ended (`on peer.ended`) | **Added** (SM-25) | `on peer.ended`, with `event.status` of the built-in enum `Ended`. It follows keyed spawn's lower-case lifecycle triggers, `on name.done` and `on name.fail`. |
 | Checking properties ("never reach `Refunded`") | **Add** (approved) | Turns the chart into something CI can hold a design to. It needs only the IR. |
 | A transition that keeps its source (`-> .Child`) | **Add** (approved) | The one common case where Roadbook's default surprises: a parent's invoke and timers restart. SCXML has it as `type="internal"`. |
 | Tasks that report progress (`task … emits E`) | **Add** (approved) | Progress from long tasks, in the chart, received as `on name.E` like a machine's emits. |

@@ -114,7 +114,7 @@ The [language page](language.md#many-children) has the rules and checks, [`spec/
 
 These follow the [decisions after the milestones](#decided-after-the-milestones).
 
-- **Supervision** ([none yet](#supervision)). A spawned child's defect ends its parent, and its declared errors reach the parent as `on name.fail`. A supervising parent that survives a child's defect, or restarts it, would add a third kind of outcome; nothing in the syntax prevents that.
+- **Supervision** ([peer ends](#supervision)). A spawned child's defect ends its parent, and its declared errors reach the parent as `on name.fail`. A supervising parent that survives a child's defect, or restarts it, would add a third kind of outcome; nothing in the syntax prevents that.
 - **Full queues** ([unbounded](#full-queues)). `send sessions.*.E` queues one message per child. If queues are ever bounded, a broadcast is a send to each child, so a child whose queue is full has its message dropped as `undelivered`, as for any send.
 - **Who receives emitted events** ([only machines that handle them](#who-receives-emitted-events)). A parent is sent what a child emits only if its machine has an `on` for that event from the child's machine, `on sessions.E` or another, as for an invoker with `as`.
 - **Asking a peer** ([`call` declarations](#asking-a-peer)). A request to one child with a reply is a `send sessions[k].E`, an `on sessions.Reply` whose `key` is checked with a guard, and a timeout. A call to a spawned child is not supported: a call goes to a peer, through a `ref`.
@@ -289,7 +289,7 @@ What is decided:
 - **The caller's side is an invoke.** Its `done` and `fail` branches are checked against the call's declaration as a task's are, and it is tied to its state: leaving the state abandons the call, and a reply that arrives later is stale, like a late outcome. A timeout is an ordinary `after`.
 - **Replies are directed.** Only the caller receives the reply, so there is no fan-out and no guard on an id.
 - **The callee takes a call as an input** from its queue, one at a time like any other, so order per pair still holds. It must be able to reply in a later step (Inventory replies once its own work is done), so it keeps the pending call as a value until it replies. That is a new kind of value, and like a `ref` it cannot leave the machine: not in a record, an event or a result.
-- **A peer that has ended fails the call.** A call to a peer that is not running, and a call still pending when the callee ends, fail on the caller's side. This is the one place where a peer's end reaches another machine before [supervision](#supervision) is designed.
+- **A peer that has ended fails the call.** A call to a peer that is not running, and a call still pending when the callee ends, fail on the caller's side. Since SM-25 a holder can also hear the end itself ([supervision](#supervision)); the caller takes `Unanswered` first.
 - **The existing pattern keeps working.** Moving to `call` is optional; [`examples/orders`](../../examples/orders) is its first user.
 
 Three questions were left to the implementation, and decided with it:
@@ -328,8 +328,29 @@ What it changed: the rule in [`spec/execution.md`](../../spec/execution.md#messa
 
 ### Supervision
 
-**Decided: `on name.ended` (SM-25), being built.** The language, the IR (0.8) and the rules in [`spec/execution.md`](../../spec/execution.md#messages-between-runs) are written; the runtimes follow. Until they do, the rest of this section describes what they do today. A child's failure reaches its parent as a `fail` branch on the invoke. A peer has no parent in the chart, and when it ends, holders of its reference are not told: they learn of it through their own timeouts, which they need anyway for a peer that is slow. Rust host code can ask a handle whether its run has closed (`Ref::is_closed`); no chart can. A pending [`call`](#asking-a-peer) is the exception, since it fails when the callee ends.
+**Decided: `on name.ended`. Built (SM-25, IR 0.8).** A child's failure reaches its parent as a `fail` branch on the invoke, and a spawned child's outcome as `on name.done` and `on name.fail E`. A peer has no parent in the chart, so a holder of its reference writes a trigger for its end:
 
-The intended shape is a trigger, `on inventory.ended`, possibly with the status the peer ended with. The lower case after the dot keeps it apart from `on name.Event`, and with the [filter on emitted events](#who-receives-emitted-events) writing it is the subscription, so no `monitor` declaration is needed. It is to be designed with keyed `spawn`, whose children need the same "a member has ended" event, so that one design covers both.
+```
+machine Order(id: string, draft: OrderDraft, inventory: ref Inventory) -> Receipt ! OutOfStock {
+  on inventory.ended {
+    if event.status == Ended.Defect -> Alarm
+    else                            -> Unavailable
+  }
+  // …
+}
+```
+
+What is decided:
+
+- **The trigger names the peer.** `on x.ended` is written for a `ref` parameter or variable (`ref M`, `ref M?`, `ref M[]`, or an alias of one), in a state or the machine body, like `on x.Event`. The lower case after the dot keeps it apart from an emitted event. For an `invoke … as` child or a `children` collection it is an error (`RB0123`): the invoke's `done` and `fail`, and `on name.done` and `on name.fail`, already own those ends.
+- **How it ended, not what it gave.** `event.status` has the built-in enum type `Ended`: `Done`, `Failed`, `Cancelled`, `Defect`, or `Suspended` for a peer that was suspended (its run is closed for good, and a run restored from its snapshot has a new id that no holder holds). The peer's output, error and defect are not carried. A peer is usually a long-lived service with no output, and a holder that read them would depend on the peer's result and errors, where today it depends only on its interface (`events`, `emits`, `calls`), in its hash too. Triggers like spawn's `on x.done` and `on x.fail E` for refs can be added later without changing this one.
+- **Writing the `on` is the subscription.** `ended` is in the set of names a holder hears from the peer's machine, as with the [filter on emitted events](#who-receives-emitted-events). A holder with no `on x.ended` is told nothing and writes nothing, so there is no `monitor` declaration.
+- **It is the last thing from that peer.** The peer's driver tells its holders after carrying out the commands of its last step, and after answering its calls `Unanswered`. A holder with a call pending takes `fail Unanswered` first, then `ended`.
+- **A peer that ended first is still reported.** A holder that subscribes to a peer that has already told its end is told by its own driver, right after its start step. The outcome never depends on which of the two happened first.
+- **Like an emitted event from a peer, otherwise.** It is taken from the active leaves outwards. For a `ref` variable, it counts as from whichever run the variable holds when it is taken. A run held under two names gives one input. It is never stale. A strict machine drops it rather than failing, since it arrives when another run decides. An `on x.ended ignore` in an inner state keeps an outer handler from taking it.
+- **Nothing new in snapshots or traces.** The holder's `event` or `dropped` record carries the input `{"kind": "ended", "from": "r1", "status": "Done"}`. A holder is never restored (it holds a `ref`), so no snapshot needs to remember a peer's end. The durable driver journals the input like any other, and a holder that recovers is told by the same "already ended" rule.
+- **What it does not do.** A variable pointed at a run whose end the holder has already taken or dropped is not told again, and no expression asks whether a peer has ended. Host code still has `Ref::is_closed` in Rust.
+
+The rules are in [execution](../../spec/execution.md#messages-between-runs) and the language's checks in [when a peer ends](language.md#when-a-peer-ends). Eight conformance cases (`peer-ended-*`) hold both runtimes and the durable driver to them.
 
 Erlang-style links, where a peer's end ends the machines linked to it, were rejected. `Inventory` outlives every `Order`, and one machine's failure would end another without that showing in either chart.

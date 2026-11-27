@@ -117,7 +117,7 @@ Below, "Roadbook" means `main`, and a feature from one of these tasks is marked 
 | Reacting to a child's snapshot | `onSnapshot` | `enq.subscribeTo` | — | — |
 | Request and reply | Write it with `sendTo` and `sendBack` | Same | `call` declarations (SM-20): `invoke inventory.reserve(items)`, `on reserve`, `reply pending done …`, `Unanswered` when the callee ends | ➕ |
 | How a machine gets a reference | Context, events, the `system` registry | The registry, by `registryKey` | Only its parameters, `as` and collections; no registry, by design | ≈ |
-| Learning that a peer ended | Subscribe to it | `enq.subscribeTo` lifecycle events | — Designed as `on peer.ended`, not built; a pending `call` fails with `Unanswered` (SM-20) | — |
+| Learning that a peer ended | Subscribe to it | `enq.subscribeTo` lifecycle events | `on peer.ended`, with `event.status` (SM-25); a pending `call` fails with `Unanswered` (SM-20) | ≈ |
 | Sending to an actor that has stopped | Dropped | A `missingTarget` dead letter | `undelivered` in the trace | ✅ |
 | Queue bounds | Unbounded | Unbounded | Unbounded; a bound would be a driver setting that drops, not chart syntax (SM-8) | ✅ |
 
@@ -150,7 +150,7 @@ Below, "Roadbook" means `main`, and a feature from one of these tasks is marked 
 
 Ordered from most to least likely to matter for program flow, which is what Roadbook is for.
 
-1. **Reacting to a peer's end.** XState can subscribe to another actor's lifecycle. Roadbook's holders of a `ref` find out only through their own timeouts. SM-8 designed `on peer.ended` and deferred it; SM-20's `Unanswered` covers only pending calls.
+1. **Reacting to a peer's end.** XState can subscribe to another actor's lifecycle. Roadbook's holders of a `ref` found out only through their own timeouts. Closed by SM-25: `on peer.ended` tells a holder how its peer ended, though not its output or error.
 2. **Checking properties.** XState v6's `xstate test` checks that a state can or cannot be reached. Roadbook has the IR and `roadbook paths`, which is most of what such a check needs, but nothing that takes a property and fails.
 3. **Transitions that target a child without re-entering the source.** In XState, `on: { RESET: { target: '.idle' } }` on a parent keeps the parent's work running. In Roadbook the same transition exits and re-enters the parent, restarting its invoke and timers. The workaround is to write the transition in each child, or to move the work into a sibling region. SCXML has `type="internal"` for this; Roadbook has no counterpart.
 4. **Several invokes per state.** XState allows an array. Roadbook needs a parallel state with one region per invoke, which is more verbose but shows in the diagram.

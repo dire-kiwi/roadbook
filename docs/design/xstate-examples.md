@@ -513,17 +513,19 @@ enq.subscribeTo(inventory, {
 });
 ```
 
-**Roadbook** has no way to hear it today. A holder of a `ref` finds out only through its own timeout:
+**Roadbook** (SM-25) has a trigger for it. Writing the `on` is the subscription, so with SM-18's filter only holders that have one are told:
 
 ```
-// proposed, as SM-8 designed it
 machine Orders(inventory: ref Inventory) {
   state Waiting {
     on inventory.Reserved -> Paying
-    on inventory.ended    -> InventoryGone
-    after 30s             -> TimedOut
+    on inventory.ended {
+      if event.status == Ended.Defect -> InventoryCrashed
+      else                            -> InventoryGone
+    }
+    after 30s -> TimedOut
   }
 }
 ```
 
-The lower-case `ended` keeps it apart from `on inventory.Event`. Writing the `on` is the subscription, so with SM-18's filter only holders that have one are told.
+The lower-case `ended` keeps it apart from `on inventory.Event`. `event.status` says how the peer ended (`Done`, `Failed`, `Cancelled`, `Defect` or `Suspended`). Unlike XState's `done` and `error`, it doesn't carry the peer's output or error: a holder depends only on the peer's interface.
