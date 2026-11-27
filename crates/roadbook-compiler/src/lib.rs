@@ -28,6 +28,7 @@
 mod analysis;
 mod assign;
 mod check;
+mod checks;
 pub mod codes;
 mod expr;
 pub mod index;

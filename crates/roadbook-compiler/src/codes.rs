@@ -57,6 +57,8 @@ pub const NOT_A_COLLECTION: Code = Code(119);
 /// `key`, the implicit name of a spawned child's key, as the name of a machine parameter,
 /// variable, `as` name or collection.
 pub const KEY_AS_NAME: Code = Code(120);
+/// A state path in a `check` that names no state of the machine, or names a history state.
+pub const UNKNOWN_CHECK_STATE: Code = Code(121);
 
 // ───────────── structure ─────────────
 
@@ -240,6 +242,7 @@ pub const ALL: &[Code] = &[
     ATTEMPT_SHADOWED,
     NOT_A_COLLECTION,
     KEY_AS_NAME,
+    UNKNOWN_CHECK_STATE,
     UNKNOWN_TARGET,
     MISSING_INITIAL,
     BAD_INITIAL,

@@ -60,4 +60,19 @@ machine Hub(children: int) {
     on sessions.fail Lost -> A
   }
 }
+
+machine Checked(check: int) {
+  var never: int = check
+  initial A
+  state A {
+    initial B
+    state B {}
+  }
+  /// Only after A.
+  check A.B only after A
+  check reachable A.B // a comment
+  check never A and A.B
+  check can finish
+  on Go set check = never
+}
 "unterminated

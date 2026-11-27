@@ -24,6 +24,12 @@
   "emits"
   "children"
   "by"
+  "check"
+  "never"
+  "reachable"
+  "only"
+  "can"
+  "finish"
   "state"
   "history"
   "initial"
@@ -182,6 +188,9 @@
   state: (type_identifier) @label)
 
 (target
+  state: (type_identifier) @label)
+
+(state_path
   state: (type_identifier) @label)
 
 (event_declaration

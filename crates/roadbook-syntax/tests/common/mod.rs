@@ -83,6 +83,10 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  var a: bool = not x > 1 and y or z\n  var b: int = -(1 + 2) * 3 - (4 - 5)\n  var c: float = 1.5\n  var d: duration = 200ms\n  var e: string = \"tab\\tnew\\nline\"\n  var f: bool = true == false\n  var g: Role = Role.Admin\n  var h: int = event.sku.length\n  var i: R = R { a: f(1, \"x\"), b: S { c: error.issues } }\n  var j: int = -x.y\n  var k: bool = (not a) == b\n  var l: duration = 5m + 1h + 30s\n}\n",
     ),
     (
+        "checks",
+        "machine M() {\n  var check: int = 0\n  event Go\n  initial A\n  state A {\n    initial B\n    state B { on Go set check = check + 1 }\n  }\n  check never A and A.B\n  check never A\n  check reachable A.B\n  check A.B only after A\n  check can finish\n}\n",
+    ),
+    (
         "doc_comments",
         "/// A type.\ntype A { x: int }\n/// An enum.\nenum B { C }\n/// An error.\nerror D\n/// Extern.\nextern type E\n/// A fn.\n/// Two lines.\nfn f() -> int\n/// An action.\naction g()\n/// A task.\ntask h()\n/// A machine.\nmachine M() {\n  /// A variable.\n  var v: int\n  /// An event.\n  event Go\n  /// A state.\n  state S {\n    /// A final child.\n    final state T {}\n  }\n  /// A parallel state.\n  parallel state P {}\n}\n",
     ),

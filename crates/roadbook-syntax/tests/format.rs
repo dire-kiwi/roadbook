@@ -38,6 +38,12 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  var history: int = 0\n  var deep: int = 0\n  state A {\n    initial B\n    /// Back.\n    history   H\n    deep  history D\n    state B {}\n  }\n  state C { deep history E }\n}\n",
         "machine M() {\n  var history: int = 0\n  var deep:    int = 0\n  state A {\n    initial B\n    /// Back.\n    history H\n    deep history D\n    state B {}\n  }\n  state C {\n    deep history E\n  }\n}\n",
     ),
+    // A check is one line where it was written, single spaces and `and` between states; its
+    // doc comment stays; `check` is still a name elsewhere.
+    (
+        "machine M() {\n  var check: int = 0\n  check   never A   and  B.C   and D\n  /// Doc.\n  check reachable   A . B\n  state A {}\n  check A  only  after  B // why\n  check   can   finish\n}\n",
+        "machine M() {\n  var check: int = 0\n  check never A and B.C and D\n  /// Doc.\n  check reachable A.B\n  state A {}\n  check A only after B // why\n  check can finish\n}\n",
+    ),
     // Type arguments and parameters: no space inside `<>`, one after each comma; a `>=` closing
     // type arguments is a `>` and an `=`; one-line types align after their parameters.
     (

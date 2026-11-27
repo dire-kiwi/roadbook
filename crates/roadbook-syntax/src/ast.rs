@@ -351,6 +351,15 @@ impl Body {
             }
         })
     }
+    pub fn checks(&self) -> impl Iterator<Item = &Check> {
+        self.items.iter().filter_map(|i| {
+            if let Item::Check(c) = i {
+                Some(c)
+            } else {
+                None
+            }
+        })
+    }
     pub fn exit(&self) -> impl Iterator<Item = &Hook> {
         self.items
             .iter()
@@ -358,7 +367,7 @@ impl Body {
     }
 }
 
-/// An item of a machine or state body. `Var`, `Event`, `Emits` and `Children` occur only in a machine
+/// An item of a machine or state body. `Var`, `Event`, `Emits`, `Children` and `Check` occur only in a machine
 /// body; `Invoke`, `Output`, `Fail` and `done` transitions only in a state.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -382,6 +391,8 @@ pub enum Item {
     Fail(FinalValue),
     /// `[deep] history Name`
     History(History),
+    /// `check property`
+    Check(Check),
 }
 
 impl Item {
@@ -397,6 +408,7 @@ impl Item {
             Item::Invoke(i) => i.span,
             Item::Output(v) | Item::Fail(v) => v.span,
             Item::History(h) => h.span,
+            Item::Check(c) => c.span,
         }
     }
 }
@@ -471,6 +483,34 @@ pub struct History {
     /// From `history` or `deep` to the end of the name.
     #[serde(skip)]
     pub span: Span,
+}
+
+/// `check property`: an assertion about the machine's states, which `roadbook check`
+/// verifies by exploring the chart. Only directly in a machine body.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Check {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc: Option<Doc>,
+    pub property: Property,
+    /// From `check` to the end of the property.
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// What a `check` asserts. A state path is written like a target, `Name { . Name }`, and
+/// resolved from the machine body.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Property {
+    /// `never A and B`: the states are never active at the same time (one state: never
+    /// active at all).
+    Never(Vec<Target>),
+    /// `reachable A`: some run reaches a configuration with the state active.
+    Reachable(Target),
+    /// `A only after B`: whenever `state` is entered, `after` has been active before.
+    OnlyAfter { state: Target, after: Target },
+    /// `can finish`: every reachable configuration can reach a top-level final state.
+    CanFinish,
 }
 
 /// The effects of `entry` or `exit`.

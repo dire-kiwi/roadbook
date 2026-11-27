@@ -676,6 +676,39 @@
     }
   },
   {
+    "type": "can_finish_property",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "check",
+    "named": true,
+    "fields": {
+      "property": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "can_finish_property",
+            "named": true
+          },
+          {
+            "type": "never_property",
+            "named": true
+          },
+          {
+            "type": "only_after_property",
+            "named": true
+          },
+          {
+            "type": "reachable_property",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "child_done",
     "named": true,
     "fields": {
@@ -1914,6 +1947,10 @@
           "named": true
         },
         {
+          "type": "check",
+          "named": true
+        },
+        {
           "type": "children_declaration",
           "named": true
         },
@@ -2177,6 +2214,22 @@
     }
   },
   {
+    "type": "never_property",
+    "named": true,
+    "fields": {
+      "state": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "state_path",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "not_expression",
     "named": true,
     "fields": {
@@ -2340,6 +2393,32 @@
           },
           {
             "type": "wildcard",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "only_after_property",
+    "named": true,
+    "fields": {
+      "after": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "state_path",
+            "named": true
+          }
+        ]
+      },
+      "state": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "state_path",
             "named": true
           }
         ]
@@ -2602,6 +2681,22 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "reachable_property",
+    "named": true,
+    "fields": {
+      "state": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "state_path",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -3150,6 +3245,22 @@
       },
       "name": {
         "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "state_path",
+    "named": true,
+    "fields": {
+      "state": {
+        "multiple": true,
         "required": true,
         "types": [
           {
@@ -3712,6 +3823,14 @@
     "named": false
   },
   {
+    "type": "can",
+    "named": false
+  },
+  {
+    "type": "check",
+    "named": false
+  },
+  {
     "type": "children",
     "named": false
   },
@@ -3798,6 +3917,10 @@
     "named": false
   },
   {
+    "type": "finish",
+    "named": false
+  },
+  {
     "type": "float",
     "named": false
   },
@@ -3862,11 +3985,19 @@
     "named": false
   },
   {
+    "type": "never",
+    "named": false
+  },
+  {
     "type": "not",
     "named": false
   },
   {
     "type": "on",
+    "named": false
+  },
+  {
+    "type": "only",
     "named": false
   },
   {
@@ -3879,6 +4010,10 @@
   },
   {
     "type": "parallel",
+    "named": false
+  },
+  {
+    "type": "reachable",
     "named": false
   },
   {

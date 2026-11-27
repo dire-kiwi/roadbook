@@ -1,0 +1,32 @@
+error Declined
+task charge() ! Declined
+
+machine PaymentWebhook() {
+  event Go
+  initial Idle
+  state Idle { on Go -> Applying }
+  state Applying {
+    initial Recording
+    history Previous
+    state Recording { on Go -> Paying }
+  }
+  state Paying {
+    invoke charge() retry 2 {
+      done          -> Done
+      fail Declined -> Done
+    }
+  }
+  final state Done {}
+
+  check reachable Applyng.Recording
+  check never Applying.Previous
+  check Done only after Applying.Refunding
+  check reachable PaymentWebhook.Paying.Attempt
+  check never Paying.Backoff and Idle
+}
+
+// expect: RB0121 at 21:19
+// expect: RB0121 at 22:24
+// expect: RB0121 at 23:34
+// expect: RB0121 at 24:19
+// expect: RB0121 at 25:22

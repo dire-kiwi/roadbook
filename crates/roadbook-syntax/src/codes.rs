@@ -26,7 +26,7 @@ pub const WRONG_NAME_CASE: Code = Code(12);
 pub const RESERVED_NAME: Code = Code(13);
 /// A state-only item (`done`, `invoke`, `output`, `fail`) directly in a machine body.
 pub const NOT_IN_MACHINE_BODY: Code = Code(14);
-/// A machine-only item (`var`, `event`) inside a state.
+/// A machine-only item (`var`, `event`, `emits`, `children`, `check`) inside a state.
 pub const NOT_IN_STATE: Code = Code(15);
 /// A machine or state item at the top level of a file.
 pub const NOT_AT_TOP_LEVEL: Code = Code(16);

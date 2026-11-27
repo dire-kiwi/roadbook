@@ -1,0 +1,74 @@
+---
+source: crates/roadbook-syntax/tests/parser.rs
+expression: file
+---
+items:
+  - decl:
+      name: M
+      kind:
+        machine:
+          params: []
+          returns: ~
+          errors: []
+          body:
+            - var:
+                name: check
+                ty:
+                  builtin: int
+                init:
+                  int: 0
+            - event:
+                name: Go
+                fields: []
+            - initial: A
+            - state:
+                kind: normal
+                name: A
+                body:
+                  - initial: B
+                  - state:
+                      kind: normal
+                      name: B
+                      body:
+                        - transition:
+                            trigger:
+                              "on":
+                                name: Go
+                            branches:
+                              single:
+                                guard: ~
+                                target: ~
+                                effects:
+                                  - set:
+                                      var: check
+                                      value:
+                                        binary:
+                                          - +
+                                          - var: check
+                                          - int: 1
+            - check:
+                property:
+                  never:
+                    - - A
+                    - - A
+                      - B
+            - check:
+                property:
+                  never:
+                    - - A
+            - check:
+                property:
+                  reachable:
+                    - A
+                    - B
+            - check:
+                property:
+                  onlyAfter:
+                    state:
+                      - A
+                      - B
+                    after:
+                      - A
+            - check:
+                property: canFinish
+comments: []

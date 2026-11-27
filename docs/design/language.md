@@ -86,6 +86,7 @@ Host functions receive exactly the arguments the chart passes them. They never s
 | `parallel state Name { ... }` | All children are active at once (regions). A region may be any kind of state. |
 | `final state Name { ... }` | Ends the enclosing compound state, or the machine at the top level. |
 | `history Name`, `deep history Name` | In a state with children: a [history state](#history-states), a target that returns to where the state was when it was last left. |
+| `check property` | Only directly in a machine body: an assertion about the machine's states, `never A and B`, `reachable A`, `A only after B` or `can finish`, for `roadbook check` to verify. A state path is written from the machine body, like a target at machine level, and may name any state but a history state. Checks are not part of the IR. |
 
 ## Inside a state
 
@@ -600,8 +601,8 @@ Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` name
 | `RB0012` | A name of the wrong case. | `type order`, `state idle` |
 | `RB0013` | A keyword, or `result`, used as a name. | `var on: int`, `var result: int`, `type Evt { type: string }` |
 | `RB0014` | `done`, `invoke`, `output`, `fail` or a history state directly in a machine body. | `machine M() { done -> A }`, `machine M() { history H }` |
-| `RB0015` | `var` or `event` inside a state. | `state A { var x: int }` |
-| `RB0016` | A machine item at the top level of a file. | `state A {}` outside a machine |
+| `RB0015` | `var`, `event`, `emits`, `children` or `check` inside a state. | `state A { var x: int }`, `state A { check can finish }` |
+| `RB0016` | A machine item at the top level of a file. | `state A {}` or `check can finish` outside a machine |
 | `RB0017` | A transition with no target, `set` or `do`. | `on Go` |
 | `RB0018` | A record value as an `after` delay, or a retry's delay, without parentheses. | `after Cfg { ms: 5 } -> A` |
 | `RB0019` | An invoke outcome outside `invoke { }`. | `fail CardDeclined -> Declined` in a state |
@@ -636,6 +637,7 @@ The compiler's codes:
 | `RB0118` | `attempt` in a retry delay of a machine with a parameter or variable named `attempt`. | `retry 3 after backoff(attempt)` with `var attempt: int` |
 | `RB0119` | A `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` or `on name.fail` through a name that is not a `children` collection, or a `send name.E` to a collection without a key or `*`. | `stop upload[1]`, `send sessions.Notify` |
 | `RB0120` | `key` as the name of a machine parameter, variable, `as` name or collection. | `var key: string` |
+| `RB0121` | A state path in a `check` that names no state of the machine, or names a history state. | `check reachable Applyng`, `check never Work.Last` for `history Last` |
 | `RB0201` | A transition target that does not resolve, or a path through a history state. | `-> Dne`, `-> Working.Previous.Editing` |
 | `RB0202` | A compound state or machine without `initial`, or a machine with no states. | `state A { state B {} }`, `machine M() { initial A }` |
 | `RB0203` | An `initial` that is not a child state, is written twice, or is in a state without children. | `initial Strat`, `initial Previous` for `history Previous` |
@@ -720,11 +722,17 @@ params      = "(" [ field { "," field } ] ")" ;
 errors      = "!" Upper { "|" Upper } ;
 
 machineDecl = "machine" Upper params [ "->" type ] [ errors ] "{" { machineItem } "}" ;
-machineItem = varDecl | eventDecl | emitsDecl | childrenDecl | commonItem ;
+machineItem = varDecl | eventDecl | emitsDecl | childrenDecl | checkDecl | commonItem ;
 varDecl     = [ "sensitive" ] "var" lower ":" type [ "=" expr ] ;
 eventDecl   = "event" Upper [ fields ] ;
 emitsDecl   = "emits" Upper [ fields ] ;
 childrenDecl = "children" lower ":" Upper "by" type ;
+checkDecl   = "check" property ;
+property    = "never" statePath { "and" statePath }
+            | "reachable" statePath
+            | statePath "only" "after" statePath
+            | "can" "finish" ;
+statePath   = Upper { "." Upper } ;
 
 stateDecl   = [ "final" | "parallel" ] "state" Upper "{" { stateItem } "}" ;
 stateItem   = commonItem
@@ -789,9 +797,9 @@ comment     = "//" … end of line ;        doc comment = "///" … end of line 
 Rules the grammar does not express:
 
 - Every comma-separated list accepts a trailing comma.
-- All keywords are reserved: `import type enum error extern fn action task machine var event emits initial state final parallel entry exit on after always done invoke output fail if else set do send emit and or not true false`. `from`, `as`, `retry`, `ref`, `map`, `sensitive`, `history`, `deep`, `children`, `by`, `spawn`, `stop` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), at the start of an item of a state body (`history`, `deep`), in `children name:` at the start of a machine item, after a collection's machine, and in `spawn name[` and `stop name[` at the start of an effect (so `action stop()` is still a valid action). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field.
+- All keywords are reserved: `import type enum error extern fn action task machine var event emits initial state final parallel entry exit on after always done invoke output fail if else set do send emit and or not true false`. `from`, `as`, `retry`, `ref`, `map`, `sensitive`, `history`, `deep`, `children`, `by`, `spawn`, `stop`, `check`, `never`, `reachable`, `only`, `can`, `finish` and the built-in type names are not reserved, because they only have a meaning in a position where no name can appear: after an import list, after an invoke's arguments (`as` and `retry`), at the start of a type, and before a field or parameter name and its `:`, or before `var` (so `sensitive: bool` is a field named `sensitive`), at the start of an item of a state body (`history`, `deep`), in `children name:` at the start of a machine item, after a collection's machine, in `spawn name[` and `stop name[` at the start of an effect (so `action stop()` is still a valid action), and in a check: `check` followed by a name at the start of a machine item, and the words of its property after it (so `var check: int` is still a variable). `event`, `error` and `result` are the implicit names inside transitions and cannot be used for variables or parameters; nor can `key`, though it can name a field.
 - In a type, the `>` closing type arguments may be written as the first character of a `>=`: `var m: map<string, int>= f()` reads as written (the formatter writes `> =` with a space).
-- A `///` comment documents the declaration, machine, state, history state, event or variable that follows it. A `///` anywhere else is an error: use `//`.
+- A `///` comment documents the declaration, machine, state, history state, event, variable or check that follows it. A `///` anywhere else is an error: use `//`.
 - A single-line transition and a multi-branch block are told apart by the `{` after the trigger. For that reason a record value in an `after` delay must be parenthesised, as with `if` in Rust, and so must one in a retry's delay, which the invoke's `{` follows. A `{` after the event of a `send` or `emit` is always its record body.
 - `on name.Event` is told from `on Event` by the lower-case name and the `.` after it.
 - In a final state, `fail expr` is the machine's failure. Inside `invoke { }`, `fail Upper` is an outcome. The two never appear in the same position.

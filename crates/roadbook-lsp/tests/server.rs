@@ -372,6 +372,63 @@ fn rename_each_kind_of_name() {
 }
 
 #[test]
+fn states_named_in_checks_are_uses() {
+    let text = "machine M() {\n  event Go\n  initial Idle\n  state Idle { on Go -> Applying }\n  state Applying {\n    initial Recording\n    state Recording { on Go -> Done }\n  }\n  final state Done {}\n  check reachable Applying.Recording\n  check Done only after Applying.Recording\n  check never Idle and Applying\n}\n";
+    let p = Project::new("checks", &[("c.road", text)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, text);
+    assert!(c.diagnostics(&uri).is_empty());
+    // Go to definition from a check.
+    let loc = c
+        .request(
+            "textDocument/definition",
+            at(&uri, text, "check reachable Applying.^Recording"),
+        )
+        .unwrap();
+    assert_eq!(loc["range"]["start"], position(text, "state ^Recording"));
+    // References include the checks.
+    let mut params = at(&uri, text, "state ^Recording");
+    params["context"] = json!({ "includeDeclaration": false });
+    let found = c.request("textDocument/references", params).unwrap();
+    let lines: Vec<u64> = found
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["range"]["start"]["line"].as_u64().unwrap() + 1)
+        .collect();
+    assert_eq!(lines, [6, 10, 11]);
+    // Renaming a state renames it in the checks, from its declaration or from a check.
+    let text = rename(&mut c, &uri, text, "state ^Recording", "Logging");
+    assert!(
+        text.contains("check reachable Applying.Logging\n"),
+        "{text}"
+    );
+    assert!(
+        text.contains("check Done only after Applying.Logging\n"),
+        "{text}"
+    );
+    c.change(&uri, 2, &text);
+    let text = rename(
+        &mut c,
+        &uri,
+        &text,
+        "check never Idle and ^Applying",
+        "Paying",
+    );
+    for e in [
+        "-> Paying }",
+        "state Paying {",
+        "check reachable Paying.Logging",
+        "after Paying.Logging",
+        "and Paying\n",
+    ] {
+        assert!(text.contains(e), "no `{e}` in\n{text}");
+    }
+    c.shutdown();
+}
+
+#[test]
 fn rename_refuses_to_capture_a_target() {
     // `-> Out` in `P.A` means the top-level `Out`; a sibling of `A` named `Out` would take it.
     let text = "machine M() {\n  initial P\n  state P {\n    initial A\n    state A { always -> Out }\n    state X {}\n  }\n  final state Out {}\n}\n";

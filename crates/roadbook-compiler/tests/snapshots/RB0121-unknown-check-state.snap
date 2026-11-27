@@ -1,0 +1,42 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0121]: unknown state `Applyng` in a check of `PaymentWebhook`
+  --> RB0121-unknown-check-state.road:21:19
+   |
+21 |   check reachable Applyng.Recording
+   |                   ^^^^^^^
+   |
+   = help: did you mean `Applying`?
+
+error[RB0121]: `Applying.Previous` is a history state, which a check cannot name
+  --> RB0121-unknown-check-state.road:22:24
+   |
+22 |   check never Applying.Previous
+   |                        ^^^^^^^^
+   |
+   = help: a history state is never active, only a target that returns to where `Applying` was; name `Applying` or one of its children
+
+error[RB0121]: unknown state `Applying.Refunding` in a check: `PaymentWebhook.Applying` has no child `Refunding`
+  --> RB0121-unknown-check-state.road:23:34
+   |
+23 |   check Done only after Applying.Refunding
+   |                                  ^^^^^^^^^
+   |
+   = help: did you mean `Recording`?
+
+error[RB0121]: unknown state `PaymentWebhook` in a check of `PaymentWebhook`
+  --> RB0121-unknown-check-state.road:24:19
+   |
+24 |   check reachable PaymentWebhook.Paying.Attempt
+   |                   ^^^^^^^^^^^^^^
+   |
+   = help: a check names a state from the machine's top-level states, without the machine's name: `Paying.Attempt`
+
+error[RB0121]: unknown state `Paying.Backoff` in a check: `PaymentWebhook.Paying` has no child `Backoff`
+  --> RB0121-unknown-check-state.road:25:22
+   |
+25 |   check never Paying.Backoff and Idle
+   |                      ^^^^^^^
+   |
+   = help: its children are Attempt
