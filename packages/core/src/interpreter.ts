@@ -190,7 +190,8 @@ class MachineIndex {
   readonly machine: Machine
   /**
    * The emitted events the machine has an `on x.E` for, anywhere in it, by the sender's
-   * machine. A run receives no others.
+   * machine, and `ended` when it has an `on x.ended` for a run of that machine. A run receives
+   * no others.
    */
   readonly hears = new Map<string, Set<string>>()
 
@@ -203,9 +204,9 @@ class MachineIndex {
       this.parents.set(state.id, parent)
       this.order.set(state.id, this.order.size)
       for (const t of state.transitions) {
-        if (t.trigger.kind !== "emitted") continue
+        if (t.trigger.kind !== "emitted" && t.trigger.kind !== "ended") continue
         const events = this.hears.get(t.trigger.from.machine) ?? new Set()
-        events.add(t.trigger.event)
+        events.add(t.trigger.kind === "ended" ? ENDED_INPUT : t.trigger.event)
         this.hears.set(t.trigger.from.machine, events)
       }
       for (const child of state.states) walk(child, state)
@@ -265,8 +266,14 @@ const machineIndex = (ir: Ir, name: string): MachineIndex => {
 const NOTHING: ReadonlySet<string> = new Set()
 
 /**
+ * The name `heard` gives a peer's end: lower case, so it is never the name of an event.
+ */
+export const ENDED_INPUT = "ended"
+
+/**
  * The events of a run of machine `sender` that a run of `machine` receives when the sender emits
- * them: those `machine` has an `on x.E` for, where `x` is a run of `sender`, in any state
+ * them: those `machine` has an `on x.E` for, where `x` is a run of `sender`, in any state, and
+ * {@link ENDED_INPUT} when it has an `on x.ended`, so it is told when such a run closes
  * (execution.md, "Messages between runs").
  */
 export const heard = (ir: Ir, machine: string, sender: string): ReadonlySet<string> =>
@@ -488,6 +495,11 @@ class Macrostep {
         selected = this.selectEmitted(input, bindings)
         break
       }
+      case "ended":
+        // Never stale: nothing is consumed, and the address is read now.
+        bindings = { event: { status: input.status } }
+        selected = this.selectEnded(input.from, bindings)
+        break
     }
     if (selected.length === 0) {
       // A strict machine fails on one of its own events, a message or a call that it does not
@@ -640,6 +652,26 @@ class Macrostep {
     const matches = (t: Transition) =>
       t.trigger.kind === "emitted" && t.trigger.event === name && this.namesSender(t.trigger.from, input)
     return this.selectByWalks(() => matches, bindings)
+  }
+
+  /**
+   * `on name.ended` for a peer's end: the address must name run `from` now, as a `ref M`, a
+   * `ref M?` or one of a `ref M[]`. No `on *`.
+   */
+  private selectEnded(from: string, bindings: Bindings): Array<Selected> {
+    const matches = (t: Transition) => t.trigger.kind === "ended" && this.namesRun(t.trigger.from.name, from)
+    return this.selectByWalks(() => matches, bindings)
+  }
+
+  /**
+   * Whether parameter or variable `name` holds run `run`, itself or among a list's items. A
+   * variable with no value, and `null`, name no run.
+   */
+  private namesRun(name: string, run: string): boolean {
+    let value: Json | undefined
+    if (this.index.params.has(name)) value = this.snapshot.input[name]
+    else if (Object.hasOwn(this.vars, name)) value = this.vars[name]
+    return value === run || (Array.isArray(value) && value.includes(run))
   }
 
   /** Whether `address` names the run that emitted `input`. */
