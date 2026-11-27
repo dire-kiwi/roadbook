@@ -45,7 +45,7 @@ Reading it:
 - **`var`** declares the machine's data (xstate calls this context). Parameters are read-only variables. A `var` without a default starts unassigned, and the compiler proves it is assigned before anything reads it (see [definite assignment](#definite-assignment)).
 - **`state`** blocks hold what happens while the machine is in that state. States nest. `final state` ends the machine with `output` or `fail`.
 - **`invoke`** runs a task (or another machine) for as long as the state is active. Leaving the state cancels it. Each outcome is a transition: `done`, or `fail` with one of the task's declared errors. The compiler rejects an `invoke` that leaves a declared error unhandled.
-- **Transitions** read `trigger [if guard] -> Target [set ...] [do ...]`. Several guarded branches for one trigger go in a block and are tried in order.
+- **Transitions** read `trigger [if guard] -> Target [set ...] [do ...]`. `-> .Child` keeps the state it is written in, and `-> A, B` enters two regions of a parallel state at once. Several guarded branches for one trigger go in a block and are tried in order.
 - **`///` comments** are documentation. They are kept in the IR and shown in the visualization.
 
 ## Declarations
@@ -115,11 +115,37 @@ on Submit if isValid(order) -> Paying  set attempts = 0  do audit("submitted", o
    ^trigger ^guard             ^target ^assignments      ^actions
 ```
 
-With no `-> Target` the transition is internal: the state is not left and re-entered. The effects are `set` assignments, `do` actions, the messages `send name.Event { … }` and `emit Event { … }` (see [messages between machines](#messages-between-machines)), `reply name done [value]` and `reply name fail error`, which answer a call (see [calls between machines](#calls-between-machines)), and `spawn` and `stop` (see [many children](#many-children)). `set` assignments run first: every `set`, in the order written, then the `do`, `send`, `emit`, `reply`, `spawn` and `stop` effects, in the order written among themselves, wherever they are written, so an action or a message sees the values its transition's `set`s assign. The same goes for `entry` and `exit`. The formatter writes every `set` clause before the others, so the source shows the order they run in.
+With no `-> Target` the transition has no target: the state is not left and re-entered. The effects are `set` assignments, `do` actions, the messages `send name.Event { … }` and `emit Event { … }` (see [messages between machines](#messages-between-machines)), `reply name done [value]` and `reply name fail error`, which answer a call (see [calls between machines](#calls-between-machines)), and `spawn` and `stop` (see [many children](#many-children)). `set` assignments run first: every `set`, in the order written, then the `do`, `send`, `emit`, `reply`, `spawn` and `stop` effects, in the order written among themselves, wherever they are written, so an action or a message sees the values its transition's `set`s assign. The same goes for `entry` and `exit`. The formatter writes every `set` clause before the others, so the source shows the order they run in.
 
 Inside a transition, these names are in scope besides the machine's variables: `event` (in `on`, also `on name.Event`, `on name` and `on name.ended`), `result` (in an invoke's `done` and in `on name.done`), `error` (in an invoke's `fail` and in `on name.fail`), `call` (in `on name`, the call being taken) and `key` (in `on name.Event`, `on name.done` and `on name.fail` through a `children` collection).
 
 A target is resolved like a name in a block-structured language: first among the siblings of the state the transition is written in, then among its parent's siblings, and so on outward. A dotted path such as `Processing.Paying` then descends into a nested state, which is also how a state targets one of its own children. A transition written at machine level resolves among the top-level states. An unknown target is a compile error, and so is a duplicate state name among siblings.
+
+**A target with a leading dot keeps the source.** `-> .Browsing` resolves `Browsing` among the children of the state the transition is written in, and the transition is **internal**: that state is not left, so its `entry` and `exit` do not run and its `invoke` and `after` timers keep going; only the states below it change.
+
+```
+state Session {
+  invoke keepAlive()  { done -> LoggedOut }
+  after 30m -> TimedOut
+  on Home -> .Browsing                   // Session stays: the invoke and the timer keep running
+  on Restart -> Session                  // Session is left and entered again: both restart
+  initial Browsing
+  state Browsing { on Open -> Cart }
+  state Cart { on Review -> .Reviewing   // Cart's own children
+    initial Editing
+    state Editing { }
+    state Reviewing { }
+  }
+}
+```
+
+- `-> .Cart.Reviewing` goes deeper. The state the dotted target names is still entered again if it is active: `on Home -> .Browsing` taken in `Browsing` restarts `Browsing`, not `Session`.
+- **In a parallel state** an internal transition exits and enters only the regions its targets are in, and the other regions keep going: `on Mute -> .Volume.Muted` written in `parallel state Player` leaves `Playback` where it is. It is the way to reset one region: `-> .Volume` enters `Volume` again by its `initial`. An internal transition written in a region, `-> .Muted` in `Volume`, stays inside the region, so another region's transition for the same event is taken too.
+- **In the machine body** `-> .Idle` means the same as `-> Idle`, since the machine itself is never left; both compile to the same IR.
+- A history state is a child like any other: `on Undo -> .Previous` in `Working` restores what `Working` was in when it was last left, without leaving it.
+- In a state with a [`retry`](#retrying-an-invoke) the dot names nothing: such a state has no children of its own, and the states the retry writes out cannot be named.
+
+**Several targets** are written with commas, `-> Player.Playback.Paused, Player.Volume.Muted`: the transition enters the parallel state with each target in its region, and every other region by its `initial`. Any two of the targets must be in different regions of a parallel state, at any depth: two in one compound state, or one inside another, is an error (`RB0222`). The dot belongs to the transition, so either every target has it or none does (`RB0221`): `on Sleep -> .Playback.Paused, .Volume.Muted` written in `Player`.
 
 `entry`, `exit`, `on`, `after` and `always` may also be written directly in the machine body, where they apply to the whole machine.
 
@@ -128,8 +154,9 @@ A target is resolved like a name in a block-structured language: first among the
 The precise rules are in the [semantics](semantics.md#execution-model) and [`spec/execution.md`](../../spec/execution.md); these are the ones a chart most often depends on.
 
 - **Innermost first.** An event is offered to the active states from the innermost outward. The first state that has an `on` for it tries that `on`'s branches in order, and the first whose guard holds is taken. If none holds, or the state has no `on` for the event, its parent is tried, and so on up to the machine body. So when a state and its ancestor both have `on Resume`, the state's wins whenever its guard holds. A state's `on *` is tried only if that state has no `on` for the event at all. An invoke's outcome is offered only to the state that invokes, and an `after` only to the state it is written in.
-- **A transition with a target is external.** It leaves its source state and enters its target, even when the target is the source itself or one of its children: `-> Self` written in `Self`, or `-> Parent.Child` written in `Parent`, exits `Self` (or `Parent`) and enters it again, running `exit` and `entry` and restarting its `invoke` and its `after` timers. The machine body is the one exception: a transition written there does not leave the machine, so the machine's own `entry`, `exit` and timers are left alone.
-- **A transition with no target is internal.** Nothing is left or entered, and nothing is restarted: only its effects run. An `after` timer starts when its state is entered and is used up when it fires, so an `after` with no target fires once per entry into its state.
+- **A transition with a target is external, unless the target has a dot.** It leaves its source state and enters its target, even when the target is the source itself or one of its children: `-> Self` written in `Self`, or `-> Parent.Child` written in `Parent`, exits `Self` (or `Parent`) and enters it again, running `exit` and `entry` and restarting its `invoke` and its `after` timers. `-> .Child` written in `Parent` does not: it is internal, and only `Parent`'s active children are left. The machine body is the one place where both are the same: a transition written there does not leave the machine, so the machine's own `entry`, `exit` and timers are left alone.
+- **A transition between the regions of a parallel state leaves the parallel state.** `-> P.B.Y` written in region `A` of `P` exits `P` and enters it again, so every region but `B` starts over by its `initial` (warning `RB0913`). To change one region and keep the others, write the transition in that region or in `P` with a dot, or list a target in every region.
+- **A transition with no target** leaves and enters nothing, and nothing is restarted: only its effects run. An `after` timer starts when its state is entered and is used up when it fires, so an `after` with no target fires once per entry into its state.
 - **The order of a step.** States are exited innermost first, then the transition's effects run, then states are entered outermost first, each running its `entry`. Only then are `always` guards evaluated, and `done` transitions taken, until none applies: an `always` sees what the `entry` effects assigned. Invokes and timers start last, for the states still active.
 - **Events go only to the machine they are sent to.** Host code sends to the machine it runs. An invoked child receives an event only when its parent sends it one with `send name.Event`, so a child that waits on `on E` with no such `send` waits until it times out or its parent leaves the invoking state.
 - **A failure that is not a declared error** (a host defect, such as a thrown exception or a panic) is not flow: it fails the whole run and what it started, and propagates to whoever ran it. See [the semantics](semantics.md#work-is-tied-to-states).
@@ -300,7 +327,7 @@ state Uploading {
 - **`send name.Event { fields }`** queues the event for another machine and carries on. `name` is an `invoke … as name` in scope, or a parameter or variable of type `ref Machine`. The event must be one the machine declares with `event`, with every field and the right types, as a record value. A field-less event is written bare: `send upload.Pause`.
 - **`emit Event { fields }`** emits one of the machine's own `emits`, to whoever invoked or spawned it and to every machine holding a reference to it, of those that have an `on` for it ([who receives emitted events](actors.md#who-receives-emitted-events)). The machine does not receive its own emitted events.
 - **`on name.Event`** is taken for an event that `name`'s machine emits. `name` is resolved as for `send`, and `Event` must be one that machine declares with `emits`.
-- **An `as` name is in scope in the invoking state and the states inside it**, which is while the child runs: elsewhere it is an error (`RB0115`). A `send` to the child must also find it running (`RB0213`): not in the invoking state's own `entry` (the child starts once the step has settled), `exit` (it has been stopped) or invoke outcomes (it has ended), and not in a transition that leaves the invoking state, since leaving stops the child before the transition's effects run. A transition with no target, or one written in a state inside the invoking state whose target is also inside it, can send. Two states may use the same `as` name when neither contains the other.
+- **An `as` name is in scope in the invoking state and the states inside it**, which is while the child runs: elsewhere it is an error (`RB0115`). A `send` to the child must also find it running (`RB0213`): not in the invoking state's own `entry` (the child starts once the step has settled), `exit` (it has been stopped) or invoke outcomes (it has ended), and not in a transition that leaves the invoking state, since leaving stops the child before the transition's effects run. A transition with no target, an internal one (`-> .X`) written in the invoking state or inside it, or one written in a state inside the invoking state whose targets are all inside it too, can send. Two states may use the same `as` name when neither contains the other.
 - **Names.** An `as` name shares the machine's namespace with its parameters and variables, and cannot be the name of an `as` around it. It is not a value: it is used only in `send name.Event` and `on name.Event`. A machine's `event` and `emits` names share one namespace, and like events, emitted events cannot have the name of a type, error or machine.
 - **Two namespaces of triggers.** The events a machine accepts are its own: `on Cancel`. The events it receives from others are named through their sender: `on upload.Cancel` is a different trigger from `on Cancel`, and from `on other.Cancel`. `on *` matches only the machine's own events, never an emitted one.
 - **A `ref` variable** addresses whichever machine it holds when the `send` runs or the event arrives.
@@ -674,7 +701,7 @@ Errors (the build fails):
 - A transition or `invoke` in a final state. A final state ends its parent as soon as it is entered, so they could never run; it holds only `entry`, `exit`, `output` and `fail`.
 - A `done` transition in a state with no child states: it waits for a final child, so it could never be taken. (An invoke's `done` goes inside `invoke { }`.)
 - A history state in a state with no child states, or in a final state, and an `initial` that names a history state.
-- An unguarded cycle of `always` transitions: states each with an `always` whose first branch has no `if` (an `else` counts as guarded, since it runs only when the guards before it fail), each leading to the next, where entering a state also enters its `initial` chain (and every region of a parallel state), and a transition to a state's own ancestor leaves and re-enters it. A transition to a history state counts as entering any state it could restore: every child of its parent with that child's default entry for a shallow one, every state below the parent for a deep one. An unguarded `always` with no target is the shortest such cycle. So is an unguarded `always` written in the machine body, whatever its target, unless that target is a top-level final state: the machine itself is never left, so its `always` would be taken again after every step.
+- An unguarded cycle of `always` transitions: states each with an `always` whose first branch has no `if` (an `else` counts as guarded, since it runs only when the guards before it fail), each leading to the next, where entering a state also enters its `initial` chain (and every region of a parallel state), and a transition to a state's own ancestor leaves and re-enters it. A transition to a history state counts as entering any state it could restore: every child of its parent with that child's default entry for a shallow one, every state below the parent for a deep one. An unguarded `always` with no target is the shortest such cycle, and so is an unguarded internal one (`always -> .X`), which never leaves its state, unless its targets are final states that can complete the state. So is an unguarded `always` written in the machine body, whatever its target, unless that target is a top-level final state: the machine itself is never left, so its `always` would be taken again after every step.
 - `spawn`, `stop`, `send name[key]`, `send name.*`, `on name.done` and `on name.fail` through a name that is not a `children` collection, and a `send name.E` to a collection with no `[key]` or `.*`; a `spawn` of a machine other than the collection's; a key of the wrong type; a collection whose key type is not `string`, `int` or an enum, or whose machine is not a machine; `key` as the name of a parameter, variable, `as` or collection; `on name.fail E` for an error the collection's machine does not declare.
 - `send`, `emit` and `on name.Event` that do not match a declaration: an unknown or out-of-scope `name`, or one that is not a `ref` (a `ref` that is optional or a list cannot be sent to); an event the receiver does not declare with `event`, or the sender with `emits`; a missing, extra or wrongly typed field. A `send` to an invoked child where it is not running. An `as` on a task, or one that clashes with a variable, parameter or enclosing `as`. A `ref` to something that is not a machine, or in a field or a result.
 - `on name.ended` through a name that is not a parameter or variable of type `ref M`, `ref M?` or `ref M[]` (an invoked child or a collection among them), and a lower-case word after `name.` other than `done`, `fail` and `ended`; `event` read in it other than as `event.status`; a declaration or event named `Ended`.
@@ -693,6 +720,7 @@ Warnings:
 - An `emits E` that no `on name.E` in the checked files receives. As for unused declarations, a receiver in any file checked at the same time counts; host code holding a handle may still receive it.
 - A `call` that no `on name` of its machine takes, so every such call is answered `Unanswered`, and a `call name` variable that no `reply` answers.
 - A history state that no transition targets.
+- A transition that leaves a parallel state it is written in, to a target inside it, and so starts some of its regions over by default entry: one from a region to another region, or from a region to a state inside itself. The message names the regions that restart; a transition that targets the parallel state itself, lists a target in every region, or is internal does not warn.
 
 The checks run in order: names and structure, then types, then the analyses (the cycle and recursion checks, definite assignment and the warnings). A file with syntax errors is checked no further: its declarations are left out, and the names other files import from it are not reported as unknown. The files around it are still checked. The analyses run for each entry file once its compilation (the file and everything it imports) has no other errors, so one mistake does not produce a cascade of diagnostics, and an error in one chart does not turn off the analyses of another.
 
@@ -748,7 +776,7 @@ error[RB0204]: `invoke chargeCard` does not handle `GatewayUnavailable`
 }
 ```
 
-Ranges are as in the IR: lines and columns are 1-based, columns count Unicode scalar values, and the end is exclusive. A fix is a set of edits that together resolve the diagnostic: replace each range with its `text` (an empty range inserts). The command exits with 0 when there are no errors (warnings allowed), 1 when there are errors and 2 on a usage or I/O error, such as a file that does not exist. In that last case the object has no diagnostics and `fatal` holds the error's message, which is also printed on standard error. `checks` lists every `check` line of the checked files that compile without errors with its verdict, whether it passed or not (the checks of an entry with errors are not evaluated): a `failed` one is also an error among the diagnostics (`RB0501`–`RB0504`), and an `unchecked` one a warning (`RB0912`). `path` is the path the verdict rests on, from the initial configuration, as the transitions it takes, shaped as the steps of `roadbook paths --json` (`to` is `null` for an internal transition): the counterexample of a failed check, the witness of a `reachable` that holds, and for a conditional `can finish`, the way to the first configuration from which the host can't force the end and on from there to a final state. It lists only the transitions taken, leaving out the steps that take none (an expiry or outcome whose guards all failed, the end of settling), though what those assume is in `assumptions`. It is `[]` when there is none, as for a proved `never`. `assumptions` are what that path relies on that the chart does not decide (for `can finish`, the part from that configuration): a guard's outcome ("`` `approved()` holds ``", "`` `ready` fails ``"), a timer expiring while others run ("`` `after 5s` in `A` expires before the other running timers ``"), what another machine does ("`` `Checkout` (invoked in `Paying`) ends `done` ``", "`` peer `inventory` emits `Reserved` ``"), or that a step comes before the other machines that could act at that point ("`` `Child` (invoked in `A`) does not end or emit first ``"). A `reachable` is `proved` only by a path that relies on none, and a `can finish` only when the host can bring the run to a final state from every configuration whatever the guards decide and whatever other machines do first. Checks cover runs started from the chart: a run restored from a snapshot made by an earlier version of the chart may be in a configuration this one cannot reach, and a passing check says nothing about it.
+Ranges are as in the IR: lines and columns are 1-based, columns count Unicode scalar values, and the end is exclusive. A fix is a set of edits that together resolve the diagnostic: replace each range with its `text` (an empty range inserts). The command exits with 0 when there are no errors (warnings allowed), 1 when there are errors and 2 on a usage or I/O error, such as a file that does not exist. In that last case the object has no diagnostics and `fatal` holds the error's message, which is also printed on standard error. `checks` lists every `check` line of the checked files that compile without errors with its verdict, whether it passed or not (the checks of an entry with errors are not evaluated): a `failed` one is also an error among the diagnostics (`RB0501`–`RB0504`), and an `unchecked` one a warning (`RB0912`). `path` is the path the verdict rests on, from the initial configuration, as the transitions it takes, shaped as the steps of `roadbook paths --json` (`to` is `[]` for a transition with no target): the counterexample of a failed check, the witness of a `reachable` that holds, and for a conditional `can finish`, the way to the first configuration from which the host can't force the end and on from there to a final state. It lists only the transitions taken, leaving out the steps that take none (an expiry or outcome whose guards all failed, the end of settling), though what those assume is in `assumptions`. It is `[]` when there is none, as for a proved `never`. `assumptions` are what that path relies on that the chart does not decide (for `can finish`, the part from that configuration): a guard's outcome ("`` `approved()` holds ``", "`` `ready` fails ``"), a timer expiring while others run ("`` `after 5s` in `A` expires before the other running timers ``"), what another machine does ("`` `Checkout` (invoked in `Paying`) ends `done` ``", "`` peer `inventory` emits `Reserved` ``"), or that a step comes before the other machines that could act at that point ("`` `Child` (invoked in `A`) does not end or emit first ``"). A `reachable` is `proved` only by a path that relies on none, and a `can finish` only when the host can bring the run to a final state from every configuration whatever the guards decide and whatever other machines do first. Checks cover runs started from the chart: a run restored from a snapshot made by an earlier version of the chart may be in a configuration this one cannot reach, and a passing check says nothing about it.
 
 ### Definite assignment
 
@@ -757,7 +785,7 @@ A `var` with no initial value and a type that is not optional starts unassigned.
 The analysis is a forward dataflow over the chart. A variable is assigned when a state is entered if it is assigned on every way into the state. A way in is the start of the machine or a transition with a target, and along it, in the order a step runs them, these assign:
 
 - the source state, if the variable is assigned whenever the source is active (see below);
-- the `exit` of the source and of each state containing it that the transition leaves;
+- the `exit` of the source and of each state containing it that the transition leaves (none for an internal transition);
 - the transition's `set`s;
 - the `entry` of each state entered before this one in the same step: the states containing it, outermost first, and the regions of a parallel state before its own, in document order.
 
@@ -774,7 +802,7 @@ What each read sees:
 The analysis is conservative: it may reject a chart that never reads an unassigned variable when it runs. Where:
 
 - Guards are not evaluated. Every transition whose state can be active is assumed to be taken, so a variable assigned only on a branch whose guard happens to hold is not assigned after the others.
-- A transition with no target assigns only for its own effects: the state can be left before it is taken, so the state's other transitions and its `exit` cannot rely on it.
+- A transition with no target assigns only for its own effects, and an internal one only for its effects and the states it enters: the state can be left before it is taken, so the state's other transitions and its `exit` cannot rely on it.
 - An `exit`, an invoke's arguments and an `after` delay see what was assigned when their state was entered, not what a transition taken inside it assigned later.
 - Inside a parallel state, a region relies on what was assigned before it was entered (by the states containing it and by the regions before it, in order) and on its own transitions. What another region assigns after that does not count, since the regions take their transitions independently. The transitions written on the parallel state itself and its `done` see every region.
 - Of the states a transition leaves, only the `exit`s of its source and the states containing it count, since which of the source's children is active is not known.
@@ -809,7 +837,7 @@ Both runtimes keep reading an unassigned variable as a runtime error (`unassigne
 The layout, as implemented in `roadbook-syntax`. The example files and the charts on these pages are written in it.
 
 - **Lines.** Two-space indentation, one item per line, and no line wrapping. A file with syntax errors is not formatted.
-- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses or the angle brackets of type arguments (`map<string, int>`, `type Page<T>`). A `retry` clause is written `retry 3 on A | B after delay`, one space between its parts. In a transition the target and each `set`, `do`, `send`, `emit`, `reply`, `spawn` or `stop` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Every `set` comes first, then the other clauses in the order written; consecutive clauses of one kind are merged for `set` and `do`: `do f()  set a = 1  set b = 2` is written `set a = 1, b = 2  do f()`. Each `send`, `emit`, `reply`, `spawn` and `stop` is a clause of its own, and an empty body is dropped: `send upload.Pause {}` is written `send upload.Pause`. No space goes inside the brackets of a key: `sessions[event.id]`, `sessions.*`.
+- **Spacing.** One space around binary operators, `->`, `=`, `!` and `|`, after `:` and `,`, and inside the braces of a one-line list or record value; none inside parentheses or the angle brackets of type arguments (`map<string, int>`, `type Page<T>`). A `retry` clause is written `retry 3 on A | B after delay`, one space between its parts. In a transition the target (several separated by `, `) and each `set`, `do`, `send`, `emit`, `reply`, `spawn` or `stop` clause are separated by two spaces: `-> Paying  set attempts = 0  do audit(order)`. Every `set` comes first, then the other clauses in the order written; consecutive clauses of one kind are merged for `set` and `do`: `do f()  set a = 1  set b = 2` is written `set a = 1, b = 2  do f()`. Each `send`, `emit`, `reply`, `spawn` and `stop` is a clause of its own, and an empty body is dropped: `send upload.Pause {}` is written `send upload.Pause`. No space goes inside the brackets of a key: `sessions[event.id]`, `sessions.*`.
 - **Blank lines** between items are kept, at most one. There are none at the start or end of a block or file.
 - **Lists.** No trailing commas. A list in a declaration (import names, fields, enum variants, parameters) with a line break right after its opening bracket stays multi-line: its elements are indented one level, keep the author's line breaks between them, and the closing bracket goes on its own line. Every other list is printed on one line.
 - **One-line states.** A state whose body is empty, or is a single item other than a state, an `invoke` or a block of branches, and contains no comment, is written on one line: `final state Charged { output receipt }`. Every other state is written as a block. A history state is written on a line of its own: `history Previous`, `deep history Previous`.
@@ -905,6 +933,8 @@ The compiler's codes:
 | `RB0218` | A retried error handled by a `fail *` that also handles an error not retried (for a call, `Unanswered` too). | `retry 2 on Busy` with only `fail * -> Failed` for `! Busy \| Gone` |
 | `RB0219` | A history state in a state with no child states, or in a final state. | `state A { history H }` |
 | `RB0220` | A `spawn` of a machine that is not its collection's. | `spawn sessions[id] = Upload(f)` for `children sessions: Session by string` |
+| `RB0221` | Several targets of which some have the leading dot and some do not. | `-> .Playback.Paused, Volume.Muted` |
+| `RB0222` | Several targets that are not each in a different region of a parallel state: two in one compound state, one inside another, or the same one twice. | `-> Cart.Editing, Cart.Reviewing` |
 | `RB0301` | A value of the wrong type. | `var ratio: float = 1` |
 | `RB0302` | The wrong number of arguments. | `retryDelay(1, 2)` |
 | `RB0303` | An operator on operands it is not defined on. | `attempts + 1.5`, `order == other` |
@@ -932,7 +962,7 @@ The compiler's codes:
 | `RB0325` | A type parameter its declaration does not use. | `type Id<T> = string` |
 | `RB0326` | A generic type that refers to itself, directly or through other types, with other arguments than its own parameters. | `type Nested<T> { inner: Nested<T[]>? }` |
 | `RB0327` | A record value of a generic type whose type arguments neither the expected type nor its fields tell. | `describe(Pair { first: 1, second: "one" })` |
-| `RB0401` | An unguarded cycle of `always` transitions. | `A { always -> B }`, `B { always -> A }` |
+| `RB0401` | An unguarded cycle of `always` transitions. | `A { always -> B }`, `B { always -> A }`, `always -> .Child` |
 | `RB0402` | A machine that invokes or spawns itself without waiting. | `state A { invoke M() { … } }` as `M`'s initial state |
 | `RB0403` | A read of a variable that might not be assigned yet. | `entry do log(n)` in the initial state, for `var n: int` |
 | `RB0501` | A `check never` whose state can be active, or whose states can be active together. | `check never Refunded` |
@@ -951,6 +981,7 @@ The compiler's codes:
 | `RB0910` | A history state that no transition targets (warning). | `history Previous` with no `-> Working.Previous` |
 | `RB0911` | A `children` collection that no `spawn` fills (warning). | `children sessions: Session by string` with no `spawn sessions[…]` |
 | `RB0912` | A machine whose checks were not evaluated, as too large to explore: more than 100000 configurations, a peer's event expected through more than 8 `ref` names, or regions whose guard outcomes combine in too many ways (warning). | many parallel regions, each with deep history |
+| `RB0913` | A transition that leaves a parallel state and enters it again, starting regions over that it does not target (warning). | `on Cross -> P.B.Y` in region `A` of `P` |
 
 ## Grammar
 
@@ -1013,7 +1044,7 @@ outcome     = "done" branches
 
 branches    = [ "if" expr ] action
             | "{" "if" expr action { "if" expr action } [ "else" action ] "}" ;
-action      = "->" target [ effects ]
+action      = "->" targets [ effects ]
             | effects
             | "ignore" ;
 effects     = effect { effect } ;
@@ -1027,7 +1058,8 @@ effect      = "set" assign { "," assign }
 recordBody  = "{" [ lower ":" expr { "," lower ":" expr } ] "}" ;
 assign      = lower "=" expr ;
 call        = lower "(" [ expr { "," expr } ] ")" ;
-target      = Upper { "." Upper } ;
+targets     = target { "," target } ;
+target      = [ "." ] Upper { "." Upper } ;
 
 expr        = orExpr ;
 orExpr      = andExpr { "or" andExpr } ;

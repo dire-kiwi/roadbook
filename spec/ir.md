@@ -1,4 +1,4 @@
-# The Roadbook IR, version 0.8
+# The Roadbook IR, version 0.9
 
 The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with a call to a peer, a message to it and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
@@ -22,7 +22,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 ```jsonc
 {
-  "irVersion": "0.8",
+  "irVersion": "0.9",
   "sources":   [{ "path": "examples/shop/place_order.road", "package": null },
                 { "path": "examples/shop/types.road", "package": null }],
   "types":     { /* Name: type declaration */ },
@@ -234,7 +234,7 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
 
 ### History states
 
-`history Name` and `deep history Name` are states of kind `history` and `deepHistory` in the `states` of the state they are written in, their parent, at the position they are written. Their parent is a `compound` or `parallel` state that is not the root, and has at least one child that is not a history state. They are pseudo-states: `initial` is `null`, `states`, `entry`, `exit` and `transitions` are `[]`, and `invoke`, `output` and `fail` are `null`. Only a transition's `target` names one. Whether a state is `atomic`, `compound` or `parallel`, which child is its `initial`, and which children are a parallel state's regions are all decided by its other children: wherever the IR or [`execution.md`](execution.md) speaks of a state's children or regions, it means those that are not history states. What entering one does is in [`execution.md`](execution.md#history-states).
+`history Name` and `deep history Name` are states of kind `history` and `deepHistory` in the `states` of the state they are written in, their parent, at the position they are written. Their parent is a `compound` or `parallel` state that is not the root, and has at least one child that is not a history state. They are pseudo-states: `initial` is `null`, `states`, `entry`, `exit` and `transitions` are `[]`, and `invoke`, `output` and `fail` are `null`. Only a transition's `targets` name one. Whether a state is `atomic`, `compound` or `parallel`, which child is its `initial`, and which children are a parallel state's regions are all decided by its other children: wherever the IR or [`execution.md`](execution.md) speaks of a state's children or regions, it means those that are not history states. What entering one does is in [`execution.md`](execution.md#history-states).
 
 ## Invoke
 
@@ -281,7 +281,8 @@ A child is addressed only from its invoking state and that state's descendants, 
   "trigger": { "kind": "invoke.fail", "error": "GatewayUnavailable" },
   "group": 2,
   "guard": { "kind": "op", "op": "<", "args": [ /* attempts, 3 */ ], "type": "bool", "text": "attempts < 3" },
-  "target": "Checkout.Backoff",
+  "targets": ["Checkout.Backoff"],
+  "internal": false,
   "effects": [],
   "span": { "file": 2, "line": 17, "col": 9, "endLine": 17, "endCol": 41 }
 }
@@ -292,7 +293,8 @@ A child is addressed only from its invoking state and that state's descendants, 
 | `trigger` | What enables it. See below. |
 | `group` | The index, from 0, of the trigger block the transition was written in, among the blocks of its state. A single-line trigger is a block with one branch. The branches of one block are consecutive and share `group`; guards within a group are tried in order. |
 | `guard` | Boolean expression, or `null` for an unguarded branch (including `else`). |
-| `target` | Id of the target state, a history state among them, or `null` for an internal transition (the state is not left). A transition with no target and no effects is an `ignore`: it takes its event and does nothing. Only an `on` transition (`event`, `emitted`, `ended` or `any`) is ever one. |
+| `targets` | Ids of the target states, in the order written; a history state may be among them. `[]` for a transition with no target, which leaves and enters no state. A transition with no target and no effects is an `ignore`: it takes its event and does nothing. Only an `on` transition (`event`, `emitted`, `ended` or `any`) is ever one. With more than one, no target is another's ancestor or descendant, and any two have a parallel state as their nearest common ancestor (a history state counting as a child of its parent, or as the parallel state itself when its parent is one), so they are in different regions of it. |
+| `internal` | `true` for an internal transition (`-> .X`), whose domain is its own state, which it does not leave: every target is a proper descendant of that state, which is not the root. `false` for every other, a transition with no target among them ([a microstep](execution.md#a-microstep)). |
 | `effects` | [Effects](#effects) run when the transition is taken: all `set` assignments, then all `do` actions, each in the order written. |
 | `span` | For a single-branch trigger, from the trigger keyword to the end of the branch. For a branch in a block, from its `if` or `else` to the end of the branch. |
 
@@ -397,18 +399,27 @@ A machine's `hash` is `"sha256:"` followed by the 64 lowercase hexadecimal digit
 - **F**, **A** and **K** are the functions called (`call`), the actions run (`do`) and the tasks invoked by the machines in M.
 - **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send`, an `emitted` or `ended` trigger or a call invoke), or by an event type `Machine.Name`. Only its interface, its `events`, `emits` and `calls`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts, emits or answers changes, and not when how the peer works inside does. An `ended` trigger adds nothing to it: how a peer can end is the same for every machine, and the peer's output and errors are not part of what its holders get. (A child addressed with `as` is invoked, and a collection's machine is spawned, so they are in M whole.)
 - **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`) whose base, type arguments or map key or value names it, at any depth, by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"` and `Unanswered`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, or `Machine.Name`), a type parameter inside its declaration, and the machine of a `ref`, are not part of T.
-- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `calls` and `children` maps, which are kept whatever they are, and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed: a call named `text` keeps its entry (its value is stripped), and `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that uses no `sensitive` mark, keyed spawn or generic type has the hash it had in 0.5. `strict` and `calls` are always part of the view, `calls` even when it is empty.
+- **strip** removes every member named `doc`, `span`, `text` or `sensitive` from every object, recursively, except the keys of a machine's `calls` and `children` maps, which are kept whatever they are, and the member `params` of a type declaration when it is `[]`. The other name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed: a call named `text` keeps its entry (its value is stripped), and `children text: C by string` keeps its collection. A machine's `children` is also left out when it is empty, and a `send` effect's `key` when it is `null`, so a machine that uses no `sensitive` mark, keyed spawn or generic type has the hash it had in 0.5. A transition's `internal` is left out when it is `false`, and its `targets`, when it has at most one, is written as the `target` of 0.8 (the one id, or `null` for `[]`), so a machine with neither internal transitions nor several targets has the hash it had in 0.8. `strict` and `calls` are always part of the view, `calls` even when it is empty.
 
 So comments, formatting, source positions, file names, packages, declaration order, `sensitive` marks and unused declarations do not change a machine's hash (a run compiled without a peer's marks therefore talks to it all the same, and shows what the peer marks: build the runs that talk to each other from the same charts), and any change to what the machine does, to a type it uses, to a machine it invokes, or to the interface of a machine it talks to does. A declaration copied from another package's compiled IR therefore keeps the hash it had there. In Rust, `roadbook_ir::machine_hash(&ir, name)` computes it, `roadbook_ir::semantic_view` returns the view, and `roadbook_ir::fill_hashes(&mut ir)` sets every machine's `hash`; the compiler calls the last after type checking. Snapshots and traces record the hash, so restoring a snapshot into a changed machine is refused and the viewer can tell when a trace came from another version of a chart.
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.8`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.9`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
+
+## Changes in 0.9
+
+Version 0.9 adds internal transitions, `-> .X` ([transitions](../docs/design/language.md#transitions)), and transitions with several targets, `-> P.A.X, P.B.Y`. Every transition has the new member `internal`, and `target` is replaced by `targets`, so a 0.8 document is not a 0.9 document. The [machine hash](#the-machine-hash) leaves out an `internal` that is `false` and writes `targets` of at most one id as 0.8's `target`, so a machine that uses neither feature has the hash it had in 0.8, and its saved snapshots still restore.
+
+- Transitions have [`targets`](#transitions), a list, in place of `target`, and `internal`.
+- The trace's `transition` record has `to` as a list, the same as `targets` ([records](trace.md#records)).
+
+What a runtime does with them (the domain of an internal transition, the regions an internal transition of a parallel state exits, the entry set of several targets, and a completion an internal transition takes back) is in [`execution.md`](execution.md#a-microstep).
 
 ## Changes in 0.8
 
@@ -433,7 +444,7 @@ Redaction ([redaction](trace.md#redaction)):
 
 History states:
 
-- The state kinds [`history` and `deepHistory`](#history-states). A transition's `target` may be one.
+- The state kinds [`history` and `deepHistory`](#history-states). A transition's target may be one.
 
 Keyed spawn ([spawned children](execution.md#spawned-children)):
 

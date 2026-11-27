@@ -28,7 +28,7 @@ States are named by their ids in the IR, transitions by their state's id and the
 | `event` | `event` | When the run takes an input that enables a transition, before anything it causes. `event` is the input as the core received it (below). |
 | `dropped` | `event` | Instead of `event`, when the input enables no transition. Nothing else happens. In a strict machine an external event, a message or a call that enables no transition is an `unhandled` [defect](execution.md#defects) instead, and has no `dropped` record; a peer's end (`ended`) is dropped there too. |
 | `stale` | `event` | Instead of `event`, when the input is the outcome of an invoke or a spawned child, the expiry of a timer, or an event emitted by a child run, whose invoke, spawned child or timer is no longer running: it was cancelled, stopped or replaced after the input had been queued, or (for an emitted event) its outcome has been taken. Nothing else happens. |
-| `transition` | `from`, `index`, `to` | When a transition is taken, before the exits it causes. `to` is the target state's id (a history state's, for a transition to one: the `entered` records after it say which states it restored), or `null` for an internal transition. `always` and `done` transitions are traced the same way, with no `event` record before them. When one microstep takes transitions in several regions of a parallel state, their `transition` records come one after another, before all their exits ([a microstep](execution.md#a-microstep)). |
+| `transition` | `from`, `index`, `to` | When a transition is taken, before the exits it causes. `to` is the list of the transition's target ids, as the IR's `targets`: one for most transitions, several for a transition with several targets, and `[]` for one with no target. A history state's id stands for what it restores: the `entered` records after it say which states those are. Whether the transition is internal is not recorded: the IR says so, and the `exited` and `entered` records after it show what it left and entered. `always` and `done` transitions are traced the same way, with no `event` record before them. When one microstep takes transitions in several regions of a parallel state, their `transition` records come one after another, before all their exits ([a microstep](execution.md#a-microstep)). |
 | `set` | `var`, `value` | When an assignment runs, in an exit, transition or entry effect list. |
 | `action` | `action`, `args` | When an action is run, before the driver runs it. `args` is keyed by parameter name. |
 | `sent` | `message`, `to`, `value` | When a `send` effect runs, before the driver queues the message. `message` is the message's id in the sending run, from 1, shared with `emitted` and `undelivered`; `to` the receiving run's id; `value` the event, a tagged record. |
@@ -109,7 +109,7 @@ A `PlaceOrder` request that times out while its `Checkout` child is waiting to r
 {"kind":"entered","run":"r1","state":"PlaceOrder.Authenticating","t":0}
 {"args":{"token":"tok-1"},"invoke":1,"kind":"invoke.started","run":"r1","src":"authenticate","state":"PlaceOrder.Authenticating","t":0}
 {"event":{"invoke":1,"kind":"invoke.done","value":{"id":"u1","role":"Customer"}},"kind":"event","run":"r1","t":10}
-{"from":"PlaceOrder.Authenticating","index":0,"kind":"transition","run":"r1","t":10,"to":"PlaceOrder.Processing"}
+{"from":"PlaceOrder.Authenticating","index":0,"kind":"transition","run":"r1","t":10,"to":["PlaceOrder.Processing"]}
 {"kind":"exited","run":"r1","state":"PlaceOrder.Authenticating","t":10}
 {"kind":"set","run":"r1","t":10,"value":{"id":"u1","role":"Customer"},"var":"user"}
 {"kind":"entered","run":"r1","state":"PlaceOrder.Processing","t":10}
@@ -117,7 +117,7 @@ A `PlaceOrder` request that times out while its `Checkout` child is waiting to r
 {"delay":30000,"index":1,"kind":"timer.started","run":"r1","state":"PlaceOrder.Processing","t":10,"timer":1}
 …
 {"event":{"kind":"after","timer":1},"kind":"event","run":"r1","t":30010}
-{"from":"PlaceOrder.Processing","index":1,"kind":"transition","run":"r1","t":30010,"to":"PlaceOrder.TimedOut"}
+{"from":"PlaceOrder.Processing","index":1,"kind":"transition","run":"r1","t":30010,"to":["PlaceOrder.TimedOut"]}
 {"invoke":4,"kind":"invoke.cancelled","run":"r1","src":"Checkout","state":"PlaceOrder.Processing.Paying","t":30010}
 …
 {"kind":"done","output":{"body":{"code":"timeout"},"status":504},"run":"r1","state":"PlaceOrder.TimedOut","t":30010}

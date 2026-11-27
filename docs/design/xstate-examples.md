@@ -125,7 +125,7 @@ session: {
 
 **XState v6** keeps the same default. Its `reenter` also re-enters a target that resolves to the state the machine is already in.
 
-**Roadbook** always leaves and re-enters, as SCXML's external transitions do. Only transitions written in the machine body are exempt.
+**Roadbook** leaves and re-enters, as SCXML's external transitions do, unless the target is written with a leading dot (SM-24). Transitions written in the machine body never leave the machine.
 
 ```
 state Session {
@@ -140,21 +140,20 @@ state Session {
 }
 ```
 
-So `on Home` written in `Session` can't avoid restarting the timer. To keep it running, the chart writes `on Home` in each child that needs it, as `Cart` does above.
+Before SM-24, `on Home` written in `Session` couldn't avoid restarting the timer: to keep it running, the chart wrote `on Home` in each child that needed it, as `Cart` does above. A leading dot targets a child without leaving the state the transition is written in:
 
 ```
-// proposed: a leading dot targets a child without leaving the state the transition is written in
 state Session {
   initial Browsing
   after 30m -> TimedOut
   state Browsing { on OpenCart -> Cart }
   state Cart     { }
   on Home    -> .Browsing          // Session is not left; only Cart is exited and Browsing entered
-  on Restart -> Session.Browsing   // as today: Session is left and entered
+  on Restart -> Session.Browsing   // Session is left and entered
 }
 ```
 
-This is SCXML's `type="internal"`. The domain becomes the source state itself, so only states below it are exited.
+This is SCXML's `type="internal"`. The domain becomes the source state itself, so only states below it are exited. Like XState, a dotted target that is already active is entered again: `on Home -> .Browsing` taken in `Browsing` restarts `Browsing`, not `Session`.
 
 ## Several targets in one transition
 
@@ -175,7 +174,7 @@ player: {
 },
 ```
 
-**Roadbook** has one target per transition. An event is offered to every region, and each region can take its own transition for it, so the same effect is written once per region:
+**Roadbook** before SM-24 had one target per transition. An event is offered to every region, and each region can take its own transition for it, so the same effect was written once per region:
 
 ```
 parallel state Player {
@@ -198,14 +197,14 @@ parallel state Player {
 }
 ```
 
-What Roadbook can't write is entering `Player` from outside directly into `Paused` and `Muted`. A transition `-> Player.Playback.Paused` enters `Volume` at its initial state, `Normal`.
+What that couldn't write is entering `Player` from outside directly into `Paused` and `Muted`: a transition `-> Player.Playback.Paused` enters `Volume` at its initial state, `Normal`. A transition can now have several targets:
 
 ```
-// proposed
-on WakeIntoQuiet -> Player.Playback.Paused, Player.Volume.Muted
+on WakeIntoQuiet -> Player.Playback.Paused, Player.Volume.Muted   // from outside Player
+on Sleep -> .Playback.Paused, .Volume.Muted                       // written in Player, which is kept
 ```
 
-The compiler would check that the targets are in different regions of the same parallel state.
+The compiler checks that the targets are in different regions of a parallel state (`RB0222`), and that either all of them have the dot or none does (`RB0221`).
 
 ## A transition into one region of a parallel state
 
@@ -215,7 +214,7 @@ This is the guide's own example. A parallel state `P` has regions `A` and `B`. O
 
 **XState v6** ends in `{ A: 'A1', B: 'B2' }`: only `A` is left. To get v5's reset, a v6 chart targets the parallel state itself, or lists a target in every region. XState's SCXML package keeps SCXML's rule.
 
-**Roadbook** follows SCXML, so it ends as v5 does. A transition never has a parallel state as its domain, so re-entering a region leaves `P` and enters it again with every region. `B`'s transition conflicts with that one and is dropped:
+**Roadbook** follows SCXML for an external transition, so this chart ends as v5 does. An external transition never has a parallel state as its domain, so re-entering a region leaves `P` and enters it again with every region. `B`'s transition conflicts with that one and is dropped, and the compiler warns that `B` starts over (`RB0913`):
 
 ```
 parallel state P {
@@ -234,7 +233,7 @@ parallel state P {
 
 The same rule applies to a transition from one region to another: `on Blast -> Player.Volume.Normal` written in `Player.Playback.Paused` leaves `Player`, so `Playback` goes back to `Playing`.
 
-Today the chart avoids this by writing transitions inside a region's children, which stay within the region. With the proposed `.Child` target, `on T -> .A1` written in `A` would re-enter only `A1`, leave `B` alone, and give v6's result.
+With a `.Child` target, `on T -> .A1` written in `A` re-enters only `A1`, leaves `B` alone, and gives v6's result. An internal transition written in `P` itself, `on T -> .A.A1`, exits and enters only region `A`, as v6 does; SCXML would take it as external from a parallel state.
 
 ## Several invokes in one state
 
