@@ -16,8 +16,24 @@ import type { Actor, Handle, MachineDef, RestoreOptions, Snapshot } from "../Mac
 import { RootRunId, RunObserver, TraceSink, Timer } from "../References.ts"
 import { RestoreError } from "../Saved.ts"
 import type { Codec } from "./codec.ts"
-import { activity, type Attempt, type DurableRun, entryOfPort, type Execution, park, parkRecord, peek, write as writeRecord } from "./durable.ts"
-import { type Answer, type Port, portOf, push, pushCall, registerHandle, takeAnswer, type Wake } from "./port.ts"
+import {
+  activity,
+  answer as answerCall,
+  answerRecord,
+  type Attempt,
+  callRecord,
+  type DurableRun,
+  entryOfPort,
+  type Execution,
+  park,
+  parkRecord,
+  peek,
+  type RunInfo,
+  unanswered,
+  viaOf,
+  write as writeRecord
+} from "./durable.ts"
+import { type Answer, type Item, type Port, portOf, push, pushCall, registerHandle, takeAnswer, type Wake } from "./port.ts"
 
 export type { Port } from "./port.ts"
 
@@ -273,7 +289,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
         return yield* Effect.die(new Defect(hostDefect(error)))
       }
     }
-    const queue = yield* Queue.unbounded<Core.Input | Wake>()
+    const queue = yield* Queue.unbounded<Item>()
     const durable = env.durable
     // A durable root run's handle outlives this attempt of it: its port is the registry
     // entry's, and the runs holding a `ref` to it subscribe there.
@@ -450,10 +466,40 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       const tokens = new Map<number, CancelToken>()
       // The call invokes whose answer is still wanted: started, and not cancelled or taken.
       const liveCalls = new Set<number>()
+      // A durable run's calls that their callee has not journalled yet, each handed over by a
+      // fiber: the run does not park while one is in flight, since a crash could lose it.
+      const handing = new Map<number, Fiber.Fiber<void>>()
+      /**
+       * A caller, the way to answer one of the calls this run was given: in memory (`answer`), or,
+       * for a durable caller, the root run of its execution (`via`), where the answer is recorded.
+       */
+      interface Given {
+        readonly from: string
+        readonly invoke: number
+        readonly answer: Answer | undefined
+        readonly via: RunInfo | undefined
+      }
       // The calls this run's core was given and the driver has not carried out a `reply` for,
       // in the order they were taken, with their ways to answer.
-      const given = new Map<string, { readonly invoke: number; readonly answer: Answer }>()
+      const given = new Map<string, Given>()
       const callKey = (from: string, invoke: number) => `${from} ${invoke}`
+      /** Keep the way to answer call input `input`, given to the core now. */
+      const keepCall = (input: Extract<Core.Input, { kind: "call" }>, via: RunInfo | undefined) => {
+        const answer = takeAnswer(input)
+        if (answer !== undefined || via !== undefined) {
+          given.set(callKey(input.from, input.invoke), { from: input.from, invoke: input.invoke, answer, via })
+        }
+      }
+
+      /**
+       * A durable caller is told that the answer to its call invoke `invoke` is recorded: it takes
+       * the answer from there, if it still wants it (as a live run pushes nothing for a call it
+       * has cancelled). Synchronous, so that a run deciding to park sees it.
+       */
+      const heard = (invoke: number) => {
+        if (liveCalls.has(invoke)) Queue.offerUnsafe(queue, { kind: "answered", invoke })
+      }
+      if (durable !== undefined) durable.exec.root.callers.set(env.runId, heard)
 
       /**
        * Make a call (execution.md, "Carrying out calls"): push it onto the callee's queue with a
@@ -461,7 +507,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
        * No record either way, and no host code.
        */
       const makeCall = (command: Extract<Core.Command, { kind: "invoke.start" }>) =>
-        Effect.sync(() => {
+        durable !== undefined ? makeDurableCall(durable, command) : Effect.sync(() => {
           const { invoke } = command
           liveCalls.add(invoke)
           const answer: Answer = (outcome) => {
@@ -469,26 +515,70 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           }
           const input: Core.Input = { kind: "call", from: env.runId, invoke, call: command.src, args: command.args }
           const callee = portOf(refs.get(command.to ?? ""))
-          if (callee === undefined || !pushCall(callee, input, answer)) {
-            answer({ kind: "invoke.fail", invoke, error: { _tag: Core.UNANSWERED } })
+          if (callee === undefined || !pushCall(callee, input, answer)) answer(unanswered(invoke))
+          return undefined
+        })
+
+      /**
+       * A durable run's call. Its answer is recorded in this run's execution (`R/answer/<id>`) by
+       * whoever gives it, and taken from there; this run is told of it (`heard`) when it is live
+       * here, and otherwise reads it when it next reaches its live edge. A call the callee has
+       * journalled is recorded as made (`R/call/<id>`), and not made again on replay: the callee
+       * answers it, also if it ends. One not recorded as made is handed to the callee again,
+       * which drops a call it has already journalled. A callee that ended before it journalled
+       * the call (or is not a durable run) leaves this run to answer it `Unanswered` itself.
+       */
+      const makeDurableCall = (d: DurableRun, command: Extract<Core.Command, { kind: "invoke.start" }>) =>
+        Effect.gen(function*() {
+          const { invoke } = command
+          liveCalls.add(invoke)
+          const { exec } = d
+          if ((yield* peek(exec, callRecord(env.runId, invoke))) !== undefined) {
+            if ((yield* peek(exec, answerRecord(env.runId, invoke))) !== undefined) heard(invoke)
+            return undefined
           }
+          const input: Core.Input = { kind: "call", from: env.runId, invoke, call: command.src, args: command.args }
+          const callee = entryOfPort(portOf(refs.get(command.to ?? "")))
+          const hand = Effect.gen(function*() {
+            const taken = callee === undefined ? false : yield* callee.deliverCall(input, exec.root.info)
+            if (taken) yield* writeRecord(exec, callRecord(env.runId, invoke), true)
+            else yield* answerCall(exec, exec.root.info, env.runId, unanswered(invoke))
+          }).pipe(Effect.ensuring(Effect.sync(() => {
+            handing.delete(invoke)
+          })))
+          const fiber = yield* Effect.forkDetach(hand, { startImmediately: true })
+          if (fiber.pollUnsafe() === undefined) handing.set(invoke, fiber)
           return undefined
         })
 
       /**
        * Answer with `Unanswered` every call this run was given and has not replied to, in the
-       * order it took them, then every call still in its queue, in queue order. No record.
+       * order it took them, then every call still in its queue, in queue order. No record. Gives
+       * the calls of durable callers, which are answered by recording it (`answerDurably`).
        */
-      const abandonCalls = () => {
-        const unanswered = (invoke: number): Core.Input => ({ kind: "invoke.fail", invoke, error: { _tag: Core.UNANSWERED } })
-        for (const { answer, invoke } of given.values()) answer(unanswered(invoke))
+      const abandonCalls = (): Array<Given> => {
+        const durably: Array<Given> = []
+        const abandon = (call: Given) => {
+          if (call.answer !== undefined) call.answer(unanswered(call.invoke))
+          else if (call.via !== undefined) durably.push(call)
+        }
+        for (const call of given.values()) abandon(call)
         given.clear()
         for (let taken = Queue.takeUnsafe(queue); taken !== undefined && Exit.isSuccess(taken); taken = Queue.takeUnsafe(queue)) {
           const input = taken.value
           if (input.kind !== "call") continue
-          takeAnswer(input)?.(unanswered(input.invoke))
+          abandon({ from: input.from, invoke: input.invoke, answer: takeAnswer(input), via: viaOf(input) })
         }
+        return durably
       }
+
+      /** Answer durable callers' calls `Unanswered`, in order, each recorded in its caller's execution. */
+      const answerDurably = (calls: ReadonlyArray<Given>) =>
+        durable === undefined ? Effect.void : Effect.forEach(
+          calls,
+          (call) => answerCall(durable.exec, call.via!, call.from, unanswered(call.invoke)),
+          { discard: true }
+        )
 
       const newToken = (invoke: number): CancelToken => {
         const token: CancelToken = {
@@ -590,8 +680,11 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           const children: Array<{ fiber: Fiber.Fiber<void>; token: CancelToken }> = []
           const asked: Array<{ fiber: Fiber.Fiber<void>; token: CancelToken }> = []
           for (const id of ids) {
-            // A call only forgets its way to answer; nothing reaches the callee.
+            // A call only forgets its way to answer; nothing reaches the callee. A durable one
+            // stops being handed over, and whatever answer is recorded for it is not taken.
             liveCalls.delete(id)
+            handing.get(id)?.interruptUnsafe(self.id)
+            handing.delete(id)
             const token = tokens.get(id)
             const fiber = invokes.get(id)
             tokens.delete(id)
@@ -673,18 +766,19 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             return startInvoke(command)
           case "invoke.cancel":
             return stopInvoke(command.invoke)
-          case "reply":
-            return Effect.sync(() => {
-              const key = callKey(command.to, command.invoke)
-              const answer = given.get(key)?.answer
-              given.delete(key)
-              answer?.(
-                command.outcome === "done"
-                  ? { kind: "invoke.done", invoke: command.invoke, value: command.value }
-                  : { kind: "invoke.fail", invoke: command.invoke, error: command.value as Core.Tagged }
-              )
-              return undefined
-            })
+          case "reply": {
+            const key = callKey(command.to, command.invoke)
+            const call = given.get(key)
+            given.delete(key)
+            const outcome: Core.Input = command.outcome === "done"
+              ? { kind: "invoke.done", invoke: command.invoke, value: command.value }
+              : { kind: "invoke.fail", invoke: command.invoke, error: command.value as Core.Tagged }
+            call?.answer?.(outcome)
+            // A durable caller's answer is recorded, once: a step a replay takes again had
+            // recorded it before the next input was journalled.
+            if (call?.via === undefined || durable === undefined || replaying) return Effect.succeed(undefined)
+            return Effect.as(answerCall(durable.exec, call.via, call.from, outcome), undefined)
+          }
           case "spawn.start": {
             const start: StartCommand = {
               kind: "spawn",
@@ -844,12 +938,11 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
               wakes -= 1
               continue
             }
+            // Only a durable caller is told of recorded answers.
+            if (next.kind === "answered") continue
             // The driver keeps a call's way to answer from when it gives the call to its core
             // until it carries out a `reply` for it, also if the step is cut short.
-            if (next.kind === "call") {
-              const answer = takeAnswer(next)
-              if (answer !== undefined) given.set(callKey(next.from, next.invoke), { invoke: next.invoke, answer })
-            }
+            if (next.kind === "call") keepCall(next, undefined)
             const stepped = Core.step(ir, snapshot, next, fns)
             // An invoke or timer is forgotten once its outcome or expiry is taken.
             if (next.kind === "invoke.done" || next.kind === "invoke.fail" || next.kind === "invoke.defect") {
@@ -885,6 +978,9 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             return `m${input.from}/${input.message}`
           case "emitted":
             return `e${input.from}/${input.message}`
+          case "call":
+            // A caller that recovers hands over again a call it does not know was journalled.
+            return `c${input.from}/${input.invoke}`
           default:
             return undefined
         }
@@ -912,8 +1008,10 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           Effect.gen(function*() {
             const { exec } = d
             const at = (k: number) => `${env.runId}/in/${k}`
+            // A call from a durable caller is journalled with the root run of the caller's
+            // execution (`via`), so that a replay knows where to answer it.
             const journalled = (k: number) =>
-              Effect.map(peek(exec, at(k)), (found) => found as unknown as Core.Input | undefined)
+              Effect.map(peek(exec, at(k)), (found) => found as unknown as Journalled | undefined)
             // The run's first record: the hash it runs with, and the clock a restore reads.
             const beginName = `${env.runId}/begin`
             const first = (yield* peek(exec, beginName)) as { hash: string; now: number } | undefined
@@ -965,8 +1063,11 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             let parkSeq = 1
             while (snapshot.status === "running") {
               let input: Core.Input
+              let via: RunInfo | undefined
               if (next !== undefined) {
-                input = next
+                const { via: from, ...rest } = next
+                input = rest as Core.Input
+                via = from
                 k += 1
                 quiet = !exec.replayTrace
                 next = yield* journalled(k + 1)
@@ -989,10 +1090,13 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
                   parkSeq = seq
                 }, () => parkSeq, () => parkSeq++)
                 input = taken
+                via = input.kind === "call" ? viaOf(input) : undefined
                 k += 1
-                yield* writeRecord(exec, at(k), input as unknown as Core.Json)
+                const journal: Journalled = via === undefined ? input : { ...input, via }
+                yield* writeRecord(exec, at(k), journal as unknown as Core.Json)
                 entry?.journalled(input)
               }
+              if (input.kind === "call") keepCall(input, via)
               const id = identity(input)
               if (id !== undefined) consumed.add(id)
               const stepped = Core.step(ir, snapshot, input, fns)
@@ -1031,7 +1135,10 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           const { exec } = d
           while (true) {
             if (entry?.cancelRequested || env.token?.cancelRequested) return { kind: "cancel" } as const
-            if (entry !== undefined && exec.park !== undefined && Queue.sizeUnsafe(queue) === 0 && invokes.size === 0) {
+            if (
+              entry !== undefined && exec.park !== undefined && Queue.sizeUnsafe(queue) === 0 && invokes.size === 0 &&
+              handing.size === 0
+            ) {
               if (parkAt() !== position) {
                 // The parks a replay passes again at this position: each has its result.
                 let seq = 1
@@ -1042,23 +1149,40 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
               const earliest = dues.size === 0 ? undefined : Math.min(...dues.values())
               const delay = earliest === undefined ? undefined : earliest - now
               if (delay === undefined || delay > exec.park) {
+                // An answer already recorded is taken instead of parking, and the park races the
+                // answers still to come: the engine wakes a parked run for a record written while
+                // it was parking only if the park awaits it.
+                const answers = [...liveCalls].map((invoke) => answerRecord(env.runId, invoke))
+                for (const invoke of liveCalls) {
+                  if ((yield* peek(exec, answerRecord(env.runId, invoke))) !== undefined) heard(invoke)
+                }
                 const at = `${env.runId}/park/${position}/${nextPark()}`
                 // Deciding and parking at once: what reached the queue while the records above
                 // were read is taken instead, and a park number is used only by a park.
                 if (entry.parking(at)) {
                   usePark()
-                  yield* restore(park(exec, at, delay))
+                  yield* restore(park(exec, at, delay, answers))
                   entry.unparked()
                 }
                 continue
               }
             }
             waiting = true
-            const item = yield* restore(Queue.take(queue))
+            let item = yield* restore(Queue.take(queue))
             waiting = false
             if (item.kind === "wake") continue
+            if (item.kind === "answered") {
+              // The answer the record holds: the first one given, whoever gave it.
+              const found = yield* peek(exec, answerRecord(env.runId, item.invoke))
+              if (found === undefined) continue
+              item = found as unknown as Core.Input
+            }
             const id = identity(item)
-            if (id !== undefined && consumed.has(id)) continue
+            if (id !== undefined && consumed.has(id)) {
+              // Taken already: a call handed over again is acknowledged again.
+              entry?.journalled(item)
+              continue
+            }
             return item
           }
         })
@@ -1081,17 +1205,25 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       // still queued is discarded, and every invoke it still holds is dropped as on
       // `invoke.cancel` (a child run is cancelled and its cancel step waited for; a defect there
       // changes nothing). Its timers are dropped when the scope closes. A durable run that is
-      // only stopping (the process is, or it parks) stops its children instead.
+      // only stopping (the process is, or it parks) stops its children instead, and answers no
+      // call: they stay pending, to be answered by its replay. One that has ended records the
+      // answers to its durable callers' calls before its registry entry ends.
       const end = Effect.suspend(() => {
         close()
         listening = false
         for (const listener of listeners) listener.end()
         listeners.clear()
-        abandonCalls()
+        const stopping = durable !== undefined && snapshot.status === "running"
+        const abandoned = stopping ? [] : abandonCalls()
+        given.clear()
         liveCalls.clear()
+        for (const fiber of handing.values()) fiber.interruptUnsafe()
+        handing.clear()
+        if (durable !== undefined && durable.exec.root.callers.get(env.runId) === heard) {
+          durable.exec.root.callers.delete(env.runId)
+        }
         Queue.shutdownUnsafe(queue)
-        const mode = durable !== undefined && snapshot.status === "running" ? "stop" : "cancel"
-        return Effect.asVoid(stopInvokes([...tokens.keys()], mode))
+        return Effect.andThen(answerDurably(abandoned), stopInvokes([...tokens.keys()], stopping ? "stop" : "cancel"))
       }).pipe(
         Effect.ensuring(Effect.suspend(() => {
           if (entry !== undefined) entry.detach(attempt)
@@ -1152,6 +1284,9 @@ const causeDefect = (cause: Cause.Cause<unknown>): Core.Defect => {
   if (fail !== undefined) return hostDefect(fail.error)
   return { kind: "host", message: "interrupted" }
 }
+
+/** An input as a durable run journals it: a call from a durable caller with where it is answered. */
+type Journalled = Core.Input & { readonly via?: RunInfo }
 
 /**
  * What starts a child or a task: an `invoke.start` command, or a `spawn.start` one as an invoke

@@ -1,67 +1,70 @@
-// Charts for the durable driver's refusal of calls (test/durable.test.ts): a durable run does
-// not carry out calls, so it refuses a machine that declares or makes one, or starts one that does.
+// Charts for calls between durable runs across crashes (test/durable.test.ts): a Desk that
+// holds the calls it takes until it is told to answer, an Asker that calls it, and a Host
+// whose child calls it.
 
-/// Answers 1 to each `ask`, until it is closed.
-machine Desk() {
-  call ask() -> int
+/// Write a line to the log.
+action log(text: string)
+/// Wait until the test opens gate `n`: the step that runs it is held there.
+action pause(n: int)
 
+/// Holds the first `hold` call until it is told to answer it, and keeps any other pending,
+/// unanswered. Closed while it holds one, it pauses, and ends when it is shut: the calls
+/// pending then, and those queued behind the `Shut`, are answered `Unanswered`.
+machine Desk(id: string) {
+  call hold(n: int) -> int
+
+  event Answer { by: int }
   event Close
+  event Shut
+
+  var pending: call hold
+  var n:       int = 0
 
   initial Open
 
   state Open {
-    on ask              reply call done 1
+    on hold  -> Holding  set pending = call, n = event.n  do log("held")
     on Close -> Closed
   }
+
+  state Holding {
+    on hold               do log("extra")
+    on Answer -> Open     reply pending done n + event.by
+    on Close  -> Closing  do pause(1)
+  }
+
+  state Closing { on Shut -> Closed }
 
   final state Closed {}
 }
 
-/// Asks its Desk.
-machine Asker(desk: ref Desk) -> int {
-  var n: int = 0
+/// Asks its Desk to hold `n`: gives the answer, or -1 if it is `Unanswered`.
+machine Asker(desk: ref Desk, id: string, n: int) -> int {
+  var got: int = 0
 
   initial Asking
 
   state Asking {
-    invoke desk.ask() {
-      done   -> Got  set n = result
-      fail * -> Got
+    invoke desk.hold(n) {
+      done            -> Got  set got = result
+      fail Unanswered -> Got  set got = -1
     }
   }
 
-  final state Got { output n }
+  final state Got { output got }
 }
 
-/// Runs a Desk as its child.
-machine Host() {
-  initial Hosting
+/// Runs an Asker as its child, which calls the Desk.
+machine Host(desk: ref Desk, id: string, n: int) -> int {
+  var got: int = 0
 
-  state Hosting {
-    invoke Desk() {
-      done -> Done
-    }
-  }
-
-  final state Done {}
-}
-
-/// Runs a Host, which runs a Desk.
-machine Outer() {
   initial Running
 
   state Running {
-    invoke Host() {
-      done -> Done
+    invoke Asker(desk, id, n) {
+      done -> Done  set got = result
     }
   }
 
-  final state Done {}
-}
-
-/// No calls anywhere: it runs.
-machine Plain() -> int {
-  initial Done
-
-  final state Done { output 7 }
+  final state Done { output got }
 }
