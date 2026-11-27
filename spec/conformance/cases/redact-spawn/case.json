@@ -1,5 +1,5 @@
 {
-  "description": "Redaction in the records of spawned children: a child's sensitive arguments in `spawn.started` and in the `spawned` of a `restored` record's snapshot, its result's sensitive field in the `spawn.done` input, and its error's in `spawn.fail`, are `\"<redacted>\"`; keys are shown as they are. The saved snapshot keeps the real values.",
+  "description": "Redaction in the records of spawned children: a child's sensitive arguments in `spawn.started` in the `spawned` of a `restored` record's snapshot, and in the restored child's own `restored` record, its result's sensitive field in the `spawn.done` input, and its error's in `spawn.fail`, are `\"<redacted>\"`; keys are shown as they are. The saved snapshot keeps the real values.",
   "requires": [
     "messaging",
     "snapshots",
