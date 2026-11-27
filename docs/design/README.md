@@ -95,6 +95,8 @@ These are the choices that shape the rest. Each has a recommendation, which the 
 
 **Status, later on 26 November 2026:** all eight milestones of the [roadmap](roadmap.md#milestones) are built, each reviewed independently before it was marked done. Where building showed a page to be wrong or incomplete, the page was changed with the code, so these pages describe what exists. `scripts/check-all.sh` runs every check.
 
+**Status, 27 November 2026:** the questions the first draft left open are decided, and each decision is on the page it belongs to. Four need code that is not written yet: the `@dire-kiwi` npm scope, `strict` machines, `call` declarations, and emitted events delivered only to machines that handle them ([roadmap](roadmap.md#decided-questions)).
+
 | Decision | Recommendation | Main alternative | Discussed in |
 | --- | --- | --- | --- |
 | How machines are written | A custom language compiled to a JSON IR | YAML with a schema, producing the same IR | [Alternatives](alternatives.md#how-machines-are-written) |
@@ -133,4 +135,4 @@ Both runtimes, TypeScript ([`packages/core`](../../packages/core), [`packages/ef
 - [Actors and messaging](actors.md): machines talking to each other, including across crates.
 - [Visualization](visualization.md): the viewer and its modes.
 - [Alternatives considered](alternatives.md): formats, existing libraries, and what was rejected.
-- [Roadmap](roadmap.md): repository layout, milestones, risks and open questions.
+- [Roadmap](roadmap.md): repository layout, milestones, risks and the decided questions.

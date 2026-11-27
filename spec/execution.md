@@ -457,7 +457,7 @@ cancelRun():
   emit trace { kind: "cancelled" }
 ```
 
-This is the default in [open question 4](../docs/design/roadmap.md#open-questions). A parent leaving an invoking state cancels its child run this way, so the child's exit effects run too, and the parent waits for them ([child runs](#child-runs)). The cancel step is the run's last; a host defect in one of its exit actions turns it into a defect ([taking an input](#taking-an-input)).
+This was decided on 27 November 2026 ([semantics](../docs/design/semantics.md#cancelling-from-outside)): exit effects are the only cleanup hook a chart has, so they must be quick. A parent leaving an invoking state cancels its child run this way, so the child's exit effects run too, and the parent waits for them ([child runs](#child-runs)). The cancel step is the run's last; a host defect in one of its exit actions turns it into a defect ([taking an input](#taking-an-input)).
 
 ## Messages between runs
 
@@ -467,7 +467,7 @@ A run talks to another only through queues. The core's part is small: a `send` o
 - **Who receives a `send`.** For an address of kind `child`, the child run of the invoke that is running in the address's `state`. For an address of kind `ref`, the run whose id the parameter or variable holds.
 - **Who receives an `emit`.** The run's invoker, if it invoked the run with `as`; an invoker without `as` has no name to receive them under, and they are not delivered to it. And every run that holds a `ref` to the emitting run ([refs and handles](#refs-and-handles)), whether or not it has an `on` for the event: one with no enabled transition writes `dropped`. A run never receives its own emitted events.
 - **A run holds a `ref`** to each run whose handle it was given as an argument: the value of a parameter whose type is `ref M`, or contains one (`ref M?`, `ref M[]`, an alias of one). A machine gets a `ref` only as an argument (from host code, or from a parent that passes one of its own to an invoke), never from a result, an event or a field, so the runs it holds are fixed when it starts. A `ref` variable holds one of them.
-- **Messages are not supervised.** When a run ends, the runs that hold a `ref` to it are not told; they learn of it only through their own timeouts ([open question 4](../docs/design/actors.md#open-questions)). Messages sent to it afterwards are `undelivered`.
+- **Messages are not supervised.** When a run ends, the runs that hold a `ref` to it are not told; they learn of it only through their own timeouts ([supervision](../docs/design/actors.md#supervision)). Messages sent to it afterwards are `undelivered`.
 - **Ending a run.** The exit effects that run when a run finishes or is cancelled are effects like any others, and can send and emit. Whatever is still queued for a run when it ends, messages and emitted events included, is discarded without a record ([ending a run](#ending-a-run)).
 - **Defects.** A runtime error inside the core discards every command of the step, so nothing the step sent or emitted is delivered and no record of it is written; the snapshot the defect is applied to keeps its `nextMessage`. A host defect in an action stops the step's commands, so the sends and emits after it are neither delivered nor traced. `failWithDefect` runs no exit effects, so it sends and emits nothing itself; a child run it cancels runs its own cancel step, whose emitted events find the parent already ended.
 
@@ -590,7 +590,7 @@ carryOut(snap, commands):
 
 ### One queue per run
 
-Every source of input pushes onto one first-in, first-out queue per run, at the moment the input arrives:
+Every source of input pushes onto one first-in, first-out queue per run, at the moment the input arrives. The queue is unbounded: nothing is ever refused because a queue is full ([full queues](../docs/design/actors.md#full-queues)).
 
 | Source | Pushes |
 | --- | --- |
@@ -764,4 +764,6 @@ The formats leave room for these; their rules will be added here.
 - **Restoring a run that holds `ref`s.** Its `input` names peers by the run ids of the process that saved it. Restoring it needs host code to give a handle for each of those ids, and the binding layer to rewrite them in `input` and `vars` by their types; until then such a snapshot is refused (`ref`).
 - **Saving a child run**, or a parent together with the state of its children, which is durable execution.
 - **Keyed `spawn`** ([actors and messaging](../docs/design/actors.md#many-children)), and host code receiving a run's emitted events through a handle.
-- **`strict`**, which would turn a dropped event into a failure, is not in the grammar yet.
+- **`strict`**, which will turn a dropped event of the machine's own into a failure, is decided but not in the grammar yet ([strict machines](../docs/design/language.md#strict-machines)).
+- **`call` declarations**, decided but not in the grammar yet ([asking a peer](../docs/design/actors.md#asking-a-peer)).
+- **Emitted events only to runs that handle them**, decided but not built ([who receives emitted events](../docs/design/actors.md#who-receives-emitted-events)): a run whose machine has no `on` for an emitted event will not be sent it, and writes no `dropped` record for it.

@@ -61,6 +61,8 @@ The contract is enforced by the trait. A missing method is a compile error, a ta
 
 A child machine is one trait method. Delegating to the real chart is one line (`checkout::run`), and a test implements the same method with a canned result. The method's body has no parent run id, trace sink, clock or cancellation to pass on, and needs none: the driver polls the method's future inside an ambient invoke context, and a `run` that finds one becomes the parent's child run (see [child runs](#child-runs-and-cancellation) below).
 
+Arguments are positional, in the order the chart declares them, as is usual in Rust; TypeScript takes [one object](typescript.md#implementing-a-machine) instead. Renaming a parameter in the chart changes nothing here, since an implementation names its parameters freely. Reordering two parameters of different types is a compile error, but reordering two of the same type (`signatureValid(body: string, signature: string, secret: string)`) compiles and silently swaps them, so check the implementations when reordering.
+
 Functions are plain `fn`. Actions and tasks are `async fn`, declared in the trait as returning `impl Future + Send` so machines can run on a multi-threaded runtime.
 
 ## Running

@@ -101,7 +101,9 @@ Progress is recorded on each milestone below as it finishes.
 
 *Done.* The tree-sitter grammar (`editors/tree-sitter-roadbook`) parses every chart in the repository, with highlight, locals, fold and indent queries for Neovim, Helix and Zed; `scripts/check-all.sh` checks it. The language server (`roadbook lsp`, `crates/roadbook-lsp`, on a symbol index added to the compiler without changing its output) gives diagnostics with the compiler's fixes as quick fixes, go to definition, references, hover, rename that refuses to capture or clash, formatting and an outline, across files and packages and for unsaved and untitled documents. The VS Code extension (`editors/vscode`) adds the language, highlighting, the server and a live preview that compiles through the server, so it sees every unsaved buffer; its integration test passed in a real VS Code (headless). An independent review found edge cases with packages under `node_modules`, the preview's compilation, rename scoping and workspace trust; all are fixed.
 
-**Later.** History states, keyed `spawn`, retry sugar, a durable driver, generated Rust state machines for hot paths.
+**Next.** Decided but not built ([decided questions](#decided-questions)): the `@dire-kiwi` npm scope, `strict` machines, emitted events delivered only to machines that handle them, and `call` declarations.
+
+**Later.** History states, keyed `spawn` (designed together with a trigger for a peer or child that has ended), retry sugar, a durable driver, generated Rust state machines for hot paths, a Vite plugin that generates `.road.ts` files on the fly, bounded queues if load ever calls for them, `==` on records and lists, and a hard stop for a TypeScript run that skips its exit effects.
 
 M3 and M4 are independent once M1 is done and can run in parallel. M2 depends only on M1.
 
@@ -116,14 +118,28 @@ M3 and M4 are independent once M1 is done and can run in parallel. M2 depends on
 | Definite assignment is too strict or too slow. | Built in M6 and tuned against the example charts: it is conservative in a few documented places, and takes about 100 ms on a 1,000-state chart in a debug build. The runtime check stays as a backstop. |
 | No editor support at first. | `roadbook viz --watch` gave live feedback from M2. M8 added the tree-sitter grammar, the language server and the VS Code extension. |
 
-## Open questions
+## Decided questions
 
-These do not block starting. Each has a default the design assumes.
+The first draft left seven questions open, each with a default the design assumed. They were decided on 27 November 2026 and moved into the pages they belong to. Four of the decisions need code, which is not written yet; until it is, the pages say what is decided and what is built.
 
-1. **The name.** Roadbook replaced the first working name, Waymark, which another workflow engine already uses. The bare name `roadbook` was free on crates.io and npm in November 2026, and a web search found no workflow or state machine tool using it. The npm scope, GitHub organisation, domain and trademarks have not been checked, and nothing has been reserved.
-2. **Parameter style in TypeScript.** Implementations take one object (`({ order, user }) => …`), which is idiomatic and survives parameter reordering. Positional arguments would match the chart's call syntax and the Rust side.
-3. **Strict events.** Unhandled events are dropped and traced by default. They could instead be an error by default, with an explicit `on * ` to opt out.
-4. **Exit actions on cancellation.** When a machine is cancelled from outside, should the `exit` effects of its active states run? The default is yes, since they are the natural place for cleanup, but they then run during interruption and must be quick.
-5. **Equality on records.** `==` is defined for scalars and enums. Comparing records and lists is left out until something needs it.
-6. **Messaging details.** Asking a peer for a reply, bounded queues and supervision of peers are open. They are listed on the [actors and messaging](actors.md#open-questions) page.
-7. **Generated files in git.** The default is to commit `.road.ts` files. Ignoring them and generating in a build step is the alternative.
+| Question | Decision | Built | Where |
+| --- | --- | --- | --- |
+| The name | Roadbook, published under the `@dire-kiwi` npm scope | No: the packages still say `@roadbook` | [Below](#the-name) |
+| Parameter style in TypeScript | One object, as now | Yes | [TypeScript](typescript.md#implementing-a-machine) |
+| Strict events | An opt-in `strict` modifier on a machine | No | [Language](language.md#strict-machines) |
+| Exit actions on cancellation | They run, as now, and must be quick | Yes | [Semantics](semantics.md#cancelling-from-outside) |
+| Equality on records | Scalars and enums only, as now; the future design is written down | Yes | [Language](language.md#equality) |
+| Messaging details | `call` declarations; unbounded queues; emitted events only to machines that handle them; no supervision yet | Unbounded queues and no supervision are what exists; `call` and the filter are not built | [Actors and messaging](actors.md#decided-after-the-milestones) |
+| Generated files in git | Committed, and marked as generated for GitHub | Yes | [TypeScript](typescript.md#what-gets-generated) |
+
+### The name
+
+Roadbook stays. It replaced the first working name, Waymark, which another workflow engine already uses. Availability was checked on 26 and 27 November 2026; nothing has been reserved.
+
+- **crates.io:** `roadbook` and every `roadbook-*` name the workspace uses are free. The crates keep their names.
+- **npm:** the bare `roadbook` is free, but the `@roadbook` scope belongs to an npm user of that name, who has published nothing, and a user's scope is not handed over. The packages are published under the `@dire-kiwi` scope instead, which was unclaimed: `@dire-kiwi/roadbook` and names that start with it. The exact names of the four packages (now `@roadbook/cli`, `core`, `effect` and `viewer`, all `private`) are settled when they are renamed.
+- **GitHub:** `roadbook` is a personal account, inactive since 2021. The repository is `github.com/dire-kiwi/roadbook`.
+- **Domains:** `roadbook.com` (a UK travel publisher), `.dev`, `.io` and `.org` are registered; `roadbook.sh` was not.
+- **Trademarks:** a web search, not a legal clearance, found no registration of the word alone. MOBILEYE ROADBOOK (US Reg. 6348237) is registered for autonomous-driving software, in the same class, and "roadbook" is a common word in rallying. A proper trademark search is due before a public 1.0.
+
+Nothing is published yet, so renaming the scope moves no users. It changes `@roadbook/` wherever it appears, including the runtime import that `roadbook-gen-ts` writes into every generated module, so every committed `.road.ts` file and the WebAssembly build of the CLI are regenerated with it.
