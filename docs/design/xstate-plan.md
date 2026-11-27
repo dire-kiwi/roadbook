@@ -2,7 +2,7 @@
 
 This page says which of the gaps in [Roadbook compared with XState](xstate.md) to close. It assumes the aim is to be exhaustive: to cover everything XState can express unless a feature works against what Roadbook is for. Roadbook is for readable, checked program flow, with host code that sees only its arguments. [The code examples](xstate-examples.md) show each feature in XState and in Roadbook.
 
-On 27 November 2026 the user approved six additions: reacting to a peer's end, property checks, a transition that keeps its source, tasks that emit, host code receiving emitted events, and child machines in snapshots. The rest are recommendations for the user to decide on.
+On 27 November 2026 the user approved six additions: reacting to a peer's end, property checks, a transition that keeps its source, tasks that emit, host code receiving emitted events, and child machines in snapshots. The user approved the rest of the recommendations on the same day.
 
 ## Each feature
 
@@ -38,7 +38,7 @@ On 27 November 2026 the user approved six additions: reacting to a peer's end, p
 
 ## Proposed tasks
 
-The additions are grouped into tasks by the code they change. The six approved ones exist on the board as SM-22 to SM-27, each queued behind the tasks it waits for; the last three rows are not created yet. Most change the language, the IR and both cores, so they bump the IR version, rewrite the hashes, and touch the same files. SM-18, SM-19 and SM-20 are in that state now, so these tasks wait for them, and the language tasks run one or two at a time rather than all at once.
+The additions are grouped into tasks by the code they change. They are on the board as SM-22 to SM-30, each queued behind the tasks it waits for. Most change the language, the IR and both cores, so they bump the IR version, rewrite the hashes, and touch the same files. SM-18, SM-19 and SM-20 are in that state now, so these tasks wait for them, and the language tasks run one or two at a time rather than all at once.
 
 | Task | Covers | Waits for | Size |
 | --- | --- | --- | --- |
@@ -48,8 +48,8 @@ The additions are grouped into tasks by the code they change. The six approved o
 | **SM-25: `on peer.ended`** (approved) | The trigger for `ref` holders, perhaps with how the peer ended, and how it relates to `on name.done` and `on name.fail` for spawned children and to SM-20's `Unanswered`. | SM-18, SM-19, SM-20 | Medium |
 | **SM-26: Tasks that emit** (approved) | `task … emits E`, `as` on a task invoke, `on name.E` from a task, stream tasks with no result. Recommended alongside: spawned tasks, and several invokes per state. | SM-24 | Medium |
 | **SM-27: Child machines in snapshots** (approved) | A child run's snapshot saved inside its parent's, with its own IR hash, restored without restarting. `suspend` allowed with running children. | SM-25 | Large |
-| **`raise`, internal events and delayed events** | `raise E`, `internal event`, `raise E after d as name`, `cancel name`, and the internal queue in both cores and the trace. | SM-26 | Medium |
-| **Data local to a state** | `var` in a state, and state parameters with `-> State(args)`. | `raise` | Medium |
-| **Small additions** | `choice` pseudo-states, `in(State)`, `on A \| B`, a history default target, tags and `meta`, and equality on records, lists and maps. | Data local to a state | Medium, many small parts |
+| **SM-28: `raise`, internal events and delayed events** | `raise E`, `internal event`, `raise E after d as name`, `cancel name`, and the internal queue in both cores and the trace. | SM-26 | Medium |
+| **SM-29: Data local to a state** | `var` in a state, and state parameters with `-> State(args)`. | SM-28 | Medium |
+| **SM-30: Small additions** | `choice` pseudo-states, `in(State)`, `on A \| B`, a history default target, tags and `meta`, and equality on records, lists and maps. | SM-29 | Medium, many small parts |
 
 Property checks can start now, and host emits once SM-18 is merged. The rest form two lanes after SM-20: one through transitions, emitting tasks, `raise`, state data and the small additions; the other through `on peer.ended` and child snapshots.
