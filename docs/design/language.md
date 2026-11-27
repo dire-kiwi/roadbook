@@ -444,7 +444,7 @@ The checks cover runs started from the chart. A snapshot restored after a [migra
 
 Checks are evaluated only for an entry file that compiles without errors: an entry with errors gets its diagnostics, and its checks are left out of the summary, `--checks` and the JSON until it compiles.
 
-A machine with more than 100,000 configurations, or one too large to explore for another reason (an event expected from a peer through more than 16 `ref` names, or more than 1.6 million combinations of guard outcomes tried across its regions), is not checked: each of its checks gets the warning `RB0912` and the verdict `unchecked`. Only machines with checks are explored, so a chart without checks costs nothing. Checks are evaluated for the files `roadbook check` is given, never for another package's charts.
+A machine with more than 100,000 configurations, or one too large to explore for another reason (an event expected from a peer through more than 8 `ref` names, since each set of them is an input of its own, or more than 1.6 million combinations of guard outcomes tried across its regions), is not checked: each of its checks gets the warning `RB0912` and the verdict `unchecked`. Only machines with checks are explored, so a chart without checks costs nothing. Checks are evaluated for the files `roadbook check` is given, never for another package's charts.
 
 ### Reports
 
@@ -910,7 +910,7 @@ The compiler's codes:
 | `RB0909` | A `call name` variable no `reply` answers (warning). | `var pending: call reserve` with no `reply pending …` |
 | `RB0910` | A history state that no transition targets (warning). | `history Previous` with no `-> Working.Previous` |
 | `RB0911` | A `children` collection that no `spawn` fills (warning). | `children sessions: Session by string` with no `spawn sessions[…]` |
-| `RB0912` | A machine whose checks were not evaluated, as too large to explore: more than 100000 configurations, a peer's event expected through more than 16 `ref` names, or regions whose guard outcomes combine in too many ways (warning). | many parallel regions, each with deep history |
+| `RB0912` | A machine whose checks were not evaluated, as too large to explore: more than 100000 configurations, a peer's event expected through more than 8 `ref` names, or regions whose guard outcomes combine in too many ways (warning). | many parallel regions, each with deep history |
 
 ## Grammar
 

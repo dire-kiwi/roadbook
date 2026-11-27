@@ -702,6 +702,10 @@ impl<'a> Eval<'a> {
                     }
                     Sender::Children(c) => format!("a child of `{c}` emits `{event}`"),
                     Sender::Callers => format!("a caller emits `{event}`"),
+                    Sender::Peers(names) => {
+                        let names: Vec<String> = names.iter().map(|n| format!("`{n}`")).collect();
+                        format!("a peer that {} holds emits `{event}`", and_list(&names))
+                    }
                 },
                 Input::SpawnDone { children } => format!("a child of `{children}` ends `done`"),
                 Input::SpawnFail { children, error } => {
@@ -716,7 +720,7 @@ impl<'a> Eval<'a> {
                 // emitting.
                 let calls = senders.iter().any(|x| match x {
                     Sender::Callers => true,
-                    Sender::Refs(names) => self.is_callee(names),
+                    Sender::Refs(names) | Sender::Peers(names) => self.is_callee(names),
                     _ => false,
                 });
                 let act = if calls { "act" } else { "end or emit" };
@@ -750,6 +754,14 @@ impl<'a> Eval<'a> {
             }
             Sender::Children(c) => format!("the children of `{c}`"),
             Sender::Callers => "the runs that call it".to_string(),
+            Sender::Peers(names) => {
+                let names: Vec<String> = names.iter().map(|n| format!("`{n}`")).collect();
+                if names.len() == 1 {
+                    format!("peer {}", names[0])
+                } else {
+                    format!("the peers that {} hold", and_list(&names))
+                }
+            }
         }
     }
 
@@ -1493,20 +1505,38 @@ machine M() {{
             "{rendered}"
         );
         assert_eq!(summary(&r).unwrap(), "checks: 2 not checked");
-        // A peer's event expected through 17 names.
-        let names: Vec<String> = (1..=17).map(|i| format!("p{i}: ref P")).collect();
-        let ons: String = (1..=17)
-            .map(|i| format!("    on p{i}.Ping -> A\n"))
-            .collect();
-        let src = format!(
-            "machine P() {{\n  emits Ping\n  initial A\n  state A {{ entry emit Ping }}\n}}\nmachine M({}) {{\n  initial A\n  state A {{\n{ons}  }}\n  check reachable A\n}}\n",
-            names.join(", ")
-        );
-        let (r, rendered) = run(&src);
-        assert_eq!(verdicts(&r), [("reachable A", Verdict::Unchecked)]);
+        // A peer's event expected through one name more than a check tries every set of.
+        let (r, rendered) = run(&peers(MAX_SENDER_NAMES + 1));
+        assert_eq!(verdicts(&r), [("never B", Verdict::Unchecked)]);
         assert!(
-            rendered.contains("not checked: `M` expects `Ping` from a peer through 17 `ref` names, more than the 16 a check tries every set of"),
+            rendered.contains("not checked: `M` expects `Ready` from a peer through 9 `ref` names, more than the 8 a check tries every set of"),
             "{rendered}"
+        );
+    }
+
+    /// A machine that expects a peer's `Ready` through `n` `ref` names, each its own way to `B`.
+    fn peers(n: usize) -> String {
+        let names: Vec<String> = (0..n).map(|i| format!("p{i}: ref Peer")).collect();
+        let ons: String = (0..n)
+            .map(|i| format!("    on p{i}.Ready -> B\n"))
+            .collect();
+        format!(
+            "machine Peer() {{\n  emits Ready\n  initial A\n  state A {{ entry emit Ready }}\n}}\nmachine M({}) {{\n  event Go\n  initial A\n  state A {{\n{ons}  }}\n  state B {{ on Go -> A }}\n  check never B\n}}\n",
+            names.join(", ")
+        )
+    }
+
+    #[test]
+    fn as_many_peer_names_as_a_check_tries_explore_quickly() {
+        // Each set of names is an input of its own, but the race each edge relies on names the
+        // peers together, so the work grows with the sets and not with their square.
+        let started = std::time::Instant::now();
+        let (r, rendered) = run(&peers(MAX_SENDER_NAMES));
+        assert_eq!(verdicts(&r), [("never B", Verdict::Failed)], "{rendered}");
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(5),
+            "took {:?}",
+            started.elapsed()
         );
     }
 

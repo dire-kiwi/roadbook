@@ -158,44 +158,62 @@ pub enum Assumption {
     },
 }
 
-/// Whether two senders may be the same machine: the same child or collection, or peers that
-/// some name may hold for both.
-fn same_sender(a: &Sender, b: &Sender) -> bool {
-    match (a, b) {
-        (Sender::Refs(x), Sender::Refs(y)) => x.iter().any(|n| y.contains(n)),
-        _ => a == b,
-    }
-}
-
 /// Gives each successor of a stable node the race it relies on: that the other machines
 /// that can act at the node (those some successor's input is a move of) do not act first.
+///
+/// The peers are named together, as one [`Sender::Peers`] of every `ref` name some move at
+/// the node comes through, less the names of the successor's own sender: the peers it might
+/// not be. That can name a peer the successor's sender is, which only adds an assumption, so
+/// no race is lost; and each race list stays as short as the names, however many sets of
+/// them the moves come through.
 fn add_races(chart: &Chart<'_>, successors: &mut [Successor]) {
     let mut live: Vec<Sender> = Vec::new();
+    let mut peers: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
+    let mut senders_of: Vec<Option<Sender>> = Vec::with_capacity(successors.len());
     for s in successors.iter() {
+        let mut own = None;
         for a in &s.assumptions {
             if let Assumption::Machine(input) = a
                 && let Some(sender) = chart.sender(input)
-                && !live.contains(&sender)
             {
-                live.push(sender);
+                own.get_or_insert_with(|| sender.clone());
+                match sender {
+                    Sender::Refs(_) => {}
+                    other if !live.contains(&other) => live.push(other),
+                    _ => {}
+                }
             }
         }
+        senders_of.push(own);
     }
-    if live.is_empty() {
+    for own in senders_of.iter().flatten() {
+        if let Sender::Refs(names) = own {
+            peers.extend(names.iter().map(String::as_str));
+        }
+    }
+    if live.is_empty() && peers.is_empty() {
         return;
     }
     live.sort();
-    for s in successors.iter_mut() {
-        let own = s.assumptions.iter().find_map(|a| match a {
-            Assumption::Machine(input) => chart.sender(input),
-            _ => None,
-        });
-        let senders: Vec<Sender> = live
+    for (s, own) in successors.iter_mut().zip(&senders_of) {
+        let mut senders: Vec<Sender> = live
             .iter()
-            .filter(|x| own.as_ref().is_none_or(|o| !same_sender(o, x)))
+            .filter(|x| own.as_ref() != Some(*x))
             .cloned()
             .collect();
+        let others: Vec<String> = match own {
+            Some(Sender::Refs(mine)) => peers
+                .iter()
+                .filter(|n| !mine.iter().any(|m| m == *n))
+                .map(|n| n.to_string())
+                .collect(),
+            _ => peers.iter().map(|n| n.to_string()).collect(),
+        };
+        if !others.is_empty() {
+            senders.push(Sender::Peers(others));
+        }
         if !senders.is_empty() {
+            senders.sort();
             s.assumptions.push(Assumption::Unpreempted { senders });
             s.assumptions.sort_unstable();
         }
@@ -215,6 +233,11 @@ pub enum Sender {
     Children(String),
     /// A run that calls the machine (`on c`): any run that holds a `ref` to it.
     Callers,
+    /// Any peer that one of these `ref` names holds: only in [`Assumption::Unpreempted`],
+    /// where the peers that can act at a node are named together, whichever sets of names
+    /// their inputs come through. One [`Sender::Refs`] per set of names would make each
+    /// race list as long as the number of sets, which is exponential in the names.
+    Peers(Vec<String>),
 }
 
 /// What an edge's microstep was for: its input, or the kind of eventless transition settling
@@ -345,7 +368,7 @@ impl fmt::Display for TooLarge {
 
 /// The most `ref` names one peer's event may be expected through: each nonempty set of them
 /// that may hold the sender is an input of its own.
-pub const MAX_SENDER_NAMES: usize = 16;
+pub const MAX_SENDER_NAMES: usize = 8;
 
 /// How many combinations of the walks' outcomes (one per region, roughly) [`explore`] tries
 /// beyond the first of each input, over the whole exploration, for each node of its budget.
@@ -588,6 +611,7 @@ impl Graph {
                 Sender::Refs(names) => format!("{}.{event}", names.join(" = ")),
                 Sender::Children(c) => format!("{c}.{event}"),
                 Sender::Callers => format!("{event} from a caller"),
+                Sender::Peers(names) => format!("{event} from a peer {}", names.join(" or ")),
             },
             Input::SpawnDone { children } => format!("{children}.done"),
             Input::SpawnFail { children, error } => format!("{children}.fail {error}"),
