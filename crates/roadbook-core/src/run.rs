@@ -3,16 +3,22 @@
 use std::collections::{HashMap, VecDeque};
 
 use roadbook_ir::{
-    Address, AddressKind, Effect, Machine, State, StateKind, Transition, Trigger, TypeRef,
+    Address, AddressKind, Effect, InvokeKind, Machine, ReplyOutcome, State, StateKind, Transition,
+    Trigger, TypeRef, UNANSWERED,
 };
 use serde_json::{Map, Value};
 
 use crate::eval::{Fns, Scope, eval};
 use crate::program::{MachineIndex, Program};
 use crate::{
-    Command, Defect, Input, InvokeEntry, Object, Record, RunResult, SETTLE_LIMIT, Saved, Snapshot,
-    SrcKind, Status, TimerEntry,
+    CallEntry, Command, Defect, Input, InvokeEntry, Object, Record, RunResult, SETTLE_LIMIT, Saved,
+    Snapshot, SrcKind, Status, TimerEntry,
 };
+
+/// The built-in error every call can fail with: `{"_tag": "Unanswered"}`.
+fn unanswered() -> Value {
+    serde_json::json!({ "_tag": UNANSWERED })
+}
 
 /// What `start` and `step` return: the new snapshot and the commands to carry out in order.
 pub type StepResult = (Snapshot, Vec<Command>);
@@ -29,8 +35,9 @@ impl std::fmt::Display for UnknownMachine {
 
 impl std::error::Error for UnknownMachine {}
 
-/// The implicit name a transition binds, and its value.
-type Implicit<'a> = Option<(&'static str, &'a Value)>;
+/// The implicit names a transition binds, and their values: none, one of `event`, `result`
+/// and `error`, or `event` and `call` for a transition that takes a call.
+type Implicit<'a> = &'a [(&'static str, Value)];
 
 /// A transition: its state's index and its index in that state's `transitions`.
 type Tr = (usize, usize);
@@ -72,6 +79,7 @@ impl Program {
             input,
             vars: Map::new(),
             invokes: Vec::new(),
+            calls: Vec::new(),
             timers: Vec::new(),
             next_invoke: 1,
             next_timer: 1,
@@ -246,7 +254,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     fn start(&mut self) -> R {
         for v in &self.m.vars {
             if let Some(init) = &v.init {
-                let value = self.eval(init, None)?;
+                let value = self.eval(init, &[])?;
                 self.snap.vars.insert(v.name.clone(), value);
             } else if matches!(self.program.resolve(&v.ty), TypeRef::Optional(_)) {
                 self.snap.vars.insert(v.name.clone(), Value::Null);
@@ -254,7 +262,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         }
         let mut list = vec![0];
         list.extend(self.default_entry(0));
-        self.enter_states(&list, None)?;
+        self.enter_states(&list, &[])?;
         self.settle()?;
         if self.snap.status == Status::Running {
             self.start_work()?;
@@ -331,7 +339,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
 
     fn take(&mut self, input: Input) -> R {
         let chosen: Vec<Tr>;
-        let bound: Option<(&'static str, Value)>;
+        let bound: Vec<(&'static str, Value)>;
         match &input {
             Input::Cancel => return self.cancel_run(),
             Input::InvokeDone { invoke, .. }
@@ -351,26 +359,21 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                         return Ok(());
                     }
                     Input::InvokeDone { value, .. } => {
-                        bound = Some(("result", value.clone()));
+                        bound = vec![("result", value.clone())];
                         chosen = self
-                            .select_in(
-                                owner,
-                                bound.as_ref(),
-                                |t| matches!(t, Trigger::InvokeDone),
-                                None,
-                            )?
+                            .select_in(owner, &bound, |t| matches!(t, Trigger::InvokeDone), None)?
                             .into_iter()
                             .collect();
                     }
                     Input::InvokeFail { error, .. } => {
                         let tag = error.get("_tag").and_then(Value::as_str).unwrap_or("");
-                        if !self.declares(&inv.src, tag) {
+                        if !self.declares(owner, &inv.src, tag) {
                             return Err(Defect::Undeclared {
                                 error: tag.to_owned(),
                             });
                         }
                         let tag = tag.to_owned();
-                        bound = Some(("error", error.clone()));
+                        bound = vec![("error", error.clone())];
                         let s = self.state(owner);
                         let listed = s.transitions.iter().any(
                             |t| matches!(&t.trigger, Trigger::InvokeFail { error } if *error == tag),
@@ -379,7 +382,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                         chosen = self
                             .select_in(
                                 owner,
-                                bound.as_ref(),
+                                &bound,
                                 |t| matches!(t, Trigger::InvokeFail { error } if *error == want),
                                 None,
                             )?
@@ -397,11 +400,11 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 let tm = self.snap.timers.remove(pos);
                 let owner = self.index_of(&tm.state);
                 let group = self.state(owner).transitions[tm.index].group;
-                bound = None;
+                bound = Vec::new();
                 chosen = self
                     .select_in(
                         owner,
-                        None,
+                        &[],
                         |t| matches!(t, Trigger::After { .. }),
                         Some(group),
                     )?
@@ -409,8 +412,35 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     .collect();
             }
             Input::Event { value } | Input::Message { value, .. } => {
-                bound = Some(("event", value.clone()));
+                bound = vec![("event", value.clone())];
                 chosen = self.select_event(value)?;
+            }
+            Input::Call {
+                from,
+                invoke,
+                call,
+                args,
+            } => {
+                let pending = CallEntry {
+                    from: from.clone(),
+                    invoke: *invoke,
+                    call: call.clone(),
+                };
+                bound = vec![
+                    ("event", Value::Object(args.clone())),
+                    ("call", pending.value()),
+                ];
+                chosen = self.select_call(call, &bound)?;
+                if chosen.is_empty() {
+                    // Dropped, and answered at once, so that its caller does not wait.
+                    self.trace(Record::Dropped { event: input });
+                    self.answer(pending, ReplyOutcome::Fail, unanswered());
+                    return Ok(());
+                }
+                self.trace(Record::Event { event: input });
+                // Pending from now on, so that a `reply` among the effects finds it.
+                self.snap.calls.push(pending);
+                return self.go(&chosen, &bound);
             }
             Input::Emitted {
                 from,
@@ -424,7 +454,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                         return Ok(());
                     }
                 }
-                bound = Some(("event", value.clone()));
+                bound = vec![("event", value.clone())];
                 chosen = self.select_emitted(from, *invoke, value)?;
             }
             Input::Defect { .. } => unreachable!("handled by step"),
@@ -434,7 +464,12 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             return Ok(());
         }
         self.trace(Record::Event { event: input });
-        self.microstep(&chosen, bound.as_ref().map(|(n, v)| (*n, v)))?;
+        self.go(&chosen, &bound)
+    }
+
+    /// The rest of a step that takes `chosen`: its microstep, settling, and starting work.
+    fn go(&mut self, chosen: &[Tr], bound: Implicit<'_>) -> R {
+        self.microstep(chosen, bound)?;
         self.settle()?;
         if self.snap.status == Status::Running {
             self.start_work()?;
@@ -442,8 +477,20 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         Ok(())
     }
 
-    fn declares(&self, src: &str, tag: &str) -> bool {
+    /// Whether the invoke of state `owner`, of `src`, declares the error `tag`. A call's are
+    /// its declared errors and `Unanswered`.
+    fn declares(&self, owner: usize, src: &str, tag: &str) -> bool {
         let ir = self.program.ir();
+        if let Some(inv) = &self.state(owner).invoke
+            && inv.kind == InvokeKind::Call
+        {
+            let call = inv
+                .to
+                .as_ref()
+                .and_then(|to| ir.machines.get(&to.machine))
+                .and_then(|m| m.calls.get(&inv.src));
+            return tag == UNANSWERED || call.is_some_and(|c| c.errors.iter().any(|e| e == tag));
+        }
         let errors = match (ir.tasks.get(src), ir.machines.get(src)) {
             (Some(t), _) => &t.errors,
             (None, Some(m)) => &m.errors,
@@ -457,7 +504,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     fn select_in(
         &mut self,
         s: usize,
-        implicit: Option<&(&'static str, Value)>,
+        implicit: Implicit<'_>,
         matches: impl Fn(&Trigger) -> bool,
         group: Option<u32>,
     ) -> R<Option<(usize, usize)>> {
@@ -465,7 +512,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         for (i, t) in state.transitions.iter().enumerate() {
             if matches(&t.trigger)
                 && group.is_none_or(|g| g == t.group)
-                && self.holds(t, implicit.map(|(n, v)| (*n, v)))?
+                && self.holds(t, implicit)?
             {
                 return Ok(Some((s, i)));
             }
@@ -475,7 +522,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
 
     fn select_event(&mut self, value: &Value) -> R<Vec<Tr>> {
         let tag = value.get("_tag").and_then(Value::as_str).unwrap_or("");
-        let bound = ("event", value);
+        let bound = [("event", value.clone())];
         self.select_walks(|cx, s| {
             let state = cx.state(s);
             let has_on = state
@@ -488,7 +535,22 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 } else {
                     matches!(t.trigger, Trigger::Any)
                 };
-                if candidate && cx.holds(t, Some(bound))? {
+                if candidate && cx.holds(t, &bound)? {
+                    return Ok(Some((s, i)));
+                }
+            }
+            Ok(None)
+        })
+    }
+
+    /// `on c`: the candidates of each state are its transitions that take call `call`, with
+    /// `event` and `call` bound as `bound` gives them. There is no fallback to `on *`.
+    fn select_call(&mut self, call: &str, bound: Implicit<'_>) -> R<Vec<Tr>> {
+        self.select_walks(|cx, s| {
+            let state = cx.state(s);
+            for (i, t) in state.transitions.iter().enumerate() {
+                let candidate = matches!(&t.trigger, Trigger::Call { call: c } if c == call);
+                if candidate && cx.holds(t, bound)? {
                     return Ok(Some((s, i)));
                 }
             }
@@ -655,7 +717,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
 
     fn select_emitted(&mut self, from: &str, invoke: Option<u64>, value: &Value) -> R<Vec<Tr>> {
         let tag = value.get("_tag").and_then(Value::as_str).unwrap_or("");
-        let bound = ("event", value);
+        let bound = [("event", value.clone())];
         self.select_walks(|cx, s| {
             let state = cx.state(s);
             for (i, t) in state.transitions.iter().enumerate() {
@@ -664,7 +726,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     Trigger::Emitted { from: address, event }
                         if event == tag && cx.names_sender(address, from, invoke)
                 );
-                if candidate && cx.holds(t, Some(bound))? {
+                if candidate && cx.holds(t, &bound)? {
                     return Ok(Some((s, i)));
                 }
             }
@@ -704,7 +766,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         }
         entries.sort_unstable();
         entries.dedup();
-        self.enter_states(&entries, None)
+        self.enter_states(&entries, &[])
     }
 
     fn exit_state(&mut self, s: usize) -> R {
@@ -736,7 +798,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             });
             self.cmds.push(Command::TimerCancel { timer: tm.id });
         }
-        self.run_effects(&self.state(s).exit, None)?;
+        self.run_effects(&self.state(s).exit, &[])?;
         self.active.retain(|&a| a != s);
         self.completion.retain(|&c| c != s);
         self.trace(Record::Exited { state: id });
@@ -881,9 +943,52 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     });
                     self.cmds.push(Command::Emit { message, value });
                 }
+                Effect::Reply {
+                    call,
+                    outcome,
+                    value,
+                } => {
+                    // The pending-call value first, then the result or error.
+                    let c = self.eval(call, implicit)?;
+                    let pos = self.snap.calls.iter().position(|p| {
+                        Some(p.from.as_str()) == c["from"].as_str()
+                            && Some(p.invoke) == c["invoke"].as_u64()
+                    });
+                    let Some(pos) = pos else {
+                        let call = match self.program.resolve(&call.ty) {
+                            TypeRef::Call(n) => n.clone(),
+                            other => other.to_string(),
+                        };
+                        return Err(Defect::Answered { call });
+                    };
+                    let v = match value {
+                        Some(v) => self.eval(v, implicit)?,
+                        None => Value::Null,
+                    };
+                    let pending = self.snap.calls.remove(pos);
+                    self.answer(pending, *outcome, v);
+                }
             }
         }
         Ok(())
+    }
+
+    /// Answers the pending call `p`: its `replied` record and the `reply` command.
+    fn answer(&mut self, p: CallEntry, outcome: ReplyOutcome, value: Value) {
+        self.trace(Record::Replied {
+            to: p.from.clone(),
+            invoke: p.invoke,
+            call: p.call.clone(),
+            outcome,
+            value: value.clone(),
+        });
+        self.cmds.push(Command::Reply {
+            to: p.from,
+            invoke: p.invoke,
+            call: p.call,
+            outcome,
+            value,
+        });
     }
 
     fn next_message(&mut self) -> u64 {
@@ -901,13 +1006,13 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 return Ok(());
             }
             let mut t = self.select_walks(|cx, s| {
-                cx.select_in(s, None, |t| matches!(t, Trigger::Always), None)
+                cx.select_in(s, &[], |t| matches!(t, Trigger::Always), None)
             })?;
             while t.is_empty() {
                 let Some(p) = self.completion.pop_front() else {
                     break;
                 };
-                t.extend(self.select_in(p, None, |t| matches!(t, Trigger::Done), None)?);
+                t.extend(self.select_in(p, &[], |t| matches!(t, Trigger::Done), None)?);
             }
             if t.is_empty() {
                 return Ok(());
@@ -916,7 +1021,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             if count > SETTLE_LIMIT {
                 return Err(Defect::Limit);
             }
-            self.microstep(&t, None)?;
+            self.microstep(&t, &[])?;
         }
     }
 
@@ -932,7 +1037,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 self.snap.invokes.push(InvokeEntry {
                     id,
                     state: state.id.clone(),
-                    src: inv.src.clone(),
+                    src: inv.callee(),
                 });
                 self.start_invoke(s, id)?;
             }
@@ -945,7 +1050,7 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     continue;
                 }
                 seen.push(t.group);
-                let v = self.eval(delay, None)?;
+                let v = self.eval(delay, &[])?;
                 let delay = v.as_u64().ok_or_else(|| {
                     Defect::host(format!(
                         "the delay `{}` is {v}, which is not a duration",
@@ -980,19 +1085,28 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             return Ok(());
         };
         let ir = self.program.ir();
-        let params = match inv.kind {
-            roadbook_ir::InvokeKind::Task => &ir.tasks[inv.src.as_str()].params,
-            roadbook_ir::InvokeKind::Machine => &ir.machines[inv.src.as_str()].params,
+        // A call's peer is read before its arguments are evaluated, as a `send`'s address is.
+        let (to, params) = match (inv.kind, &inv.to) {
+            (InvokeKind::Call, Some(to)) => {
+                let id = self.read(&to.name, &[])?;
+                let call = &ir.machines[to.machine.as_str()].calls[inv.src.as_str()];
+                (
+                    Some(id.as_str().unwrap_or_default().to_owned()),
+                    &call.params,
+                )
+            }
+            (InvokeKind::Machine, _) => (None, &ir.machines[inv.src.as_str()].params),
+            _ => (None, &ir.tasks[inv.src.as_str()].params),
         };
         let mut args = Map::new();
         for (p, a) in params.iter().zip(&inv.args) {
-            let v = self.eval(a, None)?;
+            let v = self.eval(a, &[])?;
             args.insert(p.name.clone(), v);
         }
         self.trace(Record::InvokeStarted {
             invoke: id,
             state: state.id.clone(),
-            src: inv.src.clone(),
+            src: inv.callee(),
             args: args.clone(),
         });
         self.cmds.push(Command::InvokeStart {
@@ -1000,9 +1114,11 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             state: state.id.clone(),
             src: inv.src.clone(),
             src_kind: match inv.kind {
-                roadbook_ir::InvokeKind::Task => SrcKind::Task,
-                roadbook_ir::InvokeKind::Machine => SrcKind::Machine,
+                InvokeKind::Task => SrcKind::Task,
+                InvokeKind::Machine => SrcKind::Machine,
+                InvokeKind::Call => SrcKind::Call,
             },
+            to,
             alias: inv.alias.clone(),
             args,
         });
@@ -1014,9 +1130,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     fn finish_run(&mut self, f: usize) -> R {
         let fs = self.state(f);
         let (status, value) = if let Some(out) = &fs.output {
-            (Status::Done, self.eval(out, None)?)
+            (Status::Done, self.eval(out, &[])?)
         } else if let Some(fail) = &fs.fail {
-            (Status::Failed, self.eval(fail, None)?)
+            (Status::Failed, self.eval(fail, &[])?)
         } else {
             (Status::Done, Value::Null)
         };

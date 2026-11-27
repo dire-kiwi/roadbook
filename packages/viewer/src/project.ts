@@ -1,5 +1,5 @@
 // The project index: every machine of the charts given to `roadbook viz`, which machine invokes
-// which, and which talk to which: refs held, events sent, emitted events handled. `roadbook viz`
+// which, and which talk to which: refs held, events sent, emitted events handled, calls made. `roadbook viz`
 // writes the data (it compiles each entry chart and keeps one entry per machine); this module
 // lays it out and draws it. Pure and DOM-free.
 
@@ -80,6 +80,8 @@ export interface IndexMachine {
   sends: { to: number; events: string[] }[]
   /** The events of other machines' `emits` it handles (`on name.Event`), by sending machine. */
   receives: { from: number; events: string[] }[]
+  /** The calls it makes (`invoke inventory.reserve(…)`), by called machine. */
+  calls: { to: number; calls: string[] }[]
 }
 
 /**
@@ -107,6 +109,7 @@ export function projectIndex(title: string, pages: { href: string; entry: string
         refs: [],
         sends: [],
         receives: [],
+        calls: [],
       })
     }
   })
@@ -133,6 +136,10 @@ export function projectIndex(title: string, pages: { href: string; entry: string
         const sender = at(r.machine)
         if (sender !== undefined) from.receives.push({ from: sender, events: r.events })
       }
+      for (const r of t.calls) {
+        const to = at(r.machine)
+        if (to !== undefined) from.calls.push({ to, calls: r.calls })
+      }
     }
   })
   return { title, pages: pages.map(({ href, entry }) => ({ href, entry })), machines }
@@ -140,16 +147,17 @@ export function projectIndex(title: string, pages: { href: string; entry: string
 
 /**
  * The kinds of edge the index draws. `invoke`: A invokes B. `ref`: A holds a `ref B`. `send`:
- * A sends B events. `emit`: B emits events A handles, drawn from B to A.
+ * A sends B events. `call`: A calls B's calls and waits for the answers. `emit`: B emits events
+ * A handles, drawn from B to A.
  */
-export type IndexEdgeKind = 'invoke' | 'ref' | 'send' | 'emit'
+export type IndexEdgeKind = 'invoke' | 'ref' | 'send' | 'call' | 'emit'
 
 export interface IndexEdge {
   kind: IndexEdgeKind
   /** Indices in `machines`: the edge runs from `from` to `to`. */
   from: number
   to: number
-  /** The label's lines, the first starting with its keyword (`sends`, `emits`, `ref`); none for an invoke. */
+  /** The label's lines, the first starting with its keyword (`sends`, `calls`, `emits`, `ref`); none for an invoke. */
   lines: string[]
 }
 
@@ -158,7 +166,7 @@ function labelLines(kw: string, items: string[]): string[] {
   return wrapCode(`${kw} ${items.join(', ')}`, 28)
 }
 
-/** Every edge of the index: invokes and refs first, then sends, then emitted events. */
+/** Every edge of the index: invokes and refs first, then sends, then calls, then emitted events. */
 export function indexEdges(index: ProjectIndex): IndexEdge[] {
   const out: IndexEdge[] = []
   index.machines.forEach((m, i) => {
@@ -167,6 +175,9 @@ export function indexEdges(index: ProjectIndex): IndexEdge[] {
   })
   index.machines.forEach((m, i) => {
     for (const r of m.sends) out.push({ kind: 'send', from: i, to: r.to, lines: labelLines('sends', r.events) })
+  })
+  index.machines.forEach((m, i) => {
+    for (const r of m.calls) out.push({ kind: 'call', from: i, to: r.to, lines: labelLines('calls', r.calls) })
   })
   index.machines.forEach((m, i) => {
     for (const r of m.receives) out.push({ kind: 'emit', from: r.from, to: i, lines: labelLines('emits', r.events) })
@@ -263,6 +274,8 @@ const ARROWS: Record<IndexEdgeKind, string> = {
   ref: '<path d="M0.5,1 L9.5,5 L0.5,9 z"/>',
   // Messages: an open arrowhead.
   send: '<path d="M1,1 L9.5,5 L1,9"/>',
+  // A call waits for its answer: a filled arrowhead, in the message colour.
+  call: '<path d="M0.5,1 L9.5,5 L0.5,9 z"/>',
   emit: '<path d="M1,1 L9.5,5 L1,9"/>',
 }
 
@@ -275,7 +288,7 @@ function indexMarkers(): string {
     .join('')
 }
 
-/** The machine graph: a box per machine (a link to its page), an arrow per invoke, ref, and kind of message. */
+/** The machine graph: a box per machine (a link to its page), an arrow per invoke, ref, kind of message and call. */
 export function renderIndexSvg(index: ProjectIndex, layout: IndexLayout): string {
   const n = (v: number) => Math.round(v * 10) / 10
   const top = topLevel(index)
@@ -304,7 +317,16 @@ export function renderIndexSvg(index: ProjectIndex, layout: IndexLayout): string
     const d = e.points.map((p, k) => `${k ? 'L' : 'M'}${n(p.x)},${n(p.y)}`).join(' ')
     const a = index.machines[e.from]?.name ?? '?'
     const b = index.machines[e.to]?.name ?? '?'
-    const what = e.kind === 'invoke' ? `${a} invokes ${b}` : e.kind === 'ref' ? `${a} holds a ref to ${b}` : e.kind === 'send' ? `${a} sends ${b} events` : `${a} emits events ${b} handles`
+    const what =
+      e.kind === 'invoke'
+        ? `${a} invokes ${b}`
+        : e.kind === 'ref'
+          ? `${a} holds a ref to ${b}`
+          : e.kind === 'send'
+            ? `${a} sends ${b} events`
+            : e.kind === 'call'
+              ? `${a} calls ${b} and waits for the answer`
+              : `${a} emits events ${b} handles`
     edges += `<g class="rb-edge rb-iedge rb-i-${e.kind}"><title>${esc(what)}</title><path class="rb-edge-line" d="${d}" marker-end="url(#rbi-arrow-${e.kind})"/></g>`
     if (!e.label) continue
     const l = e.label
@@ -336,17 +358,19 @@ export function renderIndexLegend(): string {
     item('invoke', 'A → B', 'A invokes B (solid)') +
     item('ref', 'ref name', 'A holds a ref to B in name (dashed)') +
     item('send', 'sends E', 'A sends B the events E') +
+    item('call', 'calls c', 'A calls c on B and waits for each answer') +
     item('emit', 'emits E', 'B emits the events E and A handles them (dotted)') +
     `</ul>`
   )
 }
 
-/** `ref Inventory (inventory)`, `sends Reserve, Release to Inventory`, `handles Reserved from Inventory`, one per line. */
+/** `ref Inventory (inventory)`, `sends Release to Inventory`, `calls reserve on Inventory`, `handles Progress from Upload`, one per line. */
 function talksText(index: ProjectIndex, m: IndexMachine): string[] {
   const name = (i: number) => index.machines[i]?.name ?? '?'
   return [
     ...m.refs.map((r) => `ref ${name(r.to)} (${r.names.join(', ')})`),
     ...m.sends.map((r) => `sends ${r.events.join(', ')} to ${name(r.to)}`),
+    ...m.calls.map((r) => `calls ${r.calls.join(', ')} on ${name(r.to)}`),
     ...m.receives.map((r) => `handles ${r.events.join(', ')} from ${name(r.from)}`),
   ]
 }

@@ -178,6 +178,7 @@ pub(crate) fn run(
                 t.trigger,
                 Trigger::Event { .. }
                     | Trigger::Emitted { .. }
+                    | Trigger::Call { .. }
                     | Trigger::Any
                     | Trigger::After { .. }
             )
@@ -466,6 +467,37 @@ fn warnings(
                 )
                 .with_help(format!("no state of `{}` has `on {e}`", info.name)),
             );
+        }
+    }
+    if root_file {
+        for (c, span) in &info.calls {
+            if !info.taken_calls.contains(c) {
+                diags.push(
+                    Diagnostic::warning(
+                        codes::CALL_NEVER_TAKEN,
+                        *span,
+                        format!("no `on {c}` of `{}` takes the call `{c}`", info.name),
+                    )
+                    .with_help(format!(
+                        "every `{c}` call is dropped and its caller gets `Unanswered`; take it with `on {c}` in the states that answer it"
+                    )),
+                );
+            }
+        }
+        for (v, span) in &info.call_vars {
+            if !info.replied.contains(v) {
+                diags.push(
+                    Diagnostic::warning(
+                        codes::CALL_NEVER_REPLIED,
+                        *span,
+                        format!("`{v}` holds a pending call that no `reply` answers"),
+                    )
+                    .with_help(format!(
+                        "answer it with `reply {v} done …` or `reply {v} fail …`; a call left unanswered fails with `Unanswered` when `{}` ends",
+                        info.name
+                    )),
+                );
+            }
         }
     }
 }

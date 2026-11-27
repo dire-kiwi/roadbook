@@ -227,7 +227,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -1321,6 +1321,7 @@ const ir: unknown = {
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "SupportTicket",
         "name": "SupportTicket",
@@ -1368,6 +1369,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "classify",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -1804,6 +1806,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "task",
                   "src": "routeTicket",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -2818,6 +2821,7 @@ const ir: unknown = {
                         "invoke": {
                           "kind": "task",
                           "src": "fileBug",
+                          "to": null,
                           "as": null,
                           "args": [
                             {
@@ -3234,6 +3238,7 @@ const ir: unknown = {
                         "invoke": {
                           "kind": "task",
                           "src": "verifyFix",
+                          "to": null,
                           "as": null,
                           "args": [
                             {
@@ -3388,6 +3393,7 @@ const ir: unknown = {
                         "invoke": {
                           "kind": "task",
                           "src": "draftResolution",
+                          "to": null,
                           "as": null,
                           "args": [
                             {
@@ -3868,6 +3874,7 @@ const ir: unknown = {
                 "invoke": {
                   "kind": "machine",
                   "src": "SatisfactionSurvey",
+                  "to": null,
                   "as": null,
                   "args": [
                     {
@@ -4377,7 +4384,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:7f96d2837a1616ec2d171a9090a2b476c8e62a73138ede3cf310d01a164c1e7e"
+      "hash": "sha256:0ec5f18f1be220069e824b8cb0960d1fdc540004c6f869488b6e4e6b3d8e2734"
     },
     "SatisfactionSurvey": {
       "doc": "Send a satisfaction survey and wait up to a week for the answer.",
@@ -4450,6 +4457,7 @@ const ir: unknown = {
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "SatisfactionSurvey",
         "name": "SatisfactionSurvey",
@@ -4483,6 +4491,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "sendSurvey",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -4616,6 +4625,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "pollSurvey",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -4851,7 +4861,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d95f65321be55edf329f35e27050d197f6ba171de54443347c8a927540442726"
+      "hash": "sha256:8a187ad1e1c904789981af62fae9381f227c0ca24ce4b6bd35ac3ddab730a887"
     }
   }
 }

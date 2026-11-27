@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0908]: no `on ask` of `M` takes the call `ask`
+ --> RB0908-call-never-taken.road:2:8
+  |
+2 |   call ask() -> int
+  |        ^^^
+  |
+  = help: every `ask` call is dropped and its caller gets `Unanswered`; take it with `on ask` in the states that answer it

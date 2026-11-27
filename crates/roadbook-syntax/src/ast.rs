@@ -193,6 +193,8 @@ pub enum TypeKind {
     Optional(Box<TypeRef>),
     /// `ref Machine`: a handle to a running machine.
     Ref(Ident),
+    /// `call name`: a pending call of the machine's call `name`.
+    Call(Ident),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -266,6 +268,11 @@ impl Body {
             }
         })
     }
+    pub fn calls(&self) -> impl Iterator<Item = &CallDecl> {
+        self.items
+            .iter()
+            .filter_map(|i| if let Item::Call(c) = i { Some(c) } else { None })
+    }
     pub fn emits(&self) -> impl Iterator<Item = &EventDecl> {
         self.items.iter().filter_map(|i| {
             if let Item::Emits(e) = i {
@@ -328,8 +335,8 @@ impl Body {
     }
 }
 
-/// An item of a machine or state body. `Var`, `Event` and `Emits` occur only in a machine
-/// body; `Invoke`, `Output`, `Fail` and `done` transitions only in a state.
+/// An item of a machine or state body. `Var`, `Event`, `Emits` and `Call` occur only in a
+/// machine body; `Invoke`, `Output`, `Fail` and `done` transitions only in a state.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Item {
@@ -337,6 +344,8 @@ pub enum Item {
     Event(EventDecl),
     /// `emits Name [{ fields }]`
     Emits(EventDecl),
+    /// `call name(params) [-> T] [! E | F]`
+    Call(CallDecl),
     /// `initial Name`
     Initial(Ident),
     State(State),
@@ -355,6 +364,7 @@ impl Item {
         match self {
             Item::Var(v) => v.span,
             Item::Event(e) | Item::Emits(e) => e.span,
+            Item::Call(c) => c.span,
             Item::Initial(n) => n.span,
             Item::State(s) => s.span,
             Item::Entry(h) | Item::Exit(h) => h.span,
@@ -384,6 +394,20 @@ pub struct EventDecl {
     pub doc: Option<Doc>,
     pub name: Ident,
     pub fields: Vec<Field>,
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `call name(params) [-> T] [! E | F]`: a request other runs make of the machine.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct CallDecl {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc: Option<Doc>,
+    pub name: Ident,
+    pub params: Vec<Field>,
+    pub returns: Option<TypeRef>,
+    pub errors: Vec<Ident>,
+    /// From `call` to the end, doc comment excluded.
     #[serde(skip)]
     pub span: Span,
 }
@@ -450,6 +474,8 @@ pub enum Trigger {
         from: Ident,
         event: Ident,
     },
+    /// `on name`: a call of the machine's call `name` (a lower-case name, no dot).
+    Call(Ident),
     /// `after expr`
     After(Expr),
     Always,
@@ -533,6 +559,8 @@ pub enum Effect {
     Send(Message),
     /// `emit Event [{ fields }]`
     Emit(Message),
+    /// `reply name done [value]` or `reply name fail error`
+    Reply(Reply),
 }
 
 impl Effect {
@@ -541,6 +569,37 @@ impl Effect {
             Effect::Set(a) => a.span,
             Effect::Do(c) => c.span,
             Effect::Send(m) | Effect::Emit(m) => m.span,
+            Effect::Reply(r) => r.span,
+        }
+    }
+}
+
+/// `reply name done [value]` or `reply name fail error`: answer a pending call.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Reply {
+    /// The pending call: the keyword `call` (as a name `call`) or a variable.
+    pub call: Ident,
+    pub outcome: ReplyOutcome,
+    /// The result for `done`, if given; the error for `fail`, always given.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<Expr>,
+    /// After `reply`, to the end.
+    #[serde(skip)]
+    pub span: Span,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ReplyOutcome {
+    Done,
+    Fail,
+}
+
+impl ReplyOutcome {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ReplyOutcome::Done => "done",
+            ReplyOutcome::Fail => "fail",
         }
     }
 }
@@ -580,9 +639,13 @@ pub struct Call {
     pub span: Span,
 }
 
-/// `invoke name(args) { outcomes }`. A lower-case name is a task, an upper-case one a machine.
+/// `invoke name(args) { outcomes }`. A lower-case name is a task, an upper-case one a machine;
+/// `invoke x.name(args)` calls the call `name` of the run that `x` holds.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Invoke {
+    /// `x` in `invoke x.name(…)`: the callee of a call.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub to: Option<Ident>,
     pub callee: Ident,
     pub args: Vec<Expr>,
     /// `as name`: the name the state uses to talk to the invoked machine.
@@ -595,11 +658,18 @@ pub struct Invoke {
 }
 
 impl Invoke {
-    /// Whether the callee is a machine (upper-case name) rather than a task.
+    /// Whether the callee is a machine (upper-case name) rather than a task or a call.
     pub fn is_machine(&self) -> bool {
-        self.callee
-            .name
-            .starts_with(|c: char| c.is_ascii_uppercase())
+        self.to.is_none()
+            && self
+                .callee
+                .name
+                .starts_with(|c: char| c.is_ascii_uppercase())
+    }
+
+    /// Whether it calls a peer: `invoke x.name(…)`.
+    pub fn is_call(&self) -> bool {
+        self.to.is_some()
     }
 }
 
@@ -619,7 +689,8 @@ pub enum ExprKind {
     Duration(Duration),
     String(String),
     Bool(bool),
-    /// A variable, parameter, or one of the implicit names `event`, `error` and `result`.
+    /// A variable, parameter, or one of the implicit names `event`, `error`, `result` and
+    /// `call`.
     Var(Ident),
     /// `expr.field`
     Field(Box<Expr>, Ident),

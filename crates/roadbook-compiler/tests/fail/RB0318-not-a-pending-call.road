@@ -1,0 +1,12 @@
+machine M(n: int) {
+  call ask()
+  var count: int = 0
+  initial A
+  state A {
+    entry reply n done
+    on ask reply count done
+  }
+}
+
+// expect: RB0318 at 6:17
+// expect: RB0318 at 7:18

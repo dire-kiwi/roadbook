@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0108]: call `ask` is declared twice
+ --> RB0108-duplicate-call.road:3:8
+  |
+2 |   call ask()
+  |        --- first declared here
+3 |   call ask(n: int)
+  |        ^^^

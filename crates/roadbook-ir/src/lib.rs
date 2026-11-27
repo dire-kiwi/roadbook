@@ -36,14 +36,14 @@ use serde::Deserialize;
 pub use expr::{Expr, ExprKind, FieldValue, Literal, MAX_SAFE_INTEGER, Op};
 pub use hash::{HASH_PREFIX, HashError, fill_hashes, machine_hash, semantic_view};
 pub use model::{
-    ActionDecl, Address, AddressKind, Effect, EventDecl, Field, FunctionDecl, Invoke, InvokeKind,
-    Ir, Machine, Source, Span, State, StateKind, TaskDecl, Transition, Trigger, TypeDecl, TypeDef,
-    Var,
+    ActionDecl, Address, AddressKind, Call, Effect, EventDecl, Field, FunctionDecl, Invoke,
+    InvokeKind, Ir, Machine, ReplyOutcome, Source, Span, State, StateKind, TaskDecl, Transition,
+    Trigger, TypeDecl, TypeDef, UNANSWERED, Var,
 };
 pub use types::{Builtin, TypeRef, TypeRefError};
 
 /// The IR version this crate reads and writes.
-pub const IR_VERSION: &str = "0.2";
+pub const IR_VERSION: &str = "0.4";
 
 /// An `irVersion` this crate cannot read.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -83,7 +83,7 @@ fn parse_version(v: &str) -> Option<(u32, u32)> {
 /// crate.
 ///
 /// Versions are `"MAJOR.MINOR"`. While the major version is 0 every change
-/// is breaking, so only `"0.2"` is accepted. From `1.0` on, a reader accepts
+/// is breaking, so only `"0.4"` is accepted. From `1.0` on, a reader accepts
 /// its own major version with any minor version up to its own: a minor
 /// version only adds to the IR, and an older reader must not silently ignore
 /// what it does not know.
@@ -212,9 +212,10 @@ mod tests {
 
     #[test]
     fn versions() {
-        assert!(check_version("0.2").is_ok());
+        assert!(check_version("0.4").is_ok());
         for v in [
-            "0.1", "0.3", "0.0", "1.0", "0.02", "00.2", "0.2.0", "0", "", "v0.2", "0.2 ",
+            "0.1", "0.2", "0.3", "0.5", "0.0", "1.0", "0.04", "00.4", "0.4.0", "0", "", "v0.4",
+            "0.4 ",
         ] {
             assert!(check_version(v).is_err(), "{v:?}");
         }
@@ -227,7 +228,7 @@ mod tests {
             Err(ReadError::Version(VersionError { found: None }))
         ));
         assert!(matches!(
-            Ir::from_json(r#"{"irVersion":"0.2"}"#),
+            Ir::from_json(r#"{"irVersion":"0.4"}"#),
             Err(ReadError::Json(_))
         ));
     }
@@ -236,7 +237,7 @@ mod tests {
     fn depth_is_bounded_without_recursing() {
         assert_eq!(json_depth(r#"{"a": "[[{", "b": [[1], {"c": "\"]"}]}"#), 3);
         let deep = format!(
-            r#"{{"irVersion":"0.2","x":{}{}}}"#,
+            r#"{{"irVersion":"0.4","x":{}{}}}"#,
             "[".repeat(MAX_JSON_DEPTH),
             "]".repeat(MAX_JSON_DEPTH)
         );

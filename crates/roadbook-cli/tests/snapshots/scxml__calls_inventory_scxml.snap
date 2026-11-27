@@ -1,0 +1,70 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: text(&out.stdout)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The stock of one warehouse, shared by every order. -->
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Inventory" datamodel="roadbook" initial="Inventory">
+  <datamodel>
+    <data id="warehouse" rb:type="string" rb:param="true"/>
+    <data id="pending" rb:type="call reserve"/>
+    <data id="orderId" rb:type="string"/>
+    <data id="items" rb:type="Item[]"/>
+    <data id="held" expr="0" rb:type="int"/>
+  </datamodel>
+  <state id="Inventory" initial="Inventory_Ready">
+    <transition event="call.count" type="internal">
+      <send event="done" type="urn:roadbook:reply" targetexpr="call">
+        <content expr="held"/>
+      </send>
+    </transition>
+    <state id="Inventory_Ready">
+      <transition event="call.reserve" target="Inventory_Reserving">
+        <assign location="pending" expr="call"/>
+        <assign location="orderId" expr="event.orderId"/>
+        <assign location="items" expr="event.items"/>
+      </transition>
+      <transition event="Pause" target="Inventory_Paused"/>
+      <transition event="Close" target="Inventory_Closed"/>
+    </state>
+    <!-- One reservation at a time: another call meanwhile is turned away at once. -->
+    <state id="Inventory_Reserving">
+      <invoke id="Inventory_Reserving_invoke" type="urn:roadbook:task" src="reserveStock">
+        <param name="warehouse" expr="warehouse"/>
+        <param name="orderId" expr="orderId"/>
+        <param name="items" expr="items"/>
+      </invoke>
+      <transition event="done.invoke.Inventory_Reserving_invoke" target="Inventory_Ready">
+        <assign location="held" expr="held + 1"/>
+        <send event="done" type="urn:roadbook:reply" targetexpr="pending">
+          <param name="orderId" expr="orderId"/>
+          <param name="count" expr="result"/>
+        </send>
+      </transition>
+      <transition event="error.OutOfStock.Inventory_Reserving_invoke" target="Inventory_Ready">
+        <send event="error.OutOfStock" type="urn:roadbook:reply" targetexpr="pending">
+          <content expr="error"/>
+        </send>
+      </transition>
+      <transition event="call.reserve" type="internal">
+        <send event="error.OutOfStock" type="urn:roadbook:reply" targetexpr="call">
+          <param name="reason" expr="&quot;busy&quot;"/>
+        </send>
+      </transition>
+      <transition event="Twice" type="internal">
+        <send event="error.OutOfStock" type="urn:roadbook:reply" targetexpr="pending">
+          <param name="reason" expr="&quot;first&quot;"/>
+        </send>
+        <send event="error.OutOfStock" type="urn:roadbook:reply" targetexpr="pending">
+          <param name="reason" expr="&quot;second&quot;"/>
+        </send>
+      </transition>
+      <transition event="Close" target="Inventory_Closed"/>
+    </state>
+    <!-- No `on reserve`: a reserve call is dropped, and answered Unanswered. -->
+    <state id="Inventory_Paused">
+      <transition event="Resume" target="Inventory_Ready"/>
+    </state>
+  </state>
+  <final id="Inventory_Closed"/>
+</scxml>

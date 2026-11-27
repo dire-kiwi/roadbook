@@ -118,6 +118,10 @@
             "named": true
           },
           {
+            "type": "reply",
+            "named": true
+          },
+          {
             "type": "send",
             "named": true
           },
@@ -173,6 +177,10 @@
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "reply",
             "named": true
           },
           {
@@ -570,6 +578,10 @@
             "named": true
           },
           {
+            "type": "reply",
+            "named": true
+          },
+          {
             "type": "send",
             "named": true
           },
@@ -652,6 +664,104 @@
     }
   },
   {
+    "type": "call_declaration",
+    "named": true,
+    "fields": {
+      "errors": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "errors",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "parameters": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "parameters",
+            "named": true
+          }
+        ]
+      },
+      "return_type": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "builtin_type",
+            "named": true
+          },
+          {
+            "type": "call_type",
+            "named": true
+          },
+          {
+            "type": "list_type",
+            "named": true
+          },
+          {
+            "type": "optional_type",
+            "named": true
+          },
+          {
+            "type": "ref_type",
+            "named": true
+          },
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "call_pattern",
+    "named": true,
+    "fields": {
+      "call": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "call_type",
+    "named": true,
+    "fields": {
+      "call": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "do",
     "named": true,
     "fields": {},
@@ -690,6 +800,10 @@
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "reply",
             "named": true
           },
           {
@@ -738,6 +852,10 @@
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "reply",
             "named": true
           },
           {
@@ -828,6 +946,10 @@
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "reply",
             "named": true
           },
           {
@@ -995,6 +1117,10 @@
             "named": true
           },
           {
+            "type": "reply",
+            "named": true
+          },
+          {
             "type": "send",
             "named": true
           },
@@ -1121,6 +1247,10 @@
             "named": true
           },
           {
+            "type": "reply",
+            "named": true
+          },
+          {
             "type": "send",
             "named": true
           },
@@ -1186,6 +1316,10 @@
         "types": [
           {
             "type": "builtin_type",
+            "named": true
+          },
+          {
+            "type": "call_type",
             "named": true
           },
           {
@@ -1408,6 +1542,10 @@
             "named": true
           },
           {
+            "type": "call_type",
+            "named": true
+          },
+          {
             "type": "list_type",
             "named": true
           },
@@ -1582,6 +1720,16 @@
             "named": true
           }
         ]
+      },
+      "peer": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
       }
     },
     "children": {
@@ -1609,6 +1757,10 @@
         "types": [
           {
             "type": "builtin_type",
+            "named": true
+          },
+          {
+            "type": "call_type",
             "named": true
           },
           {
@@ -1645,6 +1797,10 @@
         },
         {
           "type": "always_transition",
+          "named": true
+        },
+        {
+          "type": "call_declaration",
           "named": true
         },
         {
@@ -1732,6 +1888,10 @@
         "types": [
           {
             "type": "builtin_type",
+            "named": true
+          },
+          {
+            "type": "call_type",
             "named": true
           },
           {
@@ -1929,6 +2089,10 @@
             "named": true
           },
           {
+            "type": "reply",
+            "named": true
+          },
+          {
             "type": "send",
             "named": true
           },
@@ -1963,6 +2127,10 @@
         "required": true,
         "types": [
           {
+            "type": "call_pattern",
+            "named": true
+          },
+          {
             "type": "event_pattern",
             "named": true
           },
@@ -1988,6 +2156,10 @@
         "types": [
           {
             "type": "builtin_type",
+            "named": true
+          },
+          {
+            "type": "call_type",
             "named": true
           },
           {
@@ -2102,6 +2274,10 @@
         "types": [
           {
             "type": "builtin_type",
+            "named": true
+          },
+          {
+            "type": "call_type",
             "named": true
           },
           {
@@ -2287,6 +2463,92 @@
         "types": [
           {
             "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "reply",
+    "named": true,
+    "fields": {
+      "call": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "implicit_name",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "duration",
+            "named": true
+          },
+          {
+            "type": "enum_value",
+            "named": true
+          },
+          {
+            "type": "field_expression",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "negation",
+            "named": true
+          },
+          {
+            "type": "not_expression",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "record_value",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           }
         ]
@@ -2565,6 +2827,10 @@
             "named": true
           },
           {
+            "type": "call_type",
+            "named": true
+          },
+          {
             "type": "list_type",
             "named": true
           },
@@ -2617,6 +2883,10 @@
             "named": true
           },
           {
+            "type": "call_type",
+            "named": true
+          },
+          {
             "type": "list_type",
             "named": true
           },
@@ -2656,6 +2926,10 @@
         "types": [
           {
             "type": "builtin_type",
+            "named": true
+          },
+          {
+            "type": "call_type",
             "named": true
           },
           {
@@ -2853,6 +3127,10 @@
     "named": false
   },
   {
+    "type": "call",
+    "named": false
+  },
+  {
     "type": "comment",
     "named": true,
     "extra": true
@@ -3008,6 +3286,10 @@
   },
   {
     "type": "ref",
+    "named": false
+  },
+  {
+    "type": "reply",
     "named": false
   },
   {

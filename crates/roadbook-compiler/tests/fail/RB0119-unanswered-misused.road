@@ -1,0 +1,26 @@
+error Busy
+
+task work() ! Busy
+
+machine Peer() {
+  call ask() ! Unanswered
+  initial A
+  state A {
+    on ask reply call fail Unanswered
+    invoke work() {
+      done            -> A
+      fail Busy       -> A
+      fail Unanswered -> A
+    }
+  }
+}
+
+machine M(x: Unanswered) {
+  initial A
+  final state A {}
+}
+
+// expect: RB0119 at 6:16
+// expect: RB0119 at 9:28
+// expect: RB0119 at 13:12
+// expect: RB0119 at 18:14

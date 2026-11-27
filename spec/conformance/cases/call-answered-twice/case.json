@@ -1,0 +1,38 @@
+{
+  "description": "Two replies through one pending-call value in one effect list: the second finds the call no longer pending, the runtime error `answered`, so the step is discarded (no `event` record), and the run ends with the defect, cancelling its task without a record. The call was never answered, so the Inventory's driver answers it `Unanswered` as the run ends.",
+  "requires": [
+    "messaging",
+    "calls"
+  ],
+  "chart": "charts/calls.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Order",
+      "run": "r2",
+      "input": {
+        "id": "o1",
+        "items": [
+          {
+            "sku": "s1",
+            "qty": 2
+          }
+        ],
+        "inventory": "r1"
+      },
+      "status": "failed"
+    },
+    {
+      "event": {
+        "_tag": "Twice"
+      }
+    }
+  ],
+  "status": "defect"
+}

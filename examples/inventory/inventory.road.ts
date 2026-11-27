@@ -16,12 +16,6 @@ export class OutOfStock extends Schema.TaggedError<OutOfStock>()("OutOfStock", {
 
 // ---- machine: Inventory ----
 
-export const Reserve = Schema.TaggedStruct("Reserve", {
-  orderId: Schema.String,
-  items: Schema.Array(Item)
-})
-export type Reserve = typeof Reserve.Type
-
 export const Release = Schema.TaggedStruct("Release", { orderId: Schema.String })
 export type Release = typeof Release.Type
 
@@ -31,22 +25,13 @@ export type Restock = typeof Restock.Type
 export const Close = Schema.TaggedStruct("Close", {})
 export type Close = typeof Close.Type
 
-export const Reserved = Schema.TaggedStruct("Reserved", { orderId: Schema.String })
-export type Reserved = typeof Reserved.Type
-
-export const Rejected = Schema.TaggedStruct("Rejected", {
-  orderId: Schema.String,
-  reason: Schema.String
-})
-export type Rejected = typeof Rejected.Type
-
 export interface InventoryDef extends Roadbook.MachineDef {
   readonly name: "Inventory"
   readonly input: { readonly warehouse: string }
   readonly output: void
   readonly error: never
-  readonly event: Reserve | Release | Restock | Close
-  readonly emits: Reserved | Rejected
+  readonly event: Release | Restock | Close
+  readonly emits: never
   readonly state: "Inventory" | "Inventory.Ready" | "Inventory.Reserving" | "Inventory.Closed"
   readonly fns: {}
   readonly actions: {
@@ -68,7 +53,7 @@ export interface InventoryDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "examples/inventory/inventory.road",
@@ -205,10 +190,10 @@ const ir: unknown = {
   },
   "machines": {
     "Inventory": {
-      "doc": "The stock of one warehouse, shared by every order. An order asks it to reserve items, and\nit answers by emitting `Reserved` or `Rejected` with the order's id, which every holder of\na reference to it receives.",
+      "doc": "The stock of one warehouse, shared by every order. An order calls `reserve`, and the answer\ngoes to that order alone.",
       "span": {
         "file": 0,
-        "line": 19,
+        "line": 18,
         "col": 1,
         "endLine": 51,
         "endCol": 2
@@ -224,15 +209,28 @@ const ir: unknown = {
       "errors": [],
       "vars": [
         {
+          "name": "pending",
+          "type": "call reserve",
+          "init": null,
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 22,
+            "col": 3,
+            "endLine": 22,
+            "endCol": 28
+          }
+        },
+        {
           "name": "orderId",
           "type": "string",
           "init": null,
           "doc": "",
           "span": {
             "file": 0,
-            "line": 20,
+            "line": 23,
             "col": 3,
-            "endLine": 20,
+            "endLine": 23,
             "endCol": 22
           }
         },
@@ -243,36 +241,14 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 21,
+            "line": 24,
             "col": 3,
-            "endLine": 21,
+            "endLine": 24,
             "endCol": 22
           }
         }
       ],
       "events": {
-        "Reserve": {
-          "fields": [
-            {
-              "name": "orderId",
-              "type": "string",
-              "doc": ""
-            },
-            {
-              "name": "items",
-              "type": "Item[]",
-              "doc": ""
-            }
-          ],
-          "doc": "",
-          "span": {
-            "file": 0,
-            "line": 23,
-            "col": 3,
-            "endLine": 23,
-            "endCol": 52
-          }
-        },
         "Release": {
           "fields": [
             {
@@ -284,10 +260,10 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 24,
+            "line": 26,
             "col": 3,
-            "endLine": 24,
-            "endCol": 37
+            "endLine": 26,
+            "endCol": 36
           }
         },
         "Restock": {
@@ -306,10 +282,10 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 25,
+            "line": 27,
             "col": 3,
-            "endLine": 25,
-            "endCol": 43
+            "endLine": 27,
+            "endCol": 42
           }
         },
         "Close": {
@@ -317,51 +293,39 @@ const ir: unknown = {
           "doc": "",
           "span": {
             "file": 0,
-            "line": 26,
+            "line": 28,
             "col": 3,
-            "endLine": 26,
+            "endLine": 28,
             "endCol": 14
           }
         }
       },
-      "emits": {
-        "Reserved": {
-          "fields": [
-            {
-              "name": "orderId",
-              "type": "string",
-              "doc": ""
-            }
-          ],
-          "doc": "",
-          "span": {
-            "file": 0,
-            "line": 27,
-            "col": 3,
-            "endLine": 27,
-            "endCol": 37
-          }
-        },
-        "Rejected": {
-          "fields": [
+      "emits": {},
+      "calls": {
+        "reserve": {
+          "params": [
             {
               "name": "orderId",
               "type": "string",
               "doc": ""
             },
             {
-              "name": "reason",
-              "type": "string",
+              "name": "items",
+              "type": "Item[]",
               "doc": ""
             }
           ],
-          "doc": "",
+          "returns": null,
+          "errors": [
+            "OutOfStock"
+          ],
+          "doc": "Hold the items for an order, or fail if the warehouse cannot supply them all.",
           "span": {
             "file": 0,
-            "line": 28,
+            "line": 20,
             "col": 3,
-            "endLine": 28,
-            "endCol": 53
+            "endLine": 20,
+            "endCol": 60
           }
         }
       },
@@ -369,10 +333,10 @@ const ir: unknown = {
         "id": "Inventory",
         "name": "Inventory",
         "kind": "compound",
-        "doc": "The stock of one warehouse, shared by every order. An order asks it to reserve items, and\nit answers by emitting `Reserved` or `Rejected` with the order's id, which every holder of\na reference to it receives.",
+        "doc": "The stock of one warehouse, shared by every order. An order calls `reserve`, and the answer\ngoes to that order alone.",
         "span": {
           "file": 0,
-          "line": 19,
+          "line": 18,
           "col": 1,
           "endLine": 51,
           "endCol": 2
@@ -383,7 +347,7 @@ const ir: unknown = {
             "id": "Inventory.Ready",
             "name": "Ready",
             "kind": "atomic",
-            "doc": "Waiting for the next request.",
+            "doc": "Waiting for the next call.",
             "span": {
               "file": 0,
               "line": 36,
@@ -399,13 +363,25 @@ const ir: unknown = {
             "transitions": [
               {
                 "trigger": {
-                  "kind": "event",
-                  "event": "Reserve"
+                  "kind": "call",
+                  "call": "reserve"
                 },
                 "group": 0,
                 "guard": null,
                 "target": "Inventory.Reserving",
                 "effects": [
+                  {
+                    "kind": "set",
+                    "var": "pending",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "call"
+                      ],
+                      "type": "call reserve",
+                      "text": "call"
+                    }
+                  },
                   {
                     "kind": "set",
                     "var": "orderId",
@@ -438,7 +414,7 @@ const ir: unknown = {
                   "line": 37,
                   "col": 5,
                   "endLine": 37,
-                  "endCol": 78
+                  "endCol": 94
                 }
               },
               {
@@ -466,7 +442,7 @@ const ir: unknown = {
             "id": "Inventory.Reserving",
             "name": "Reserving",
             "kind": "atomic",
-            "doc": "One request at a time: another that arrives meanwhile is turned away at once.",
+            "doc": "One reservation at a time: a call that arrives meanwhile is turned away at once.",
             "span": {
               "file": 0,
               "line": 42,
@@ -481,6 +457,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "reserveStock",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -526,26 +503,17 @@ const ir: unknown = {
                 "target": "Inventory.Ready",
                 "effects": [
                   {
-                    "kind": "emit",
-                    "event": "Reserved",
-                    "value": {
-                      "kind": "record",
-                      "fields": [
-                        {
-                          "name": "orderId",
-                          "value": {
-                            "kind": "ref",
-                            "path": [
-                              "orderId"
-                            ],
-                            "type": "string",
-                            "text": "orderId"
-                          }
-                        }
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "pending"
                       ],
-                      "type": "Reserved",
-                      "text": "Reserved { orderId: orderId }"
-                    }
+                      "type": "call reserve",
+                      "text": "pending"
+                    },
+                    "outcome": "done",
+                    "value": null
                   }
                 ],
                 "span": {
@@ -553,7 +521,7 @@ const ir: unknown = {
                   "line": 44,
                   "col": 7,
                   "endLine": 44,
-                  "endCol": 67
+                  "endCol": 51
                 }
               },
               {
@@ -566,37 +534,23 @@ const ir: unknown = {
                 "target": "Inventory.Ready",
                 "effects": [
                   {
-                    "kind": "emit",
-                    "event": "Rejected",
-                    "value": {
-                      "kind": "record",
-                      "fields": [
-                        {
-                          "name": "orderId",
-                          "value": {
-                            "kind": "ref",
-                            "path": [
-                              "orderId"
-                            ],
-                            "type": "string",
-                            "text": "orderId"
-                          }
-                        },
-                        {
-                          "name": "reason",
-                          "value": {
-                            "kind": "ref",
-                            "path": [
-                              "error",
-                              "reason"
-                            ],
-                            "type": "string",
-                            "text": "error.reason"
-                          }
-                        }
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "pending"
                       ],
-                      "type": "Rejected",
-                      "text": "Rejected { orderId: orderId, reason: error.reason }"
+                      "type": "call reserve",
+                      "text": "pending"
+                    },
+                    "outcome": "fail",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "error"
+                      ],
+                      "type": "OutOfStock",
+                      "text": "error"
                     }
                   }
                 ],
@@ -605,36 +559,32 @@ const ir: unknown = {
                   "line": 45,
                   "col": 7,
                   "endLine": 45,
-                  "endCol": 89
+                  "endCol": 57
                 }
               },
               {
                 "trigger": {
-                  "kind": "event",
-                  "event": "Reserve"
+                  "kind": "call",
+                  "call": "reserve"
                 },
                 "group": 2,
                 "guard": null,
                 "target": null,
                 "effects": [
                   {
-                    "kind": "emit",
-                    "event": "Rejected",
+                    "kind": "reply",
+                    "call": {
+                      "kind": "ref",
+                      "path": [
+                        "call"
+                      ],
+                      "type": "call reserve",
+                      "text": "call"
+                    },
+                    "outcome": "fail",
                     "value": {
                       "kind": "record",
                       "fields": [
-                        {
-                          "name": "orderId",
-                          "value": {
-                            "kind": "ref",
-                            "path": [
-                              "event",
-                              "orderId"
-                            ],
-                            "type": "string",
-                            "text": "event.orderId"
-                          }
-                        },
                         {
                           "name": "reason",
                           "value": {
@@ -645,8 +595,8 @@ const ir: unknown = {
                           }
                         }
                       ],
-                      "type": "Rejected",
-                      "text": "Rejected { orderId: event.orderId, reason: \"busy\" }"
+                      "type": "OutOfStock",
+                      "text": "OutOfStock { reason: \"busy\" }"
                     }
                   }
                 ],
@@ -655,7 +605,7 @@ const ir: unknown = {
                   "line": 47,
                   "col": 5,
                   "endLine": 47,
-                  "endCol": 72
+                  "endCol": 61
                 }
               }
             ],
@@ -783,7 +733,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:ce476c9f805a78c0125d0aa5e47142cbacf245ae7a2b5d5ae3aa1de2c1afc5eb"
+      "hash": "sha256:071b55fcb74b074e5997afbc4d27a6e378d7343c9ba62389f4c30f67d51e184f"
     }
   }
 }
@@ -791,8 +741,7 @@ const ir: unknown = {
 const errors = { OutOfStock }
 
 /**
- * The stock of one warehouse, shared by every order. An order asks it to reserve items, and
- * it answers by emitting `Reserved` or `Rejected` with the order's id, which every holder of
- * a reference to it receives.
+ * The stock of one warehouse, shared by every order. An order calls `reserve`, and the answer
+ * goes to that order alone.
  */
 export const Inventory = Roadbook.make<InventoryDef>(ir, "Inventory", errors)

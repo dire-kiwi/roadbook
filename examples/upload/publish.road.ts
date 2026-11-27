@@ -54,7 +54,7 @@ export interface PublishDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -411,6 +411,7 @@ const ir: unknown = {
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -444,6 +445,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "machine",
               "src": "Upload",
+              "to": null,
               "as": "upload",
               "args": [
                 {
@@ -667,6 +669,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "publishPost",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -793,7 +796,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d1d0e2bc9f3843bd1d7999e4ed8e2ea44425dbe2e43b744d39ace5980bc112b1"
+      "hash": "sha256:eb81b03dda57453ce15e2c95e578b3152ccae375508feebbbd10ccf82282b011"
     },
     "Upload": {
       "doc": "Upload a file in chunks. Can be paused, and reports its progress to whoever invoked it.",
@@ -904,6 +907,7 @@ const ir: unknown = {
           }
         }
       },
+      "calls": {},
       "root": {
         "id": "Upload",
         "name": "Upload",
@@ -937,6 +941,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "sendChunk",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1180,6 +1185,7 @@ const ir: unknown = {
             "invoke": {
               "kind": "task",
               "src": "finishUpload",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -1327,7 +1333,7 @@ const ir: unknown = {
         "output": null,
         "fail": null
       },
-      "hash": "sha256:d9b13cbae45df8b6769171b3ea54cb546fde4e60249c0cd986de4ea8b9ef7307"
+      "hash": "sha256:8e75d32d6ff4b5be18e8eb07dea9eb64c1ada10f96a69cd64d790b69c7554f46"
     }
   }
 }

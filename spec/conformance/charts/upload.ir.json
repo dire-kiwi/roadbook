@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources": [
     {
       "path": "spec/conformance/charts/upload.road",
@@ -130,6 +130,7 @@
           }
         }
       },
+      "calls": {},
       "root": {
         "id": "Upload",
         "name": "Upload",
@@ -163,6 +164,7 @@
             "invoke": {
               "kind": "task",
               "src": "sendChunk",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -369,7 +371,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:1588792051fa7eb110030f9ee2c0e854b30c0bdad6167347d22fdbcd29ba9e12"
+      "hash": "sha256:d0865d868adc6ffaa25d60385d0bc02554746fe751e1d022d143adfba50da5b7"
     },
     "Publish": {
       "doc": "Uploads, pausing and resuming the child when asked, and shows its progress.",
@@ -447,6 +449,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Publish",
         "name": "Publish",
@@ -480,6 +483,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Upload",
+              "to": null,
               "as": "upload",
               "args": [
                 {
@@ -689,7 +693,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:19c6cfdf0a7bf5ae3be5cc4c27352858fccc08a244e85f1966b6b9ff1e137cc1"
+      "hash": "sha256:174b7e98e91db0bc7a368ea65497509f1bad1c76ad4de402e2bc0dae9132b1fc"
     },
     "Quiet": {
       "doc": "Invokes Upload without `as`, so it receives nothing the child emits.",
@@ -726,6 +730,7 @@
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Quiet",
         "name": "Quiet",
@@ -759,6 +764,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Upload",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -848,7 +854,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:56b06b4a67a26e3150ee35f1d5197c1751f9ce89daf71d91cedc1d32272d1d50"
+      "hash": "sha256:bfa4bdc19ce2555b9c28819a126e2bc6c388079fc11dd8429b89970fb3334dd2"
     },
     "Eager": {
       "doc": "Sends to its child before the child has started, and after its outcome was taken.",
@@ -913,6 +919,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "root": {
         "id": "Eager",
         "name": "Eager",
@@ -985,6 +992,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Upload",
+              "to": null,
               "as": "upload",
               "args": [
                 {
@@ -1125,7 +1133,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:17afb401c77b51ab73549262c9d469f5061d126e13d401117704e54778b10127"
+      "hash": "sha256:ee71ecc9b9ec9817ffbc75c15e5625f2c093e5249a42c0480915ac9e396746a6"
     }
   }
 }

@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0318]: `n` is a parameter of type `int`, not a pending call
+ --> RB0318-not-a-pending-call.road:6:17
+  |
+6 |     entry reply n done
+  |                 ^
+  |
+  = help: reply to `call` in an `on name` transition, or to a variable of type `call name` that holds it
+
+error[RB0318]: `count` is a variable of type `int`, not a pending call
+ --> RB0318-not-a-pending-call.road:7:18
+  |
+7 |     on ask reply count done
+  |                  ^^^^^
+  |
+  = help: reply to `call` in an `on name` transition, or to a variable of type `call name` that holds it

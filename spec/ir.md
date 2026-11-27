@@ -1,6 +1,6 @@
-# The Roadbook IR, version 0.2
+# The Roadbook IR, version 0.4
 
-The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with messaging and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
+The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with a call to a peer, a message to it and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
 ## Conventions
 
@@ -22,7 +22,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 ```jsonc
 {
-  "irVersion": "0.2",
+  "irVersion": "0.4",
   "sources":   [{ "path": "examples/shop/place_order.road", "package": null },
                 { "path": "examples/shop/types.road", "package": null }],
   "types":     { /* Name: type declaration */ },
@@ -64,12 +64,17 @@ Wherever the IR names a type it uses a string in canonical source form: a base f
 | `Name` | A key of `types`; or, inside a machine, one of that machine's own events, a key of its `events` or `emits` (see below). |
 | `Machine.Name` | Event `Name` of machine `Machine`: a key of `machines`, then of that machine's `events` or `emits`. |
 | `ref Machine` | A handle to a running machine `Machine`, a key of `machines`. One space after `ref`. `ref Inventory[]` is a list of handles. |
+| `call name` | Inside a machine, a pending call of that machine's call `name`, a key of its `calls`. One space after `call`. Only a variable's type, and the type of the implicit `call`: never with a suffix. |
 
-Pattern: `^(string|int|float|bool|duration|json|[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)?|ref [A-Z][A-Za-z0-9]*)(\[\]|\?)*$`.
+Pattern: `^(string|int|float|bool|duration|json|[A-Z][A-Za-z0-9]*(\.[A-Z][A-Za-z0-9]*)?|ref [A-Z][A-Za-z0-9]*|call [a-z][A-Za-z0-9]*)(\[\]|\?)*$`.
 
 **Event types.** Events are not declared types: an event's type is named after the event. Inside machine `M`, a bare name that is one of `M`'s events or emitted events is that event: the type of `event` in `on Name`, and of the value of `emit Name { … }`. The event of another machine, or of a machine reached through a `ref` or a child, is written `Machine.Name`: the type of `event` in `on upload.Progress` is `Upload.Progress`, and the value of `send upload.Pause` has type `Upload.Pause`, also when the other machine is `M` itself. Names never collide: an event never has the name of a type, error or machine of the document, and a machine's `events` and `emits` never share a name, so a bare name is a key of `types` or of the current machine's `events` or `emits`, never two of them.
 
-**Where a `ref` can be.** Machine parameters, variables, and the parameters of functions, actions and tasks may have a `ref` type, directly or through an alias. Fields of records, errors and events, and the results of functions, tasks and machines, never do, so a machine can only get a handle from its own signature or from `invoke … as`. A `ref` value is never a literal, never compared, never passed where `json` is expected, and a runtime passes it to host code as its own handle type. In snapshots and traces it is the id of the run it refers to ([values](execution.md#values)).
+**Where a `ref` can be.** Machine parameters, variables, and the parameters of functions, actions and tasks may have a `ref` type, directly or through an alias. Fields of records, errors and events, the parameters of calls, and the results of functions, tasks and machines, never do, so a machine can only get a handle from its own signature or from `invoke … as`. A `ref` value is never a literal, never compared, never passed where `json` is expected, and a runtime passes it to host code as its own handle type. In snapshots and traces it is the id of the run it refers to ([values](execution.md#values)).
+
+**Where a pending call can be.** A `call name` is the type of a machine variable of the machine that declares `name`, and of the implicit `call` in its `on name` transitions; nowhere else, not even inside an alias, an optional or a list. It is never a literal, never compared, never passed where `json` is expected, and never leaves the run: no parameter, field, result or event has the type ([calls](execution.md#calls-between-runs)).
+
+**`Unanswered`.** The error name `Unanswered` is built in: the error every call can fail with besides its declared ones, `{"_tag": "Unanswered"}`, with no fields. It is not a key of `types`, and the only places the IR names it are an `invoke.fail` trigger of a call invoke, and the `type` of `error` in such a transition.
 
 ## Declarations
 
@@ -124,6 +129,7 @@ Spans cover the whole declaration.
   "vars": [ /* variables */ ],
   "events": {},
   "emits": {},
+  "calls": {},
   "root": { /* state */ },
   "hash": "sha256:…"
 }
@@ -138,12 +144,15 @@ Spans cover the whole declaration.
 | `vars` | Variables, in source order. |
 | `events` | Events the machine accepts, keyed by name, in source order. |
 | `emits` | Events the machine emits (`emits Name { fields }`), keyed by name, in source order, with the shape of `events`. A name is in at most one of `events` and `emits`. |
+| `calls` | Calls the machine answers (`call name(params) -> T ! E`), keyed by name, in source order. See below. |
 | `root` | The machine body as a state. See below. |
 | `hash` | The [machine hash](#the-machine-hash). |
 
 A **variable** is `{"name", "type", "init", "doc", "span"}`. `init` is the initial value expression, or `null` if there is none. With no initialiser, a variable of optional type starts as `null` and any other variable starts unassigned (see `spec/execution.md`). The span covers the declaration from `var` to the end of its type or initial value.
 
 An **event** is `{"fields", "doc", "span"}`, keyed by its name, in `events` and in `emits` alike. The span covers the declaration from `event` or `emits` to its end.
+
+A **call** is `{"params", "returns", "errors", "doc", "span"}`, keyed by its lower-case name, with the members of a task: `params` the fields of the arguments, `returns` a type reference or `null`, `errors` error names in source order (never `Unanswered`). The span covers the declaration from `call` to its end. A caller holding a `ref` to the machine makes a call with an invoke of kind `call`; the machine takes it with an `on name` transition (trigger kind `call`) and answers it with a `reply` effect.
 
 The **root** is a state with `kind` `compound` whose `id` and `name` are the machine's name. Its `doc` and `span` are the machine's. It holds the machine's top-level states, its `initial`, and the `entry`, `exit`, `on`, `after` and `always` items written directly in the machine body.
 
@@ -183,22 +192,24 @@ The **root** is a state with `kind` `compound` whose `id` and `name` are the mac
 ## Invoke
 
 ```json
-{ "kind": "task", "src": "chargeCard", "as": null, "args": [ /* expressions */ ], "span": { "…": "…" } }
+{ "kind": "task", "src": "chargeCard", "to": null, "as": null, "args": [ /* expressions */ ], "span": { "…": "…" } }
+{ "kind": "call", "src": "reserve", "to": { "kind": "ref", "name": "inventory", "machine": "Inventory", "state": null }, "as": null, "args": [ /* … */ ], "span": { "…": "…" } }
 ```
 
 | Member | Meaning |
 | --- | --- |
-| `kind` | `task` (`src` is a key of `tasks`) or `machine` (`src` is a key of `machines`). |
-| `src` | The task's or machine's name. |
-| `as` | The name given with `invoke Machine(…) as name`, or `null`. Always `null` for a task. The state and its descendants send to the child and receive what it emits through this name ([addresses](#addresses)). |
+| `kind` | `task` (`src` is a key of `tasks`), `machine` (`src` is a key of `machines`) or `call` (`src` is a key of the `calls` of `to`'s machine). |
+| `src` | The task's or machine's name, or the call's. |
+| `to` | For a call, the [address](#addresses) of the callee, always of kind `ref`: `invoke inventory.reserve(…)` calls the run that `inventory` holds. `null` for a task or a machine. |
+| `as` | The name given with `invoke Machine(…) as name`, or `null`. Always `null` for a task and a call. The state and its descendants send to the child and receive what it emits through this name ([addresses](#addresses)). |
 | `args` | Argument expressions, positional, in parameter order. |
 | `span` | From `invoke` to the closing brace of its outcomes. |
 
-The outcomes written inside `invoke { … }` are transitions of the state, with `invoke.done` and `invoke.fail` triggers.
+The outcomes written inside `invoke { … }` are transitions of the state, with `invoke.done` and `invoke.fail` triggers. A call's `invoke.fail` triggers may name `Unanswered` besides the call's errors, and its `"*"` covers `Unanswered` too.
 
 ## Addresses
 
-An address names another running machine: the receiver of a `send`, or the sender of the events an `emitted` trigger takes.
+An address names another running machine: the receiver of a `send`, the sender of the events an `emitted` trigger takes, or the callee of a call invoke.
 
 ```json
 { "kind": "child", "name": "upload", "machine": "Upload", "state": "Publish.Uploading" }
@@ -249,7 +260,8 @@ A child is addressed only from its invoking state and that state's descendants, 
 | `always` | `always` | none. |
 | `done` | `done` in a state | none. The compound state reached a final child, or every region of the parallel state did. |
 | `invoke.done` | `done` inside `invoke { }` | none. The invoked task or machine succeeded. `result` is in scope. |
-| `invoke.fail` | `fail E` inside `invoke { }` | `error`: the error's name, or `"*"` for every declared error not listed. `error` is in scope. |
+| `invoke.fail` | `fail E` inside `invoke { }` | `error`: the error's name, or `"*"` for every declared error not listed (for a call, `Unanswered` among them). `error` is in scope. |
+| `call` | `on name` | `call`: a key of the machine's own `calls`. Taken for a call of it from another run. `event` is in scope, a record of the call's parameters read through its fields (`event.items`), and so is `call`, of type `call name`. |
 
 ## Effects
 
@@ -259,8 +271,9 @@ A child is addressed only from its invoking state and that state's descendants, 
 | `do` | `do action(args)` | `action`: a key of `actions`. `args`: expressions, positional, in parameter order. |
 | `send` | `send name.Name [{ fields }]` | `to`: the receiver's [address](#addresses). `event`: the event's name, a key of the receiver's `events`. `value`: the event, a `record` expression of type `Machine.Name` with every field of the event. |
 | `emit` | `emit Name [{ fields }]` | `event`: the event's name, a key of the machine's own `emits`. `value`: the event, a `record` expression of type `Name` with every field of the event. |
+| `reply` | `reply name done [value]`, `reply name fail error` | `call`: a `ref` expression of type `call c`, the implicit `call` or a variable. `outcome`: `"done"` or `"fail"`. `value`: for `done`, an expression of `c`'s `returns` type, or `null` when `c` returns nothing; for `fail`, an expression of one of `c`'s `errors`. |
 
-`set a = 1, b = 2` is two `set` effects. Every list of effects (a transition's, an `entry`'s, an `exit`'s) holds all its `set` effects, in the order written, then all its other effects (`do`, `send` and `emit`), in the order written among themselves, because that is the order they run in: `do f(a)  set a = 1` and `set a = 1  do f(a)` give the same list, and the same hash, and so do `send x.E { v: a }  set a = 1` and `set a = 1  send x.E { v: a }`. A runtime runs the list in order. A `send` or `emit` value is evaluated when its effect runs, so it sees every `set` of the list.
+`set a = 1, b = 2` is two `set` effects. Every list of effects (a transition's, an `entry`'s, an `exit`'s) holds all its `set` effects, in the order written, then all its other effects (`do`, `send`, `emit` and `reply`), in the order written among themselves, because that is the order they run in: `do f(a)  set a = 1` and `set a = 1  do f(a)` give the same list, and the same hash, and so do `send x.E { v: a }  set a = 1` and `set a = 1  send x.E { v: a }`. A runtime runs the list in order. A `send` or `emit` value is evaluated when its effect runs, so it sees every `set` of the list.
 
 ## Expressions
 
@@ -272,7 +285,7 @@ Every expression node is an object with `kind`, the kind's own members, then two
 | `kind` | Source | Members |
 | --- | --- | --- |
 | `lit` | `3`, `1.5`, `"hi"`, `true`, `30s` | `value`, see below. `type` is the literal's built-in. |
-| `ref` | `attempts`, `error.issues`, `event.sku` | `path`: a variable, parameter, or one of the implicit names `event`, `result`, `error`, followed by the names of the fields read from it. Never empty. |
+| `ref` | `attempts`, `error.issues`, `event.sku` | `path`: a variable, parameter, or one of the implicit names `event`, `result`, `error`, `call`, followed by the names of the fields read from it. Never empty. |
 | `field` | `confirmation(order, receipt).status` | `of`: the expression whose field is read, when it is not a variable. `name`: the field. |
 | `call` | `retryDelay(attempts)` | `fn`: a key of `functions`. `args`: expressions, positional, in parameter order. |
 | `op` | `a + b`, `not ok`, `-n` | `op`: one of `==` `!=` `<` `<=` `>` `>=` `+` `-` `*` `and` `or` (two `args`, left then right) or `not` `neg` (one `args`). |
@@ -289,7 +302,7 @@ Every expression node is an object with `kind`, the kind's own members, then two
 | `bool` | `true` or `false`. |
 | `duration` | A non-negative JSON integer of milliseconds: `30s` is `30000`, `5m` is `300000`. |
 
-**Types of the implicit names.** `result` in an `invoke.done` transition has the invoked task's or machine's `returns` type. `error` in an `invoke.fail` transition for error `E` has type `E`. `event` in an `on Name` transition has type `Name` (the event, see [type references](#type-references)), in an `emitted` transition type `Machine.Name`, and `event.field` has the field's type.
+**Types of the implicit names.** `result` in an `invoke.done` transition has the invoked task's or machine's `returns` type. `error` in an `invoke.fail` transition for error `E` has type `E`. `event` in an `on Name` transition has type `Name` (the event, see [type references](#type-references)), in an `emitted` transition type `Machine.Name`, and `event.field` has the field's type. In a `call` transition `event` is read only through its fields, and `call` has type `call name`. For a call invoke, `result` has the call's `returns` type, and `error` for `Unanswered` the type `Unanswered`.
 
 ```json
 {
@@ -322,26 +335,37 @@ A machine's `hash` is `"sha256:"` followed by the 64 lowercase hexadecimal digit
   "functions": { /* name: strip(declaration), for every function in F */ },
   "actions":   { /* name: strip(declaration), for every action in A */ },
   "tasks":     { /* name: strip(declaration), for every task in K */ },
-  "interfaces": { /* Name: strip({"events": …, "emits": …}), for every machine in R */ }
+  "interfaces": { /* Name: strip({"events": …, "emits": …, "calls": …}), for every machine in R */ }
 }
 ```
 
 - **M** is the machine itself and every machine it invokes, directly or through other machines. A machine that invokes itself is included once. (Including the whole set, rather than each child's hash, is what makes the hash defined for recursive machines.)
 - **F**, **A** and **K** are the functions called (`call`), the actions run (`do`) and the tasks invoked by the machines in M.
-- **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send` or an `emitted` trigger), or by an event type `Machine.Name`. Only its interface, its `events` and `emits`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts or emits changes, and not when how the peer works inside does. (A child addressed with `as` is invoked, so it is in M whole.)
-- **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by the base of any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`), by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, or `Machine.Name`), and the machine of a `ref`, are not part of T.
-- **strip** removes every member named `doc`, `span` or `text` from every object, recursively. The only name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, so no user-chosen name is ever removed.
+- **R** is every machine not in M that the machines in M or the declarations in F, A and K name without invoking it: by a `ref Machine` type, by the `machine` of an [address](#addresses) (in a `send`, an `emitted` trigger or a call invoke), or by an event type `Machine.Name`. Only its interface, its `events`, `emits` and `calls`, is part of the view, so the hash of a machine that talks to a peer changes when what the peer accepts, emits or answers changes, and not when how the peer works inside does. (A child addressed with `as` is invoked, so it is in M whole.)
+- **T** is every type named by the machines in M, by the declarations in F, A and K and by the interfaces of R, together with every type named by a type in T. A type is named by the base of any type reference (parameters, results, variables, event fields, alias targets, record and error fields, and every expression's `type`), by each entry of an `errors` list, and by an `invoke.fail` trigger's `error` other than `"*"` and `Unanswered`. A name that refers to an event rather than to `types` (a bare event name of the machine being walked, or `Machine.Name`), and the machine of a `ref`, are not part of T.
+- **strip** removes every member named `doc`, `span` or `text` from every object, recursively, except the keys of a `calls` map. The name-keyed maps inside these values are a machine's `events` and `emits`, whose keys are upper-case, and its `calls`, whose keys are lower-case call names that may be `doc`, `span` or `text` and are kept (their values are stripped), so no user-chosen name is ever removed.
 
 So comments, formatting, source positions, file names, packages, declaration order and unused declarations do not change a machine's hash, and any change to what the machine does, to a type it uses, to a machine it invokes, or to the interface of a machine it talks to does. A declaration copied from another package's compiled IR therefore keeps the hash it had there. In Rust, `roadbook_ir::machine_hash(&ir, name)` computes it, `roadbook_ir::semantic_view` returns the view, and `roadbook_ir::fill_hashes(&mut ir)` sets every machine's `hash`; the compiler calls the last after type checking. Snapshots and traces record the hash, so restoring a snapshot into a changed machine is refused and the viewer can tell when a trace came from another version of a chart.
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.2`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.4`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
+
+## Changes in 0.4
+
+Version 0.4 adds calls between machines ([asking a peer](../docs/design/actors.md#asking-a-peer)). Every machine has the new member `calls` and every invoke `to`, so every hash changed.
+
+- Machines have [`calls`](#machines); invokes have `to`, and the invoke kind `call`.
+- The trigger kind `call`, and the effect kind `reply`.
+- [Type references](#type-references) may be `call name`; the built-in error `Unanswered`.
+- The [semantic view](#the-machine-hash)'s `interfaces` have `calls`.
+
+What a runtime does with them (the `call` input, the `reply` command, `Unanswered`, pending calls in snapshots, the `replied` record) is in [`execution.md`](execution.md#calls-between-runs) and [`trace.md`](trace.md#messages).
 
 ## Changes from 0.1
 

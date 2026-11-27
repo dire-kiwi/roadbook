@@ -1,0 +1,34 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0118]: `Peer` has no call `go`
+ --> RB0118-unknown-call.road:7:8
+  |
+7 |     on go -> A
+  |        ^^ `Peer` declares `reserve`
+  |
+  = help: `Go` is an event of `Peer`; events are upper-case: `on Go`
+
+error[RB0118]: `Peer` has no call `reserv`
+ --> RB0118-unknown-call.road:8:8
+  |
+8 |     on reserv -> A
+  |        ^^^^^^ `Peer` declares `reserve`
+  |
+  = help: did you mean `reserve`?
+
+error[RB0118]: `M` has no call `nothing`
+  --> RB0118-unknown-call.road:13:15
+   |
+13 |   var p: call nothing
+   |               ^^^^^^^ `M` declares no calls
+   |
+   = help: declare it in the machine body: `call nothing(…)`
+
+error[RB0118]: `Peer` has no call `reservee`
+  --> RB0118-unknown-call.road:16:17
+   |
+16 |     invoke peer.reservee("x") {
+   |                 ^^^^^^^^ `Peer` declares `reserve`
+   |
+   = help: did you mean `reserve`?

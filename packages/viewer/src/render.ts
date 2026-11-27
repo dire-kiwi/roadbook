@@ -71,18 +71,20 @@ const baseline = (top: number, lineH: number, fontSize: number) => n(top + lineH
 const eventAttr = (ref: EventRef) => ` data-event="${esc(eventKey(ref))}"`
 
 /**
- * Text that names another machine's event, marked so the viewer can link it: a `send` or
- * `emit` effect (its keyword stressed), or the `upload.Progress` of a trigger.
+ * Text that names another machine's event or a call, marked so the viewer can link it: a
+ * `send`, `emit` or `reply` effect (its keyword stressed), the `upload.Progress` or `reserve`
+ * of a trigger, or a call invoke's `inventory.reserve(…)`.
  */
 function messageText(text: string, ref: EventRef): string {
   const lead = text.length - text.trimStart().length
   const body = text.slice(lead)
-  const m = /^(send|emit) /.exec(body)
+  const m = /^(send|emit|reply) /.exec(body)
   const inner = m ? `<tspan class="rb-msg-kw">${m[1]}</tspan>${esc(body.slice(m[1]!.length))}` : esc(body)
-  return `${' '.repeat(lead)}<tspan class="rb-msg"${eventAttr(ref)}><title>Open event ${esc(eventKey(ref))}</title>${inner}</tspan>`
+  const what = /^[a-z]/.test(ref.event) ? 'call' : 'event'
+  return `${' '.repeat(lead)}<tspan class="rb-msg"${eventAttr(ref)}><title>Open ${what} ${esc(eventKey(ref))}</title>${inner}</tspan>`
 }
 
-/** A row's keyword; `on upload.Progress` with the event marked as a link. */
+/** A row's keyword; `on upload.Progress` and `on reserve` with the event or call marked as a link. */
 function rowKeyword(r: Row): string {
   if (!r.kw) return ''
   if (r.kwEvent && r.kw.startsWith('on ')) return `<tspan class="rb-kw">on</tspan> ${messageText(r.kw.slice(3), r.kwEvent)} `
@@ -343,6 +345,7 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
     `<ul class="rb-legend-list">` +
     item(line('event'), { text: 'Cancel' }, 'event') +
     item(line('message'), { text: 'upload.Progress', cls: 'rb-t-msg' }, opts.interactive ? 'event emitted by upload, another machine; click the name to open it' : 'event emitted by upload, another machine') +
+    item(line('message'), { text: 'reserve', cls: 'rb-t-msg' }, 'a call of this machine another run made; reply answers it') +
     item(line('done'), { text: 'done', cls: 'rb-t-done' }, 'invoke or nested states finished') +
     item(line('fail'), { text: 'fail X', cls: 'rb-t-fail' }, 'invoke failed with error X') +
     item(line('after'), { text: 'after 30s' }, 'time in the state (dashed)') +
@@ -362,6 +365,11 @@ export function renderLegend(opts: { interactive?: boolean } = {}): string {
       shape('<g class="rb-label"><rect class="rb-label-bg" x="2" y="2" width="42" height="14" rx="4"/><text class="rb-label-effect rb-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="rb-msg"><tspan class="rb-msg-kw">send</tspan></tspan></text></g>'),
       { text: 'send x.E', cls: 'rb-t-msg' },
       'queues E for machine x; emit E tells whoever listens',
+    ) +
+    item(
+      shape('<g class="rb-label"><rect class="rb-label-bg" x="2" y="2" width="42" height="14" rx="4"/><text class="rb-label-effect rb-legend-guard" x="23" y="12.5" text-anchor="middle"><tspan class="rb-msg"><tspan class="rb-msg-kw">reply</tspan></tspan></text></g>'),
+      { text: 'reply p done v', cls: 'rb-t-msg' },
+      'answers the call p holds; invoke x.c(…) makes a call',
     ) +
     item(
       shape('<g class="rb-machine-link"><rect class="rb-pill" x="2" y="2" width="42" height="14" rx="7"/><path class="rb-pill-chevron" d="M33,5.5 l3.5,3.5 l-3.5,3.5"/></g>'),

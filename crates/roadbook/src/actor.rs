@@ -229,6 +229,7 @@ struct Closer(Arc<Shared>);
 impl Drop for Closer {
     fn drop(&mut self) {
         self.0.close();
+        self.0.answer_unanswered();
         self.0.finish(crate::shared::Finished::Ok);
     }
 }

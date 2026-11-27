@@ -4,16 +4,19 @@
  */
 import {
   type Address,
+  callName,
   type Effect,
   type Expr,
   getMachine,
   type Ir,
   type Machine,
   type State,
-  type Transition
+  type Transition,
+  UNANSWERED
 } from "./ir.ts"
 import type { Json } from "./json.ts"
 import type {
+  CallEntry,
   Command,
   CoreRecord,
   Defect,
@@ -54,6 +57,7 @@ export const start = (
     input,
     vars: {},
     invokes: [],
+    calls: [],
     timers: [],
     nextInvoke: 1,
     nextTimer: 1,
@@ -133,6 +137,8 @@ export const restore = (
     input: saved.input,
     vars: saved.vars,
     invokes: saved.invokes.map(({ id, src, state }) => ({ id, state, src })),
+    // A snapshot with pending calls is refused (`calls`), so the restored run has none.
+    calls: [],
     timers: saved.timers.map(({ delay, id, index, state }) => ({ id, state, index, delay })),
     nextInvoke: saved.nextInvoke,
     nextTimer: saved.nextTimer,
@@ -245,6 +251,8 @@ interface Bindings {
   readonly event?: Json
   readonly result?: Json
   readonly error?: Json
+  /** In an `on c` transition, the pending-call value `{from, invoke}` of the call it takes. */
+  readonly call?: Json
 }
 
 const NO_BINDINGS: Bindings = {}
@@ -263,6 +271,7 @@ class Macrostep {
   active: Array<string>
   readonly vars: Record<string, Json>
   invokes: Array<InvokeEntry>
+  calls: Array<CallEntry>
   timers: Array<TimerEntry>
   nextInvoke: number
   nextTimer: number
@@ -288,6 +297,7 @@ class Macrostep {
     this.active = [...snapshot.active]
     this.vars = { ...snapshot.vars }
     this.invokes = [...snapshot.invokes]
+    this.calls = [...snapshot.calls]
     this.timers = [...snapshot.timers]
     this.nextInvoke = snapshot.nextInvoke
     this.nextTimer = snapshot.nextTimer
@@ -307,6 +317,7 @@ class Macrostep {
         input: s.input,
         vars: this.vars,
         invokes: this.invokes,
+        calls: this.calls,
         timers: this.timers,
         nextInvoke: this.nextInvoke,
         nextTimer: this.nextTimer,
@@ -342,7 +353,7 @@ class Macrostep {
           this.failWithDefect(input.defect)
           return
         }
-        if (input.kind === "invoke.fail" && !this.declaredErrors(inv.src).includes(input.error._tag)) {
+        if (input.kind === "invoke.fail" && !this.declaredErrors(inv).includes(input.error._tag)) {
           throw new Abort({ kind: "undeclared", error: input.error._tag })
         }
         if (input.kind === "invoke.done") {
@@ -369,6 +380,10 @@ class Macrostep {
         bindings = { event: input.value }
         selected = this.selectEvent(input.value, bindings)
         break
+      case "call":
+        bindings = { event: input.args, call: { from: input.from, invoke: input.invoke } }
+        selected = this.selectCall(input.call, bindings)
+        break
       case "emitted": {
         if (input.invoke !== null && !this.invokes.some((i) => i.id === input.invoke)) {
           this.trace({ kind: "stale", event: input })
@@ -381,17 +396,32 @@ class Macrostep {
     }
     if (selected.length === 0) {
       this.trace({ kind: "dropped", event: input })
+      // A dropped call is answered at once, so its caller does not wait for it.
+      if (input.kind === "call") this.answer(input.from, input.invoke, input.call, "fail", { _tag: UNANSWERED })
       return
     }
     this.trace({ kind: "event", event: input })
+    // A call that enables a transition is pending from now on, so a `reply` among the
+    // transition's effects finds it.
+    if (input.kind === "call") this.calls.push({ from: input.from, invoke: input.invoke, call: input.call })
     this.microstep(selected, bindings)
     this.settle()
     if (this.status === "running") this.startWork()
   }
 
-  private declaredErrors(src: string): ReadonlyArray<string> {
+  /** The errors invoke `inv` may fail with: its task's, machine's, or call's, and `Unanswered` for a call. */
+  private declaredErrors(inv: InvokeEntry): ReadonlyArray<string> {
+    const invoke = this.index.state(inv.state).invoke
+    if (invoke?.kind === "call") return [...(this.callDecl(invoke)?.errors ?? []), UNANSWERED]
+    const src = invoke?.src ?? inv.src
     if (Object.hasOwn(this.ir.tasks, src)) return this.ir.tasks[src]?.errors ?? []
     return this.ir.machines[src]?.errors ?? []
+  }
+
+  /** The declaration of the call a call invoke makes, in the callee's machine. */
+  private callDecl(invoke: NonNullable<State["invoke"]>) {
+    const callee = invoke.to === null ? undefined : this.ir.machines[invoke.to.machine]
+    return callee !== undefined && Object.hasOwn(callee.calls, invoke.src) ? callee.calls[invoke.src] : undefined
   }
 
   // ---- selecting a transition ----
@@ -485,6 +515,12 @@ class Macrostep {
     const isOn = (t: Transition) => t.trigger.kind === "event" && t.trigger.event === name
     const isAny = (t: Transition) => t.trigger.kind === "any"
     return this.selectByWalks((state) => (state.transitions.some(isOn) ? isOn : isAny), bindings)
+  }
+
+  /** `on c` for a call of the machine's call `c`. No `on *`, which matches only events. */
+  private selectCall(call: string, bindings: Bindings): Array<Selected> {
+    const matches = (t: Transition) => t.trigger.kind === "call" && t.trigger.call === call
+    return this.selectByWalks(() => matches, bindings)
   }
 
   /** `on name.Event` for an emitted event: the address must name its sender. No `on *`. */
@@ -701,8 +737,26 @@ class Macrostep {
           this.commands.push({ kind: "emit", message, value })
           break
         }
+        case "reply": {
+          // The pending-call value is read before the result or error is evaluated.
+          const c = this.eval(effect.call, bindings) as { readonly from: string; readonly invoke: number }
+          const pending = this.calls.find((p) => p.from === c.from && p.invoke === c.invoke)
+          if (pending === undefined) {
+            throw new Abort({ kind: "answered", call: callName(effect.call.type) ?? effect.call.type })
+          }
+          const value = effect.value === null ? null : this.eval(effect.value, bindings)
+          this.calls = this.calls.filter((p) => p !== pending)
+          this.answer(pending.from, pending.invoke, pending.call, effect.outcome, value)
+          break
+        }
       }
     }
+  }
+
+  /** Answer the call run `to` made with its invoke `invoke`: the `replied` record and the `reply` command. */
+  private answer(to: string, invoke: number, call: string, outcome: "done" | "fail", value: Json) {
+    this.trace({ kind: "replied", to, invoke, call, outcome, value })
+    this.commands.push({ kind: "reply", to, invoke, call, outcome, value })
   }
 
   // ---- settling, work, finishing ----
@@ -730,7 +784,7 @@ class Macrostep {
       if (state.invoke !== null) {
         const invokeId = this.nextInvoke
         this.nextInvoke += 1
-        this.invokes.push({ id: invokeId, state: id, src: state.invoke.src })
+        this.invokes.push({ id: invokeId, state: id, src: invokeSrc(state.invoke) })
         this.startInvoke(state, invokeId)
       }
       const groups = new Set<number>()
@@ -750,20 +804,25 @@ class Macrostep {
   /** Trace and start invoke `invokeId` of `state`, its arguments evaluated now. */
   private startInvoke(state: State, invokeId: number) {
     const invoke = state.invoke!
+    // A call's peer is read before its arguments are evaluated, as a `send`'s address is.
+    const to = invoke.kind === "call" && invoke.to !== null ? this.readName(invoke.to.name) as string : null
     const params = invoke.kind === "task"
       ? this.ir.tasks[invoke.src]?.params ?? []
+      : invoke.kind === "call"
+      ? this.callDecl(invoke)?.params ?? []
       : this.ir.machines[invoke.src]?.params ?? []
     const args: Record<string, Json> = {}
     invoke.args.forEach((arg, i) => {
       args[params[i]?.name ?? String(i)] = this.eval(arg, NO_BINDINGS)
     })
-    this.trace({ kind: "invoke.started", invoke: invokeId, state: state.id, src: invoke.src, args })
+    this.trace({ kind: "invoke.started", invoke: invokeId, state: state.id, src: invokeSrc(invoke), args })
     this.commands.push({
       kind: "invoke.start",
       invoke: invokeId,
       state: state.id,
       src: invoke.src,
       srcKind: invoke.kind,
+      to,
       as: invoke.as,
       args
     })
@@ -927,6 +986,10 @@ class Macrostep {
     return value
   }
 }
+
+/** An invoke's `src` in the snapshot and the records: for a call, the address and the call, `inventory.reserve`. */
+const invokeSrc = (invoke: NonNullable<State["invoke"]>): string =>
+  invoke.kind === "call" && invoke.to !== null ? `${invoke.to.name}.${invoke.src}` : invoke.src
 
 const listOf = <A>(a: A | undefined): Array<A> => (a === undefined ? [] : [a])
 

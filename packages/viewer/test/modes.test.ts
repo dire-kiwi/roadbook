@@ -28,6 +28,7 @@ interface Case {
   actions: { [action: string]: { args: Json; defect: string }[] }
   script: { [k: string]: Json }[]
   status: string
+  requires: string[]
 }
 
 const readCase = (name: string) => JSON.parse(fs.readFileSync(path.join(conformance, 'cases', name, 'case.json'), 'utf8')) as Case
@@ -283,7 +284,7 @@ describe('replay', () => {
 
   it('warns when the trace was recorded from another version of the chart', () => {
     const ir = chart('shop-place_order')
-    const text = readTrace('place-order-checkout').replace('"ir":"sha256:4549', '"ir":"sha256:0000')
+    const text = readTrace('place-order-checkout').replace('"ir":"sha256:ae8f', '"ir":"sha256:0000')
     const replay = new Replay(ir, text)
     expect(replay.warnings).toHaveLength(1)
     expect(replay.warnings[0]).toMatch(/^Run r1\.4 was recorded from another version of Checkout: the trace has IR sha256:0000/)

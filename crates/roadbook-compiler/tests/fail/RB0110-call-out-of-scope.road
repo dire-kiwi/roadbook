@@ -1,0 +1,14 @@
+machine M() {
+  call ask()
+  var p: call ask
+  event Go
+  initial A
+  state A {
+    on ask reply call done
+    on Go set p = call
+  }
+  entry reply call done
+}
+
+// expect: RB0110 at 8:19
+// expect: RB0110 at 10:15

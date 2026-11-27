@@ -1,0 +1,10 @@
+error Unanswered
+
+machine M() {
+  event Unanswered
+  initial A
+  final state A {}
+}
+
+// expect: RB0013 at 1:7
+// expect: RB0013 at 4:9

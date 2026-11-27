@@ -1,0 +1,310 @@
+================================================================================
+Call declarations and the pending-call type
+================================================================================
+
+machine Inventory(warehouse: string) {
+  /// Hold the items for an order.
+  call reserve(orderId: string, items: Item[]) -> Reservation ! OutOfStock | Closed
+  call count() -> int
+  call ping()
+  call drop(id: string) ! Missing
+
+  var pending: call reserve
+  initial Ready
+  state Ready {}
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type)))
+    (machine_body
+      (doc_comment)
+      (call_declaration
+        (identifier)
+        (parameters
+          (parameter
+            (identifier)
+            (builtin_type))
+          (parameter
+            (identifier)
+            (list_type
+              (type_identifier))))
+        (type_identifier)
+        (errors
+          (type_identifier)
+          (type_identifier)))
+      (call_declaration
+        (identifier)
+        (parameters)
+        (builtin_type))
+      (call_declaration
+        (identifier)
+        (parameters))
+      (call_declaration
+        (identifier)
+        (parameters
+          (parameter
+            (identifier)
+            (builtin_type)))
+        (errors
+          (type_identifier)))
+      (variable_declaration
+        (identifier)
+        (call_type
+          (identifier)))
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body)))))
+
+================================================================================
+Invoking a call on a peer
+================================================================================
+
+machine Order(id: string, inventory: ref Inventory) {
+  initial Reserving
+  state Reserving {
+    invoke inventory.reserve(id, items) {
+      done            -> Reserved  set reservation = result
+      fail OutOfStock -> Failed    set problem = error
+      fail Unanswered -> Failed
+    }
+    invoke inventory.count() {
+      fail * -> Gave
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type))
+      (parameter
+        (identifier)
+        (ref_type
+          (type_identifier))))
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (invoke
+            (identifier)
+            (identifier)
+            (arguments
+              (identifier)
+              (identifier))
+            (done_transition
+              (target
+                (type_identifier))
+              (set
+                (assignment
+                  (identifier)
+                  (implicit_name))))
+            (fail_transition
+              (type_identifier)
+              (target
+                (type_identifier))
+              (set
+                (assignment
+                  (identifier)
+                  (implicit_name))))
+            (fail_transition
+              (type_identifier)
+              (target
+                (type_identifier))))
+          (invoke
+            (identifier)
+            (identifier)
+            (arguments)
+            (fail_transition
+              (wildcard)
+              (target
+                (type_identifier)))))))))
+
+================================================================================
+Taking a call: triggers, guards and branches
+================================================================================
+
+machine Inventory() {
+  on count reply call done held
+  state Ready {
+    on reserve -> Reserving  set pending = call, orderId = event.orderId
+    on reserve if open -> Reserving
+    on drop {
+      if busy -> Busy
+      else    reply call fail Missing
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (on_transition
+        (call_pattern
+          (identifier))
+        (reply
+          (implicit_name)
+          (identifier)))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (call_pattern
+              (identifier))
+            (target
+              (type_identifier))
+            (set
+              (assignment
+                (identifier)
+                (implicit_name))
+              (assignment
+                (identifier)
+                (field_expression
+                  (implicit_name)
+                  (identifier)))))
+          (on_transition
+            (call_pattern
+              (identifier))
+            (guard
+              (identifier))
+            (target
+              (type_identifier)))
+          (on_transition
+            (call_pattern
+              (identifier))
+            (branches
+              (branch
+                (guard
+                  (identifier))
+                (target
+                  (type_identifier)))
+              (else_branch
+                (reply
+                  (implicit_name)
+                  (record_value
+                    (type_identifier)))))))))))
+
+================================================================================
+Reply effects: done with and without a value, fail, and what follows them
+================================================================================
+
+machine Inventory() {
+  on count reply call done
+  call count() -> int
+  on ping reply call done
+  event Close
+  on stop reply pending done  reply pending fail OutOfStock { reason: "second" }
+  state Reserving {
+    invoke reserveStock(orderId) {
+      done -> Ready  set held = held + 1  reply pending done Reservation { orderId: orderId, count: result }
+      fail OutOfStock -> Ready  reply pending fail error
+    }
+    on reserve reply call done
+    on Close   -> Closed  reply pending done  emit Closed
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (on_transition
+        (call_pattern
+          (identifier))
+        (reply
+          (implicit_name)))
+      (call_declaration
+        (identifier)
+        (parameters)
+        (builtin_type))
+      (on_transition
+        (call_pattern
+          (identifier))
+        (reply
+          (implicit_name)))
+      (event_declaration
+        (type_identifier))
+      (on_transition
+        (call_pattern
+          (identifier))
+        (reply
+          (identifier))
+        (reply
+          (identifier)
+          (record_value
+            (type_identifier)
+            (record_body
+              (field_value
+                (identifier)
+                (string
+                  (string_content)))))))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (invoke
+            (identifier)
+            (arguments
+              (identifier))
+            (done_transition
+              (target
+                (type_identifier))
+              (set
+                (assignment
+                  (identifier)
+                  (binary_expression
+                    (identifier)
+                    (integer))))
+              (reply
+                (identifier)
+                (record_value
+                  (type_identifier)
+                  (record_body
+                    (field_value
+                      (identifier)
+                      (identifier))
+                    (field_value
+                      (identifier)
+                      (implicit_name))))))
+            (fail_transition
+              (type_identifier)
+              (target
+                (type_identifier))
+              (reply
+                (identifier)
+                (implicit_name))))
+          (on_transition
+            (call_pattern
+              (identifier))
+            (reply
+              (implicit_name)))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (target
+              (type_identifier))
+            (reply
+              (identifier))
+            (emit
+              (type_identifier))))))))
