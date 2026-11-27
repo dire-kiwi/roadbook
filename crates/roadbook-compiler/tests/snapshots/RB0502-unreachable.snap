@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+warning[RB0901]: state `Payment.Charged` can never be entered
+  --> RB0502-unreachable.road:10:9
+   |
+10 |   state Charged    { on Pay -> Done }
+   |         ^^^^^^^
+   |
+   = help: no transition that can be taken leads to it, and it is not an `initial`
+
+error[RB0502]: `Charged` cannot be reached, whatever the guards
+  --> RB0502-unreachable.road:13:3
+   |
+13 |   check reachable Charged
+   |   ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: no path from the initial configuration enters it, even with each guard holding or failing as the path needs

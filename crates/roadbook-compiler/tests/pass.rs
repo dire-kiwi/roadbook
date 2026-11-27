@@ -1,11 +1,12 @@
 //! Charts that compile: `tests/pass/`, the shop example, and every failing chart that has
-//! only warnings. Each yields IR that the schema accepts.
+//! only warnings. Each yields IR that the schema accepts, and every `check` line of the
+//! passing charts holds.
 
 mod common;
 
 use std::path::Path;
 
-use roadbook_compiler::{FsLoader, Options, compile};
+use roadbook_compiler::{FsLoader, Options, Verdict, compile};
 
 #[test]
 fn passing_charts_compile_without_diagnostics() {
@@ -18,6 +19,64 @@ fn passing_charts_compile_without_diagnostics() {
             out.render()
         );
     }
+}
+
+#[test]
+fn the_checks_of_passing_charts_hold() {
+    for case in common::cases("pass") {
+        let out = case.check();
+        assert!(
+            out.diagnostics.is_empty(),
+            "{}:\n{}",
+            case.name,
+            out.render()
+        );
+        for c in &out.checks {
+            assert!(
+                matches!(c.verdict, Verdict::Proved | Verdict::IfGuardsAllow),
+                "{}: check {} is {:?}",
+                case.name,
+                c.check,
+                c.verdict
+            );
+        }
+    }
+    // The chart that has every form, with a parallel state and history.
+    let case = common::cases("pass")
+        .into_iter()
+        .find(|c| c.name == "properties")
+        .unwrap();
+    let out = case.check();
+    let got: Vec<(&str, Verdict)> = out
+        .checks
+        .iter()
+        .map(|c| (c.check.as_str(), c.verdict))
+        .collect();
+    use Verdict::{IfGuardsAllow, Proved};
+    assert_eq!(
+        got,
+        [
+            ("reachable Shipped", IfGuardsAllow),
+            ("reachable Cancelled", Proved),
+            ("reachable Fulfilling.Work.Billing.Charged", IfGuardsAllow),
+            ("never Shipped and Cancelled", Proved),
+            ("never Paused and Fulfilling.Work.Packing.Packed", Proved),
+            ("Shipped only after Fulfilling.Work.Billing.Charged", Proved),
+            ("Fulfilling.Work.Packing.Waiting only after Cart", Proved),
+            (
+                "Fulfilling.Work.Billing.Open only after Fulfilling.Work.Packing.Waiting",
+                Proved
+            ),
+            ("can finish", Proved),
+        ]
+    );
+    let charged = &out.checks[2];
+    assert_eq!(charged.doc, "");
+    assert_eq!(out.checks[0].doc, "Shipping needs the payment approved.");
+    assert_eq!(
+        charged.path_text,
+        "Cart --Pay [approved()]--> Fulfilling.Work.Packing.Waiting + Fulfilling.Work.Billing.Open --Charge--> Fulfilling.Work.Packing.Waiting + Fulfilling.Work.Billing.Charged"
+    );
 }
 
 #[test]

@@ -52,6 +52,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use roadbook_compiler::loader::FileRef;
+use roadbook_compiler::statespace::{guard_text, trigger_text};
 use roadbook_compiler::{Compilation, Ir, Loader};
 use roadbook_ir::{Machine, State, StateKind, Transition, Trigger};
 
@@ -566,32 +567,6 @@ impl<'a> Graph<'a> {
         }
         true
     }
-}
-
-/// The trigger as the viewer labels it (`triggerText` in `packages/viewer/src/model.ts`).
-fn trigger_text(t: &Trigger) -> String {
-    match t {
-        Trigger::Event { event } => event.clone(),
-        Trigger::Emitted { from, event } => format!("{}.{event}", from.name),
-        Trigger::Any => "on *".into(),
-        Trigger::After { delay } => format!("after {}", delay.text),
-        Trigger::Always => "always".into(),
-        Trigger::Done | Trigger::InvokeDone => "done".into(),
-        Trigger::InvokeFail { error } => format!("fail {error}"),
-        Trigger::SpawnDone { children } => format!("{children}.done"),
-        Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
-    }
-}
-
-/// The guard's text; `else` for the unguarded last branch of a block (`guardText` in the
-/// viewer, without the brackets).
-fn guard_text(s: &State, index: usize) -> Option<String> {
-    let t = &s.transitions[index];
-    if let Some(g) = &t.guard {
-        return Some(g.text.clone());
-    }
-    let first = s.transitions.iter().position(|o| o.group == t.group);
-    (first != Some(index)).then(|| "else".to_string())
 }
 
 /// The id below the machine: `Processing.Paying`.

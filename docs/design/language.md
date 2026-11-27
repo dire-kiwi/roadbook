@@ -586,7 +586,7 @@ The layout, as implemented in `roadbook-syntax`. The example files and the chart
 
 ## Diagnostic codes
 
-Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` names, `RB02xx` structure, `RB03xx` types, `RB04xx` analyses and `RB09xx` warnings. The syntax codes:
+Codes are `RB` and four digits, grouped by range: `RB00xx` syntax, `RB01xx` names, `RB02xx` structure, `RB03xx` types, `RB04xx` analyses, `RB05xx` properties (a `check` line that fails, which only `roadbook check`, the language server and `@roadbook/cli check` evaluate) and `RB09xx` warnings. The syntax codes:
 
 | Code | Meaning | Example |
 | --- | --- | --- |
@@ -685,6 +685,10 @@ The compiler's codes:
 | `RB0401` | An unguarded cycle of `always` transitions. | `A { always -> B }`, `B { always -> A }` |
 | `RB0402` | A machine that invokes or spawns itself without waiting. | `state A { invoke M() { … } }` as `M`'s initial state |
 | `RB0403` | A read of a variable that might not be assigned yet. | `entry do log(n)` in the initial state, for `var n: int` |
+| `RB0501` | A `check never` whose state can be active, or whose states can be active together. | `check never Refunded` |
+| `RB0502` | A `check reachable` whose state no path reaches, even with every guard free. | `check reachable Charged` with nothing targeting `Charged` |
+| `RB0503` | A `check S only after T` where `S` can be active before `T` has been. | `check Refunded only after Charged` |
+| `RB0504` | A `check can finish` where the machine can reach a configuration from which no top-level final state can be reached. | `state Loop { on Go -> Loop }` |
 | `RB0901` | A state that can never be entered (warning). | a state nothing targets |
 | `RB0902` | A non-final state with no way out (warning). | `state Stuck {}` |
 | `RB0903` | An event, function, action or task nothing uses (warning). | `event Unused` |
@@ -694,6 +698,7 @@ The compiler's codes:
 | `RB0907` | An `emits` that nothing in the checked files receives (warning). | `emits Progress` with no `on upload.Progress` anywhere |
 | `RB0908` | A history state that no transition targets (warning). | `history Previous` with no `-> Working.Previous` |
 | `RB0909` | A `children` collection that no `spawn` fills (warning). | `children sessions: Session by string` with no `spawn sessions[…]` |
+| `RB0910` | A machine whose checks were not evaluated: it has more than 100000 configurations (warning). | many parallel regions, each with deep history |
 
 ## Grammar
 

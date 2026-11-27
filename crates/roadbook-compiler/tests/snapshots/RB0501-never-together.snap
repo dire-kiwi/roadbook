@@ -1,0 +1,16 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0501]: `never Open.Transfer.Sending and Open.Session.Closed` does not hold: `Open.Transfer.Sending` and `Open.Session.Closed` can be active together
+  --> RB0501-never-together.road:23:3
+   |
+12 |       state Waiting { on Send -> Sending }
+   |                       ------------------ 1. Send -> Open.Transfer.Sending
+...
+17 |       state Live   { on Close -> Closed }
+   |                      ------------------ 2. Close -> Open.Session.Closed
+...
+23 |   check never Open.Transfer.Sending and Open.Session.Closed
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Open.Transfer.Waiting + Open.Session.Live --Send--> Open.Transfer.Sending + Open.Session.Live --Close--> Open.Transfer.Sending + Open.Session.Closed

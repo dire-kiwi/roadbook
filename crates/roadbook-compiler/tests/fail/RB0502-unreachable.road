@@ -1,0 +1,17 @@
+// Nothing enters `Charged`: `reachable Charged` fails whatever the guards.
+fn approved() -> bool
+
+machine Payment() {
+  event Pay
+
+  initial Idle
+
+  state Idle       { on Pay if approved() -> Done }
+  state Charged    { on Pay -> Done }
+  final state Done {}
+
+  check reachable Charged
+}
+
+// expect: RB0901 at 10:9
+// expect: RB0502 at 13:3

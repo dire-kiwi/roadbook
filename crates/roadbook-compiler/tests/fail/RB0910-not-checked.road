@@ -1,0 +1,34 @@
+// options: max-configurations 4
+// Three regions of two states each make 8 configurations, more than the budget this case
+// sets (the default is 100000): the checks are not evaluated.
+machine Lights() {
+  event A
+  event B
+  event C
+
+  initial On
+
+  parallel state On {
+    state First {
+      initial Off
+      state Off { on A -> Lit }
+      state Lit { on A -> Off }
+    }
+    state Second {
+      initial Off
+      state Off { on B -> Lit }
+      state Lit { on B -> Off }
+    }
+    state Third {
+      initial Off
+      state Off { on C -> Lit }
+      state Lit { on C -> Off }
+    }
+  }
+
+  check reachable On.First.Lit
+  check never On.First.Lit and On.Second.Lit
+}
+
+// expect: RB0910 at 29:3
+// expect: RB0910 at 30:3

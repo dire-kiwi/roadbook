@@ -39,6 +39,7 @@ impl Config {
         Options {
             warn_invoke_timeout: self.warn_invoke_timeout,
             allow_unassigned: self.allow_unassigned.clone(),
+            ..Options::default()
         }
     }
 

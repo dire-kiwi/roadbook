@@ -20,8 +20,6 @@ use crate::index::SymbolId;
 use crate::names::suggest;
 
 /// A resolved `check` line.
-// Read by the evaluation of checks, which comes next.
-#[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Check {
     /// The machine the check is written in.
@@ -37,8 +35,6 @@ pub struct Check {
 }
 
 /// What a check asserts, with its states resolved.
-// Read by the evaluation of checks, which comes next.
-#[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Property {
     /// `never A and B`: the states are never all active at once (with one state: it is
@@ -54,8 +50,6 @@ pub enum Property {
 }
 
 /// A state named in a check.
-// Read by the evaluation of checks, which comes next.
-#[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StatePath {
     /// The IR state id, such as `PaymentWebhook.Applying.RecordingRefund`.

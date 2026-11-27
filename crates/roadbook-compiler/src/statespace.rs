@@ -488,6 +488,35 @@ impl Graph {
     }
 }
 
+/// A transition's trigger as the viewer labels it (`triggerText` in
+/// `packages/viewer/src/model.ts`): `Go`, `after 5s`, `fail Declined`, `on *`. `roadbook
+/// paths` and the counterexamples of checks write triggers this way.
+pub fn trigger_text(t: &Trigger) -> String {
+    match t {
+        Trigger::Event { event } => event.clone(),
+        Trigger::Emitted { from, event } => format!("{}.{event}", from.name),
+        Trigger::Any => "on *".into(),
+        Trigger::After { delay } => format!("after {}", delay.text),
+        Trigger::Always => "always".into(),
+        Trigger::Done | Trigger::InvokeDone => "done".into(),
+        Trigger::InvokeFail { error } => format!("fail {error}"),
+        Trigger::SpawnDone { children } => format!("{children}.done"),
+        Trigger::SpawnFail { children, error } => format!("{children}.fail {error}"),
+    }
+}
+
+/// The guard's text of transition `index` of state `s`; `else` for the unguarded last branch
+/// of a guarded block, `None` for an unguarded transition (`guardText` in the viewer, without
+/// the brackets).
+pub fn guard_text(s: &ir::State, index: usize) -> Option<String> {
+    let t = &s.transitions[index];
+    if let Some(g) = &t.guard {
+        return Some(g.text.clone());
+    }
+    let first = s.transitions.iter().position(|o| o.group == t.group);
+    (first != Some(index)).then(|| "else".to_string())
+}
+
 // ---------------------------------------------------------------------------------------------
 // The machine's tables.
 

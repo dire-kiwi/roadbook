@@ -1,0 +1,26 @@
+// The two regions move on their own events, so `Sending` and `Closed` can be active
+// together; no guard is needed for that.
+machine Upload() {
+  event Send
+  event Close
+
+  initial Open
+
+  parallel state Open {
+    state Transfer {
+      initial Waiting
+      state Waiting { on Send -> Sending }
+      state Sending { on Send -> Waiting }
+    }
+    state Session {
+      initial Live
+      state Live   { on Close -> Closed }
+      state Closed { on Close -> Live }
+    }
+  }
+
+  /// A transfer never runs on a closed session.
+  check never Open.Transfer.Sending and Open.Session.Closed
+}
+
+// expect: RB0501 at 23:3

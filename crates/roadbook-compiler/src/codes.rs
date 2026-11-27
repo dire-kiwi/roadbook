@@ -1,5 +1,6 @@
 //! The compiler's diagnostic codes: `RB01xx` names, `RB02xx` structure, `RB03xx` types,
-//! `RB04xx` analyses and `RB09xx` warnings. Each is listed with an example in the "Diagnostic
+//! `RB04xx` analyses, `RB05xx` properties (failing `check` lines, which only `check`
+//! evaluates) and `RB09xx` warnings. Each is listed with an example in the "Diagnostic
 //! codes" table of `docs/design/language.md`, and each has a failing chart in
 //! `tests/fail/`. The syntax codes, `RB00xx`, are in `roadbook_syntax::codes`.
 
@@ -195,6 +196,18 @@ pub const UNBOUNDED_RECURSION: Code = Code(402);
 /// A read of a variable that might not be assigned yet (definite assignment).
 pub const UNASSIGNED_READ: Code = Code(403);
 
+// ───────────── properties ─────────────
+
+/// A `check never` whose states can be active (all together, for several).
+pub const NEVER_ACTIVE: Code = Code(501);
+/// A `check reachable` whose state no path reaches, whatever the guards.
+pub const UNREACHABLE_CHECK_STATE: Code = Code(502);
+/// A `check S only after T` where `S` can be active before `T` has been.
+pub const ACTIVE_BEFORE: Code = Code(503);
+/// A `check can finish` where a configuration can be reached from which no top-level final
+/// state can be.
+pub const CANNOT_FINISH: Code = Code(504);
+
 // ───────────── warnings ─────────────
 
 /// A state that cannot be reached from the machine's initial state.
@@ -219,6 +232,8 @@ pub const NEVER_RECEIVED: Code = Code(907);
 pub const UNUSED_HISTORY: Code = Code(908);
 /// A `children` collection that no `spawn` fills (warning).
 pub const NEVER_SPAWNED: Code = Code(909);
+/// A machine whose checks were not evaluated: it has more configurations than the budget.
+pub const NOT_CHECKED: Code = Code(910);
 
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
@@ -290,6 +305,10 @@ pub const ALL: &[Code] = &[
     ALWAYS_CYCLE,
     UNBOUNDED_RECURSION,
     UNASSIGNED_READ,
+    NEVER_ACTIVE,
+    UNREACHABLE_CHECK_STATE,
+    ACTIVE_BEFORE,
+    CANNOT_FINISH,
     UNREACHABLE_STATE,
     NO_WAY_OUT,
     UNUSED_DECLARATION,
@@ -299,6 +318,7 @@ pub const ALL: &[Code] = &[
     NEVER_RECEIVED,
     UNUSED_HISTORY,
     NEVER_SPAWNED,
+    NOT_CHECKED,
 ];
 
 #[cfg(test)]

@@ -72,8 +72,6 @@ pub(crate) struct Checker<'p> {
     pub used: HashSet<String>,
     pub machines: Vec<MachineInfo>,
     /// The `check` lines of every machine lowered, resolved. Not in the IR.
-    // Read by the evaluation of checks, which comes next.
-    #[allow(dead_code)]
     pub(crate) checks: Vec<Check>,
     /// Whether every declared type is resolved, so that aliases can be expanded.
     types_resolved: bool,
