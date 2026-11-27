@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/history-regions.road",
@@ -20,6 +20,7 @@
         "endLine": 40,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -82,6 +83,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "children": {},
       "root": {
         "id": "Panels",
@@ -429,7 +431,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:aff0f13c7e014d32454797ba456622c0861f8475c6138aec9bc919b55b2bf193"
+      "hash": "sha256:0a0f1531fbabafe000300b506842299c15bb29d193c0927ae85e50ea4128f0c8"
     },
     "Region": {
       "doc": "The history state of a compound state in one region of a parallel state.",
@@ -440,6 +442,7 @@
         "endLine": 68,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -480,6 +483,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "children": {},
       "root": {
         "id": "Region",
@@ -767,7 +771,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:67c41cb31e58eef6f738d952c5dab619dbf374c717489820d119617050d1c506"
+      "hash": "sha256:41565302f21b8cf55c77a6823d4adadfa73a13d2a30b98a36c745503e30b7f17"
     }
   }
 }

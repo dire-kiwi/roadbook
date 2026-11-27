@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/saved.road",
@@ -14,6 +14,7 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -31,11 +32,13 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -53,11 +56,13 @@
         {
           "name": "order",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "amount",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -77,6 +82,7 @@
         {
           "name": "amount",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -96,6 +102,7 @@
         {
           "name": "price",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -115,6 +122,7 @@
         {
           "name": "order",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -145,6 +153,7 @@
         {
           "name": "start",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -154,6 +163,7 @@
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "ref",
             "path": [
@@ -178,6 +188,7 @@
             {
               "name": "by",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -204,6 +215,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Counter",
         "name": "Counter",
@@ -376,6 +388,7 @@
         {
           "name": "amount",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -385,6 +398,7 @@
         {
           "name": "receipt",
           "type": "string",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": "",
@@ -404,6 +418,7 @@
       "events": {},
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Shop",
         "name": "Shop",
@@ -543,6 +558,7 @@
         {
           "name": "amount",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -552,6 +568,7 @@
         {
           "name": "price",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -570,6 +587,7 @@
         {
           "name": "receipt",
           "type": "string",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": "",
@@ -589,6 +607,7 @@
       "events": {},
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Pay",
         "name": "Pay",
@@ -816,6 +835,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Reminder",
         "name": "Reminder",
@@ -950,6 +970,7 @@
         {
           "name": "id",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -959,6 +980,7 @@
         {
           "name": "paid",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -977,6 +999,7 @@
         {
           "name": "tracking",
           "type": "string",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": "",
@@ -999,6 +1022,7 @@
             {
               "name": "amount",
               "type": "int",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -1025,6 +1049,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Order",
         "name": "Order",

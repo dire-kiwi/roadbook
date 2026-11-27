@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/teller.road",
@@ -198,6 +198,7 @@
         "endLine": 20,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "code",
@@ -272,6 +273,7 @@
           }
         }
       },
+      "calls": {},
       "children": {},
       "root": {
         "id": "Teller",
@@ -408,7 +410,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:e5ad0c44d49416e05ab5d32425728b01d6343ab6f6ac406e9830e9a3518c85aa"
+      "hash": "sha256:e515c61f83d5420746c838952060313faf204f596284cdd1a261d041207674e3"
     },
     "Keeper": {
       "doc": "Invokes a Teller and asks it a question: before it runs, and once it does.",
@@ -419,6 +421,7 @@
         "endLine": 45,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "owner",
@@ -488,6 +491,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "children": {},
       "root": {
         "id": "Keeper",
@@ -623,6 +627,7 @@
             "invoke": {
               "kind": "machine",
               "src": "Teller",
+              "to": null,
               "as": "teller",
               "args": [
                 {
@@ -754,7 +759,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:7e15052a519c66d1eb735842247c5a415606eae5484cf40b85be328e8a1dac77"
+      "hash": "sha256:bb4351a6515f2c14b6e9d57b68c7cd67707f31e5db9c7f4c10314f54345202ec"
     },
     "Caller": {
       "doc": "Asks a Teller it holds a `ref` to, and keeps the answer.",
@@ -765,6 +770,7 @@
         "endLine": 64,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "secret",
@@ -827,6 +833,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "children": {},
       "root": {
         "id": "Caller",
@@ -1024,7 +1031,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:cf600ac8d40c6f069c1830427338e22264aaf6ad95282542ddf1530b4142fb02"
+      "hash": "sha256:f475b8dfe56856f364fb0b0240432a7ab58547cc0a46a50c229ae8c50ce7852a"
     }
   }
 }

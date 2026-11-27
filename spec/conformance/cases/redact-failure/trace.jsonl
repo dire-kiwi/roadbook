@@ -1,4 +1,4 @@
-{"input":{"backup":null,"extra":[{"password":"<redacted>","user":"bob"}],"login":{"password":"<redacted>","user":"ada"},"pin":"<redacted>"},"ir":"sha256:11bcdc4f47569a073243b132fdfb56b6f4d8b536e360c13138c2132c647df2e1","kind":"started","machine":"Vault","run":"r1","t":0}
+{"input":{"backup":null,"extra":[{"password":"<redacted>","user":"bob"}],"login":{"password":"<redacted>","user":"ada"},"pin":"<redacted>"},"ir":"sha256:55625b0911719676871e585656e2569dff5acee5c02d11de370a5425d607c54e","kind":"started","machine":"Vault","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Vault","t":0}
 {"kind":"entered","run":"r1","state":"Vault.SigningIn","t":0}
 {"action":"audit","args":{"login":{"password":"<redacted>","user":"ada"},"who":"ada"},"kind":"action","run":"r1","t":0}

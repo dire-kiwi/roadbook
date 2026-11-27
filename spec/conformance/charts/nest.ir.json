@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/nest.road",
@@ -14,11 +14,13 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -38,6 +40,7 @@
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -71,6 +74,7 @@
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -135,6 +139,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Nest",
         "name": "Nest",

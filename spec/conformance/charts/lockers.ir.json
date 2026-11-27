@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/lockers.road",
@@ -97,6 +97,7 @@
         "endLine": 26,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "owner",
@@ -148,6 +149,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "children": {},
       "root": {
         "id": "Locker",
@@ -349,7 +351,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:940f29c829c198272e2dc1a8d1f7ccf9656532df4ead4dca60bcd8b31436b3e0"
+      "hash": "sha256:45cb77a0756f99d819f20d7a7520836b5c36918f553fffcc2e58c0c5f4f93e30"
     },
     "Lockers": {
       "doc": "Lockers by number.",
@@ -360,6 +362,7 @@
         "endLine": 47,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -450,6 +453,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "children": {
         "lockers": {
           "machine": "Locker",
@@ -780,7 +784,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:2cf11cdcb2a4f9980b400097bfc3a6246a6d1fe2eefd3a1c36927a82611f05e8"
+      "hash": "sha256:99c8f27e15035062894f7b1115abd8f14d8e81e5b3f73e62d18a0e0d5318ea39"
     }
   }
 }

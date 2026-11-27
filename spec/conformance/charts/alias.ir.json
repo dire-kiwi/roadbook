@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/alias.road",
@@ -9,6 +9,7 @@
   "types": {
     "Money": {
       "kind": "alias",
+      "params": [],
       "type": "int",
       "doc": "",
       "span": {
@@ -21,6 +22,7 @@
     },
     "Cash": {
       "kind": "alias",
+      "params": [],
       "type": "Money",
       "doc": "",
       "span": {
@@ -33,6 +35,7 @@
     },
     "Ratio": {
       "kind": "alias",
+      "params": [],
       "type": "float",
       "doc": "",
       "span": {
@@ -45,6 +48,7 @@
     },
     "Wait": {
       "kind": "alias",
+      "params": [],
       "type": "duration",
       "doc": "",
       "span": {
@@ -72,6 +76,7 @@
     },
     "Tier": {
       "kind": "alias",
+      "params": [],
       "type": "Level",
       "doc": "",
       "span": {
@@ -84,6 +89,7 @@
     },
     "Note": {
       "kind": "alias",
+      "params": [],
       "type": "string?",
       "doc": "",
       "span": {
@@ -102,6 +108,7 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -119,6 +126,7 @@
         {
           "name": "note",
           "type": "Note",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -148,6 +156,7 @@
         {
           "name": "limit",
           "type": "Money",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -157,6 +166,7 @@
         {
           "name": "m",
           "type": "Cash",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 5,
@@ -175,6 +185,7 @@
         {
           "name": "r",
           "type": "Ratio",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 1.5,
@@ -193,6 +204,7 @@
         {
           "name": "w",
           "type": "Wait",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 1000,
@@ -211,6 +223,7 @@
         {
           "name": "t",
           "type": "Tier",
+          "sensitive": false,
           "init": {
             "kind": "enum",
             "variant": "Low",
@@ -229,6 +242,7 @@
         {
           "name": "note",
           "type": "Note",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -246,6 +260,7 @@
             {
               "name": "by",
               "type": "Money",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -263,11 +278,13 @@
             {
               "name": "ratio",
               "type": "Ratio",
+              "sensitive": false,
               "doc": ""
             },
             {
               "name": "wait",
               "type": "Wait",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -285,6 +302,7 @@
             {
               "name": "tier",
               "type": "Tier",
+              "sensitive": false,
               "doc": ""
             }
           ],
@@ -300,6 +318,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Aliases",
         "name": "Aliases",

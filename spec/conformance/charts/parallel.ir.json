@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/parallel.road",
@@ -14,6 +14,7 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -31,11 +32,13 @@
         {
           "name": "what",
           "type": "string",
+          "sensitive": false,
           "doc": ""
         },
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -118,6 +121,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Regions",
         "name": "Regions",
@@ -536,6 +540,7 @@
         {
           "name": "n",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -578,6 +583,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Fork",
         "name": "Fork",
@@ -1155,6 +1161,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Clash",
         "name": "Clash",
@@ -1510,6 +1517,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Escape",
         "name": "Escape",
@@ -1834,6 +1842,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Finish",
         "name": "Finish",
@@ -2180,6 +2189,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Jobs",
         "name": "Jobs",
@@ -2569,6 +2579,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Shell",
         "name": "Shell",

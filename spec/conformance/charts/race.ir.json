@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/race.road",
@@ -55,6 +55,7 @@
         {
           "name": "v",
           "type": "int",
+          "sensitive": false,
           "init": {
             "kind": "lit",
             "value": 0,
@@ -86,6 +87,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Race",
         "name": "Race",

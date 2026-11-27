@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.5",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/defects.road",
@@ -39,6 +39,7 @@
         {
           "name": "memo",
           "type": "string?",
+          "sensitive": false,
           "doc": ""
         }
       ],
@@ -85,6 +86,7 @@
         {
           "name": "limit",
           "type": "int",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -98,6 +100,7 @@
         {
           "name": "memo",
           "type": "string?",
+          "sensitive": false,
           "init": null,
           "doc": "",
           "span": {
@@ -135,6 +138,7 @@
       },
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Main",
         "name": "Main",
@@ -455,6 +459,7 @@
       "events": {},
       "emits": {},
       "calls": {},
+      "children": {},
       "root": {
         "id": "Sub",
         "name": "Sub",

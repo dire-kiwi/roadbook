@@ -1,4 +1,4 @@
-{"input":{"counts":{"2":5,"x":1},"waits":{"10":50,"9":70,"__proto__":20,"a":100,"b":300}},"ir":"sha256:bb2036a69631bf4a90876f6d3600ec778b471a3acd9358d49854a7b81144cc53","kind":"started","machine":"Gather","run":"r1","t":0}
+{"input":{"counts":{"2":5,"x":1},"waits":{"10":50,"9":70,"__proto__":20,"a":100,"b":300}},"ir":"sha256:d8cdcbe960fd3df5c3f32df517a5dc76c5b6a81016d6ffd9c5742ebfbd6abb70","kind":"started","machine":"Gather","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Gather","t":0}
 {"kind":"entered","run":"r1","state":"Gather.Waiting","t":0}
 {"kind":"set","run":"r1","t":0,"value":{"value":"b","wait":300},"var":"best"}

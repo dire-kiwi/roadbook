@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/hub.road",
@@ -77,6 +77,7 @@
         "endLine": 30,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "name",
@@ -201,6 +202,7 @@
           }
         }
       },
+      "calls": {},
       "children": {},
       "root": {
         "id": "Session",
@@ -484,7 +486,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:e949a901fb8fc6f67493f8d9403dec4bb1bc89e0dafc83685977eae330f5586b"
+      "hash": "sha256:05a64e242e0fa61eb7ffbe2a5d68deb71aeb38aa8a270690a3fa0edb4a858527"
     },
     "Hub": {
       "doc": "Spawns, addresses and stops sessions by key.",
@@ -495,6 +497,7 @@
         "endLine": 69,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": "int",
       "errors": [],
@@ -737,6 +740,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "children": {
         "sessions": {
           "machine": "Session",
@@ -1473,7 +1477,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:72e5bcc3745300c584fbdce9f3f0ad506539d57a8bc704b74889088acd6194f7"
+      "hash": "sha256:24d307ada6ee1809dc0e6879de8fa93fd536bb2537874023b6c9dc92e0bbdf4e"
     },
     "Pool": {
       "doc": "Keyed by number: handles only its children's ending, and can be saved while they run.",
@@ -1484,6 +1488,7 @@
         "endLine": 91,
         "endCol": 2
       },
+      "strict": false,
       "params": [],
       "returns": null,
       "errors": [],
@@ -1580,6 +1585,7 @@
         }
       },
       "emits": {},
+      "calls": {},
       "children": {
         "slots": {
           "machine": "Session",
@@ -1866,7 +1872,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:93e999cafd03194cfabbfb19d6c1fdcfd679b30e52153ddff96e0d7f308b40dc"
+      "hash": "sha256:62f3e25845e36f9cc96e878155dff792cd5a49185e3722509a2d88b566f4734d"
     }
   }
 }

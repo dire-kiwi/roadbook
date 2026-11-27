@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.6",
+  "irVersion": "0.7",
   "sources": [
     {
       "path": "spec/conformance/charts/sealed.road",
@@ -185,6 +185,7 @@
         "endLine": 29,
         "endCol": 2
       },
+      "strict": false,
       "params": [
         {
           "name": "users",
@@ -219,6 +220,7 @@
       ],
       "events": {},
       "emits": {},
+      "calls": {},
       "children": {},
       "root": {
         "id": "Keep",
@@ -253,6 +255,7 @@
             "invoke": {
               "kind": "task",
               "src": "fetch",
+              "to": null,
               "as": null,
               "args": [
                 {
@@ -356,7 +359,7 @@
         "output": null,
         "fail": null
       },
-      "hash": "sha256:141de166ba992bc30d35798ae14212aad1ec23689435104a69bd44ba3d5d5f2d"
+      "hash": "sha256:69bf79febe1630645b241499ca8a5c8bab738cf0b38c351283cb869da878ce68"
     }
   }
 }

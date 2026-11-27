@@ -1,4 +1,4 @@
-{"input":{},"ir":"sha256:e3214dc83df18e56295753fd9fd004d705a2385336e96db90639fe5a0531f391","kind":"started","machine":"Editor","run":"r1","t":0}
+{"input":{},"ir":"sha256:3c9c0073b41e6dac8a5722d66c35f14e9951e7306070790b80848db00df0b781","kind":"started","machine":"Editor","run":"r1","t":0}
 {"kind":"entered","run":"r1","state":"Editor","t":0}
 {"kind":"entered","run":"r1","state":"Editor.Work","t":0}
 {"action":"log","args":{"what":"enter Work"},"kind":"action","run":"r1","t":0}
