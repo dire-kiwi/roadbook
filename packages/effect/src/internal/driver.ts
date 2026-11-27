@@ -352,13 +352,19 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
       subscribers: entry === undefined ? new Map() : entry.port.subscribers,
       closedAs: undefined
     }
-    if (env.token !== undefined) {
-      // A child run's queue starts with what its parent sent before it claimed the invoke;
-      // from now on the parent's sends go straight to it.
+    /**
+     * A child run's queue starts with what its parent sent before it claimed the invoke; from
+     * then on the parent's sends go straight to it. A restored child takes them only after its
+     * restore step's commands, so that the expiries its `timer.fire` queues go first, before
+     * anything sent to it after restoring; meanwhile the parent's sends are still held, in order.
+     */
+    const takeHeld = () => {
+      if (env.token === undefined || env.token.child !== undefined) return
       Queue.offerAllUnsafe(queue, env.token.held)
       env.token.held = []
       env.token.child = port
     }
+    if (begin.kind !== "restore") takeHeld()
     const peers = new Set<Port>()
     for (const handle of refs.values()) peers.add(portOf(handle)!)
     /**
@@ -1053,6 +1059,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
           // Subscribed to the peers' emitted events and ends before `start`, until the run closes.
           for (const peer of peers) subscribeTo(peer, Core.heard(ir, name, peer.machine))
           yield* carryOut(yield* begun(env.timer.now))
+          takeHeld()
           tellEndedPeers()
           publish()
           yield* Deferred.succeed(started, undefined)
@@ -1076,6 +1083,10 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             if (stopping) return yield* stop
             const next = yield* restore(Queue.take(queue))
             waiting = false
+            // Its tree was halted (an ancestor decided the tree is idle) before the interrupt
+            // reached it: it takes no more steps, and its timer's expiry stays in its snapshot.
+            // The interrupt that follows stops it.
+            if (suspended) return yield* restore(Effect.never)
             if (next.kind === "wake") {
               wakes -= 1
               continue
@@ -1204,6 +1215,7 @@ const makeInstance = (program: Program, begin: Begin, env: Env): Effect.Effect<I
             let next = yield* journalled(1)
             replaying = next !== undefined
             yield* carryOut(yield* begun(Effect.succeed(now0)))
+            takeHeld()
             tellEndedPeers()
             publish()
             yield* Deferred.succeed(started, undefined)

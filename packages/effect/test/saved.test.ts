@@ -446,6 +446,34 @@ describe("child runs in a saved snapshot", () => {
       assert.strictEqual(done.status, "done")
     }))
 
+  it.effect("a restored child takes its overdue timer before what its parent sent it before it claimed the invoke", () =>
+    Effect.gen(function*() {
+      const saved = yield* Effect.scoped(Effect.gen(function*() {
+        const desk = yield* DeskLive.spawn({ start: 1 })
+        yield* desk.send({ _tag: "Bump", by: 2 })
+        yield* settle
+        return yield* desk.save
+      }))
+      // The host code yields before it calls `run`, so the Bump the restored Desk passes on is
+      // held for the child; the child's timer (due at 5000) is overdue at 10000.
+      const SlowTally = { run: (input: unknown) => Effect.andThen(Effect.yieldNow, TallyLive.run(input as never)) }
+      const SlowDesk = impl("Desk", { ...log, machines: { Tally: SlowTally } }, keptIr)
+      const { records, sink } = collect()
+      const timer: Roadbook.Timer = { now: Effect.succeed(10_000), sleep: () => Effect.never }
+      const after = yield* Effect.gen(function*() {
+        const desk = yield* SlowDesk.restore(saved)
+        yield* desk.send({ _tag: "Bump", by: 4 })
+        yield* settle
+        return yield* desk.save
+      }).pipe(Effect.scoped, Effect.provideService(Roadbook.Timer, timer), Effect.provideService(Roadbook.TraceSink, sink))
+      const taken = records
+        .filter((r) => r.kind === "event" && r.run.endsWith(".1"))
+        .map((r) => (r as { event: { kind: string } }).event.kind)
+      assert.deepStrictEqual(taken, ["after", "message"])
+      assert.deepStrictEqual(after.invokes[0]!.child!.active, ["Tally", "Tally.Counting"])
+      assert.deepStrictEqual(after.invokes[0]!.child!.vars, { n: 7 })
+    }))
+
   it.effect("a child run bound to another machine than its snapshot's ends with a host defect", () =>
     Effect.gen(function*() {
       const saved = yield* Effect.scoped(Effect.gen(function*() {
