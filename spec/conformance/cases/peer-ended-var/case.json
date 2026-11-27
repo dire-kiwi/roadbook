@@ -1,0 +1,52 @@
+{
+  "description": "A `ref` variable names whichever run it holds when the end is taken. The Switcher (r3) holds Inventories r1 (`a`) and r2 (`b`) and watches `current`, which starts as `a` and is set to `b` by Swap. After Swap, r1 closes: its end comes from a run no address of an `ended` trigger names, so it is dropped. Then r2 closes, and `on current.ended` takes its end.",
+  "requires": [
+    "messaging",
+    "ended"
+  ],
+  "chart": "charts/ended.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Inventory",
+      "run": "r2",
+      "input": {
+        "warehouse": "w2"
+      },
+      "status": "done"
+    },
+    {
+      "start": "Switcher",
+      "run": "r3",
+      "input": {
+        "a": "r1",
+        "b": "r2"
+      },
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Swap"
+      },
+      "run": "r3"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "done"
+}

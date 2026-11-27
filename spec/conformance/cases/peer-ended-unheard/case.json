@@ -1,0 +1,51 @@
+{
+  "description": "Who is told. The Clerk (r2) holds a `ref` to the Inventory (r1) but its machine has no `on inventory.ended`, so it is not sent the end and writes nothing for it. The Picker (r3) hears it, but is Idle, whose states have no `on inventory.ended`, when it takes it: it writes `dropped`. Told once, it is not told again when it goes on to Watching.",
+  "requires": [
+    "messaging",
+    "ended"
+  ],
+  "chart": "charts/ended.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Clerk",
+      "run": "r2",
+      "input": {
+        "inventory": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "start": "Picker",
+      "run": "r3",
+      "input": {
+        "inventory": "r1"
+      },
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Stop"
+      },
+      "run": "r2"
+    },
+    {
+      "event": {
+        "_tag": "Go"
+      },
+      "run": "r3"
+    }
+  ],
+  "status": "done"
+}

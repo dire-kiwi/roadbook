@@ -1,0 +1,30 @@
+{
+  "description": "What a holder gets from a peer as it ends, in order. The Booker (r2) calls the Desk (r1), which keeps the call pending. The Desk then takes Close, whose step emits Closing, and ends with the call still pending. The Booker takes, in this order: the emitted Closing (`do heard()`, still Asking), the `invoke.fail` with `Unanswered` that the Desk's driver answers as the Desk ends (to Waiting), then the Desk's `ended` with `Done` (to Gone).",
+  "requires": [
+    "messaging",
+    "calls",
+    "ended"
+  ],
+  "chart": "charts/ended-order.road",
+  "machine": "Desk",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Booker",
+      "run": "r2",
+      "input": {
+        "desk": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    }
+  ],
+  "status": "done"
+}

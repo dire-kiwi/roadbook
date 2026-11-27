@@ -1,0 +1,32 @@
+{
+  "description": "An Order (r2) waits for the Inventory (r1) it holds a `ref` to. Host code closes the Inventory, which ends `done`; its driver then pushes `{\"kind\": \"ended\", \"from\": \"r1\", \"status\": \"Done\"}` onto the Order's queue, since the Order's machine has an `on inventory.ended`. The Order takes it as an `event` record, its guard on `event.status` sends it to Closed, and its timer is cancelled.",
+  "requires": [
+    "messaging",
+    "ended"
+  ],
+  "chart": "charts/ended.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Order",
+      "run": "r2",
+      "input": {
+        "id": "o1",
+        "inventory": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    }
+  ],
+  "status": "done"
+}

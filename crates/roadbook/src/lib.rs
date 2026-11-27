@@ -25,6 +25,12 @@
 //! - Messages between runs go through the runs' queues: a run is open until its core gives a
 //!   snapshot that is not `running`, a `send` to a closed run is `undelivered`, and a run is
 //!   subscribed to what its peers emit while it is open.
+//! - A peer's end (`on inventory.ended`) is an [`Input::Ended`] with an [`Ended`] status. When
+//!   a run closes, however it closes (a hard stop is `Cancelled`, suspending `Suspended`), its
+//!   driver pushes one onto the queue of each subscriber whose machine has an `on name.ended`
+//!   for it, after its last step's commands and its `Unanswered` answers. A run that
+//!   subscribes to a peer that has already closed is told by its own driver, right after its
+//!   start step. Either way, once per peer.
 //! - A call (`invoke inventory.reserve(…)`) is made by the driver itself, with no `Handlers`
 //!   method: it pushes the call onto the peer's queue with a way to answer it, and the
 //!   callee's `reply` pushes the answer onto the caller's queue as the invoke's outcome. A
@@ -61,8 +67,8 @@ pub use env::{
 pub use handle::Ref;
 pub use listen::Subscription;
 pub use roadbook_core::{
-    Defect, Input, InvokeEntry, Program, RUN_ID_PATTERN, Record, Refusal, RestoreError, RunResult,
-    Saved, SavedTimer, Status, is_run_id,
+    Defect, Ended, Input, InvokeEntry, Program, RUN_ID_PATTERN, Record, Refusal, RestoreError,
+    RunResult, Saved, SavedTimer, Status, is_run_id,
 };
 pub use roadbook_macros::include;
 pub use shared::RunHandle;

@@ -1,0 +1,83 @@
+{
+  "description": "Three Inventories end three ways and each is held by one Order, whose guard on `event.status` routes it: r1 is cancelled from outside (`Cancelled`: Gone, `note` with Cancelled), r2 takes Fail and ends `failed` (`Failed`: Gone), and r3's `crash` action has a host defect (`Defect`: Alarm). A defect is told like any end: the driver's end of the run, not the step's commands, pushes `ended`. No output, error or defect value reaches the holders.",
+  "requires": [
+    "messaging",
+    "ended"
+  ],
+  "chart": "charts/ended.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {
+    "crash": [
+      {
+        "args": {},
+        "defect": "the shelf collapsed"
+      }
+    ]
+  },
+  "script": [
+    {
+      "start": "Inventory",
+      "run": "r2",
+      "input": {
+        "warehouse": "w2"
+      },
+      "status": "failed"
+    },
+    {
+      "start": "Inventory",
+      "run": "r3",
+      "input": {
+        "warehouse": "w3"
+      },
+      "status": "defect"
+    },
+    {
+      "start": "Order",
+      "run": "r4",
+      "input": {
+        "id": "o1",
+        "inventory": "r1"
+      },
+      "status": "done"
+    },
+    {
+      "start": "Order",
+      "run": "r5",
+      "input": {
+        "id": "o2",
+        "inventory": "r2"
+      },
+      "status": "done"
+    },
+    {
+      "start": "Order",
+      "run": "r6",
+      "input": {
+        "id": "o3",
+        "inventory": "r3"
+      },
+      "status": "done"
+    },
+    {
+      "cancel": true
+    },
+    {
+      "event": {
+        "_tag": "Fail"
+      },
+      "run": "r2"
+    },
+    {
+      "event": {
+        "_tag": "Crash"
+      },
+      "run": "r3"
+    }
+  ],
+  "status": "cancelled"
+}

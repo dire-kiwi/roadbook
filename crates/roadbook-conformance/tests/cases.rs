@@ -511,6 +511,58 @@ fn lint_catches_mistakes() {
 }
 
 #[test]
+fn lint_catches_peer_end_mistakes() {
+    let c = cases()
+        .into_iter()
+        .find(|c| c.name == "peer-ended-order")
+        .unwrap();
+    let st = statuses(&c);
+    assert!(lint_runs(&c.records, &st, None).is_empty());
+    let finds = |recs: &[Value], what: &str| {
+        let problems = lint_runs(recs, &st, None);
+        assert!(
+            problems.iter().any(|p| p.contains(what)),
+            "no problem with {what:?} in {problems:#?}"
+        );
+    };
+    let i = c
+        .records
+        .iter()
+        .position(|r| r["event"]["kind"] == "ended")
+        .unwrap();
+    // A status that is not how the peer ended, or not one at all.
+    let mut wrong = c.records.clone();
+    wrong[i]["event"]["status"] = json!("Failed");
+    finds(&wrong, "but r2 was told Failed");
+    wrong[i]["event"]["status"] = json!("Gone");
+    finds(&wrong, "not a variant of Ended");
+    // An end that is stale, and one from a run that is not top-level.
+    let mut stale = c.records.clone();
+    stale[i]["kind"] = json!("stale");
+    finds(&stale, "never stale");
+    let mut child = c.records.clone();
+    child[i]["event"]["from"] = json!("r1.1");
+    finds(&child, "not a top-level run");
+    // Told twice: the same end dropped again.
+    let mut twice = c.records.clone();
+    let mut again = c.records[i].clone();
+    again["kind"] = json!("dropped");
+    twice.insert(i, again);
+    finds(&twice, "told the end of r1 twice");
+    // The emitted event taken after the end.
+    let mut late = c.records.clone();
+    let e = late
+        .iter()
+        .position(|r| r["event"]["kind"] == "emitted")
+        .unwrap();
+    let mut emitted = late[e].clone();
+    emitted["kind"] = json!("dropped");
+    late.insert(i, emitted);
+    late.swap(i, i + 1);
+    finds(&late, "after its end");
+}
+
+#[test]
 fn lint_catches_message_mistakes() {
     let c = cases()
         .into_iter()

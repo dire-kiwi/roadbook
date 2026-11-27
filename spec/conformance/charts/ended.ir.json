@@ -1,0 +1,1336 @@
+{
+  "irVersion": "0.8",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/ended.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Shut": {
+      "kind": "error",
+      "fields": [],
+      "doc": "The warehouse shut for good.",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 11
+      }
+    },
+    "Ended": {
+      "kind": "enum",
+      "variants": [
+        "Done",
+        "Failed",
+        "Cancelled",
+        "Defect",
+        "Suspended"
+      ],
+      "doc": "How a peer's run ended: the type of `event.status` in `on name.ended`. Built in.",
+      "span": {
+        "file": 0,
+        "line": 1,
+        "col": 1,
+        "endLine": 1,
+        "endCol": 1
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "note": {
+      "params": [
+        {
+          "name": "status",
+          "type": "Ended",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "Record how a peer ended.",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 27
+      }
+    },
+    "crash": {
+      "params": [],
+      "doc": "Something that can fail with a host defect.",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 12,
+        "endCol": 15
+      }
+    }
+  },
+  "tasks": {},
+  "machines": {
+    "Inventory": {
+      "doc": "The stock of one warehouse, which ends when asked to: done on Close, failed\non Fail, with a defect on Crash (when `crash` has one).",
+      "span": {
+        "file": 0,
+        "line": 16,
+        "col": 1,
+        "endLine": 34,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "warehouse",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "string",
+      "errors": [
+        "Shut"
+      ],
+      "vars": [],
+      "events": {
+        "Reserve": {
+          "fields": [
+            {
+              "name": "orderId",
+              "type": "string",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 36
+          }
+        },
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 18,
+            "col": 3,
+            "endLine": 18,
+            "endCol": 14
+          }
+        },
+        "Fail": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 19,
+            "col": 3,
+            "endLine": 19,
+            "endCol": 13
+          }
+        },
+        "Crash": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 20,
+            "col": 3,
+            "endLine": 20,
+            "endCol": 14
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Inventory",
+        "name": "Inventory",
+        "kind": "compound",
+        "doc": "The stock of one warehouse, which ends when asked to: done on Close, failed\non Fail, with a defect on Crash (when `crash` has one).",
+        "span": {
+          "file": 0,
+          "line": 16,
+          "col": 1,
+          "endLine": 34,
+          "endCol": 2
+        },
+        "initial": "Inventory.Open",
+        "states": [
+          {
+            "id": "Inventory.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 26,
+              "col": 3,
+              "endLine": 30,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Inventory.Closed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 5,
+                  "endLine": 27,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Fail"
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Inventory.Broken",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 28,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 23
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Crash"
+                },
+                "group": 2,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "crash",
+                    "args": []
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 29,
+                  "col": 5,
+                  "endLine": 29,
+                  "endCol": 35
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Inventory.Closed",
+            "name": "Closed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 32,
+              "col": 3,
+              "endLine": 32,
+              "endCol": 42
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": {
+              "kind": "ref",
+              "path": [
+                "warehouse"
+              ],
+              "type": "string",
+              "text": "warehouse"
+            },
+            "fail": null
+          },
+          {
+            "id": "Inventory.Broken",
+            "name": "Broken",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 33,
+              "col": 3,
+              "endLine": 33,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": {
+              "kind": "record",
+              "fields": [],
+              "type": "Shut",
+              "text": "Shut"
+            }
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [
+          {
+            "trigger": {
+              "kind": "event",
+              "event": "Reserve"
+            },
+            "group": 0,
+            "guard": null,
+            "target": null,
+            "effects": [],
+            "span": {
+              "file": 0,
+              "line": 24,
+              "col": 3,
+              "endLine": 24,
+              "endCol": 20
+            }
+          }
+        ],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:56c76773b5b13bad099e73ff5ab21303959dda9d9e8be2a05daebd38665bd907"
+    },
+    "Order": {
+      "doc": "Asks the warehouse for stock and waits for it, until it ends or 5s pass.\nHow the warehouse ended decides where the order goes.",
+      "span": {
+        "file": 0,
+        "line": 38,
+        "col": 1,
+        "endLine": 55,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "inventory",
+          "type": "ref Inventory",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Order",
+        "name": "Order",
+        "kind": "compound",
+        "doc": "Asks the warehouse for stock and waits for it, until it ends or 5s pass.\nHow the warehouse ended decides where the order goes.",
+        "span": {
+          "file": 0,
+          "line": 38,
+          "col": 1,
+          "endLine": 55,
+          "endCol": 2
+        },
+        "initial": "Order.Waiting",
+        "states": [
+          {
+            "id": "Order.Waiting",
+            "name": "Waiting",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 41,
+              "col": 3,
+              "endLine": 49,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [
+              {
+                "kind": "send",
+                "to": {
+                  "kind": "ref",
+                  "name": "inventory",
+                  "machine": "Inventory",
+                  "state": null
+                },
+                "key": null,
+                "event": "Reserve",
+                "value": {
+                  "kind": "record",
+                  "fields": [
+                    {
+                      "name": "orderId",
+                      "value": {
+                        "kind": "ref",
+                        "path": [
+                          "id"
+                        ],
+                        "type": "string",
+                        "text": "id"
+                      }
+                    }
+                  ],
+                  "type": "Inventory.Reserve",
+                  "text": "Reserve { orderId: id }"
+                }
+              }
+            ],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "ended",
+                  "from": {
+                    "kind": "ref",
+                    "name": "inventory",
+                    "machine": "Inventory",
+                    "state": null
+                  }
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "status"
+                      ],
+                      "type": "Ended",
+                      "text": "event.status"
+                    },
+                    {
+                      "kind": "enum",
+                      "variant": "Done",
+                      "type": "Ended",
+                      "text": "Ended.Done"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.status == Ended.Done"
+                },
+                "target": "Order.Closed",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 7,
+                  "endLine": 44,
+                  "endCol": 48
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "ended",
+                  "from": {
+                    "kind": "ref",
+                    "name": "inventory",
+                    "machine": "Inventory",
+                    "state": null
+                  }
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "event",
+                        "status"
+                      ],
+                      "type": "Ended",
+                      "text": "event.status"
+                    },
+                    {
+                      "kind": "enum",
+                      "variant": "Defect",
+                      "type": "Ended",
+                      "text": "Ended.Defect"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "event.status == Ended.Defect"
+                },
+                "target": "Order.Alarm",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "status"
+                        ],
+                        "type": "Ended",
+                        "text": "event.status"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 45,
+                  "col": 7,
+                  "endLine": 45,
+                  "endCol": 73
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "ended",
+                  "from": {
+                    "kind": "ref",
+                    "name": "inventory",
+                    "machine": "Inventory",
+                    "state": null
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Order.Gone",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "status"
+                        ],
+                        "type": "Ended",
+                        "text": "event.status"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 46,
+                  "col": 7,
+                  "endLine": 46,
+                  "endCol": 73
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "after",
+                  "delay": {
+                    "kind": "lit",
+                    "value": 5000,
+                    "type": "duration",
+                    "text": "5s"
+                  }
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Order.TimedOut",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 48,
+                  "col": 5,
+                  "endLine": 48,
+                  "endCol": 50
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.Closed",
+            "name": "Closed",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 51,
+              "col": 3,
+              "endLine": 51,
+              "endCol": 26
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.Alarm",
+            "name": "Alarm",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 52,
+              "col": 3,
+              "endLine": 52,
+              "endCol": 26
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.Gone",
+            "name": "Gone",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 53,
+              "col": 3,
+              "endLine": 53,
+              "endCol": 26
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Order.TimedOut",
+            "name": "TimedOut",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 54,
+              "col": 3,
+              "endLine": 54,
+              "endCol": 26
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:531fd653327b3f0c1d9a5d608baa3cbbc9736b4d05484526398b33bab3e42c09"
+    },
+    "Clerk": {
+      "doc": "Holds a `ref` to the warehouse but has no `on inventory.ended`: it is not\ntold when the warehouse ends.",
+      "span": {
+        "file": 0,
+        "line": 59,
+        "col": 1,
+        "endLine": 67,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "inventory",
+          "type": "ref Inventory",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Stop": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 60,
+            "col": 3,
+            "endLine": 60,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Clerk",
+        "name": "Clerk",
+        "kind": "compound",
+        "doc": "Holds a `ref` to the warehouse but has no `on inventory.ended`: it is not\ntold when the warehouse ends.",
+        "span": {
+          "file": 0,
+          "line": 59,
+          "col": 1,
+          "endLine": 67,
+          "endCol": 2
+        },
+        "initial": "Clerk.Open",
+        "states": [
+          {
+            "id": "Clerk.Open",
+            "name": "Open",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 64,
+              "col": 3,
+              "endLine": 64,
+              "endCol": 36
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Stop"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Clerk.Stopped",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 64,
+                  "col": 16,
+                  "endLine": 64,
+                  "endCol": 34
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Clerk.Stopped",
+            "name": "Stopped",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 66,
+              "col": 3,
+              "endLine": 66,
+              "endCol": 25
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:b23965c52806c3f734a119da6ad540653c8e4628f9282d097187f1234786053a"
+    },
+    "Picker": {
+      "doc": "Hears the warehouse's end only while it is Watching: an end that arrives\nwhile it is Idle is dropped.",
+      "span": {
+        "file": 0,
+        "line": 71,
+        "col": 1,
+        "endLine": 81,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "inventory",
+          "type": "ref Inventory",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 72,
+            "col": 3,
+            "endLine": 72,
+            "endCol": 11
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Picker",
+        "name": "Picker",
+        "kind": "compound",
+        "doc": "Hears the warehouse's end only while it is Watching: an end that arrives\nwhile it is Idle is dropped.",
+        "span": {
+          "file": 0,
+          "line": 71,
+          "col": 1,
+          "endLine": 81,
+          "endCol": 2
+        },
+        "initial": "Picker.Idle",
+        "states": [
+          {
+            "id": "Picker.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 76,
+              "col": 3,
+              "endLine": 76,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Picker.Watching",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 76,
+                  "col": 16,
+                  "endLine": 76,
+                  "endCol": 33
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Picker.Watching",
+            "name": "Watching",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 78,
+              "col": 3,
+              "endLine": 78,
+              "endCol": 48
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "ended",
+                  "from": {
+                    "kind": "ref",
+                    "name": "inventory",
+                    "machine": "Inventory",
+                    "state": null
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Picker.Gone",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 78,
+                  "col": 20,
+                  "endLine": 78,
+                  "endCol": 46
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Picker.Gone",
+            "name": "Gone",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 80,
+              "col": 3,
+              "endLine": 80,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:d0d8fd432027ea147da4a877b231c5394485a1f5aa2699e7b5111b8c2bd5abaa"
+    },
+    "Guard": {
+      "doc": "As Picker, but strict: an end that no transition takes is still dropped,\nnever `unhandled`.",
+      "span": {
+        "file": 0,
+        "line": 85,
+        "col": 1,
+        "endLine": 95,
+        "endCol": 2
+      },
+      "strict": true,
+      "params": [
+        {
+          "name": "inventory",
+          "type": "ref Inventory",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Go": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 86,
+            "col": 3,
+            "endLine": 86,
+            "endCol": 11
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Guard",
+        "name": "Guard",
+        "kind": "compound",
+        "doc": "As Picker, but strict: an end that no transition takes is still dropped,\nnever `unhandled`.",
+        "span": {
+          "file": 0,
+          "line": 85,
+          "col": 1,
+          "endLine": 95,
+          "endCol": 2
+        },
+        "initial": "Guard.Idle",
+        "states": [
+          {
+            "id": "Guard.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 90,
+              "col": 3,
+              "endLine": 90,
+              "endCol": 35
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Go"
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Guard.Watching",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 90,
+                  "col": 16,
+                  "endLine": 90,
+                  "endCol": 33
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Guard.Watching",
+            "name": "Watching",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 92,
+              "col": 3,
+              "endLine": 92,
+              "endCol": 48
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "ended",
+                  "from": {
+                    "kind": "ref",
+                    "name": "inventory",
+                    "machine": "Inventory",
+                    "state": null
+                  }
+                },
+                "group": 0,
+                "guard": null,
+                "target": "Guard.Gone",
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 92,
+                  "col": 20,
+                  "endLine": 92,
+                  "endCol": 46
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Guard.Gone",
+            "name": "Gone",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 94,
+              "col": 3,
+              "endLine": 94,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:026deb05a7b9072294a124ff129d67ff50985bf231bf26ae327672039f6d6a43"
+    },
+    "Switcher": {
+      "doc": "Watches the warehouse its variable `current` holds: `a`, then `b` after\nSwap. The end of a run `current` no longer holds is dropped.",
+      "span": {
+        "file": 0,
+        "line": 99,
+        "col": 1,
+        "endLine": 112,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "a",
+          "type": "ref Inventory",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "b",
+          "type": "ref Inventory",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "current",
+          "type": "ref Inventory",
+          "sensitive": false,
+          "init": {
+            "kind": "ref",
+            "path": [
+              "a"
+            ],
+            "type": "ref Inventory",
+            "text": "a"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 100,
+            "col": 3,
+            "endLine": 100,
+            "endCol": 33
+          }
+        }
+      ],
+      "events": {
+        "Swap": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 102,
+            "col": 3,
+            "endLine": 102,
+            "endCol": 13
+          }
+        }
+      },
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Switcher",
+        "name": "Switcher",
+        "kind": "compound",
+        "doc": "Watches the warehouse its variable `current` holds: `a`, then `b` after\nSwap. The end of a run `current` no longer holds is dropped.",
+        "span": {
+          "file": 0,
+          "line": 99,
+          "col": 1,
+          "endLine": 112,
+          "endCol": 2
+        },
+        "initial": "Switcher.Watching",
+        "states": [
+          {
+            "id": "Switcher.Watching",
+            "name": "Watching",
+            "kind": "atomic",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 106,
+              "col": 3,
+              "endLine": 109,
+              "endCol": 4
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Swap"
+                },
+                "group": 0,
+                "guard": null,
+                "target": null,
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "current",
+                    "value": {
+                      "kind": "ref",
+                      "path": [
+                        "b"
+                      ],
+                      "type": "ref Inventory",
+                      "text": "b"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 107,
+                  "col": 5,
+                  "endLine": 107,
+                  "endCol": 46
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "ended",
+                  "from": {
+                    "kind": "ref",
+                    "name": "current",
+                    "machine": "Inventory",
+                    "state": null
+                  }
+                },
+                "group": 1,
+                "guard": null,
+                "target": "Switcher.Gone",
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "note",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "event",
+                          "status"
+                        ],
+                        "type": "Ended",
+                        "text": "event.status"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 108,
+                  "col": 5,
+                  "endLine": 108,
+                  "endCol": 52
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Switcher.Gone",
+            "name": "Gone",
+            "kind": "final",
+            "doc": "",
+            "span": {
+              "file": 0,
+              "line": 111,
+              "col": 3,
+              "endLine": 111,
+              "endCol": 22
+            },
+            "initial": null,
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invoke": null,
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invoke": null,
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:2161472bfb95bedb994442403b47f0f306792f20023baec0d845e78f39be1f9c"
+    }
+  }
+}

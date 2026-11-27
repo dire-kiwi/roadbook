@@ -1,0 +1,37 @@
+{
+  "description": "A strict machine is not required to handle a peer's end. The Guard (r2), strict, hears the Inventory's (r1) end but is Idle, with no `on inventory.ended`, when it takes it: it writes `dropped`, as for an emitted event, never the `unhandled` defect an event would be, and goes on to take Go.",
+  "requires": [
+    "messaging",
+    "ended"
+  ],
+  "chart": "charts/ended.road",
+  "machine": "Inventory",
+  "input": {
+    "warehouse": "w1"
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "start": "Guard",
+      "run": "r2",
+      "input": {
+        "inventory": "r1"
+      },
+      "status": "running"
+    },
+    {
+      "event": {
+        "_tag": "Close"
+      }
+    },
+    {
+      "event": {
+        "_tag": "Go"
+      },
+      "run": "r2"
+    }
+  ],
+  "status": "done"
+}

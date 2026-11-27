@@ -288,6 +288,8 @@ impl Redactor<'_> {
             Input::SpawnDefect { .. }
             | Input::InvokeDefect { .. }
             | Input::After { .. }
+            // A peer's end holds no value.
+            | Input::Ended { .. }
             | Input::Cancel
             | Input::Defect { .. } => {}
         }

@@ -1,6 +1,6 @@
 //! What a run shares with the outside: its inbox, its cancel flag, whether it is open, the
-//! runs subscribed to what it emits, the calls it waits for and those it was given, how it
-//! finished, and the state it is in. For a child run this is also the cancel token of the
+//! runs subscribed to what it emits and to its end, the calls it waits for and those it was
+//! given, how it closed and how it finished, and the state it is in. For a child run this is also the cancel token of the
 //! invoke context.
 
 use std::cell::RefCell;
@@ -8,7 +8,7 @@ use std::collections::{BTreeSet, HashSet, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::task::Waker;
 
-use roadbook_core::{Defect, Input, Program, ReplyOutcome, Saved, Snapshot};
+use roadbook_core::{Defect, Ended, Input, Program, ReplyOutcome, Saved, Snapshot};
 use serde_json::Value;
 
 use crate::env::Config;
@@ -38,8 +38,12 @@ struct Inner {
     /// delivered to it.
     closed: bool,
     /// The open runs that hold a `ref` to this run, each with the events it emits that they
-    /// receive: those their machine has an `on` for.
+    /// receive: those their machine has an `on` for, and [`Program::ENDED`] when they hear
+    /// its end. Emptied once the end is told.
     subscribers: Vec<(Arc<Shared>, HashSet<String>)>,
+    /// How the run closed, once its driver has told its holders ([`Shared::tell_ended`]):
+    /// kept for as long as the run's handles exist, for the runs that subscribe later.
+    ended: Option<Ended>,
     /// Host code listening to what this run emits (`spec/execution.md#host-listeners`),
     /// ended when the run finishes.
     listeners: Listeners,
@@ -276,9 +280,44 @@ impl Shared {
         true
     }
 
-    /// Subscribes `run` to the events in `events` that this run emits.
-    pub fn subscribe(&self, run: Arc<Shared>, events: HashSet<String>) {
-        self.lock().subscribers.push((run, events));
+    /// Subscribes `run` to the events in `events` that this run emits, and to its end if
+    /// `events` has [`Program::ENDED`]. If this run has told its end already, `run` is not
+    /// subscribed, and this gives how it closed: `run`'s own driver then tells it, if it hears
+    /// it (`spec/execution.md#delivering-messages`, "Subscribing to a closed peer"). The check
+    /// and the subscription are one operation with respect to [`Shared::tell_ended`], so
+    /// `run` is told by exactly one of the two drivers.
+    pub fn subscribe(&self, run: Arc<Shared>, events: HashSet<String>) -> Option<Ended> {
+        let mut g = self.lock();
+        if g.ended.is_some() {
+            return g.ended;
+        }
+        g.subscribers.push((run, events));
+        None
+    }
+
+    /// Tells the runs subscribed to this run's end that it closed with `status`: pushes
+    /// `{"kind": "ended", "from": id, "status": status}` onto the queue of each open one
+    /// whose subscription has [`Program::ENDED`] (`spec/execution.md#ending-a-run`), and
+    /// keeps `status` for those that subscribe from now on. For the driver's end of the run,
+    /// after its last step's commands and its `Unanswered` answers. Only the first call tells.
+    pub fn tell_ended(&self, id: &str, status: Ended) {
+        let told = {
+            let mut g = self.lock();
+            if g.ended.is_some() {
+                return;
+            }
+            g.ended = Some(status);
+            std::mem::take(&mut g.subscribers)
+        };
+        // Not holding this run's lock while taking theirs.
+        for (run, events) in told {
+            if events.contains(Program::ENDED) {
+                run.deliver(Input::Ended {
+                    from: id.to_owned(),
+                    status,
+                });
+            }
+        }
     }
 
     /// Ends the subscription of `run`.

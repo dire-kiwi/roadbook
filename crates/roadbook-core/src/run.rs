@@ -565,6 +565,10 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                 bound = vec![("event", value.clone())];
                 chosen = self.select_emitted(from, *invoke, value)?;
             }
+            Input::Ended { from, status } => {
+                bound = vec![("event", serde_json::json!({ "status": status.as_str() }))];
+                chosen = self.select_ended(from, &bound)?;
+            }
             Input::Defect { .. } => unreachable!("handled by step"),
         }
         if chosen.is_empty() {
@@ -898,6 +902,40 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                         == Some(from)
             }
         }
+    }
+
+    /// Whether `address`, of an `ended` trigger, names run `from`: its parameter or variable
+    /// (of type `ref M`, `ref M?` or `ref M[]`) holds `from`, or a list that has it, now. A
+    /// `null`, and a variable with no value, name no run.
+    fn names_peer(&self, address: &Address, from: &str) -> bool {
+        let held = self
+            .snap
+            .input
+            .get(&address.name)
+            .or_else(|| self.snap.vars.get(&address.name));
+        match held {
+            Some(Value::String(id)) => id == from,
+            Some(Value::Array(items)) => items.iter().any(|v| v.as_str() == Some(from)),
+            _ => false,
+        }
+    }
+
+    /// `selectEnded`: the candidates of each state are its `ended` transitions whose address
+    /// names run `from` when the input is taken. There is no fallback to `on *`.
+    fn select_ended(&mut self, from: &str, bound: Implicit<'_>) -> R<Vec<Tr>> {
+        self.select_walks(|cx, s| {
+            let state = cx.state(s);
+            for (i, t) in state.transitions.iter().enumerate() {
+                let candidate = matches!(
+                    &t.trigger,
+                    Trigger::Ended { from: address } if cx.names_peer(address, from)
+                );
+                if candidate && cx.holds(t, bound)? {
+                    return Ok(Some((s, i)));
+                }
+            }
+            Ok(None)
+        })
     }
 
     fn select_emitted(&mut self, from: &str, invoke: Option<u64>, value: &Value) -> R<Vec<Tr>> {
