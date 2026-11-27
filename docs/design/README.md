@@ -135,4 +135,7 @@ Both runtimes, TypeScript ([`packages/core`](../../packages/core), [`packages/ef
 - [Actors and messaging](actors.md): machines talking to each other, including across crates.
 - [Visualization](visualization.md): the viewer and its modes.
 - [Alternatives considered](alternatives.md): formats, existing libraries, and what was rejected.
+- [Compared with XState](xstate.md): XState v5 and the v6 beta, feature by feature: what Roadbook lacks, does differently and adds.
+  - [In code](xstate-examples.md): the main differences written in XState v5, v6 and Roadbook.
+  - [What to add](xstate-plan.md): a recommendation for each gap, and the tasks to close them.
 - [Roadmap](roadmap.md): repository layout, milestones, risks and the decided questions.
