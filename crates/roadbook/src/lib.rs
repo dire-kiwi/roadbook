@@ -40,6 +40,7 @@ mod driver;
 pub mod dynamic;
 mod env;
 mod handle;
+mod listen;
 mod shared;
 
 #[doc(hidden)]
@@ -55,6 +56,7 @@ pub use env::{
     TraceSink,
 };
 pub use handle::Ref;
+pub use listen::Subscription;
 pub use roadbook_core::{
     Defect, Input, InvokeEntry, Program, RUN_ID_PATTERN, Record, Refusal, RestoreError, RunResult,
     Saved, SavedTimer, Status, is_run_id,

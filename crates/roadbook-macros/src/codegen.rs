@@ -1458,7 +1458,7 @@ impl<'a> Gen<'a> {
             pub fn spawn<H: Handlers + 'static>(
                 handlers: ::std::sync::Arc<H>,
                 #(#decl),*
-            ) -> ::roadbook::Actor<Event, State, #output, #error> {
+            ) -> ::roadbook::Actor<Event, State, #output, #error, Emitted> {
                 spawn_with(::roadbook::Config::default(), handlers, #(#names),*)
             }
 
@@ -1467,7 +1467,7 @@ impl<'a> Gen<'a> {
                 config: ::roadbook::Config,
                 handlers: ::std::sync::Arc<H>,
                 #(#decl),*
-            ) -> ::roadbook::Actor<Event, State, #output, #error> {
+            ) -> ::roadbook::Actor<Event, State, #output, #error, Emitted> {
                 let (__in, __refs) = ::roadbook::__private::collect(|| __input(#(#names),*));
                 ::roadbook::__private::spawn(
                     config,
@@ -1481,6 +1481,7 @@ impl<'a> Gen<'a> {
                         state: __from_state_id,
                         output: __output,
                         error: __error,
+                        emitted: ::roadbook::__private::emitted::<Emitted>,
                     },
                 )
             }
@@ -1489,7 +1490,7 @@ impl<'a> Gen<'a> {
             pub fn restore<H: Handlers + 'static>(
                 handlers: ::std::sync::Arc<H>,
                 saved: ::roadbook::Saved,
-            ) -> ::core::result::Result<::roadbook::Actor<Event, State, #output, #error>, ::roadbook::RestoreError> {
+            ) -> ::core::result::Result<::roadbook::Actor<Event, State, #output, #error, Emitted>, ::roadbook::RestoreError> {
                 restore_with(::roadbook::Config::default(), handlers, saved)
             }
 
@@ -1498,7 +1499,7 @@ impl<'a> Gen<'a> {
                 config: ::roadbook::Config,
                 handlers: ::std::sync::Arc<H>,
                 saved: ::roadbook::Saved,
-            ) -> ::core::result::Result<::roadbook::Actor<Event, State, #output, #error>, ::roadbook::RestoreError> {
+            ) -> ::core::result::Result<::roadbook::Actor<Event, State, #output, #error, Emitted>, ::roadbook::RestoreError> {
                 ::roadbook::__private::spawn_restored(
                     config,
                     #program,
@@ -1510,6 +1511,7 @@ impl<'a> Gen<'a> {
                         state: __from_state_id,
                         output: __output,
                         error: __error,
+                        emitted: ::roadbook::__private::emitted::<Emitted>,
                     },
                 )
             }

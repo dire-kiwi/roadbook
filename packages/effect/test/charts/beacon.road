@@ -1,0 +1,29 @@
+// Chart for the host listener tests of both drivers (packages/effect/test/driver.test.ts and
+// crates/roadbook/tests/include_listen.rs).
+
+action log(what: string)
+
+/// Emits as it starts, on each `Ping`, after `log` on `Boom`, and as it leaves `Up`.
+machine Beacon() {
+  emits Beat { n: int }
+  emits Bye
+
+  event Ping
+  event Boom
+  event Stop
+
+  var n: int = 0
+
+  initial Up
+
+  state Up {
+    entry emit Beat { n: 0 }
+    exit emit Bye
+
+    on Ping          set n = n + 1  emit Beat { n: n }
+    on Boom          do log("boom")  emit Beat { n: -1 }
+    on Stop -> Over
+  }
+
+  final state Over {}
+}

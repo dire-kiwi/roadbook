@@ -6,23 +6,8 @@ import { TestClock } from "effect/testing"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import * as Roadbook from "../src/index.ts"
-import {
-  Asker,
-  type Beat,
-  Beacon,
-  Boom,
-  type Bye,
-  Close,
-  Desk,
-  Early,
-  Go,
-  Leftover,
-  Overflow,
-  Payload,
-  Ping,
-  Settle,
-  Stop
-} from "./charts/runtime.road.ts"
+import { type Beat, Beacon, Boom, type Bye, Ping, Stop } from "./charts/beacon.road.ts"
+import { Asker, Close, Desk, Early, Go, Leftover, Overflow, Payload, Settle } from "./charts/runtime.road.ts"
 
 const charts = path.resolve(import.meta.dirname, "../../../spec/conformance/charts")
 const readIr = (file: string): unknown => JSON.parse(fs.readFileSync(path.join(charts, file), "utf8"))
