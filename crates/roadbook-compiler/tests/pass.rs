@@ -100,7 +100,11 @@ fn the_hash_covers_the_types_inside_a_peers_calls() {
     let page = "event.page";
     for m in ["Watcher", "Shopper"] {
         let base = hash(item, "int", page, m);
-        assert_ne!(base, hash("{ sku: string, qty: int }", "int", page, m), "{m}: Item");
+        assert_ne!(
+            base,
+            hash("{ sku: string, qty: int }", "int", page, m),
+            "{m}: Item"
+        );
         assert_ne!(base, hash(item, "float", page, m), "{m}: Count");
         let empty = "Page { items: event.page.items, next: \"\" }";
         assert_eq!(base, hash(item, "int", empty, m), "{m}: the peer's states");

@@ -2673,6 +2673,7 @@ impl<'p> Cx<'_, 'p> {
     /// Checks arguments against a signature (if known) and lowers them. `call` is, for a call
     /// invoke `peer.c(…)`, the `ref` it goes through and that ref's machine, whose call `c`'s
     /// parameters the arguments go to.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn args(
         &mut self,
         name: &Ident,
