@@ -96,7 +96,7 @@ const state = (
 })
 const program = (root: State, events: Array<string>, more: { returns?: string; vars?: Array<Variable> } = {}): Ir =>
   loadIr({
-    irVersion: "0.13",
+    irVersion: "0.14",
     sources: [{ path: "m.road", package: null }],
     types: {},
     functions: {},

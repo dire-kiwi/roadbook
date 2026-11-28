@@ -1,4 +1,4 @@
-# The Roadbook IR, version 0.13
+# The Roadbook IR, version 0.14
 
 The compiler turns an entry `.road` file and everything it imports into one JSON document, the IR. The viewer, both runtimes, the code generators and the exporters read the IR and nothing else. This page says what every member means. The schema, [`ir.schema.json`](ir.schema.json) (JSON Schema draft 2020-12), checks the shape, and the Rust crate [`roadbook-ir`](../crates/roadbook-ir) reads and writes it. A complete example, for [`examples/shop/place_order.road`](../examples/shop/place_order.road), is [`crates/roadbook-ir/tests/data/place_order.ir.json`](../crates/roadbook-ir/tests/data/place_order.ir.json). One with a call to a peer, a message to it and a declaration from another package, for [`examples/orders/orders.road`](../examples/orders/orders.road), is [`crates/roadbook-ir/tests/data/orders.ir.json`](../crates/roadbook-ir/tests/data/orders.ir.json).
 
@@ -22,7 +22,7 @@ The compiler turns an entry `.road` file and everything it imports into one JSON
 
 ```jsonc
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources":   [{ "path": "examples/shop/place_order.road", "package": null },
                 { "path": "examples/shop/types.road", "package": null }],
   "types":     { /* Name: type declaration */ },
@@ -432,12 +432,24 @@ So comments, formatting, source positions, file names, packages, declaration ord
 
 ## Versioning
 
-`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.13`.
+`irVersion` is `"MAJOR.MINOR"`, two decimal numbers without leading zeros. This page describes `0.14`.
 
 - While the major version is 0, every change to the IR is breaking and changes the minor version. A reader accepts only the exact version it was written for.
 - From `1.0` on, a minor version only adds to the IR. A reader accepts its own major version with any minor version up to its own, and refuses a newer minor version rather than ignore members it does not know. A breaking change increases the major version.
 
 A runtime checks the version before anything else and refuses an IR it does not understand, with a message naming both versions. In Rust, `roadbook_ir::check_version` does this and `Ir::from_json` calls it before reading the rest of the document. Any change to the IR's shape can change every machine hash, so a new IR version invalidates saved snapshots.
+
+## Changes in 0.14
+
+Version 0.14 adds the small language additions from the XState comparison (SM-30). Its new members are left out of the [machine hash](#the-machine-hash) when unused, and `tags` and `meta` always, so a machine that uses none of the new features has the hash it had in 0.13, and its saved snapshots still restore. The bullets below are filled in as each feature is built.
+
+- `on A | B` adds no trigger: it is lowered to one transition per event, in the order written, and only one `on A | B` gives transitions of a state the same `group` and `span`, so a reader can merge them back into one edge.
+- A [history state](#history-states) has `default`, the ids of the states it enters when it has no record; `[]` for none, and left out of the hash when `[]`.
+- The state kind `choice`: a pseudo-state whose transitions are all `always`, the last unguarded.
+- The [expression](#expressions) kind `in`, true when a state is active.
+- Every [state](#states) has `tags` and `meta`, left out of the hash as `doc` is.
+
+Structural `==` and `!=` on records, lists, maps and optionals need no change to the IR: an `op` expression for `==` or `!=` already has its operands' types ([equality](execution.md#equality)).
 
 ## Changes in 0.13
 
