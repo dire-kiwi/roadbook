@@ -21,10 +21,13 @@ module.exports = grammar({
 
   word: ($) => $.identifier,
 
+  // src/scanner.c: an `after` on the same line, which goes on with a delayed raise.
+  externals: ($) => [$._same_line_after, $._error_sentinel],
+
   // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref`, `sensitive`,
-  // `history`, `deep`, `children`, `by`, `spawn`, `stop`, `map`, the words of a check (`check`,
-  // `never`, `reachable`, `only`, `can`, `finish`) and the built-in type names are not, because
-  // they mean something only where no name can appear.
+  // `history`, `deep`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `map`,
+  // the words of a check (`check`, `never`, `reachable`, `only`, `can`, `finish`) and the
+  // built-in type names are not, because they mean something only where no name can appear.
   reserved: {
     global: (_) => [
       'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'strict',
@@ -208,8 +211,15 @@ module.exports = grammar({
         optional(seq('=', field('value', $._expression))),
       ),
 
+    // `internal event Remind { attempt: int }`: an event only the machine's own `raise` can
+    // produce. `internal` is not reserved: it starts an item only before `event`.
     event_declaration: ($) =>
-      seq('event', field('name', $.type_identifier), optional(field('fields', $.fields))),
+      seq(
+        optional(field('modifier', 'internal')),
+        'event',
+        field('name', $.type_identifier),
+        optional(field('fields', $.fields)),
+      ),
 
     emits_declaration: ($) =>
       seq('emits', field('name', $.type_identifier), optional(field('fields', $.fields))),
@@ -411,11 +421,12 @@ module.exports = grammar({
 
     _effects: ($) => repeat1(field('effect', $._effect)),
 
-    _effect: ($) => choice($.set, $.do, $.send, $.emit, $.reply, $.spawn, $.stop),
+    _effect: ($) =>
+      choice($.set, $.do, $.send, $.emit, $.reply, $.spawn, $.stop, $.raise, $.cancel),
 
     // After a comma in a `set` or `do` list, a lower-case name continues the list, as in the
-    // compiler, even `spawn`, `stop` or `children`, which after a trailing comma could also
-    // start the next effect or machine item.
+    // compiler, even `spawn`, `stop`, `raise`, `cancel`, `children` or `internal`, which after a
+    // trailing comma could also start the next effect or machine item.
     set: ($) => prec.right(seq('set', commaSep1($.assignment))),
 
     assignment: ($) =>
@@ -431,6 +442,9 @@ module.exports = grammar({
         alias('spawn', $.identifier),
         alias('stop', $.identifier),
         alias('children', $.identifier),
+        alias('raise', $.identifier),
+        alias('cancel', $.identifier),
+        alias('internal', $.identifier),
       ),
 
     send: ($) =>
@@ -472,6 +486,24 @@ module.exports = grammar({
 
     stop: ($) =>
       seq('stop', field('collection', $.identifier), '[', field('key', $._expression), ']'),
+
+    // `raise Ping`, `raise Remind { attempt: 1 }`, or a delayed raise:
+    // `raise Remind { attempt: 1 } after 24h as reminder`. `raise` is not reserved: it starts
+    // an effect only before an event name. As in the compiler, an `after` goes on with the
+    // raise only on the line its event (or its `}`) ends on: on a later line it starts an
+    // `after` transition: src/scanner.c lexes that `after`. `as name` names a delayed raise for
+    // `cancel` (with no `after`, the compiler rejects it, RB0028).
+    raise: ($) =>
+      seq(
+        'raise',
+        field('event', $.type_identifier),
+        optional(field('fields', $.record_body)),
+        optional(seq(alias($._same_line_after, 'after'), field('delay', $._expression))),
+        optional(seq('as', field('name', $.identifier))),
+      ),
+
+    // `cancel reminder`: stops the delayed raise of that name. Not reserved, like `stop`.
+    cancel: ($) => seq('cancel', field('name', $.identifier)),
 
     record_body: ($) => seq('{', commaSep($.field_value), '}'),
 

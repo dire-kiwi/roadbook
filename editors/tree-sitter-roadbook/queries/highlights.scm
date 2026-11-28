@@ -52,6 +52,8 @@
   "reply"
   "spawn"
   "stop"
+  "raise"
+  "cancel"
   "ref"
 ] @keyword
 
@@ -72,6 +74,7 @@
   "parallel"
   "strict"
   "deep"
+  "internal"
 ] @keyword.modifier
 
 (ignore) @keyword
@@ -226,6 +229,9 @@
 (emit
   event: (type_identifier) @constant)
 
+(raise
+  event: (type_identifier) @constant)
+
 (wildcard) @character.special
 
 ; ─── Values ───
@@ -333,6 +339,13 @@
 
 (stop
   collection: (identifier) @variable)
+
+; The name of a delayed raise, and the one a `cancel` stops.
+(raise
+  name: (identifier) @variable)
+
+(cancel
+  name: (identifier) @variable)
 
 (child_done
   from: (identifier) @variable)

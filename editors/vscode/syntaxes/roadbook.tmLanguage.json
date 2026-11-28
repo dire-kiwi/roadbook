@@ -173,10 +173,12 @@
           }
         },
         {
-          "match": "\\b(event|emits)\\s+([A-Z][A-Za-z0-9]*)",
+          "comment": "`internal` is not reserved: it is a modifier only before `event`.",
+          "match": "\\b(?:(internal)\\s+(?=event\\b))?(event|emits)\\s+([A-Z][A-Za-z0-9]*)",
           "captures": {
-            "1": { "name": "storage.type.$1.roadbook" },
-            "2": { "name": "entity.name.type.event.roadbook" }
+            "1": { "name": "storage.modifier.internal.roadbook" },
+            "2": { "name": "storage.type.$2.roadbook" },
+            "3": { "name": "entity.name.type.event.roadbook" }
           }
         },
         {
@@ -292,10 +294,19 @@
           }
         },
         {
-          "match": "\\b(emit)\\s+([A-Z][A-Za-z0-9]*)",
+          "comment": "`raise` is not reserved: it is an effect only before an event name.",
+          "match": "\\b(emit|raise)\\s+([A-Z][A-Za-z0-9]*)",
           "captures": {
             "1": { "name": "keyword.other.effect.roadbook" },
             "2": { "name": "entity.name.type.event.roadbook" }
+          }
+        },
+        {
+          "comment": "`cancel` is not reserved: it is an effect only before a name that is not a keyword.",
+          "match": "\\b(cancel)\\s+(?!(?:import|type|enum|error|extern|fn|action|task|machine|strict|var|event|emits|initial|state|final|parallel|entry|exit|on|after|always|done|invoke|output|fail|if|else|set|do|send|emit|ignore|and|or|not|true|false|call|reply)\\b)([a-z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "keyword.other.effect.roadbook" },
+            "2": { "name": "variable.other.roadbook" }
           }
         },
         {

@@ -110,11 +110,19 @@
         "required": false,
         "types": [
           {
+            "type": "cancel",
+            "named": true
+          },
+          {
             "type": "do",
             "named": true
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "raise",
             "named": true
           },
           {
@@ -190,11 +198,19 @@
         "required": false,
         "types": [
           {
+            "type": "cancel",
+            "named": true
+          },
+          {
             "type": "do",
             "named": true
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "raise",
             "named": true
           },
           {
@@ -606,11 +622,19 @@
         "required": false,
         "types": [
           {
+            "type": "cancel",
+            "named": true
+          },
+          {
             "type": "do",
             "named": true
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "raise",
             "named": true
           },
           {
@@ -829,6 +853,22 @@
     "fields": {}
   },
   {
+    "type": "cancel",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "check",
     "named": true,
     "fields": {
@@ -1010,11 +1050,19 @@
         "required": false,
         "types": [
           {
+            "type": "cancel",
+            "named": true
+          },
+          {
             "type": "do",
             "named": true
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "raise",
             "named": true
           },
           {
@@ -1080,11 +1128,19 @@
         "required": false,
         "types": [
           {
+            "type": "cancel",
+            "named": true
+          },
+          {
             "type": "do",
             "named": true
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "raise",
             "named": true
           },
           {
@@ -1192,11 +1248,19 @@
         "required": true,
         "types": [
           {
+            "type": "cancel",
+            "named": true
+          },
+          {
             "type": "do",
             "named": true
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "raise",
             "named": true
           },
           {
@@ -1331,6 +1395,16 @@
           }
         ]
       },
+      "modifier": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "internal",
+            "named": false
+          }
+        ]
+      },
       "name": {
         "multiple": false,
         "required": true,
@@ -1368,11 +1442,19 @@
         "required": true,
         "types": [
           {
+            "type": "cancel",
+            "named": true
+          },
+          {
             "type": "do",
             "named": true
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "raise",
             "named": true
           },
           {
@@ -1506,11 +1588,19 @@
         "required": false,
         "types": [
           {
+            "type": "cancel",
+            "named": true
+          },
+          {
             "type": "do",
             "named": true
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "raise",
             "named": true
           },
           {
@@ -2586,11 +2676,19 @@
         "required": false,
         "types": [
           {
+            "type": "cancel",
+            "named": true
+          },
+          {
             "type": "do",
             "named": true
           },
           {
             "type": "emit",
+            "named": true
+          },
+          {
+            "type": "raise",
             "named": true
           },
           {
@@ -2980,6 +3078,108 @@
       "from": {
         "multiple": false,
         "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "raise",
+    "named": true,
+    "fields": {
+      "delay": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "duration",
+            "named": true
+          },
+          {
+            "type": "enum_value",
+            "named": true
+          },
+          {
+            "type": "field_expression",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "negation",
+            "named": true
+          },
+          {
+            "type": "not_expression",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "record_value",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      },
+      "event": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      },
+      "fields": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "record_body",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": false,
         "types": [
           {
             "type": "identifier",
@@ -4269,6 +4469,10 @@
     "named": false
   },
   {
+    "type": "cancel",
+    "named": false
+  },
+  {
     "type": "check",
     "named": false
   },
@@ -4419,6 +4623,10 @@
     "named": true
   },
   {
+    "type": "internal",
+    "named": false
+  },
+  {
     "type": "invoke",
     "named": false
   },
@@ -4460,6 +4668,10 @@
   },
   {
     "type": "parallel",
+    "named": false
+  },
+  {
+    "type": "raise",
     "named": false
   },
   {

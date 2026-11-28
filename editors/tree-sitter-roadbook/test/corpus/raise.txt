@@ -1,0 +1,282 @@
+================================================================================
+Internal events, raise and cancel
+================================================================================
+
+machine M() {
+  event Go
+  /// Sent by the machine to itself.
+  internal event Remind { attempt: int }
+  internal event Ping
+  on Go raise Ping  raise Remind { attempt: 1 } after 24h as reminder
+  on Ping cancel reminder  set n = n + 1
+  state A {
+    entry raise Remind { attempt: 2 } after delay(n)
+    exit cancel reminder  do log()
+    on Remind if n > 1 -> A  raise Ping
+    always {
+      if n > 2 raise Ping after 1s
+      else cancel reminder
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (event_declaration
+        (type_identifier))
+      (doc_comment)
+      (event_declaration
+        (type_identifier)
+        (fields
+          (field_declaration
+            (identifier)
+            (builtin_type))))
+      (event_declaration
+        (type_identifier))
+      (on_transition
+        (event_pattern
+          (type_identifier))
+        (raise
+          (type_identifier))
+        (raise
+          (type_identifier)
+          (record_body
+            (field_value
+              (identifier)
+              (integer)))
+          (duration)
+          (identifier)))
+      (on_transition
+        (event_pattern
+          (type_identifier))
+        (cancel
+          (identifier))
+        (set
+          (assignment
+            (identifier)
+            (binary_expression
+              (identifier)
+              (integer)))))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (entry
+            (raise
+              (type_identifier)
+              (record_body
+                (field_value
+                  (identifier)
+                  (integer)))
+              (call
+                (identifier)
+                (arguments
+                  (identifier)))))
+          (exit
+            (cancel
+              (identifier))
+            (do
+              (call
+                (identifier)
+                (arguments))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (guard
+              (binary_expression
+                (identifier)
+                (integer)))
+            (target
+              (type_identifier))
+            (raise
+              (type_identifier)))
+          (always_transition
+            (branches
+              (branch
+                (guard
+                  (binary_expression
+                    (identifier)
+                    (integer)))
+                (raise
+                  (type_identifier)
+                  (duration)))
+              (else_branch
+                (cancel
+                  (identifier))))))))))
+
+================================================================================
+An after on the line after a raise starts an after transition
+================================================================================
+
+machine M() {
+  initial A
+  state A {
+    on Go raise Ping
+    after 5s -> A
+    on Stop raise Ping { n: 1 }
+    after 5s do f()
+    on Key raise Check after 500ms as debounce  set n = 0
+    after 1s raise Ping after 2s
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (raise
+              (type_identifier)))
+          (after_transition
+            (duration)
+            (target
+              (type_identifier)))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (raise
+              (type_identifier)
+              (record_body
+                (field_value
+                  (identifier)
+                  (integer)))))
+          (after_transition
+            (duration)
+            (do
+              (call
+                (identifier)
+                (arguments))))
+          (on_transition
+            (event_pattern
+              (type_identifier))
+            (raise
+              (type_identifier)
+              (duration)
+              (identifier))
+            (set
+              (assignment
+                (identifier)
+                (integer))))
+          (after_transition
+            (duration)
+            (raise
+              (type_identifier)
+              (duration))))))))
+
+================================================================================
+raise, cancel, internal and as as names
+================================================================================
+
+type T { raise: int, cancel: bool, internal: string, as: int }
+
+action cancel()
+
+machine M(internal: int) {
+  var raise: int = 0
+  entry do cancel(), raise(internal)  set raise = raise + 1, cancel = internal
+  internal event Ping
+  on Go set as = raise.cancel
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (type_declaration
+    (type_identifier)
+    (fields
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))
+      (field_declaration
+        (identifier)
+        (builtin_type))))
+  (action_declaration
+    (identifier)
+    (parameters))
+  (machine_declaration
+    (type_identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type)))
+    (machine_body
+      (variable_declaration
+        (identifier)
+        (builtin_type)
+        (integer))
+      (entry
+        (do
+          (call
+            (identifier)
+            (arguments))
+          (call
+            (identifier)
+            (arguments
+              (identifier))))
+        (set
+          (assignment
+            (identifier)
+            (binary_expression
+              (identifier)
+              (integer)))
+          (assignment
+            (identifier)
+            (identifier))))
+      (event_declaration
+        (type_identifier))
+      (on_transition
+        (event_pattern
+          (type_identifier))
+        (set
+          (assignment
+            (identifier)
+            (field_expression
+              (identifier)
+              (identifier))))))))
+
+================================================================================
+A raise of a lower-case name
+:error
+================================================================================
+
+machine M() { on Go raise ping }
+
+--------------------------------------------------------------------------------
+
+================================================================================
+Cancel without a name
+:error
+================================================================================
+
+machine M() { on Go cancel }
+
+--------------------------------------------------------------------------------
+
+================================================================================
+An internal event in a state
+:error
+================================================================================
+
+machine M() { initial A  state A { internal event Ping } }
+
+--------------------------------------------------------------------------------
