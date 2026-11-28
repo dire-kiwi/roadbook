@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/ended-order.road",
@@ -118,6 +118,8 @@
         "name": "Desk",
         "kind": "compound",
         "doc": "Takes a reservation and keeps the call pending until Answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 9,
@@ -128,12 +130,15 @@
         "params": [],
         "vars": [],
         "initial": "Desk.Open",
+        "default": [],
         "states": [
           {
             "id": "Desk.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -144,6 +149,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -226,6 +232,8 @@
             "name": "Holding",
             "kind": "atomic",
             "doc": "A reservation is pending, until Answer replies to it.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -236,6 +244,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -323,6 +332,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -333,6 +344,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -382,6 +394,8 @@
         "name": "Booker",
         "kind": "compound",
         "doc": "Asks the desk for a reservation and waits for the desk to end.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 35,
@@ -392,12 +406,15 @@
         "params": [],
         "vars": [],
         "initial": "Booker.Asking",
+        "default": [],
         "states": [
           {
             "id": "Booker.Asking",
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -408,6 +425,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -523,6 +541,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,
@@ -533,6 +553,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -573,6 +594,8 @@
             "name": "Booked",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 48,
@@ -583,6 +606,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -596,6 +620,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 49,
@@ -606,6 +632,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

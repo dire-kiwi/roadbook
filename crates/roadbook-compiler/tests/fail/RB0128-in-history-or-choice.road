@@ -1,0 +1,17 @@
+machine M() {
+  event Go
+
+  initial A
+  state A {
+    initial X
+    history Last
+    state X { on Go if in(A.Last) -> Pick }
+  }
+  choice Pick {
+    if in(Pick) -> A
+    else        -> A.X
+  }
+}
+
+// expect: RB0128 at 8:29
+// expect: RB0128 at 11:11

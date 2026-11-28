@@ -281,6 +281,20 @@ impl Unit {
             candidates.clear();
         }
         sort(&mut diagnostics);
+        // The analyses run on the IR, where an `on A | B` is one transition per event: what
+        // they say about one of them they say about each, at the same place.
+        let mut once: Vec<Diagnostic> = Vec::with_capacity(diagnostics.len());
+        for d in diagnostics {
+            if !once
+                .iter()
+                .rev()
+                .take_while(|o| o.span == d.span)
+                .any(|o| *o == d)
+            {
+                once.push(d);
+            }
+        }
+        let diagnostics = once;
         let mut index = std::mem::take(&mut ck.index);
         index.finish();
         Ok(Unit {

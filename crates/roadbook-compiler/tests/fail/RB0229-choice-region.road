@@ -1,0 +1,16 @@
+machine M() {
+  initial P
+  parallel state P {
+    choice Pick {
+      if true -> Q.A
+      else    -> Q.B
+    }
+    state Q {
+      initial A
+      state A {}
+      state B {}
+    }
+  }
+}
+
+// expect: RB0229 at 4:12

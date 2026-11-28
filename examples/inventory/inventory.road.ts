@@ -33,6 +33,7 @@ export interface InventoryDef extends Roadbook.MachineDef {
   readonly event: Release | Restock | Close
   readonly emits: never
   readonly state: "Inventory" | "Inventory.Ready" | "Inventory.Reserving" | "Inventory.Closed"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {
     readonly releaseStock: { readonly warehouse: string; readonly orderId: string }
@@ -53,7 +54,7 @@ export interface InventoryDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "examples/inventory/inventory.road",
@@ -359,6 +360,8 @@ const ir: unknown = {
         "name": "Inventory",
         "kind": "compound",
         "doc": "The stock of one warehouse, shared by every order. An order calls `reserve`, and the answer\ngoes to that order alone.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 18,
@@ -369,12 +372,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Inventory.Ready",
+        "default": [],
         "states": [
           {
             "id": "Inventory.Ready",
             "name": "Ready",
             "kind": "atomic",
             "doc": "Waiting for the next call.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -385,6 +391,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -486,6 +493,8 @@ const ir: unknown = {
             "name": "Reserving",
             "kind": "atomic",
             "doc": "One reservation at a time: a call that arrives meanwhile is turned away at once.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 42,
@@ -496,6 +505,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -683,6 +693,8 @@ const ir: unknown = {
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 50,
@@ -693,6 +705,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

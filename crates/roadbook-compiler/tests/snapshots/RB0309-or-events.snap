@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0309]: `event` has no single type in `on Go | Stop`, which takes events of different types: it is read only through the fields they all have
+ --> RB0309-or-events.road:8:25
+  |
+8 |     on Go | Stop do log(event)
+  |                         ^^^^^
+  |
+  = help: read a field they all have: `event.sku`

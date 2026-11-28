@@ -80,6 +80,10 @@
             "named": true
           },
           {
+            "type": "in_expression",
+            "named": true
+          },
+          {
             "type": "integer",
             "named": true
           },
@@ -312,6 +316,10 @@
           "named": true
         },
         {
+          "type": "in_expression",
+          "named": true
+        },
+        {
           "type": "integer",
           "named": true
         },
@@ -380,6 +388,10 @@
           },
           {
             "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "in_expression",
             "named": true
           },
           {
@@ -462,6 +474,10 @@
           },
           {
             "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "in_expression",
             "named": true
           },
           {
@@ -578,6 +594,10 @@
           },
           {
             "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "in_expression",
             "named": true
           },
           {
@@ -1017,6 +1037,32 @@
     }
   },
   {
+    "type": "choice_state",
+    "named": true,
+    "fields": {
+      "branches": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "branches",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_identifier",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "do",
     "named": true,
     "fields": {},
@@ -1422,7 +1468,7 @@
     "named": true,
     "fields": {
       "event": {
-        "multiple": false,
+        "multiple": true,
         "required": true,
         "types": [
           {
@@ -1539,6 +1585,10 @@
           },
           {
             "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "in_expression",
             "named": true
           },
           {
@@ -1786,6 +1836,10 @@
             "named": true
           },
           {
+            "type": "in_expression",
+            "named": true
+          },
+          {
             "type": "integer",
             "named": true
           },
@@ -1857,6 +1911,10 @@
           },
           {
             "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "in_expression",
             "named": true
           },
           {
@@ -2037,6 +2095,10 @@
             "named": true
           },
           {
+            "type": "in_expression",
+            "named": true
+          },
+          {
             "type": "integer",
             "named": true
           },
@@ -2068,6 +2130,16 @@
     "type": "history_state",
     "named": true,
     "fields": {
+      "default": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "state_path",
+            "named": true
+          }
+        ]
+      },
       "kind": {
         "multiple": false,
         "required": false,
@@ -2114,6 +2186,22 @@
         "types": [
           {
             "type": "string",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "in_expression",
+    "named": true,
+    "fields": {
+      "state": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "state_path",
             "named": true
           }
         ]
@@ -2283,6 +2371,10 @@
           "named": true
         },
         {
+          "type": "choice_state",
+          "named": true
+        },
+        {
           "type": "emits_declaration",
           "named": true
         },
@@ -2303,11 +2395,19 @@
           "named": true
         },
         {
+          "type": "meta",
+          "named": true
+        },
+        {
           "type": "on_transition",
           "named": true
         },
         {
           "type": "state_declaration",
+          "named": true
+        },
+        {
+          "type": "tags",
           "named": true
         },
         {
@@ -2494,6 +2594,107 @@
     }
   },
   {
+    "type": "meta",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "meta_entry",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "meta_entry",
+    "named": true,
+    "fields": {
+      "key": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "boolean",
+            "named": true
+          },
+          {
+            "type": "call",
+            "named": true
+          },
+          {
+            "type": "duration",
+            "named": true
+          },
+          {
+            "type": "enum_value",
+            "named": true
+          },
+          {
+            "type": "field_expression",
+            "named": true
+          },
+          {
+            "type": "float",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "in_expression",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          },
+          {
+            "type": "negation",
+            "named": true
+          },
+          {
+            "type": "not_expression",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "record_value",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "negation",
     "named": true,
     "fields": {
@@ -2531,6 +2732,10 @@
           },
           {
             "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "in_expression",
             "named": true
           },
           {
@@ -2621,6 +2826,10 @@
           },
           {
             "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "in_expression",
             "named": true
           },
           {
@@ -2894,6 +3103,10 @@
             "named": true
           },
           {
+            "type": "in_expression",
+            "named": true
+          },
+          {
             "type": "integer",
             "named": true
           },
@@ -3045,6 +3258,10 @@
           "named": true
         },
         {
+          "type": "in_expression",
+          "named": true
+        },
+        {
           "type": "integer",
           "named": true
         },
@@ -3129,6 +3346,10 @@
           },
           {
             "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "in_expression",
             "named": true
           },
           {
@@ -3347,6 +3568,10 @@
             "named": true
           },
           {
+            "type": "in_expression",
+            "named": true
+          },
+          {
             "type": "integer",
             "named": true
           },
@@ -3426,6 +3651,10 @@
           },
           {
             "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "in_expression",
             "named": true
           },
           {
@@ -3528,6 +3757,10 @@
           },
           {
             "type": "implicit_name",
+            "named": true
+          },
+          {
+            "type": "in_expression",
             "named": true
           },
           {
@@ -3711,6 +3944,10 @@
             "named": true
           },
           {
+            "type": "in_expression",
+            "named": true
+          },
+          {
             "type": "integer",
             "named": true
           },
@@ -3775,6 +4012,10 @@
           "named": true
         },
         {
+          "type": "choice_state",
+          "named": true
+        },
+        {
           "type": "done_transition",
           "named": true
         },
@@ -3803,6 +4044,10 @@
           "named": true
         },
         {
+          "type": "meta",
+          "named": true
+        },
+        {
           "type": "on_transition",
           "named": true
         },
@@ -3812,6 +4057,10 @@
         },
         {
           "type": "state_declaration",
+          "named": true
+        },
+        {
+          "type": "tags",
           "named": true
         },
         {
@@ -3942,6 +4191,10 @@
             "named": true
           },
           {
+            "type": "in_expression",
+            "named": true
+          },
+          {
             "type": "integer",
             "named": true
           },
@@ -3986,6 +4239,22 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "tags",
+    "named": true,
+    "fields": {
+      "tag": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -4335,6 +4604,10 @@
             "named": true
           },
           {
+            "type": "in_expression",
+            "named": true
+          },
+          {
             "type": "integer",
             "named": true
           },
@@ -4505,6 +4778,10 @@
     "named": false
   },
   {
+    "type": "choice",
+    "named": false
+  },
+  {
     "type": "comment",
     "named": true,
     "extra": true
@@ -4635,6 +4912,10 @@
     "named": false
   },
   {
+    "type": "in",
+    "named": false
+  },
+  {
     "type": "initial",
     "named": false
   },
@@ -4664,6 +4945,10 @@
   },
   {
     "type": "map",
+    "named": false
+  },
+  {
+    "type": "meta",
     "named": false
   },
   {
@@ -4749,6 +5034,10 @@
   {
     "type": "string_content",
     "named": true
+  },
+  {
+    "type": "tags",
+    "named": false
   },
   {
     "type": "task",

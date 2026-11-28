@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/race.road",
@@ -96,6 +96,8 @@
         "name": "Race",
         "kind": "compound",
         "doc": "Take whichever answer the machine is still waiting for.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -106,12 +108,15 @@
         "params": [],
         "vars": [],
         "initial": "Race.Slow",
+        "default": [],
         "states": [
           {
             "id": "Race.Slow",
             "name": "Slow",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 14,
@@ -122,6 +127,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -208,6 +214,8 @@
             "name": "Quick",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 21,
@@ -218,6 +226,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -283,6 +292,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 27,
@@ -293,6 +304,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

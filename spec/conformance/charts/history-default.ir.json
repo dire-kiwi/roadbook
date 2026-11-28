@@ -1,0 +1,927 @@
+{
+  "irVersion": "0.14",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/history-default.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Editor": {
+      "doc": "A shallow default, a deep one through the state above it, and several in\nthe regions of a parallel state.",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 70,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Open": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 7,
+            "col": 3,
+            "endLine": 7,
+            "endCol": 13
+          }
+        },
+        "Notes": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 14
+          }
+        },
+        "Panels": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 15
+          }
+        },
+        "Next": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 10,
+            "col": 3,
+            "endLine": 10,
+            "endCol": 13
+          }
+        },
+        "Leave": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 14
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Editor",
+        "name": "Editor",
+        "kind": "compound",
+        "doc": "A shallow default, a deep one through the state above it, and several in\nthe regions of a parallel state.",
+        "tags": [],
+        "meta": {},
+        "span": {
+          "file": 0,
+          "line": 6,
+          "col": 1,
+          "endLine": 70,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Editor.Idle",
+        "default": [],
+        "states": [
+          {
+            "id": "Editor.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "tags": [],
+            "meta": {},
+            "span": {
+              "file": 0,
+              "line": 15,
+              "col": 3,
+              "endLine": 19,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Open"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Editor.Doc.Previous"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 16,
+                  "col": 5,
+                  "endLine": 16,
+                  "endCol": 30
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Notes"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Editor.Notebook.Last"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 17,
+                  "col": 5,
+                  "endLine": 17,
+                  "endCol": 31
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Panels"
+                },
+                "group": 2,
+                "guard": null,
+                "targets": [
+                  "Editor.View.Restore"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 18,
+                  "col": 5,
+                  "endLine": 18,
+                  "endCol": 30
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Editor.Doc",
+            "name": "Doc",
+            "kind": "compound",
+            "doc": "",
+            "tags": [],
+            "meta": {},
+            "span": {
+              "file": 0,
+              "line": 21,
+              "col": 3,
+              "endLine": 34,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": "Editor.Doc.Blank",
+            "default": [],
+            "states": [
+              {
+                "id": "Editor.Doc.Previous",
+                "name": "Previous",
+                "kind": "history",
+                "doc": "",
+                "tags": [],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 23,
+                  "col": 5,
+                  "endLine": 23,
+                  "endCol": 32
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [
+                  "Editor.Doc.Editing"
+                ],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Editor.Doc.Blank",
+                "name": "Blank",
+                "kind": "atomic",
+                "doc": "",
+                "tags": [],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 5,
+                  "endLine": 25,
+                  "endCol": 19
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Editor.Doc.Editing",
+                "name": "Editing",
+                "kind": "compound",
+                "doc": "",
+                "tags": [],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 5,
+                  "endLine": 31,
+                  "endCol": 6
+                },
+                "params": [],
+                "vars": [],
+                "initial": "Editor.Doc.Editing.Typing",
+                "default": [],
+                "states": [
+                  {
+                    "id": "Editor.Doc.Editing.Typing",
+                    "name": "Typing",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 29,
+                      "col": 7,
+                      "endLine": 29,
+                      "endCol": 41
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Next"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [
+                          "Editor.Doc.Editing.Review"
+                        ],
+                        "internal": false,
+                        "args": [],
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 29,
+                          "col": 22,
+                          "endLine": 29,
+                          "endCol": 39
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Editor.Doc.Editing.Review",
+                    "name": "Review",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 30,
+                      "col": 7,
+                      "endLine": 30,
+                      "endCol": 22
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Leave"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Editor.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 5,
+                  "endLine": 33,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Editor.Notebook",
+            "name": "Notebook",
+            "kind": "compound",
+            "doc": "",
+            "tags": [],
+            "meta": {},
+            "span": {
+              "file": 0,
+              "line": 36,
+              "col": 3,
+              "endLine": 50,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": "Editor.Notebook.Cover",
+            "default": [],
+            "states": [
+              {
+                "id": "Editor.Notebook.Last",
+                "name": "Last",
+                "kind": "deepHistory",
+                "doc": "",
+                "tags": [],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 38,
+                  "col": 5,
+                  "endLine": 38,
+                  "endCol": 38
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [
+                  "Editor.Notebook.Pages.Second"
+                ],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Editor.Notebook.Cover",
+                "name": "Cover",
+                "kind": "atomic",
+                "doc": "",
+                "tags": [],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 40,
+                  "col": 5,
+                  "endLine": 40,
+                  "endCol": 19
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Editor.Notebook.Pages",
+                "name": "Pages",
+                "kind": "compound",
+                "doc": "",
+                "tags": [],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 42,
+                  "col": 5,
+                  "endLine": 47,
+                  "endCol": 6
+                },
+                "params": [],
+                "vars": [],
+                "initial": "Editor.Notebook.Pages.First",
+                "default": [],
+                "states": [
+                  {
+                    "id": "Editor.Notebook.Pages.First",
+                    "name": "First",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 44,
+                      "col": 7,
+                      "endLine": 44,
+                      "endCol": 22
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Editor.Notebook.Pages.Second",
+                    "name": "Second",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 45,
+                      "col": 7,
+                      "endLine": 45,
+                      "endCol": 40
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Next"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [
+                          "Editor.Notebook.Pages.Third"
+                        ],
+                        "internal": false,
+                        "args": [],
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 45,
+                          "col": 22,
+                          "endLine": 45,
+                          "endCol": 38
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Editor.Notebook.Pages.Third",
+                    "name": "Third",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 46,
+                      "col": 7,
+                      "endLine": 46,
+                      "endCol": 22
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Leave"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Editor.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 49,
+                  "col": 5,
+                  "endLine": 49,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Editor.View",
+            "name": "View",
+            "kind": "parallel",
+            "doc": "",
+            "tags": [],
+            "meta": {},
+            "span": {
+              "file": 0,
+              "line": 52,
+              "col": 3,
+              "endLine": 69,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [
+              {
+                "id": "Editor.View.Restore",
+                "name": "Restore",
+                "kind": "history",
+                "doc": "",
+                "tags": [],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 53,
+                  "col": 5,
+                  "endLine": 53,
+                  "endCol": 45
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [
+                  "Editor.View.Main.Split",
+                  "Editor.View.Side.Wide"
+                ],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Editor.View.Main",
+                "name": "Main",
+                "kind": "compound",
+                "doc": "",
+                "tags": [],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 55,
+                  "col": 5,
+                  "endLine": 59,
+                  "endCol": 6
+                },
+                "params": [],
+                "vars": [],
+                "initial": "Editor.View.Main.Plain",
+                "default": [],
+                "states": [
+                  {
+                    "id": "Editor.View.Main.Plain",
+                    "name": "Plain",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 57,
+                      "col": 7,
+                      "endLine": 57,
+                      "endCol": 21
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Editor.View.Main.Split",
+                    "name": "Split",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 58,
+                      "col": 7,
+                      "endLine": 58,
+                      "endCol": 21
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Editor.View.Side",
+                "name": "Side",
+                "kind": "compound",
+                "doc": "",
+                "tags": [],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 61,
+                  "col": 5,
+                  "endLine": 66,
+                  "endCol": 6
+                },
+                "params": [],
+                "vars": [],
+                "initial": "Editor.View.Side.Narrow",
+                "default": [],
+                "states": [
+                  {
+                    "id": "Editor.View.Side.Narrow",
+                    "name": "Narrow",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 63,
+                      "col": 7,
+                      "endLine": 63,
+                      "endCol": 22
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Editor.View.Side.Wide",
+                    "name": "Wide",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 64,
+                      "col": 7,
+                      "endLine": 64,
+                      "endCol": 41
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Next"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [
+                          "Editor.View.Side.Hidden"
+                        ],
+                        "internal": false,
+                        "args": [],
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 64,
+                          "col": 22,
+                          "endLine": 64,
+                          "endCol": 39
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Editor.View.Side.Hidden",
+                    "name": "Hidden",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 65,
+                      "col": 7,
+                      "endLine": 65,
+                      "endCol": 22
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Leave"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Editor.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 68,
+                  "col": 5,
+                  "endLine": 68,
+                  "endCol": 21
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:859ca8ac24c309cff52a9ea8a64781ad3b6e0d0558991336f2e95bb231e4d42b"
+    }
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/select.road",
@@ -191,6 +191,8 @@
         "name": "Select",
         "kind": "compound",
         "doc": "Exercises the selection rules one event at a time.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 13,
@@ -201,12 +203,15 @@
         "params": [],
         "vars": [],
         "initial": "Select.Picking",
+        "default": [],
         "states": [
           {
             "id": "Select.Picking",
             "name": "Picking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -217,6 +222,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -338,6 +344,8 @@
             "name": "Loading",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -348,6 +356,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -471,6 +480,8 @@
             "name": "Form",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 44,
@@ -481,12 +492,15 @@
             "params": [],
             "vars": [],
             "initial": "Select.Form.Name",
+            "default": [],
             "states": [
               {
                 "id": "Select.Form.Name",
                 "name": "Name",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 52,
@@ -497,6 +511,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -532,6 +547,8 @@
                 "name": "Complete",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 54,
@@ -542,6 +559,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -709,6 +727,8 @@
             "name": "Passing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -719,6 +739,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -828,6 +849,8 @@
             "name": "Ended",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 66,
@@ -838,6 +861,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

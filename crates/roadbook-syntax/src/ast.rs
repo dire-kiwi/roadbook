@@ -435,6 +435,7 @@ pub enum Item {
     Children(ChildrenDecl),
     /// `initial Name`
     Initial(Ident),
+    /// `[final | parallel] state Name { … }`, or `choice Name { … }`
     State(State),
     Entry(Hook),
     Exit(Hook),
@@ -444,10 +445,14 @@ pub enum Item {
     Output(FinalValue),
     /// `fail expr`
     Fail(FinalValue),
-    /// `[deep] history Name`
+    /// `[deep] history Name [-> Target {, Target}]`
     History(History),
     /// `check property`
     Check(Check),
+    /// `tags a, b`: names host code can ask an active state for.
+    Tags(Tags),
+    /// `meta { key: literal, … }`: data about the state, for tools and host code.
+    Meta(Meta),
 }
 
 impl Item {
@@ -465,6 +470,8 @@ impl Item {
             Item::Output(v) | Item::Fail(v) => v.span,
             Item::History(h) => h.span,
             Item::Check(c) => c.span,
+            Item::Tags(t) => t.span,
+            Item::Meta(m) => m.span,
         }
     }
 }
@@ -538,9 +545,13 @@ pub enum StateKind {
     Normal,
     Final,
     Parallel,
+    /// `choice Name { if … else … }`: a state the run enters and leaves at once, by the first
+    /// branch whose guard holds. Its body holds one `always` transition, the branches, whose
+    /// trigger span is `choice Name`; it has no parameters.
+    Choice,
 }
 
-/// `[final | parallel] state Name { body }`
+/// `[final | parallel] state Name { body }`, or `choice Name { branches }`
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct State {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -556,15 +567,41 @@ pub struct State {
     pub span: Span,
 }
 
-/// `history Name` or `deep history Name`: a history pseudo-state of the state it is written
-/// in.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+/// `history Name [-> Target {, Target}]` or `deep history Name [-> …]`: a history
+/// pseudo-state of the state it is written in, with the states it enters when it has recorded
+/// nothing.
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct History {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub doc: Option<Doc>,
     pub deep: bool,
     pub name: Ident,
-    /// From `history` or `deep` to the end of the name.
+    /// The targets after `->`, in the order written: none for a history state written
+    /// without a default. Each is a path of names with no dot and no arguments, resolved as a
+    /// transition's target written in the history state is.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub default: Vec<Target>,
+    /// From `history` or `deep` to the end of the name, or of the last default target.
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `tags a, b`: lower-case names, in the order written. `tags` is contextual, like `history`.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Tags {
+    pub names: Vec<Ident>,
+    /// From `tags` to the end of the last name.
+    #[serde(skip)]
+    pub span: Span,
+}
+
+/// `meta { key: value, … }`: keys and values in the order written. Each value is parsed as
+/// an expression; the compiler accepts only a string, int, float or bool literal (a number
+/// may have a `-`). `meta` is contextual, like `history`.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct Meta {
+    pub entries: Vec<FieldValue>,
+    /// From `meta` to the closing brace.
     #[serde(skip)]
     pub span: Span,
 }
@@ -633,6 +670,8 @@ pub struct Transition {
 pub enum Trigger {
     /// `on Event` or `on *`
     On(Pattern),
+    /// `on A | B`: two or more of the machine's own events, in the order written.
+    OneOf(Vec<Ident>),
     /// `on name.Event`: an event emitted by an invoked child, a `ref` or a spawned child.
     Receive {
         from: Ident,
@@ -1019,6 +1058,9 @@ pub enum ExprKind {
     },
     Unary(UnaryOp, Box<Expr>),
     Binary(BinaryOp, Box<Expr>, Box<Expr>),
+    /// `in(A.B)`: whether a state is active. The path is resolved from the machine body, as a
+    /// check's is.
+    In(Target),
 }
 
 /// `field: expr` in a record value.
@@ -1155,7 +1197,8 @@ impl Expr {
             | ExprKind::String(_)
             | ExprKind::Bool(_)
             | ExprKind::Var(_)
-            | ExprKind::Enum(..) => {}
+            | ExprKind::Enum(..)
+            | ExprKind::In(_) => {}
         }
     }
 }

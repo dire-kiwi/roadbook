@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/history.road",
@@ -158,6 +158,8 @@
         "name": "Editor",
         "kind": "compound",
         "doc": "Shallow and deep history of one compound state.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 10,
@@ -168,12 +170,15 @@
         "params": [],
         "vars": [],
         "initial": "Editor.Work",
+        "default": [],
         "states": [
           {
             "id": "Editor.Work",
             "name": "Work",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 22,
@@ -184,12 +189,15 @@
             "params": [],
             "vars": [],
             "initial": "Editor.Work.Draft",
+            "default": [],
             "states": [
               {
                 "id": "Editor.Work.Shallow",
                 "name": "Shallow",
                 "kind": "history",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 27,
@@ -200,6 +208,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -213,6 +222,8 @@
                 "name": "Deep",
                 "kind": "deepHistory",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 28,
@@ -223,6 +234,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -236,6 +248,8 @@
                 "name": "Draft",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 30,
@@ -246,6 +260,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -328,6 +343,8 @@
                 "name": "Review",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 37,
@@ -338,12 +355,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Editor.Work.Review.Read",
+                "default": [],
                 "states": [
                   {
                     "id": "Editor.Work.Review.Read",
                     "name": "Read",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 43,
@@ -354,6 +374,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -389,6 +410,8 @@
                     "name": "Comment",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 45,
@@ -399,6 +422,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -608,6 +632,8 @@
             "name": "Help",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 59,
@@ -618,6 +644,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -768,6 +795,8 @@
         "name": "Steps",
         "kind": "compound",
         "doc": "A deep history state that restores a final state, completing its parent.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 66,
@@ -778,12 +807,15 @@
         "params": [],
         "vars": [],
         "initial": "Steps.Flow",
+        "default": [],
         "states": [
           {
             "id": "Steps.Flow",
             "name": "Flow",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 76,
@@ -794,12 +826,15 @@
             "params": [],
             "vars": [],
             "initial": "Steps.Flow.S1",
+            "default": [],
             "states": [
               {
                 "id": "Steps.Flow.H",
                 "name": "H",
                 "kind": "deepHistory",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 78,
@@ -810,6 +845,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -823,6 +859,8 @@
                 "name": "S1",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 80,
@@ -833,6 +871,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -868,6 +907,8 @@
                 "name": "S2",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 81,
@@ -878,6 +919,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -949,6 +991,8 @@
             "name": "Paused",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 87,
@@ -959,6 +1003,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1025,6 +1070,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 92,
@@ -1035,6 +1082,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1109,6 +1157,8 @@
         "name": "Bounce",
         "kind": "compound",
         "doc": "A parent left and returned to through its history state while settling.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 96,
@@ -1119,12 +1169,15 @@
         "params": [],
         "vars": [],
         "initial": "Bounce.P",
+        "default": [],
         "states": [
           {
             "id": "Bounce.P",
             "name": "P",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 103,
@@ -1135,12 +1188,15 @@
             "params": [],
             "vars": [],
             "initial": "Bounce.P.A",
+            "default": [],
             "states": [
               {
                 "id": "Bounce.P.H",
                 "name": "H",
                 "kind": "history",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 105,
@@ -1151,6 +1207,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1164,6 +1221,8 @@
                 "name": "A",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 107,
@@ -1174,6 +1233,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1209,6 +1269,8 @@
                 "name": "B",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 108,
@@ -1219,6 +1281,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1295,6 +1358,8 @@
             "name": "Q",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 111,
@@ -1305,6 +1370,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

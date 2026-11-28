@@ -451,9 +451,9 @@ impl hist::editor::Handlers for Writer {
 
 #[tokio::test]
 async fn a_run_returns_through_its_history_states_and_saves_what_they_recorded() {
-    use hist::editor::{Emitted, Event, Review, State, Work};
+    use hist::editor::{Emitted, Event, Review, State, Tag, Work};
     let config = Config::new().timer(Arc::new(Clock::default()));
-    async fn until<O, E>(run: &mut roadbook::Actor<Event, State, O, E, Emitted>, want: State) {
+    async fn until<O, E>(run: &mut roadbook::Actor<Event, State, O, E, Emitted, Tag>, want: State) {
         while run.state() != want {
             run.changed().await;
         }

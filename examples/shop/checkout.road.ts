@@ -28,6 +28,7 @@ export interface CheckoutDef extends Roadbook.MachineDef {
     | "Checkout.Charged"
     | "Checkout.Declined"
     | "Checkout.GaveUp"
+  readonly tag: never
   readonly fns: {
     readonly retryDelay: {
       readonly args: { readonly attempt: number }
@@ -46,7 +47,7 @@ export interface CheckoutDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "examples/shop/checkout.road",
@@ -638,6 +639,8 @@ const ir: unknown = {
         "name": "Checkout",
         "kind": "compound",
         "doc": "Charge the customer's card, retrying while the payment gateway is down.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 4,
@@ -648,12 +651,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Checkout.Charging",
+        "default": [],
         "states": [
           {
             "id": "Checkout.Charging",
             "name": "Charging",
             "kind": "atomic",
             "doc": "One attempt against the payment gateway.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 12,
@@ -664,6 +670,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -851,6 +858,8 @@ const ir: unknown = {
             "name": "Backoff",
             "kind": "atomic",
             "doc": "Wait before the next attempt. The delay grows with each attempt.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 24,
@@ -861,6 +870,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -941,6 +951,8 @@ const ir: unknown = {
             "name": "Charged",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -951,6 +963,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -972,6 +985,8 @@ const ir: unknown = {
             "name": "Declined",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 30,
@@ -982,6 +997,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1003,6 +1019,8 @@ const ir: unknown = {
             "name": "GaveUp",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -1013,6 +1031,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

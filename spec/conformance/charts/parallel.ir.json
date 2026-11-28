@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/parallel.road",
@@ -130,6 +130,8 @@
         "name": "Regions",
         "kind": "compound",
         "doc": "Enters and exits three regions of different kinds, in document order.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 11,
@@ -140,12 +142,15 @@
         "params": [],
         "vars": [],
         "initial": "Regions.Both",
+        "default": [],
         "states": [
           {
             "id": "Regions.Both",
             "name": "Both",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -156,12 +161,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Regions.Both.Left",
                 "name": "Left",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 26,
@@ -172,12 +180,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Regions.Both.Left.L1",
+                "default": [],
                 "states": [
                   {
                     "id": "Regions.Both.Left.L1",
                     "name": "L1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 32,
@@ -188,6 +199,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [
                       {
@@ -261,6 +273,8 @@
                 "name": "Right",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 38,
@@ -271,12 +285,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Regions.Both.Right.R1",
+                "default": [],
                 "states": [
                   {
                     "id": "Regions.Both.Right.R1",
                     "name": "R1",
                     "kind": "compound",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 41,
@@ -287,12 +304,15 @@
                     "params": [],
                     "vars": [],
                     "initial": "Regions.Both.Right.R1.R2",
+                    "default": [],
                     "states": [
                       {
                         "id": "Regions.Both.Right.R1.R2",
                         "name": "R2",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 44,
@@ -303,6 +323,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [
                           {
@@ -358,6 +379,8 @@
                 "name": "Lone",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 51,
@@ -368,6 +391,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -476,6 +500,8 @@
             "name": "Away",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -486,6 +512,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -619,6 +646,8 @@
         "name": "Fork",
         "kind": "compound",
         "doc": "One event taken in two regions, and `always` transitions in two regions\ntaken in one microstep.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 62,
@@ -629,12 +658,15 @@
         "params": [],
         "vars": [],
         "initial": "Fork.P",
+        "default": [],
         "states": [
           {
             "id": "Fork.P",
             "name": "P",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 70,
@@ -645,12 +677,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Fork.P.A",
                 "name": "A",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 71,
@@ -661,12 +696,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Fork.P.A.A1",
+                "default": [],
                 "states": [
                   {
                     "id": "Fork.P.A.A1",
                     "name": "A1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 74,
@@ -677,6 +715,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -762,6 +801,8 @@
                     "name": "A2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 76,
@@ -772,6 +813,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -850,6 +892,8 @@
                     "name": "A3",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 78,
@@ -860,6 +904,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -881,6 +926,8 @@
                 "name": "B",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 81,
@@ -891,12 +938,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Fork.P.B.B1",
+                "default": [],
                 "states": [
                   {
                     "id": "Fork.P.B.B1",
                     "name": "B1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 84,
@@ -907,6 +957,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -992,6 +1043,8 @@
                     "name": "B2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 86,
@@ -1002,6 +1055,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -1049,6 +1103,8 @@
                     "name": "B3",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 88,
@@ -1059,6 +1115,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -1122,6 +1179,8 @@
                 "name": "C",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 91,
@@ -1132,6 +1191,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1249,6 +1309,8 @@
         "name": "Clash",
         "kind": "compound",
         "doc": "Two regions' transitions for one event that would exit the same state.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 96,
@@ -1259,12 +1321,15 @@
         "params": [],
         "vars": [],
         "initial": "Clash.P",
+        "default": [],
         "states": [
           {
             "id": "Clash.P",
             "name": "P",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 103,
@@ -1275,12 +1340,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Clash.P.A",
                 "name": "A",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 106,
@@ -1291,12 +1359,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Clash.P.A.A1",
+                "default": [],
                 "states": [
                   {
                     "id": "Clash.P.A.A1",
                     "name": "A1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 109,
@@ -1307,6 +1378,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -1363,6 +1435,8 @@
                 "name": "B",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 112,
@@ -1373,12 +1447,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Clash.P.B.B1",
+                "default": [],
                 "states": [
                   {
                     "id": "Clash.P.B.B1",
                     "name": "B1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 115,
@@ -1389,6 +1466,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -1471,6 +1549,8 @@
                     "name": "B2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 120,
@@ -1481,6 +1561,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -1545,6 +1626,8 @@
             "name": "Out",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 124,
@@ -1555,6 +1638,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1642,6 +1726,8 @@
         "name": "Escape",
         "kind": "compound",
         "doc": "Transitions from inside a region: into another region, and out of the\nparallel state.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 129,
@@ -1652,12 +1738,15 @@
         "params": [],
         "vars": [],
         "initial": "Escape.P",
+        "default": [],
         "states": [
           {
             "id": "Escape.P",
             "name": "P",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 135,
@@ -1668,12 +1757,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Escape.P.A",
                 "name": "A",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 138,
@@ -1684,12 +1776,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Escape.P.A.A1",
+                "default": [],
                 "states": [
                   {
                     "id": "Escape.P.A.A1",
                     "name": "A1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 141,
@@ -1700,6 +1795,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -1790,6 +1886,8 @@
                 "name": "B",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 147,
@@ -1800,12 +1898,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Escape.P.B.B1",
+                "default": [],
                 "states": [
                   {
                     "id": "Escape.P.B.B1",
                     "name": "B1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 150,
@@ -1816,6 +1917,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [
@@ -1869,6 +1971,8 @@
                     "name": "B2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 156,
@@ -1879,6 +1983,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -1921,6 +2026,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 160,
@@ -1931,6 +2038,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1996,6 +2104,8 @@
         "name": "Finish",
         "kind": "compound",
         "doc": "A parallel state completes when every region is in a final state.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 164,
@@ -2006,12 +2116,15 @@
         "params": [],
         "vars": [],
         "initial": "Finish.Work",
+        "default": [],
         "states": [
           {
             "id": "Finish.Work",
             "name": "Work",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 170,
@@ -2022,12 +2135,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Finish.Work.Left",
                 "name": "Left",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 173,
@@ -2038,12 +2154,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Finish.Work.Left.L1",
+                "default": [],
                 "states": [
                   {
                     "id": "Finish.Work.Left.L1",
                     "name": "L1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 178,
@@ -2054,6 +2173,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2089,6 +2209,8 @@
                     "name": "L2",
                     "kind": "final",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 180,
@@ -2099,6 +2221,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2152,6 +2275,8 @@
                 "name": "Mid",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 183,
@@ -2162,6 +2287,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -2175,6 +2301,8 @@
                 "name": "Right",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 185,
@@ -2185,12 +2313,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Finish.Work.Right.R1",
+                "default": [],
                 "states": [
                   {
                     "id": "Finish.Work.Right.R1",
                     "name": "R1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 188,
@@ -2201,6 +2332,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2236,6 +2368,8 @@
                     "name": "R2",
                     "kind": "final",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 190,
@@ -2246,6 +2380,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2309,6 +2444,8 @@
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 194,
@@ -2319,6 +2456,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2378,6 +2516,8 @@
         "name": "Jobs",
         "kind": "compound",
         "doc": "Invokes and timers in two regions and on the parallel state itself.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 198,
@@ -2388,12 +2528,15 @@
         "params": [],
         "vars": [],
         "initial": "Jobs.Busy",
+        "default": [],
         "states": [
           {
             "id": "Jobs.Busy",
             "name": "Busy",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 203,
@@ -2404,12 +2547,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Jobs.Busy.Up",
                 "name": "Up",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 207,
@@ -2420,12 +2566,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Jobs.Busy.Up.Uploading",
+                "default": [],
                 "states": [
                   {
                     "id": "Jobs.Busy.Up.Uploading",
                     "name": "Uploading",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 210,
@@ -2436,6 +2585,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2512,6 +2662,8 @@
                     "name": "Uploaded",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 218,
@@ -2522,6 +2674,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2543,6 +2696,8 @@
                 "name": "Down",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 221,
@@ -2553,12 +2708,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Jobs.Busy.Down.Downloading",
+                "default": [],
                 "states": [
                   {
                     "id": "Jobs.Busy.Down.Downloading",
                     "name": "Downloading",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 224,
@@ -2569,6 +2727,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2645,6 +2804,8 @@
                     "name": "Downloaded",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 232,
@@ -2655,6 +2816,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2732,6 +2894,8 @@
             "name": "Late",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 236,
@@ -2742,6 +2906,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2755,6 +2920,8 @@
             "name": "Stopped",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 238,
@@ -2765,6 +2932,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2819,6 +2987,8 @@
         "name": "Shell",
         "kind": "compound",
         "doc": "A parallel state inside a compound state, left by the compound state's\ntransition.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 243,
@@ -2829,12 +2999,15 @@
         "params": [],
         "vars": [],
         "initial": "Shell.Outer",
+        "default": [],
         "states": [
           {
             "id": "Shell.Outer",
             "name": "Outer",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 248,
@@ -2845,12 +3018,15 @@
             "params": [],
             "vars": [],
             "initial": "Shell.Outer.Split",
+            "default": [],
             "states": [
               {
                 "id": "Shell.Outer.Split",
                 "name": "Split",
                 "kind": "parallel",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 255,
@@ -2861,12 +3037,15 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [
                   {
                     "id": "Shell.Outer.Split.X",
                     "name": "X",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 258,
@@ -2877,6 +3056,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [
@@ -2903,6 +3083,8 @@
                     "name": "Y",
                     "kind": "compound",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 260,
@@ -2913,12 +3095,15 @@
                     "params": [],
                     "vars": [],
                     "initial": "Shell.Outer.Split.Y.Y1",
+                    "default": [],
                     "states": [
                       {
                         "id": "Shell.Outer.Split.Y.Y1",
                         "name": "Y1",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 263,
@@ -2929,6 +3114,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [
@@ -2982,6 +3168,8 @@
                         "name": "Y2",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 269,
@@ -2992,6 +3180,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3090,6 +3279,8 @@
             "name": "Gone",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 274,
@@ -3100,6 +3291,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

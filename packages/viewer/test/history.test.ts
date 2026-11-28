@@ -23,6 +23,7 @@ const conformance = path.resolve(here, '../../../spec/conformance')
 const ir = chart('charts-history')
 const regions = JSON.parse(fs.readFileSync(path.join(conformance, 'charts/history-regions.ir.json'), 'utf8')) as Ir
 const editor = JSON.parse(fs.readFileSync(path.join(conformance, 'charts/history.ir.json'), 'utf8')) as Ir
+const defaults = JSON.parse(fs.readFileSync(path.join(conformance, 'charts/history-default.ir.json'), 'utf8')) as Ir
 const trace = (name: string) => fs.readFileSync(path.join(conformance, 'cases', name, 'trace.jsonl'), 'utf8')
 const ctx = (chartIr: Ir, machine: string) => ({ ir: chartIr, machine, collapsed: new Set<string>() })
 
@@ -236,5 +237,43 @@ describe('diff of history states', () => {
     ])
     expect(historyCountsText(machineDiff(diff, 'Histories'))).toBe(' (history +1 ~1)')
     expect(historyCountsText(machineDiff(diff, 'Other'))).toBe('')
+  })
+})
+
+describe('history states with a default target', () => {
+  const m = defaults.machines.Editor!
+  it('say where they start before their parent has been left', () => {
+    const doc = findState(m, 'Editor.Doc')!
+    const view = findState(m, 'Editor.View')!
+    expect(historyText(findState(m, 'Editor.Doc.Previous')!, doc)).toContain('Before Doc has been left, it enters its default, Editing.')
+    expect(historyText(findState(m, 'Editor.View.Restore')!, view)).toContain('Before View has been left, it enters its default, Main.Split, Side.Wide.')
+  })
+
+  it('give ELK an edge from the history state to each default', () => {
+    const graph = buildElkGraph(defaults, 'Editor')
+    const edge = (id: string) => graph.edges!.find((e) => e.id === id)
+    expect(edge('Editor.Doc.Previous/default/0')!.targets).toEqual(['Editor.Doc.Editing'])
+    expect(edge('Editor.Notebook.Last/default/0')!.targets).toEqual(['Editor.Notebook.Pages.Second'])
+    expect(edge('Editor.View.Restore/default/0')!.targets).toEqual(['Editor.View.Main.Split'])
+    expect(edge('Editor.View.Restore/default/1')!.targets).toEqual(['Editor.View.Side.Wide'])
+    // Collapsed: no arrow from a history state that is not drawn, and none to a hidden default.
+    const hidden = buildElkGraph(defaults, 'Editor', { collapsed: new Set(['Editor.Doc', 'Editor.Notebook.Pages']) })
+    expect(hidden.edges!.find((e) => e.id === 'Editor.Doc.Previous/default/0')).toBeUndefined()
+    expect(hidden.edges!.find((e) => e.id === 'Editor.Notebook.Last/default/0')!.targets).toEqual(['Editor.Notebook.Pages'])
+  })
+
+  it('draw a dashed arrow from the circle to each default, which selects the history state', async () => {
+    const layout = await layoutMachine(defaults, 'Editor', newElk())
+    const svg = renderSvg(defaults, 'Editor', layout, { interactive: true })
+    const arrows = [...svg.matchAll(/<g class="rb-edge rb-k-initial rb-history-default" data-state="([^"]*)"><title>([^<]*)<\/title>.*?<path class="rb-edge-line" d="([^"]*)"/g)]
+    expect(arrows.map((a) => a[1])).toEqual(['Editor.Doc.Previous', 'Editor.Notebook.Last', 'Editor.View.Restore', 'Editor.View.Restore'])
+    expect(arrows[0]![2]).toBe('default of Editor.Doc.Previous: Editor.Doc.Editing, entered when Editor.Doc has nothing to return to')
+    // Each starts on the circle.
+    for (const a of arrows) {
+      const [x, y] = a[3]!.match(/-?[\d.]+/g)!.map(Number) as [number, number]
+      const box = layout.nodes[a[1]!]!
+      const d = Math.hypot(x - (box.x + box.width / 2), y - (box.y + box.height / 2))
+      expect(Math.abs(d - METRICS.historyD / 2), `${a[1]} starts ${d} from its centre`).toBeLessThan(0.2)
+    }
   })
 })

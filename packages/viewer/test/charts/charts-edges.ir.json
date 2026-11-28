@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "packages/viewer/test/charts/edges.road",
@@ -88,6 +88,8 @@
         "name": "OnlyRoot",
         "kind": "compound",
         "doc": "A root with rows of its own, wider than everything inside it.\n```\na fence in a doc, then <b>HTML</b> & an ending fence:\n```",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 12,
@@ -98,12 +100,15 @@
         "params": [],
         "vars": [],
         "initial": "OnlyRoot.S",
+        "default": [],
         "states": [
           {
             "id": "OnlyRoot.S",
             "name": "S",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 18,
@@ -114,6 +119,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -249,6 +255,8 @@
         "name": "Note",
         "kind": "compound",
         "doc": "States Mermaid would read as keywords.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 22,
@@ -259,12 +267,15 @@
         "params": [],
         "vars": [],
         "initial": "Note.State",
+        "default": [],
         "states": [
           {
             "id": "Note.State",
             "name": "State",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -275,6 +286,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -310,6 +322,8 @@
             "name": "Direction",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -320,6 +334,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -355,6 +370,8 @@
             "name": "ClassDef",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 27,
@@ -365,6 +382,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -400,6 +418,8 @@
             "name": "Class",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 28,
@@ -410,6 +430,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -445,6 +466,8 @@
             "name": "Style",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -455,6 +478,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -490,6 +514,8 @@
             "name": "Default",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 30,
@@ -500,6 +526,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -535,6 +562,8 @@
             "name": "Click",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -545,6 +574,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -580,6 +610,8 @@
             "name": "Href",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,
@@ -590,6 +622,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -625,6 +658,8 @@
             "name": "Scale",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -635,6 +670,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -670,6 +706,8 @@
             "name": "As",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 34,
@@ -680,6 +718,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -715,6 +754,8 @@
             "name": "AccTitle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 35,
@@ -725,6 +766,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -760,6 +802,8 @@
             "name": "AccDescr",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -770,6 +814,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -805,6 +850,8 @@
             "name": "StateDiagram",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 37,
@@ -815,6 +862,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -869,6 +917,8 @@
         "name": "Same",
         "kind": "compound",
         "doc": "A state named like its machine, which has transitions of its own.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 41,
@@ -879,12 +929,15 @@
         "params": [],
         "vars": [],
         "initial": "Same.Same",
+        "default": [],
         "states": [
           {
             "id": "Same.Same",
             "name": "Same",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 45,
@@ -895,6 +948,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -930,6 +984,8 @@
             "name": "Bar",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,
@@ -940,6 +996,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1047,6 +1104,8 @@
         "name": "Rows",
         "kind": "compound",
         "doc": "Containers with an invoke, entry, exit and internal transitions, and labels with syntax.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 50,
@@ -1057,12 +1116,15 @@
         "params": [],
         "vars": [],
         "initial": "Rows.Busy",
+        "default": [],
         "states": [
           {
             "id": "Rows.Busy",
             "name": "Busy",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 55,
@@ -1073,12 +1135,15 @@
             "params": [],
             "vars": [],
             "initial": "Rows.Busy.Inner",
+            "default": [],
             "states": [
               {
                 "id": "Rows.Busy.Inner",
                 "name": "Inner",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 63,
@@ -1089,12 +1154,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Rows.Busy.Inner.Deep",
+                "default": [],
                 "states": [
                   {
                     "id": "Rows.Busy.Inner.Deep",
                     "name": "Deep",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 65,
@@ -1105,6 +1173,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -1140,6 +1209,8 @@
                     "name": "Deeper",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 66,
@@ -1150,6 +1221,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -1322,6 +1394,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 69,
@@ -1332,6 +1406,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

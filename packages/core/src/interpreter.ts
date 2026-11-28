@@ -22,7 +22,7 @@ import {
 import type { Json } from "./json.ts"
 import { redactor } from "./redact.ts"
 import { withoutChildren } from "./saved.ts"
-import { expandType, isOptionalType, parseTypeRef } from "./typeref.ts"
+import { expandType, fieldsOf, isOptionalType, parseTypeRef, type TypeRef } from "./typeref.ts"
 import type {
   CallEntry,
   Command,
@@ -876,8 +876,8 @@ class Macrostep {
   }
 
   /**
-   * The states target `x` stands for: `x`, or for a history state, what it recorded, or else the
-   * states its parent's default entry starts with.
+   * The states target `x` stands for: `x`, or for a history state, what it recorded, or else its
+   * `default`, or else the states its parent's default entry starts with.
    */
   private standsFor(x: State): Array<State> {
     if (!isHistory(x)) return [x]
@@ -885,6 +885,8 @@ class Macrostep {
     const recorded = this.history[x.id]
     return recorded !== undefined
       ? recorded.map((id) => this.index.state(id))
+      : x.default.length > 0
+      ? x.default.map((id) => this.index.state(id))
       : parent.kind === "compound"
       ? [this.index.state(parent.initial!)]
       : [...childrenOf(parent)]
@@ -1489,6 +1491,8 @@ class Macrostep {
       }
       case "enum":
         return expr.variant
+      case "in":
+        return this.active.includes(expr.state)
       case "op":
         return this.evalOp(expr, bindings)
     }
@@ -1545,9 +1549,9 @@ class Macrostep {
     const b = this.eval(right!, bindings)
     switch (expr.op) {
       case "==":
-        return a === b
+        return equal(this.ir, this.index.machine, left.type, a, b)
       case "!=":
-        return a !== b
+        return !equal(this.ir, this.index.machine, left.type, a, b)
       case "<":
       case "<=":
       case ">":
@@ -1602,6 +1606,86 @@ export const compareCodePoints = (a: string, b: string): number => {
     j += cb > 0xffff ? 2 : 1
   }
   return (a.length - i) - (b.length - j)
+}
+
+/**
+ * `==` on values of type `type` in machine `m`, walking the type (spec/execution.md "Equality"),
+ * exactly as the Rust core's `equal`: numbers compare numerically (so `0 == -0`), records,
+ * errors and events field by field (a missing field is `null`), lists element by element, maps
+ * by their keys and the values at each, whatever the order, an optional's `null` only with
+ * `null`, and anything else (a value not of its type, or a type the compiler does not compare)
+ * as JSON (`jsonEqual`).
+ */
+const equal = (ir: Ir, m: Machine, type: TypeRef | string, a: Json, b: Json): boolean => {
+  const t = expandType(ir, type)
+  switch (t.kind) {
+    case "builtin":
+      if ((t.name === "int" || t.name === "float" || t.name === "duration") && typeof a === "number" && typeof b === "number") {
+        return a === b
+      }
+      break
+    case "optional":
+      if (a === null || b === null) return a === b
+      return equal(ir, m, t.of, a, b)
+    case "list":
+      if (Array.isArray(a) && Array.isArray(b)) {
+        return a.length === b.length && a.every((x, i) => equal(ir, m, t.of, x, b[i]!))
+      }
+      break
+    case "map":
+      if (isPlainObject(a) && isPlainObject(b)) {
+        const keys = Object.keys(a)
+        return keys.length === Object.keys(b).length &&
+          keys.every((k) => Object.hasOwn(b, k) && equal(ir, m, t.value, a[k]!, b[k]!))
+      }
+      break
+    case "named":
+    case "event": {
+      const fields = t.kind === "named" ? fieldsOf(ir, t)?.fields ?? eventDecl(ir, m, t)?.fields : eventDecl(ir, m, t)?.fields
+      if (fields !== undefined) {
+        return fields.every((f) => equal(ir, m, f.type, readField(a, f.name), readField(b, f.name)))
+      }
+      break
+    }
+  }
+  return jsonEqual(a, b)
+}
+
+/**
+ * The declaration of an event type: `Machine.Name` or `task.Name` (a task's emitted event), or,
+ * by its bare name, one of machine `m`'s own or emitted events.
+ */
+const eventDecl = (
+  ir: Ir,
+  m: Machine,
+  t: Extract<TypeRef, { kind: "named" | "event" }>
+) => {
+  if (t.kind === "named") {
+    if (t.args.length > 0) return undefined
+    return ownEvent(m, t.name) ?? (Object.hasOwn(m.emits, t.name) ? m.emits[t.name] : undefined)
+  }
+  const owner = Object.hasOwn(ir.machines, t.machine) ? ir.machines[t.machine]! : undefined
+  if (owner !== undefined) {
+    return ownEvent(owner, t.event) ?? (Object.hasOwn(owner.emits, t.event) ? owner.emits[t.event] : undefined)
+  }
+  const task = Object.hasOwn(ir.tasks, t.machine) ? ir.tasks[t.machine]! : undefined
+  return task !== undefined && Object.hasOwn(task.emits, t.event) ? task.emits[t.event] : undefined
+}
+
+const isPlainObject = (v: Json): v is { readonly [key: string]: Json } =>
+  typeof v === "object" && v !== null && !Array.isArray(v)
+
+/**
+ * Equality of two JSON values, for a type `==` does not walk: numbers compare numerically,
+ * arrays element by element, objects by their keys and the values at each, whatever the order.
+ */
+const jsonEqual = (a: Json, b: Json): boolean => {
+  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((x, i) => jsonEqual(x, b[i]!))
+  if (isPlainObject(a) && isPlainObject(b)) {
+    const keys = Object.keys(a)
+    return keys.length === Object.keys(b).length && keys.every((k) => Object.hasOwn(b, k) && jsonEqual(a[k]!, b[k]!))
+  }
+  return a === b
 }
 
 /** The builtin an operand of type `type` is, aliases and `?` removed, or `undefined`. */

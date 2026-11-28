@@ -42,6 +42,7 @@ export interface AttachDef extends Roadbook.MachineDef {
     | "Attach.Attached"
     | "Attach.Failed"
     | "Attach.SignedOut"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {
     readonly showProgress: { readonly percent: number }
@@ -67,7 +68,7 @@ export interface AttachDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "examples/upload/attach.road",
@@ -554,6 +555,8 @@ const ir: unknown = {
         "name": "Attach",
         "kind": "compound",
         "doc": "Attach a file to a message: store it with a task that reports its progress, then wait for\nthe user to confirm, showing how long they have waited.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 32,
@@ -564,12 +567,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Attach.Storing",
+        "default": [],
         "states": [
           {
             "id": "Attach.Storing",
             "name": "Storing",
             "kind": "atomic",
             "doc": "`store` names the task while it runs, so the state hears what it emits. Beside it,\n`session` keeps the user signed in: whichever ends the state first cancels the other.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 44,
@@ -580,6 +586,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -827,6 +834,8 @@ const ir: unknown = {
             "name": "Confirming",
             "kind": "atomic",
             "doc": "The clock ticks until the user confirms: leaving the state stops it.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -837,6 +846,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -963,6 +973,8 @@ const ir: unknown = {
             "name": "Attached",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 63,
@@ -973,6 +985,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -994,6 +1007,8 @@ const ir: unknown = {
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 64,
@@ -1004,6 +1019,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1025,6 +1041,8 @@ const ir: unknown = {
             "name": "SignedOut",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 65,
@@ -1035,6 +1053,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1167,6 +1186,8 @@ const ir: unknown = {
         "name": "AttachMany",
         "kind": "compound",
         "doc": "Attach several files at once: one `storeFile` task per file, keyed by the file's name, in a\ncollection of tasks. Counts the files stored.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 70,
@@ -1177,12 +1198,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "AttachMany.Open",
+        "default": [],
         "states": [
           {
             "id": "AttachMany.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 81,
@@ -1193,6 +1217,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1451,6 +1476,8 @@ const ir: unknown = {
             "name": "Closed",
             "kind": "final",
             "doc": "Closing stops the files still being stored.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 91,
@@ -1461,6 +1488,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1610,6 +1638,8 @@ const ir: unknown = {
         "name": "Upload",
         "kind": "compound",
         "doc": "Upload a file in chunks. Can be paused, and reports its progress to whoever invoked it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 1,
           "line": 23,
@@ -1620,12 +1650,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Upload.Sending",
+        "default": [],
         "states": [
           {
             "id": "Upload.Sending",
             "name": "Sending",
             "kind": "atomic",
             "doc": "One chunk at a time, until every byte is stored.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 35,
@@ -1636,6 +1669,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1863,6 +1897,8 @@ const ir: unknown = {
             "name": "Paused",
             "kind": "atomic",
             "doc": "Nothing is sent until the user resumes.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 45,
@@ -1873,6 +1909,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1908,6 +1945,8 @@ const ir: unknown = {
             "name": "Finishing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 47,
@@ -1918,6 +1957,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2030,6 +2070,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 54,
@@ -2040,6 +2082,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2061,6 +2104,8 @@ const ir: unknown = {
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 55,
@@ -2071,6 +2116,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2127,6 +2173,7 @@ export interface AttachManyDef extends Roadbook.MachineDef {
   readonly event: Add | Cancel | Done
   readonly emits: never
   readonly state: "AttachMany" | "AttachMany.Open" | "AttachMany.Closed"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {
     readonly showFileProgress: { readonly name: string; readonly percent: number }

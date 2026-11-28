@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/strict-messages.road",
@@ -88,6 +88,8 @@
         "name": "Door",
         "kind": "compound",
         "doc": "Takes a loud knock while shut and any knock while ajar; tells its visitors when it opens.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 6,
@@ -98,12 +100,15 @@
         "params": [],
         "vars": [],
         "initial": "Door.Shut",
+        "default": [],
         "states": [
           {
             "id": "Door.Shut",
             "name": "Shut",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 15,
@@ -114,6 +119,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -188,6 +194,8 @@
             "name": "Ajar",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -198,6 +206,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -318,6 +327,8 @@
         "name": "Visitor",
         "kind": "compound",
         "doc": "Knocks on its door when told to. Hears `Opened` only while it waits for it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 27,
@@ -328,12 +339,15 @@
         "params": [],
         "vars": [],
         "initial": "Visitor.Idle",
+        "default": [],
         "states": [
           {
             "id": "Visitor.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 35,
@@ -344,6 +358,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -379,6 +394,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 37,
@@ -389,6 +406,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

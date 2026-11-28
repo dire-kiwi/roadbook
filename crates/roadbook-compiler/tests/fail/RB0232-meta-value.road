@@ -1,0 +1,13 @@
+enum Level { Low, High }
+
+machine M(limit: int) {
+  initial S
+  state S {
+    meta { sla: limit, level: Level.High, timeout: 30s, ratio: 1 + 2, ok: -1 }
+  }
+}
+
+// expect: RB0232 at 6:17
+// expect: RB0232 at 6:31
+// expect: RB0232 at 6:52
+// expect: RB0232 at 6:64

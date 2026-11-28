@@ -1,12 +1,12 @@
 /**
- * The Roadbook IR, version 0.10, as `spec/ir.md` describes it. The types mirror the JSON;
+ * The Roadbook IR, version 0.14, as `spec/ir.md` describes it. The types mirror the JSON;
  * {@link loadIr} checks the version before anything else.
  */
 import { aliasCycle } from "./typeref.ts"
 import type { Json } from "./json.ts"
 
 /** The IR version this package reads. While the major version is 0 only this exact one. */
-export const IR_VERSION = "0.13"
+export const IR_VERSION = "0.14"
 
 export interface Span {
   readonly file: number
@@ -146,20 +146,35 @@ export interface ChildrenDecl {
   readonly span: Span
 }
 
-/** `history` and `deepHistory` are history pseudo-states (ir.md, "History states"). */
-export type StateKind = "atomic" | "compound" | "parallel" | "final" | "history" | "deepHistory"
+/**
+ * `history` and `deepHistory` are history pseudo-states (ir.md, "History states"). A `choice` is
+ * run as an atomic state whose transitions are all `always`, the last unguarded.
+ */
+export type StateKind = "atomic" | "compound" | "parallel" | "final" | "history" | "deepHistory" | "choice"
 
 export interface State {
   readonly id: string
   readonly name: string
   readonly kind: StateKind
   readonly doc: string
+  /** The state's tags, in the order written, each once: `[]` for none. Not part of the hash. */
+  readonly tags: ReadonlyArray<string>
+  /**
+   * The state's `meta`, in the order written: `{}` for none. Only tools and host code read it.
+   * Not part of the hash.
+   */
+  readonly meta: { readonly [key: string]: string | number | boolean }
   readonly span: Span
   /** The state's parameters, in order: `[]` for a state written without them. */
   readonly params: ReadonlyArray<Field>
   /** The state's variables, in order: `[]` for a state that declares none. */
   readonly vars: ReadonlyArray<Variable>
   readonly initial: string | null
+  /**
+   * For a history state, the ids of the states it enters when it has recorded nothing: `[]` for
+   * one written without a default, and for every other state.
+   */
+  readonly default: ReadonlyArray<string>
   readonly states: ReadonlyArray<State>
   readonly entry: ReadonlyArray<Effect>
   readonly exit: ReadonlyArray<Effect>
@@ -306,6 +321,8 @@ export type Expr =
     readonly fields: ReadonlyArray<{ readonly name: string; readonly value: Expr }>
   })
   | (ExprBase & { readonly kind: "enum"; readonly variant: string })
+  /** Whether state `state`, an id, is active when the expression is evaluated. Its `type` is `bool`. */
+  | (ExprBase & { readonly kind: "in"; readonly state: string })
 
 export type Op = "==" | "!=" | "<" | "<=" | ">" | ">=" | "+" | "-" | "*" | "and" | "or" | "not" | "neg"
 
@@ -328,6 +345,32 @@ export const isHistory = (state: State): boolean => state.kind === "history" || 
  */
 export const childrenOf = (state: State): ReadonlyArray<State> =>
   state.states.some(isHistory) ? state.states.filter((c) => !isHistory(c)) : state.states
+
+const tagIndex = new WeakMap<Machine, ReadonlyMap<string, ReadonlyArray<string>>>()
+
+/**
+ * The tags of a run of `m` whose active states are `active` (in document order): each active
+ * state's tags in the order written, the states in the order of `active`, each tag at its
+ * first place only (execution.md, "Tags"). An id `m` does not have adds nothing.
+ */
+export const tagsOf = (m: Machine, active: ReadonlyArray<string>): ReadonlyArray<string> => {
+  let index = tagIndex.get(m)
+  if (index === undefined) {
+    const byId = new Map<string, ReadonlyArray<string>>()
+    const walk = (s: State) => {
+      if (s.tags.length > 0) byId.set(s.id, s.tags)
+      s.states.forEach(walk)
+    }
+    walk(m.root)
+    tagIndex.set(m, byId)
+    index = byId
+  }
+  const out: Array<string> = []
+  for (const id of active) {
+    for (const t of index.get(id) ?? []) if (!out.includes(t)) out.push(t)
+  }
+  return out
+}
 
 /** The machine's own event `name`: one of its `events` or `internalEvents`. */
 export const ownEvent = (m: Machine, name: string): EventDecl | undefined =>

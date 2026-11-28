@@ -1,0 +1,20 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0222]: these targets can't be entered together: both are in `M.A`, which is not a parallel state, so only one of its children can be active
+ --> RB0222-history-default.road:7:21
+  |
+7 |     history H -> B, C
+  |                     ^
+  |                  - the other target
+  |
+  = help: several targets enter a parallel state with a chosen state in more than one region: each target must be in a different region of the same parallel state
+
+error[RB0222]: these targets can't be entered together: both are in `M.P.L`, which is not a parallel state, so only one of its children can be active
+  --> RB0222-history-default.road:12:23
+   |
+12 |     history H -> L.X, L.Y
+   |                       ^^^
+   |                  --- the other target
+   |
+   = help: several targets enter a parallel state with a chosen state in more than one region: each target must be in a different region of the same parallel state

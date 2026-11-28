@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/targets.road",
@@ -121,6 +121,8 @@
         "name": "Player",
         "kind": "compound",
         "doc": "Several targets enter several regions of a parallel state at once, the other regions by\ndefault entry; written with dots in the parallel state, they exit and enter only those\nregions.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 9,
@@ -131,12 +133,15 @@
         "params": [],
         "vars": [],
         "initial": "Player.Idle",
+        "default": [],
         "states": [
           {
             "id": "Player.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 19,
@@ -147,6 +152,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -205,6 +211,8 @@
             "name": "On",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 24,
@@ -215,12 +223,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Player.On.Playback",
                 "name": "Playback",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 30,
@@ -231,12 +242,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Player.On.Playback.Playing",
+                "default": [],
                 "states": [
                   {
                     "id": "Player.On.Playback.Last",
                     "name": "Last",
                     "kind": "history",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 31,
@@ -247,6 +261,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -260,6 +275,8 @@
                     "name": "Playing",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 33,
@@ -270,6 +287,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -283,6 +301,8 @@
                     "name": "Paused",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 34,
@@ -293,6 +313,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -336,6 +357,8 @@
                 "name": "Volume",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 37,
@@ -346,12 +369,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Player.On.Volume.Normal",
+                "default": [],
                 "states": [
                   {
                     "id": "Player.On.Volume.Normal",
                     "name": "Normal",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 39,
@@ -362,6 +388,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -375,6 +402,8 @@
                     "name": "Muted",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 40,
@@ -385,6 +414,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -420,6 +450,8 @@
                     "name": "Loud",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 41,
@@ -430,6 +462,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -451,6 +484,8 @@
                 "name": "Light",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 44,
@@ -461,6 +496,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {

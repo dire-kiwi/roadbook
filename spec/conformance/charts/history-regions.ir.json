@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/history-regions.road",
@@ -91,6 +91,8 @@
         "name": "Panels",
         "kind": "compound",
         "doc": "History states of a parallel state.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 5,
@@ -101,12 +103,15 @@
         "params": [],
         "vars": [],
         "initial": "Panels.Both",
+        "default": [],
         "states": [
           {
             "id": "Panels.Both",
             "name": "Both",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 14,
@@ -117,12 +122,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Panels.Both.Deep",
                 "name": "Deep",
                 "kind": "deepHistory",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 15,
@@ -133,6 +141,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -146,6 +155,8 @@
                 "name": "Shallow",
                 "kind": "history",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 16,
@@ -156,6 +167,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -169,6 +181,8 @@
                 "name": "L",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 18,
@@ -179,12 +193,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Panels.Both.L.L1",
+                "default": [],
                 "states": [
                   {
                     "id": "Panels.Both.L.L1",
                     "name": "L1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 20,
@@ -195,6 +212,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -230,6 +248,8 @@
                     "name": "L2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 21,
@@ -240,6 +260,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -261,6 +282,8 @@
                 "name": "R",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 24,
@@ -271,12 +294,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Panels.Both.R.R1",
+                "default": [],
                 "states": [
                   {
                     "id": "Panels.Both.R.R1",
                     "name": "R1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 26,
@@ -287,6 +313,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -322,6 +349,8 @@
                     "name": "R2",
                     "kind": "compound",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 27,
@@ -332,12 +361,15 @@
                     "params": [],
                     "vars": [],
                     "initial": "Panels.Both.R.R2.R3",
+                    "default": [],
                     "states": [
                       {
                         "id": "Panels.Both.R.R2.R3",
                         "name": "R3",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 29,
@@ -348,6 +380,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -407,6 +440,8 @@
             "name": "Out",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -417,6 +452,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -536,6 +572,8 @@
         "name": "Region",
         "kind": "compound",
         "doc": "The history state of a compound state in one region of a parallel state.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 43,
@@ -546,12 +584,15 @@
         "params": [],
         "vars": [],
         "initial": "Region.P",
+        "default": [],
         "states": [
           {
             "id": "Region.P",
             "name": "P",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 50,
@@ -562,12 +603,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Region.P.A",
                 "name": "A",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 51,
@@ -578,12 +622,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Region.P.A.A1",
+                "default": [],
                 "states": [
                   {
                     "id": "Region.P.A.H",
                     "name": "H",
                     "kind": "deepHistory",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 53,
@@ -594,6 +641,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -607,6 +655,8 @@
                     "name": "A1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 54,
@@ -617,6 +667,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -652,6 +703,8 @@
                     "name": "A2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 55,
@@ -662,6 +715,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -683,6 +737,8 @@
                 "name": "B",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 58,
@@ -693,12 +749,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Region.P.B.B1",
+                "default": [],
                 "states": [
                   {
                     "id": "Region.P.B.B1",
                     "name": "B1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 60,
@@ -709,6 +768,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -744,6 +804,8 @@
                     "name": "B2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 61,
@@ -754,6 +816,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -805,6 +868,8 @@
             "name": "Away",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 67,
@@ -815,6 +880,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

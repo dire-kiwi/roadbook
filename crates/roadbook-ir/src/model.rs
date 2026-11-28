@@ -546,6 +546,9 @@ pub enum StateKind {
     /// `deep history Name`: a deep history pseudo-state of its parent.
     #[serde(rename = "deepHistory")]
     DeepHistory,
+    /// `choice Name { … }`: no children, and only `always` transitions, the last unguarded.
+    /// Run as an atomic state, so it is entered and left at once; a run never rests in one.
+    Choice,
 }
 
 impl StateKind {
@@ -568,6 +571,12 @@ pub struct State {
     pub kind: StateKind,
     /// Doc comment, `""` if none.
     pub doc: String,
+    /// The state's tags (`tags a, b`), in the order written, each once: `[]` for none.
+    /// Host code asks a run for the tags of its active states. Not part of the hash.
+    pub tags: Vec<String>,
+    /// The state's `meta`, in the order written: `{}` for none. Each value is a string, a
+    /// number or a bool. Only tools and host code read it, from the IR. Not part of the hash.
+    pub meta: IndexMap<String, serde_json::Value>,
     /// The whole state, from its first keyword to the closing brace.
     pub span: Span,
     /// The state's parameters, in order: `[]` for a state written without
@@ -579,6 +588,12 @@ pub struct State {
     pub vars: Vec<Var>,
     /// Id of the child entered first; set exactly when `kind` is `compound`.
     pub initial: Option<String>,
+    /// The states a history state enters when it has recorded nothing, in the order written:
+    /// `[]` for one written without a default (which enters its parent's default entry), and
+    /// for every state that is not a history state. Each is a proper descendant of the
+    /// history state's parent; more than one only for a parallel parent, each in a different
+    /// region.
+    pub default: Vec<String>,
     /// Child states, in source order.
     pub states: Vec<State>,
     /// Effects run on entry, in source order.
@@ -608,6 +623,34 @@ impl State {
     /// `invoke.started` records carry `as`.
     pub fn has_several_invokes(&self) -> bool {
         self.invokes.len() > 1
+    }
+
+    /// The transitions that transition `index` stands for when they are drawn as one: itself
+    /// and the later copies of its branch of an `on A | B`, those with its `group` and `span`.
+    /// Empty if `index` is itself a later copy, drawn with the first.
+    pub fn copies(&self, index: usize) -> Vec<usize> {
+        let t = &self.transitions[index];
+        let same = |o: &Transition| o.group == t.group && o.span == t.span;
+        if self.transitions[..index].iter().any(same) {
+            return Vec::new();
+        }
+        let later = self.transitions[index..].iter().enumerate();
+        later
+            .filter(|(_, o)| same(o))
+            .map(|(k, _)| index + k)
+            .collect()
+    }
+
+    /// Whether transition `index` is the `else` of its block: unguarded, and not the block's
+    /// first branch, whose span the first transition of its group has.
+    pub fn is_else(&self, index: usize) -> bool {
+        let t = &self.transitions[index];
+        t.guard.is_none()
+            && self
+                .transitions
+                .iter()
+                .find(|o| o.group == t.group)
+                .is_some_and(|first| first.span != t.span)
     }
 }
 
@@ -980,6 +1023,22 @@ impl Machine {
         self.events
             .get(name)
             .or_else(|| self.internal_events.get(name))
+    }
+
+    /// Every tag the machine's states declare (`tags busy`), each once, in document order:
+    /// what the generated `Tag` union and enum list.
+    pub fn tags(&self) -> Vec<&str> {
+        fn walk<'a>(s: &'a State, out: &mut Vec<&'a str>) {
+            for t in &s.tags {
+                if !out.contains(&t.as_str()) {
+                    out.push(t);
+                }
+            }
+            s.states.iter().for_each(|c| walk(c, out));
+        }
+        let mut out = Vec::new();
+        walk(&self.root, &mut out);
+        out
     }
 
     /// The names of the machine's delayed raises (`raise … after … as name`), each once, in

@@ -223,6 +223,25 @@ pub enum Step {
     /// Suspend a top-level run and, once it is idle or has ended, compare
     /// the saved snapshot it gives with a file.
     Suspend(SnapshotStep),
+    /// Check a top-level run's tags (`spec/execution.md#tags`). Writes
+    /// nothing to the trace.
+    Tags(TagsStep),
+}
+
+/// `{"tags": [...]}`: the tags a top-level run must have now.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TagsStep {
+    /// The tags, in the order the run has them.
+    pub tags: Vec<String>,
+    /// The run, a top-level run id: the root run when `None`.
+    pub run: Option<String>,
+}
+
+impl TagsStep {
+    /// The run the step is about.
+    pub fn run(&self) -> &str {
+        self.run.as_deref().unwrap_or(ROOT_RUN)
+    }
 }
 
 /// `{"snapshot": …}` or `{"suspend": …}`: a top-level run and the snapshot
@@ -395,6 +414,21 @@ fn step_from_value(v: Value) -> Result<Step, String> {
                 Step::Suspend(step)
             });
         }
+    }
+    if let Some(t) = m.remove("tags") {
+        only(&m, &["run"])?;
+        let tags = match t {
+            Value::Array(tags) => tags
+                .into_iter()
+                .map(|t| match t {
+                    Value::String(t) => Ok(t),
+                    _ => Err("a tag is a string".to_owned()),
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+            _ => return Err("`tags` is a list of tags".into()),
+        };
+        let run = take_run(&mut m)?;
+        return Ok(Step::Tags(TagsStep { tags, run }));
     }
     if let Some(n) = m.remove("restore") {
         only(&m, &["run", "status", "migrate", "refused"])?;
@@ -919,7 +953,27 @@ mod tests {
             })
         );
         assert!(matches!(&saved[3], Step::Restore(r) if r.refused.as_deref() == Some("ir")));
+        let tags: Vec<Step> = serde_json::from_value(
+            json!([{"tags": ["busy", "network"]}, {"tags": [], "run": "r2"}]),
+        )
+        .unwrap();
+        assert_eq!(
+            tags,
+            [
+                Step::Tags(TagsStep {
+                    tags: vec!["busy".into(), "network".into()],
+                    run: None
+                }),
+                Step::Tags(TagsStep {
+                    tags: vec![],
+                    run: Some("r2".into())
+                })
+            ]
+        );
         for bad in [
+            json!({"tags": "busy"}),
+            json!({"tags": [1]}),
+            json!({"tags": [], "event": {}}),
             json!({"task": "t"}),
             json!({"task": "t", "done": 1, "fail": {"_tag": "E"}}),
             json!({"advance": -1}),

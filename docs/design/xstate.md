@@ -17,7 +17,7 @@ Below, "Roadbook" means `main`, and a feature from one of these tasks is marked 
 
 - **The core is the same model.** Both are SCXML statecharts: nested, parallel, final and history states; `always`, `after` and `done` transitions; run to completion; innermost transition first; invoked children tied to a state; spawned children tied to the machine. Anyone who knows XState can read a Roadbook chart.
 - **Roadbook is stricter about work and data.** Every task is tied to a state, every declared error must be handled, host functions see only the arguments the chart gives them, variables are typed and proved assigned before they are read, and machines reach only the machines they are given. XState lets a guard or action read the whole context, keeps errors untyped, and has a registry for looking up any actor.
-- **XState has more ways to write things.** It has delayed `sendTo` to another actor, partial wildcards (`mouse.*`), tags and `meta`, `stateIn` checks, and, in v6, choice states, route states, per-state context and state input, and state-level `onError`. Roadbook has none of these.
+- **XState has more ways to write things.** It has delayed `sendTo` to another actor, partial wildcards (`mouse.*`), and, in v6, route states and state-level `onError`. Roadbook has none of these, though `on A | B` covers what partial wildcards are used for. Choice states, `in(State)` for `stateIn`, tags and `meta`, a history default target and structural `==` were added in SM-30.
 - **Roadbook checks and records more.** It has a compiler with static checks (exhaustive errors, definite assignment, unguarded `always` cycles, unbounded recursion, unreachable states, states with no way out), a trace format with a schema that two runtimes write byte for byte, redaction of sensitive values, snapshots that refuse a changed chart unless given a migration, typed messaging between machines, keyed child collections, retry sugar, and (SM-20) request and reply between peers. XState v6 has caught up on some of this: timers in snapshots, snapshot versioning, a durable module, unhandled-event hooks and a CLI that validates and checks properties.
 
 [The code examples](xstate-examples.md) show the main differences in XState v5, v6 and Roadbook. [What to add](xstate-plan.md) recommends what to close.
@@ -32,11 +32,11 @@ Below, "Roadbook" means `main`, and a feature from one of these tasks is marked 
 | --- | --- | --- | --- | --- |
 | Atomic, compound, final states | Yes | Yes | Yes | ✅ |
 | Parallel states, `done` when every region is final | Yes | Yes | Yes | ✅ |
-| Shallow and deep history | Yes, with an optional default `target` | Yes | Yes. With no record it enters the parent's default entry; there is no separate default target | ≈ |
+| Shallow and deep history | Yes, with an optional default `target` | Yes | Yes, with an optional default target, `history Previous -> Editing` (SM-30). With no record and no default it enters the parent's default entry | ✅ |
 | Which states a transition to a history state leaves | SCXML's rule, from the states it restores | Same | Decided as if the history state were an ordinary child, never by what was recorded | ≈ |
-| Choice (decision) pseudo-state | Write a transient state with `always` | `type: 'choice'` with a `choice` function | A transient state with an `always` block (`if … -> A else -> B`) | ≈ |
+| Choice (decision) pseudo-state | Write a transient state with `always` | `type: 'choice'` with a `choice` function | `choice Routing { if … -> A else -> B }` (SM-30): the compiler requires the `else` and a target on every branch. It is entered and left like v5's transient state, so the trace shows it | ≈ |
 | Route states, jump to a state by an event | — | `route` and `xstate.route` | — | — |
-| Tags (`hasTag`) and `meta` on states | Yes | Yes | No. Doc comments only, kept in the IR | — |
+| Tags (`hasTag`) and `meta` on states | Yes | Yes | `tags busy, network` and `meta { owner: "payments" }` (SM-30). Host code asks a run `hasTag("busy")` (TypeScript) or `has_tag` (Rust), with a generated `Tag` type; `meta` is read from the IR | ≈ |
 | Descriptions | `description` | Same | `///` doc comments, on states, transitions, declarations and fields, shown by the viewer | ✅ |
 | State ids | Implicit paths and `#id` | `#id` resolved exactly | Absolute ids in the IR (`Checkout.Charging`); targets resolved by name in the chart, like block scoping | ≈ |
 
@@ -44,14 +44,14 @@ Below, "Roadbook" means `main`, and a feature from one of these tasks is marked 
 
 | Feature | XState v5 | XState v6 beta | Roadbook | |
 | --- | --- | --- | --- | --- |
-| Guards | Named or inline functions over context and event; `and`, `or`, `not`, `stateIn` | Plain JavaScript inside a transition function | An expression in the chart (`attempts < 3 and isVip(user)`), calling pure host `fn`s with explicit arguments | ≈ |
+| Guards | Named or inline functions over context and event; `and`, `or`, `not`, `stateIn` | Plain JavaScript inside a transition function | An expression in the chart (`attempts < 3 and isVip(user)`, `not in(Volume.Muted)`), calling pure host `fn`s with explicit arguments | ≈ |
 | Several guarded branches | An array, tried in order | `if` in the function | A block, tried in order; only the last may be unguarded, and the same trigger twice in a state is an error | ≈ |
 | Default when a transition targets its own state or a child of it | Not re-entered (`reenter: false`); `reenter: true` re-enters | Same, and `reenter` re-enters even a target that resolves to the current state | Re-entered (SCXML's external transition), unless the target has a leading dot: `-> .Child` keeps the source (SCXML's `type="internal"`) | ✅ |
 | Targetless (internal) transitions | Yes | Yes | Yes | ✅ |
 | Several targets in one transition | `target: ['.a.x', '.b.y']` | Yes | `-> P.A.X, P.B.Y`, checked to be in different regions | ✅ |
 | A transition into one region of a parallel state | Resets sibling regions in some cases | Exits and re-enters only that region | SCXML's rule for an external transition, which leaves and re-enters the parallel state (and warns, `RB0913`); an internal one written in the parallel state exits and enters only the regions it targets, as v6 does | ✅ |
 | Wildcard event | `*`, lowest priority | Same | `on *`, tried only in a state with no `on` for the event; never matches outcomes, timers or emitted events | ✅ |
-| Partial wildcards (`mouse.*`) | Yes | In `internalEvents` schemas and `enq.listen` patterns | — | — |
+| Partial wildcards (`mouse.*`) | Yes | In `internalEvents` schemas and `enq.listen` patterns | No; `on A \| B` lists the events instead, and `event` has the fields they share (SM-30) | ≈ |
 | `always` | Yes | Yes | Yes, and an unguarded `always` cycle is a compile error | ➕ |
 | `after` with a computed delay | Named `delays` | Same, plus duration strings and ISO 8601 | A `duration` expression, evaluated after entry effects | ✅ |
 | A timeout on a state | `after` | `timeout` and `onTimeout`, on a state or an invoke | `after` on the state; an invoke is tied to its state, so the state's `after` is its timeout | ≈ |
@@ -79,8 +79,8 @@ Below, "Roadbook" means `main`, and a feature from one of these tasks is marked 
 | Data local to a state | — | State `input`, gone when the state is left | State parameters, `state Confirming(token: ResetToken)` entered with `-> Confirming(result)`, and `var`s inside a state, set on each entry and gone when it is left (SM-29). The compiler checks that every transition into the state passes its arguments | ✅ |
 | What host code sees | The whole context and event | The same | Only the arguments the chart passes | ➕ |
 | Expressions in the chart | None; JavaScript in functions | JavaScript in functions | Small and total: literals, fields, calls, comparison, `+ - *`, `and or not`; no loops, no string or list operations | ➕ |
-| Equality | JavaScript's | JavaScript's | `==` on scalars and enums only; structural equality is designed but not built (SM-8) | — |
-| Checking in state from a guard (`stateIn`, `matches`) | `stateIn` | `self.getSnapshot().matches()` | — A guard cannot read the configuration | — |
+| Equality | JavaScript's | JavaScript's | Structural `==` on records, errors, events, lists, maps and optionals, directed by their type (decided in SM-8, built in SM-30); not on `json` or an `extern type` | ➕ |
+| Checking in state from a guard (`stateIn`, `matches`) | `stateIn` | `self.getSnapshot().matches()` | `in(Volume.Muted)`, an expression of type `bool`, in a guard or anywhere else (SM-30) | ✅ |
 | Sensitive values kept out of traces | — | — | `sensitive` fields, parameters and variables, redacted in every trace record, checked so a value cannot leak to an unmarked place | ➕ |
 
 ### Actions and work
@@ -156,11 +156,11 @@ Ordered from most to least likely to matter for program flow, which is what Road
 4. **Several invokes per state.** XState allows an array. Roadbook needed a parallel state with one region per invoke. Closed by SM-37: a state may have several invokes, each named with `as`, whose outcomes are each their own invoke's; a join is still a parallel state.
 5. **Delayed and self-sent events.** XState has `raise`, delayed `sendTo`, and `cancel`. Roadbook had only `after`, tied to a state, so a debounce, or a deadline that should survive moving between states, had to be modelled with a parent state that holds the `after`. Closed by SM-28: `raise E` puts an event on the internal queue, `internal event E` declares one only the machine raises, and `raise E after d as name` is a timer of the run, which a raise of the same name replaces and `cancel name` cancels. A delayed `send` to another machine is still not in the language; a delayed raise whose transition sends does the same.
 6. **Event sources.** XState's callback and observable actors push events into their parent. Roadbook left this to host code calling `send` on the run's handle, which does not show in the chart, and a task could not report progress. Closed by SM-26: a task declares what it `emits`, an invoke names it with `as`, and the state takes its events with `on up.E`; a stream task is one that returns nothing and emits until its state is left. Tasks can also be spawned into a `children` collection.
-7. **A guard on the configuration.** XState's `stateIn` and `matches()` let a guard in one region ask what another region is doing. Roadbook has no form for it, and a chart keeps a variable in step instead.
+7. **A guard on the configuration.** XState's `stateIn` and `matches()` let a guard in one region ask what another region is doing. Roadbook had no form for it, and a chart kept a variable in step instead. Closed by SM-30: `in(Volume.Muted)` is true when the state is active, in a guard or any other expression.
 8. **Several targets in one transition**, to set more than one region of a parallel state at once. Closed by SM-24: `-> P.A.X, P.B.Y`.
 9. **Data local to a state.** XState v6's state `input` is passed on the transition into a state and is gone when it is left. In Roadbook every variable belonged to the machine; definite assignment made this safe, but the variable outlived the state that needed it. Closed by SM-29 (IR 0.13): a state takes parameters, `state Confirming(token: ResetToken)`, passed as `-> Confirming(result)`, and declares its own `var`s, which get their values each time it is entered, are readable in it and the states inside it, and are gone once it is left. Default entry never enters a state with parameters, so the compiler sees every way in, and a history state restores a state's locals with it.
 10. **Child machines in snapshots.** XState persists a child machine's snapshot with its parent's. Roadbook restarted a child from the beginning when it restored a snapshot saved while the child ran, and `suspend` waited until no child was running, so a parent with long-lived children could not be suspended between events. Closed by SM-27: snapshot version 4 nests each running child run's snapshot in its parent's, restore puts it back where it was, and `suspend` waits for the whole tree to be idle.
-11. **Smaller things:** partial wildcards (`mouse.*`), tags and `meta`, a default target for a history state, route states (for UI navigation, not much use here), reducer actors, and equality on records, lists and maps.
+11. **Smaller things:** partial wildcards (`mouse.*`), tags and `meta`, a default target for a history state, choice states, route states (for UI navigation, not much use here), reducer actors, and equality on records, lists and maps. SM-30 (IR 0.14) closed all but route states and reducer actors: `tags busy` and `meta { … }` on states, `history Previous -> Editing`, `choice Routing { … }` with a required `else`, structural `==`, and `on A | B` in place of partial wildcards.
 
 ## What Roadbook does differently
 

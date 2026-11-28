@@ -467,6 +467,8 @@ const fitIssue = (ir: Ir, m: Machine, saved: Saved): string | undefined => {
     if (entry.parent !== undefined && !active.has(entry.parent.id)) return `${id} is active but its parent is not`
     const { state } = entry
     if (isHistory(state)) return `active names ${id}, which is a history state`
+    // A run never rests in a choice: it is left in the microstep after it is entered.
+    if (state.kind === "choice") return `active names ${id}, which is a choice state`
     const children = state.states.filter((c) => active.has(c.id)).length
     if (state.kind === "compound" && children !== 1) return `${id} is an active compound state with ${children} active children`
     if (state.kind === "parallel" && children !== childrenOf(state).length) {
@@ -683,7 +685,9 @@ const recordIssue = (
   for (const id of record) {
     const entry = lookup(id)
     if (entry === undefined) return `${id} is not a state of the machine`
-    if (entry.state.kind !== "atomic" && entry.state.kind !== "final") return `${id} is not an atomic or final state`
+    // A choice the run left the parent from is recorded, and restoring it decides again.
+    const kind = entry.state.kind
+    if (kind !== "atomic" && kind !== "final" && kind !== "choice") return `${id} is not an atomic, choice or final state`
     if (entry.order <= last) return "it is not in document order"
     last = entry.order
     let s: { readonly state: State; readonly parent: State | undefined } | undefined = entry

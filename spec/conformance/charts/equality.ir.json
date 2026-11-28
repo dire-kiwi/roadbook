@@ -1,0 +1,1099 @@
+{
+  "irVersion": "0.14",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/equality.road",
+      "package": null
+    }
+  ],
+  "types": {
+    "Point": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "x",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "y",
+          "type": "float",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 6,
+        "endCol": 33
+      }
+    },
+    "Item": {
+      "kind": "record",
+      "params": [],
+      "fields": [
+        {
+          "name": "name",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "at",
+          "type": "Point",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "note",
+          "type": "string?",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 7,
+        "col": 1,
+        "endLine": 7,
+        "endCol": 55
+      }
+    },
+    "Box": {
+      "kind": "record",
+      "params": [
+        "T"
+      ],
+      "fields": [
+        {
+          "name": "value",
+          "type": "T?",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 8,
+        "col": 1,
+        "endLine": 8,
+        "endCol": 26
+      }
+    },
+    "Counts": {
+      "kind": "alias",
+      "params": [],
+      "type": "map<string, int>",
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 9,
+        "col": 1,
+        "endLine": 9,
+        "endCol": 31
+      }
+    },
+    "Colour": {
+      "kind": "enum",
+      "variants": [
+        "Red",
+        "Green"
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 10,
+        "col": 1,
+        "endLine": 10,
+        "endCol": 27
+      }
+    },
+    "Refused": {
+      "kind": "error",
+      "fields": [
+        {
+          "name": "code",
+          "type": "int",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "at",
+          "type": "Point?",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 12,
+        "col": 1,
+        "endLine": 12,
+        "endCol": 40
+      }
+    }
+  },
+  "functions": {},
+  "actions": {
+    "saw": {
+      "params": [
+        {
+          "name": "what",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "same",
+          "type": "bool",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 14,
+        "col": 1,
+        "endLine": 14,
+        "endCol": 37
+      }
+    }
+  },
+  "tasks": {
+    "fetch": {
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": "Item",
+      "errors": [
+        "Refused"
+      ],
+      "emits": {},
+      "doc": "",
+      "span": {
+        "file": 0,
+        "line": 16,
+        "col": 1,
+        "endLine": 16,
+        "endCol": 41
+      }
+    }
+  },
+  "machines": {
+    "Equality": {
+      "doc": "Compares its inputs, then the items of events, then a task's result and\nerrors against the ones it expects.",
+      "span": {
+        "file": 0,
+        "line": 20,
+        "col": 1,
+        "endLine": 58,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [
+        {
+          "name": "a",
+          "type": "Item[]",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "b",
+          "type": "Item[]",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "c",
+          "type": "Item[]",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "m1",
+          "type": "Counts",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "m2",
+          "type": "Counts",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "m3",
+          "type": "Counts",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "p",
+          "type": "Box<Point>",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "q",
+          "type": "Box<Point>",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "r",
+          "type": "Box<Box<Point>>",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "s",
+          "type": "Box<Box<Point>>",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "colour",
+          "type": "Colour",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "item",
+          "type": "Item",
+          "sensitive": false,
+          "doc": ""
+        },
+        {
+          "name": "expected",
+          "type": "Refused",
+          "sensitive": false,
+          "doc": ""
+        }
+      ],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Compare": {
+          "fields": [
+            {
+              "name": "left",
+              "type": "Item",
+              "sensitive": false,
+              "doc": ""
+            },
+            {
+              "name": "right",
+              "type": "Item",
+              "sensitive": false,
+              "doc": ""
+            },
+            {
+              "name": "tags",
+              "type": "string[]?",
+              "sensitive": false,
+              "doc": ""
+            }
+          ],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 35,
+            "col": 3,
+            "endLine": 35,
+            "endCol": 61
+          }
+        },
+        "Fetch": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 36,
+            "col": 3,
+            "endLine": 36,
+            "endCol": 14
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Equality",
+        "name": "Equality",
+        "kind": "compound",
+        "doc": "Compares its inputs, then the items of events, then a task's result and\nerrors against the ones it expects.",
+        "tags": [],
+        "meta": {},
+        "span": {
+          "file": 0,
+          "line": 20,
+          "col": 1,
+          "endLine": 58,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Equality.Comparing",
+        "default": [],
+        "states": [
+          {
+            "id": "Equality.Comparing",
+            "name": "Comparing",
+            "kind": "atomic",
+            "doc": "",
+            "tags": [],
+            "meta": {},
+            "span": {
+              "file": 0,
+              "line": 40,
+              "col": 3,
+              "endLine": 45,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [],
+            "entry": [
+              {
+                "kind": "do",
+                "action": "saw",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "lists",
+                    "type": "string",
+                    "text": "\"lists\""
+                  },
+                  {
+                    "kind": "op",
+                    "op": "==",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "a"
+                        ],
+                        "state": null,
+                        "type": "Item[]",
+                        "text": "a"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "b"
+                        ],
+                        "state": null,
+                        "type": "Item[]",
+                        "text": "b"
+                      }
+                    ],
+                    "type": "bool",
+                    "text": "a == b"
+                  }
+                ]
+              },
+              {
+                "kind": "do",
+                "action": "saw",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "lists differ",
+                    "type": "string",
+                    "text": "\"lists differ\""
+                  },
+                  {
+                    "kind": "op",
+                    "op": "!=",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "a"
+                        ],
+                        "state": null,
+                        "type": "Item[]",
+                        "text": "a"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "c"
+                        ],
+                        "state": null,
+                        "type": "Item[]",
+                        "text": "c"
+                      }
+                    ],
+                    "type": "bool",
+                    "text": "a != c"
+                  }
+                ]
+              },
+              {
+                "kind": "do",
+                "action": "saw",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "maps",
+                    "type": "string",
+                    "text": "\"maps\""
+                  },
+                  {
+                    "kind": "op",
+                    "op": "==",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "m1"
+                        ],
+                        "state": null,
+                        "type": "Counts",
+                        "text": "m1"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "m2"
+                        ],
+                        "state": null,
+                        "type": "Counts",
+                        "text": "m2"
+                      }
+                    ],
+                    "type": "bool",
+                    "text": "m1 == m2"
+                  }
+                ]
+              },
+              {
+                "kind": "do",
+                "action": "saw",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "maps differ",
+                    "type": "string",
+                    "text": "\"maps differ\""
+                  },
+                  {
+                    "kind": "op",
+                    "op": "==",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "m1"
+                        ],
+                        "state": null,
+                        "type": "Counts",
+                        "text": "m1"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "m3"
+                        ],
+                        "state": null,
+                        "type": "Counts",
+                        "text": "m3"
+                      }
+                    ],
+                    "type": "bool",
+                    "text": "m1 == m3"
+                  }
+                ]
+              },
+              {
+                "kind": "do",
+                "action": "saw",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "boxes",
+                    "type": "string",
+                    "text": "\"boxes\""
+                  },
+                  {
+                    "kind": "op",
+                    "op": "==",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "p"
+                        ],
+                        "state": null,
+                        "type": "Box<Point>",
+                        "text": "p"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "q"
+                        ],
+                        "state": null,
+                        "type": "Box<Point>",
+                        "text": "q"
+                      }
+                    ],
+                    "type": "bool",
+                    "text": "p == q"
+                  }
+                ]
+              },
+              {
+                "kind": "do",
+                "action": "saw",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "inner boxes",
+                    "type": "string",
+                    "text": "\"inner boxes\""
+                  },
+                  {
+                    "kind": "op",
+                    "op": "==",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "r",
+                          "value"
+                        ],
+                        "state": null,
+                        "type": "Box<Point>?",
+                        "text": "r.value"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "s",
+                          "value"
+                        ],
+                        "state": null,
+                        "type": "Box<Point>?",
+                        "text": "s.value"
+                      }
+                    ],
+                    "type": "bool",
+                    "text": "r.value == s.value"
+                  }
+                ]
+              },
+              {
+                "kind": "do",
+                "action": "saw",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "nested boxes",
+                    "type": "string",
+                    "text": "\"nested boxes\""
+                  },
+                  {
+                    "kind": "op",
+                    "op": "==",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "r"
+                        ],
+                        "state": null,
+                        "type": "Box<Box<Point>>",
+                        "text": "r"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "s"
+                        ],
+                        "state": null,
+                        "type": "Box<Box<Point>>",
+                        "text": "s"
+                      }
+                    ],
+                    "type": "bool",
+                    "text": "r == s"
+                  }
+                ]
+              },
+              {
+                "kind": "do",
+                "action": "saw",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "enum",
+                    "type": "string",
+                    "text": "\"enum\""
+                  },
+                  {
+                    "kind": "op",
+                    "op": "==",
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "colour"
+                        ],
+                        "state": null,
+                        "type": "Colour",
+                        "text": "colour"
+                      },
+                      {
+                        "kind": "enum",
+                        "variant": "Green",
+                        "type": "Colour",
+                        "text": "Colour.Green"
+                      }
+                    ],
+                    "type": "bool",
+                    "text": "colour == Colour.Green"
+                  }
+                ]
+              }
+            ],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Compare"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "saw",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "items",
+                        "type": "string",
+                        "text": "\"items\""
+                      },
+                      {
+                        "kind": "op",
+                        "op": "==",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "left"
+                            ],
+                            "state": null,
+                            "type": "Item",
+                            "text": "event.left"
+                          },
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "right"
+                            ],
+                            "state": null,
+                            "type": "Item",
+                            "text": "event.right"
+                          }
+                        ],
+                        "type": "bool",
+                        "text": "event.left == event.right"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "do",
+                    "action": "saw",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "tags",
+                        "type": "string",
+                        "text": "\"tags\""
+                      },
+                      {
+                        "kind": "op",
+                        "op": "==",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "tags"
+                            ],
+                            "state": null,
+                            "type": "string[]?",
+                            "text": "event.tags"
+                          },
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "event",
+                              "tags"
+                            ],
+                            "state": null,
+                            "type": "string[]?",
+                            "text": "event.tags"
+                          }
+                        ],
+                        "type": "bool",
+                        "text": "event.tags == event.tags"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "do",
+                    "action": "saw",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "events",
+                        "type": "string",
+                        "text": "\"events\""
+                      },
+                      {
+                        "kind": "op",
+                        "op": "==",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "event"
+                            ],
+                            "state": null,
+                            "type": "Compare",
+                            "text": "event"
+                          },
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "event"
+                            ],
+                            "state": null,
+                            "type": "Compare",
+                            "text": "event"
+                          }
+                        ],
+                        "type": "bool",
+                        "text": "event == event"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 43,
+                  "col": 5,
+                  "endLine": 43,
+                  "endCol": 141
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Fetch"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Equality.Fetching"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 44,
+                  "col": 5,
+                  "endLine": 44,
+                  "endCol": 27
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Equality.Fetching",
+            "name": "Fetching",
+            "kind": "atomic",
+            "doc": "",
+            "tags": [],
+            "meta": {},
+            "span": {
+              "file": 0,
+              "line": 47,
+              "col": 3,
+              "endLine": 55,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "fetch",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": "i1",
+                    "type": "string",
+                    "text": "\"i1\""
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 48,
+                  "col": 5,
+                  "endLine": 54,
+                  "endCol": 6
+                }
+              }
+            ],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "invoke.done",
+                  "as": null
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Equality.Fetching"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "saw",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "item",
+                        "type": "string",
+                        "text": "\"item\""
+                      },
+                      {
+                        "kind": "op",
+                        "op": "==",
+                        "args": [
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "result"
+                            ],
+                            "state": null,
+                            "type": "Item",
+                            "text": "result"
+                          },
+                          {
+                            "kind": "ref",
+                            "path": [
+                              "item"
+                            ],
+                            "state": null,
+                            "type": "Item",
+                            "text": "item"
+                          }
+                        ],
+                        "type": "bool",
+                        "text": "result == item"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 49,
+                  "col": 7,
+                  "endLine": 49,
+                  "endCol": 73
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "as": null,
+                  "error": "Refused"
+                },
+                "group": 1,
+                "guard": {
+                  "kind": "op",
+                  "op": "==",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "error"
+                      ],
+                      "state": null,
+                      "type": "Refused",
+                      "text": "error"
+                    },
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "expected"
+                      ],
+                      "state": null,
+                      "type": "Refused",
+                      "text": "expected"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "error == expected"
+                },
+                "targets": [
+                  "Equality.Done"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "saw",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "expected error",
+                        "type": "string",
+                        "text": "\"expected error\""
+                      },
+                      {
+                        "kind": "lit",
+                        "value": true,
+                        "type": "bool",
+                        "text": "true"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 51,
+                  "col": 9,
+                  "endLine": 51,
+                  "endCol": 73
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "invoke.fail",
+                  "as": null,
+                  "error": "Refused"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Equality.Fetching"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "do",
+                    "action": "saw",
+                    "args": [
+                      {
+                        "kind": "lit",
+                        "value": "expected error",
+                        "type": "string",
+                        "text": "\"expected error\""
+                      },
+                      {
+                        "kind": "lit",
+                        "value": false,
+                        "type": "bool",
+                        "text": "false"
+                      }
+                    ]
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 52,
+                  "col": 9,
+                  "endLine": 52,
+                  "endCol": 74
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Equality.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "tags": [],
+            "meta": {},
+            "span": {
+              "file": 0,
+              "line": 57,
+              "col": 3,
+              "endLine": 57,
+              "endCol": 22
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:76ba7b33e2de65cf93898290b919ed78542445fc7ab56a4e7cb2fb2cc2fc2c89"
+    }
+  }
+}

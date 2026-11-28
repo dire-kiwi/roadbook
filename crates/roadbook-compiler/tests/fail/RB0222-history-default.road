@@ -1,0 +1,23 @@
+machine M() {
+  event Go
+
+  initial A
+  state A {
+    initial B
+    history H -> B, C
+    state B { on Go -> A.H }
+    state C {}
+  }
+  parallel state P {
+    history H -> L.X, L.Y
+    state L {
+      initial X
+      state X { on Go -> P.H }
+      state Y {}
+    }
+    state R {}
+  }
+}
+
+// expect: RB0222 at 7:21
+// expect: RB0222 at 12:23

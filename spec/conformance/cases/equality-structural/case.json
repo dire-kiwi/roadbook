@@ -1,0 +1,56 @@
+{
+  "description": "`==` and `!=` walk the type. Lists compare element by element and records field by field, whatever the order of their members and however their numbers are written: an `int` written `1.0` is 1, and a `float` written `-0.0` is `0.0`. Maps compare by their keys and the values at each, whatever the order of the keys, and a map with an extra key differs. An optional's `null` equals only `null`, so `Box { value: null }` differs from `null`, one level down. An enum compares by its variant. In the events, an item equals one with its members in another order and differs from one whose optional `note` is a string; a whole event compares as a record. The task's result is compared with an `Item` input, and its errors with an expected `Refused`, whose optional `Point` decides.",
+  "requires": [],
+  "chart": "charts/equality.road",
+  "machine": "Equality",
+  "input": {
+    "a": [
+      { "name": "x", "at": { "x": 1, "y": 0.0 }, "note": null },
+      { "name": "y", "at": { "x": 2, "y": 2.5 }, "note": "n" }
+    ],
+    "b": [
+      { "note": null, "at": { "y": -0.0, "x": 1.0 }, "name": "x" },
+      { "at": { "x": 2, "y": 2.5 }, "note": "n", "name": "y" }
+    ],
+    "c": [
+      { "name": "x", "at": { "x": 1, "y": 0.0 }, "note": null },
+      { "name": "y", "at": { "x": 2, "y": 2.5 }, "note": "m" }
+    ],
+    "m1": { "a": 1, "b": 2 },
+    "m2": { "b": 2.0, "a": 1 },
+    "m3": { "a": 1, "b": 2, "c": 3 },
+    "p": { "value": { "x": 1, "y": 1.5 } },
+    "q": { "value": { "y": 1.5, "x": 1 } },
+    "r": { "value": { "value": null } },
+    "s": { "value": null },
+    "colour": "Green",
+    "item": { "name": "x", "at": { "x": 1, "y": 0 }, "note": null },
+    "expected": { "_tag": "Refused", "code": 3, "at": null }
+  },
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    {
+      "event": {
+        "_tag": "Compare",
+        "left": { "name": "x", "at": { "x": 1, "y": 0.5 }, "note": null },
+        "right": { "at": { "y": 0.5, "x": 1.0 }, "note": null, "name": "x" },
+        "tags": ["a", "b"]
+      }
+    },
+    {
+      "event": {
+        "_tag": "Compare",
+        "left": { "name": "x", "at": { "x": 1, "y": 0.5 }, "note": null },
+        "right": { "name": "x", "at": { "x": 1, "y": 0.5 }, "note": "late" },
+        "tags": null
+      }
+    },
+    { "event": { "_tag": "Fetch" } },
+    { "task": "fetch", "done": { "at": { "x": 1.0, "y": -0.0 }, "name": "x", "note": null } },
+    { "task": "fetch", "fail": { "_tag": "Refused", "code": 3, "at": { "x": 1, "y": 2.0 } } },
+    { "task": "fetch", "fail": { "_tag": "Refused", "at": null, "code": 3.0 } }
+  ],
+  "status": "done"
+}

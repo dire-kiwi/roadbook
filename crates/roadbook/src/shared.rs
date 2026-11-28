@@ -34,6 +34,9 @@ struct Inner {
     finish_wakers: Vec<Waker>,
     state_version: u64,
     state: Option<String>,
+    /// The tags of the run's active states, as its last step left them
+    /// (`spec/execution.md#tags`).
+    tags: Vec<String>,
     state_wakers: Vec<Waker>,
     /// The run's core has returned a snapshot that is not `running`: nothing more is
     /// delivered to it.
@@ -591,6 +594,16 @@ impl Shared {
         }
     }
 
+    /// Sets the run's tags. A change of tags alone is not a change of state: it wakes no
+    /// one waiting for one.
+    pub fn set_tags(&self, tags: Vec<String>) {
+        self.lock().tags = tags;
+    }
+
+    pub fn tags(&self) -> Vec<String> {
+        self.lock().tags.clone()
+    }
+
     pub fn state(&self) -> (u64, Option<String>) {
         let g = self.lock();
         (g.state_version, g.state.clone())
@@ -752,6 +765,12 @@ impl RunHandle {
     /// step left it, or `None` before it has carried out its start (or restore) step.
     pub fn save(&self) -> Option<Saved> {
         self.shared.saved().map(|s| (*s).clone())
+    }
+
+    /// The tags of the run's active states as its last step left them, as the chart writes
+    /// them (`spec/execution.md#tags`): what [`crate::Actor::tags`] gives, for any run.
+    pub fn tags(&self) -> Vec<String> {
+        self.shared.tags()
     }
 
     /// Listens to what the run emits, as JSON values, from now until it ends or is suspended

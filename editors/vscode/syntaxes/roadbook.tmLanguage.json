@@ -17,6 +17,7 @@
         { "include": "#declarations" },
         { "include": "#messages" },
         { "include": "#target" },
+        { "include": "#in-state" },
         { "include": "#keywords" },
         { "include": "#numbers" },
         { "include": "#calls" },
@@ -229,6 +230,27 @@
           }
         },
         {
+          "comment": "`choice` is contextual: a choice state only when a state name follows.",
+          "match": "\\b(choice)\\s+([A-Z][A-Za-z0-9]*)",
+          "captures": {
+            "1": { "name": "storage.type.choice.roadbook" },
+            "2": { "name": "entity.name.type.state.roadbook" }
+          }
+        },
+        {
+          "comment": "`tags` is contextual: a state's tags only at the start of a line, followed by a name.",
+          "match": "^\\s*(tags)\\s+([a-z][A-Za-z0-9]*(?:\\s*,\\s*[a-z][A-Za-z0-9]*)*)",
+          "captures": {
+            "1": { "name": "storage.type.tags.roadbook" },
+            "2": { "name": "constant.other.tag.roadbook" }
+          }
+        },
+        {
+          "comment": "`meta` is contextual: a state's meta only at the start of a line, followed by `{`. Its keys and values are a record body's.",
+          "match": "^\\s*(meta)\\s*(?=\\{)",
+          "captures": { "1": { "name": "storage.type.meta.roadbook" } }
+        },
+        {
           "match": "\\b(?:(deep)\\s+)?(history)\\s+([A-Z][A-Za-z0-9]*)",
           "captures": {
             "1": { "name": "storage.modifier.deep.roadbook" },
@@ -249,7 +271,7 @@
     "messages": {
       "patterns": [
         {
-          "match": "\\b(on)\\s+(?:(\\*)|([a-z][A-Za-z0-9]*)(\\.)(?:([A-Z][A-Za-z0-9]*)|(done)\\b|(ended)\\b|(?=fail\\b))|([A-Z][A-Za-z0-9]*)|([a-z][A-Za-z0-9]*)\\b)",
+          "match": "\\b(on)\\s+(?:(\\*)|([a-z][A-Za-z0-9]*)(\\.)(?:([A-Z][A-Za-z0-9]*)|(done)\\b|(ended)\\b|(?=fail\\b))|([A-Z][A-Za-z0-9]*(?:\\s*\\|\\s*[A-Z][A-Za-z0-9]*)*)|([a-z][A-Za-z0-9]*)\\b)",
           "captures": {
             "1": { "name": "keyword.control.trigger.roadbook" },
             "2": { "name": "keyword.operator.wildcard.roadbook" },
@@ -258,7 +280,12 @@
             "5": { "name": "entity.name.type.event.roadbook" },
             "6": { "name": "keyword.control.done.roadbook" },
             "7": { "name": "keyword.control.ended.roadbook" },
-            "8": { "name": "entity.name.type.event.roadbook" },
+            "8": {
+              "patterns": [
+                { "match": "[A-Z][A-Za-z0-9]*", "name": "entity.name.type.event.roadbook" },
+                { "match": "\\|", "name": "keyword.operator.event.roadbook" }
+              ]
+            },
             "9": { "name": "entity.name.function.roadbook" }
           }
         },
@@ -315,7 +342,7 @@
         },
         {
           "comment": "`cancel` is not reserved: it is an effect only before a name that is not a keyword.",
-          "match": "\\b(cancel)\\s+(?!(?:import|type|enum|error|extern|fn|action|task|machine|strict|var|event|emits|initial|state|final|parallel|entry|exit|on|after|always|done|invoke|output|fail|if|else|set|do|send|emit|ignore|and|or|not|true|false|call|reply)\\b)([a-z][A-Za-z0-9]*)",
+          "match": "\\b(cancel)\\s+(?!(?:import|type|enum|error|extern|fn|action|task|machine|strict|var|event|emits|initial|state|final|parallel|entry|exit|on|after|always|done|invoke|output|fail|if|else|set|do|send|emit|ignore|and|or|not|in|true|false|call|reply)\\b)([a-z][A-Za-z0-9]*)",
           "captures": {
             "1": { "name": "keyword.other.effect.roadbook" },
             "2": { "name": "variable.other.roadbook" }
@@ -404,6 +431,21 @@
         { "include": "#comments" },
         { "match": "\\b(never|reachable|only|after|can|finish)\\b", "name": "keyword.other.check.roadbook" },
         { "match": "\\band\\b", "name": "keyword.operator.logical.roadbook" },
+        { "match": "\\b[A-Z][A-Za-z0-9]*\\b", "name": "entity.name.type.state.roadbook" },
+        { "match": "\\.", "name": "punctuation.accessor.roadbook" }
+      ]
+    },
+
+    "in-state": {
+      "comment": "`in(Main.Volume.Muted)`: whether a state is active. `in` is a keyword, not a function, and the path names states.",
+      "begin": "\\b(in)\\s*(\\()",
+      "beginCaptures": {
+        "1": { "name": "keyword.operator.in.roadbook" },
+        "2": { "name": "punctuation.section.parens.roadbook" }
+      },
+      "end": "\\)",
+      "endCaptures": { "0": { "name": "punctuation.section.parens.roadbook" } },
+      "patterns": [
         { "match": "\\b[A-Z][A-Za-z0-9]*\\b", "name": "entity.name.type.state.roadbook" },
         { "match": "\\.", "name": "punctuation.accessor.roadbook" }
       ]

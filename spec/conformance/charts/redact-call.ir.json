@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/redact-call.road",
@@ -112,6 +112,8 @@
         "name": "Issuer",
         "kind": "compound",
         "doc": "Issues tokens while it is open; strict, so a call while closed is a defect.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 11,
@@ -122,12 +124,15 @@
         "params": [],
         "vars": [],
         "initial": "Issuer.Open",
+        "default": [],
         "states": [
           {
             "id": "Issuer.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -138,6 +143,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -239,6 +245,8 @@
             "name": "Shut",
             "kind": "atomic",
             "doc": "No `on issue`: a call here ends the run with an `unhandled` defect.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -249,6 +257,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -347,6 +356,8 @@
         "name": "Client",
         "kind": "compound",
         "doc": "Asks the issuer for a token; gives the user it was issued to, or \"\".",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 30,
@@ -357,12 +368,15 @@
         "params": [],
         "vars": [],
         "initial": "Client.Asking",
+        "default": [],
         "states": [
           {
             "id": "Client.Asking",
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 35,
@@ -373,6 +387,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -484,6 +499,8 @@
             "name": "Got",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 42,
@@ -494,6 +511,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -515,6 +533,8 @@
             "name": "Gave",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 43,
@@ -525,6 +545,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

@@ -451,6 +451,63 @@ fn states_named_in_checks_are_uses() {
 }
 
 #[test]
+fn states_named_in_in_are_uses() {
+    let text = "action note(flag: bool)\nmachine M() {\n  event Go\n  initial P\n  parallel state P {\n    state V {\n      initial Loud\n      state Loud { on Go -> Muted }\n      state Muted { on Go -> Loud }\n    }\n    state W {\n      initial X\n      state X {\n        on Go if in(P.V.Muted) -> X  do note(in(P.V.Muted))\n      }\n    }\n  }\n}\n";
+    let p = Project::new("in", &[("c.road", text)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, text);
+    assert!(c.diagnostics(&uri).is_empty());
+    // Go to definition from `in(…)`, on any segment.
+    let loc = c
+        .request(
+            "textDocument/definition",
+            at(&uri, text, "if in(P.V.^Muted)"),
+        )
+        .unwrap();
+    assert_eq!(loc["range"]["start"], position(text, "state ^Muted"));
+    let loc = c
+        .request(
+            "textDocument/definition",
+            at(&uri, text, "if in(P.^V.Muted)"),
+        )
+        .unwrap();
+    assert_eq!(loc["range"]["start"], position(text, "state ^V {"));
+    // References include both `in(…)`s.
+    let mut params = at(&uri, text, "state ^Muted");
+    params["context"] = json!({ "includeDeclaration": false });
+    let found = c.request("textDocument/references", params).unwrap();
+    let cols: Vec<(u64, u64)> = found
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| {
+            (
+                l["range"]["start"]["line"].as_u64().unwrap() + 1,
+                l["range"]["start"]["character"].as_u64().unwrap() + 1,
+            )
+        })
+        .collect();
+    assert_eq!(cols, [(8, 29), (14, 25), (14, 53)]);
+    // Renaming the state renames it in `in(…)`, from its declaration or from `in(…)`.
+    let text = rename(&mut c, &uri, text, "state ^Muted", "Quiet");
+    assert!(
+        text.contains("on Go if in(P.V.Quiet) -> X  do note(in(P.V.Quiet))"),
+        "{text}"
+    );
+    c.change(&uri, 2, &text);
+    let text = rename(&mut c, &uri, &text, "note(in(P.^V.Quiet)", "Volume");
+    for e in [
+        "state Volume {",
+        "if in(P.Volume.Quiet)",
+        "note(in(P.Volume.Quiet))",
+    ] {
+        assert!(text.contains(e), "no `{e}` in\n{text}");
+    }
+    c.shutdown();
+}
+
+#[test]
 fn rename_refuses_to_capture_a_target() {
     // `-> Out` in `P.A` means the top-level `Out`; a sibling of `A` named `Out` would take it.
     let text = "machine M() {\n  initial P\n  state P {\n    initial A\n    state A { always -> Out }\n    state X {}\n  }\n  final state Out {}\n}\n";
@@ -2006,5 +2063,212 @@ fn state_parameters_and_state_variables() {
         .collect();
     assert_eq!(names, ["token", "tries"]);
     assert_eq!(confirming["children"][0]["detail"], "Token");
+    c.shutdown();
+}
+
+const OR_EVENTS: &str = "machine Link() {
+  var reason: string = \"\"
+  event Retry { reason: string }
+  event Reconnect { reason: string, at: int }
+  initial Idle
+  state Idle {
+    on Retry | Reconnect -> Busy  set reason = event.reason
+  }
+  state Busy {
+    on Retry -> Idle
+    on Reconnect -> Idle  set reason = event.reason
+  }
+}
+";
+
+#[test]
+fn several_events_in_one_on() {
+    let p = Project::new("or-events", &[("c.road", OR_EVENTS)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, OR_EVENTS);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // Each event of an `on A | B` goes to its declaration, and so does a field of `event` they
+    // share, to the first event's.
+    let definitions = [
+        ("on ^Retry | Reconnect", "event ^Retry"),
+        ("on Retry | ^Reconnect", "event ^Reconnect"),
+        ("Busy  set reason = event.^reason", "Retry { ^reason"),
+    ];
+    for (from, to) in definitions {
+        let loc = c
+            .request("textDocument/definition", at(&uri, OR_EVENTS, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(OR_EVENTS, to),
+            "{from} -> {to}"
+        );
+    }
+    // The references of an event and of a field include the ones in `on A | B`.
+    let refs = |c: &mut Client, needle: &str| {
+        let mut params = at(&uri, OR_EVENTS, needle);
+        params["context"] = json!({ "includeDeclaration": false });
+        let found = c.request("textDocument/references", params).unwrap();
+        let mut lines: Vec<u64> = found
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|l| l["range"]["start"]["line"].as_u64().unwrap() + 1)
+            .collect();
+        lines.sort();
+        lines
+    };
+    assert_eq!(refs(&mut c, "event ^Reconnect"), [7, 11]);
+    assert_eq!(refs(&mut c, "Reconnect { ^reason"), [7, 11]);
+    assert_eq!(refs(&mut c, "Retry { ^reason"), [7]);
+
+    // Renaming an event renames it in the `on A | B` too.
+    let text = rename(&mut c, &uri, OR_EVENTS, "event ^Reconnect", "Resume");
+    assert!(text.contains("on Retry | Resume -> Busy"), "{text}");
+    assert!(text.contains("on Resume -> Idle"), "{text}");
+    c.shutdown();
+}
+
+const HISTORY_DEFAULT: &str = "machine Editor() {
+  event Open
+  event Notes
+  event Leave
+  initial Idle
+  state Idle {
+    on Open -> Doc.Previous
+    on Notes -> Doc.Last
+    on Leave -> Doc
+  }
+  state Doc {
+    initial Blank
+    history Previous -> Editing.Draft
+    deep history Last -> Editing
+    state Blank {}
+    state Editing {
+      initial Typing
+      state Typing {}
+      state Draft {}
+    }
+    on Leave -> Idle
+  }
+}
+";
+
+#[test]
+fn a_history_states_default_targets() {
+    let p = Project::new("history-default", &[("c.road", HISTORY_DEFAULT)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, HISTORY_DEFAULT);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // Each segment of a default target goes to its state.
+    let definitions = [
+        ("Previous -> ^Editing.Draft", "state ^Editing"),
+        ("Previous -> Editing.^Draft", "state ^Draft"),
+        ("Last -> ^Editing", "state ^Editing"),
+    ];
+    for (from, to) in definitions {
+        let loc = c
+            .request("textDocument/definition", at(&uri, HISTORY_DEFAULT, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(HISTORY_DEFAULT, to),
+            "{from} -> {to}"
+        );
+    }
+    // A state's references include the default targets that name it.
+    let mut params = at(&uri, HISTORY_DEFAULT, "state ^Editing");
+    params["context"] = json!({ "includeDeclaration": false });
+    let found = c.request("textDocument/references", params).unwrap();
+    let mut lines: Vec<u64> = found
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|l| l["range"]["start"]["line"].as_u64().unwrap() + 1)
+        .collect();
+    lines.sort();
+    assert_eq!(lines, [13, 14]);
+
+    // Renaming a state renames it in the defaults too.
+    let text = rename(&mut c, &uri, HISTORY_DEFAULT, "state ^Editing", "Writing");
+    assert!(text.contains("history Previous -> Writing.Draft"), "{text}");
+    assert!(text.contains("deep history Last -> Writing"), "{text}");
+    let text = rename(&mut c, &uri, HISTORY_DEFAULT, "state ^Draft", "Saved");
+    assert!(text.contains("history Previous -> Editing.Saved"), "{text}");
+    c.shutdown();
+}
+
+const CHOICE: &str = "machine Shop() {
+  event Order { amount: int }
+  var amount: int = 0
+  initial Idle
+  state Idle {
+    on Order -> Routing  set amount = event.amount
+  }
+  /// Where an order goes.
+  choice Routing {
+    if amount > 100 -> Review
+    else            -> Done
+  }
+  state Review { on Order -> Routing }
+  final state Done {}
+}
+";
+
+#[test]
+fn a_choice_state() {
+    let p = Project::new("choice", &[("c.road", CHOICE)]);
+    let uri = p.uri("c.road");
+    let mut c = Client::start(json!({}));
+    c.open(&uri, CHOICE);
+    assert_eq!(c.diagnostics(&uri), Vec::<Value>::new());
+
+    // The outline lists it as a choice.
+    let symbols = c
+        .request(
+            "textDocument/documentSymbol",
+            json!({ "textDocument": { "uri": uri } }),
+        )
+        .unwrap();
+    let states: Vec<(&str, &str)> = symbols[0]["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|s| s["kind"] == 19)
+        .map(|s| (s["name"].as_str().unwrap(), s["detail"].as_str().unwrap()))
+        .collect();
+    assert!(states.contains(&("Routing", "choice")), "{states:?}");
+
+    // A target naming it goes to it, and its branches' targets to theirs.
+    for (from, to) in [
+        ("on Order -> ^Routing  set", "choice ^Routing"),
+        ("Review { on Order -> ^Routing", "choice ^Routing"),
+        ("-> ^Review\n", "state ^Review"),
+    ] {
+        let loc = c
+            .request("textDocument/definition", at(&uri, CHOICE, from))
+            .unwrap();
+        assert_eq!(
+            loc["range"]["start"],
+            position(CHOICE, to),
+            "{from} -> {to}"
+        );
+    }
+    let h = c
+        .request("textDocument/hover", at(&uri, CHOICE, "choice ^Routing"))
+        .unwrap();
+    let value = h["contents"]["value"].as_str().unwrap();
+    assert!(value.contains("choice Shop.Routing"), "{value}");
+    assert!(value.contains("Where an order goes."), "{value}");
+
+    // Renaming it renames every target that names it.
+    let text = rename(&mut c, &uri, CHOICE, "choice ^Routing", "Pick");
+    assert!(text.contains("choice Pick {"), "{text}");
+    assert!(text.contains("on Order -> Pick  set"), "{text}");
+    assert!(text.contains("state Review { on Order -> Pick }"), "{text}");
     c.shutdown();
 }

@@ -37,6 +37,7 @@ export interface ChildDef extends Roadbook.MachineDef {
   readonly event: ChildGo
   readonly emits: never
   readonly state: "Child" | "Child.Done"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}
@@ -69,6 +70,7 @@ export interface ParentDef extends Roadbook.MachineDef {
     | "Parent.Running"
     | "Parent.Finished"
     | "Parent.Failed"
+  readonly tag: never
   readonly fns: {
     readonly label: { readonly args: { readonly t: Tree }; readonly returns: string }
     readonly delay: { readonly args: { readonly n: number }; readonly returns: Duration.Duration }

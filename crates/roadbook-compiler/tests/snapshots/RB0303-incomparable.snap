@@ -1,0 +1,42 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0303]: `==` is not defined on `json`
+  --> RB0303-incomparable.road:13:10
+   |
+13 |       if a == b             -> Done
+   |          ^^^^^^
+   |
+   = help: `==` compares scalars and enums, and records, errors, events, lists, maps and optionals of them; not `json`, an `extern type`, a `ref` or a pending call
+
+error[RB0303]: `!=` is not defined on `Line[]`: `Order.extra` is `json`, which cannot be compared
+  --> RB0303-incomparable.road:14:10
+   |
+14 |       if lines != lines     -> Done
+   |          ^^^^^^^^^^^^^^
+   |
+   = help: `==` compares scalars and enums, and records, errors, events, lists, maps and optionals of them; not `json`, an `extern type`, a `ref` or a pending call
+
+error[RB0303]: `==` is not defined on `Box<json>`: `Box<json>.value` is `json`, which cannot be compared
+  --> RB0303-incomparable.road:15:10
+   |
+15 |       if boxed == boxed     -> Done
+   |          ^^^^^^^^^^^^^^
+   |
+   = help: `==` compares scalars and enums, and records, errors, events, lists, maps and optionals of them; not `json`, an `extern type`, a `ref` or a pending call
+
+error[RB0303]: `==` is not defined on `Ledger`: it holds `Money`, which cannot be compared
+  --> RB0303-incomparable.road:16:10
+   |
+16 |       if ledger == ledger   -> Done
+   |          ^^^^^^^^^^^^^^^^
+   |
+   = help: `==` compares scalars and enums, and records, errors, events, lists, maps and optionals of them; not `json`, an `extern type`, a `ref` or a pending call
+
+error[RB0303]: `==` is not defined on `event Go`: `Go.payload` is `json`, which cannot be compared
+  --> RB0303-incomparable.road:18:14
+   |
+18 |     on Go if event == event -> Done
+   |              ^^^^^^^^^^^^^^
+   |
+   = help: `==` compares scalars and enums, and records, errors, events, lists, maps and optionals of them; not `json`, an `extern type`, a `ref` or a pending call

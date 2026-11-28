@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/cancel.road",
@@ -66,6 +66,8 @@
         "name": "Parent",
         "kind": "compound",
         "doc": "Runs Child until Stop, then ends.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -76,12 +78,15 @@
         "params": [],
         "vars": [],
         "initial": "Parent.Running",
+        "default": [],
         "states": [
           {
             "id": "Parent.Running",
             "name": "Running",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 14,
@@ -92,6 +97,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [
@@ -189,6 +195,8 @@
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 23,
@@ -199,6 +207,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -254,6 +263,8 @@
         "name": "Child",
         "kind": "compound",
         "doc": "Waits five seconds two levels down, logging every exit.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 27,
@@ -264,12 +275,15 @@
         "params": [],
         "vars": [],
         "initial": "Child.Outer",
+        "default": [],
         "states": [
           {
             "id": "Child.Outer",
             "name": "Outer",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,
@@ -280,12 +294,15 @@
             "params": [],
             "vars": [],
             "initial": "Child.Outer.Inner",
+            "default": [],
             "states": [
               {
                 "id": "Child.Outer.Inner",
                 "name": "Inner",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 37,
@@ -296,6 +313,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [
@@ -370,6 +388,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 44,
@@ -380,6 +400,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

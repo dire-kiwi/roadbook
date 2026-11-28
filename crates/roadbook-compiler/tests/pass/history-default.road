@@ -1,0 +1,55 @@
+/// History states with a default target: shallow and deep, a default below a child, and
+/// one per region of a parallel state.
+machine Drafts() {
+  event Open
+  event Notes
+  event Panels
+  event Edit
+  event Leave
+
+  initial Idle
+
+  state Idle {
+    on Open   -> Doc.Previous
+    on Notes  -> Doc.Last
+    on Panels -> View.Restore
+    on Edit   -> Doc
+  }
+
+  state Doc {
+    initial Blank
+    /// With nothing recorded, straight to the draft.
+    history Previous -> Editing.Draft
+    deep history Last -> Editing
+
+    state Blank { on Edit -> Editing }
+    state Editing {
+      initial Typing
+      state Typing { on Edit -> Draft }
+      state Draft  {}
+    }
+
+    on Leave -> Idle
+  }
+
+  // `Main.Plain` and `Side.Narrow` are entered only when `Restore` restores their regions.
+  parallel state View {
+    history Restore -> Main.Split, Side.Wide
+
+    state Main {
+      initial Plain
+      state Plain {}
+      state Split {}
+    }
+    state Side {
+      initial Narrow
+      state Narrow {}
+      state Wide   { on Edit -> Narrow }
+    }
+
+    on Leave -> Idle
+  }
+
+  check reachable Doc.Editing.Draft
+  check reachable View.Main.Plain
+}

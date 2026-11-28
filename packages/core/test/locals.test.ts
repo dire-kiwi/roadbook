@@ -81,10 +81,13 @@ const state = (
   name: id.slice(id.lastIndexOf(".") + 1),
   kind,
   doc: "",
+  tags: [],
+  meta: {},
   span: SPAN,
   params: [],
   vars: [],
   initial: null,
+  default: [],
   states: [],
   entry: [],
   exit: [],
@@ -96,7 +99,7 @@ const state = (
 })
 const program = (root: State, events: Array<string>, more: { returns?: string; vars?: Array<Variable> } = {}): Ir =>
   loadIr({
-    irVersion: "0.13",
+    irVersion: "0.14",
     sources: [{ path: "m.road", package: null }],
     types: {},
     functions: {},

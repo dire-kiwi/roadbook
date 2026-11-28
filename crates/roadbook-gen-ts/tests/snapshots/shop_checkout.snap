@@ -31,6 +31,7 @@ export interface CheckoutDef extends Roadbook.MachineDef {
     | "Checkout.Charged"
     | "Checkout.Declined"
     | "Checkout.GaveUp"
+  readonly tag: never
   readonly fns: {
     readonly retryDelay: {
       readonly args: { readonly attempt: number }

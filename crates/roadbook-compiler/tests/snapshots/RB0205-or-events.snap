@@ -1,0 +1,31 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0205]: event `Go` is listed twice in `on Go | Stop | Go`
+ --> RB0205-or-events.road:9:20
+  |
+9 |     on Go | Stop | Go -> A
+  |                    ^^
+  |
+  = help: list each event once
+
+error[RB0205]: trigger `on Stop` is written twice in `M.A`
+  --> RB0205-or-events.road:11:8
+   |
+ 9 |     on Go | Stop | Go -> A
+   |             ---- first written here
+...
+11 |     on Stop | Pause -> A
+   |        ^^^^
+   |
+   = help: put every branch in one block, where their order is explicit: `on Stop { if … -> A  else -> B }`
+
+error[RB0205]: trigger `on Pause` is written twice in `M.A`
+  --> RB0205-or-events.road:11:15
+   |
+10 |     on Pause -> A
+   |     -------- first written here
+11 |     on Stop | Pause -> A
+   |               ^^^^^
+   |
+   = help: put every branch in one block, where their order is explicit: `on Pause { if … -> A  else -> B }`

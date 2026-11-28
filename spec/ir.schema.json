@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Roadbook IR 0.13",
+  "title": "Roadbook IR 0.14",
   "description": "The compiled form of a Roadbook project: one document per entry file. See spec/ir.md for what each member means. Every member listed is required; absent values are null, missing docs are \"\", and empty lists and maps are [] and {}.",
   "type": "object",
   "additionalProperties": false,
   "required": ["irVersion", "sources", "types", "functions", "actions", "tasks", "machines"],
   "properties": {
-    "irVersion": { "const": "0.13" },
+    "irVersion": { "const": "0.14" },
     "sources": {
       "description": "Source files, entry file first. Spans refer to them by index.",
       "type": "array",
@@ -344,14 +344,26 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "id", "name", "kind", "doc", "span", "params", "vars", "initial", "states", "entry",
-        "exit", "invokes", "transitions", "output", "fail"
+        "id", "name", "kind", "doc", "tags", "meta", "span", "params", "vars", "initial", "default", "states",
+        "entry", "exit", "invokes", "transitions", "output", "fail"
       ],
       "properties": {
         "id": { "$ref": "#/$defs/stateId" },
         "name": { "$ref": "#/$defs/upperName" },
-        "kind": { "enum": ["atomic", "compound", "parallel", "final", "history", "deepHistory"] },
+        "kind": { "enum": ["atomic", "compound", "parallel", "final", "history", "deepHistory", "choice"] },
         "doc": { "$ref": "#/$defs/doc" },
+        "tags": {
+          "description": "The state's tags, in the order written, each once: [] for none. Not part of the hash.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/lowerName" }
+        },
+        "meta": {
+          "description": "The state's meta, in the order written: {} for none. Each value is a string, a number or a bool. Not part of the hash.",
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/lowerName" },
+          "additionalProperties": { "type": ["string", "number", "boolean"] }
+        },
         "span": { "$ref": "#/$defs/span" },
         "params": {
           "description": "The state's parameters, in order: given by the transition that enters it.",
@@ -363,6 +375,11 @@
           "items": { "$ref": "#/$defs/var" }
         },
         "initial": { "oneOf": [{ "$ref": "#/$defs/stateId" }, { "type": "null" }] },
+        "default": {
+          "description": "For a history state, the states it enters when it has recorded nothing: [] for none, and for every other state.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/stateId" }
+        },
         "states": { "type": "array", "items": { "$ref": "#/$defs/state" } },
         "entry": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
         "exit": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
@@ -382,8 +399,25 @@
           "else": { "properties": { "initial": { "type": "null" } } }
         },
         {
-          "if": { "properties": { "kind": { "enum": ["atomic", "final", "history", "deepHistory"] } } },
+          "if": { "properties": { "kind": { "enum": ["atomic", "final", "history", "deepHistory", "choice"] } } },
           "then": { "properties": { "states": { "maxItems": 0 } } }
+        },
+        {
+          "description": "A choice has no locals, effects or work, and only always transitions, the last unguarded.",
+          "if": { "properties": { "kind": { "const": "choice" } } },
+          "then": {
+            "properties": {
+              "params": { "maxItems": 0 },
+              "vars": { "maxItems": 0 },
+              "entry": { "maxItems": 0 },
+              "exit": { "maxItems": 0 },
+              "invokes": { "maxItems": 0 },
+              "transitions": {
+                "minItems": 1,
+                "items": { "properties": { "trigger": { "properties": { "kind": { "const": "always" } } } } }
+              }
+            }
+          }
         },
         {
           "description": "A history state is a pseudo-state: no effects, work or transitions.",
@@ -398,6 +432,16 @@
               "transitions": { "maxItems": 0 }
             }
           }
+        },
+        {
+          "description": "A history or choice state has no tags or meta.",
+          "if": { "properties": { "kind": { "enum": ["history", "deepHistory", "choice"] } } },
+          "then": { "properties": { "tags": { "maxItems": 0 }, "meta": { "maxProperties": 0 } } }
+        },
+        {
+          "description": "Only a history state has a default.",
+          "if": { "not": { "properties": { "kind": { "enum": ["history", "deepHistory"] } } } },
+          "then": { "properties": { "default": { "maxItems": 0 } } }
         },
         {
           "if": { "properties": { "kind": { "const": "parallel" } } },
@@ -817,6 +861,18 @@
             "kind": { "const": "enum" },
             "variant": { "$ref": "#/$defs/upperName" },
             "type": { "$ref": "#/$defs/upperName" },
+            "text": { "type": "string" }
+          }
+        },
+        {
+          "description": "`in(A.B)`: whether the state is active when the expression is evaluated.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "state", "type", "text"],
+          "properties": {
+            "kind": { "const": "in" },
+            "state": { "$ref": "#/$defs/stateId" },
+            "type": { "const": "bool" },
             "text": { "type": "string" }
           }
         }

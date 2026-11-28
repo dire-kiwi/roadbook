@@ -1,0 +1,31 @@
+action note(flag: bool)
+
+machine M() {
+  event Go
+  event Stop
+
+  initial Main
+  parallel state Main {
+    state Volume {
+      initial Loud
+      state Loud {
+        entry do note(in(Main.Volume.Loud))
+        exit do note(in(Main))
+        on Go if in(Main.Volume) -> Muted  do note(in(Main.Volume))
+      }
+      state Muted {
+        on Go   -> Loud  do note(in(Main.Volume.Muted))
+        on Stop          do note(in(Main.Volume.Muted))
+      }
+    }
+    state Playback {
+      initial Playing
+      state Playing { on Go -> Main  do note(in(Main)) }
+    }
+  }
+}
+
+// expect: RB0917 at 12:26
+// expect: RB0917 at 13:25
+// expect: RB0917 at 14:21
+// expect: RB0917 at 14:55

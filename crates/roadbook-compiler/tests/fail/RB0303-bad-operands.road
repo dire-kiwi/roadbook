@@ -1,4 +1,4 @@
-type Order { id: string }
+type Order { id: string, extra: json }
 
 machine M(order: Order, other: Order, name: string) {
   var n: int = 1

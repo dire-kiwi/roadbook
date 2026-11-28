@@ -1,0 +1,24 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0223]: `history H -> Takes`: `M.A.Takes` takes parameters, so the default of a history state cannot enter it
+  --> RB0223-history-default.road:7:18
+   |
+ 7 |     history H -> Takes
+   |                  ^^^^^
+...
+11 |     state Takes(n: int) {}
+   |                 - a parameter
+   |
+   = help: a history state's default is entered with no transition to pass arguments; make the parameters variables of the state, or choose a default that does not enter it
+
+error[RB0223]: `deep history D -> Outer.Inner`: `M.A.Outer` takes parameters, so the default of a history state cannot enter it
+  --> RB0223-history-default.road:8:23
+   |
+ 8 |     deep history D -> Outer.Inner
+   |                       ^^^^^^^^^^^
+...
+12 |     state Outer(label: string) {
+   |                 ----- a parameter
+   |
+   = help: a history state's default is entered with no transition to pass arguments; make the parameters variables of the state, or choose a default that does not enter it

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/ended.road",
@@ -157,6 +157,8 @@
         "name": "Inventory",
         "kind": "compound",
         "doc": "The stock of one warehouse, which ends when asked to: done on Close, failed\non Fail, with a defect on Crash (when `crash` has one).",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 16,
@@ -167,12 +169,15 @@
         "params": [],
         "vars": [],
         "initial": "Inventory.Open",
+        "default": [],
         "states": [
           {
             "id": "Inventory.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -183,6 +188,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -264,6 +270,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,
@@ -274,6 +282,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -295,6 +304,8 @@
             "name": "Broken",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -305,6 +316,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -385,6 +397,8 @@
         "name": "Order",
         "kind": "compound",
         "doc": "Asks the warehouse for stock and waits for it, until it ends or 5s pass.\nHow the warehouse ended decides where the order goes.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 38,
@@ -395,12 +409,15 @@
         "params": [],
         "vars": [],
         "initial": "Order.Waiting",
+        "default": [],
         "states": [
           {
             "id": "Order.Waiting",
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 41,
@@ -411,6 +428,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -640,6 +658,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 51,
@@ -650,6 +670,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -663,6 +684,8 @@
             "name": "Alarm",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 52,
@@ -673,6 +696,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -686,6 +710,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 53,
@@ -696,6 +722,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -709,6 +736,8 @@
             "name": "TimedOut",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 54,
@@ -719,6 +748,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -780,6 +810,8 @@
         "name": "Clerk",
         "kind": "compound",
         "doc": "Holds a `ref` to the warehouse but has no `on inventory.ended`: it is not\ntold when the warehouse ends.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 59,
@@ -790,12 +822,15 @@
         "params": [],
         "vars": [],
         "initial": "Clerk.Open",
+        "default": [],
         "states": [
           {
             "id": "Clerk.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 64,
@@ -806,6 +841,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -841,6 +877,8 @@
             "name": "Stopped",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 66,
@@ -851,6 +889,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -912,6 +951,8 @@
         "name": "Picker",
         "kind": "compound",
         "doc": "Hears the warehouse's end only while it is Watching: an end that arrives\nwhile it is Idle is dropped.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 71,
@@ -922,12 +963,15 @@
         "params": [],
         "vars": [],
         "initial": "Picker.Idle",
+        "default": [],
         "states": [
           {
             "id": "Picker.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 76,
@@ -938,6 +982,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -973,6 +1018,8 @@
             "name": "Watching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 78,
@@ -983,6 +1030,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1023,6 +1071,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 80,
@@ -1033,6 +1083,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1094,6 +1145,8 @@
         "name": "Guard",
         "kind": "compound",
         "doc": "As Picker, but strict: an end that no transition takes is still dropped,\nnever `unhandled`.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 85,
@@ -1104,12 +1157,15 @@
         "params": [],
         "vars": [],
         "initial": "Guard.Idle",
+        "default": [],
         "states": [
           {
             "id": "Guard.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 90,
@@ -1120,6 +1176,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1155,6 +1212,8 @@
             "name": "Watching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 92,
@@ -1165,6 +1224,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1205,6 +1265,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 94,
@@ -1215,6 +1277,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1305,6 +1368,8 @@
         "name": "Switcher",
         "kind": "compound",
         "doc": "Watches the warehouse its variable `current` holds: `a`, then `b` after\nSwap. The end of a run `current` no longer holds is dropped.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 99,
@@ -1315,12 +1380,15 @@
         "params": [],
         "vars": [],
         "initial": "Switcher.Watching",
+        "default": [],
         "states": [
           {
             "id": "Switcher.Watching",
             "name": "Watching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 106,
@@ -1331,6 +1399,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1422,6 +1491,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 111,
@@ -1432,6 +1503,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

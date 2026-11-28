@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/speakers.road",
@@ -102,6 +102,8 @@
         "name": "Speaker",
         "kind": "compound",
         "doc": "Says two things when told to, and ends when told to quit.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -112,12 +114,15 @@
         "params": [],
         "vars": [],
         "initial": "Speaker.Talking",
+        "default": [],
         "states": [
           {
             "id": "Speaker.Talking",
             "name": "Talking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 15,
@@ -128,6 +133,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -223,6 +229,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -233,6 +241,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -346,6 +355,8 @@
         "name": "Listener",
         "kind": "compound",
         "doc": "Hears its speakers' `Ping`, from every key but \"quiet\", and never their `Pong`.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 24,
@@ -356,12 +367,15 @@
         "params": [],
         "vars": [],
         "initial": "Listener.Listening",
+        "default": [],
         "states": [
           {
             "id": "Listener.Listening",
             "name": "Listening",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 34,
@@ -372,6 +386,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -688,6 +703,8 @@
         "name": "Foreman",
         "kind": "compound",
         "doc": "Strict, with spawned children: what they emit or end with that it does not take is\ndropped, and only its own events can be `unhandled`.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 43,
@@ -698,12 +715,15 @@
         "params": [],
         "vars": [],
         "initial": "Foreman.Working",
+        "default": [],
         "states": [
           {
             "id": "Foreman.Working",
             "name": "Working",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 55,
@@ -714,6 +734,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

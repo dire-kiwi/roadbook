@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/wizard.road",
@@ -86,6 +86,8 @@
         "name": "Wizard",
         "kind": "compound",
         "doc": "Two steps of a form, a review that passes straight through, and a result.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -96,12 +98,15 @@
         "params": [],
         "vars": [],
         "initial": "Wizard.Form",
+        "default": [],
         "states": [
           {
             "id": "Wizard.Form",
             "name": "Form",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 14,
@@ -112,12 +117,15 @@
             "params": [],
             "vars": [],
             "initial": "Wizard.Form.Name",
+            "default": [],
             "states": [
               {
                 "id": "Wizard.Form.Name",
                 "name": "Name",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 19,
@@ -128,6 +136,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -192,6 +201,8 @@
                 "name": "Email",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 20,
@@ -202,6 +213,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -266,6 +278,8 @@
                 "name": "Complete",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 22,
@@ -276,6 +290,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -344,6 +359,8 @@
             "name": "Review",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -354,6 +371,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -417,6 +435,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 27,
@@ -427,6 +447,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

@@ -1,0 +1,758 @@
+{
+  "irVersion": "0.14",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/in-state.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Jukebox": {
+      "doc": "A player whose two regions ask about each other.",
+      "span": {
+        "file": 0,
+        "line": 6,
+        "col": 1,
+        "endLine": 56,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "ups",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 19
+          }
+        },
+        {
+          "name": "loudEntrySawPlaying",
+          "type": "bool",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": false,
+            "type": "bool",
+            "text": "false"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 13,
+            "col": 3,
+            "endLine": 13,
+            "endCol": 40
+          }
+        },
+        {
+          "name": "playingEntrySawLoud",
+          "type": "bool",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": false,
+            "type": "bool",
+            "text": "false"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 14,
+            "col": 3,
+            "endLine": 14,
+            "endCol": 40
+          }
+        },
+        {
+          "name": "loudExitSawPlaying",
+          "type": "bool",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": false,
+            "type": "bool",
+            "text": "false"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 15,
+            "col": 3,
+            "endLine": 15,
+            "endCol": 40
+          }
+        },
+        {
+          "name": "playingExitSawLoud",
+          "type": "bool",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": false,
+            "type": "bool",
+            "text": "false"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 16,
+            "col": 3,
+            "endLine": 16,
+            "endCol": 40
+          }
+        },
+        {
+          "name": "muteSawLoud",
+          "type": "bool",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": false,
+            "type": "bool",
+            "text": "false"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 17,
+            "col": 3,
+            "endLine": 17,
+            "endCol": 40
+          }
+        },
+        {
+          "name": "muteSawMuted",
+          "type": "bool",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": false,
+            "type": "bool",
+            "text": "false"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 18,
+            "col": 3,
+            "endLine": 18,
+            "endCol": 40
+          }
+        },
+        {
+          "name": "muteSawPaused",
+          "type": "bool",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": false,
+            "type": "bool",
+            "text": "false"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 19,
+            "col": 3,
+            "endLine": 19,
+            "endCol": 40
+          }
+        },
+        {
+          "name": "mutedEntrySawPaused",
+          "type": "bool",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": false,
+            "type": "bool",
+            "text": "false"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 20,
+            "col": 3,
+            "endLine": 20,
+            "endCol": 40
+          }
+        },
+        {
+          "name": "pausedEntrySawMuted",
+          "type": "bool",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": false,
+            "type": "bool",
+            "text": "false"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 21,
+            "col": 3,
+            "endLine": 21,
+            "endCol": 40
+          }
+        }
+      ],
+      "events": {
+        "Up": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 7,
+            "col": 3,
+            "endLine": 7,
+            "endCol": 11
+          }
+        },
+        "Mute": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 13
+          }
+        },
+        "Unmute": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 15
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Jukebox",
+        "name": "Jukebox",
+        "kind": "compound",
+        "doc": "A player whose two regions ask about each other.",
+        "tags": [],
+        "meta": {},
+        "span": {
+          "file": 0,
+          "line": 6,
+          "col": 1,
+          "endLine": 56,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Jukebox.Main",
+        "default": [],
+        "states": [
+          {
+            "id": "Jukebox.Main",
+            "name": "Main",
+            "kind": "parallel",
+            "doc": "",
+            "tags": [],
+            "meta": {},
+            "span": {
+              "file": 0,
+              "line": 24,
+              "col": 3,
+              "endLine": 55,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [
+              {
+                "id": "Jukebox.Main.Volume",
+                "name": "Volume",
+                "kind": "compound",
+                "doc": "",
+                "tags": [],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 5,
+                  "endLine": 38,
+                  "endCol": 6
+                },
+                "params": [],
+                "vars": [],
+                "initial": "Jukebox.Main.Volume.Loud",
+                "default": [],
+                "states": [
+                  {
+                    "id": "Jukebox.Main.Volume.Loud",
+                    "name": "Loud",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 27,
+                      "col": 7,
+                      "endLine": 33,
+                      "endCol": 8
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [
+                      {
+                        "kind": "set",
+                        "var": "loudEntrySawPlaying",
+                        "state": null,
+                        "value": {
+                          "kind": "in",
+                          "state": "Jukebox.Main.Playback.Playing",
+                          "type": "bool",
+                          "text": "in(Main.Playback.Playing)"
+                        }
+                      }
+                    ],
+                    "exit": [
+                      {
+                        "kind": "set",
+                        "var": "loudExitSawPlaying",
+                        "state": null,
+                        "value": {
+                          "kind": "in",
+                          "state": "Jukebox.Main.Playback.Playing",
+                          "type": "bool",
+                          "text": "in(Main.Playback.Playing)"
+                        }
+                      }
+                    ],
+                    "invokes": [],
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Mute"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [
+                          "Jukebox.Main.Volume.Muted"
+                        ],
+                        "internal": false,
+                        "args": [],
+                        "effects": [
+                          {
+                            "kind": "set",
+                            "var": "muteSawLoud",
+                            "state": null,
+                            "value": {
+                              "kind": "in",
+                              "state": "Jukebox.Main.Volume.Loud",
+                              "type": "bool",
+                              "text": "in(Main.Volume.Loud)"
+                            }
+                          },
+                          {
+                            "kind": "set",
+                            "var": "muteSawMuted",
+                            "state": null,
+                            "value": {
+                              "kind": "in",
+                              "state": "Jukebox.Main.Volume.Muted",
+                              "type": "bool",
+                              "text": "in(Main.Volume.Muted)"
+                            }
+                          },
+                          {
+                            "kind": "set",
+                            "var": "muteSawPaused",
+                            "state": null,
+                            "value": {
+                              "kind": "in",
+                              "state": "Jukebox.Main.Playback.Paused",
+                              "type": "bool",
+                              "text": "in(Main.Playback.Paused)"
+                            }
+                          }
+                        ],
+                        "span": {
+                          "file": 0,
+                          "line": 32,
+                          "col": 9,
+                          "endLine": 32,
+                          "endCol": 145
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Jukebox.Main.Volume.Muted",
+                    "name": "Muted",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 34,
+                      "col": 7,
+                      "endLine": 37,
+                      "endCol": 8
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [
+                      {
+                        "kind": "set",
+                        "var": "mutedEntrySawPaused",
+                        "state": null,
+                        "value": {
+                          "kind": "in",
+                          "state": "Jukebox.Main.Playback.Paused",
+                          "type": "bool",
+                          "text": "in(Main.Playback.Paused)"
+                        }
+                      }
+                    ],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Unmute"
+                        },
+                        "group": 0,
+                        "guard": null,
+                        "targets": [
+                          "Jukebox.Main.Volume.Loud"
+                        ],
+                        "internal": false,
+                        "args": [],
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 36,
+                          "col": 9,
+                          "endLine": 36,
+                          "endCol": 26
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Jukebox.Main.Playback",
+                "name": "Playback",
+                "kind": "compound",
+                "doc": "",
+                "tags": [],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 39,
+                  "col": 5,
+                  "endLine": 54,
+                  "endCol": 6
+                },
+                "params": [],
+                "vars": [],
+                "initial": "Jukebox.Main.Playback.Playing",
+                "default": [],
+                "states": [
+                  {
+                    "id": "Jukebox.Main.Playback.Playing",
+                    "name": "Playing",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 43,
+                      "col": 7,
+                      "endLine": 49,
+                      "endCol": 8
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [
+                      {
+                        "kind": "set",
+                        "var": "playingEntrySawLoud",
+                        "state": null,
+                        "value": {
+                          "kind": "in",
+                          "state": "Jukebox.Main.Volume.Loud",
+                          "type": "bool",
+                          "text": "in(Main.Volume.Loud)"
+                        }
+                      }
+                    ],
+                    "exit": [
+                      {
+                        "kind": "set",
+                        "var": "playingExitSawLoud",
+                        "state": null,
+                        "value": {
+                          "kind": "in",
+                          "state": "Jukebox.Main.Volume.Loud",
+                          "type": "bool",
+                          "text": "in(Main.Volume.Loud)"
+                        }
+                      }
+                    ],
+                    "invokes": [],
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Mute"
+                        },
+                        "group": 0,
+                        "guard": {
+                          "kind": "in",
+                          "state": "Jukebox.Main.Volume.Loud",
+                          "type": "bool",
+                          "text": "in(Main.Volume.Loud)"
+                        },
+                        "targets": [
+                          "Jukebox.Main.Playback.Paused"
+                        ],
+                        "internal": false,
+                        "args": [
+                          {
+                            "state": "Jukebox.Main.Playback.Paused",
+                            "values": [
+                              {
+                                "kind": "in",
+                                "state": "Jukebox.Main.Volume.Loud",
+                                "type": "bool",
+                                "text": "in(Main.Volume.Loud)"
+                              }
+                            ]
+                          }
+                        ],
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 48,
+                          "col": 9,
+                          "endLine": 48,
+                          "endCol": 72
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Jukebox.Main.Playback.Paused",
+                    "name": "Paused",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 50,
+                      "col": 7,
+                      "endLine": 53,
+                      "endCol": 8
+                    },
+                    "params": [
+                      {
+                        "name": "wasLoud",
+                        "type": "bool",
+                        "sensitive": false,
+                        "doc": ""
+                      }
+                    ],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [
+                      {
+                        "kind": "set",
+                        "var": "pausedEntrySawMuted",
+                        "state": null,
+                        "value": {
+                          "kind": "in",
+                          "state": "Jukebox.Main.Volume.Muted",
+                          "type": "bool",
+                          "text": "in(Main.Volume.Muted)"
+                        }
+                      }
+                    ],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [
+                      {
+                        "trigger": {
+                          "kind": "event",
+                          "event": "Unmute"
+                        },
+                        "group": 0,
+                        "guard": {
+                          "kind": "in",
+                          "state": "Jukebox.Main.Volume.Muted",
+                          "type": "bool",
+                          "text": "in(Main.Volume.Muted)"
+                        },
+                        "targets": [
+                          "Jukebox.Main.Playback.Playing"
+                        ],
+                        "internal": false,
+                        "args": [],
+                        "effects": [],
+                        "span": {
+                          "file": 0,
+                          "line": 52,
+                          "col": 9,
+                          "endLine": 52,
+                          "endCol": 54
+                        }
+                      }
+                    ],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Up"
+                    },
+                    "group": 0,
+                    "guard": {
+                      "kind": "op",
+                      "op": "not",
+                      "args": [
+                        {
+                          "kind": "in",
+                          "state": "Jukebox.Main.Volume.Muted",
+                          "type": "bool",
+                          "text": "in(Main.Volume.Muted)"
+                        }
+                      ],
+                      "type": "bool",
+                      "text": "not in(Main.Volume.Muted)"
+                    },
+                    "targets": [],
+                    "internal": false,
+                    "args": [],
+                    "effects": [
+                      {
+                        "kind": "set",
+                        "var": "ups",
+                        "state": null,
+                        "value": {
+                          "kind": "op",
+                          "op": "+",
+                          "args": [
+                            {
+                              "kind": "ref",
+                              "path": [
+                                "ups"
+                              ],
+                              "state": null,
+                              "type": "int",
+                              "text": "ups"
+                            },
+                            {
+                              "kind": "lit",
+                              "value": 1,
+                              "type": "int",
+                              "text": "1"
+                            }
+                          ],
+                          "type": "int",
+                          "text": "ups + 1"
+                        }
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 42,
+                      "col": 7,
+                      "endLine": 42,
+                      "endCol": 59
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:391a18d20ed0912af86fff9711ff9eb85f7f2ee399c9a46ada12126aa6aef1f4"
+    }
+  }
+}

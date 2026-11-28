@@ -36,6 +36,33 @@ const LAYOUTS: &[(&str, &str)] = &[
         "machine M() {\n  state B(\n    a: int,\n    b: string,\n  ) {\n    on Go -> B(1, \"x\")\n  }\n}\n",
         "machine M() {\n  state B(\n    a: int,\n    b: string\n  ) {\n    on Go -> B(1, \"x\")\n  }\n}\n",
     ),
+    // The events of an `on A | B` are joined by ` | `.
+    (
+        "machine M() {\n  on A|B  |C -> S\n  state S { on  B |A ignore }\n}\n",
+        "machine M() {\n  on A | B | C -> S\n  state S { on B | A ignore }\n}\n",
+    ),
+    // `tags` lists its names after one space, separated by `, `; `meta` is a brace list, on
+    // one line unless the source breaks after `{`. A state with only `tags` stays on one line.
+    (
+        "machine M() {\n  state S {\n    tags  busy,network\n    meta {owner:\"p\" ,sla:30}\n  }\n  state T {\n    tags idle\n  }\n  state U {\n    meta {\n      a: 1, b: -2.5\n    }\n  }\n}\n",
+        "machine M() {\n  state S {\n    tags busy, network\n    meta { owner: \"p\", sla: 30 }\n  }\n  state T { tags idle }\n  state U {\n    meta {\n      a: 1, b: -2.5\n    }\n  }\n}\n",
+    ),
+    // `in(…)` is written with no space before or inside its parentheses.
+    (
+        "machine M() {\n  state S { on Go if not in ( P . R ) and in(S)->S }\n}\n",
+        "machine M() {\n  state S { on Go if not in(P.R) and in(S) -> S }\n}\n",
+    ),
+    // A choice keeps its block, its header not aligned with the branches, which are aligned
+    // with each other; `choice` is a name elsewhere.
+    (
+        "machine M() {\n  var choice: int = 0\n  choice   Routing{ if choice>1->A do log() else ->B }\n  state A {}\n  state B {}\n}\n",
+        "machine M() {\n  var choice: int = 0\n  choice Routing {\n    if choice > 1 -> A  do log()\n    else          -> B\n  }\n  state A {}\n  state B {}\n}\n",
+    ),
+    // A history state's default targets follow ` -> `, joined by `, `.
+    (
+        "machine M() {\n  state A {\n    history H->B\n    deep history  D ->  B.X ,C\n    state B {}\n  }\n}\n",
+        "machine M() {\n  state A {\n    history H -> B\n    deep history D -> B.X, C\n    state B {}\n  }\n}\n",
+    ),
     // `sensitive` comes first, on fields, parameters and variables.
     (
         "type T {sensitive   a:int,b:int}\nmachine M( sensitive  k :string) {\n  sensitive   var t:int=1\n  var u: int\n}\n",

@@ -135,7 +135,7 @@ fn exprs_mut(e: &mut Expr, f: &mut impl FnMut(&mut Expr)) {
             args.iter_mut().for_each(|a| exprs_mut(a, f))
         }
         ExprKind::Record { fields } => fields.iter_mut().for_each(|fv| exprs_mut(&mut fv.value, f)),
-        ExprKind::Lit(_) | ExprKind::Ref { .. } | ExprKind::Enum { .. } => {}
+        ExprKind::Lit(_) | ExprKind::Ref { .. } | ExprKind::Enum { .. } | ExprKind::In { .. } => {}
     }
 }
 
@@ -233,6 +233,10 @@ fn hash_ignores_docs_spans_and_text() {
         states_mut(&mut m.root, &mut |s| {
             s.doc = format!("{} doc", s.name);
             s.span = moved;
+            // Nor are tags and meta, whatever the meta's keys are.
+            s.tags = vec!["busy".into(), s.name.to_lowercase()];
+            s.meta.insert("doc".into(), serde_json::json!("x"));
+            s.meta.insert("owner".into(), serde_json::json!(30));
             for inv in &mut s.invokes {
                 inv.span = moved;
             }

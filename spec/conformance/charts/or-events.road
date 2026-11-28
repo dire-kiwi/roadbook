@@ -1,0 +1,27 @@
+// Conformance chart: `on A | B`, one transition for several of the machine's
+// own events. The compiler lowers it to one copy of its branches per event, in
+// the order written, so a run takes it as it would separate `on`s, and the
+// trace's index names the copy taken. `event` has the fields every listed
+// event has.
+
+action log(reason: string)
+
+machine Link() {
+  var attempts: int = 0
+  var reason:   string = ""
+  event Retry     { reason: string, attempts: int }
+  event Reconnect { reason: string }
+  event Drop      { reason: string }
+  event Reset
+  initial Idle
+  // For the events no active state takes.
+  on Reset | Drop -> Idle  set attempts = 0
+  state Idle { on Retry | Reconnect if attempts < 2 -> Connecting  set reason = event.reason, attempts = attempts + 1 }
+  state Connecting {
+    on Drop | Retry {
+      if event.reason == "" -> Idle
+      else                  -> Connecting  set reason = event.reason  do log(event.reason)
+    }
+    on Reconnect            -> Idle
+  }
+}

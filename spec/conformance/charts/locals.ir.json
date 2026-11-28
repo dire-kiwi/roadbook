@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/locals.road",
@@ -186,6 +186,8 @@
         "name": "Counter",
         "kind": "compound",
         "doc": "State variables: bound each time their state is entered, in order, an initial value\nreading the ones before it and a child's reading its parent's.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 15,
@@ -196,12 +198,15 @@
         "params": [],
         "vars": [],
         "initial": "Counter.Counting",
+        "default": [],
         "states": [
           {
             "id": "Counter.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 23,
@@ -212,6 +217,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -247,6 +253,8 @@
             "name": "Counting",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -327,12 +335,15 @@
               }
             ],
             "initial": "Counter.Counting.Inner",
+            "default": [],
             "states": [
               {
                 "id": "Counter.Counting.Inner",
                 "name": "Inner",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 34,
@@ -380,6 +391,7 @@
                   }
                 ],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -591,6 +603,8 @@
         "name": "Fetch",
         "kind": "compound",
         "doc": "State parameters: arguments from `result`, from the left state's own locals on\nre-entry, and from what the transition assigned.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 42,
@@ -601,12 +615,15 @@
         "params": [],
         "vars": [],
         "initial": "Fetch.Loading",
+        "default": [],
         "states": [
           {
             "id": "Fetch.Loading",
             "name": "Loading",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 49,
@@ -617,6 +634,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -698,6 +716,8 @@
             "name": "Showing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 55,
@@ -758,6 +778,7 @@
               }
             ],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [
@@ -1005,6 +1026,8 @@
         "name": "Editor",
         "kind": "compound",
         "doc": "A target through a state with parameters, a transition inside it that keeps it, an\ninternal one, and one in the machine body.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 65,
@@ -1015,12 +1038,15 @@
         "params": [],
         "vars": [],
         "initial": "Editor.Idle",
+        "default": [],
         "states": [
           {
             "id": "Editor.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 73,
@@ -1031,6 +1057,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1093,6 +1120,8 @@
             "name": "Editing",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 75,
@@ -1130,12 +1159,15 @@
               }
             ],
             "initial": "Editor.Editing.Viewing",
+            "default": [],
             "states": [
               {
                 "id": "Editor.Editing.Viewing",
                 "name": "Viewing",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 81,
@@ -1146,6 +1178,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1196,6 +1229,8 @@
                 "name": "Changing",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 82,
@@ -1213,6 +1248,7 @@
                 ],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1422,6 +1458,8 @@
         "name": "Verdict",
         "kind": "compound",
         "doc": "A final state's parameter and variable as the machine's output.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 89,
@@ -1432,12 +1470,15 @@
         "params": [],
         "vars": [],
         "initial": "Verdict.Waiting",
+        "default": [],
         "states": [
           {
             "id": "Verdict.Waiting",
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 94,
@@ -1448,6 +1489,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1559,6 +1601,8 @@
             "name": "Passed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 101,
@@ -1576,6 +1620,7 @@
             ],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1597,6 +1642,8 @@
             "name": "Low",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 103,
@@ -1651,6 +1698,7 @@
               }
             ],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1740,6 +1788,8 @@
         "name": "Courier",
         "kind": "compound",
         "doc": "A retry in a state with parameters: its locals live through every attempt.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 110,
@@ -1750,12 +1800,15 @@
         "params": [],
         "vars": [],
         "initial": "Courier.Idle",
+        "default": [],
         "states": [
           {
             "id": "Courier.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 115,
@@ -1766,6 +1819,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1817,6 +1871,8 @@
             "name": "Sending",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 117,
@@ -1834,12 +1890,15 @@
             ],
             "vars": [],
             "initial": "Courier.Sending.Attempt",
+            "default": [],
             "states": [
               {
                 "id": "Courier.Sending.Attempt",
                 "name": "Attempt",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 119,
@@ -1850,6 +1909,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -2005,6 +2065,8 @@
                 "name": "Backoff",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 119,
@@ -2015,6 +2077,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -2149,6 +2212,8 @@
         "name": "Overflow",
         "kind": "compound",
         "doc": "An argument that overflows: the step is atomic and the run ends with a defect.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 127,
@@ -2159,12 +2224,15 @@
         "params": [],
         "vars": [],
         "initial": "Overflow.A",
+        "default": [],
         "states": [
           {
             "id": "Overflow.A",
             "name": "A",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 132,
@@ -2212,6 +2280,7 @@
               }
             ],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2276,6 +2345,8 @@
             "name": "B",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 137,
@@ -2293,6 +2364,7 @@
             ],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2382,6 +2454,8 @@
         "name": "Vault",
         "kind": "compound",
         "doc": "Sensitive parameters and variables are redacted in `set` records.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 141,
@@ -2392,12 +2466,15 @@
         "params": [],
         "vars": [],
         "initial": "Vault.Locked",
+        "default": [],
         "states": [
           {
             "id": "Vault.Locked",
             "name": "Locked",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 148,
@@ -2408,6 +2485,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2469,6 +2547,8 @@
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 150,
@@ -2537,6 +2617,7 @@
               }
             ],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

@@ -149,6 +149,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
     | "SupportTicket.OutOfScope"
     | "SupportTicket.Merged"
     | "SupportTicket.Unresolvable"
+  readonly tag: never
   readonly fns: {
     readonly isSpam: { readonly args: { readonly c: Classification }; readonly returns: boolean }
     readonly isDuplicate: {
@@ -232,7 +233,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -1438,6 +1439,8 @@ const ir: unknown = {
         "name": "SupportTicket",
         "kind": "compound",
         "doc": "A support ticket from the moment it arrives until it is closed.\nEvery top-level final state is one way a ticket can end.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 12,
@@ -1448,12 +1451,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "SupportTicket.Intake",
+        "default": [],
         "states": [
           {
             "id": "SupportTicket.Intake",
             "name": "Intake",
             "kind": "compound",
             "doc": "Classify the new ticket and screen out spam and duplicates.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 51,
@@ -1464,12 +1470,15 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Intake.Classifying",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Intake.Classifying",
                 "name": "Classifying",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 56,
@@ -1480,6 +1489,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1651,6 +1661,8 @@ const ir: unknown = {
                 "name": "ClassifyBackoff",
                 "kind": "atomic",
                 "doc": "Retry loop: the classifier is down, wait and try again.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 67,
@@ -1661,6 +1673,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -1741,6 +1754,8 @@ const ir: unknown = {
                 "name": "Screening",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 72,
@@ -1751,6 +1766,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1857,6 +1873,8 @@ const ir: unknown = {
                 "name": "Unclassified",
                 "kind": "final",
                 "doc": "The classifier stayed down: carry on with normal priority and no category.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 81,
@@ -1867,6 +1885,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1880,6 +1899,8 @@ const ir: unknown = {
                 "name": "Accepted",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 82,
@@ -1890,6 +1911,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -1954,6 +1976,8 @@ const ir: unknown = {
             "name": "Triage",
             "kind": "compound",
             "doc": "Find an owner. Unowned past the triage SLA pages the on-call lead.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 86,
@@ -1964,12 +1988,15 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Triage.Routing",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Triage.Routing",
                 "name": "Routing",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 96,
@@ -1980,6 +2007,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -2086,6 +2114,8 @@ const ir: unknown = {
                 "name": "Queued",
                 "kind": "atomic",
                 "doc": "Nobody is free: try again every 15 minutes.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 104,
@@ -2096,6 +2126,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -2136,6 +2167,8 @@ const ir: unknown = {
                 "name": "Assigned",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 106,
@@ -2146,6 +2179,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -2355,6 +2389,8 @@ const ir: unknown = {
             "name": "Active",
             "kind": "compound",
             "doc": "The ticket has an owner and is being worked.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 110,
@@ -2365,12 +2401,15 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Active.Working",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Active.Working",
                 "name": "Working",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 123,
@@ -2381,12 +2420,15 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": "SupportTicket.Active.Working.WithAgent",
+                "default": [],
                 "states": [
                   {
                     "id": "SupportTicket.Active.Working.WithAgent",
                     "name": "WithAgent",
                     "kind": "atomic",
                     "doc": "The agent owns the next move. Nudge them after every 2 hours of silence.",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 129,
@@ -2397,6 +2439,7 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2578,6 +2621,8 @@ const ir: unknown = {
                     "name": "WaitingOnCustomer",
                     "kind": "compound",
                     "doc": "The ball is in the customer's court. Two weeks of silence closes the ticket.",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 138,
@@ -2588,12 +2633,15 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
                         "name": "Waiting",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 144,
@@ -2604,6 +2652,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -2666,6 +2715,8 @@ const ir: unknown = {
                         "name": "Reminded",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 146,
@@ -2676,6 +2727,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -2738,6 +2790,8 @@ const ir: unknown = {
                         "name": "LastCall",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 148,
@@ -2748,6 +2802,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -2817,6 +2872,8 @@ const ir: unknown = {
                     "name": "OnHold",
                     "kind": "atomic",
                     "doc": "Parked by the agent, for example while waiting on a third party.",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 152,
@@ -2827,6 +2884,7 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2949,6 +3007,8 @@ const ir: unknown = {
                 "name": "Escalation",
                 "kind": "compound",
                 "doc": "Escalation tiers. Each tier has a deadline before it moves up.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 159,
@@ -2959,12 +3019,15 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": "SupportTicket.Active.Escalation.Tier2",
+                "default": [],
                 "states": [
                   {
                     "id": "SupportTicket.Active.Escalation.Tier2",
                     "name": "Tier2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 165,
@@ -2975,6 +3038,7 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [
                       {
@@ -3037,6 +3101,8 @@ const ir: unknown = {
                     "name": "Tier3",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 170,
@@ -3047,6 +3113,7 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [
                       {
@@ -3109,6 +3176,8 @@ const ir: unknown = {
                     "name": "Engineering",
                     "kind": "compound",
                     "doc": "Engineering owns it: file a bug and wait for the fix.",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 176,
@@ -3119,12 +3188,15 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Escalation.Engineering.FilingBug",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Escalation.Engineering.FilingBug",
                         "name": "FilingBug",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 181,
@@ -3135,6 +3207,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3323,6 +3396,8 @@ const ir: unknown = {
                         "name": "BugBackoff",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 191,
@@ -3333,6 +3408,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [
                           {
@@ -3405,6 +3481,8 @@ const ir: unknown = {
                         "name": "AwaitingFix",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 196,
@@ -3415,6 +3493,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3471,6 +3550,8 @@ const ir: unknown = {
                         "name": "FixShipped",
                         "kind": "final",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 201,
@@ -3481,6 +3562,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3574,6 +3656,8 @@ const ir: unknown = {
                 "name": "Resolving",
                 "kind": "parallel",
                 "doc": "Two things at once: check the fix holds, and draft the message to the customer.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 206,
@@ -3584,12 +3668,15 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [
                   {
                     "id": "SupportTicket.Active.Resolving.FixCheck",
                     "name": "FixCheck",
                     "kind": "compound",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 209,
@@ -3600,12 +3687,15 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Resolving.FixCheck.Verifying",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Resolving.FixCheck.Verifying",
                         "name": "Verifying",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 212,
@@ -3616,6 +3706,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3736,6 +3827,8 @@ const ir: unknown = {
                         "name": "Verified",
                         "kind": "final",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 221,
@@ -3746,6 +3839,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3767,6 +3861,8 @@ const ir: unknown = {
                     "name": "CustomerNotice",
                     "kind": "compound",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 224,
@@ -3777,12 +3873,15 @@ const ir: unknown = {
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
                         "name": "Drafting",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 227,
@@ -3793,6 +3892,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3868,6 +3968,8 @@ const ir: unknown = {
                         "name": "Drafted",
                         "kind": "final",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 233,
@@ -3878,6 +3980,7 @@ const ir: unknown = {
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3953,6 +4056,8 @@ const ir: unknown = {
                 "name": "AwaitingConfirmation",
                 "kind": "atomic",
                 "doc": "Resolved on our side. The customer confirms, reopens or goes quiet.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 238,
@@ -3963,6 +4068,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -4045,6 +4151,8 @@ const ir: unknown = {
                 "name": "Reopened",
                 "kind": "atomic",
                 "doc": "Reopen loop: back to the agent, or straight to escalation from the third reopen.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 245,
@@ -4055,6 +4163,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -4404,6 +4513,8 @@ const ir: unknown = {
             "name": "Closing",
             "kind": "compound",
             "doc": "Ask the customer how we did, then close.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 255,
@@ -4414,12 +4525,15 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Closing.Surveying",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Closing.Surveying",
                 "name": "Surveying",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 261,
@@ -4430,6 +4544,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -4505,6 +4620,8 @@ const ir: unknown = {
                 "name": "Surveyed",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 267,
@@ -4515,6 +4632,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -4562,6 +4680,8 @@ const ir: unknown = {
             "name": "Resolved",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 270,
@@ -4572,6 +4692,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4619,6 +4740,8 @@ const ir: unknown = {
             "name": "AutoClosed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 271,
@@ -4629,6 +4752,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4673,6 +4797,8 @@ const ir: unknown = {
             "name": "Spam",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 272,
@@ -4683,6 +4809,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4727,6 +4854,8 @@ const ir: unknown = {
             "name": "Duplicate",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 273,
@@ -4737,6 +4866,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4781,6 +4911,8 @@ const ir: unknown = {
             "name": "Withdrawn",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 274,
@@ -4791,6 +4923,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4835,6 +4968,8 @@ const ir: unknown = {
             "name": "OutOfScope",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 275,
@@ -4845,6 +4980,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4889,6 +5025,8 @@ const ir: unknown = {
             "name": "Merged",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 276,
@@ -4899,6 +5037,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4943,6 +5082,8 @@ const ir: unknown = {
             "name": "Unresolvable",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 277,
@@ -4953,6 +5094,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5086,6 +5228,8 @@ const ir: unknown = {
         "name": "SatisfactionSurvey",
         "kind": "compound",
         "doc": "Send a satisfaction survey and wait up to a week for the answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 2,
           "line": 4,
@@ -5096,12 +5240,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "SatisfactionSurvey.Sending",
+        "default": [],
         "states": [
           {
             "id": "SatisfactionSurvey.Sending",
             "name": "Sending",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 11,
@@ -5112,6 +5259,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5209,6 +5357,8 @@ const ir: unknown = {
             "name": "Waiting",
             "kind": "atomic",
             "doc": "Check for an answer once a day.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 19,
@@ -5219,6 +5369,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5259,6 +5410,8 @@ const ir: unknown = {
             "name": "Polling",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 21,
@@ -5269,6 +5422,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5439,6 +5593,8 @@ const ir: unknown = {
             "name": "Answered",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 31,
@@ -5449,6 +5605,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5489,6 +5646,8 @@ const ir: unknown = {
             "name": "NoAnswer",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 32,
@@ -5499,6 +5658,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

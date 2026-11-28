@@ -13,7 +13,8 @@
 //! `reserve`, `reply pending done x` as an effect, `invoke inventory.reserve(id)` with its `done`,
 //! `fail E` and `fail Unanswered` branches as a task's. Mermaid allows no description on a
 //! state with states inside, so a compound or parallel state (and the machine, when it is drawn
-//! as a state) has them in a note beside it.
+//! as a state) has them in a note beside it. An `on A | B`, which the IR holds as one copy per
+//! event, is one arrow labelled `A | B`.
 //! Mermaid has no history states: one is a small state labelled `H` (or `H*` for a deep one)
 //! inside its parent, which transitions target as any state; in a parallel state it is in the
 //! first region's part of the box, since every state there is in one.
@@ -253,8 +254,12 @@ impl Writer<'_> {
 
     /// The transitions of `s` and the states inside it that belong in the block `block`.
     fn transitions(&mut self, s: &State, block: &str, depth: usize) {
-        // One arrow per target, each with the transition's label.
-        for t in &s.transitions {
+        // One arrow per target, each with the transition's label; the copies of an
+        // `on A | B` as one.
+        for (i, t) in s.transitions.iter().enumerate() {
+            if s.copies(i).is_empty() {
+                continue;
+            }
             for target in &t.targets {
                 let mut meet = meeting(&s.id, target);
                 while self.parallel.iter().any(|p| p == meet) {
@@ -265,10 +270,21 @@ impl Writer<'_> {
                         "{} --> {}: {}",
                         self.id(&s.id),
                         self.id(target),
-                        escape(&label(s, t))
+                        escape(&label(s, i))
                     );
                     self.line(depth, &line);
                 }
+            }
+        }
+        // A history state's defaults: an unlabelled arrow from its `H` to each.
+        for target in &s.default {
+            let mut meet = meeting(&s.id, target);
+            while self.parallel.iter().any(|p| p == meet) {
+                meet = meet.rfind('.').map_or("", |at| &meet[..at]);
+            }
+            if meet == block {
+                let line = format!("{} --> {}", self.id(&s.id), self.id(target));
+                self.line(depth, &line);
             }
         }
         for c in &s.states {
@@ -286,6 +302,12 @@ impl Writer<'_> {
                 "H"
             };
             let line = format!("state \"{mark}\" as {id}");
+            self.line(depth, &line);
+            return;
+        }
+        if s.kind == StateKind::Choice {
+            // Mermaid's diamond, which shows no name.
+            let line = format!("state {id} <<choice>>");
             self.line(depth, &line);
             return;
         }
@@ -401,24 +423,31 @@ fn effect(e: &Effect) -> String {
     }
 }
 
-/// A trigger in state `s` as the viewer labels it: `sync: done` for an outcome of one of several
-/// invokes.
-fn trigger(s: &State, t: &Trigger) -> String {
-    roadbook_compiler::statespace::trigger_text(s, t)
+/// The trigger of transition `i` of state `s` as the viewer labels it: `sync: done` for an
+/// outcome of one of several invokes, `A | B` for the copies of an `on A | B`.
+fn trigger(s: &State, i: usize) -> String {
+    let texts: Vec<String> = s
+        .copies(i)
+        .iter()
+        .map(|&k| roadbook_compiler::statespace::trigger_text(s, &s.transitions[k].trigger))
+        .collect();
+    texts.join(" | ")
 }
 
-/// `trigger [guard] / effects`, with `[else]` for the last unguarded branch of a block.
-fn label(s: &State, t: &Transition) -> String {
-    let mut text = trigger(s, &t.trigger);
+/// `trigger [guard] / effects` for transition `i` of state `s`, with `[else]` for the last
+/// unguarded branch of a block.
+fn label(s: &State, i: usize) -> String {
+    let t = &s.transitions[i];
+    // A choice's branches are its only transitions, all `always`: the guard says it all.
+    let mut text = if s.kind == StateKind::Choice {
+        String::new()
+    } else {
+        trigger(s, i)
+    };
     match &t.guard {
         Some(g) => text.push_str(&format!(" [{}]", g.text)),
-        None => {
-            let first = s.transitions.iter().position(|o| o.group == t.group);
-            let this = s.transitions.iter().position(|o| std::ptr::eq(o, t));
-            if first != this {
-                text.push_str(" [else]");
-            }
-        }
+        None if s.is_else(i) => text.push_str(" [else]"),
+        None => {}
     }
     if !t.effects.is_empty() {
         let effects: Vec<String> = t.effects.iter().map(effect).collect();
@@ -434,7 +463,7 @@ fn label(s: &State, t: &Transition) -> String {
             .collect();
         text.push_str(&format!(" -> {}", targets.join(", ")));
     }
-    text
+    text.trim_start().to_string()
 }
 
 /// A target with its arguments: below the source for an internal transition
@@ -506,7 +535,10 @@ fn description(s: &State) -> Vec<String> {
     }
     out.extend(s.entry.iter().map(|e| format!("entry {}", effect(e))));
     out.extend(s.exit.iter().map(|e| format!("exit {}", effect(e))));
-    for t in s.transitions.iter().filter(|t| t.targets.is_empty()) {
+    for (i, t) in s.transitions.iter().enumerate() {
+        if !t.targets.is_empty() || s.copies(i).is_empty() {
+            continue;
+        }
         let head = match &t.trigger {
             Trigger::Event { .. }
             | Trigger::Emitted { .. }
@@ -514,12 +546,12 @@ fn description(s: &State) -> Vec<String> {
             | Trigger::SpawnDone { .. }
             | Trigger::SpawnFail { .. }
             | Trigger::Ended { .. } => {
-                format!("on {}", trigger(s, &t.trigger))
+                format!("on {}", trigger(s, i))
             }
-            other => trigger(s, other),
+            _ => trigger(s, i),
         };
-        let rest = label(s, t);
-        let rest = rest.strip_prefix(&trigger(s, &t.trigger)).unwrap_or(&rest);
+        let rest = label(s, i);
+        let rest = rest.strip_prefix(&trigger(s, i)).unwrap_or(&rest);
         // No target and no effects: an `ignore`.
         let ignore = if t.effects.is_empty() { " ignore" } else { "" };
         out.push(format!("{head}{rest}{ignore}"));

@@ -1,0 +1,37 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0226]: `history Outside -> C`: `M.C` is not inside `M.A`
+ --> RB0226-history-default.road:7:24
+  |
+7 |     history Outside -> C
+  |                        ^
+  |             ------- the history state of `M.A`
+  |
+  = help: a history state's default is where `M.A` starts when it has nothing to return to: one of its child states, or a state below one
+
+error[RB0226]: `history Itself -> A`: `M.A` is the history state's parent, not a state inside it
+ --> RB0226-history-default.road:8:23
+  |
+8 |     history Itself -> A
+  |                       ^
+  |             ------ the history state of `M.A`
+  |
+  = help: a history state's default is where `M.A` starts when it has nothing to return to: one of its child states, or a state below one
+
+error[RB0226]: `history Twice -> Outside`: `M.A.Outside` is a history state
+ --> RB0226-history-default.road:9:22
+  |
+9 |     history Twice -> Outside
+  |                      ^^^^^^^
+  |             ----- the history state of `M.A`
+  |
+  = help: a default names the states to enter; a history state is only a transition's target
+
+error[RB0201]: unknown target state `B.X`: `M.A.B` has no child `X`
+  --> RB0226-history-default.road:10:31
+   |
+10 |     deep history Missing -> B.X
+   |                               ^
+   |
+   = help: `M.A.B` has no child states

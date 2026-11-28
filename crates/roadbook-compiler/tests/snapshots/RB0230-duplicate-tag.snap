@@ -1,0 +1,21 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0230]: tag `busy` is written twice on `M.S`
+ --> RB0230-duplicate-tag.road:5:25
+  |
+5 |     tags busy, network, busy
+  |                         ^^^^
+  |          ---- already written here
+  |
+  = help: a state has each tag once; remove this one
+
+error[RB0230]: `M.T` already has a `tags`
+  --> RB0230-duplicate-tag.road:10:5
+   |
+ 9 |     tags idle
+   |     --------- the first `tags`
+10 |     tags finished
+   |     ^^^^^^^^^^^^^
+   |
+   = help: list every tag of the state in one `tags`, separated by commas

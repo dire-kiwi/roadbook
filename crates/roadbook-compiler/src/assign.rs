@@ -163,6 +163,8 @@ struct Chart<'a> {
     /// The index just past the state's last descendant, in document order.
     end: Vec<usize>,
     initial: Vec<Option<usize>>,
+    /// A history state's `default`, `[]` for every other state.
+    default: Vec<Vec<usize>>,
 }
 
 impl<'a> Chart<'a> {
@@ -173,6 +175,7 @@ impl<'a> Chart<'a> {
             children: Vec::new(),
             end: Vec::new(),
             initial: Vec::new(),
+            default: Vec::new(),
         };
         c.add(root, None);
         let ids: HashMap<&str, usize> = c
@@ -185,6 +188,16 @@ impl<'a> Chart<'a> {
             .states
             .iter()
             .map(|s| s.initial.as_deref().and_then(|i| ids.get(i).copied()))
+            .collect();
+        c.default = c
+            .states
+            .iter()
+            .map(|s| {
+                s.default
+                    .iter()
+                    .filter_map(|d| ids.get(d.as_str()).copied())
+                    .collect()
+            })
             .collect();
         c
     }
@@ -274,13 +287,21 @@ impl<'a> Chart<'a> {
     /// The states transition `t`, written in `from`, enters, in document order: the paths
     /// from just below its domain to each target, with their default entries and the default
     /// entry of each region of a parallel state on them that no target is in. A history state
-    /// stands for its parent's default entry: the states a history state restores were
-    /// entered before, and what was assigned then still is. A region of a parallel domain (an
+    /// stands for its `default`, or with none its parent's default entry: the states a history
+    /// state restores were entered before, and what was assigned then still is, so only its
+    /// first entry, with nothing recorded, is a way in of its own. A region of a parallel domain (an
     /// internal transition written in a parallel state) that no target is in is not entered.
     fn entry_chain(&self, domain: usize, targets: &[usize]) -> Vec<usize> {
         let mut chain = Vec::new();
         let mut paths: Vec<Vec<usize>> = Vec::new();
-        for &target in targets {
+        let targets: Vec<usize> = targets
+            .iter()
+            .flat_map(|&t| match self.default.get(t) {
+                Some(d) if !d.is_empty() => d.clone(),
+                _ => vec![t],
+            })
+            .collect();
+        for target in targets {
             let history = self.kind(target).is_history();
             let to = match self.parent[target] {
                 Some(p) if history => p,
@@ -669,16 +690,20 @@ impl<'c, 'a> Flow<'c, 'a> {
         match self.chart.kind(s) {
             StateKind::Final => self.entered[s].clone(),
             StateKind::Compound | StateKind::Parallel => self.done[s].clone(),
-            StateKind::Atomic | StateKind::History | StateKind::DeepHistory => self.at[s].clone(),
+            StateKind::Atomic | StateKind::Choice | StateKind::History | StateKind::DeepHistory => {
+                self.at[s].clone()
+            }
         }
     }
 
     /// Recomputes `at(s)` and `done(s)`; whether either changed.
     fn recompute(&mut self, s: usize) -> bool {
         let (at, done) = match self.chart.kind(s) {
-            StateKind::Atomic | StateKind::Final | StateKind::History | StateKind::DeepHistory => {
-                (self.entered[s].clone(), self.done[s].clone())
-            }
+            StateKind::Atomic
+            | StateKind::Choice
+            | StateKind::Final
+            | StateKind::History
+            | StateKind::DeepHistory => (self.entered[s].clone(), self.done[s].clone()),
             StateKind::Compound => (
                 self.entered[s].with(&self.children_at[s]),
                 self.entered[s].with(&self.finals[s]),
@@ -734,7 +759,7 @@ impl<'c, 'a> Flow<'c, 'a> {
                         kids.iter().find(|&&k| lacks(k, &self.fin(k))).map(|&k| {
                             match self.chart.kind(k) {
                                 StateKind::Final => Ctx::Entered(k),
-                                StateKind::Atomic => Ctx::At(k),
+                                StateKind::Atomic | StateKind::Choice => Ctx::At(k),
                                 _ => Ctx::Done(k),
                             }
                         })

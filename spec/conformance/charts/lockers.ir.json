@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/lockers.road",
@@ -157,6 +157,8 @@
         "name": "Locker",
         "kind": "compound",
         "doc": "One locker, opened with its PIN.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 15,
@@ -167,12 +169,15 @@
         "params": [],
         "vars": [],
         "initial": "Locker.Shut",
+        "default": [],
         "states": [
           {
             "id": "Locker.Shut",
             "name": "Shut",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -183,6 +188,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -265,6 +271,8 @@
             "name": "Opened",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 24,
@@ -275,6 +283,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -318,6 +327,8 @@
             "name": "Jammed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -328,6 +339,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -498,6 +510,8 @@
         "name": "Lockers",
         "kind": "compound",
         "doc": "Lockers by number.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 29,
@@ -508,12 +522,15 @@
         "params": [],
         "vars": [],
         "initial": "Lockers.Open",
+        "default": [],
         "states": [
           {
             "id": "Lockers.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -524,6 +541,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -813,6 +831,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,
@@ -823,6 +843,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

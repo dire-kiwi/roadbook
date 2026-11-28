@@ -1,0 +1,10 @@
+machine M() {
+  event Go
+  event Stop
+  initial A
+  state A {
+    on Go | Stpo -> A
+  }
+}
+
+// expect: RB0106 at 6:13

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/catalog.road",
@@ -143,6 +143,8 @@
         "name": "Catalog",
         "kind": "compound",
         "doc": "Searches its stock for the items it is asked about.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 14,
@@ -153,12 +155,15 @@
         "params": [],
         "vars": [],
         "initial": "Catalog.Open",
+        "default": [],
         "states": [
           {
             "id": "Catalog.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -169,6 +174,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -315,6 +321,8 @@
         "name": "Shopper",
         "kind": "compound",
         "doc": "Asks the catalog which of the items it wants are in stock.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 24,
@@ -325,12 +333,15 @@
         "params": [],
         "vars": [],
         "initial": "Shopper.Asking",
+        "default": [],
         "states": [
           {
             "id": "Shopper.Asking",
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -341,6 +352,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -452,6 +464,8 @@
             "name": "Found",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -462,6 +476,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

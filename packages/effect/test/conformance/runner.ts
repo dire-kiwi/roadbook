@@ -70,6 +70,7 @@ type Step =
     readonly refused?: Core.RefusalReason
   }
   | { readonly suspend: string; readonly run?: string }
+  | { readonly tags: ReadonlyArray<string>; readonly run?: string }
 
 export interface Case {
   readonly description: string
@@ -224,6 +225,8 @@ interface TopRun {
   readonly cancel: Effect.Effect<void>
   readonly save: Effect.Effect<Core.Saved>
   readonly suspend: Effect.Effect<Core.Saved>
+  /** An actor's snapshot, which has its tags. A durable run has none. */
+  readonly snapshot?: Effect.Effect<{ readonly tags: ReadonlyArray<string> }>
 }
 
 /** WebCrypto whose digest resolves at once, so that settling promises is one turn. */
@@ -636,6 +639,16 @@ export const runCase = async (name: string, durable = false): Promise<CaseResult
       await exec(Effect.exit(actorOf(step.run ?? "r1").cancel))
     } else if ("snapshot" in step) {
       compareSaved(step.snapshot, await exec(actorOf(step.run ?? "r1").save))
+    } else if ("tags" in step) {
+      const run = step.run ?? "r1"
+      const top = actorOf(run)
+      // A durable run's are those of its saved snapshot's active states.
+      const tags = top.snapshot !== undefined
+        ? (await exec(top.snapshot)).tags
+        : Core.tagsOf(ir.machines[machineOf.get(run) ?? ""]!, (await exec(top.save)).active)
+      if (Core.canonicalJson(tags) !== Core.canonicalJson(step.tags)) {
+        fail(`${run} has the tags ${Core.canonicalJson(tags)}, not ${Core.canonicalJson(step.tags)}`)
+      }
     } else if ("restore" in step) {
       await restoreTop(step)
     } else if ("suspend" in step) {

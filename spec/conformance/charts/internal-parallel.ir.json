@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/internal-parallel.road",
@@ -88,6 +88,8 @@
         "name": "Sides",
         "kind": "compound",
         "doc": "Internal transitions in a parallel state: one written in a region stays in it, so another\nregion takes the same event too; one written in the parallel state exits and enters only\nthe regions it targets.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 8,
@@ -98,12 +100,15 @@
         "params": [],
         "vars": [],
         "initial": "Sides.P",
+        "default": [],
         "states": [
           {
             "id": "Sides.P",
             "name": "P",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 15,
@@ -114,12 +119,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Sides.P.A",
                 "name": "A",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 21,
@@ -130,12 +138,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Sides.P.A.A1",
+                "default": [],
                 "states": [
                   {
                     "id": "Sides.P.A.A1",
                     "name": "A1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 26,
@@ -146,6 +157,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -159,6 +171,8 @@
                     "name": "A2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 27,
@@ -169,6 +183,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -238,6 +253,8 @@
                 "name": "B",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 30,
@@ -248,12 +265,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Sides.P.B.B1",
+                "default": [],
                 "states": [
                   {
                     "id": "Sides.P.B.B1",
                     "name": "B1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 34,
@@ -264,6 +284,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -299,6 +320,8 @@
                     "name": "B2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 35,
@@ -309,6 +332,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],

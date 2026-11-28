@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/shop/checkout.road",
@@ -591,6 +591,8 @@
         "name": "Checkout",
         "kind": "compound",
         "doc": "Charge the customer's card, retrying while the payment gateway is down.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 4,
@@ -601,12 +603,15 @@
         "params": [],
         "vars": [],
         "initial": "Checkout.Charging",
+        "default": [],
         "states": [
           {
             "id": "Checkout.Charging",
             "name": "Charging",
             "kind": "atomic",
             "doc": "One attempt against the payment gateway.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 12,
@@ -617,6 +622,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -804,6 +810,8 @@
             "name": "Backoff",
             "kind": "atomic",
             "doc": "Wait before the next attempt. The delay grows with each attempt.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 24,
@@ -814,6 +822,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -894,6 +903,8 @@
             "name": "Charged",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -904,6 +915,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -925,6 +937,8 @@
             "name": "Declined",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 30,
@@ -935,6 +949,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -956,6 +971,8 @@
             "name": "GaveUp",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -966,6 +983,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

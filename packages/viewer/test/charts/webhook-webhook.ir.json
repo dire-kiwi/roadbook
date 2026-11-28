@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "examples/webhook/webhook.road",
@@ -475,6 +475,8 @@
         "name": "PaymentWebhook",
         "kind": "compound",
         "doc": "The payment provider's webhook: verify, parse, deduplicate, apply, acknowledge.\nEvery final state is one HTTP response.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 11,
@@ -485,12 +487,15 @@
         "params": [],
         "vars": [],
         "initial": "PaymentWebhook.Verifying",
+        "default": [],
         "states": [
           {
             "id": "PaymentWebhook.Verifying",
             "name": "Verifying",
             "kind": "atomic",
             "doc": "The signature check is pure, so it is a guard.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 18,
@@ -501,6 +506,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -589,6 +595,8 @@
             "name": "Parsing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -599,6 +607,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -696,6 +705,8 @@
             "name": "CheckingDuplicate",
             "kind": "atomic",
             "doc": "Providers redeliver. An event we have already processed is acknowledged and ignored.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -706,6 +717,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -796,6 +808,8 @@
             "name": "Applying",
             "kind": "compound",
             "doc": "Apply the event according to its kind.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 43,
@@ -806,12 +820,15 @@
             "params": [],
             "vars": [],
             "initial": "PaymentWebhook.Applying.Routing",
+            "default": [],
             "states": [
               {
                 "id": "PaymentWebhook.Applying.Routing",
                 "name": "Routing",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 48,
@@ -822,6 +839,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -942,6 +960,8 @@
                 "name": "MarkingPaid",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 56,
@@ -952,6 +972,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1089,6 +1110,8 @@
                 "name": "Backoff",
                 "kind": "atomic",
                 "doc": "Wait before the next attempt. The delay grows with each attempt.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 67,
@@ -1099,6 +1122,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -1179,6 +1203,8 @@
                 "name": "NotifyingFailure",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 72,
@@ -1189,6 +1215,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -1250,6 +1277,8 @@
                 "name": "RecordingRefund",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 77,
@@ -1260,6 +1289,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1368,6 +1398,8 @@
                 "name": "Applied",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 83,
@@ -1378,6 +1410,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1420,6 +1453,8 @@
             "name": "MarkingProcessed",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 86,
@@ -1430,6 +1465,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1491,6 +1527,8 @@
             "name": "Acknowledged",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 92,
@@ -1501,6 +1539,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1520,6 +1559,8 @@
             "name": "BadSignature",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 93,
@@ -1530,6 +1571,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1562,6 +1604,8 @@
             "name": "Malformed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 94,
@@ -1572,6 +1616,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1604,6 +1649,8 @@
             "name": "Unavailable",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 95,
@@ -1614,6 +1661,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

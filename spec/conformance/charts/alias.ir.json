@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/alias.road",
@@ -325,6 +325,8 @@
         "name": "Aliases",
         "kind": "compound",
         "doc": "Counts up to a limit, comparing what it is sent with what it holds.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 19,
@@ -335,12 +337,15 @@
         "params": [],
         "vars": [],
         "initial": "Aliases.Counting",
+        "default": [],
         "states": [
           {
             "id": "Aliases.Counting",
             "name": "Counting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,
@@ -351,6 +356,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -1224,6 +1230,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 51,
@@ -1234,6 +1242,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

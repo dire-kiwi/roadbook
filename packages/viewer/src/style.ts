@@ -86,6 +86,9 @@ export const DIAGRAM_CSS = `
 .rb-history > .rb-box { stroke-width: 1.5; }
 .rb-history-mark { font-size: 12px; font-weight: 750; fill: var(--rb-fg); }
 .rb-legend-swatch .rb-history-mark { font-size: 10px; }
+/* a choice state: a small diamond with its name beside it */
+.rb-choice > .rb-box { stroke-width: 1.5; }
+.rb-choice-name { font-size: 11.5px; font-weight: 650; fill: var(--rb-fg); }
 
 .rb-title { font-size: 13px; font-weight: 650; }
 .rb-tag { font-size: 11px; fill: var(--rb-muted) !important; }
@@ -96,6 +99,8 @@ export const DIAGRAM_CSS = `
 .rb-row.rb-k-collapsed { fill: var(--rb-muted); font-style: italic; }
 
 .rb-pill { fill: var(--rb-accent-bg); stroke: var(--rb-accent); stroke-width: 1; }
+.rb-tag-pill { fill: var(--rb-bg); stroke: var(--rb-muted); stroke-width: 0.75; }
+.rb-tag-text { font-size: 11px; fill: var(--rb-muted) !important; }
 .rb-pill-text, .rb-pill-text .rb-kw { fill: var(--rb-accent) !important; }
 .rb-pill-text .rb-kw { font-weight: 650; }
 .rb-pill-chevron { fill: none; stroke: var(--rb-accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
@@ -113,6 +118,7 @@ export const DIAGRAM_CSS = `
 .rb-k-after .rb-edge-line { stroke-dasharray: 7 4; }
 .rb-k-always .rb-edge-line { stroke-dasharray: 0.1 4.5; stroke-linecap: round; stroke-width: 2; }
 .rb-initial { fill: var(--rb-edge); }
+.rb-history-default .rb-edge-line { stroke-dasharray: 4 3; }
 .rb-port { fill: var(--rb-canvas); stroke: var(--rb-edge); stroke-width: 1.5; }
 .rb-k-done .rb-port { stroke: var(--rb-ok); }
 .rb-k-fail .rb-port { stroke: var(--rb-err); }

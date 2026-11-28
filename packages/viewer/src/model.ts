@@ -28,6 +28,11 @@ export const METRICS = {
   machinePillPad: 6,
   toggle: 14, // the collapse / expand button of a container
   historyD: 28, // diameter of the circle of a history state
+  choiceD: 30, // width and height of the diamond of a choice state
+  choiceGap: 6, // between a choice's diamond and its name
+  tagH: 15, // height of a tag pill under a state's title
+  tagPad: 6, // inside a tag pill, left and right of its text
+  tagGap: 4, // between two tag pills, and under the band of them
 } as const
 
 /** Width of `text` at `fontSize` px. The browser passes a real measurer; Node estimates. */
@@ -289,13 +294,66 @@ export function isOutcomeOf(t: Transition, inv: Invoke): boolean {
   return (t.trigger.kind === 'invoke.done' || t.trigger.kind === 'invoke.fail') && t.trigger.as === inv.as
 }
 
+function sameSpan(a: Span, b: Span): boolean {
+  return a.file === b.file && a.line === b.line && a.col === b.col && a.endLine === b.endLine && a.endCol === b.endCol
+}
+
+/**
+ * The transitions drawn as one with transition `index` of `state`: itself and the later copies
+ * of its branch of an `on A | B`, which the IR holds as one transition per event, all with the
+ * same `group` and `span` (spec/ir.md, "Several events"). Empty if `index` is itself a later
+ * copy, drawn with the first. `State::copies` in the roadbook-ir crate.
+ */
+export function copiesOf(state: State, index: number): number[] {
+  const t = state.transitions[index]
+  if (!t) return []
+  const same = (o: Transition) => o.group === t.group && sameSpan(o.span, t.span)
+  if (state.transitions.slice(0, index).some(same)) return []
+  const out: number[] = []
+  state.transitions.forEach((o, i) => {
+    if (i >= index && same(o)) out.push(i)
+  })
+  return out
+}
+
+/** Whether transition `index` of `state` is a later copy of an `on A | B` branch, drawn with the first. */
+export function isCopy(state: State, index: number): boolean {
+  return copiesOf(state, index).length === 0 && index < state.transitions.length
+}
+
+/**
+ * The transition drawn for transition `index` of `state`: the first copy of its `on A | B`
+ * branch, or itself. A trace names the copy taken; the diagram has one edge for them all.
+ */
+export function drawnIndex(state: State, index: number): number {
+  const t = state.transitions[index]
+  if (!t) return index
+  const first = state.transitions.findIndex((o) => o.group === t.group && sameSpan(o.span, t.span))
+  return first < 0 ? index : first
+}
+
+/** The trigger of transition `index` as the diagram labels it: `triggerText`, and `Retry | Reconnect` for an `on A | B`. */
+export function transitionTrigger(state: State, index: number): string {
+  const copies = copiesOf(state, drawnIndex(state, index))
+  return copies.map((i) => triggerText(state.transitions[i]!.trigger, state)).join(' | ')
+}
+
+/** The trigger of transition `index` as written in source: `triggerSource`, and `on Retry | Reconnect` for an `on A | B`. */
+export function transitionSource(state: State, index: number): string {
+  const t = state.transitions[index]
+  if (!t) return ''
+  return t.trigger.kind === 'event' ? `on ${transitionTrigger(state, index)}` : triggerSource(t.trigger, state)
+}
+
 /** `[guard]` for a guarded branch, `[else]` for the unguarded last branch of a block, `""` otherwise. */
 export function guardText(state: State, index: number): string {
   const t = state.transitions[index]
   if (!t) return ''
   if (t.guard) return `[${t.guard.text}]`
-  const first = state.transitions.findIndex((o) => o.group === t.group)
-  return first !== index ? '[else]' : ''
+  // The block's first branch has the span of the first transition of its group: a later copy
+  // of it (an `on A | B`) is no `else`.
+  const first = state.transitions.find((o) => o.group === t.group)
+  return first && !sameSpan(first.span, t.span) ? '[else]' : ''
 }
 
 export interface LabelLine {
@@ -319,7 +377,8 @@ export interface LabelLine {
 export function transitionLines(state: State, index: number): LabelLine[] {
   const t = state.transitions[index]
   if (!t) return []
-  const head = triggerText(t.trigger, state)
+  // A choice's branches are all `always`: the guard says it all.
+  const head = isChoice(state) ? '' : transitionTrigger(state, index)
   const guard = guardText(state, index)
   const split = state.transitions.some((o, i) => {
     const g = o.group === t.group ? guardText(state, i) : ''
@@ -382,6 +441,11 @@ export function isHistory(state: State): boolean {
   return state.kind === 'history' || state.kind === 'deepHistory'
 }
 
+/** Whether a state is a choice state: a diamond the run passes through, left by its first branch whose guard holds. */
+export function isChoice(state: State): boolean {
+  return state.kind === 'choice'
+}
+
 /** A state's children: its `states` less its history states (the regions of a parallel state). */
 export function childStates(state: State): State[] {
   return state.states.filter((c) => !isHistory(c))
@@ -403,10 +467,12 @@ export function kindText(state: State): string {
  */
 export function historyText(state: State, parent: State): string {
   const children = childStates(parent)
-  const start =
-    parent.kind === 'parallel'
+  const below = (id: string) => id.slice(parent.id.length + 1)
+  const start = state.default.length
+    ? `its default, ${state.default.map(below).join(', ')}`
+    : parent.kind === 'parallel'
       ? 'every region from its start'
-      : `its initial state${parent.initial ? `, ${parent.initial.slice(parent.id.length + 1)}` : ''}`
+      : `its initial state${parent.initial ? `, ${below(parent.initial)}` : ''}`
   const what =
     state.kind === 'deepHistory'
       ? `Returns to where ${parent.name} was when it was last left, all the way down: every state that was active inside it then, in every region.`
@@ -459,10 +525,10 @@ export function stateRows(state: State, collapsed = false): Row[] {
   for (const e of state.entry) add('entry', effectText(e), effectExtra(e))
   for (const e of state.exit) add('exit', effectText(e), effectExtra(e))
   state.transitions.forEach((t, index) => {
-    if (t.targets.length > 0) return
+    if (t.targets.length > 0 || isCopy(state, index)) return
     // The trigger, then the guard and each effect: one effect per line, so a `send`, `emit`, `raise` or
     // `reply` is a line of its own that can be clicked.
-    const kw = triggerSource(t.trigger)
+    const kw = transitionSource(state, index)
     const from = triggerEvent(t.trigger, machine)
     const base: Partial<Row> = { transition: index, cls: triggerKind(t.trigger) }
     const guard = guardText(state, index)
@@ -612,6 +678,11 @@ export function targetEdgeId(stateId: string, index: number, k: number): string 
   return k === 0 ? transitionId(stateId, index) : `${transitionId(stateId, index)}/to${k}`
 }
 
+/** The id the layout gives the dashed arrow from history state `stateId` to its `k`th default. */
+export function historyDefaultEdgeId(stateId: string, k: number): string {
+  return `${stateId}/default/${k}`
+}
+
 /** A transition's targets, each named by `name`, `A, B`; `none` for one with no target. */
 export function targetsText(t: Transition, name: (id: string) => string, none: string): string {
   return t.targets.length ? t.targets.map(name).join(', ') : none
@@ -689,6 +760,8 @@ export function messageSites(machineName: string, machine: Machine): MessageSite
     effects(s.id, 'entry', s.entry)
     effects(s.id, 'exit', s.exit)
     s.transitions.forEach((t, i) => {
+      // The copies of an `on A | B` are one transition, written once.
+      if (isCopy(s, i)) return
       if (t.trigger.kind === 'emitted') out.push({ dir: 'receive', state: s.id, at: i, address: t.trigger.from, event: { machine: peer(t.trigger.from), event: t.trigger.event } })
       if (t.trigger.kind === 'call') out.push({ dir: 'take', state: s.id, at: i, address: null, event: { machine: machineName, event: t.trigger.call } })
       effects(s.id, i, t.effects)
@@ -717,7 +790,9 @@ export function spawnSites(machine: Machine): SpawnSite[] {
   walkStates(machine.root, (s) => {
     effects(s.id, 'entry', s.entry)
     effects(s.id, 'exit', s.exit)
-    s.transitions.forEach((t, i) => effects(s.id, i, t.effects))
+    s.transitions.forEach((t, i) => {
+      if (!isCopy(s, i)) effects(s.id, i, t.effects)
+    })
   })
   return out
 }

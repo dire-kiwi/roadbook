@@ -1,0 +1,32 @@
+---
+source: crates/roadbook-cli/tests/scxml.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:roadbook:scxml" version="1.0" name="Link" datamodel="roadbook" initial="Link">
+  <datamodel>
+    <data id="attempts" expr="0" rb:type="int"/>
+    <data id="reason" expr="&quot;&quot;" rb:type="string"/>
+  </datamodel>
+  <state id="Link" initial="Link_Idle">
+    <transition event="Reset Drop" target="Link_Idle" type="internal">
+      <assign location="attempts" expr="0"/>
+    </transition>
+    <state id="Link_Idle">
+      <transition event="Retry Reconnect" cond="attempts &lt; 2" target="Link_Connecting">
+        <assign location="reason" expr="event.reason"/>
+        <assign location="attempts" expr="attempts + 1"/>
+      </transition>
+    </state>
+    <state id="Link_Connecting">
+      <transition event="Drop Retry" cond="event.reason == &quot;&quot;" target="Link_Idle"/>
+      <transition event="Drop Retry" target="Link_Connecting">
+        <assign location="reason" expr="event.reason"/>
+        <rb:do action="log">
+          <param name="reason" expr="event.reason"/>
+        </rb:do>
+      </transition>
+      <transition event="Reconnect" target="Link_Idle"/>
+    </state>
+  </state>
+</scxml>

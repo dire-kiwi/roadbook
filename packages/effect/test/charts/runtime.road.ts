@@ -40,6 +40,7 @@ export interface OverflowDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Overflow" | "Overflow.Over"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}
@@ -47,7 +48,7 @@ export interface OverflowDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "packages/effect/test/charts/runtime.road",
@@ -295,6 +296,8 @@ const ir: unknown = {
         "name": "Overflow",
         "kind": "compound",
         "doc": "`int` overflows the TypeScript runtime's range ±(2^53 - 1) in its output.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 11,
@@ -305,12 +308,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Overflow.Over",
+        "default": [],
         "states": [
           {
             "id": "Overflow.Over",
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 16,
@@ -321,6 +327,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -405,6 +412,8 @@ const ir: unknown = {
         "name": "Settle",
         "kind": "compound",
         "doc": "Settles forever: every microstep takes the `always` again.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 20,
@@ -415,12 +424,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Settle.Spin",
+        "default": [],
         "states": [
           {
             "id": "Settle.Spin",
             "name": "Spin",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -431,6 +443,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -596,6 +609,8 @@ const ir: unknown = {
         "name": "Early",
         "kind": "compound",
         "doc": "Reads `a` before it has a value, in `b`'s initial value.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 33,
@@ -606,12 +621,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Early.Over",
+        "default": [],
         "states": [
           {
             "id": "Early.Over",
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 39,
@@ -622,6 +640,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -684,6 +703,8 @@ const ir: unknown = {
         "name": "Leftover",
         "kind": "compound",
         "doc": "Outer's work is cancelled after Inner's exit effect, so a defect there leaves it running.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 43,
@@ -694,12 +715,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Leftover.Outer",
+        "default": [],
         "states": [
           {
             "id": "Leftover.Outer",
             "name": "Outer",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 48,
@@ -710,12 +734,15 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": "Leftover.Outer.Inner",
+            "default": [],
             "states": [
               {
                 "id": "Leftover.Outer.Inner",
                 "name": "Inner",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 56,
@@ -726,6 +753,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [
@@ -818,6 +846,8 @@ const ir: unknown = {
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 59,
@@ -828,6 +858,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -870,6 +901,8 @@ const ir: unknown = {
         "name": "Payload",
         "kind": "compound",
         "doc": "Ends with whatever the host's `payload` returns, which must be JSON.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 63,
@@ -880,12 +913,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Payload.Over",
+        "default": [],
         "states": [
           {
             "id": "Payload.Over",
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 66,
@@ -896,6 +932,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -977,6 +1014,8 @@ const ir: unknown = {
         "name": "Desk",
         "kind": "compound",
         "doc": "Answers `ask` with its argument once `hold` has run for it, one call at a time.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 70,
@@ -987,12 +1026,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Desk.Open",
+        "default": [],
         "states": [
           {
             "id": "Desk.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 77,
@@ -1003,6 +1045,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1097,6 +1140,8 @@ const ir: unknown = {
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 82,
@@ -1107,6 +1152,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1177,6 +1223,8 @@ const ir: unknown = {
         "name": "Asker",
         "kind": "compound",
         "doc": "Asks the desk for `n`; 0 when the desk does not answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 86,
@@ -1187,12 +1235,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Asker.Asking",
+        "default": [],
         "states": [
           {
             "id": "Asker.Asking",
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 91,
@@ -1203,6 +1254,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1305,6 +1357,8 @@ const ir: unknown = {
             "name": "Got",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 98,
@@ -1315,6 +1369,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1336,6 +1391,8 @@ const ir: unknown = {
             "name": "Gave",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 99,
@@ -1346,6 +1403,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1406,6 +1464,8 @@ const ir: unknown = {
         "name": "Monitor",
         "kind": "compound",
         "doc": "Hears the end of each Desk of `desks` and of `spare`, noting how each ended, and ends with\nthe spare's.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 107,
@@ -1416,12 +1476,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Monitor.Watching",
+        "default": [],
         "states": [
           {
             "id": "Monitor.Watching",
             "name": "Watching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 110,
@@ -1432,6 +1495,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1530,6 +1594,8 @@ const ir: unknown = {
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 115,
@@ -1540,6 +1606,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1589,6 +1656,8 @@ const ir: unknown = {
         "name": "Generic",
         "kind": "compound",
         "doc": "Ends with what the host's `withLongest` makes of its map of generic records of durations.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 126,
@@ -1599,12 +1668,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Generic.Over",
+        "default": [],
         "states": [
           {
             "id": "Generic.Over",
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 129,
@@ -1615,6 +1687,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1648,6 +1721,239 @@ const ir: unknown = {
         "fail": null
       },
       "hash": "sha256:bc3b1cb2c7bce34c08d5fd30d7476f11868556de7bcebfca5c7b6b96ed36149e"
+    },
+    "Spinner": {
+      "doc": "Tags on the machine body and on states, two regions sharing one.",
+      "span": {
+        "file": 0,
+        "line": 133,
+        "col": 1,
+        "endLine": 153,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [],
+      "events": {
+        "Fetch": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 134,
+            "col": 3,
+            "endLine": 134,
+            "endCol": 14
+          }
+        },
+        "Fetched": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 135,
+            "col": 3,
+            "endLine": 135,
+            "endCol": 16
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Spinner",
+        "name": "Spinner",
+        "kind": "compound",
+        "doc": "Tags on the machine body and on states, two regions sharing one.",
+        "tags": [
+          "app"
+        ],
+        "meta": {},
+        "span": {
+          "file": 0,
+          "line": 133,
+          "col": 1,
+          "endLine": 153,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Spinner.Idle",
+        "default": [],
+        "states": [
+          {
+            "id": "Spinner.Idle",
+            "name": "Idle",
+            "kind": "atomic",
+            "doc": "",
+            "tags": [
+              "idle"
+            ],
+            "meta": {},
+            "span": {
+              "file": 0,
+              "line": 141,
+              "col": 3,
+              "endLine": 144,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Fetch"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Spinner.Loading"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 143,
+                  "col": 5,
+                  "endLine": 143,
+                  "endCol": 24
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Spinner.Loading",
+            "name": "Loading",
+            "kind": "parallel",
+            "doc": "",
+            "tags": [
+              "busy"
+            ],
+            "meta": {
+              "owner": "payments"
+            },
+            "span": {
+              "file": 0,
+              "line": 146,
+              "col": 3,
+              "endLine": 152,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [
+              {
+                "id": "Spinner.Loading.Data",
+                "name": "Data",
+                "kind": "atomic",
+                "doc": "",
+                "tags": [
+                  "network"
+                ],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 150,
+                  "col": 5,
+                  "endLine": 150,
+                  "endCol": 34
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Spinner.Loading.Images",
+                "name": "Images",
+                "kind": "atomic",
+                "doc": "",
+                "tags": [
+                  "network",
+                  "slow"
+                ],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 151,
+                  "col": 5,
+                  "endLine": 151,
+                  "endCol": 40
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Fetched"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Spinner.Idle"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 149,
+                  "col": 5,
+                  "endLine": 149,
+                  "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:4da981dfcf525132df6cb66408c6377c1819ed9a6a4597222e6d848610b76c84"
     }
   }
 }
@@ -1667,6 +1973,7 @@ export interface SettleDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Settle" | "Settle.Spin"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}
@@ -1686,6 +1993,7 @@ export interface EarlyDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Early" | "Early.Over"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}
@@ -1708,6 +2016,7 @@ export interface LeftoverDef extends Roadbook.MachineDef {
   readonly event: Go
   readonly emits: never
   readonly state: "Leftover" | "Leftover.Outer" | "Leftover.Outer.Inner" | "Leftover.Over"
+  readonly tag: never
   readonly fns: {}
   readonly actions: { readonly log: { readonly what: string } }
   readonly tasks: {
@@ -1729,6 +2038,7 @@ export interface PayloadDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Payload" | "Payload.Over"
+  readonly tag: never
   readonly fns: { readonly payload: { readonly args: {}; readonly returns: Schema.Json } }
   readonly actions: {}
   readonly tasks: {}
@@ -1751,6 +2061,7 @@ export interface DeskDef extends Roadbook.MachineDef {
   readonly event: Close
   readonly emits: never
   readonly state: "Desk" | "Desk.Open" | "Desk.Closed"
+  readonly tag: never
   readonly fns: {}
   readonly actions: { readonly hold: { readonly n: number } }
   readonly tasks: {}
@@ -1770,6 +2081,7 @@ export interface AskerDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Asker" | "Asker.Asking" | "Asker.Got" | "Asker.Gave"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}
@@ -1792,6 +2104,7 @@ export interface MonitorDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Monitor" | "Monitor.Watching" | "Monitor.Over"
+  readonly tag: never
   readonly fns: {}
   readonly actions: { readonly noted: { readonly status: Ended } }
   readonly tasks: {}
@@ -1814,6 +2127,7 @@ export interface GenericDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Generic" | "Generic.Over"
+  readonly tag: never
   readonly fns: {
     readonly withLongest: {
       readonly args: { readonly boxes: Boxes<Duration.Duration> }
@@ -1827,3 +2141,34 @@ export interface GenericDef extends Roadbook.MachineDef {
 
 /** Ends with what the host's `withLongest` makes of its map of generic records of durations. */
 export const Generic = Roadbook.make<GenericDef>(ir, "Generic", errors)
+
+// ---- machine: Spinner ----
+
+export const Fetch = Schema.TaggedStruct("Fetch", {})
+export type Fetch = typeof Fetch.Type
+
+export const Fetched = Schema.TaggedStruct("Fetched", {})
+export type Fetched = typeof Fetched.Type
+
+export interface SpinnerDef extends Roadbook.MachineDef {
+  readonly name: "Spinner"
+  readonly input: {}
+  readonly output: void
+  readonly error: never
+  readonly event: Fetch | Fetched
+  readonly emits: never
+  readonly state:
+    | "Spinner"
+    | "Spinner.Idle"
+    | "Spinner.Loading"
+    | "Spinner.Loading.Data"
+    | "Spinner.Loading.Images"
+  readonly tag: "app" | "idle" | "busy" | "network" | "slow"
+  readonly fns: {}
+  readonly actions: {}
+  readonly tasks: {}
+  readonly machines: {}
+}
+
+/** Tags on the machine body and on states, two regions sharing one. */
+export const Spinner = Roadbook.make<SpinnerDef>(ir, "Spinner", errors)

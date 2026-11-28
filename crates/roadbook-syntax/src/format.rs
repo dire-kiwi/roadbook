@@ -688,17 +688,27 @@ impl Formatter<'_> {
             Item::Transition(t) => self.transition(t, indent),
             Item::History(h) => {
                 let kw = if h.deep { "deep history" } else { "history" };
-                self.row(
-                    whole,
-                    indent,
-                    vec![format!("{kw} {}", h.name.name)],
-                    "",
-                    None,
-                );
+                let mut text = format!("{kw} {}", h.name.name);
+                if !h.default.is_empty() {
+                    let targets: Vec<_> = h.default.iter().map(path_text).collect();
+                    text = format!("{text} -> {}", targets.join(", "));
+                }
+                self.row(whole, indent, vec![text], "", None);
             }
             Item::Check(c) => {
                 let text = format!("check {}", property_text(&c.property));
                 self.row(whole, indent, vec![text], "", None);
+            }
+            Item::Meta(m) => {
+                let entries: Vec<_> = m
+                    .entries
+                    .iter()
+                    .map(|e| (e.span, format!("{}: {}", e.name.name, expr(&e.value))))
+                    .collect();
+                let after = m.span.start.offset + "meta".len() as u32;
+                if let Some(text) = self.brace_list(after, "meta", &entries, whole.0, indent) {
+                    self.row(whole, indent, vec![format!("meta {text}")], "", None);
+                }
             }
             _ => {
                 let text = inline_item(item).expect("every other item is one line");
@@ -708,6 +718,13 @@ impl Formatter<'_> {
     }
 
     fn state(&mut self, s: &State, indent: usize) {
+        if s.kind == StateKind::Choice {
+            if let [Item::Transition(t)] = s.body.items.as_slice() {
+                // The header is a state's, not aligned with the branches.
+                self.branch_rows(t, format!("choice {}", s.name.name), None, indent);
+            }
+            return;
+        }
         let mut head = format!("{}state {}", state_prefix(s.kind), s.name.name);
         let header = (s.span.start.offset, s.body.span.start.offset + 1);
         if !s.params.is_empty() {
@@ -734,7 +751,12 @@ impl Formatter<'_> {
     }
 
     fn transition(&mut self, t: &Transition, indent: usize) {
-        let trigger = trigger(&t.trigger);
+        self.branch_rows(t, trigger(&t.trigger), Some(Group::Transition), indent);
+    }
+
+    /// The rows of transition `t` headed by `trigger`: `on Go` for a transition, `choice Name`
+    /// for a choice state's branches. `head` is the group of a block's first line.
+    fn branch_rows(&mut self, t: &Transition, trigger: String, head: Option<Group>, indent: usize) {
         match &t.branches {
             Branches::Single(b) => {
                 let mut cells = branch_cells(b);
@@ -750,7 +772,7 @@ impl Formatter<'_> {
                     indent,
                     vec![trigger],
                     " {",
-                    Some(Group::Transition),
+                    head,
                 );
                 self.open_block();
                 for b in branches {
@@ -792,6 +814,8 @@ fn state_prefix(kind: StateKind) -> &'static str {
         StateKind::Normal => "",
         StateKind::Final => "final ",
         StateKind::Parallel => "parallel ",
+        // Written by `branch_rows`, never with `state`.
+        StateKind::Choice => "",
     }
 }
 
@@ -804,6 +828,10 @@ fn inline_item(item: &Item) -> Option<String> {
         Item::Exit(h) => format!("exit {}", effects(&h.effects)),
         Item::Output(v) => format!("output {}", expr(&v.value)),
         Item::Fail(v) => format!("fail {}", expr(&v.value)),
+        Item::Tags(t) => {
+            let names: Vec<_> = t.names.iter().map(|n| n.name.as_str()).collect();
+            format!("tags {}", names.join(", "))
+        }
         Item::Transition(Transition {
             trigger: tr,
             branches: Branches::Single(b),
@@ -826,6 +854,7 @@ fn inline_item(item: &Item) -> Option<String> {
         | Item::Invoke(_)
         | Item::History(_)
         | Item::Check(_)
+        | Item::Meta(_)
         | Item::Transition(_) => {
             return None;
         }
@@ -893,6 +922,10 @@ fn trigger(t: &Trigger) -> String {
     };
     match t {
         Trigger::On(p) => format!("on {}", pattern(p)),
+        Trigger::OneOf(names) => {
+            let names: Vec<&str> = names.iter().map(|n| n.name.as_str()).collect();
+            format!("on {}", names.join(" | "))
+        }
         Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
         Trigger::Call(n) => format!("on {}", n.name),
         Trigger::ChildDone { from } => format!("on {}.done", from.name),
@@ -1105,6 +1138,7 @@ pub(crate) fn expr(e: &Expr) -> String {
         ExprKind::Field(x, f) => format!("{}.{}", operand(x, 8), f.name),
         ExprKind::Call(c) => call(c),
         ExprKind::Enum(t, v) => format!("{}.{}", t.name, v.name),
+        ExprKind::In(t) => format!("in({})", path_text(t)),
         ExprKind::Record { ty, fields } if fields.is_empty() => ty.name.clone(),
         ExprKind::Record { ty, fields } => {
             let fs: Vec<_> = fields

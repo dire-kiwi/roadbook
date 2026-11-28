@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "packages/viewer/test/charts/invokes.road",
@@ -142,6 +142,8 @@
         "name": "Helper",
         "kind": "compound",
         "doc": "Answers a poke.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 13,
@@ -152,12 +154,15 @@
         "params": [],
         "vars": [],
         "initial": "Helper.Idle",
+        "default": [],
         "states": [
           {
             "id": "Helper.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -168,6 +173,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -233,6 +239,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -243,6 +251,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -330,6 +339,8 @@
         "name": "Watch",
         "kind": "compound",
         "doc": "Watches a server while it syncs a folder, with a helper beside them.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 29,
@@ -340,12 +351,15 @@
         "params": [],
         "vars": [],
         "initial": "Watch.Watching",
+        "default": [],
         "states": [
           {
             "id": "Watch.Watching",
             "name": "Watching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -356,6 +370,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -571,6 +586,8 @@
             "name": "Synced",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 49,
@@ -581,6 +598,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -602,6 +620,8 @@
             "name": "Offline",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 50,
@@ -612,6 +632,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

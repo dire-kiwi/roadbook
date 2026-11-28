@@ -1,0 +1,70 @@
+// Conformance chart: history states with a default target, entered before
+// they have recorded anything and after.
+
+/// A shallow default, a deep one through the state above it, and several in
+/// the regions of a parallel state.
+machine Editor() {
+  event Open
+  event Notes
+  event Panels
+  event Next
+  event Leave
+
+  initial Idle
+
+  state Idle {
+    on Open   -> Doc.Previous
+    on Notes  -> Notebook.Last
+    on Panels -> View.Restore
+  }
+
+  state Doc {
+    initial Blank
+    history Previous -> Editing
+
+    state Blank {}
+
+    state Editing {
+      initial Typing
+      state Typing { on Next -> Review }
+      state Review {}
+    }
+
+    on Leave -> Idle
+  }
+
+  state Notebook {
+    initial Cover
+    deep history Last -> Pages.Second
+
+    state Cover {}
+
+    state Pages {
+      initial First
+      state First  {}
+      state Second { on Next -> Third }
+      state Third  {}
+    }
+
+    on Leave -> Idle
+  }
+
+  parallel state View {
+    history Restore -> Main.Split, Side.Wide
+
+    state Main {
+      initial Plain
+      state Plain {}
+      state Split {}
+    }
+
+    state Side {
+      initial Narrow
+      state Narrow {}
+      state Wide   { on Next -> Hidden }
+      state Hidden {}
+    }
+
+    on Leave -> Idle
+  }
+}

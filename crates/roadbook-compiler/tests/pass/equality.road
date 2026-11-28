@@ -1,0 +1,49 @@
+// Structural `==` and `!=`: records, errors, events, lists, maps and optionals
+// whose parts can all be compared, through aliases and generic instances, and a
+// recursive type.
+
+type UserId  = string
+type Point   { x: int, y: float }
+type Tree    { label: string, kids: Tree[] }
+type Page<T> { items: T[], next: string? }
+type Scores  = map<UserId, int>
+enum Level   { Low, High }
+
+error Declined { reason: string, at: Point? }
+
+action note(same: bool)
+
+task charge(amount: int) -> Point ! Declined
+
+machine Compare(
+  here: Point,
+  there: Point?,
+  tree: Tree,
+  page: Page<Point>,
+  scores: Scores,
+  plain: map<string, int>,
+  levels: Level[],
+  expected: Declined
+) {
+  event Move { to: Point, level: Level? }
+
+  initial Idle
+
+  state Idle {
+    entry do note(here == here), note(there != there), note(tree == tree), note(page == page)
+
+    on Move if event.to == here -> Charging  do note(event == event), note(scores == plain), note(levels == levels)
+  }
+
+  state Charging {
+    invoke charge(1) {
+      done                   -> Idle  do note(result == here)
+      fail Declined {
+        if error == expected -> Done
+        else                 -> Idle
+      }
+    }
+  }
+
+  final state Done {}
+}

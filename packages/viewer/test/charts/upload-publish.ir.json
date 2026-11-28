@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "examples/upload/publish.road",
@@ -394,6 +394,8 @@
         "name": "Publish",
         "kind": "compound",
         "doc": "Publish a post once its attachment is uploaded. The user can pause and resume the upload\nand sees its progress.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 17,
@@ -404,12 +406,15 @@
         "params": [],
         "vars": [],
         "initial": "Publish.Uploading",
+        "default": [],
         "states": [
           {
             "id": "Publish.Uploading",
             "name": "Uploading",
             "kind": "atomic",
             "doc": "`upload` names the child while it runs, which is exactly while this state is active.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -420,6 +425,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -664,6 +670,8 @@
             "name": "Publishing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 39,
@@ -674,6 +682,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -759,6 +768,8 @@
             "name": "Published",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 45,
@@ -769,6 +780,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -790,6 +802,8 @@
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,
@@ -800,6 +814,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -949,6 +964,8 @@
         "name": "Upload",
         "kind": "compound",
         "doc": "Upload a file in chunks. Can be paused, and reports its progress to whoever invoked it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 1,
           "line": 23,
@@ -959,12 +976,15 @@
         "params": [],
         "vars": [],
         "initial": "Upload.Sending",
+        "default": [],
         "states": [
           {
             "id": "Upload.Sending",
             "name": "Sending",
             "kind": "atomic",
             "doc": "One chunk at a time, until every byte is stored.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 35,
@@ -975,6 +995,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1202,6 +1223,8 @@
             "name": "Paused",
             "kind": "atomic",
             "doc": "Nothing is sent until the user resumes.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 45,
@@ -1212,6 +1235,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1247,6 +1271,8 @@
             "name": "Finishing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 47,
@@ -1257,6 +1283,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1369,6 +1396,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 54,
@@ -1379,6 +1408,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1400,6 +1430,8 @@
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 55,
@@ -1410,6 +1442,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

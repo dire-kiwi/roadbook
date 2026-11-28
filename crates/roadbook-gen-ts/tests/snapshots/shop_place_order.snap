@@ -44,6 +44,7 @@ export interface PlaceOrderDef extends Roadbook.MachineDef {
     | "PlaceOrder.PaymentFailed"
     | "PlaceOrder.Cancelled"
     | "PlaceOrder.TimedOut"
+  readonly tag: never
   readonly fns: {
     readonly confirmation: {
       readonly args: { readonly order: Order; readonly receipt: Receipt }

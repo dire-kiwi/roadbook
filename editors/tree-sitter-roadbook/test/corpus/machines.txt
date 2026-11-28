@@ -342,6 +342,46 @@ machine M() {
                   (type_identifier))))))))))
 
 ================================================================================
+History states with default targets
+================================================================================
+
+machine M() {
+  state Work {
+    initial A
+    history Last -> B
+    deep history All -> B.C, D
+    state A {}
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (initial
+            (type_identifier))
+          (history_state
+            (type_identifier)
+            (state_path
+              (type_identifier)))
+          (history_state
+            (type_identifier)
+            (state_path
+              (type_identifier)
+              (type_identifier))
+            (state_path
+              (type_identifier)))
+          (state_declaration
+            (type_identifier)
+            (state_body)))))))
+
+================================================================================
 History and deep as names
 ================================================================================
 
@@ -376,3 +416,159 @@ machine M(history: int) {
                 (identifier))))
           (history_state
             (type_identifier)))))))
+
+================================================================================
+Choice states
+================================================================================
+
+machine M() {
+  initial Pick
+  /// Where to go.
+  choice Pick {
+    if ok() -> A  do log()
+    else    -> B(1)
+  }
+  state A {
+    choice Inner {
+      if ok() -> B(2)
+      else    -> A
+    }
+  }
+  state B(n: int) {}
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (initial
+        (type_identifier))
+      (doc_comment)
+      (choice_state
+        (type_identifier)
+        (branches
+          (branch
+            (guard
+              (call
+                (identifier)
+                (arguments)))
+            (target
+              (type_identifier))
+            (do
+              (call
+                (identifier)
+                (arguments))))
+          (else_branch
+            (target
+              (type_identifier)
+              (arguments
+                (integer))))))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (choice_state
+            (type_identifier)
+            (branches
+              (branch
+                (guard
+                  (call
+                    (identifier)
+                    (arguments)))
+                (target
+                  (type_identifier)
+                  (arguments
+                    (integer))))
+              (else_branch
+                (target
+                  (type_identifier)))))))
+      (state_declaration
+        (type_identifier)
+        (parameters
+          (parameter
+            (identifier)
+            (builtin_type)))
+        (state_body)))))
+
+================================================================================
+Choice as a name
+================================================================================
+
+machine M(choice: int) {
+  state A {
+    always set choice = choice + 1
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters
+      (parameter
+        (identifier)
+        (builtin_type)))
+    (machine_body
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (always_transition
+            (set
+              (assignment
+                (identifier)
+                (binary_expression
+                  (identifier)
+                  (integer))))))))))
+
+================================================================================
+Tags and meta
+================================================================================
+
+machine M() {
+  tags app
+  meta { owner: "payments", sla: 30, ratio: -0.5, live: true }
+  state S {
+    tags busy, network
+    meta {}
+    var tags: int = 1
+  }
+}
+
+---
+
+(source_file
+  (machine_declaration
+    (type_identifier)
+    (parameters)
+    (machine_body
+      (tags
+        (identifier))
+      (meta
+        (meta_entry
+          (identifier)
+          (string
+            (string_content)))
+        (meta_entry
+          (identifier)
+          (integer))
+        (meta_entry
+          (identifier)
+          (negation
+            (float)))
+        (meta_entry
+          (identifier)
+          (boolean)))
+      (state_declaration
+        (type_identifier)
+        (state_body
+          (tags
+            (identifier)
+            (identifier))
+          (meta)
+          (variable_declaration
+            (identifier)
+            (builtin_type)
+            (integer)))))))

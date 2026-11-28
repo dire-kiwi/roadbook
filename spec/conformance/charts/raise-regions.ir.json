@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/raise-regions.road",
@@ -78,6 +78,8 @@
         "name": "Regions",
         "kind": "compound",
         "doc": "",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 6,
@@ -88,12 +90,15 @@
         "params": [],
         "vars": [],
         "initial": "Regions.P",
+        "default": [],
         "states": [
           {
             "id": "Regions.P",
             "name": "P",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 12,
@@ -104,12 +109,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Regions.P.Left",
                 "name": "Left",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 13,
@@ -120,12 +128,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Regions.P.Left.L1",
+                "default": [],
                 "states": [
                   {
                     "id": "Regions.P.Left.L1",
                     "name": "L1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 16,
@@ -136,6 +147,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -184,6 +196,8 @@
                     "name": "L2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 18,
@@ -194,6 +208,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -248,6 +263,8 @@
                 "name": "Right",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 21,
@@ -258,12 +275,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Regions.P.Right.R1",
+                "default": [],
                 "states": [
                   {
                     "id": "Regions.P.Right.R1",
                     "name": "R1",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 24,
@@ -274,6 +294,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -309,6 +330,8 @@
                     "name": "R2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 26,
@@ -319,6 +342,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],

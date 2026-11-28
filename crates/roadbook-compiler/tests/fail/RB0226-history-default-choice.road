@@ -1,0 +1,18 @@
+machine M() {
+  event Go
+
+  initial A
+  state A {
+    initial Pick
+    history Previous -> Pick
+    choice Pick {
+      if true -> B
+      else    -> C
+    }
+    state B { on Go -> D }
+    state C { on Go -> D }
+  }
+  state D { on Go -> A.Previous }
+}
+
+// expect: RB0226 at 7:25

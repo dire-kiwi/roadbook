@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/switchboard.road",
@@ -54,6 +54,8 @@
         "name": "Line",
         "kind": "compound",
         "doc": "One open line, until it is hung up.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -64,12 +66,15 @@
         "params": [],
         "vars": [],
         "initial": "Line.Up",
+        "default": [],
         "states": [
           {
             "id": "Line.Up",
             "name": "Up",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 12,
@@ -80,6 +85,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -115,6 +121,8 @@
             "name": "Down",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 14,
@@ -125,6 +133,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -299,6 +308,8 @@
         "name": "Switchboard",
         "kind": "compound",
         "doc": "Opens lines, holds a lookup taken at night, and pauses to answer it, coming back to the\nstate it was in.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 19,
@@ -309,12 +320,15 @@
         "params": [],
         "vars": [],
         "initial": "Switchboard.Working",
+        "default": [],
         "states": [
           {
             "id": "Switchboard.Working",
             "name": "Working",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -325,12 +339,15 @@
             "params": [],
             "vars": [],
             "initial": "Switchboard.Working.Day",
+            "default": [],
             "states": [
               {
                 "id": "Switchboard.Working.Last",
                 "name": "Last",
                 "kind": "history",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 40,
@@ -341,6 +358,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -354,6 +372,8 @@
                 "name": "Day",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 42,
@@ -364,6 +384,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -399,6 +420,8 @@
                 "name": "Night",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 43,
@@ -409,6 +432,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -474,6 +498,8 @@
                 "name": "Held",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 44,
@@ -484,6 +510,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -527,6 +554,8 @@
             "name": "Paused",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 47,
@@ -537,6 +566,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -592,6 +622,8 @@
             "name": "Answered",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 48,
@@ -602,6 +634,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -741,6 +774,8 @@
         "name": "Caller",
         "kind": "compound",
         "doc": "Looks a name up.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 52,
@@ -751,12 +786,15 @@
         "params": [],
         "vars": [],
         "initial": "Caller.Asking",
+        "default": [],
         "states": [
           {
             "id": "Caller.Asking",
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -767,6 +805,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -866,6 +905,8 @@
             "name": "Got",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 64,
@@ -876,6 +917,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

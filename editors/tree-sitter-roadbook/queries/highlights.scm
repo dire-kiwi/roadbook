@@ -32,6 +32,9 @@
   "finish"
   "state"
   "history"
+  "choice"
+  "tags"
+  "meta"
   "ended"
   "initial"
   "entry"
@@ -90,6 +93,7 @@
   "and"
   "or"
   "not"
+  "in"
 ] @keyword.operator
 
 ; ─── Types ───
@@ -201,6 +205,15 @@
 
 (history_state
   name: (type_identifier) @label)
+
+(choice_state
+  name: (type_identifier) @label)
+
+(tags
+  tag: (identifier) @constant)
+
+(meta_entry
+  key: (identifier) @property)
 
 (initial
   state: (type_identifier) @label)

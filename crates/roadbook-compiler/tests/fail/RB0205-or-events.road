@@ -1,0 +1,17 @@
+// Each event of an `on A | B` is a trigger of its own: listed twice, or handled again by
+// another `on` of the same state.
+machine M() {
+  event Go
+  event Stop
+  event Pause
+  initial A
+  state A {
+    on Go | Stop | Go -> A
+    on Pause -> A
+    on Stop | Pause -> A
+  }
+}
+
+// expect: RB0205 at 9:20
+// expect: RB0205 at 11:8
+// expect: RB0205 at 11:15

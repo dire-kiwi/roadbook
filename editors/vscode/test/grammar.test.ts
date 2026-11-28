@@ -97,9 +97,39 @@ describe('scopes', () => {
     expect(await scopesAt('    deep history All', 'deep')).toContain('storage.modifier.deep.roadbook')
     expect(await scopesAt('    deep history All', 'history')).toContain('storage.type.history.roadbook')
     expect(await scopesAt('    deep history All', 'All')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt('    history Last -> Editing.Draft, Side', 'Draft')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt('    history Last -> Editing.Draft, Side', 'Side')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt('    deep history All -> Editing', '->')).toContain('keyword.operator.arrow.roadbook')
     expect(await scopesAt('  var history: int', 'history')).toContain('variable.other.definition.roadbook')
     expect(await scopesAt('    always set deep = history + 1', 'history')).toContain('variable.other.roadbook')
     expect(await scopesAt('    always set deep = history + 1', 'deep')).not.toContain('storage.modifier.deep.roadbook')
+  })
+
+  it('marks choice states, and choice as a name elsewhere', async () => {
+    expect(await scopesAt('  choice Routing {', 'choice')).toContain('storage.type.choice.roadbook')
+    expect(await scopesAt('  choice Routing {', 'Routing')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt('    if isVip(user) -> VipFlow', 'VipFlow')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt('  var choice: int', 'choice')).toContain('variable.other.definition.roadbook')
+    expect(await scopesAt('    always set n = choice + 1', 'choice')).not.toContain('storage.type.choice.roadbook')
+  })
+
+  it('marks tags and meta, and both as names elsewhere', async () => {
+    expect(await scopesAt('    tags busy, network', 'tags')).toContain('storage.type.tags.roadbook')
+    expect(await scopesAt('    tags busy, network', 'network')).toContain('constant.other.tag.roadbook')
+    expect(await scopesAt('    meta { owner: "payments", sla: 30 }', 'meta')).toContain('storage.type.meta.roadbook')
+    expect((await scopesAt('    meta { owner: "payments", sla: 30 }', '30')).join(' ')).toContain('constant.numeric')
+    expect(await scopesAt('  var tags: int', 'tags')).toContain('variable.other.definition.roadbook')
+    expect(await scopesAt('    always set n = tags + meta', 'tags')).not.toContain('storage.type.tags.roadbook')
+  })
+
+  it('marks in(…) as a keyword and its path as states', async () => {
+    const line = '    on Go if not in(Main.Volume.Muted) -> Paused(in(Main.Volume.Loud))  do note(in(Main))'
+    expect(await scopesAt(line, 'in')).toContain('keyword.operator.in.roadbook')
+    expect(await scopesAt(line, 'in')).not.toContain('entity.name.function.call.roadbook')
+    expect(await scopesAt(line, 'Volume')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(line, 'Muted')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(line, 'Loud')).toContain('entity.name.type.state.roadbook')
+    expect(await scopesAt(line, 'note')).toContain('entity.name.function.call.roadbook')
   })
 
   it('marks internal targets and several targets as states', async () => {
@@ -134,6 +164,8 @@ describe('scopes', () => {
     expect(await scopesAt(line, 'Charging')).toContain('entity.name.type.state.roadbook')
     expect(await scopesAt('on upload.Progress -> A', 'Progress')).toContain('entity.name.type.event.roadbook')
     expect(await scopesAt('on upload.Progress -> A', 'upload')).toContain('variable.other.roadbook')
+    expect(await scopesAt('on Retry | Reconnect -> A', 'Reconnect')).toContain('entity.name.type.event.roadbook')
+    expect(await scopesAt('on Retry | Reconnect -> A', '|')).toContain('keyword.operator.event.roadbook')
   })
 
   it('marks a peer’s end, and ended as a name elsewhere', async () => {

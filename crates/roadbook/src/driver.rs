@@ -598,6 +598,10 @@ impl<'a> Driver<'a> {
                 .program
                 .current_state(&self.snap.machine, &self.snap.active),
         };
+        // The tags first: whoever `set_state` wakes reads them.
+        let tags = self.program.tags(&self.snap.machine, &self.snap.active);
+        self.shared
+            .set_tags(tags.into_iter().map(str::to_owned).collect());
         if let Some(leaf) = leaf {
             self.shared.set_state(leaf);
         }

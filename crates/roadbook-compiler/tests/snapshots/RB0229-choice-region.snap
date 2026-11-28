@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0229]: choice `M.P.Pick` is a region of parallel state `M.P`
+ --> RB0229-choice-region.road:4:12
+  |
+4 |     choice Pick {
+  |            ^^^^
+  |
+  = help: every region of a parallel state stays active while it is; put the choice inside a region, a state of its own

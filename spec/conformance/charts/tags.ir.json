@@ -1,0 +1,541 @@
+{
+  "irVersion": "0.14",
+  "sources": [
+    {
+      "path": "spec/conformance/charts/tags.road",
+      "package": null
+    }
+  ],
+  "types": {},
+  "functions": {},
+  "actions": {},
+  "tasks": {},
+  "machines": {
+    "Gallery": {
+      "doc": "An image gallery that loads in two regions that share a tag.",
+      "span": {
+        "file": 0,
+        "line": 5,
+        "col": 1,
+        "endLine": 45,
+        "endCol": 2
+      },
+      "strict": false,
+      "params": [],
+      "returns": null,
+      "errors": [],
+      "vars": [
+        {
+          "name": "opened",
+          "type": "int",
+          "sensitive": false,
+          "init": {
+            "kind": "lit",
+            "value": 0,
+            "type": "int",
+            "text": "0"
+          },
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 11,
+            "col": 3,
+            "endLine": 11,
+            "endCol": 22
+          }
+        }
+      ],
+      "events": {
+        "Open": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 6,
+            "col": 3,
+            "endLine": 6,
+            "endCol": 13
+          }
+        },
+        "Loaded": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 7,
+            "col": 3,
+            "endLine": 7,
+            "endCol": 15
+          }
+        },
+        "Close": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 8,
+            "col": 3,
+            "endLine": 8,
+            "endCol": 14
+          }
+        },
+        "Quit": {
+          "fields": [],
+          "doc": "",
+          "span": {
+            "file": 0,
+            "line": 9,
+            "col": 3,
+            "endLine": 9,
+            "endCol": 13
+          }
+        }
+      },
+      "internalEvents": {},
+      "emits": {},
+      "calls": {},
+      "children": {},
+      "root": {
+        "id": "Gallery",
+        "name": "Gallery",
+        "kind": "compound",
+        "doc": "An image gallery that loads in two regions that share a tag.",
+        "tags": [
+          "app"
+        ],
+        "meta": {
+          "owner": "media",
+          "sla": 30,
+          "ratio": -0.5,
+          "beta": true
+        },
+        "span": {
+          "file": 0,
+          "line": 5,
+          "col": 1,
+          "endLine": 45,
+          "endCol": 2
+        },
+        "params": [],
+        "vars": [],
+        "initial": "Gallery.Closed",
+        "default": [],
+        "states": [
+          {
+            "id": "Gallery.Closed",
+            "name": "Closed",
+            "kind": "atomic",
+            "doc": "",
+            "tags": [
+              "idle"
+            ],
+            "meta": {},
+            "span": {
+              "file": 0,
+              "line": 18,
+              "col": 3,
+              "endLine": 22,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Open"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Gallery.Route"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [
+                  {
+                    "kind": "set",
+                    "var": "opened",
+                    "state": null,
+                    "value": {
+                      "kind": "op",
+                      "op": "+",
+                      "args": [
+                        {
+                          "kind": "ref",
+                          "path": [
+                            "opened"
+                          ],
+                          "state": null,
+                          "type": "int",
+                          "text": "opened"
+                        },
+                        {
+                          "kind": "lit",
+                          "value": 1,
+                          "type": "int",
+                          "text": "1"
+                        }
+                      ],
+                      "type": "int",
+                      "text": "opened + 1"
+                    }
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 20,
+                  "col": 5,
+                  "endLine": 20,
+                  "endCol": 46
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Quit"
+                },
+                "group": 1,
+                "guard": null,
+                "targets": [
+                  "Gallery.Done"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 21,
+                  "col": 5,
+                  "endLine": 21,
+                  "endCol": 20
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Gallery.Route",
+            "name": "Route",
+            "kind": "choice",
+            "doc": "",
+            "tags": [],
+            "meta": {},
+            "span": {
+              "file": 0,
+              "line": 25,
+              "col": 3,
+              "endLine": 28,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": {
+                  "kind": "op",
+                  "op": ">",
+                  "args": [
+                    {
+                      "kind": "ref",
+                      "path": [
+                        "opened"
+                      ],
+                      "state": null,
+                      "type": "int",
+                      "text": "opened"
+                    },
+                    {
+                      "kind": "lit",
+                      "value": 1,
+                      "type": "int",
+                      "text": "1"
+                    }
+                  ],
+                  "type": "bool",
+                  "text": "opened > 1"
+                },
+                "targets": [
+                  "Gallery.Viewing.Shown"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 26,
+                  "endCol": 35
+                }
+              },
+              {
+                "trigger": {
+                  "kind": "always"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Gallery.Viewing"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 27,
+                  "col": 5,
+                  "endLine": 27,
+                  "endCol": 29
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Gallery.Viewing",
+            "name": "Viewing",
+            "kind": "compound",
+            "doc": "",
+            "tags": [
+              "open"
+            ],
+            "meta": {
+              "label": "Viewing"
+            },
+            "span": {
+              "file": 0,
+              "line": 30,
+              "col": 3,
+              "endLine": 42,
+              "endCol": 4
+            },
+            "params": [],
+            "vars": [],
+            "initial": "Gallery.Viewing.Loading",
+            "default": [],
+            "states": [
+              {
+                "id": "Gallery.Viewing.Loading",
+                "name": "Loading",
+                "kind": "parallel",
+                "doc": "",
+                "tags": [
+                  "busy"
+                ],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 35,
+                  "col": 5,
+                  "endLine": 40,
+                  "endCol": 6
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [],
+                "states": [
+                  {
+                    "id": "Gallery.Viewing.Loading.Thumbs",
+                    "name": "Thumbs",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [
+                      "network"
+                    ],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 38,
+                      "col": 7,
+                      "endLine": 38,
+                      "endCol": 36
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  },
+                  {
+                    "id": "Gallery.Viewing.Loading.Full",
+                    "name": "Full",
+                    "kind": "atomic",
+                    "doc": "",
+                    "tags": [
+                      "network",
+                      "slow"
+                    ],
+                    "meta": {},
+                    "span": {
+                      "file": 0,
+                      "line": 39,
+                      "col": 7,
+                      "endLine": 39,
+                      "endCol": 42
+                    },
+                    "params": [],
+                    "vars": [],
+                    "initial": null,
+                    "default": [],
+                    "states": [],
+                    "entry": [],
+                    "exit": [],
+                    "invokes": [],
+                    "transitions": [],
+                    "output": null,
+                    "fail": null
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [
+                  {
+                    "trigger": {
+                      "kind": "event",
+                      "event": "Loaded"
+                    },
+                    "group": 0,
+                    "guard": null,
+                    "targets": [
+                      "Gallery.Viewing.Shown"
+                    ],
+                    "internal": false,
+                    "args": [],
+                    "effects": [],
+                    "span": {
+                      "file": 0,
+                      "line": 37,
+                      "col": 7,
+                      "endLine": 37,
+                      "endCol": 25
+                    }
+                  }
+                ],
+                "output": null,
+                "fail": null
+              },
+              {
+                "id": "Gallery.Viewing.Shown",
+                "name": "Shown",
+                "kind": "atomic",
+                "doc": "",
+                "tags": [
+                  "ready"
+                ],
+                "meta": {},
+                "span": {
+                  "file": 0,
+                  "line": 41,
+                  "col": 5,
+                  "endLine": 41,
+                  "endCol": 31
+                },
+                "params": [],
+                "vars": [],
+                "initial": null,
+                "default": [],
+                "states": [],
+                "entry": [],
+                "exit": [],
+                "invokes": [],
+                "transitions": [],
+                "output": null,
+                "fail": null
+              }
+            ],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [
+              {
+                "trigger": {
+                  "kind": "event",
+                  "event": "Close"
+                },
+                "group": 0,
+                "guard": null,
+                "targets": [
+                  "Gallery.Closed"
+                ],
+                "internal": false,
+                "args": [],
+                "effects": [],
+                "span": {
+                  "file": 0,
+                  "line": 33,
+                  "col": 5,
+                  "endLine": 33,
+                  "endCol": 23
+                }
+              }
+            ],
+            "output": null,
+            "fail": null
+          },
+          {
+            "id": "Gallery.Done",
+            "name": "Done",
+            "kind": "final",
+            "doc": "",
+            "tags": [
+              "idle"
+            ],
+            "meta": {},
+            "span": {
+              "file": 0,
+              "line": 44,
+              "col": 3,
+              "endLine": 44,
+              "endCol": 33
+            },
+            "params": [],
+            "vars": [],
+            "initial": null,
+            "default": [],
+            "states": [],
+            "entry": [],
+            "exit": [],
+            "invokes": [],
+            "transitions": [],
+            "output": null,
+            "fail": null
+          }
+        ],
+        "entry": [],
+        "exit": [],
+        "invokes": [],
+        "transitions": [],
+        "output": null,
+        "fail": null
+      },
+      "hash": "sha256:cd98343e9920a5df31bbc2c7b9b9ff6ff53bbacb1a9802938c9c8ecc4c6fd2d0"
+    }
+  }
+}

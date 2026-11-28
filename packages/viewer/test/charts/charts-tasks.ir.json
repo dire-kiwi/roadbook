@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "packages/viewer/test/charts/tasks.road",
@@ -312,6 +312,8 @@
         "name": "Uploads",
         "kind": "compound",
         "doc": "Uploads one file and then many, counting the seconds it waits in between.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 19,
@@ -322,12 +324,15 @@
         "params": [],
         "vars": [],
         "initial": "Uploads.Single",
+        "default": [],
         "states": [
           {
             "id": "Uploads.Single",
             "name": "Single",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 34,
@@ -338,6 +343,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -589,6 +595,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,
@@ -599,6 +607,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -710,6 +719,8 @@
             "name": "Many",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 52,
@@ -720,6 +731,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -980,6 +992,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 61,
@@ -990,6 +1004,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

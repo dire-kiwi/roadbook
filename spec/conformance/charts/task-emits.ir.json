@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/task-emits.road",
@@ -239,6 +239,8 @@
         "name": "Publish",
         "kind": "compound",
         "doc": "Uploads through an emitting task and shows its progress. Can pause, and upload again.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 18,
@@ -249,12 +251,15 @@
         "params": [],
         "vars": [],
         "initial": "Publish.Uploading",
+        "default": [],
         "states": [
           {
             "id": "Publish.Uploading",
             "name": "Uploading",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 28,
@@ -265,6 +270,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -435,6 +441,8 @@
             "name": "Paused",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -445,6 +453,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -480,6 +489,8 @@
             "name": "Stored",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -490,6 +501,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -546,6 +558,8 @@
             "name": "Published",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 43,
@@ -556,6 +570,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -675,6 +690,8 @@
         "name": "Eager",
         "kind": "compound",
         "doc": "Moves on as soon as the upload says it is complete, without waiting for its outcome.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 47,
@@ -685,12 +702,15 @@
         "params": [],
         "vars": [],
         "initial": "Eager.Uploading",
+        "default": [],
         "states": [
           {
             "id": "Eager.Uploading",
             "name": "Uploading",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 56,
@@ -701,6 +721,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -900,6 +921,8 @@
             "name": "Stored",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 66,
@@ -910,6 +933,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -966,6 +990,8 @@
             "name": "Published",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 71,
@@ -976,6 +1002,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1053,6 +1080,8 @@
         "name": "Quiet",
         "kind": "compound",
         "doc": "Invokes `upload` twice: first with `as`, hearing only `Progress`, then without, hearing\nnothing.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 76,
@@ -1063,12 +1092,15 @@
         "params": [],
         "vars": [],
         "initial": "Quiet.Heard",
+        "default": [],
         "states": [
           {
             "id": "Quiet.Heard",
             "name": "Heard",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 81,
@@ -1079,6 +1111,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1195,6 +1228,8 @@
             "name": "Unnamed",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 88,
@@ -1205,6 +1240,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1297,6 +1333,8 @@
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 94,
@@ -1307,6 +1345,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1384,6 +1423,8 @@
         "name": "Gauge",
         "kind": "compound",
         "doc": "Keeps the highest percentage it has heard. It is strict, but a `Progress` whose guard\nfails is dropped like any emitted event.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 99,
@@ -1394,12 +1435,15 @@
         "params": [],
         "vars": [],
         "initial": "Gauge.Uploading",
+        "default": [],
         "states": [
           {
             "id": "Gauge.Uploading",
             "name": "Uploading",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 104,
@@ -1410,6 +1454,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1552,6 +1597,8 @@
             "name": "Stored",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 111,
@@ -1562,6 +1609,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1651,6 +1699,8 @@
         "name": "Nested",
         "kind": "compound",
         "doc": "Hears `Progress` in whichever child state it is in. `-> .Second` keeps the upload running.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 115,
@@ -1661,12 +1711,15 @@
         "params": [],
         "vars": [],
         "initial": "Nested.Working",
+        "default": [],
         "states": [
           {
             "id": "Nested.Working",
             "name": "Working",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 122,
@@ -1677,12 +1730,15 @@
             "params": [],
             "vars": [],
             "initial": "Nested.Working.First",
+            "default": [],
             "states": [
               {
                 "id": "Nested.Working.First",
                 "name": "First",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 130,
@@ -1693,6 +1749,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1748,6 +1805,8 @@
                 "name": "Second",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 131,
@@ -1758,6 +1817,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1905,6 +1965,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 134,
@@ -1915,6 +1977,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1992,6 +2055,8 @@
         "name": "Login",
         "kind": "compound",
         "doc": "Signs in, keeping the name of the last step it heard.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 138,
@@ -2002,12 +2067,15 @@
         "params": [],
         "vars": [],
         "initial": "Login.Signing",
+        "default": [],
         "states": [
           {
             "id": "Login.Signing",
             "name": "Signing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 143,
@@ -2018,6 +2086,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2134,6 +2203,8 @@
             "name": "Signed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 150,
@@ -2144,6 +2215,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

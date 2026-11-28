@@ -1,0 +1,30 @@
+{
+  "description": "A history state with a default target enters the default when it has recorded nothing, and what it recorded once it has. `Previous -> Editing` (shallow) enters `Editing` and its initial state, not `Doc`'s initial `Blank`; once `Doc` is left from `Editing.Review` it restores `Editing` from its start. `Last -> Pages.Second` (deep) enters `Pages` on the way to `Second`, and once left from `Third` restores `Third`. `Restore -> Main.Split, Side.Wide` enters one state in each region of the parallel `View`; once left, it restores each region from its start, as a shallow history state of a parallel state does.",
+  "requires": [
+    "parallel",
+    "history"
+  ],
+  "chart": "charts/history-default.road",
+  "machine": "Editor",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    { "event": { "_tag": "Open" } },
+    { "event": { "_tag": "Next" } },
+    { "event": { "_tag": "Leave" } },
+    { "event": { "_tag": "Open" } },
+    { "event": { "_tag": "Leave" } },
+    { "event": { "_tag": "Notes" } },
+    { "event": { "_tag": "Next" } },
+    { "event": { "_tag": "Leave" } },
+    { "event": { "_tag": "Notes" } },
+    { "event": { "_tag": "Leave" } },
+    { "event": { "_tag": "Panels" } },
+    { "event": { "_tag": "Next" } },
+    { "event": { "_tag": "Leave" } },
+    { "event": { "_tag": "Panels" } }
+  ],
+  "status": "running"
+}

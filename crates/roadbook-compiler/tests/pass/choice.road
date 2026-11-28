@@ -1,0 +1,54 @@
+fn isVip(user: string)    -> bool
+action flag(what: string)
+
+/// Choice states: as the machine's `initial`, as a compound state's `initial`, as a
+/// transition's target, chained, inside a region, with effects and state arguments on a
+/// branch.
+machine Checkout(user: string) {
+  event Order { amount: int }
+  event Done
+
+  var amount: int = 0
+
+  initial Start
+
+  choice Start {
+    if isVip(user) -> Vip
+    else           -> Idle
+  }
+
+  state Idle { on Order -> Routing  set amount = event.amount }
+
+  /// Where an order goes.
+  choice Routing {
+    if amount > 1000 -> Review(amount)  do flag("review")
+    if amount > 100  -> Check
+    else             -> Standard
+  }
+
+  choice Check {
+    if isVip(user) -> Vip
+    else           -> Standard
+  }
+
+  state Review(owed: int) { on Done -> Idle }
+
+  state Vip { on Done -> Idle }
+
+  parallel state Standard {
+    state Billing {
+      initial Pick
+      choice Pick {
+        if amount > 50 -> Invoice
+        else           -> Card
+      }
+      state Invoice {}
+      state Card    {}
+    }
+    state Shipping {}
+    on Done -> Idle
+  }
+
+  check reachable Review
+  check reachable Standard.Billing.Card
+}

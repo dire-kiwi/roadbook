@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/locals-regions.road",
@@ -69,6 +69,8 @@
         "name": "Panels",
         "kind": "compound",
         "doc": "Regions with variables of the same name, a parallel state with parameters, and two\ntargets through it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 5,
@@ -79,12 +81,15 @@
         "params": [],
         "vars": [],
         "initial": "Panels.Idle",
+        "default": [],
         "states": [
           {
             "id": "Panels.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 12,
@@ -95,6 +100,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -199,6 +205,8 @@
             "name": "Panes",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 17,
@@ -222,12 +230,15 @@
             ],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Panels.Panes.Left",
                 "name": "Left",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 20,
@@ -261,12 +272,15 @@
                   }
                 ],
                 "initial": "Panels.Panes.Left.A",
+                "default": [],
                 "states": [
                   {
                     "id": "Panels.Panes.Left.A",
                     "name": "A",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 24,
@@ -277,6 +291,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -339,6 +354,8 @@
                     "name": "B",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 25,
@@ -356,6 +373,7 @@
                     ],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -377,6 +395,8 @@
                 "name": "Right",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 28,
@@ -424,12 +444,15 @@
                   }
                 ],
                 "initial": "Panels.Panes.Right.C",
+                "default": [],
                 "states": [
                   {
                     "id": "Panels.Panes.Right.C",
                     "name": "C",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 32,
@@ -440,6 +463,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -502,6 +526,8 @@
                     "name": "D",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 33,
@@ -512,6 +538,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],

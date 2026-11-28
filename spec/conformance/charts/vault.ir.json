@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/vault.road",
@@ -468,6 +468,8 @@
         "name": "Vault",
         "kind": "compound",
         "doc": "Signs a user in, with a retry after a lockout, and loads their profile.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 24,
@@ -478,12 +480,15 @@
         "params": [],
         "vars": [],
         "initial": "Vault.SigningIn",
+        "default": [],
         "states": [
           {
             "id": "Vault.SigningIn",
             "name": "SigningIn",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 35,
@@ -494,6 +499,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -641,6 +647,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 43,
@@ -651,6 +659,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -771,6 +780,8 @@
             "name": "Loading",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 49,
@@ -781,6 +792,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -911,6 +923,8 @@
             "name": "Loaded",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -921,6 +935,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -942,6 +957,8 @@
             "name": "GaveUp",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 58,
@@ -952,6 +969,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

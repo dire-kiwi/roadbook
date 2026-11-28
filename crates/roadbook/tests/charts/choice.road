@@ -1,0 +1,18 @@
+// A machine that starts in a choice, for include_choice.rs: a choice has no `State` variant,
+// so before its first step a run is in the state the choice's `else` leads to.
+
+fn big(n: int) -> bool
+
+machine Pick(n: int) {
+  event Again
+
+  initial First
+
+  choice First {
+    if big(n) -> Large
+    else      -> Small
+  }
+
+  state Small { on Again -> First }
+  state Large { on Again -> First }
+}

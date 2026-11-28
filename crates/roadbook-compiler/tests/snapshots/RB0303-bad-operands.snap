@@ -29,11 +29,13 @@ error[RB0303]: `not` needs a `bool`, found `int`
 10 |     always if not n -> Done
    |               ^^^^^
 
-error[RB0303]: `==` is defined on scalars and enums, not on `Order`
+error[RB0303]: `==` is not defined on `Order`: `Order.extra` is `json`, which cannot be compared
   --> RB0303-bad-operands.road:13:15
    |
 13 |     always if order == other -> Done
    |               ^^^^^^^^^^^^^^
+   |
+   = help: `==` compares scalars and enums, and records, errors, events, lists, maps and optionals of them; not `json`, an `extern type`, a `ref` or a pending call
 
 error[RB0303]: `<` compares two `int`s, two `float`s or two `duration`s, found `string` and `string`
   --> RB0303-bad-operands.road:16:15

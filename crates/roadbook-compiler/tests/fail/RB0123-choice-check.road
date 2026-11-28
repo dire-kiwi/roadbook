@@ -1,0 +1,15 @@
+machine M() {
+  event Go
+
+  initial A
+  state A { on Go -> Pick }
+  choice Pick {
+    if true -> A
+    else    -> B
+  }
+  final state B {}
+
+  check reachable Pick
+}
+
+// expect: RB0123 at 12:19

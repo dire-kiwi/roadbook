@@ -67,6 +67,7 @@ export interface ReportDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Report" | "Report.Scoring" | "Report.Paging" | "Report.Done"
+  readonly tag: never
   readonly fns: {
     readonly scoresFor: {
       readonly args: { readonly ids: ReadonlyArray<UserId> }

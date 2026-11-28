@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "packages/viewer/test/charts/stress.road",
@@ -111,6 +111,8 @@
         "name": "Ticker",
         "kind": "compound",
         "doc": "Ticks on its own.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 11,
@@ -121,12 +123,15 @@
         "params": [],
         "vars": [],
         "initial": "Ticker.Ticking",
+        "default": [],
         "states": [
           {
             "id": "Ticker.Ticking",
             "name": "Ticking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 13,
@@ -137,6 +142,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -216,6 +222,8 @@
             "name": "Stopping",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 17,
@@ -226,6 +234,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -260,6 +269,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 18,
@@ -270,6 +281,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -385,6 +397,8 @@
         "name": "Stress",
         "kind": "compound",
         "doc": "Every shape the viewer has to lay out, at once.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 22,
@@ -395,12 +409,15 @@
         "params": [],
         "vars": [],
         "initial": "Stress.Start",
+        "default": [],
         "states": [
           {
             "id": "Stress.Start",
             "name": "Start",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 35,
@@ -411,6 +428,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -548,6 +566,8 @@
             "name": "Running",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 42,
@@ -558,12 +578,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Stress.Running.Left",
                 "name": "Left",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 46,
@@ -574,12 +597,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Stress.Running.Left.A",
+                "default": [],
                 "states": [
                   {
                     "id": "Stress.Running.Left.A",
                     "name": "A",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 48,
@@ -590,6 +616,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -664,6 +691,8 @@
                     "name": "B",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 52,
@@ -674,6 +703,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -866,6 +896,8 @@
                     "name": "C",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 62,
@@ -876,6 +908,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -910,6 +943,8 @@
                     "name": "LeftDone",
                     "kind": "final",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 63,
@@ -920,6 +955,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -941,6 +977,8 @@
                 "name": "Right",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 66,
@@ -951,12 +989,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Stress.Running.Right.X",
+                "default": [],
                 "states": [
                   {
                     "id": "Stress.Running.Right.X",
                     "name": "X",
                     "kind": "compound",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 68,
@@ -967,12 +1008,15 @@
                     "params": [],
                     "vars": [],
                     "initial": "Stress.Running.Right.X.X1",
+                    "default": [],
                     "states": [
                       {
                         "id": "Stress.Running.Right.X.X1",
                         "name": "X1",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 70,
@@ -983,6 +1027,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -1039,6 +1084,8 @@
                         "name": "X2",
                         "kind": "compound",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 74,
@@ -1049,12 +1096,15 @@
                         "params": [],
                         "vars": [],
                         "initial": "Stress.Running.Right.X.X2.Deep",
+                        "default": [],
                         "states": [
                           {
                             "id": "Stress.Running.Right.X.X2.Deep",
                             "name": "Deep",
                             "kind": "compound",
                             "doc": "",
+                            "tags": [],
+                            "meta": {},
                             "span": {
                               "file": 0,
                               "line": 76,
@@ -1065,12 +1115,15 @@
                             "params": [],
                             "vars": [],
                             "initial": "Stress.Running.Right.X.X2.Deep.Deeper",
+                            "default": [],
                             "states": [
                               {
                                 "id": "Stress.Running.Right.X.X2.Deep.Deeper",
                                 "name": "Deeper",
                                 "kind": "atomic",
                                 "doc": "",
+                                "tags": [],
+                                "meta": {},
                                 "span": {
                                   "file": 0,
                                   "line": 78,
@@ -1081,6 +1134,7 @@
                                 "params": [],
                                 "vars": [],
                                 "initial": null,
+                                "default": [],
                                 "states": [],
                                 "entry": [],
                                 "exit": [],
@@ -1184,6 +1238,8 @@
                     "name": "Y",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 84,
@@ -1194,6 +1250,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -1269,6 +1326,8 @@
                     "name": "RightDone",
                     "kind": "final",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 89,
@@ -1279,6 +1338,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -1350,6 +1410,8 @@
             "name": "Stopped",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 93,
@@ -1360,6 +1422,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1395,6 +1458,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 95,
@@ -1405,6 +1470,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1426,6 +1492,8 @@
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 96,
@@ -1436,6 +1504,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1468,6 +1537,8 @@
             "name": "Expired",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 97,
@@ -1478,6 +1549,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1510,6 +1582,8 @@
             "name": "Quit1",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 98,
@@ -1520,6 +1594,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1538,6 +1613,8 @@
             "name": "Quit2",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 99,
@@ -1548,6 +1625,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1566,6 +1644,8 @@
             "name": "Quit3",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 100,
@@ -1576,6 +1656,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1594,6 +1675,8 @@
             "name": "Quit4",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 101,
@@ -1604,6 +1687,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1622,6 +1706,8 @@
             "name": "Quit5",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 102,
@@ -1632,6 +1718,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1650,6 +1737,8 @@
             "name": "Exits",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 104,
@@ -1660,6 +1749,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

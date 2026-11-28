@@ -1,0 +1,46 @@
+{"input":{"a":[{"at":{"x":1,"y":0},"name":"x","note":null},{"at":{"x":2,"y":2.5},"name":"y","note":"n"}],"b":[{"at":{"x":1,"y":0},"name":"x","note":null},{"at":{"x":2,"y":2.5},"name":"y","note":"n"}],"c":[{"at":{"x":1,"y":0},"name":"x","note":null},{"at":{"x":2,"y":2.5},"name":"y","note":"m"}],"colour":"Green","expected":{"_tag":"Refused","at":null,"code":3},"item":{"at":{"x":1,"y":0},"name":"x","note":null},"m1":{"a":1,"b":2},"m2":{"a":1,"b":2},"m3":{"a":1,"b":2,"c":3},"p":{"value":{"x":1,"y":1.5}},"q":{"value":{"x":1,"y":1.5}},"r":{"value":{"value":null}},"s":{"value":null}},"ir":"sha256:76ba7b33e2de65cf93898290b919ed78542445fc7ab56a4e7cb2fb2cc2fc2c89","kind":"started","machine":"Equality","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Equality","t":0}
+{"kind":"entered","run":"r1","state":"Equality.Comparing","t":0}
+{"action":"saw","args":{"same":true,"what":"lists"},"kind":"action","run":"r1","t":0}
+{"action":"saw","args":{"same":true,"what":"lists differ"},"kind":"action","run":"r1","t":0}
+{"action":"saw","args":{"same":true,"what":"maps"},"kind":"action","run":"r1","t":0}
+{"action":"saw","args":{"same":false,"what":"maps differ"},"kind":"action","run":"r1","t":0}
+{"action":"saw","args":{"same":true,"what":"boxes"},"kind":"action","run":"r1","t":0}
+{"action":"saw","args":{"same":false,"what":"inner boxes"},"kind":"action","run":"r1","t":0}
+{"action":"saw","args":{"same":false,"what":"nested boxes"},"kind":"action","run":"r1","t":0}
+{"action":"saw","args":{"same":true,"what":"enum"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Compare","left":{"at":{"x":1,"y":0.5},"name":"x","note":null},"right":{"at":{"x":1,"y":0.5},"name":"x","note":null},"tags":["a","b"]}},"kind":"event","run":"r1","t":0}
+{"from":"Equality.Comparing","index":0,"kind":"transition","run":"r1","t":0,"to":[]}
+{"action":"saw","args":{"same":true,"what":"items"},"kind":"action","run":"r1","t":0}
+{"action":"saw","args":{"same":true,"what":"tags"},"kind":"action","run":"r1","t":0}
+{"action":"saw","args":{"same":true,"what":"events"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Compare","left":{"at":{"x":1,"y":0.5},"name":"x","note":null},"right":{"at":{"x":1,"y":0.5},"name":"x","note":"late"},"tags":null}},"kind":"event","run":"r1","t":0}
+{"from":"Equality.Comparing","index":0,"kind":"transition","run":"r1","t":0,"to":[]}
+{"action":"saw","args":{"same":false,"what":"items"},"kind":"action","run":"r1","t":0}
+{"action":"saw","args":{"same":true,"what":"tags"},"kind":"action","run":"r1","t":0}
+{"action":"saw","args":{"same":true,"what":"events"},"kind":"action","run":"r1","t":0}
+{"event":{"kind":"event","value":{"_tag":"Fetch"}},"kind":"event","run":"r1","t":0}
+{"from":"Equality.Comparing","index":1,"kind":"transition","run":"r1","t":0,"to":["Equality.Fetching"]}
+{"kind":"exited","run":"r1","state":"Equality.Comparing","t":0}
+{"kind":"entered","run":"r1","state":"Equality.Fetching","t":0}
+{"args":{"id":"i1"},"invoke":1,"kind":"invoke.started","run":"r1","src":"fetch","state":"Equality.Fetching","t":0}
+{"event":{"invoke":1,"kind":"invoke.done","value":{"at":{"x":1,"y":0},"name":"x","note":null}},"kind":"event","run":"r1","t":0}
+{"from":"Equality.Fetching","index":0,"kind":"transition","run":"r1","t":0,"to":["Equality.Fetching"]}
+{"kind":"exited","run":"r1","state":"Equality.Fetching","t":0}
+{"action":"saw","args":{"same":true,"what":"item"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Equality.Fetching","t":0}
+{"args":{"id":"i1"},"invoke":2,"kind":"invoke.started","run":"r1","src":"fetch","state":"Equality.Fetching","t":0}
+{"event":{"error":{"_tag":"Refused","at":{"x":1,"y":2},"code":3},"invoke":2,"kind":"invoke.fail"},"kind":"event","run":"r1","t":0}
+{"from":"Equality.Fetching","index":2,"kind":"transition","run":"r1","t":0,"to":["Equality.Fetching"]}
+{"kind":"exited","run":"r1","state":"Equality.Fetching","t":0}
+{"action":"saw","args":{"same":false,"what":"expected error"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Equality.Fetching","t":0}
+{"args":{"id":"i1"},"invoke":3,"kind":"invoke.started","run":"r1","src":"fetch","state":"Equality.Fetching","t":0}
+{"event":{"error":{"_tag":"Refused","at":null,"code":3},"invoke":3,"kind":"invoke.fail"},"kind":"event","run":"r1","t":0}
+{"from":"Equality.Fetching","index":1,"kind":"transition","run":"r1","t":0,"to":["Equality.Done"]}
+{"kind":"exited","run":"r1","state":"Equality.Fetching","t":0}
+{"action":"saw","args":{"same":true,"what":"expected error"},"kind":"action","run":"r1","t":0}
+{"kind":"entered","run":"r1","state":"Equality.Done","t":0}
+{"kind":"exited","run":"r1","state":"Equality.Done","t":0}
+{"kind":"exited","run":"r1","state":"Equality","t":0}
+{"kind":"done","output":null,"run":"r1","state":"Equality.Done","t":0}

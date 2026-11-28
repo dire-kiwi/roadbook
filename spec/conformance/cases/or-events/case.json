@@ -1,0 +1,26 @@
+{
+  "description": "`on A | B` is taken for each event it lists, as separate `on`s would be: the trace's `index` names the copy of the branch for the event that came (the events' copies follow one another, in the order written), a block's guards are tried among its event's own copies, the fields every listed event has are read through `event`, an event the active state's `on A | B` does not list goes on to the machine body's, and one whose copy's guard is false is dropped as it would be by an `on` of its own.",
+  "requires": [],
+  "chart": "charts/or-events.road",
+  "machine": "Link",
+  "input": {},
+  "stub": [],
+  "fns": {},
+  "actions": {},
+  "script": [
+    { "event": { "_tag": "Retry", "reason": "timeout", "attempts": 1 } },
+    { "event": { "_tag": "Drop", "reason": "" } },
+    { "event": { "_tag": "Reconnect", "reason": "moved" } },
+    { "event": { "_tag": "Retry", "reason": "again", "attempts": 2 } },
+    { "event": { "_tag": "Drop", "reason": "lost" } },
+    { "event": { "_tag": "Reconnect", "reason": "late" } },
+    { "event": { "_tag": "Drop", "reason": "gone" } },
+    { "event": { "_tag": "Reset" } },
+    { "event": { "_tag": "Reconnect", "reason": "fresh" } },
+    { "event": { "_tag": "Reconnect", "reason": "back" } },
+    { "event": { "_tag": "Retry", "reason": "third", "attempts": 3 } },
+    { "event": { "_tag": "Reconnect", "reason": "away" } },
+    { "event": { "_tag": "Retry", "reason": "fourth", "attempts": 4 } }
+  ],
+  "status": "running"
+}

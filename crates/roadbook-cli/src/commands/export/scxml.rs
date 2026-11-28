@@ -14,7 +14,8 @@
 //!   state name has: `<state>_invoke` for an invoke, `<state>_after_<group>` for a timer.
 //! - **Data model.** `datamodel="roadbook"`: every `cond`, `expr`, `delayexpr`, `targetexpr`
 //!   and `location` is the canonical text of a Roadbook expression, which reads `event`,
-//!   `result` and `error` as the IR says. Parameters and variables are `<data>`, with their
+//!   `result` and `error` as the IR says, and `in(A.B)` as the chart writes it (SCXML's
+//!   `In('M_A_B')`). Parameters and variables are `<data>`, with their
 //!   types, and the machine's result type, errors and `strict`, in attributes of the `rb:`
 //!   namespace.
 //! - **State parameters and variables** are `<data>` in the `<datamodel>` of their state, with
@@ -29,7 +30,8 @@
 //!   or transitions: then a `<state>` with the machine's id inside it holds them, and its
 //!   transitions with a target inside it are `type="internal"`, so they do not leave the
 //!   machine. Top-level final states stay children of `<scxml>`, so reaching one ends the run.
-//! - **Triggers** are event names: `on E` is `E`; `on x.E` is `x.E`, also when `x` names a task
+//! - **Triggers** are event names: `on E` is `E`, and `on A | B`, which the IR holds as one copy
+//!   per event, is one transition with `event="A B"`; `on x.E` is `x.E`, also when `x` names a task
 //!   that emits (`invoke upload(…) as up` and `on up.Progress`); `on c`, which takes a call,
 //!   is `call.c` (see [`call_event`]); `on *` lists the machine's events the state has no `on`
 //!   for, never a call; `after d` is a `<send>` of `roadbook.after.<state>.<group>` on entry,
@@ -349,7 +351,8 @@ impl Writer<'_> {
     fn state(&mut self, s: &State, depth: usize) {
         self.comment(depth, &s.doc);
         let tag = match s.kind {
-            StateKind::Atomic | StateKind::Compound => "state",
+            // A choice is a transient state: its branches are eventless transitions.
+            StateKind::Atomic | StateKind::Compound | StateKind::Choice => "state",
             StateKind::Parallel => "parallel",
             StateKind::Final => "final",
             StateKind::History | StateKind::DeepHistory => {
@@ -481,8 +484,12 @@ impl Writer<'_> {
                 self.close(d, "invoke");
             }
         }
-        for t in &s.transitions {
-            self.transition(s, t, d);
+        for (i, t) in s.transitions.iter().enumerate() {
+            // The copies of an `on A | B` are one transition, which lists every event.
+            let copies = s.copies(i);
+            if !copies.is_empty() {
+                self.transition(s, t, &copies, d);
+            }
         }
         for c in &s.states {
             if c.kind.is_history() {
@@ -499,8 +506,9 @@ impl Writer<'_> {
         self.close(depth, tag);
     }
 
-    /// `<history>`, with the default transition SCXML requires: the parent's default entry,
-    /// which is what Roadbook enters when the history state has recorded nothing.
+    /// `<history>`, with the default transition SCXML requires: the history state's `default`,
+    /// or with none the parent's default entry, which is what Roadbook enters when the history
+    /// state has recorded nothing.
     fn history(&mut self, parent: &State, h: &State, depth: usize) {
         self.comment(depth, &h.doc);
         let ty = if h.kind == StateKind::DeepHistory {
@@ -515,6 +523,7 @@ impl Writer<'_> {
             false,
         );
         let targets: Vec<String> = match &parent.initial {
+            _ if !h.default.is_empty() => h.default.iter().map(|d| xml_id(d)).collect(),
             Some(initial) => vec![xml_id(initial)],
             None => parent
                 .states
@@ -532,9 +541,20 @@ impl Writer<'_> {
         self.close(depth, "history");
     }
 
-    fn transition(&mut self, s: &State, t: &Transition, depth: usize) {
+    /// Transition `t` of state `s`, and the other `copies` of its `on A | B` (indices into the
+    /// state's transitions, `t`'s own first).
+    fn transition(&mut self, s: &State, t: &Transition, copies: &[usize], depth: usize) {
         let event = match &t.trigger {
-            Trigger::Event { event } => Some(event.clone()),
+            Trigger::Event { .. } => {
+                let events: Vec<&str> = copies
+                    .iter()
+                    .filter_map(|&k| match &s.transitions[k].trigger {
+                        Trigger::Event { event } => Some(event.as_str()),
+                        _ => None,
+                    })
+                    .collect();
+                Some(events.join(" "))
+            }
             Trigger::Emitted { from, event } => Some(format!("{}.{event}", from.name)),
             Trigger::Call { call } => Some(call_event(call)),
             Trigger::Any => {

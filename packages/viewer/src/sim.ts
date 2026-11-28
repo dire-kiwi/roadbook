@@ -16,8 +16,8 @@
 // record only, and a peer the machine holds a `ref` to and has an `on name.ended` for can be
 // made to end, once, with the status the reader picks.
 
-import { canonicalJson, ENDED_VARIANTS, getMachine, IrError, start as coreStart, step as coreStep } from '@dire-kiwi/roadbook-core'
-import type { Command, EndedStatus, Fns, FnResult, Input, Ir as CoreIr, Json, Snapshot, Stepped, Tagged, TraceRecord } from '@dire-kiwi/roadbook-core'
+import { canonicalJson, ENDED_VARIANTS, getMachine, IrError, start as coreStart, step as coreStep, tagsOf } from '@dire-kiwi/roadbook-core'
+import type { Command, EndedStatus, Fns, FnResult, Input, Ir as CoreIr, Json, Machine as CoreMachine, Snapshot, Stepped, Tagged, TraceRecord } from '@dire-kiwi/roadbook-core'
 import type { Field, FunctionDecl, Ir, Machine } from './ir.ts'
 import { own } from './ir.ts'
 import { findState, invokeNamed, isOutcomeOf, walkStates } from './model.ts'
@@ -243,6 +243,15 @@ export class Simulation {
 
   get started(): boolean {
     return this.at >= 0
+  }
+
+  /**
+   * The tags of the run in the frame shown: those of its active states, each once, in document
+   * order (execution.md, "Tags"). None before the run has started, and once it has ended.
+   */
+  tags(): readonly string[] {
+    const f = this.current
+    return f ? tagsOf(this.def as unknown as CoreMachine, f.snapshot.active) : []
   }
 
   /** The records from the start up to the frame shown. */

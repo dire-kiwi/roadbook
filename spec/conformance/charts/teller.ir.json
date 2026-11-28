@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/teller.road",
@@ -281,6 +281,8 @@
         "name": "Teller",
         "kind": "compound",
         "doc": "Answers questions from whoever invoked it with what it was asked.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 7,
@@ -291,12 +293,15 @@
         "params": [],
         "vars": [],
         "initial": "Teller.Listening",
+        "default": [],
         "states": [
           {
             "id": "Teller.Listening",
             "name": "Listening",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 14,
@@ -307,6 +312,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -399,6 +405,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 19,
@@ -409,6 +417,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -514,6 +523,8 @@
         "name": "Keeper",
         "kind": "compound",
         "doc": "Invokes a Teller and asks it a question: before it runs, and once it does.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 23,
@@ -524,12 +535,15 @@
         "params": [],
         "vars": [],
         "initial": "Keeper.Asking",
+        "default": [],
         "states": [
           {
             "id": "Keeper.Asking",
             "name": "Asking",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -540,12 +554,15 @@
             "params": [],
             "vars": [],
             "initial": "Keeper.Asking.Ready",
+            "default": [],
             "states": [
               {
                 "id": "Keeper.Asking.Ready",
                 "name": "Ready",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 36,
@@ -556,6 +573,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -778,6 +796,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 44,
@@ -788,6 +808,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -886,6 +907,8 @@
         "name": "Caller",
         "kind": "compound",
         "doc": "Asks a Teller it holds a `ref` to, and keeps the answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 48,
@@ -896,12 +919,15 @@
         "params": [],
         "vars": [],
         "initial": "Caller.Asking",
+        "default": [],
         "states": [
           {
             "id": "Caller.Asking",
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 56,
@@ -912,6 +938,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -1069,6 +1096,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 63,
@@ -1079,6 +1108,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

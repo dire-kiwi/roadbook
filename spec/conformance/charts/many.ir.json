@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/many.road",
@@ -55,6 +55,8 @@
         "name": "Many",
         "kind": "compound",
         "doc": "Runs Leaf ten times.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 5,
@@ -65,12 +67,15 @@
         "params": [],
         "vars": [],
         "initial": "Many.Spawning",
+        "default": [],
         "states": [
           {
             "id": "Many.Spawning",
             "name": "Spawning",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 10,
@@ -81,6 +86,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -203,6 +209,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 19,
@@ -213,6 +221,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -255,6 +264,8 @@
         "name": "Leaf",
         "kind": "compound",
         "doc": "Ends as soon as it starts.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 23,
@@ -265,12 +276,15 @@
         "params": [],
         "vars": [],
         "initial": "Leaf.Over",
+        "default": [],
         "states": [
           {
             "id": "Leaf.Over",
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -281,6 +295,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

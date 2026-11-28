@@ -1724,12 +1724,17 @@ export const run = (program: Program, input: unknown): Effect.Effect<unknown, un
     return Effect.flatMap(makeInstance(program, begin, env), (instance) => instance.loop)
   })
 
-const toSnapshot = <D extends MachineDef>(core: Core.Snapshot): Snapshot<D> => ({
-  status: core.status,
-  active: core.active as ReadonlyArray<D["state"]>,
-  matches: (state) => core.active.includes(state),
-  core
-})
+const toSnapshot = <D extends MachineDef>(program: Program) => (core: Core.Snapshot): Snapshot<D> => {
+  const tags = Core.tagsOf(program.machine, core.active) as ReadonlyArray<D["tag"]>
+  return {
+    status: core.status,
+    active: core.active as ReadonlyArray<D["state"]>,
+    matches: (state) => core.active.includes(state),
+    tags,
+    hasTag: (tag) => tags.includes(tag),
+    core
+  }
+}
 
 /** Fork a top-level run into the scope and give its actor once it has started. */
 const actorOf = <D extends MachineDef>(program: Program, begin: Begin) =>
@@ -1743,12 +1748,12 @@ const actorOf = <D extends MachineDef>(program: Program, begin: Begin) =>
     const actor: Actor<D> = {
       send: handle.send,
       handle,
-      snapshot: Effect.map(SubscriptionRef.get(instance.ref), toSnapshot<D>),
+      snapshot: Effect.map(SubscriptionRef.get(instance.ref), toSnapshot<D>(program)),
       // Every step sets the snapshot, the last one included, and so does suspending, so the
       // stream ends with it.
       changes: SubscriptionRef.changes(instance.ref).pipe(
         Stream.takeUntil(instance.isLast),
-        Stream.map(toSnapshot<D>)
+        Stream.map(toSnapshot<D>(program))
       ),
       // Subscribed while the stream runs; the run's end, or its suspending, ends it.
       emitted: Stream.callback<Core.Tagged>((queue) =>

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/locals-defects.road",
@@ -47,6 +47,8 @@
         "name": "Unset",
         "kind": "compound",
         "doc": "A state variable with no initial value, read by a guard before anything assigns it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 5,
@@ -57,12 +59,15 @@
         "params": [],
         "vars": [],
         "initial": "Unset.A",
+        "default": [],
         "states": [
           {
             "id": "Unset.A",
             "name": "A",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 10,
@@ -88,6 +93,7 @@
               }
             ],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -166,6 +172,8 @@
             "name": "B",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 18,
@@ -176,6 +184,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

@@ -44,6 +44,8 @@ export interface MachineDef {
   readonly emits: unknown
   /** Every state id, the root's included. */
   readonly state: string
+  /** Every tag the machine's states declare (`tags busy`): what `hasTag` takes. */
+  readonly tag: string
   readonly fns: Record<string, { readonly args: object; readonly returns: unknown }>
   readonly actions: Record<string, object>
   readonly tasks: Record<string, Callable>
@@ -112,6 +114,13 @@ export interface Snapshot<D extends MachineDef> {
   readonly active: ReadonlyArray<D["state"]>
   /** Whether `state` is active. */
   readonly matches: (state: D["state"]) => boolean
+  /**
+   * The tags of the active states, each once, in document order: each state's tags in the order
+   * written, outermost state first (execution.md, "Tags"). `[]` once the run has ended.
+   */
+  readonly tags: ReadonlyArray<D["tag"]>
+  /** Whether `tag` is one of `tags`: whether some active state has it. */
+  readonly hasTag: (tag: D["tag"]) => boolean
   /** The snapshot as the core holds it: plain JSON, values in their JSON form. */
   readonly core: Core.Snapshot
 }

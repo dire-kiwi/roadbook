@@ -164,6 +164,9 @@ pub(crate) enum Implicit {
     /// `event` in `on name.ended`: read only through its field `status`, of the built-in enum
     /// `Ended`.
     Ended,
+    /// `event` in `on A | B`: one of these events of the machine's own, read only through the
+    /// fields they all have.
+    OneOf(Vec<String>),
 }
 
 #[derive(Clone, Debug)]
@@ -291,6 +294,13 @@ pub(crate) struct Cx<'c, 'p> {
     locals: Vec<Vec<Local>>,
     /// The node whose items are being lowered: its locals and its ancestors' are in scope.
     here: usize,
+    /// The innermost state certain to be active, with its ancestors, wherever the expressions
+    /// being lowered are evaluated: `None` where no state is (a machine variable's initial
+    /// value, the effects of a transition with no target, which another region's transition
+    /// may leave).
+    sure: Option<usize>,
+    /// Every `in(…)` lowered so far, resolved once the machine is (`checks::resolve_in`).
+    pub ins: Vec<crate::checks::InRef>,
 }
 
 /// Checks machine `m` declared in `file` and lowers it. Its hash is left empty.
@@ -345,6 +355,8 @@ pub(crate) fn lower<'p>(
         sens: false,
         locals: Vec::new(),
         here: 0,
+        sure: None,
+        ins: Vec::new(),
     };
 
     // Parameters and variables share one namespace.
@@ -688,6 +700,8 @@ pub(crate) fn lower<'p>(
         .filter_map(|n| Some((n.id.clone(), n.symbol?)))
         .collect();
     crate::checks::resolve(cx.ck, &name, &m.body, &root, &symbols);
+    let ins = std::mem::take(&mut cx.ins);
+    crate::checks::resolve_in(cx.ck, &name, &ins, &root, &symbols);
 
     let info = cx.info;
     ck.machines.push(info);
@@ -727,6 +741,10 @@ fn trigger_key(t: &Trigger) -> String {
     };
     match t {
         Trigger::On(p) => format!("on {}", pattern(p)),
+        Trigger::OneOf(names) => {
+            let names: Vec<&str> = names.iter().map(|n| n.name.as_str()).collect();
+            format!("on {}", names.join(" | "))
+        }
         Trigger::Receive { from, event } => format!("on {}.{}", from.name, event.name),
         Trigger::Call(n) => format!("on {}", n.name),
         Trigger::ChildDone { from } => format!("on {}.done", from.name),
@@ -862,6 +880,7 @@ impl<'p> Cx<'_, 'p> {
                 StateKind::Normal => "state",
                 StateKind::Final => "final state",
                 StateKind::Parallel => "parallel state",
+                StateKind::Choice => "choice",
             };
             let symbol = self.ck.define(
                 SymbolKind::State,
@@ -1020,6 +1039,7 @@ impl<'p> Cx<'_, 'p> {
                 .with_help("a history state returns to the child states its parent was in when it was last left; put it in a state that has child states"),
             );
         }
+        let default = self.history_default(idx, parent, h);
         self.info.states.insert(
             id.clone(),
             StateInfo {
@@ -1050,6 +1070,9 @@ impl<'p> Cx<'_, 'p> {
             params: Vec::new(),
             vars: Vec::new(),
             initial: None,
+            default,
+            tags: Vec::new(),
+            meta: Default::default(),
             states: Vec::new(),
             entry: Vec::new(),
             exit: Vec::new(),
@@ -1058,6 +1081,101 @@ impl<'p> Cx<'_, 'p> {
             output: None,
             fail: None,
         }
+    }
+
+    /// Resolves and checks the default targets of history state `idx` of `parent`, `-> X, …`,
+    /// as a transition's targets written in the history state: among its siblings, then
+    /// outward. Each is a proper descendant of `parent` and not a history or choice state
+    /// (`RB0226`), no state from just below `parent` down to it has parameters (`RB0223`), and
+    /// several go together as a transition's targets do (`RB0222`). The ids of those that pass.
+    fn history_default(&mut self, idx: usize, parent: usize, h: &ast::History) -> Vec<String> {
+        let word = if h.deep { "deep history" } else { "history" };
+        let parent_id = self.nodes[parent].id.clone();
+        let mut nodes = Vec::new();
+        let mut ok = true;
+        for t in &h.default {
+            let Some(n) = self.target(idx, t) else {
+                ok = false;
+                continue;
+            };
+            let path: Vec<&str> = t.path.iter().map(|p| p.name.as_str()).collect();
+            let written = format!("{word} {} -> {}", h.name.name, path.join("."));
+            let problem = if n == parent {
+                Some((
+                    format!(
+                        "`{written}`: `{parent_id}` is the history state's parent, not a state inside it"
+                    ),
+                    format!(
+                        "a history state's default is where `{parent_id}` starts when it has nothing to return to: one of its child states, or a state below one"
+                    ),
+                ))
+            } else if !self.inside(n, parent) {
+                Some((
+                    format!(
+                        "`{written}`: `{}` is not inside `{parent_id}`",
+                        self.nodes[n].id
+                    ),
+                    format!(
+                        "a history state's default is where `{parent_id}` starts when it has nothing to return to: one of its child states, or a state below one"
+                    ),
+                ))
+            } else if self.nodes[n].history.is_some() {
+                Some((
+                    format!("`{written}`: `{}` is a history state", self.nodes[n].id),
+                    "a default names the states to enter; a history state is only a transition's target".to_string(),
+                ))
+            } else if self.nodes[n]
+                .state
+                .is_some_and(|s| s.kind == StateKind::Choice)
+            {
+                Some((
+                    format!("`{written}`: `{}` is a choice state", self.nodes[n].id),
+                    "a default names the states to enter and stay in; a run never rests in a choice, so name a state its branches go to, or make the choice the parent's `initial`".to_string(),
+                ))
+            } else {
+                None
+            };
+            if let Some((message, help)) = problem {
+                self.ck.diags.push(
+                    Diagnostic::error(codes::BAD_HISTORY_DEFAULT, t.span, message)
+                        .with_secondary(h.name.span, format!("the history state of `{parent_id}`"))
+                        .with_help(help),
+                );
+                ok = false;
+                continue;
+            }
+            // The states entered on the way, from just below the parent: none may take
+            // parameters, since nothing passes them arguments.
+            let mut x = n;
+            while x != parent {
+                let first = self.locals[x].iter().find(|l| l.param).map(|l| l.span);
+                if let Some(first) = first {
+                    let xid = self.nodes[x].id.clone();
+                    self.ck.diags.push(
+                        Diagnostic::error(
+                            codes::PARAMETERS_ON_DEFAULT_ENTRY,
+                            t.span,
+                            format!("`{written}`: `{xid}` takes parameters, so the default of a history state cannot enter it"),
+                        )
+                        .with_secondary(first, "a parameter")
+                        .with_help("a history state's default is entered with no transition to pass arguments; make the parameters variables of the state, or choose a default that does not enter it"),
+                    );
+                    ok = false;
+                    break;
+                }
+                x = self.nodes[x].parent.unwrap_or(parent);
+            }
+            nodes.push(n);
+        }
+        if ok && nodes.len() > 1 {
+            let before = self.ck.diags.len();
+            self.check_targets_go_together(&h.default, &nodes);
+            ok = self.ck.diags.len() == before;
+        }
+        if !ok {
+            return Vec::new();
+        }
+        nodes.iter().map(|&n| self.nodes[n].id.clone()).collect()
     }
 
     /// Reports `as` names that cannot be used: on a task, the name of a parameter or variable,
@@ -2090,9 +2208,13 @@ impl<'p> Cx<'_, 'p> {
             Some(StateKind::Parallel) => ir::StateKind::Parallel,
             Some(StateKind::Normal) if has_children => ir::StateKind::Compound,
             Some(StateKind::Normal) => ir::StateKind::Atomic,
+            Some(StateKind::Choice) => ir::StateKind::Choice,
         };
         let id = self.nodes[idx].id.clone();
         let name_span = self.nodes[idx].name_span;
+        if kind == ir::StateKind::Choice {
+            self.check_choice(idx);
+        }
         if kind == ir::StateKind::Final && has_children {
             self.ck.diags.push(
                 Diagnostic::error(
@@ -2121,6 +2243,7 @@ impl<'p> Cx<'_, 'p> {
             }
         }
         self.here = idx;
+        self.sure = Some(idx);
         let (params, vars, locals) = self.lower_locals(idx);
         self.info.states.insert(
             id.clone(),
@@ -2214,6 +2337,7 @@ impl<'p> Cx<'_, 'p> {
                 Item::Transition(t) => {
                     self.duplicate_trigger(&mut keys, t, &id, "");
                     let (trigger, scope) = self.state_trigger(idx, &t.trigger);
+                    let first = transitions.len();
                     self.branches(
                         idx,
                         t,
@@ -2223,6 +2347,24 @@ impl<'p> Cx<'_, 'p> {
                         &mut transitions,
                         &mut triggers,
                     );
+                    if let Trigger::OneOf(names) = &t.trigger {
+                        // One copy of the branches per other event, sharing their group and
+                        // spans: checked once, taken as if written as separate `on`s.
+                        let count = transitions.len() - first;
+                        let reads = self.transition_reads.len() - count;
+                        for n in &names[1..] {
+                            for k in 0..count {
+                                let mut copy = transitions[first + k].clone();
+                                copy.trigger = ir::Trigger::Event {
+                                    event: n.name.clone(),
+                                };
+                                transitions.push(copy);
+                                triggers.push(triggers[first + k]);
+                                let r = self.transition_reads[reads + k].clone();
+                                self.transition_reads.push(r);
+                            }
+                        }
+                    }
                     group += 1;
                 }
                 Item::Invoke(inv) => {
@@ -2316,6 +2458,9 @@ impl<'p> Cx<'_, 'p> {
                 | Item::History(_)
                 // Resolved once the machine is lowered, in `checks.rs`.
                 | Item::Check(_)
+                // In `tags_and_meta`.
+                | Item::Tags(_)
+                | Item::Meta(_)
                 | Item::State(_) => {}
             }
         }
@@ -2350,10 +2495,12 @@ impl<'p> Cx<'_, 'p> {
             info.result_reads = result_reads;
             info.transition_reads = transition_reads;
         }
+        let (tags, meta) = self.tags_and_meta(body, &id);
         let retry = retry.and_then(|plan| self.check_retry(idx, kind, plan));
         let children = self.nodes[idx].order.clone();
         let states = children.into_iter().map(|c| self.lower_state(c)).collect();
         self.here = idx;
+        self.sure = Some(idx);
         let mut lowered = ir::State {
             name: self.nodes[idx].name.clone(),
             id,
@@ -2365,6 +2512,9 @@ impl<'p> Cx<'_, 'p> {
             params,
             vars,
             initial,
+            default: Vec::new(),
+            tags,
+            meta,
             states,
             entry,
             exit,
@@ -2377,6 +2527,155 @@ impl<'p> Cx<'_, 'p> {
             self.write_out_retry(&mut lowered, r);
         }
         lowered
+    }
+
+    /// The tags and `meta` of the state whose body is `body`, in the order written. A tag or
+    /// key written twice, or a second `tags` or `meta`, is `RB0230` or `RB0231`; a value that
+    /// is not a literal is `RB0232`. What is reported is left out.
+    fn tags_and_meta(
+        &mut self,
+        body: &Body,
+        id: &str,
+    ) -> (Vec<String>, IndexMap<String, serde_json::Value>) {
+        let mut tags: Vec<(String, Span)> = Vec::new();
+        let mut meta: IndexMap<String, (serde_json::Value, Span)> = IndexMap::new();
+        let (mut tags_item, mut meta_item): (Option<Span>, Option<Span>) = (None, None);
+        for item in &body.items {
+            match item {
+                Item::Tags(t) => {
+                    if let Some(first) = tags_item {
+                        self.ck.diags.push(
+                            Diagnostic::error(
+                                codes::DUPLICATE_TAG,
+                                t.span,
+                                format!("`{id}` already has a `tags`"),
+                            )
+                            .with_secondary(first, "the first `tags`")
+                            .with_help(
+                                "list every tag of the state in one `tags`, separated by commas",
+                            ),
+                        );
+                        continue;
+                    }
+                    tags_item = Some(t.span);
+                    for n in &t.names {
+                        if let Some((_, first)) = tags.iter().find(|(name, _)| *name == n.name) {
+                            self.ck.diags.push(
+                                Diagnostic::error(
+                                    codes::DUPLICATE_TAG,
+                                    n.span,
+                                    format!("tag `{}` is written twice on `{id}`", n.name),
+                                )
+                                .with_secondary(*first, "already written here")
+                                .with_help("a state has each tag once; remove this one"),
+                            );
+                            continue;
+                        }
+                        tags.push((n.name.clone(), n.span));
+                    }
+                }
+                Item::Meta(m) => {
+                    if let Some(first) = meta_item {
+                        self.ck.diags.push(
+                            Diagnostic::error(
+                                codes::DUPLICATE_META,
+                                m.span,
+                                format!("`{id}` already has a `meta`"),
+                            )
+                            .with_secondary(first, "the first `meta`")
+                            .with_help(
+                                "write every entry of the state's `meta` in one `meta { … }`",
+                            ),
+                        );
+                        continue;
+                    }
+                    meta_item = Some(m.span);
+                    for e in &m.entries {
+                        if let Some((_, first)) = meta.get(&e.name.name) {
+                            self.ck.diags.push(
+                                Diagnostic::error(
+                                    codes::DUPLICATE_META,
+                                    e.name.span,
+                                    format!(
+                                        "`meta` key `{}` is written twice on `{id}`",
+                                        e.name.name
+                                    ),
+                                )
+                                .with_secondary(*first, "already written here")
+                                .with_help("a `meta` has each key once; remove one of them"),
+                            );
+                            continue;
+                        }
+                        let Some(value) = meta_literal(&e.value) else {
+                            self.ck.diags.push(
+                                Diagnostic::error(
+                                    codes::BAD_META_VALUE,
+                                    e.value.span,
+                                    format!("the value of `meta` key `{}` is not a literal", e.name.name),
+                                )
+                                .with_help("a `meta` value is a string, int, float or bool written out, such as `\"payments\"`, `30`, `-0.5` or `true`; it is data about the state, never computed"),
+                            );
+                            continue;
+                        };
+                        meta.insert(e.name.name.clone(), (value, e.name.span));
+                    }
+                }
+                _ => {}
+            }
+        }
+        (
+            tags.into_iter().map(|(t, _)| t).collect(),
+            meta.into_iter().map(|(k, (v, _))| (k, v)).collect(),
+        )
+    }
+
+    /// Checks choice state `idx`: not a region of a parallel state (`RB0229`), a target on
+    /// every branch (`RB0228`) and an `else` last (`RB0227`), so the run always leaves it.
+    fn check_choice(&mut self, idx: usize) {
+        let Some(s) = self.nodes[idx].state else {
+            return;
+        };
+        let id = self.nodes[idx].id.clone();
+        if let Some(p) = self.nodes[idx].parent
+            && self.is_parallel(p)
+        {
+            let pid = self.nodes[p].id.clone();
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::CHOICE_AS_REGION,
+                    s.name.span,
+                    format!("choice `{id}` is a region of parallel state `{pid}`"),
+                )
+                .with_help("every region of a parallel state stays active while it is; put the choice inside a region, a state of its own"),
+            );
+        }
+        let Some(Item::Transition(t)) = s.body.items.first() else {
+            return;
+        };
+        for b in t.branches.iter().filter(|b| b.targets.is_empty()) {
+            let span = b.guard.as_ref().map_or(b.span, |g| b.span.to(g.span));
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::CHOICE_BRANCH_WITHOUT_TARGET,
+                    span,
+                    format!("a branch of choice `{id}` has no target"),
+                )
+                .with_help("a run never stays in a choice, so each branch leaves it: give the branch a target, `-> State`"),
+            );
+        }
+        if let Some(last) = t.branches.iter().last()
+            && let Some(guard) = &last.guard
+        {
+            self.ck.diags.push(
+                Diagnostic::error(
+                    codes::CHOICE_WITHOUT_ELSE,
+                    guard.span,
+                    format!("choice `{id}` has no `else`"),
+                )
+                .with_secondary(t.trigger_span, "the choice")
+                .with_help("a run never stays in a choice, so one branch must always be taken: end it with `else -> State`"),
+            );
+        }
     }
 
     /// Reports `RB0223` if node `c`, the `initial` of `parent` (written at `initial`) or one of
@@ -2624,7 +2923,37 @@ impl<'p> Cx<'_, 'p> {
         owner: &str,
         prefix: &str,
     ) {
+        if let Trigger::OneOf(names) = &t.trigger {
+            // Each event is a trigger of its own: `on A | B` and `on B` both handle `B`.
+            for (i, n) in names.iter().enumerate() {
+                if names[..i].iter().any(|m| m.name == n.name) {
+                    let all = trigger_key(&t.trigger);
+                    self.ck.diags.push(
+                        Diagnostic::error(
+                            codes::DUPLICATE_TRIGGER,
+                            n.span,
+                            format!("event `{}` is listed twice in `{all}`", n.name),
+                        )
+                        .with_help("list each event once"),
+                    );
+                    continue;
+                }
+                self.duplicate_key(keys, format!("on {}", n.name), n.span, owner, prefix);
+            }
+            return;
+        }
         let key = trigger_key(&t.trigger);
+        self.duplicate_key(keys, key, t.trigger_span, owner, prefix);
+    }
+
+    fn duplicate_key(
+        &mut self,
+        keys: &mut HashMap<String, Span>,
+        key: String,
+        span: Span,
+        owner: &str,
+        prefix: &str,
+    ) {
         if let Some(first) = keys.get(&key) {
             let what = if prefix.is_empty() {
                 format!("trigger `{key}` is written twice in `{owner}`")
@@ -2632,15 +2961,55 @@ impl<'p> Cx<'_, 'p> {
                 format!("outcome `{key}` is written twice in {prefix}")
             };
             self.ck.diags.push(
-                Diagnostic::error(codes::DUPLICATE_TRIGGER, t.trigger_span, what)
+                Diagnostic::error(codes::DUPLICATE_TRIGGER, span, what)
                     .with_secondary(*first, "first written here")
                     .with_help(format!(
                         "put every branch in one block, where their order is explicit: `{key} {{ if … -> A  else -> B }}`"
                     )),
             );
         } else {
-            keys.insert(key, t.trigger_span);
+            keys.insert(key, span);
         }
+    }
+
+    /// Records a use of `n`, one of the machine's own events in an `on`, for references and
+    /// the unused-event warning; reports it if the machine does not declare it.
+    fn own_event(&mut self, n: &Ident) -> bool {
+        self.ck.refer_member(self.file, self.symbol, n);
+        if self.events.contains_key(&n.name) {
+            self.info.used_events.insert(n.name.clone());
+            return true;
+        }
+        let declared: Vec<String> = self
+            .info
+            .events
+            .iter()
+            .map(|(e, _)| format!("`{e}`"))
+            .collect();
+        let mut d = Diagnostic::error(
+            codes::UNKNOWN_EVENT,
+            n.span,
+            format!("unknown event `{}`", n.name),
+        )
+        .with_label(if declared.is_empty() {
+            format!("`{}` declares no events", self.machine)
+        } else {
+            format!("`{}` declares {}", self.machine, declared.join(", "))
+        });
+        if let Some(s) = suggest(&n.name, self.info.events.iter().map(|(e, _)| e.as_str())) {
+            d = d.with_help(format!("did you mean `{s}`?")).with_fix(
+                format!("replace with `{s}`"),
+                n.span,
+                s,
+            );
+        } else {
+            d = d.with_help(format!(
+                "declare it in the machine body: `event {}`",
+                n.name
+            ));
+        }
+        self.ck.diags.push(d);
+        false
     }
 
     /// The IR trigger and the implicit names in scope for an `on`, `after`, `always` or `done`
@@ -2701,46 +3070,28 @@ impl<'p> Cx<'_, 'p> {
                 }
             }
             Trigger::On(Pattern::Name(n)) => {
-                self.ck.refer_member(self.file, self.symbol, n);
-                if self.events.contains_key(&n.name) {
-                    self.info.used_events.insert(n.name.clone());
-                    scope.event = Implicit::Has(Ty::Event(n.name.clone()));
+                scope.event = if self.own_event(n) {
+                    Implicit::Has(Ty::Event(n.name.clone()))
                 } else {
-                    let declared: Vec<String> = self
-                        .info
-                        .events
-                        .iter()
-                        .map(|(e, _)| format!("`{e}`"))
-                        .collect();
-                    let mut d = Diagnostic::error(
-                        codes::UNKNOWN_EVENT,
-                        n.span,
-                        format!("unknown event `{}`", n.name),
-                    )
-                    .with_label(if declared.is_empty() {
-                        format!("`{}` declares no events", self.machine)
-                    } else {
-                        format!("`{}` declares {}", self.machine, declared.join(", "))
-                    });
-                    if let Some(s) =
-                        suggest(&n.name, self.info.events.iter().map(|(e, _)| e.as_str()))
-                    {
-                        d = d.with_help(format!("did you mean `{s}`?")).with_fix(
-                            format!("replace with `{s}`"),
-                            n.span,
-                            s,
-                        );
-                    } else {
-                        d = d.with_help(format!(
-                            "declare it in the machine body: `event {}`",
-                            n.name
-                        ));
-                    }
-                    self.ck.diags.push(d);
-                    scope.event = Implicit::Has(Ty::Unknown);
-                }
+                    Implicit::Has(Ty::Unknown)
+                };
                 ir::Trigger::Event {
                     event: n.name.clone(),
+                }
+            }
+            Trigger::OneOf(names) => {
+                let mut known = true;
+                for n in names {
+                    known &= self.own_event(n);
+                }
+                scope.event = if known {
+                    Implicit::OneOf(names.iter().map(|n| n.name.clone()).collect())
+                } else {
+                    Implicit::Has(Ty::Unknown)
+                };
+                // The first event's: the caller copies the transition for each other one.
+                ir::Trigger::Event {
+                    event: names[0].name.clone(),
                 }
             }
             Trigger::Ended { from } => {
@@ -2942,7 +3293,9 @@ impl<'p> Cx<'_, 'p> {
             };
             let (effects, effect_reads) = self.effects(&b.effects, scope, place);
             self.reads.clear();
+            let sure = std::mem::replace(&mut self.sure, domain);
             let args = self.state_args(idx, &b.targets, &resolved, &target_nodes, domain, scope);
+            self.sure = sure;
             let arg_reads = std::mem::take(&mut self.reads);
             let span = match &t.branches {
                 Branches::Single(_) => t.span,
@@ -3538,6 +3891,21 @@ impl<'p> Cx<'_, 'p> {
         Some(node)
     }
 
+    /// Records `in(t)` for resolution once the machine is lowered, and gives the id it
+    /// names if it resolves: the machine's name and the path, joined by dots.
+    pub(crate) fn in_state(&mut self, t: &Target) -> String {
+        let mut id = self.machine.clone();
+        for seg in &t.path {
+            id.push('.');
+            id.push_str(&seg.name);
+        }
+        self.ins.push(crate::checks::InRef {
+            target: t.clone(),
+            sure: self.sure.map(|n| self.nodes[n].id.clone()),
+        });
+        id
+    }
+
     fn refer_state(&mut self, node: usize, name: &Ident) {
         if let Some(symbol) = self.nodes[node].symbol {
             self.ck.index.refer(symbol, name.span);
@@ -3547,6 +3915,23 @@ impl<'p> Cx<'_, 'p> {
     /// Checks and lowers effects: every `set`, then the `do`, `send` and `emit` effects, each
     /// in the order written, which is the order they run in. With each effect, what it reads.
     pub(crate) fn effects(
+        &mut self,
+        effects: &[Effect],
+        scope: &Scope,
+        place: Place,
+    ) -> (Vec<ir::Effect>, Vec<Reads>) {
+        let sure = self.sure;
+        self.sure = match place {
+            Place::Entry(n) | Place::Exit(n) => Some(n),
+            // After the exits, before the entries: the domain is kept.
+            Place::Transition { domain, .. } => domain,
+        };
+        let lowered = self.effects_in(effects, scope, place);
+        self.sure = sure;
+        lowered
+    }
+
+    fn effects_in(
         &mut self,
         effects: &[Effect],
         scope: &Scope,
@@ -4570,4 +4955,23 @@ fn dot_span(t: &Target) -> Span {
     end.offset += 1;
     end.col += 1;
     Span { end, ..t.span }
+}
+
+/// The JSON value of a `meta` value: a string, int, float or bool literal, a number with a
+/// `-` before it included. `None` for anything else.
+fn meta_literal(e: &ast::Expr) -> Option<serde_json::Value> {
+    use ast::{ExprKind, UnaryOp};
+    use serde_json::Value;
+    Some(match &e.kind {
+        ExprKind::String(s) => Value::String(s.clone()),
+        ExprKind::Bool(b) => Value::Bool(*b),
+        ExprKind::Int(i) => Value::from(*i),
+        ExprKind::Float(f) => Value::from(*f),
+        ExprKind::Unary(UnaryOp::Neg, inner) => match &inner.kind {
+            ExprKind::Int(i) => Value::from(i.checked_neg()?),
+            ExprKind::Float(f) => Value::from(-*f),
+            _ => return None,
+        },
+        _ => return None,
+    })
 }

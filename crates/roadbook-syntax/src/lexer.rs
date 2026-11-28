@@ -53,12 +53,13 @@ pub enum Keyword {
     And,
     Or,
     Not,
+    In,
     True,
     False,
 }
 
 impl Keyword {
-    pub const ALL: [Keyword; 40] = [
+    pub const ALL: [Keyword; 41] = [
         Keyword::Import,
         Keyword::Type,
         Keyword::Enum,
@@ -97,6 +98,7 @@ impl Keyword {
         Keyword::And,
         Keyword::Or,
         Keyword::Not,
+        Keyword::In,
         Keyword::True,
         Keyword::False,
     ];
@@ -141,6 +143,7 @@ impl Keyword {
             Keyword::And => "and",
             Keyword::Or => "or",
             Keyword::Not => "not",
+            Keyword::In => "in",
             Keyword::True => "true",
             Keyword::False => "false",
         }

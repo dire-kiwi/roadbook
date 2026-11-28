@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/retry.road",
@@ -249,6 +249,8 @@
         "name": "Fetcher",
         "kind": "compound",
         "doc": "Fetch a document with retries, then save it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 12,
@@ -259,12 +261,15 @@
         "params": [],
         "vars": [],
         "initial": "Fetcher.Loading",
+        "default": [],
         "states": [
           {
             "id": "Fetcher.Loading",
             "name": "Loading",
             "kind": "compound",
             "doc": "Busy is retried twice with a growing delay, Gone is not. The deadline covers every\nattempt and every wait.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 22,
@@ -275,12 +280,15 @@
             "params": [],
             "vars": [],
             "initial": "Fetcher.Loading.Attempt",
+            "default": [],
             "states": [
               {
                 "id": "Fetcher.Loading.Attempt",
                 "name": "Attempt",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 25,
@@ -291,6 +299,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -499,6 +508,8 @@
                 "name": "Backoff",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 25,
@@ -509,6 +520,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -632,6 +644,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -642,6 +656,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -677,6 +692,8 @@
             "name": "Saving",
             "kind": "compound",
             "doc": "Every error is retried once, at once.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -687,12 +704,15 @@
             "params": [],
             "vars": [],
             "initial": "Fetcher.Saving.Attempt",
+            "default": [],
             "states": [
               {
                 "id": "Fetcher.Saving.Attempt",
                 "name": "Attempt",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 37,
@@ -703,6 +723,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -878,6 +899,8 @@
             "name": "Saved",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 43,
@@ -888,6 +911,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -909,6 +933,8 @@
             "name": "Unsaved",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 44,
@@ -919,6 +945,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -937,6 +964,8 @@
             "name": "Missing",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 45,
@@ -947,6 +976,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -978,6 +1008,8 @@
             "name": "TimedOut",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,
@@ -988,6 +1020,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

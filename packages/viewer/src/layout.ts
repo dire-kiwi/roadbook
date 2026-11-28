@@ -5,7 +5,7 @@
 import type { ElkExtendedEdge, ElkNode, LayoutOptions as ElkOptions } from 'elkjs/lib/elk-api.js'
 import type { Machine, State, Ir } from './ir.ts'
 import { own } from './ir.ts'
-import { METRICS, ancestorIds, descendantCount, estimateWidth, isHistory, rootIsVisible, stateRows, targetEdgeId, transitionId, transitionLines, walkStates } from './model.ts'
+import { METRICS, ancestorIds, descendantCount, estimateWidth, historyDefaultEdgeId, isChoice, isCopy, isHistory, rootIsVisible, stateRows, targetEdgeId, transitionId, transitionLines, walkStates } from './model.ts'
 import type { Measure, Row, LabelLine } from './model.ts'
 
 /** What `layoutMachine` needs of elkjs. */
@@ -43,7 +43,7 @@ export interface Layout {
   height: number
   /** Drawn states and `<id>/initial` markers. */
   nodes: Record<string, Box>
-  /** Transitions (`<state id>#<index>`) and `<id>/initial/edge` arrows. */
+  /** Transitions (`<state id>#<index>`), `<id>/initial/edge` arrows and a history state's `<id>/default/<k>`. */
   edges: Record<string, EdgeRoute>
   /** Which entry of `ATTEMPTS` succeeded: 0 unless ELK refused the preferred options. */
   attempt: number
@@ -171,6 +171,8 @@ export function defaultCollapsed(machine: Machine, budget = 32): Set<string> {
 export interface StateBox {
   rows: Row[]
   titleH: number
+  /** Height of the band of tag pills under the title: 0 for a state with no tags. */
+  tagsH: number
   width: number
   height: number
 }
@@ -179,7 +181,12 @@ export interface StateBox {
 export function stateBox(state: State, measure: Measure, collapsed = false): StateBox {
   const M = METRICS
   // A history state is a small circle marked `H` or `H*`, with no rows.
-  if (isHistory(state)) return { rows: [], titleH: M.historyD, width: M.historyD, height: M.historyD }
+  if (isHistory(state)) return { rows: [], titleH: M.historyD, tagsH: 0, width: M.historyD, height: M.historyD }
+  // A choice state is a small diamond with its name beside it, with no rows.
+  if (isChoice(state)) {
+    const width = Math.ceil(M.choiceD + M.choiceGap + measure(state.name, M.fontRow, true))
+    return { rows: [], titleH: M.choiceD, tagsH: 0, width, height: M.choiceD }
+  }
   const rows = stateRows(state, collapsed)
   const isContainer = state.states.length > 0 && !collapsed
   const inset = state.kind === 'final' ? M.finalInset : 0
@@ -190,15 +197,25 @@ export function stateBox(state: State, measure: Measure, collapsed = false): Sta
     const text = (r.kw ? r.kw + ' ' : '') + r.text
     w = Math.max(w, measure(text, M.fontRow, false) + 2 * M.padX + (r.machine ? 2 * M.machinePillPad + 12 : 0))
   }
+  const tagsH = state.tags.length ? M.tagH + M.tagGap : 0
+  if (state.tags.length) w = Math.max(w, tagsWidth(state.tags, measure) + 2 * M.padX)
   const rowsH = rows.length ? rows.length * M.rowH + 2 * M.rowsPadY : 0
-  const titleH = !isContainer && !rows.length ? 36 : M.titleH
+  const titleH = !isContainer && !rows.length && !tagsH ? 36 : M.titleH
   return {
     rows,
     titleH,
+    tagsH,
     width: Math.ceil(Math.max(w, 92) + 2 * inset),
-    height: Math.ceil(titleH + rowsH + 2 * inset),
+    height: Math.ceil(titleH + tagsH + rowsH + 2 * inset),
   }
 }
+
+/** The width of one tag's pill. */
+export const tagWidth = (tag: string, measure: Measure): number => measure(tag, METRICS.fontEffect, false) + 2 * METRICS.tagPad
+
+/** The width of a state's band of tag pills, side by side. */
+export const tagsWidth = (tags: readonly string[], measure: Measure): number =>
+  tags.reduce((w, t) => w + tagWidth(t, measure), 0) + Math.max(0, tags.length - 1) * METRICS.tagGap
 
 export interface LabelBox {
   lines: LabelLine[]
@@ -254,9 +271,10 @@ export function buildElkGraph(ir: Ir, machineName: string, opts: LayoutOptions =
   }
 
   // Every transition with a target, from the box that stands for its source to the one for each
-  // of its targets: the first arrow carries the label, the others none.
+  // of its targets: the first arrow carries the label, the others none. The copies of an
+  // `on A | B` are one transition, drawn as the first.
   walkStates(machine.root, (state) => {
-    state.transitions.forEach((t, index) => t.targets.forEach((target, k) => {
+    state.transitions.forEach((t, index) => !isCopy(state, index) && t.targets.forEach((target, k) => {
       const src = view.visible(state.id)
       const tgt = view.visible(target)
       if (!drawn.has(src) || !drawn.has(tgt)) return
@@ -287,6 +305,15 @@ export function buildElkGraph(ir: Ir, machineName: string, opts: LayoutOptions =
         labels: [{ id: `${id}/label`, text: lb.lines[0]?.text || '-', width: lb.width, height: lb.height, layoutOptions: LABEL_OPTIONS }],
       })
     }))
+  })
+
+  // A history state's default targets: an unlabelled arrow from its circle to each.
+  walkStates(machine.root, (state) => {
+    if (!isHistory(state) || view.visible(state.id) !== state.id || !drawn.has(state.id)) return
+    state.default.forEach((target, k) => {
+      const tgt = view.visible(target)
+      if (drawn.has(tgt) && tgt !== state.id) edges.push({ id: historyDefaultEdgeId(state.id, k), sources: [state.id], targets: [tgt] })
+    })
   })
 
   const node = (d: DrawnState): ElkNode => {

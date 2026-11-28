@@ -27,6 +27,7 @@ export interface SatisfactionSurveyDef extends Roadbook.MachineDef {
     | "SatisfactionSurvey.Polling"
     | "SatisfactionSurvey.Answered"
     | "SatisfactionSurvey.NoAnswer"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {
@@ -45,7 +46,7 @@ export interface SatisfactionSurveyDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "examples/large/survey.road",
@@ -857,6 +858,8 @@ const ir: unknown = {
         "name": "SatisfactionSurvey",
         "kind": "compound",
         "doc": "Send a satisfaction survey and wait up to a week for the answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 4,
@@ -867,12 +870,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "SatisfactionSurvey.Sending",
+        "default": [],
         "states": [
           {
             "id": "SatisfactionSurvey.Sending",
             "name": "Sending",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 11,
@@ -883,6 +889,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -980,6 +987,8 @@ const ir: unknown = {
             "name": "Waiting",
             "kind": "atomic",
             "doc": "Check for an answer once a day.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 19,
@@ -990,6 +999,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1030,6 +1040,8 @@ const ir: unknown = {
             "name": "Polling",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 21,
@@ -1040,6 +1052,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1210,6 +1223,8 @@ const ir: unknown = {
             "name": "Answered",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -1220,6 +1235,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1260,6 +1276,8 @@ const ir: unknown = {
             "name": "NoAnswer",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,
@@ -1270,6 +1288,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

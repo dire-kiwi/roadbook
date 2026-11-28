@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/defects.road",
@@ -146,6 +146,8 @@
         "name": "Main",
         "kind": "compound",
         "doc": "Loads a number or asks Sub for one.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 13,
@@ -156,12 +158,15 @@
         "params": [],
         "vars": [],
         "initial": "Main.Idle",
+        "default": [],
         "states": [
           {
             "id": "Main.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 22,
@@ -172,6 +177,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -244,6 +250,8 @@
             "name": "Loading",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -254,6 +262,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -376,6 +385,8 @@
             "name": "Calling",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 40,
@@ -386,6 +397,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -458,6 +470,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 47,
@@ -468,6 +482,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -517,6 +532,8 @@
         "name": "Sub",
         "kind": "compound",
         "doc": "Stubbed in the cases that use it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 51,
@@ -527,12 +544,15 @@
         "params": [],
         "vars": [],
         "initial": "Sub.Answer",
+        "default": [],
         "states": [
           {
             "id": "Sub.Answer",
             "name": "Answer",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 54,
@@ -543,6 +563,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

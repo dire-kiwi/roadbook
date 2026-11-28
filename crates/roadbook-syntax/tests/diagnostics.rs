@@ -39,6 +39,11 @@ fn each_syntax_error_has_its_code() {
         ("machine M(p: ref) {}".into(), "RB0010"),
         ("machine M(p: ref int) {}".into(), "RB0010"),
         (s("    on Go send upload"), "RB0010"),
+        (s("    on A | * -> S"), "RB0010"),
+        (s("    on * | A -> S"), "RB0010"),
+        (s("    on up.Progress | A -> S"), "RB0010"),
+        (s("    on A | up.Progress -> S"), "RB0010"),
+        (s("    on A | reserve -> S"), "RB0010"),
         (s("    on Go send upload.pause"), "RB0012"),
         (s("    on Go emit progress"), "RB0012"),
         (
@@ -76,6 +81,14 @@ fn each_syntax_error_has_its_code() {
         ("type A { x: int\ntype B = int".into(), "RB0011"),
         ("type order { x: int }".into(), "RB0012"),
         (m("  var on: int"), "RB0013"),
+        (m("  var in: bool"), "RB0013"),
+        (s("    tags Busy"), "RB0012"),
+        (s("    tags busy,"), "RB0010"),
+        (s("    meta { Owner: 1 }"), "RB0012"),
+        (s("    on Go if in S -> S"), "RB0010"),
+        (s("    on Go if in(S -> S"), "RB0010"),
+        (s("    on Go if in(.S) -> S"), "RB0010"),
+        (s("    on Go if in(s) -> S"), "RB0012"),
         (m("  var result: int"), "RB0013"),
         ("task t(result: int)".into(), "RB0013"),
         ("type Evt { type: string }".into(), "RB0013"),
@@ -90,6 +103,12 @@ fn each_syntax_error_has_its_code() {
         (m("  deep history H"), "RB0014"),
         (s("    deep H"), "RB0010"),
         (s("    deep history h"), "RB0012"),
+        (s("    history H -> .B"), "RB0010"),
+        (s("    choice C -> B"), "RB0010"),
+        (s("    choice C { else -> B }"), "RB0021"),
+        (s("    choice C { -> B }"), "RB0021"),
+        (s("    history H -> B(1)"), "RB0010"),
+        (s("    history H -> B,"), "RB0010"),
         (s("    call go()"), "RB0015"),
         (s("    on Go -> B(1 2)"), "RB0010"),
         (m("  state S(n) {}"), "RB0010"),
@@ -250,6 +269,27 @@ fn a_broken_check_does_not_hide_the_next_one() {
     let (_, machine) = file.machines().next().unwrap();
     assert_eq!(machine.body.checks().count(), 2);
     assert_eq!(machine.body.states().count(), 1);
+}
+
+#[test]
+fn or_lists_only_the_machines_own_events() {
+    let message = |src: &str| {
+        let (_, diags) = parse_file(FileId(0), &s(src));
+        assert_eq!(diags.len(), 1, "{diags:#?}");
+        diags[0].message.clone()
+    };
+    assert_eq!(
+        message("    on A | up.Progress -> S"),
+        "expected the name of one of the machine's events after `|`, found `up`"
+    );
+    assert_eq!(
+        message("    on * | A -> S"),
+        "`|` joins only the machine's own events, as in `on A | B`"
+    );
+    assert_eq!(
+        message("    on up.Progress | A -> S"),
+        "`|` joins only the machine's own events, as in `on A | B`"
+    );
 }
 
 #[test]

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/sealed.road",
@@ -229,6 +229,8 @@
         "name": "Keep",
         "kind": "compound",
         "doc": "Fetches a page of the users' logins, and gives it back.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 17,
@@ -239,12 +241,15 @@
         "params": [],
         "vars": [],
         "initial": "Keep.Fetching",
+        "default": [],
         "states": [
           {
             "id": "Keep.Fetching",
             "name": "Fetching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 22,
@@ -255,6 +260,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -345,6 +351,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 28,
@@ -355,6 +363,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

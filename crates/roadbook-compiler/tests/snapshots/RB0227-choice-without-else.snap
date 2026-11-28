@@ -1,0 +1,13 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0227]: choice `M.Pick` has no `else`
+ --> RB0227-choice-without-else.road:7:8
+  |
+5 |   choice Pick {
+  |   ----------- the choice
+...
+7 |     if n > 0 -> B
+  |        ^^^^^
+  |
+  = help: a run never stays in a choice, so one branch must always be taken: end it with `else -> State`

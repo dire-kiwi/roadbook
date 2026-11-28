@@ -364,6 +364,13 @@ impl Program {
                     st.id
                 ));
             }
+            if st.kind == StateKind::Choice {
+                // A run never rests in a choice: it is left in the microstep after it is entered.
+                return Err(format!(
+                    "`active` names `{}`, which is a choice state",
+                    st.id
+                ));
+            }
             let on = idx.children[i].iter().filter(|&&c| is_active(c)).count();
             match st.kind {
                 StateKind::Compound if on != 1 => {
@@ -741,12 +748,17 @@ impl Program {
             };
             return if fits { Ok(()) } else { Err(bad()) };
         }
-        // Deep: atomic or final states below the parent, which with their ancestors up to it
+        // Deep: atomic, choice or final states below the parent (a choice the run left the
+        // parent from is recorded, and restoring it decides again), which with their ancestors up to it
         // have one child for each compound state and every child for each parallel one.
         let mut config = vec![p];
         for &l in &states {
             let kind = idx.state(m, l).kind;
-            if !matches!(kind, StateKind::Atomic | StateKind::Final) || !idx.is_ancestor(p, l) {
+            if !matches!(
+                kind,
+                StateKind::Atomic | StateKind::Choice | StateKind::Final
+            ) || !idx.is_ancestor(p, l)
+            {
                 return Err(bad());
             }
             let mut cur = Some(l);

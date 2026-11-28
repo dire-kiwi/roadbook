@@ -87,6 +87,26 @@ pub const CASES: &[(&str, &str)] = &[
         "machine M() {\n  state A {\n    on Go -> B(1, event.code).C  set n = 1\n    on Back -> .Inner(n), D(\"x\")\n    state Inner(n: int) {}\n  }\n  /// Takes a token.\n  state B(n: int, sensitive code: string) {\n    /// Counts.\n    var tries: int = n\n    sensitive var secret: string\n    on Go -> B(n + 1)\n    initial C\n    state C {}\n  }\n  parallel state P(x: int) {}\n  final state F(reason: string) { output reason }\n}\n",
     ),
     (
+        "or_events",
+        "machine M() {\n  event A\n  event B\n  event C { reason: string }\n  on A | B -> S\n  state S {\n    on B | C | A if n < 3 -> S  set r = event.reason\n    on A|C {\n      if ok -> S\n      else ignore\n    }\n  }\n}\n",
+    ),
+    (
+        "tags_meta",
+        "machine M() {\n  tags app\n  meta { owner: \"payments\", sla: 30 }\n  state S {\n    tags busy, network\n    meta { ratio: -0.5, live: true, tags: 1 }\n    on Go -> S\n  }\n  state T { tags idle }\n  state U {\n    var tags: int = 1\n    on Go -> U  set tags = tags + 1\n  }\n}\n",
+    ),
+    (
+        "in_state",
+        "machine M() {\n  state S {\n    on Go if in(P.R.X) and not in(S) -> S  do note(in(P))\n  }\n}\n",
+    ),
+    (
+        "choice",
+        "machine M() {\n  initial Pick\n  /// Where to go.\n  choice Pick {\n    if ok() -> A  do log()\n    else    -> B(1)\n  }\n  state A {\n    choice Inner {\n      if ok() -> B(2)\n      else    -> A\n    }\n  }\n  state B(n: int) {}\n}\n",
+    ),
+    (
+        "history",
+        "machine M() {\n  state A {\n    initial B\n    history H\n    history Back -> C\n    deep history D -> C.X\n    state B {}\n    state C {\n      initial X\n      state X {}\n    }\n  }\n  parallel state P {\n    deep history H -> R1.X, R2.Y\n    state R1 { initial X  state X {} }\n    state R2 { initial Y  state Y {} }\n  }\n}\n",
+    ),
+    (
         "ended",
         "machine M(peer: ref Peer) {\n  var ended: int = 0\n  on peer.ended if event.status == Ended.Defect -> A\n  state A {\n    on peer.ended {\n      if event.status == Ended.Done -> A  set ended = ended + 1\n      else -> A\n    }\n  }\n}\n",
     ),

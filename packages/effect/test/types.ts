@@ -16,6 +16,7 @@ interface NestDef extends Roadbook.MachineDef {
   readonly error: never
   readonly event: { readonly _tag: "Again" } | { readonly _tag: "Leave" }
   readonly state: "Nest" | "Nest.Outer" | "Nest.Away"
+  readonly tag: never
   readonly fns: {}
   readonly actions: { readonly log: { readonly what: string; readonly n: number } }
   readonly tasks: { readonly work: { readonly args: { readonly n: number }; readonly success: number; readonly error: Oops } }
@@ -70,6 +71,7 @@ interface FeedDef extends Roadbook.MachineDef {
   readonly error: never
   readonly event: never
   readonly state: "Feed"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {

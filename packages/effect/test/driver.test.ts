@@ -1,7 +1,7 @@
 /** The driver's behaviour beyond the conformance cases: the Effect-facing parts of the API. */
 import { assert, describe, it } from "@effect/vitest"
 import * as Core from "@dire-kiwi/roadbook-core"
-import { Deferred, Duration, Effect, Exit, Fiber, Stream } from "effect"
+import { Deferred, Duration, Effect, Exit, Fiber, Option, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import * as fs from "node:fs"
 import * as path from "node:path"
@@ -19,7 +19,8 @@ import {
   Monitor,
   Overflow,
   Payload,
-  Settle
+  Settle,
+  Spinner
 } from "./charts/runtime.road.ts"
 
 const charts = path.resolve(import.meta.dirname, "../../../spec/conformance/charts")
@@ -225,6 +226,27 @@ describe("spawn", () => {
         `${records[0]!.run}.1`
       ])
     }))
+})
+
+describe("tags", () => {
+  it.effect("a snapshot has the tags of its active states, each once, in document order", () =>
+    Effect.gen(function*() {
+      const actor = yield* Spinner.implement({}).spawn({})
+      const idle = yield* actor.snapshot
+      assert.deepStrictEqual(idle.tags, ["app", "idle"])
+      assert.isTrue(idle.hasTag("idle"))
+      assert.isFalse(idle.hasTag("busy"))
+      // @ts-expect-error: not a tag of the machine
+      idle.hasTag("bussy")
+      yield* actor.send({ _tag: "Fetch" })
+      const loading = yield* actor.changes.pipe(Stream.filter((s) => s.matches("Spinner.Loading")), Stream.runHead)
+      // Both regions have `network`: it is there once, where the first region has it.
+      assert.deepStrictEqual(loading.pipe(Option.getOrThrow).tags, ["app", "busy", "network", "slow"])
+      yield* actor.cancel
+      const ended = yield* actor.snapshot
+      assert.deepStrictEqual(ended.tags, [])
+      assert.isFalse(ended.hasTag("app"))
+    }).pipe(Effect.scoped))
 })
 
 describe("cancelling a task or stub", () => {

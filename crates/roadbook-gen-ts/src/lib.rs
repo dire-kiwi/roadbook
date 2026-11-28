@@ -56,8 +56,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
 
 use roadbook_ir::{
-    Builtin, ChildrenKind, Effect, Expr, ExprKind, Field, InvokeKind, Ir, Machine, State, Trigger,
-    TypeDecl, TypeDef, TypeRef,
+    Builtin, ChildrenKind, Effect, Expr, ExprKind, Field, InvokeKind, Ir, Machine, State,
+    StateKind, Trigger, TypeDecl, TypeDef, TypeRef,
 };
 
 /// Lines longer than this are broken, where the generator knows how.
@@ -898,6 +898,7 @@ export type {name}<{}> = {ts}",
         }
         let mut states = Vec::new();
         state_ids(&m.root, &mut states);
+        let tags: Vec<String> = m.tags().into_iter().map(|t| format!("\"{t}\"")).collect();
 
         let members = vec![
             ("name".into(), Ty::Atom(format!("\"{name}\""))),
@@ -907,6 +908,7 @@ export type {name}<{}> = {ts}",
             ("event".into(), Ty::union(events)),
             ("emits".into(), Ty::union(emitted)),
             ("state".into(), Ty::union(states)),
+            ("tag".into(), Ty::union(tags)),
             ("fns".into(), Ty::Obj(fns)),
             ("actions".into(), Ty::Obj(actions)),
             ("tasks".into(), Ty::Obj(tasks)),
@@ -956,10 +958,11 @@ fn pascal(task: &str) -> String {
     }
 }
 
-/// Every state id under `s`, `s` included, in document order. History states are left out:
-/// they are never active, so host code never sees one.
+/// Every state id under `s`, `s` included, in document order. History states and choice
+/// states are left out: one is never active and a run never rests in the other, so host code
+/// never sees either.
 fn state_ids(s: &State, out: &mut Vec<String>) {
-    if s.kind.is_history() {
+    if s.kind.is_history() || s.kind == StateKind::Choice {
         return;
     }
     out.push(format!("\"{}\"", s.id));
@@ -1099,7 +1102,10 @@ impl<'a> Uses<'a> {
                     self.expr(&f.value);
                 }
             }
-            ExprKind::Lit(_) | ExprKind::Ref { .. } | ExprKind::Enum { .. } => {}
+            ExprKind::Lit(_)
+            | ExprKind::Ref { .. }
+            | ExprKind::Enum { .. }
+            | ExprKind::In { .. } => {}
         }
     }
 }

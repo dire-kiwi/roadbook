@@ -1,0 +1,12 @@
+action log(what: json)
+
+machine M() {
+  event Go { sku: string }
+  event Stop { sku: string, why: string }
+  initial A
+  state A {
+    on Go | Stop do log(event)
+  }
+}
+
+// expect: RB0309 at 8:25

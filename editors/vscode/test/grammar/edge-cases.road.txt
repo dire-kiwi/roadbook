@@ -136,3 +136,48 @@ machine Locals() {
     reason: string,
   ) { output reason }
 }
+
+// One transition for several events.
+machine Several() {
+  on Reset | Drop -> A
+  state A {
+    on Retry|Reconnect if attempts < 3 -> A  set reason = event.reason
+  }
+}
+
+// History states with default targets.
+machine Defaults() {
+  state A {
+    initial B
+    history Last -> B
+    deep history All->B.C, D
+    state B {}
+  }
+}
+
+// Choice states, and `choice` as a name.
+machine Choices() {
+  var choice: int = 0
+  choice Pick {
+    if choice > 1 -> A  do log()
+    else          -> B
+  }
+}
+
+// Whether a state is active: `in(…)` in a guard, a target's arguments and an effect.
+machine Ins() {
+  state S {
+    on Go if not in(Main.Volume.Muted) -> Paused(in(Main.Volume.Loud))  do note(in(Main))
+  }
+}
+
+// Tags and meta, and both words as names elsewhere.
+machine Tagged() {
+  tags app
+  meta { owner: "payments", sla: 30, ratio: -0.5, live: true }
+  var tags: int = 0
+  state S {
+    tags busy, network
+    on Go -> S  set tags = tags + 1
+  }
+}

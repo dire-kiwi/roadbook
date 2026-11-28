@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/hub.road",
@@ -210,6 +210,8 @@
         "name": "Session",
         "kind": "compound",
         "doc": "One connection. It counts what it is told, and says back what it is asked to echo.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 9,
@@ -220,12 +222,15 @@
         "params": [],
         "vars": [],
         "initial": "Session.Open",
+        "default": [],
         "states": [
           {
             "id": "Session.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 21,
@@ -236,6 +241,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -419,6 +425,8 @@
             "name": "Left",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 28,
@@ -429,6 +437,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -450,6 +459,8 @@
             "name": "Dropped",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -460,6 +471,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -791,6 +803,8 @@
         "name": "Hub",
         "kind": "compound",
         "doc": "Spawns, addresses and stops sessions by key.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 33,
@@ -801,12 +815,15 @@
         "params": [],
         "vars": [],
         "initial": "Hub.Serving",
+        "default": [],
         "states": [
           {
             "id": "Hub.Serving",
             "name": "Serving",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 52,
@@ -817,6 +834,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1521,6 +1539,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 68,
@@ -1531,6 +1551,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1698,6 +1719,8 @@
         "name": "Pool",
         "kind": "compound",
         "doc": "Keyed by number: handles only its children's ending, and can be saved while they run. It\nhears what they say (so it is delivered, and dropped or stale) but never takes it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 73,
@@ -1708,12 +1731,15 @@
         "params": [],
         "vars": [],
         "initial": "Pool.Running",
+        "default": [],
         "states": [
           {
             "id": "Pool.Running",
             "name": "Running",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 83,
@@ -1724,6 +1750,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2024,6 +2051,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 92,
@@ -2034,6 +2063,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

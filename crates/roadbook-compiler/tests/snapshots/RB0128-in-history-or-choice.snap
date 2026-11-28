@@ -1,0 +1,18 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0128]: `A.Last` is a history state, which `in(…)` cannot name
+ --> RB0128-in-history-or-choice.road:8:29
+  |
+8 |     state X { on Go if in(A.Last) -> Pick }
+  |                             ^^^^
+  |
+  = help: a history state is never active, only a target that returns to where `A` was; name `A` or one of its children
+
+error[RB0128]: `Pick` is a choice state, which `in(…)` cannot name
+  --> RB0128-in-history-or-choice.road:11:11
+   |
+11 |     if in(Pick) -> A
+   |           ^^^^
+   |
+   = help: a run never rests in a choice: it leaves it in the same step; name the states its branches go to

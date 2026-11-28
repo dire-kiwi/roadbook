@@ -1,0 +1,56 @@
+// Conformance chart: `in(State)` read in guards, in entry and exit effects, in a
+// transition's effects and in a state's arguments, across the regions of a
+// parallel state.
+
+/// A player whose two regions ask about each other.
+machine Jukebox() {
+  event Up
+  event Mute
+  event Unmute
+
+  var ups: int = 0
+  // What each effect saw, set where it runs.
+  var loudEntrySawPlaying: bool = false
+  var playingEntrySawLoud: bool = false
+  var loudExitSawPlaying:  bool = false
+  var playingExitSawLoud:  bool = false
+  var muteSawLoud:         bool = false
+  var muteSawMuted:        bool = false
+  var muteSawPaused:       bool = false
+  var mutedEntrySawPaused: bool = false
+  var pausedEntrySawMuted: bool = false
+
+  initial Main
+  parallel state Main {
+    state Volume {
+      initial Loud
+      state Loud {
+        // Loud is entered before Playing, and exited after it.
+        entry set loudEntrySawPlaying = in(Main.Playback.Playing)
+        exit set loudExitSawPlaying = in(Main.Playback.Playing)
+        // After every exit of the microstep, before any entry.
+        on Mute -> Muted  set muteSawLoud = in(Main.Volume.Loud), muteSawMuted = in(Main.Volume.Muted), muteSawPaused = in(Main.Playback.Paused)
+      }
+      state Muted {
+        entry set mutedEntrySawPaused = in(Main.Playback.Paused)
+        on Unmute -> Loud
+      }
+    }
+    state Playback {
+      initial Playing
+      // A guard on the other region's state.
+      on Up if not in(Main.Volume.Muted) set ups = ups + 1
+      state Playing {
+        entry set playingEntrySawLoud = in(Main.Volume.Loud)
+        exit set playingExitSawLoud = in(Main.Volume.Loud)
+        // Selected before the other region's `Mute` is taken, so `Loud` is still
+        // active; the argument is evaluated after the exits, when it is not.
+        on Mute if in(Main.Volume.Loud) -> Paused(in(Main.Volume.Loud))
+      }
+      state Paused(wasLoud: bool) {
+        entry set pausedEntrySawMuted = in(Main.Volume.Muted)
+        on Unmute if in(Main.Volume.Muted) -> Playing
+      }
+    }
+  }
+}

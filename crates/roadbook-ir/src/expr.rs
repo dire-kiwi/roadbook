@@ -78,6 +78,12 @@ pub enum ExprKind {
         /// The variant's name.
         variant: String,
     },
+    /// Whether a state is active: `{"kind": "in", "state": …}`. Its type is
+    /// always `bool`.
+    In {
+        /// The state's id, such as `Player.Volume.Muted`.
+        state: String,
+    },
 }
 
 /// One field of a record value.
@@ -272,6 +278,12 @@ enum ExprSer<'a> {
         ty: &'a TypeRef,
         text: &'a str,
     },
+    In {
+        state: &'a str,
+        #[serde(rename = "type")]
+        ty: &'a TypeRef,
+        text: &'a str,
+    },
 }
 
 #[derive(Deserialize)]
@@ -324,6 +336,12 @@ enum ExprDe {
         ty: TypeRef,
         text: String,
     },
+    In {
+        state: String,
+        #[serde(rename = "type")]
+        ty: TypeRef,
+        text: String,
+    },
 }
 
 impl Serialize for Expr {
@@ -356,6 +374,7 @@ impl Serialize for Expr {
             },
             ExprKind::Record { fields } => ExprSer::Record { fields, ty, text },
             ExprKind::Enum { variant } => ExprSer::Enum { variant, ty, text },
+            ExprKind::In { state } => ExprSer::In { state, ty, text },
         }
         .serialize(serializer)
     }
@@ -439,6 +458,18 @@ impl<'de> Deserialize<'de> for Expr {
                     text,
                 }
             }
+            ExprDe::In { state, ty, text } => {
+                if ty != TypeRef::Builtin(Builtin::Bool) {
+                    return Err(D::Error::custom(format!(
+                        "an `in` expression's type must be `bool`, found `{ty}`"
+                    )));
+                }
+                Expr {
+                    kind: ExprKind::In { state },
+                    ty,
+                    text,
+                }
+            }
         })
     }
 }
@@ -459,6 +490,15 @@ mod tests {
         round_trip(r#"{"kind":"lit","value":1.5,"type":"float","text":"1.5"}"#);
         round_trip(r#"{"kind":"lit","value":30000,"type":"duration","text":"30s"}"#);
         round_trip(r#"{"kind":"enum","variant":"Admin","type":"Role","text":"Role.Admin"}"#);
+        round_trip(
+            r#"{"kind":"in","state":"Player.Volume.Muted","type":"bool","text":"in(Volume.Muted)"}"#,
+        );
+        assert!(
+            serde_json::from_str::<Expr>(
+                r#"{"kind":"in","state":"M.A","type":"int","text":"in(A)"}"#
+            )
+            .is_err()
+        );
         let e = round_trip(
             r#"{"kind":"op","op":"<","args":[{"kind":"ref","path":["attempts"],"state":null,"type":"int","text":"attempts"},{"kind":"lit","value":3,"type":"int","text":"3"}],"type":"bool","text":"attempts < 3"}"#,
         );

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/strict-calls.road",
@@ -130,6 +130,8 @@
         "name": "Desk",
         "kind": "compound",
         "doc": "A help desk that answers questions while it is open.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 6,
@@ -140,12 +142,15 @@
         "params": [],
         "vars": [],
         "initial": "Desk.Staffed",
+        "default": [],
         "states": [
           {
             "id": "Desk.Staffed",
             "name": "Staffed",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 22,
@@ -156,12 +161,15 @@
             "params": [],
             "vars": [],
             "initial": "Desk.Staffed.Free",
+            "default": [],
             "states": [
               {
                 "id": "Desk.Staffed.Free",
                 "name": "Free",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 28,
@@ -172,6 +180,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -222,6 +231,8 @@
                 "name": "Held",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 29,
@@ -232,6 +243,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -390,6 +402,8 @@
             "name": "Shut",
             "kind": "atomic",
             "doc": "No `on ask` or `on hold`: in a strict machine, a call here is a defect.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -400,6 +414,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -486,6 +501,8 @@
         "name": "Asker",
         "kind": "compound",
         "doc": "Ask the desk a question; 0 if it does not answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 37,
@@ -496,12 +513,15 @@
         "params": [],
         "vars": [],
         "initial": "Asker.Asking",
+        "default": [],
         "states": [
           {
             "id": "Asker.Asking",
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 42,
@@ -512,6 +532,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -604,6 +625,8 @@
             "name": "Got",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 49,
@@ -614,6 +637,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -635,6 +659,8 @@
             "name": "Gave",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 50,
@@ -645,6 +671,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -714,6 +741,8 @@
         "name": "Holder",
         "kind": "compound",
         "doc": "Hold a place with the desk; 0 if it does not answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 54,
@@ -724,12 +753,15 @@
         "params": [],
         "vars": [],
         "initial": "Holder.Holding",
+        "default": [],
         "states": [
           {
             "id": "Holder.Holding",
             "name": "Holding",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 59,
@@ -740,6 +772,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -832,6 +865,8 @@
             "name": "Got",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 66,
@@ -842,6 +877,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -863,6 +899,8 @@
             "name": "Gave",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 67,
@@ -873,6 +911,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

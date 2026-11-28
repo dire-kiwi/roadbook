@@ -127,7 +127,8 @@ impl<'p> Cx<'_, 'p> {
                 );
                 ok = false;
             }
-            ir::StateKind::Atomic => {}
+            // A choice has no invoke.
+            ir::StateKind::Atomic | ir::StateKind::Choice => {}
         }
         // `as` on a call, or on a task that emits nothing, is reported as such (`RB0214`).
         let named = plan.inv.is_machine()
@@ -483,6 +484,9 @@ impl<'p> Cx<'_, 'p> {
             params: Vec::new(),
             vars: Vec::new(),
             initial: None,
+            default: Vec::new(),
+            tags: Vec::new(),
+            meta: Default::default(),
             states: Vec::new(),
             entry: Vec::new(),
             exit: Vec::new(),
@@ -518,6 +522,9 @@ impl<'p> Cx<'_, 'p> {
                 params: Vec::new(),
                 vars: Vec::new(),
                 initial: None,
+                default: Vec::new(),
+                tags: Vec::new(),
+                meta: Default::default(),
                 states: Vec::new(),
                 entry: Vec::new(),
                 exit: Vec::new(),
@@ -642,7 +649,8 @@ fn visit(e: &ast::Expr, f: &mut impl FnMut(&ast::Expr)) {
         | ExprKind::String(_)
         | ExprKind::Bool(_)
         | ExprKind::Var(_)
-        | ExprKind::Enum(..) => {}
+        | ExprKind::Enum(..)
+        | ExprKind::In(_) => {}
     }
 }
 

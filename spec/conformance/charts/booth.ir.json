@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/booth.road",
@@ -98,6 +98,8 @@
         "name": "Booth",
         "kind": "compound",
         "doc": "Books seats, once it has been asked enough times.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 8,
@@ -108,12 +110,15 @@
         "params": [],
         "vars": [],
         "initial": "Booth.Open",
+        "default": [],
         "states": [
           {
             "id": "Booth.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 16,
@@ -124,6 +129,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -358,6 +364,8 @@
         "name": "Guest",
         "kind": "compound",
         "doc": "Books a seat, retrying while the booth is busy.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 25,
@@ -368,12 +376,15 @@
         "params": [],
         "vars": [],
         "initial": "Guest.Booking",
+        "default": [],
         "states": [
           {
             "id": "Guest.Booking",
             "name": "Booking",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 30,
@@ -384,12 +395,15 @@
             "params": [],
             "vars": [],
             "initial": "Guest.Booking.Attempt",
+            "default": [],
             "states": [
               {
                 "id": "Guest.Booking.Attempt",
                 "name": "Attempt",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 31,
@@ -400,6 +414,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -594,6 +609,8 @@
                 "name": "Backoff",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 31,
@@ -604,6 +621,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -664,6 +682,8 @@
             "name": "Booked",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -674,6 +694,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -695,6 +716,8 @@
             "name": "Gave",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 39,
@@ -705,6 +728,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

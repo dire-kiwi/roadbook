@@ -22,6 +22,7 @@ export interface DeskDef extends Roadbook.MachineDef {
   readonly event: Answer | Close | Shut
   readonly emits: never
   readonly state: "Desk" | "Desk.Open" | "Desk.Holding" | "Desk.Closing" | "Desk.Closed"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {
     readonly log: { readonly text: string }
@@ -32,7 +33,7 @@ export interface DeskDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable-calls.road",
@@ -208,6 +209,8 @@ const ir: unknown = {
         "name": "Desk",
         "kind": "compound",
         "doc": "Holds the first `hold` call until it is told to answer it, and keeps any other pending,\nunanswered. Closed while it holds one, it pauses, and ends when it is shut: the calls\npending then, and those queued behind the `Shut`, are answered `Unanswered`.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 13,
@@ -218,12 +221,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Desk.Open",
+        "default": [],
         "states": [
           {
             "id": "Desk.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -234,6 +240,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -332,6 +339,8 @@ const ir: unknown = {
             "name": "Holding",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 30,
@@ -342,6 +351,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -484,6 +494,8 @@ const ir: unknown = {
             "name": "Closing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -494,6 +506,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -529,6 +542,8 @@ const ir: unknown = {
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -539,6 +554,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -620,6 +636,8 @@ const ir: unknown = {
         "name": "Asker",
         "kind": "compound",
         "doc": "Asks its Desk to hold `n`: gives the answer, or -1 if it is `Unanswered`.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 42,
@@ -630,12 +648,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Asker.Asking",
+        "default": [],
         "states": [
           {
             "id": "Asker.Asking",
             "name": "Asking",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 47,
@@ -646,6 +667,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -768,6 +790,8 @@ const ir: unknown = {
             "name": "Got",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 54,
@@ -778,6 +802,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -867,6 +892,8 @@ const ir: unknown = {
         "name": "Host",
         "kind": "compound",
         "doc": "Runs an Asker as its child, which calls the Desk.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 58,
@@ -877,12 +904,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Host.Running",
+        "default": [],
         "states": [
           {
             "id": "Host.Running",
             "name": "Running",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 63,
@@ -893,6 +923,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -986,6 +1017,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 69,
@@ -996,6 +1029,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1048,6 +1082,7 @@ export interface AskerDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Asker" | "Asker.Asking" | "Asker.Got"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}
@@ -1071,6 +1106,7 @@ export interface HostDef extends Roadbook.MachineDef {
   readonly event: never
   readonly emits: never
   readonly state: "Host" | "Host.Running" | "Host.Done"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {}

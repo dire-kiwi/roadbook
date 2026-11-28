@@ -1,0 +1,10 @@
+---
+source: crates/roadbook-compiler/tests/fail.rs
+---
+error[RB0320]: `event.token` is sensitive, and the value assigned to `token` is not
+ --> RB0320-or-events.road:8:42
+  |
+8 |     on Refresh | Login -> A  set token = event.token
+  |                                          ^^^^^^^^^^^ a trace would show this value
+  |
+  = help: traces redact only what is marked: mark `token` `sensitive` too, or derive what may be shown with a `fn`

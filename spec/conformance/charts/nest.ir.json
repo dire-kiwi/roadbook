@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/nest.road",
@@ -147,6 +147,8 @@
         "name": "Nest",
         "kind": "compound",
         "doc": "Logs every entry, exit and transition effect, with the counter's value.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 8,
@@ -157,12 +159,15 @@
         "params": [],
         "vars": [],
         "initial": "Nest.Outer",
+        "default": [],
         "states": [
           {
             "id": "Nest.Outer",
             "name": "Outer",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 21,
@@ -173,12 +178,15 @@
             "params": [],
             "vars": [],
             "initial": "Nest.Outer.Middle",
+            "default": [],
             "states": [
               {
                 "id": "Nest.Outer.Middle",
                 "name": "Middle",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 32,
@@ -189,12 +197,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Nest.Outer.Middle.Inner",
+                "default": [],
                 "states": [
                   {
                     "id": "Nest.Outer.Middle.Inner",
                     "name": "Inner",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 41,
@@ -205,6 +216,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [
                       {
@@ -710,6 +722,8 @@
             "name": "Away",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 52,
@@ -720,6 +734,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {

@@ -273,6 +273,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             locals: &self.snap.locals,
             implicit,
             key: self.key.as_ref(),
+            idx: self.idx,
+            active: &self.active,
         };
         eval(e, &scope, self.fns)
     }
@@ -287,6 +289,8 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
             locals: &self.snap.locals,
             implicit,
             key: self.key.as_ref(),
+            idx: self.idx,
+            active: &self.active,
         };
         crate::eval::lookup(name, &scope)
     }
@@ -343,7 +347,11 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
                     self.default_entry_into(c, out);
                 }
             }
-            StateKind::Atomic | StateKind::Final | StateKind::History | StateKind::DeepHistory => {}
+            StateKind::Atomic
+            | StateKind::Choice
+            | StateKind::Final
+            | StateKind::History
+            | StateKind::DeepHistory => {}
         }
     }
 
@@ -1000,15 +1008,18 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
     }
 
     /// The states target `x` stands for: `x`, or for a history state `h` with parent `p`,
-    /// what it recorded, or else the states `p`'s default entry starts with.
+    /// what it recorded, or else its `default`, or else the states `p`'s default entry starts
+    /// with.
     fn stands_for(&self, x: usize) -> Vec<usize> {
         if !self.state(x).kind.is_history() {
             return vec![x];
         }
         let p = self.idx.parents[x].expect("a history state has a parent");
         let parent = self.state(p);
-        match self.snap.history.get(&self.state(x).id) {
+        let h = self.state(x);
+        match self.snap.history.get(&h.id) {
             Some(record) => record.iter().map(|id| self.index_of(id)).collect(),
+            None if !h.default.is_empty() => h.default.iter().map(|id| self.index_of(id)).collect(),
             None if parent.kind == StateKind::Compound => {
                 parent.initial.iter().map(|id| self.index_of(id)).collect()
             }
@@ -1421,7 +1432,9 @@ impl<'p, 'f, 'g> Ctx<'p, 'f, 'g> {
         let children = &self.idx.children[s];
         match self.state(s).kind {
             StateKind::Final => true,
-            StateKind::Atomic | StateKind::History | StateKind::DeepHistory => false,
+            StateKind::Atomic | StateKind::Choice | StateKind::History | StateKind::DeepHistory => {
+                false
+            }
             StateKind::Compound => children
                 .iter()
                 .any(|&c| self.is_active(c) && self.state(c).kind == StateKind::Final),

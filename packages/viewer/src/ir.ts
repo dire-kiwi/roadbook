@@ -1,4 +1,4 @@
-// The parts of the Roadbook IR (spec/ir.md, version 0.13) that the viewer reads.
+// The parts of the Roadbook IR (spec/ir.md, version 0.14) that the viewer reads.
 // The viewer reads the IR and nothing else: every word on the diagram comes from here.
 
 export interface Span {
@@ -76,7 +76,7 @@ export interface EventDecl {
  * in their parent's `states`, never active, only ever a transition's target. A state's
  * children and a parallel state's regions are its other `states`.
  */
-export type StateKind = 'atomic' | 'compound' | 'parallel' | 'final' | 'history' | 'deepHistory'
+export type StateKind = 'atomic' | 'compound' | 'parallel' | 'final' | 'history' | 'deepHistory' | 'choice'
 
 export interface Invoke {
   kind: 'task' | 'machine' | 'call'
@@ -190,12 +190,18 @@ export interface State {
   name: string
   kind: StateKind
   doc: string
+  /** The state's tags, in the order written: `[]` for none. */
+  tags: string[]
+  /** The state's `meta`, in the order written: `{}` for none. */
+  meta: { [key: string]: string | number | boolean }
   span: Span
   /** The state's parameters, in order: `[]` for a state written without them. */
   params: Field[]
   /** The state's variables, in order: `[]` for a state that declares none. */
   vars: Var[]
   initial: string | null
+  /** For a history state, the states it enters when it has recorded nothing: `[]` for none. */
+  default: string[]
   states: State[]
   entry: Effect[]
   exit: Effect[]
@@ -258,4 +264,4 @@ export function own<T>(map: Record<string, T>, key: string): T | undefined {
 }
 
 /** The IR version this viewer was written for. */
-export const IR_VERSION = '0.13'
+export const IR_VERSION = '0.14'

@@ -796,8 +796,7 @@ pub fn guard_text(s: &ir::State, index: usize) -> Option<String> {
     if let Some(g) = &t.guard {
         return Some(g.text.clone());
     }
-    let first = s.transitions.iter().position(|o| o.group == t.group);
-    (first != Some(index)).then(|| "else".to_string())
+    s.is_else(index).then(|| "else".to_string())
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -831,6 +830,8 @@ struct Chart<'a> {
     /// The history states in each state's `states`.
     histories: Vec<Vec<u32>>,
     initial: Vec<Option<u32>>,
+    /// A history state's `default`, `[]` for every other state.
+    default: Vec<Vec<u32>>,
     /// Each transition's targets, and whether it is internal.
     targets: Vec<Vec<Vec<u32>>>,
     internal: Vec<Vec<bool>>,
@@ -884,6 +885,7 @@ impl<'a> Chart<'a> {
             children: Vec::new(),
             histories: Vec::new(),
             initial: Vec::new(),
+            default: Vec::new(),
             targets: Vec::new(),
             internal: Vec::new(),
             collections: machine.children.keys().map(String::as_str).collect(),
@@ -994,6 +996,12 @@ impl<'a> Chart<'a> {
             );
             c.initial
                 .push(s.initial.as_deref().and_then(|x| index.get(x).copied()));
+            c.default.push(
+                s.default
+                    .iter()
+                    .filter_map(|x| index.get(x.as_str()).copied())
+                    .collect(),
+            );
             c.targets.push(
                 s.transitions
                     .iter()
@@ -1222,6 +1230,9 @@ impl<'a> Chart<'a> {
                 let p = self.parent[target as usize].unwrap_or(0);
                 match cfg.history.iter().find(|(h, _)| *h == target) {
                     Some((_, r)) => r.clone(),
+                    None if !self.default[target as usize].is_empty() => {
+                        self.default[target as usize].clone()
+                    }
                     None if self.kind(p) == StateKind::Compound => {
                         self.initial[p as usize].into_iter().collect()
                     }
@@ -1362,7 +1373,10 @@ impl<'a> Chart<'a> {
                         .copied()
                         .filter(|&x| {
                             self.contains(s, x)
-                                && matches!(self.kind(x), StateKind::Atomic | StateKind::Final)
+                                && matches!(
+                                    self.kind(x),
+                                    StateKind::Atomic | StateKind::Choice | StateKind::Final
+                                )
                         })
                         .collect()
                 };
@@ -1553,7 +1567,12 @@ impl<'a> Chart<'a> {
             .active
             .iter()
             .copied()
-            .filter(|&s| matches!(self.kind(s), StateKind::Atomic | StateKind::Final))
+            .filter(|&s| {
+                matches!(
+                    self.kind(s),
+                    StateKind::Atomic | StateKind::Choice | StateKind::Final
+                )
+            })
             .map(|leaf| {
                 let mut chain = vec![leaf];
                 let mut cur = leaf;
@@ -2477,6 +2496,25 @@ mod tests {
                 "Start --Back--> W.B.B2"
             ])
         );
+    }
+
+    #[test]
+    fn a_history_default_is_entered_when_nothing_is_recorded() {
+        let g = graph(
+            "machine M() {\n  event Go\n  event Out\n  event Back\n  initial Start\n  state Start {\n    on Back -> W.D\n    on Go -> W\n  }\n  state W {\n    initial A\n    deep history D -> B.B2\n    state A { on Go -> B }\n    state B {\n      initial B1\n      state B1 { on Go -> B2 }\n      state B2 {}\n    }\n    on Out -> Start\n  }\n}\n",
+        );
+        let s = steps(&g);
+        // With no record (the start node), the default, through B: not W's default entry.
+        let first: Vec<String> = edges(&g)
+            .filter(|e| e.from == g.start() && e.input == Input::Event("Back".into()))
+            .map(|e| leaves(&g, e.to))
+            .collect();
+        assert_eq!(first, ["W.B.B2"]);
+        // Entered without the history state, W starts at its initial state.
+        assert!(s.contains("Start --Go--> W.A"));
+        // Once W was left from A, the record: back to A.
+        assert!(s.contains("W.A --Out--> Start"));
+        assert!(s.contains("Start --Back--> W.A"));
     }
 
     #[test]

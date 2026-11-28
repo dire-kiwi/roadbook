@@ -4,7 +4,7 @@
 // only draws it and wires up the forms.
 
 import type { Json, Tagged } from '@dire-kiwi/roadbook-core'
-import type { Field } from '../ir.ts'
+import type { Field, Machine, State } from '../ir.ts'
 import { own } from '../ir.ts'
 import { findState, triggerText } from '../model.ts'
 import { jsonText, stateName } from '../replay.ts'
@@ -120,6 +120,9 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
     else if (f.snapshot.status !== 'running') h += `<h3>Result</h3><pre class="rb-code">${esc(f.snapshot.status)} ${esc(pretty(f.snapshot.result))}</pre>`
 
     h += `<h3>Active states</h3>${activeHtml(f.snapshot.active.filter((id) => id !== s.machine))}`
+    // Only for a machine that has tags: what host code's `hasTag` would see now.
+    const tags = s.tags()
+    if (machineHasTags(m)) h += `<h3>Tags</h3>${tags.length ? `<p>${tags.map((t) => `<span class="rb-chip">${esc(t)}</span>`).join(' ')}</p>` : '<p class="rb-empty">None.</p>'}`
     if (f.taken.length) {
       h += `<h3>Transitions taken by this step</h3><ul class="rb-list">${f.taken
         .map((t) => {
@@ -362,4 +365,10 @@ export function simulateMode(host: Host, el: HTMLElement): Controller {
       if (sim().back()) done()
     },
   }
+}
+
+/** Whether any state of `m` has a tag. */
+const machineHasTags = (m: Machine): boolean => {
+  const any = (st: State): boolean => st.tags.length > 0 || st.states.some(any)
+  return any(m.root)
 }

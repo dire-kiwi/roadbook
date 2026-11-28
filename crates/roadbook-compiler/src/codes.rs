@@ -67,7 +67,8 @@ pub const NOT_A_COLLECTION: Code = Code(121);
 /// `key`, the implicit name of a spawned child's key, as the name of a machine parameter,
 /// variable, `as` name or collection.
 pub const KEY_AS_NAME: Code = Code(122);
-/// A state path in a `check` that names no state of the machine, or names a history state.
+/// A state path in a `check` that names no state of the machine, or names a history or
+/// choice state.
 pub const UNKNOWN_CHECK_STATE: Code = Code(123);
 /// An `on name.ended` through an `invoke … as name` child or task or a `children` collection,
 /// whose ends are their outcomes, not through a `ref`.
@@ -80,6 +81,9 @@ pub const UNKNOWN_RAISE_NAME: Code = Code(126);
 /// parameter or variable, a collection, a delayed raise's name, an `as` name, a local of a
 /// state around it), or is a local of a state inside it.
 pub const LOCAL_SHADOWS: Code = Code(127);
+/// The state of an `in(…)` that names no state of the machine, or names a history or choice
+/// state.
+pub const UNKNOWN_IN_STATE: Code = Code(128);
 
 // ───────────── structure ─────────────
 
@@ -142,14 +146,29 @@ pub const SPAWN_MACHINE_MISMATCH: Code = Code(220);
 pub const MIXED_TARGETS: Code = Code(221);
 /// Several targets that are not each in a different region of a parallel state.
 pub const TARGETS_CLASH: Code = Code(222);
-/// A state with parameters as a compound state's `initial` or as a region of a parallel
-/// state, which are entered with no arguments.
+/// A state with parameters as a compound state's `initial`, as a region of a parallel state
+/// or on the way to a history state's default target, which are entered with no arguments.
 pub const PARAMETERS_ON_DEFAULT_ENTRY: Code = Code(223);
 /// A transition that enters a state with parameters without passing its arguments.
 pub const MISSING_STATE_ARGUMENTS: Code = Code(224);
 /// Arguments for a state that takes none, for one the transition does not enter, or for one
 /// state twice.
 pub const UNEXPECTED_STATE_ARGUMENTS: Code = Code(225);
+/// A history state's default target that is not a proper descendant of the history state's
+/// parent, or that is a history or choice state.
+pub const BAD_HISTORY_DEFAULT: Code = Code(226);
+/// A choice state whose last branch has a guard: it needs an `else`.
+pub const CHOICE_WITHOUT_ELSE: Code = Code(227);
+/// A branch of a choice state with no target.
+pub const CHOICE_BRANCH_WITHOUT_TARGET: Code = Code(228);
+/// A choice state directly in a parallel state, as one of its regions.
+pub const CHOICE_AS_REGION: Code = Code(229);
+/// A tag written twice on one state, or a second `tags` in one state.
+pub const DUPLICATE_TAG: Code = Code(230);
+/// A key written twice in one state's `meta`, or a second `meta` in one state.
+pub const DUPLICATE_META: Code = Code(231);
+/// A `meta` value that is not a string, int, float or bool literal.
+pub const BAD_META_VALUE: Code = Code(232);
 
 // ───────────── types ─────────────
 
@@ -300,6 +319,9 @@ pub const RAISED_NOT_TAKEN: Code = Code(915);
 /// A `set` of a state's variable in a transition that leaves that state, so the value is
 /// discarded with it.
 pub const LOCAL_SET_LOST: Code = Code(916);
+/// An `in(S)` where `S` is always active: the state the expression is written in, or one
+/// around it.
+pub const IN_ALWAYS_TRUE: Code = Code(917);
 
 /// Every code defined here, in order.
 pub const ALL: &[Code] = &[
@@ -330,6 +352,7 @@ pub const ALL: &[Code] = &[
     NOT_RAISABLE,
     UNKNOWN_RAISE_NAME,
     LOCAL_SHADOWS,
+    UNKNOWN_IN_STATE,
     UNKNOWN_TARGET,
     MISSING_INITIAL,
     BAD_INITIAL,
@@ -355,6 +378,13 @@ pub const ALL: &[Code] = &[
     PARAMETERS_ON_DEFAULT_ENTRY,
     MISSING_STATE_ARGUMENTS,
     UNEXPECTED_STATE_ARGUMENTS,
+    BAD_HISTORY_DEFAULT,
+    CHOICE_WITHOUT_ELSE,
+    CHOICE_BRANCH_WITHOUT_TARGET,
+    CHOICE_AS_REGION,
+    DUPLICATE_TAG,
+    DUPLICATE_META,
+    BAD_META_VALUE,
     TYPE_MISMATCH,
     ARGUMENT_COUNT,
     BAD_OPERANDS,
@@ -406,6 +436,7 @@ pub const ALL: &[Code] = &[
     NEVER_RAISED,
     RAISED_NOT_TAKEN,
     LOCAL_SET_LOST,
+    IN_ALWAYS_TRUE,
 ];
 
 #[cfg(test)]

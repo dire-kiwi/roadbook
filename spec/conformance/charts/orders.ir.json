@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/orders.road",
@@ -422,6 +422,8 @@
         "name": "Inventory",
         "kind": "compound",
         "doc": "The stock of one warehouse, shared by every order. It answers a request by\nemitting Reserved or Rejected with the order's id.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 35,
@@ -432,12 +434,15 @@
         "params": [],
         "vars": [],
         "initial": "Inventory.Ready",
+        "default": [],
         "states": [
           {
             "id": "Inventory.Ready",
             "name": "Ready",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 51,
@@ -448,6 +453,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -535,6 +541,8 @@
             "name": "Reserving",
             "kind": "atomic",
             "doc": "One request at a time: another that arrives meanwhile is turned away.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -545,6 +553,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -759,6 +768,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 65,
@@ -769,6 +780,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -963,6 +975,8 @@
         "name": "Order",
         "kind": "compound",
         "doc": "Reserve the items with the warehouse, then take the payment.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 69,
@@ -973,12 +987,15 @@
         "params": [],
         "vars": [],
         "initial": "Order.Reserving",
+        "default": [],
         "states": [
           {
             "id": "Order.Reserving",
             "name": "Reserving",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 75,
@@ -989,6 +1006,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -1227,6 +1245,8 @@
             "name": "Paying",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 82,
@@ -1237,6 +1257,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1374,6 +1395,8 @@
             "name": "Paid",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 89,
@@ -1384,6 +1407,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1405,6 +1429,8 @@
             "name": "Unavailable",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 90,
@@ -1415,6 +1441,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1436,6 +1463,8 @@
             "name": "Declined",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 91,
@@ -1446,6 +1475,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1536,6 +1566,8 @@
         "name": "Supplier",
         "kind": "compound",
         "doc": "Passes deliveries on to the warehouse. It has no `on` for what the Inventory\nemits, so it is sent none of it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 96,
@@ -1546,12 +1578,15 @@
         "params": [],
         "vars": [],
         "initial": "Supplier.Open",
+        "default": [],
         "states": [
           {
             "id": "Supplier.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 102,
@@ -1562,6 +1597,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1661,6 +1697,8 @@
             "name": "Stopped",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 107,
@@ -1671,6 +1709,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

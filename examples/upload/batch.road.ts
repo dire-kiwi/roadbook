@@ -29,6 +29,7 @@ export interface BatchDef extends Roadbook.MachineDef {
   readonly event: Add | Cancel | PauseAll | ResumeAll | Close
   readonly emits: never
   readonly state: "Batch" | "Batch.Open" | "Batch.Closed"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {
     readonly showFileProgress: { readonly name: string; readonly percent: number }
@@ -46,7 +47,7 @@ export interface BatchDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "examples/upload/batch.road",
@@ -426,6 +427,8 @@ const ir: unknown = {
         "name": "Batch",
         "kind": "compound",
         "doc": "Upload any number of files at once: one `Upload` per file, keyed by the file's name. The\nuser can add files while others upload, cancel one, and pause and resume them all.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 14,
@@ -436,12 +439,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Batch.Open",
+        "default": [],
         "states": [
           {
             "id": "Batch.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 28,
@@ -452,6 +458,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -812,6 +819,8 @@ const ir: unknown = {
             "name": "Closed",
             "kind": "final",
             "doc": "Closing stops the uploads still running.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 40,
@@ -822,6 +831,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -971,6 +981,8 @@ const ir: unknown = {
         "name": "Upload",
         "kind": "compound",
         "doc": "Upload a file in chunks. Can be paused, and reports its progress to whoever invoked it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 1,
           "line": 23,
@@ -981,12 +993,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "Upload.Sending",
+        "default": [],
         "states": [
           {
             "id": "Upload.Sending",
             "name": "Sending",
             "kind": "atomic",
             "doc": "One chunk at a time, until every byte is stored.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 35,
@@ -997,6 +1012,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1224,6 +1240,8 @@ const ir: unknown = {
             "name": "Paused",
             "kind": "atomic",
             "doc": "Nothing is sent until the user resumes.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 45,
@@ -1234,6 +1252,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1269,6 +1288,8 @@ const ir: unknown = {
             "name": "Finishing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 47,
@@ -1279,6 +1300,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1391,6 +1413,8 @@ const ir: unknown = {
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 54,
@@ -1401,6 +1425,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1422,6 +1447,8 @@ const ir: unknown = {
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 1,
               "line": 55,
@@ -1432,6 +1459,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

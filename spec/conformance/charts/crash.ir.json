@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/crash.road",
@@ -69,6 +69,8 @@
         "name": "Crash",
         "kind": "compound",
         "doc": "Runs two children and a task, one in each region.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 8,
@@ -79,12 +81,15 @@
         "params": [],
         "vars": [],
         "initial": "Crash.Busy",
+        "default": [],
         "states": [
           {
             "id": "Crash.Busy",
             "name": "Busy",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 11,
@@ -95,12 +100,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Crash.Busy.A",
                 "name": "A",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 12,
@@ -111,6 +119,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -168,6 +177,8 @@
                 "name": "B",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 18,
@@ -178,6 +189,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -235,6 +247,8 @@
                 "name": "C",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 24,
@@ -245,6 +259,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -303,6 +318,8 @@
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -313,6 +330,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -374,6 +392,8 @@
         "name": "Child",
         "kind": "compound",
         "doc": "Waits for Stop, which never comes, logging its exit.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 35,
@@ -384,12 +404,15 @@
         "params": [],
         "vars": [],
         "initial": "Child.Waiting",
+        "default": [],
         "states": [
           {
             "id": "Child.Waiting",
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 40,
@@ -400,6 +423,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [
@@ -451,6 +475,8 @@
             "name": "Stopped",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,
@@ -461,6 +487,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

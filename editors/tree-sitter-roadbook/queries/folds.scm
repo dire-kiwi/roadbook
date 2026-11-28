@@ -8,4 +8,5 @@
   (invoke)
   (branches)
   (record_body)
+  (meta)
 ] @fold

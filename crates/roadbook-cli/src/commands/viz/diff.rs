@@ -676,8 +676,8 @@ impl Merge<'_> {
 
     /// The merged transitions of a state: the after version's, then the removed ones.
     fn transitions(&mut self, a: &State, b: &State) -> Vec<Transition> {
-        let ab = blocks(&a.transitions);
-        let bb = blocks(&b.transitions);
+        let ab = blocks(a);
+        let bb = blocks(b);
         let mut pairs: Vec<(usize, usize)> = Vec::new(); // (after index, before index)
         let mut block_of_before: HashMap<usize, u32> = HashMap::new(); // before index -> after group
         let mut used_blocks: HashSet<usize> = HashSet::new();
@@ -692,7 +692,9 @@ impl Merge<'_> {
             used_blocks.insert(bi);
             let group = a.transitions[blk.members[0]].group;
             for &m in &bblk.members {
-                block_of_before.insert(m, group);
+                for c in b.copies(m) {
+                    block_of_before.insert(c, group);
+                }
             }
             // Branches: by guard text first, then by position.
             let guard = |t: &Transition| t.guard.as_ref().map(|g| g.text.clone());
@@ -714,6 +716,10 @@ impl Merge<'_> {
         }
         let mut out = a.transitions.clone();
         for i in 0..a.transitions.len() {
+            // A later copy of an `on A | B` is drawn with the first, which carries the mark.
+            if a.copies(i).is_empty() {
+                continue;
+            }
             match pairs.iter().find(|(ai, _)| *ai == i) {
                 None => self.d.transitions.push(((a.id.clone(), i), added())),
                 Some(&(_, bi)) => {
@@ -730,7 +736,13 @@ impl Merge<'_> {
         let mut next_group = a.transitions.iter().map(|t| t.group + 1).max().unwrap_or(0);
         let mut fresh: HashMap<u32, u32> = HashMap::new();
         for (bi, t) in b.transitions.iter().enumerate() {
-            if pairs.iter().any(|(_, x)| *x == bi) {
+            // The copies of an `on A | B` go with the first: kept with it, or removed with it.
+            let first = b
+                .transitions
+                .iter()
+                .position(|o| o.group == t.group && o.span == t.span)
+                .unwrap_or(bi);
+            if pairs.iter().any(|(_, x)| *x == first) {
                 continue;
             }
             let mut r = t.clone();
@@ -742,9 +754,11 @@ impl Merge<'_> {
                     next_group - 1
                 }),
             };
-            self.d
-                .transitions
-                .push(((a.id.clone(), out.len()), removed()));
+            if first == bi {
+                self.d
+                    .transitions
+                    .push(((a.id.clone(), out.len()), removed()));
+            }
             out.push(r);
         }
         out
@@ -758,15 +772,25 @@ struct Block {
     members: Vec<usize>,
 }
 
-fn blocks(ts: &[Transition]) -> Vec<Block> {
+/// The blocks of state `s`, each with its branches as drawn: the copies of an `on A | B` once,
+/// keyed by all of its events.
+fn blocks(s: &State) -> Vec<Block> {
     let mut out: Vec<Block> = Vec::new();
     let mut groups: HashMap<u32, usize> = HashMap::new();
-    for (i, t) in ts.iter().enumerate() {
+    for (i, t) in s.transitions.iter().enumerate() {
+        let copies = s.copies(i);
+        if copies.is_empty() {
+            continue;
+        }
         if let Some(&b) = groups.get(&t.group) {
             out[b].members.push(i);
             continue;
         }
-        let key = trigger_key(&t.trigger);
+        let keys: Vec<String> = copies
+            .iter()
+            .map(|&k| trigger_key(&s.transitions[k].trigger))
+            .collect();
+        let key = keys.join(" | ");
         let nth = out.iter().filter(|b| b.key == key).count();
         groups.insert(t.group, out.len());
         out.push(Block {
@@ -788,6 +812,17 @@ fn trigger_key(t: &Trigger) -> String {
         }
         other => plain_trigger_text(other),
     }
+}
+
+/// The trigger of transition `i` of state `s` as the viewer labels its edge, `Retry | Reconnect`
+/// for an `on A | B` (`transitionTrigger` in `packages/viewer/src/model.ts`).
+fn drawn_trigger_text(s: &State, i: usize) -> String {
+    let texts: Vec<String> = s
+        .copies(i)
+        .iter()
+        .map(|&k| trigger_text(s, &s.transitions[k].trigger))
+        .collect();
+    texts.join(" | ")
 }
 
 /// The trigger of state `s` as the viewer labels it (`triggerText` in
@@ -892,6 +927,7 @@ fn kind_text(k: StateKind) -> String {
         StateKind::Final => "final",
         StateKind::History => "history",
         StateKind::DeepHistory => "deep history",
+        StateKind::Choice => "choice",
     }
     .into()
 }
@@ -921,6 +957,13 @@ fn state_changes(a: &State, b: &State) -> Vec<Change> {
         b.initial.as_deref().map(short),
         a.initial.as_deref().map(short),
     );
+    let default = |s: &State| {
+        (!s.default.is_empty()).then(|| {
+            let ids: Vec<String> = s.default.iter().map(|d| short(d)).collect();
+            ids.join(", ")
+        })
+    };
+    cmp("default", default(b), default(a));
     cmp("invoke", invokes_text(&b.invokes), invokes_text(&a.invokes));
     cmp("entry", effects_text(&b.entry), effects_text(&a.entry));
     cmp("exit", effects_text(&b.exit), effects_text(&a.exit));
@@ -1017,8 +1060,8 @@ fn transition_changes(a: &State, ai: usize, b: &State, bi: usize) -> Vec<Change>
     };
     cmp(
         "trigger",
-        Some(trigger_text(b, &tb.trigger)),
-        Some(trigger_text(a, &ta.trigger)),
+        Some(drawn_trigger_text(b, bi)),
+        Some(drawn_trigger_text(a, ai)),
     );
     cmp(
         "guard",
@@ -1041,8 +1084,7 @@ fn guard_text(s: &State, i: usize) -> String {
     if let Some(g) = &t.guard {
         return format!("[{}]", g.text);
     }
-    let first = s.transitions.iter().position(|o| o.group == t.group);
-    if first != Some(i) {
+    if s.is_else(i) {
         "[else]".into()
     } else {
         String::new()
@@ -1425,6 +1467,42 @@ machine M(n: int) -> int ! Declined {
         assert!(d.machines[0].1.states.is_empty());
         let (_, s, t) = d.counts();
         assert_eq!((s.changed, t.changed, t.added, t.removed), (0, 3, 0, 0));
+    }
+
+    /// The copies of an `on A | B` are one transition: one mark, on the first, and a block keyed
+    /// by all of its events, so that listing one more event replaces the transition.
+    #[test]
+    fn or_events_are_one_transition() {
+        let or = BASE
+            .replace("  event Stop\n", "  event Stop\n  event Pause\n")
+            .replace("    on Stop -> Out", "    on Stop | Pause -> Out");
+        let base = BASE.replace("  event Stop\n", "  event Stop\n  event Pause\n");
+        let d = diff(Some(&ir(&base)), Some(&ir(&or)), "main");
+        assert_eq!(transition_of(&d, "M.A", 2).unwrap().status, Status::Added);
+        assert!(transition_of(&d, "M.A", 3).is_none(), "the copy for Pause");
+        assert_eq!(transition_of(&d, "M.A", 4).unwrap().status, Status::Removed);
+        let (_, _, t) = d.counts();
+        assert_eq!((t.changed, t.added, t.removed), (0, 1, 1));
+
+        let d = diff(
+            Some(&ir(&or)),
+            Some(&ir(&or.replace("Pause -> Out", "Pause -> Bad"))),
+            "main",
+        );
+        let stop = transition_of(&d, "M.A", 2).unwrap();
+        assert_eq!(whats(stop), ["target"]);
+        assert!(transition_of(&d, "M.A", 3).is_none());
+        let (_, _, t) = d.counts();
+        assert_eq!((t.changed, t.added, t.removed), (1, 0, 0));
+
+        // Removed with its copies, which stay copies in the merged chart.
+        let d = diff(
+            Some(&ir(&or)),
+            Some(&ir(&base.replace("    on Stop -> Out\n", ""))),
+            "main",
+        );
+        let (_, _, t) = d.counts();
+        assert_eq!((t.changed, t.added, t.removed), (0, 0, 1));
     }
 
     #[test]

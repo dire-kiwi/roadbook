@@ -1,12 +1,14 @@
 //! The `check` lines of machines: assertions about a machine's states, which `roadbook check`
 //! verifies by exploring the chart's state graph. They are resolved here, once a machine is
 //! lowered, to the ids of its IR states, and kept beside the IR, not in it: the IR, and every
-//! machine hash, is the same with and without them.
+//! machine hash, is the same with and without them. The states of `in(…)` expressions are
+//! resolved here too, by the same rule.
 //!
 //! A state path is resolved from the machine body, as a target written at machine level is:
 //! the first segment among the top-level states, then each further segment among the
 //! children of the one before. It may name any state of the IR (the children a `retry` writes
-//! out included) but not a history state, which is never active, nor the machine.
+//! out included) but not a history state, which is never active, a choice state, which a run
+//! never rests in, nor the machine.
 
 use std::collections::HashMap;
 
@@ -58,6 +60,99 @@ pub struct StatePath {
     pub span: Span,
 }
 
+/// An `in(…)` as lowered, before its path is resolved.
+#[derive(Clone, Debug)]
+pub(crate) struct InRef {
+    /// The path as written.
+    pub target: Target,
+    /// The innermost state certain to be active, with its ancestors, where the expression is
+    /// evaluated: naming it or an ancestor is always true (`RB0917`).
+    pub sure: Option<String>,
+}
+
+/// What names a state path: a `check`, or an `in(…)` expression.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Naming {
+    Check,
+    In,
+}
+
+impl Naming {
+    fn code(self) -> roadbook_syntax::diagnostic::Code {
+        match self {
+            Naming::Check => codes::UNKNOWN_CHECK_STATE,
+            Naming::In => codes::UNKNOWN_IN_STATE,
+        }
+    }
+
+    /// The path's name in a sentence.
+    fn path(self) -> &'static str {
+        match self {
+            Naming::Check => "a check's state path",
+            Naming::In => "the path in `in(…)`",
+        }
+    }
+
+    /// The subject of a sentence: `a check`, `` `in(…)` ``.
+    fn what(self) -> &'static str {
+        match self {
+            Naming::Check => "a check",
+            Naming::In => "`in(…)`",
+        }
+    }
+}
+
+/// Resolves the `in(…)` expressions `ins` of machine `machine` against its lowered `root`,
+/// adding each state named to the symbol index. The IR already holds the id each names; an
+/// unknown, history or choice state is `RB0128`, and one always active where it is evaluated
+/// a warning, `RB0917`.
+pub(crate) fn resolve_in(
+    ck: &mut Checker<'_>,
+    machine: &str,
+    ins: &[InRef],
+    root: &ir::State,
+    symbols: &HashMap<String, SymbolId>,
+) {
+    for r in ins {
+        let Some(found) = state_path(ck, machine, root, symbols, &r.target, Naming::In) else {
+            continue;
+        };
+        let Some(sure) = &r.sure else {
+            continue;
+        };
+        let always = *sure == found.id
+            || sure
+                .strip_prefix(found.id.as_str())
+                .is_some_and(|rest| rest.starts_with('.'));
+        if always {
+            let written = r
+                .target
+                .path
+                .iter()
+                .map(|p| p.name.as_str())
+                .collect::<Vec<_>>()
+                .join(".");
+            let help = if *sure == found.id {
+                format!("this is evaluated only while `{written}` is active")
+            } else {
+                let below = sure.split_once('.').map_or(sure.as_str(), |(_, b)| b);
+                format!(
+                    "this is evaluated only while `{below}` is active, and `{written}` is a state around it"
+                )
+            };
+            ck.diags.push(
+                Diagnostic::warning(
+                    codes::IN_ALWAYS_TRUE,
+                    r.target.span,
+                    format!("`in({written})` is always true here"),
+                )
+                .with_label("active wherever this is evaluated")
+                .with_help(format!("{help}; name another state, or drop the test")),
+            );
+        }
+    }
+}
+
 /// Resolves the checks of machine `machine`'s `body` against its lowered `root`, adding the
 /// resolved ones to `ck.checks` and each state named to the symbol index. `symbols` maps the
 /// IR id of each state written in the chart to its symbol.
@@ -69,7 +164,7 @@ pub(crate) fn resolve(
     symbols: &HashMap<String, SymbolId>,
 ) {
     for c in body.checks() {
-        let mut path = |t: &Target| state_path(ck, machine, root, symbols, t);
+        let mut path = |t: &Target| state_path(ck, machine, root, symbols, t, Naming::Check);
         let property = match &c.property {
             ast::Property::Never(states) => {
                 let resolved: Vec<_> = states.iter().map(&mut path).collect();
@@ -106,6 +201,7 @@ fn state_path(
     root: &ir::State,
     symbols: &HashMap<String, SymbolId>,
     t: &Target,
+    naming: Naming,
 ) -> Option<StatePath> {
     let written = t
         .path
@@ -116,7 +212,8 @@ fn state_path(
     let mut node = root;
     for (i, seg) in t.path.iter().enumerate() {
         let Some(child) = node.states.iter().find(|s| s.name == seg.name) else {
-            ck.diags.push(unknown(machine, node, &written, t, i));
+            ck.diags
+                .push(unknown(machine, node, &written, t, i, naming));
             return None;
         };
         if let Some(&symbol) = symbols.get(&child.id) {
@@ -128,9 +225,12 @@ fn state_path(
         ) {
             let parent = &t.path[..i];
             let mut d = Diagnostic::error(
-                codes::UNKNOWN_CHECK_STATE,
+                naming.code(),
                 seg.span,
-                format!("`{written}` is a history state, which a check cannot name"),
+                format!(
+                    "`{written}` is a history state, which {} cannot name",
+                    naming.what()
+                ),
             );
             d = if parent.is_empty() {
                 d.with_help(
@@ -149,6 +249,20 @@ fn state_path(
             ck.diags.push(d);
             return None;
         }
+        if child.kind == ir::StateKind::Choice {
+            ck.diags.push(
+                Diagnostic::error(
+                    naming.code(),
+                    seg.span,
+                    format!(
+                        "`{written}` is a choice state, which {} cannot name",
+                        naming.what()
+                    ),
+                )
+                .with_help("a run never rests in a choice: it leaves it in the same step; name the states its branches go to"),
+            );
+            return None;
+        }
         node = child;
     }
     Some(StatePath {
@@ -157,31 +271,70 @@ fn state_path(
     })
 }
 
+/// The path from the top-level states to the one state below them named `name`, but not
+/// including it, if exactly one state below them has that name.
+fn deeper(root: &ir::State, name: &str) -> Option<String> {
+    fn walk<'s>(s: &'s ir::State, name: &str, depth: usize, out: &mut Vec<&'s ir::State>) {
+        for c in &s.states {
+            if depth > 0 && c.name == name {
+                out.push(s);
+            }
+            walk(c, name, depth + 1, out);
+        }
+    }
+    let mut found = Vec::new();
+    walk(root, name, 0, &mut found);
+    match found.as_slice() {
+        [parent] => parent
+            .id
+            .split_once('.')
+            .map(|(_, below)| below.to_string()),
+        _ => None,
+    }
+}
+
 /// The error for segment `i` of `t`, which is not a child of `node`.
-fn unknown(machine: &str, node: &ir::State, written: &str, t: &Target, i: usize) -> Diagnostic {
+fn unknown(
+    machine: &str,
+    node: &ir::State,
+    written: &str,
+    t: &Target,
+    i: usize,
+    naming: Naming,
+) -> Diagnostic {
     let seg = &t.path[i];
     let children: Vec<&str> = node
         .states
         .iter()
-        .filter(|s| !matches!(s.kind, ir::StateKind::History | ir::StateKind::DeepHistory))
+        .filter(|s| {
+            !matches!(
+                s.kind,
+                ir::StateKind::History | ir::StateKind::DeepHistory | ir::StateKind::Choice
+            )
+        })
         .map(|s| s.name.as_str())
         .collect();
     if i == 0 {
+        let what = naming.what();
         let d = Diagnostic::error(
-            codes::UNKNOWN_CHECK_STATE,
+            naming.code(),
             seg.span,
-            format!("unknown state `{}` in a check of `{machine}`", seg.name),
+            match naming {
+                Naming::Check => format!("unknown state `{}` in a check of `{machine}`", seg.name),
+                Naming::In => format!("unknown state `{}` in `in(…)` in `{machine}`", seg.name),
+            },
         );
         if seg.name == machine {
             // `check reachable M.A`: the path starts at the machine's top-level states.
             return match t.path.len() {
-                1 => d.with_help(
-                    "a check names one of the machine's states; the machine itself is always active until it finishes, which `check can finish` is about",
-                ),
+                1 => d.with_help(match naming {
+                    Naming::Check => "a check names one of the machine's states; the machine itself is always active until it finishes, which `check can finish` is about",
+                    Naming::In => "`in(…)` names one of the machine's states; the machine itself is always active while it runs",
+                }),
                 _ => {
                     let fixed = written[seg.name.len() + 1..].to_string();
                     d.with_help(format!(
-                        "a check names a state from the machine's top-level states, without the machine's name: `{fixed}`"
+                        "{what} names a state from the machine's top-level states, without the machine's name: `{fixed}`"
                     ))
                     .with_fix(format!("write `{fixed}`"), t.span, fixed)
                 }
@@ -194,18 +347,32 @@ fn unknown(machine: &str, node: &ir::State, written: &str, t: &Target, i: usize)
                 s,
             ),
             None if children.is_empty() => d.with_help(format!("`{machine}` has no states")),
-            None => d.with_help(format!(
-                "a check's state path starts at the machine's top-level states: {}",
-                children.join(", ")
-            )),
+            None => match deeper(node, &seg.name) {
+                // `in(Volume.Muted)` for `Main.Volume.Muted`: the path is not relative.
+                Some(prefix) => {
+                    let fixed = format!("{prefix}.{written}");
+                    d.with_help(format!(
+                        "{} starts at the machine's top-level states, and `{}` is inside `{prefix}`: `{fixed}`",
+                        naming.path(),
+                        seg.name
+                    ))
+                    .with_fix(format!("write `{fixed}`"), t.span, fixed)
+                }
+                None => d.with_help(format!(
+                    "{} starts at the machine's top-level states: {}",
+                    naming.path(),
+                    children.join(", ")
+                )),
+            },
         };
     }
     let parent = &node.id;
     let d = Diagnostic::error(
-        codes::UNKNOWN_CHECK_STATE,
+        naming.code(),
         seg.span,
         format!(
-            "unknown state `{written}` in a check: `{parent}` has no child `{}`",
+            "unknown state `{written}` in {}: `{parent}` has no child `{}`",
+            naming.what(),
             seg.name
         ),
     );

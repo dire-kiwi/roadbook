@@ -25,7 +25,7 @@ module.exports = grammar({
   externals: ($) => [$._same_line_after, $._error_sentinel],
 
   // Every keyword is reserved: none can be a name. `from`, `as`, `retry`, `ref`, `sensitive`,
-  // `history`, `deep`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `map`,
+  // `history`, `deep`, `choice`, `tags`, `meta`, `children`, `by`, `spawn`, `stop`, `raise`, `cancel`, `internal`, `map`,
   // the words of a check (`check`, `never`, `reachable`, `only`, `can`, `finish`) and the
   // built-in type names are not, because they mean something only where no name can appear.
   reserved: {
@@ -33,7 +33,7 @@ module.exports = grammar({
       'import', 'type', 'enum', 'error', 'extern', 'fn', 'action', 'task', 'machine', 'strict',
       'var', 'event', 'emits', 'initial', 'state', 'final', 'parallel', 'entry', 'exit', 'on',
       'after', 'always', 'done', 'invoke', 'output', 'fail', 'if', 'else', 'set', 'do', 'send',
-      'emit', 'ignore', 'and', 'or', 'not', 'true', 'false', 'call', 'reply',
+      'emit', 'ignore', 'and', 'or', 'not', 'in', 'true', 'false', 'call', 'reply',
     ],
   },
 
@@ -296,13 +296,35 @@ module.exports = grammar({
       ),
 
     // `history` and `deep` are not reserved: they mean something only at the start of an item.
+    // `history Name -> A.B, C`: the default targets, entered when nothing is recorded.
     history_state: ($) =>
-      seq(optional(field('kind', 'deep')), 'history', field('name', $.type_identifier)),
+      seq(
+        optional(field('kind', 'deep')),
+        'history',
+        field('name', $.type_identifier),
+        optional(seq('->', field('default', $.state_path), repeat(seq(',', field('default', $.state_path))))),
+      ),
+
+    // `choice` is not reserved either: a choice state starts with it and a name. The compiler
+    // requires the `else` (RB0227) and a target on every branch (RB0228); the grammar accepts
+    // a choice without them, as it does other items the compiler rejects.
+    choice_state: ($) => seq('choice', field('name', $.type_identifier), field('branches', $.branches)),
+
+    // `tags` and `meta` are not reserved either: each starts an item only followed by a name,
+    // or by `{`. The compiler accepts only literals as meta values (RB0232).
+    tags: ($) => seq('tags', field('tag', $.identifier), repeat(seq(',', field('tag', $.identifier)))),
+
+    meta: ($) => seq('meta', '{', commaSep($.meta_entry), '}'),
+
+    meta_entry: ($) => seq(field('key', $.identifier), ':', field('value', $._expression)),
 
     _common_item: ($) =>
       choice(
         $.initial,
         $.state_declaration,
+        $.choice_state,
+        $.tags,
+        $.meta,
         $.entry,
         $.exit,
         $.on_transition,
@@ -329,7 +351,13 @@ module.exports = grammar({
         $.peer_ended,
       ),
 
-    event_pattern: ($) => field('event', $.type_identifier),
+    // `on Submit`, or `on Retry | Reconnect`: one transition for several of the machine's own
+    // events.
+    event_pattern: ($) =>
+      seq(
+        field('event', $.type_identifier),
+        repeat(seq('|', field('event', $.type_identifier))),
+      ),
 
     // `on reserve`: taking a call the machine declares. Lower case, and no `.` after it.
     call_pattern: ($) => field('call', $.identifier),
@@ -586,8 +614,13 @@ module.exports = grammar({
         $._implicit_name,
         $.enum_value,
         $.record_value,
+        $.in_expression,
         $.parenthesized_expression,
       ),
+
+    // `in(Main.Volume.Muted)`: whether a state is active, its path written from the machine
+    // body as a check's is.
+    in_expression: ($) => seq('in', '(', field('state', $.state_path), ')'),
 
     // The names in scope inside a transition: the current event, an invoke's result and its
     // error, the call being taken, and a spawned child's key. `event`, `error` and `call` are

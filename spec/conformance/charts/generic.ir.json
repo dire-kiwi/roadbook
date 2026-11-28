@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/generic.road",
@@ -308,6 +308,8 @@
         "name": "Gather",
         "kind": "compound",
         "doc": "Waits for more counts or for the longest wait, then fetches a page after the\nlongest one.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 24,
@@ -318,12 +320,15 @@
         "params": [],
         "vars": [],
         "initial": "Gather.Waiting",
+        "default": [],
         "states": [
           {
             "id": "Gather.Waiting",
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 34,
@@ -334,6 +339,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -498,6 +504,8 @@
             "name": "Fetching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 40,
@@ -508,6 +516,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -608,6 +617,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,
@@ -618,6 +629,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/internal.road",
@@ -114,6 +114,8 @@
         "name": "Kept",
         "kind": "compound",
         "doc": "`Session` keeps its timer and its invoke when an internal transition changes the states\nbelow it; an external one restarts both.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 9,
@@ -124,12 +126,15 @@
         "params": [],
         "vars": [],
         "initial": "Kept.Session",
+        "default": [],
         "states": [
           {
             "id": "Kept.Session",
             "name": "Session",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 17,
@@ -140,12 +145,15 @@
             "params": [],
             "vars": [],
             "initial": "Kept.Session.Browsing",
+            "default": [],
             "states": [
               {
                 "id": "Kept.Session.Browsing",
                 "name": "Browsing",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 30,
@@ -156,6 +164,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -217,6 +226,8 @@
                 "name": "Cart",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 36,
@@ -227,12 +238,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Kept.Session.Cart.Editing",
+                "default": [],
                 "states": [
                   {
                     "id": "Kept.Session.Cart.Editing",
                     "name": "Editing",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 40,
@@ -243,6 +257,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -256,6 +271,8 @@
                     "name": "Reviewing",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 41,
@@ -266,6 +283,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -473,6 +491,8 @@
             "name": "TimedOut",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 45,
@@ -483,6 +503,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -557,6 +578,8 @@
         "name": "Again",
         "kind": "compound",
         "doc": "An internal transition that exits a final state takes back its parent's completion: the\nfirst time `Work` ends, `S`'s `always` goes back into it before `S`'s `done` is tried.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 50,
@@ -567,12 +590,15 @@
         "params": [],
         "vars": [],
         "initial": "Again.S",
+        "default": [],
         "states": [
           {
             "id": "Again.S",
             "name": "S",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -583,12 +609,15 @@
             "params": [],
             "vars": [],
             "initial": "Again.S.Work",
+            "default": [],
             "states": [
               {
                 "id": "Again.S.Work",
                 "name": "Work",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 63,
@@ -599,6 +628,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -663,6 +693,8 @@
                 "name": "Done",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 65,
@@ -673,6 +705,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -782,6 +815,8 @@
             "name": "Out",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 68,
@@ -792,6 +827,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

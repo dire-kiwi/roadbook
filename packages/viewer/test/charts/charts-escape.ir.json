@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "packages/viewer/test/charts/escape.road",
@@ -169,6 +169,8 @@
         "name": "Escape",
         "kind": "compound",
         "doc": "Doc </script><script>alert('doc')</script> <img src=x onerror=alert(2)> & \"quotes\" 'single'\nsecond line <!-- comment",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 12,
@@ -179,12 +181,15 @@
         "params": [],
         "vars": [],
         "initial": "Escape.A",
+        "default": [],
         "states": [
           {
             "id": "Escape.A",
             "name": "A",
             "kind": "atomic",
             "doc": "state doc <img src=x onerror=alert(5)> \"q\"",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -195,6 +200,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -532,6 +538,8 @@
             "name": "K",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 40,
@@ -542,6 +550,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -661,6 +670,8 @@
             "name": "B",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 46,
@@ -671,6 +682,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -787,6 +799,8 @@
             "name": "P",
             "kind": "parallel",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 53,
@@ -797,12 +811,15 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [
               {
                 "id": "Escape.P.R1",
                 "name": "R1",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 55,
@@ -813,12 +830,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Escape.P.R1.X",
+                "default": [],
                 "states": [
                   {
                     "id": "Escape.P.R1.X",
                     "name": "X",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 55,
@@ -829,6 +849,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -863,6 +884,8 @@
                     "name": "XF",
                     "kind": "final",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 55,
@@ -873,6 +896,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -894,6 +918,8 @@
                 "name": "R2",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 56,
@@ -904,12 +930,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "Escape.P.R2.Y",
+                "default": [],
                 "states": [
                   {
                     "id": "Escape.P.R2.Y",
                     "name": "Y",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 56,
@@ -920,6 +949,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -955,6 +985,8 @@
                     "name": "YF",
                     "kind": "final",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 56,
@@ -965,6 +997,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -1015,6 +1048,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 58,
@@ -1025,6 +1060,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1046,6 +1082,8 @@
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 59,
@@ -1056,6 +1094,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1228,6 +1267,8 @@
         "name": "EscapePeer",
         "kind": "compound",
         "doc": "Peer doc <img src=x onerror=alert(14)> & \"q\"",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 63,
@@ -1238,12 +1279,15 @@
         "params": [],
         "vars": [],
         "initial": "EscapePeer.P",
+        "default": [],
         "states": [
           {
             "id": "EscapePeer.P",
             "name": "P",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 70,
@@ -1254,6 +1298,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1310,6 +1355,8 @@
             "name": "End",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 73,
@@ -1320,6 +1367,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

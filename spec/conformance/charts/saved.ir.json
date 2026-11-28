@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/saved.road",
@@ -226,6 +226,8 @@
         "name": "Counter",
         "kind": "compound",
         "doc": "A counter that waits for events in a state with no work.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 13,
@@ -236,12 +238,15 @@
         "params": [],
         "vars": [],
         "initial": "Counter.Counting",
+        "default": [],
         "states": [
           {
             "id": "Counter.Counting",
             "name": "Counting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 21,
@@ -252,6 +257,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -360,6 +366,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 26,
@@ -370,6 +378,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -447,6 +456,8 @@
         "name": "Shop",
         "kind": "compound",
         "doc": "Pays through a child machine.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 30,
@@ -457,12 +468,15 @@
         "params": [],
         "vars": [],
         "initial": "Shop.Paying",
+        "default": [],
         "states": [
           {
             "id": "Shop.Paying",
             "name": "Paying",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 35,
@@ -473,6 +487,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -548,6 +563,8 @@
             "name": "Paid",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 41,
@@ -558,6 +575,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -654,6 +672,8 @@
         "name": "Pay",
         "kind": "compound",
         "doc": "Quotes a price, then charges it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 45,
@@ -664,12 +684,15 @@
         "params": [],
         "vars": [],
         "initial": "Pay.Quoting",
+        "default": [],
         "states": [
           {
             "id": "Pay.Quoting",
             "name": "Quoting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 51,
@@ -680,6 +703,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -755,6 +779,8 @@
             "name": "Charging",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -765,6 +791,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -840,6 +867,8 @@
             "name": "Charged",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 63,
@@ -850,6 +879,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -912,6 +942,8 @@
         "name": "Reminder",
         "kind": "compound",
         "doc": "Rings a second after it starts waiting.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 67,
@@ -922,12 +954,15 @@
         "params": [],
         "vars": [],
         "initial": "Reminder.Waiting",
+        "default": [],
         "states": [
           {
             "id": "Reminder.Waiting",
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 72,
@@ -938,6 +973,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -978,6 +1014,8 @@
             "name": "Ringing",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 74,
@@ -988,6 +1026,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -1141,6 +1180,8 @@
         "name": "Order",
         "kind": "compound",
         "doc": "An order kept as a snapshot between requests: it waits three days for\npayment, ships, and waits for delivery.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 83,
@@ -1151,12 +1192,15 @@
         "params": [],
         "vars": [],
         "initial": "Order.AwaitingPayment",
+        "default": [],
         "states": [
           {
             "id": "Order.AwaitingPayment",
             "name": "AwaitingPayment",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 92,
@@ -1167,6 +1211,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1244,6 +1289,8 @@
             "name": "Shipping",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 98,
@@ -1254,6 +1301,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1329,6 +1377,8 @@
             "name": "AwaitingDelivery",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 104,
@@ -1339,6 +1389,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1374,6 +1425,8 @@
             "name": "Expired",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 106,
@@ -1384,6 +1437,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1443,6 +1497,8 @@
             "name": "Complete",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 108,
@@ -1453,6 +1509,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

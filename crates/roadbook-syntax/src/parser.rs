@@ -1048,6 +1048,15 @@ impl Parser<'_> {
             }
             return Ok(Some(Item::History(h)));
         }
+        if self.at_choice() {
+            return Ok(Some(Item::State(self.choice()?)));
+        }
+        if self.at_word("tags") && matches!(self.nth(1), T::Lower | T::Upper | T::Keyword(_)) {
+            return Ok(Some(Item::Tags(self.tags()?)));
+        }
+        if self.at_word("meta") && self.nth(1) == T::Punct(P::LBrace) {
+            return Ok(Some(Item::Meta(self.meta()?)));
+        }
         let mut t = self.tok();
         if self.at_check() {
             return self.check_item(kind);
@@ -1083,10 +1092,10 @@ impl Parser<'_> {
         let T::Keyword(k) = t.kind else {
             let expected = match kind {
                 BodyKind::Machine => {
-                    "a machine item (`var`, `event`, `internal event`, `emits`, `call`, `children`, `initial`, `state`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
+                    "a machine item (`var`, `event`, `internal event`, `emits`, `call`, `children`, `initial`, `state`, `choice`, `tags`, `meta`, `entry`, `exit`, `on`, `after`, `always`, `check`) or `}`"
                 }
                 BodyKind::State => {
-                    "a state item (`var`, `initial`, `state`, `history`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
+                    "a state item (`var`, `initial`, `state`, `choice`, `history`, `tags`, `meta`, `entry`, `exit`, `on`, `after`, `always`, `done`, `invoke`, `output`, `fail`) or `}`"
                 }
             };
             return Err(self.unexpected(expected));
@@ -1150,10 +1159,23 @@ impl Parser<'_> {
                 } else if self.at(T::Lower) {
                     Trigger::Call(self.bump_ident())
                 } else {
-                    Trigger::On(
-                        self.pattern("an event name, `*`, `name.Event` or the name of a call")?,
-                    )
+                    match self.pattern("an event name, `*`, `name.Event` or the name of a call")? {
+                        Pattern::Name(first) if self.at_p(P::Pipe) => {
+                            let mut names = vec![first];
+                            while self.eat_p(P::Pipe).is_some() {
+                                if !self.at(T::Upper) {
+                                    return Err(self.or_scope());
+                                }
+                                names.push(self.bump_ident());
+                            }
+                            Trigger::OneOf(names)
+                        }
+                        p => Trigger::On(p),
+                    }
                 };
+                if self.at_p(P::Pipe) {
+                    return Err(self.or_scope());
+                }
                 Item::Transition(self.transition(t.span, trigger)?)
             }
             K::After => {
@@ -1326,7 +1348,7 @@ impl Parser<'_> {
         })
     }
 
-    /// `Name { . Name }`: a state named in a `check`.
+    /// `Name { . Name }`: a state named in a `check`, a history state's default or `in(…)`.
     fn state_path(&mut self) -> PResult<Target> {
         // A lower-case name on the next line is the next item, not a misspelt state.
         if !self.at(T::Upper) && self.starts_line() {
@@ -1402,6 +1424,72 @@ impl Parser<'_> {
         }
     }
 
+    /// At the start of `choice Name`. `choice` is contextual, like `history`.
+    fn at_choice(&self) -> bool {
+        self.at(T::Lower) && self.text(self.tok()) == "choice" && self.nth(1) == T::Upper
+    }
+
+    /// `choice Name { if g -> A … else -> B }`: a state whose body is one `always` transition,
+    /// the branches, written as a block. Its trigger span is `choice Name`.
+    fn choice(&mut self) -> PResult<State> {
+        let doc = self.take_doc();
+        let start = self.bump().span;
+        let name = self.upper("the name of the choice state")?;
+        let trigger_span = self.since(start);
+        if !self.at_p(P::LBrace) {
+            return Err(self.unexpected(&format!(
+                "`{{` to start the branches of choice `{}`",
+                name.name
+            )));
+        }
+        let branches = self.branches(trigger_span, false)?;
+        let span = self.since(start);
+        let body_span = match &branches {
+            Branches::Block { span, .. } => *span,
+            Branches::Single(b) => b.span,
+        };
+        Ok(State {
+            doc,
+            kind: StateKind::Choice,
+            name,
+            params: Vec::new(),
+            body: Body {
+                items: vec![Item::Transition(Transition {
+                    trigger: Trigger::Always,
+                    branches,
+                    trigger_span,
+                    span,
+                })],
+                span: body_span,
+            },
+            span,
+        })
+    }
+
+    /// `tags a, b`. `tags` is contextual: it starts the item only followed by a name or a
+    /// keyword (reported as one).
+    fn tags(&mut self) -> PResult<Tags> {
+        let start = self.bump().span;
+        let mut names = vec![self.lower("a tag name")?];
+        while self.eat_p(P::Comma).is_some() {
+            names.push(self.lower("a tag name")?);
+        }
+        Ok(Tags {
+            names,
+            span: self.since(start),
+        })
+    }
+
+    /// `meta { key: value, … }`. `meta` is contextual: it starts the item only followed by `{`.
+    fn meta(&mut self) -> PResult<Meta> {
+        let start = self.bump().span;
+        let (entries, _) = self.list(P::LBrace, "the entries of `meta`", |p| p.field_value())?;
+        Ok(Meta {
+            entries,
+            span: self.since(start),
+        })
+    }
+
     fn history(&mut self, deep: bool) -> PResult<History> {
         let doc = self.take_doc();
         let start = self.bump().span;
@@ -1412,10 +1500,18 @@ impl Parser<'_> {
             self.bump();
         }
         let name = self.upper("the name of the history state")?;
+        let mut default = Vec::new();
+        if self.eat_p(P::Arrow).is_some() {
+            default.push(self.state_path()?);
+            while self.eat_p(P::Comma).is_some() {
+                default.push(self.state_path()?);
+            }
+        }
         Ok(History {
             doc,
             deep,
             name,
+            default,
             span: self.since(start),
         })
     }
@@ -1515,6 +1611,25 @@ impl Parser<'_> {
         })
     }
 
+    /// A `|` in an `on` trigger next to something other than one of the machine's events:
+    /// `on A | *`, `on * | A`, `on up.Progress | A`, `on A | reserve`. Reported at what follows
+    /// the `|` in a list of events, else at the `|`.
+    fn or_scope(&mut self) -> Fail {
+        let msg = if self.at_p(P::Pipe) {
+            "`|` joins only the machine's own events, as in `on A | B`".to_string()
+        } else {
+            format!(
+                "expected the name of one of the machine's events after `|`, found {}",
+                self.found()
+            )
+        };
+        let d = Diagnostic::error(codes::UNEXPECTED_TOKEN, self.tok().span, msg).with_help(
+            "`on *`, an event another machine or task emits (`on name.Event`), a call, and a child's `done`, `fail` or `ended` each take an `on` of their own",
+        );
+        self.error(d);
+        Fail
+    }
+
     fn pattern(&mut self, what: &str) -> PResult<Pattern> {
         match self.eat_p(P::Star) {
             Some(t) => Ok(Pattern::Any { span: t.span }),
@@ -1543,7 +1658,7 @@ impl Parser<'_> {
         let trigger_span = self.since(start);
         let ignore = matches!(
             trigger,
-            Trigger::On(_) | Trigger::Receive { .. } | Trigger::Ended { .. }
+            Trigger::On(_) | Trigger::OneOf(_) | Trigger::Receive { .. } | Trigger::Ended { .. }
         );
         let branches = self.branches(trigger_span, ignore)?;
         Ok(Transition {
@@ -2413,6 +2528,16 @@ impl Parser<'_> {
                     kind: inner.kind,
                 });
             }
+            T::Keyword(K::In) => {
+                self.bump();
+                self.expect_p(P::LParen, " after `in`")?;
+                let state = self.state_path()?;
+                self.expect_p(P::RParen, " to close `in(`")?;
+                return Ok(Expr {
+                    span: t.span.to(self.prev()),
+                    kind: ExprKind::In(state),
+                });
+            }
             T::Keyword(K::Not) => {
                 let d = Diagnostic::error(
                     codes::UNEXPECTED_TOKEN,
@@ -2443,7 +2568,7 @@ fn starts_expr(k: T) -> bool {
             | T::Lower
             | T::Upper
             | T::Punct(P::LParen | P::Minus)
-            | T::Keyword(K::True | K::False | K::Not | K::Event | K::Error | K::Call)
+            | T::Keyword(K::True | K::False | K::Not | K::In | K::Event | K::Error | K::Call)
     )
 }
 

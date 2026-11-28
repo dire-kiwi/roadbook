@@ -7,7 +7,7 @@ import type { Ir } from '../ir.ts'
 import { own } from '../ir.ts'
 import { DIFF_SIGN, changesTable, countsText, diffAnnotations, historyCountsText, diffDetailsHtml, diffEntries, machineDiff, statusChip } from '../diff.ts'
 import type { ChartDiff } from '../diff.ts'
-import { findState, isHistory, kindText, triggerText } from '../model.ts'
+import { findState, isHistory, kindText, transitionTrigger } from '../model.ts'
 import { esc } from '../render.ts'
 import type { Controller, Host } from './modes.ts'
 
@@ -28,7 +28,7 @@ export function diffMode(host: Host, el: HTMLElement, diff: ChartDiff): Controll
     const st = machine ? findState(machine, e.state) : null
     const t = st?.transitions[e.index]
     if (!t) return `${short(e.state)} #${e.index}`
-    return `${short(e.state)}: ${triggerText(t.trigger, st ?? undefined)}${t.guard ? ` [${t.guard.text}]` : ''} → ${t.targets.length ? t.targets.map(short).join(', ') : '(no target)'}`
+    return `${short(e.state)}: ${transitionTrigger(st!, e.index)}${t.guard ? ` [${t.guard.text}]` : ''} → ${t.targets.length ? t.targets.map(short).join(', ') : '(no target)'}`
   }
 
   function render() {

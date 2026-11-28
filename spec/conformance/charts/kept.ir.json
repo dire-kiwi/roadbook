@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/kept.road",
@@ -155,6 +155,8 @@
         "name": "Tally",
         "kind": "compound",
         "doc": "Counts what its parent sends it, and naps after five seconds without news.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 9,
@@ -165,12 +167,15 @@
         "params": [],
         "vars": [],
         "initial": "Tally.Counting",
+        "default": [],
         "states": [
           {
             "id": "Tally.Counting",
             "name": "Counting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 18,
@@ -181,6 +186,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -317,6 +323,8 @@
             "name": "Napping",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 25,
@@ -327,6 +335,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -452,6 +461,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 32,
@@ -462,6 +473,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -569,6 +581,8 @@
         "name": "Desk",
         "kind": "compound",
         "doc": "Keeps a Tally, passes on what it is told, and hears what it counts.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 36,
@@ -579,12 +593,15 @@
         "params": [],
         "vars": [],
         "initial": "Desk.Open",
+        "default": [],
         "states": [
           {
             "id": "Desk.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 44,
@@ -595,6 +612,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -799,6 +817,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 54,
@@ -809,6 +829,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -889,6 +910,8 @@
         "name": "Office",
         "kind": "compound",
         "doc": "Keeps a Desk: two levels of child runs.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 58,
@@ -899,12 +922,15 @@
         "params": [],
         "vars": [],
         "initial": "Office.Working",
+        "default": [],
         "states": [
           {
             "id": "Office.Working",
             "name": "Working",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 64,
@@ -915,6 +941,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1073,6 +1100,8 @@
             "name": "Shut",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 73,
@@ -1083,6 +1112,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1164,6 +1194,8 @@
         "name": "Fetcher",
         "kind": "compound",
         "doc": "Fetches a number, then holds it until it is released.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 77,
@@ -1174,12 +1206,15 @@
         "params": [],
         "vars": [],
         "initial": "Fetcher.Fetching",
+        "default": [],
         "states": [
           {
             "id": "Fetcher.Fetching",
             "name": "Fetching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 84,
@@ -1190,6 +1225,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1265,6 +1301,8 @@
             "name": "Holding",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 90,
@@ -1275,6 +1313,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1310,6 +1349,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 92,
@@ -1320,6 +1361,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1382,6 +1424,8 @@
         "name": "Errand",
         "kind": "compound",
         "doc": "Keeps a Fetcher, and releases it when told.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 96,
@@ -1392,12 +1436,15 @@
         "params": [],
         "vars": [],
         "initial": "Errand.Waiting",
+        "default": [],
         "states": [
           {
             "id": "Errand.Waiting",
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 101,
@@ -1408,6 +1455,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1502,6 +1550,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 109,
@@ -1512,6 +1562,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1611,6 +1662,8 @@
         "name": "Safe",
         "kind": "compound",
         "doc": "Keeps a secret given to it, and what it was last told.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 113,
@@ -1621,12 +1674,15 @@
         "params": [],
         "vars": [],
         "initial": "Safe.Locked",
+        "default": [],
         "states": [
           {
             "id": "Safe.Locked",
             "name": "Locked",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 121,
@@ -1637,6 +1693,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1707,6 +1764,8 @@
             "name": "Gone",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 126,
@@ -1717,6 +1776,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1796,6 +1856,8 @@
         "name": "Vault",
         "kind": "compound",
         "doc": "Keeps a Safe, and passes on what it is told.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 130,
@@ -1806,12 +1868,15 @@
         "params": [],
         "vars": [],
         "initial": "Vault.Holding",
+        "default": [],
         "states": [
           {
             "id": "Vault.Holding",
             "name": "Holding",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 136,
@@ -1822,6 +1887,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1970,6 +2036,8 @@
             "name": "Empty",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 145,
@@ -1980,6 +2048,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

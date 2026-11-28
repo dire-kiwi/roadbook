@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "packages/viewer/test/charts/spawn.road",
@@ -223,6 +223,8 @@
         "name": "Session",
         "kind": "compound",
         "doc": "One connection.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 16,
@@ -233,12 +235,15 @@
         "params": [],
         "vars": [],
         "initial": "Session.Open",
+        "default": [],
         "states": [
           {
             "id": "Session.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 24,
@@ -249,6 +254,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -384,6 +390,8 @@
             "name": "Left",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -394,6 +402,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -415,6 +424,8 @@
             "name": "Dropped",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 30,
@@ -425,6 +436,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -489,6 +501,8 @@
         "name": "Job",
         "kind": "compound",
         "doc": "A job with no result.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 34,
@@ -499,12 +513,15 @@
         "params": [],
         "vars": [],
         "initial": "Job.Running",
+        "default": [],
         "states": [
           {
             "id": "Job.Running",
             "name": "Running",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 36,
@@ -515,6 +532,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -555,6 +573,8 @@
             "name": "Done",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 37,
@@ -565,6 +585,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -750,6 +771,8 @@
         "name": "Hub",
         "kind": "compound",
         "doc": "Many sessions, one per connection.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 41,
@@ -760,12 +783,15 @@
         "params": [],
         "vars": [],
         "initial": "Hub.Idle",
+        "default": [],
         "states": [
           {
             "id": "Hub.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 57,
@@ -776,6 +802,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -831,6 +858,8 @@
             "name": "Serving",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 58,
@@ -841,6 +870,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -1363,6 +1393,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 70,
@@ -1373,6 +1405,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

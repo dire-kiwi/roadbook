@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/raise.road",
@@ -127,6 +127,8 @@
         "name": "Order",
         "kind": "compound",
         "doc": "A raise in a transition, one in an entry and one in a final state's entry, with an\nalways and a completion in play: all are taken in the step, in the order queued.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 9,
@@ -137,12 +139,15 @@
         "params": [],
         "vars": [],
         "initial": "Order.Idle",
+        "default": [],
         "states": [
           {
             "id": "Order.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 18,
@@ -153,6 +158,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -223,6 +229,8 @@
             "name": "Work",
             "kind": "compound",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 20,
@@ -233,12 +241,15 @@
             "params": [],
             "vars": [],
             "initial": "Order.Work.Inner",
+            "default": [],
             "states": [
               {
                 "id": "Order.Work.Inner",
                 "name": "Inner",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 26,
@@ -249,6 +260,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -296,6 +308,8 @@
                 "name": "Finished",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 31,
@@ -306,6 +320,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -480,6 +495,8 @@
             "name": "After",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 34,
@@ -490,6 +507,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -589,6 +607,8 @@
         "name": "Starter",
         "kind": "compound",
         "doc": "A raise in an initial entry is taken while the run starts.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 38,
@@ -599,12 +619,15 @@
         "params": [],
         "vars": [],
         "initial": "Starter.A",
+        "default": [],
         "states": [
           {
             "id": "Starter.A",
             "name": "A",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 44,
@@ -615,6 +638,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [
               {
@@ -663,6 +687,8 @@
             "name": "B",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 49,
@@ -673,6 +699,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -783,6 +810,8 @@
         "name": "Lenient",
         "kind": "compound",
         "doc": "A raised event that no transition of the current states takes is dropped.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 53,
@@ -793,12 +822,15 @@
         "params": [],
         "vars": [],
         "initial": "Lenient.A",
+        "default": [],
         "states": [
           {
             "id": "Lenient.A",
             "name": "A",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 61,
@@ -809,6 +841,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -913,6 +946,8 @@
             "name": "B",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 67,
@@ -923,6 +958,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1033,6 +1069,8 @@
         "name": "Picky",
         "kind": "compound",
         "doc": "The same in a strict machine: a raised event, or a delayed raise's expiry, that no\ntransition takes is `unhandled`.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 72,
@@ -1043,12 +1081,15 @@
         "params": [],
         "vars": [],
         "initial": "Picky.A",
+        "default": [],
         "states": [
           {
             "id": "Picky.A",
             "name": "A",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 80,
@@ -1059,6 +1100,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1163,6 +1205,8 @@
             "name": "B",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 86,
@@ -1173,6 +1217,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1261,6 +1306,8 @@
         "name": "Loop",
         "kind": "compound",
         "doc": "A raise that raises itself again hits the limit.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 90,
@@ -1271,12 +1318,15 @@
         "params": [],
         "vars": [],
         "initial": "Loop.A",
+        "default": [],
         "states": [
           {
             "id": "Loop.A",
             "name": "A",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 96,
@@ -1287,6 +1337,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1489,6 +1540,8 @@
         "name": "Reminder",
         "kind": "compound",
         "doc": "A reminder that belongs to the run: it survives leaving the state that started it, is\nreplaced by a raise of the same name, cancelled by `cancel`, and saved with its deadline.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 104,
@@ -1499,12 +1552,15 @@
         "params": [],
         "vars": [],
         "initial": "Reminder.Idle",
+        "default": [],
         "states": [
           {
             "id": "Reminder.Idle",
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 115,
@@ -1515,6 +1571,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1602,6 +1659,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 120,
@@ -1612,6 +1671,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1860,6 +1920,8 @@
             "name": "Confirmed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 129,
@@ -1870,6 +1932,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1883,6 +1946,8 @@
             "name": "GaveUp",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 130,
@@ -1893,6 +1958,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1959,6 +2025,8 @@
         "name": "Ending",
         "kind": "compound",
         "doc": "What the exit effects of a run's last step raise is thrown away, and its delayed raises\nare cancelled after its exits.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 135,
@@ -1969,12 +2037,15 @@
         "params": [],
         "vars": [],
         "initial": "Ending.A",
+        "default": [],
         "states": [
           {
             "id": "Ending.A",
             "name": "A",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 142,
@@ -1985,6 +2056,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2052,6 +2124,8 @@
             "name": "Over",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 147,
@@ -2062,6 +2136,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2146,6 +2221,8 @@
         "name": "Ticker",
         "kind": "compound",
         "doc": "A child run with a pending raise, which its parent cancels by leaving the invoking state.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 151,
@@ -2156,12 +2233,15 @@
         "params": [],
         "vars": [],
         "initial": "Ticker.Running",
+        "default": [],
         "states": [
           {
             "id": "Ticker.Running",
             "name": "Running",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 157,
@@ -2172,6 +2252,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2284,6 +2365,8 @@
         "name": "Parent",
         "kind": "compound",
         "doc": "",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 160,
@@ -2294,12 +2377,15 @@
         "params": [],
         "vars": [],
         "initial": "Parent.Using",
+        "default": [],
         "states": [
           {
             "id": "Parent.Using",
             "name": "Using",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 165,
@@ -2310,6 +2396,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2381,6 +2468,8 @@
             "name": "Left",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 172,
@@ -2391,6 +2480,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2471,6 +2561,8 @@
         "name": "Vault",
         "kind": "compound",
         "doc": "A sensitive field of a raised event is redacted in every record that shows it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 176,
@@ -2481,12 +2573,15 @@
         "params": [],
         "vars": [],
         "initial": "Vault.Open",
+        "default": [],
         "states": [
           {
             "id": "Vault.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 182,
@@ -2497,6 +2592,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -2590,6 +2686,8 @@
             "name": "Closed",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 184,
@@ -2600,6 +2698,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

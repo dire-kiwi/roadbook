@@ -77,6 +77,8 @@ function simulate(c: Case): { sim: Simulation; asked: string[] } | null {
     if ('advance' in s) ok(sim.advance(s.advance as number))
     else if ('event' in s) ok(sim.send(s.event as Tagged))
     else if ('cancel' in s) ok(sim.cancel())
+    // What the page lists under Tags: the core's tags of the run's active states.
+    else if ('tags' in s) expect(sim.tags()).toEqual(s.tags)
     else if ('task' in s) {
       const choices = sim.choices()
       // A spawned child or task is named by its key too.
@@ -126,6 +128,10 @@ describe('simulate', () => {
     for (const name of ['parallel-entry-exit', 'parallel-two-regions', 'parallel-work']) expect(played).toContain(name)
     // History states: a deep one restoring a final state, one in a region, one while settling.
     for (const name of ['history-final', 'history-region', 'history-settle']) expect(played).toContain(name)
+    // Choice states: entered and left while settling, a guard's defect discarding the step.
+    expect(played).toContain('choice')
+    // Tags: the run's tags after each step, none once it has ended.
+    expect(played).toContain('tags')
     // Tasks that emit: taken, dropped, unheard (no record), heard in child states, spawned by key; a stream task.
     for (const name of ['task-emit-progress', 'task-emit-dropped', 'task-emit-unheard', 'task-emit-nested', 'spawn-task', 'stream-task', 'redact-task-emit']) expect(played).toContain(name)
     // Raised events: taken while starting, delayed raises fired as timers, replaced, dropped, unhandled in a strict machine.

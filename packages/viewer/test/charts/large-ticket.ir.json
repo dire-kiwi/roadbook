@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -1205,6 +1205,8 @@
         "name": "SupportTicket",
         "kind": "compound",
         "doc": "A support ticket from the moment it arrives until it is closed.\nEvery top-level final state is one way a ticket can end.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 12,
@@ -1215,12 +1217,15 @@
         "params": [],
         "vars": [],
         "initial": "SupportTicket.Intake",
+        "default": [],
         "states": [
           {
             "id": "SupportTicket.Intake",
             "name": "Intake",
             "kind": "compound",
             "doc": "Classify the new ticket and screen out spam and duplicates.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 51,
@@ -1231,12 +1236,15 @@
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Intake.Classifying",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Intake.Classifying",
                 "name": "Classifying",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 56,
@@ -1247,6 +1255,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1418,6 +1427,8 @@
                 "name": "ClassifyBackoff",
                 "kind": "atomic",
                 "doc": "Retry loop: the classifier is down, wait and try again.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 67,
@@ -1428,6 +1439,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -1508,6 +1520,8 @@
                 "name": "Screening",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 72,
@@ -1518,6 +1532,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1624,6 +1639,8 @@
                 "name": "Unclassified",
                 "kind": "final",
                 "doc": "The classifier stayed down: carry on with normal priority and no category.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 81,
@@ -1634,6 +1651,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1647,6 +1665,8 @@
                 "name": "Accepted",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 82,
@@ -1657,6 +1677,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -1721,6 +1742,8 @@
             "name": "Triage",
             "kind": "compound",
             "doc": "Find an owner. Unowned past the triage SLA pages the on-call lead.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 86,
@@ -1731,12 +1754,15 @@
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Triage.Routing",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Triage.Routing",
                 "name": "Routing",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 96,
@@ -1747,6 +1773,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1853,6 +1880,8 @@
                 "name": "Queued",
                 "kind": "atomic",
                 "doc": "Nobody is free: try again every 15 minutes.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 104,
@@ -1863,6 +1892,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1903,6 +1933,8 @@
                 "name": "Assigned",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 106,
@@ -1913,6 +1945,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -2122,6 +2155,8 @@
             "name": "Active",
             "kind": "compound",
             "doc": "The ticket has an owner and is being worked.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 110,
@@ -2132,12 +2167,15 @@
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Active.Working",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Active.Working",
                 "name": "Working",
                 "kind": "compound",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 123,
@@ -2148,12 +2186,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "SupportTicket.Active.Working.WithAgent",
+                "default": [],
                 "states": [
                   {
                     "id": "SupportTicket.Active.Working.WithAgent",
                     "name": "WithAgent",
                     "kind": "atomic",
                     "doc": "The agent owns the next move. Nudge them after every 2 hours of silence.",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 129,
@@ -2164,6 +2205,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2345,6 +2387,8 @@
                     "name": "WaitingOnCustomer",
                     "kind": "compound",
                     "doc": "The ball is in the customer's court. Two weeks of silence closes the ticket.",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 138,
@@ -2355,12 +2399,15 @@
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Working.WaitingOnCustomer.Waiting",
                         "name": "Waiting",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 144,
@@ -2371,6 +2418,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -2433,6 +2481,8 @@
                         "name": "Reminded",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 146,
@@ -2443,6 +2493,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -2505,6 +2556,8 @@
                         "name": "LastCall",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 148,
@@ -2515,6 +2568,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -2584,6 +2638,8 @@
                     "name": "OnHold",
                     "kind": "atomic",
                     "doc": "Parked by the agent, for example while waiting on a third party.",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 152,
@@ -2594,6 +2650,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [],
                     "exit": [],
@@ -2716,6 +2773,8 @@
                 "name": "Escalation",
                 "kind": "compound",
                 "doc": "Escalation tiers. Each tier has a deadline before it moves up.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 159,
@@ -2726,12 +2785,15 @@
                 "params": [],
                 "vars": [],
                 "initial": "SupportTicket.Active.Escalation.Tier2",
+                "default": [],
                 "states": [
                   {
                     "id": "SupportTicket.Active.Escalation.Tier2",
                     "name": "Tier2",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 165,
@@ -2742,6 +2804,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [
                       {
@@ -2804,6 +2867,8 @@
                     "name": "Tier3",
                     "kind": "atomic",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 170,
@@ -2814,6 +2879,7 @@
                     "params": [],
                     "vars": [],
                     "initial": null,
+                    "default": [],
                     "states": [],
                     "entry": [
                       {
@@ -2876,6 +2942,8 @@
                     "name": "Engineering",
                     "kind": "compound",
                     "doc": "Engineering owns it: file a bug and wait for the fix.",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 176,
@@ -2886,12 +2954,15 @@
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Escalation.Engineering.FilingBug",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Escalation.Engineering.FilingBug",
                         "name": "FilingBug",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 181,
@@ -2902,6 +2973,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3090,6 +3162,8 @@
                         "name": "BugBackoff",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 191,
@@ -3100,6 +3174,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [
                           {
@@ -3172,6 +3247,8 @@
                         "name": "AwaitingFix",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 196,
@@ -3182,6 +3259,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3238,6 +3316,8 @@
                         "name": "FixShipped",
                         "kind": "final",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 201,
@@ -3248,6 +3328,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3341,6 +3422,8 @@
                 "name": "Resolving",
                 "kind": "parallel",
                 "doc": "Two things at once: check the fix holds, and draft the message to the customer.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 206,
@@ -3351,12 +3434,15 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [
                   {
                     "id": "SupportTicket.Active.Resolving.FixCheck",
                     "name": "FixCheck",
                     "kind": "compound",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 209,
@@ -3367,12 +3453,15 @@
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Resolving.FixCheck.Verifying",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Resolving.FixCheck.Verifying",
                         "name": "Verifying",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 212,
@@ -3383,6 +3472,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3503,6 +3593,8 @@
                         "name": "Verified",
                         "kind": "final",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 221,
@@ -3513,6 +3605,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3534,6 +3627,8 @@
                     "name": "CustomerNotice",
                     "kind": "compound",
                     "doc": "",
+                    "tags": [],
+                    "meta": {},
                     "span": {
                       "file": 0,
                       "line": 224,
@@ -3544,12 +3639,15 @@
                     "params": [],
                     "vars": [],
                     "initial": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
+                    "default": [],
                     "states": [
                       {
                         "id": "SupportTicket.Active.Resolving.CustomerNotice.Drafting",
                         "name": "Drafting",
                         "kind": "atomic",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 227,
@@ -3560,6 +3658,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3635,6 +3734,8 @@
                         "name": "Drafted",
                         "kind": "final",
                         "doc": "",
+                        "tags": [],
+                        "meta": {},
                         "span": {
                           "file": 0,
                           "line": 233,
@@ -3645,6 +3746,7 @@
                         "params": [],
                         "vars": [],
                         "initial": null,
+                        "default": [],
                         "states": [],
                         "entry": [],
                         "exit": [],
@@ -3720,6 +3822,8 @@
                 "name": "AwaitingConfirmation",
                 "kind": "atomic",
                 "doc": "Resolved on our side. The customer confirms, reopens or goes quiet.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 238,
@@ -3730,6 +3834,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -3812,6 +3917,8 @@
                 "name": "Reopened",
                 "kind": "atomic",
                 "doc": "Reopen loop: back to the agent, or straight to escalation from the third reopen.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 245,
@@ -3822,6 +3929,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [
                   {
@@ -4171,6 +4279,8 @@
             "name": "Closing",
             "kind": "compound",
             "doc": "Ask the customer how we did, then close.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 255,
@@ -4181,12 +4291,15 @@
             "params": [],
             "vars": [],
             "initial": "SupportTicket.Closing.Surveying",
+            "default": [],
             "states": [
               {
                 "id": "SupportTicket.Closing.Surveying",
                 "name": "Surveying",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 261,
@@ -4197,6 +4310,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -4272,6 +4386,8 @@
                 "name": "Surveyed",
                 "kind": "final",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 267,
@@ -4282,6 +4398,7 @@
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -4329,6 +4446,8 @@
             "name": "Resolved",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 270,
@@ -4339,6 +4458,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4386,6 +4506,8 @@
             "name": "AutoClosed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 271,
@@ -4396,6 +4518,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4440,6 +4563,8 @@
             "name": "Spam",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 272,
@@ -4450,6 +4575,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4494,6 +4620,8 @@
             "name": "Duplicate",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 273,
@@ -4504,6 +4632,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4548,6 +4677,8 @@
             "name": "Withdrawn",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 274,
@@ -4558,6 +4689,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4602,6 +4734,8 @@
             "name": "OutOfScope",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 275,
@@ -4612,6 +4746,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4656,6 +4791,8 @@
             "name": "Merged",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 276,
@@ -4666,6 +4803,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4710,6 +4848,8 @@
             "name": "Unresolvable",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 277,
@@ -4720,6 +4860,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4853,6 +4994,8 @@
         "name": "SatisfactionSurvey",
         "kind": "compound",
         "doc": "Send a satisfaction survey and wait up to a week for the answer.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 2,
           "line": 4,
@@ -4863,12 +5006,15 @@
         "params": [],
         "vars": [],
         "initial": "SatisfactionSurvey.Sending",
+        "default": [],
         "states": [
           {
             "id": "SatisfactionSurvey.Sending",
             "name": "Sending",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 11,
@@ -4879,6 +5025,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -4976,6 +5123,8 @@
             "name": "Waiting",
             "kind": "atomic",
             "doc": "Check for an answer once a day.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 19,
@@ -4986,6 +5135,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5026,6 +5176,8 @@
             "name": "Polling",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 21,
@@ -5036,6 +5188,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5206,6 +5359,8 @@
             "name": "Answered",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 31,
@@ -5216,6 +5371,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -5256,6 +5412,8 @@
             "name": "NoAnswer",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 2,
               "line": 32,
@@ -5266,6 +5424,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

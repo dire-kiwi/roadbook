@@ -1,5 +1,5 @@
 {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "spec/conformance/charts/workers.road",
@@ -84,6 +84,8 @@
         "name": "Logbook",
         "kind": "compound",
         "doc": "Takes notes from every machine that holds a reference to it.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 8,
@@ -94,12 +96,15 @@
         "params": [],
         "vars": [],
         "initial": "Logbook.Open",
+        "default": [],
         "states": [
           {
             "id": "Logbook.Open",
             "name": "Open",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 14,
@@ -110,6 +115,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -181,6 +187,8 @@
             "name": "Closed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 19,
@@ -191,6 +199,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -264,6 +273,8 @@
         "name": "Worker",
         "kind": "compound",
         "doc": "Works until it is cancelled, then says so to the logbook and to its parent.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 23,
@@ -274,12 +285,15 @@
         "params": [],
         "vars": [],
         "initial": "Worker.Working",
+        "default": [],
         "states": [
           {
             "id": "Worker.Working",
             "name": "Working",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 31,
@@ -290,6 +304,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -325,6 +340,8 @@
             "name": "Finished",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 33,
@@ -335,6 +352,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -445,6 +463,8 @@
         "name": "Boss",
         "kind": "compound",
         "doc": "Watches a Worker, which it can restart or leave.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 37,
@@ -455,12 +475,15 @@
         "params": [],
         "vars": [],
         "initial": "Boss.Watching",
+        "default": [],
         "states": [
           {
             "id": "Boss.Watching",
             "name": "Watching",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 45,
@@ -471,6 +494,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -611,6 +635,8 @@
             "name": "Idle",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 54,
@@ -621,6 +647,7 @@
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],

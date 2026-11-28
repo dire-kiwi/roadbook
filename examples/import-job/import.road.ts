@@ -44,6 +44,7 @@ export interface ImportJobDef extends Roadbook.MachineDef {
     | "ImportJob.Rejected"
     | "ImportJob.Failed"
     | "ImportJob.Cancelled"
+  readonly tag: never
   readonly fns: {}
   readonly actions: {}
   readonly tasks: {
@@ -62,7 +63,7 @@ export interface ImportJobDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.13",
+  "irVersion": "0.14",
   "sources": [
     {
       "path": "examples/import-job/import.road",
@@ -529,6 +530,8 @@ const ir: unknown = {
         "name": "ImportJob",
         "kind": "compound",
         "doc": "A CSV import: validate the file, then import it batch by batch.\nThe operator can pause, resume and cancel it while it runs.",
+        "tags": [],
+        "meta": {},
         "span": {
           "file": 0,
           "line": 9,
@@ -539,12 +542,15 @@ const ir: unknown = {
         "params": [],
         "vars": [],
         "initial": "ImportJob.Validating",
+        "default": [],
         "states": [
           {
             "id": "ImportJob.Validating",
             "name": "Validating",
             "kind": "atomic",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 29,
@@ -555,6 +561,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -667,6 +674,8 @@ const ir: unknown = {
             "name": "Importing",
             "kind": "compound",
             "doc": "Batches run one after another until no rows remain.\nA pause takes effect between batches: the running batch is never cancelled by it.",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 38,
@@ -677,12 +686,15 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": "ImportJob.Importing.RunningBatch",
+            "default": [],
             "states": [
               {
                 "id": "ImportJob.Importing.RunningBatch",
                 "name": "RunningBatch",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 44,
@@ -693,6 +705,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1117,6 +1130,8 @@ const ir: unknown = {
                 "name": "WaitingToRetry",
                 "kind": "atomic",
                 "doc": "A transient failure: wait, then run the same batch again.",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 59,
@@ -1127,6 +1142,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1201,6 +1217,8 @@ const ir: unknown = {
                 "name": "Paused",
                 "kind": "atomic",
                 "doc": "",
+                "tags": [],
+                "meta": {},
                 "span": {
                   "file": 0,
                   "line": 66,
@@ -1211,6 +1229,7 @@ const ir: unknown = {
                 "params": [],
                 "vars": [],
                 "initial": null,
+                "default": [],
                 "states": [],
                 "entry": [],
                 "exit": [],
@@ -1329,6 +1348,8 @@ const ir: unknown = {
             "name": "Completed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 69,
@@ -1339,6 +1360,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1408,6 +1430,8 @@ const ir: unknown = {
             "name": "Rejected",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 70,
@@ -1418,6 +1442,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1439,6 +1464,8 @@ const ir: unknown = {
             "name": "Failed",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 71,
@@ -1449,6 +1476,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
@@ -1492,6 +1520,8 @@ const ir: unknown = {
             "name": "Cancelled",
             "kind": "final",
             "doc": "",
+            "tags": [],
+            "meta": {},
             "span": {
               "file": 0,
               "line": 72,
@@ -1502,6 +1532,7 @@ const ir: unknown = {
             "params": [],
             "vars": [],
             "initial": null,
+            "default": [],
             "states": [],
             "entry": [],
             "exit": [],
