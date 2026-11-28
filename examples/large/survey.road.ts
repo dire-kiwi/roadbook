@@ -45,7 +45,7 @@ export interface SatisfactionSurveyDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "examples/large/survey.road",
@@ -881,33 +881,36 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "sendSurvey",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "ticket"
-                  ],
-                  "type": "Ticket",
-                  "text": "ticket"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "sendSurvey",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "ticket"
+                    ],
+                    "type": "Ticket",
+                    "text": "ticket"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 12,
+                  "col": 5,
+                  "endLine": 15,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 12,
-                "col": 5,
-                "endLine": 15,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -940,6 +943,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "MailBounced"
                 },
                 "group": 1,
@@ -977,7 +981,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1024,33 +1028,36 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "pollSurvey",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "surveyId"
-                  ],
-                  "type": "string",
-                  "text": "surveyId"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "pollSurvey",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "surveyId"
+                    ],
+                    "type": "string",
+                    "text": "surveyId"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 22,
-                "col": 5,
-                "endLine": 28,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -1083,6 +1090,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "NotAnsweredYet"
                 },
                 "group": 1,
@@ -1151,6 +1159,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "NotAnsweredYet"
                 },
                 "group": 1,
@@ -1188,7 +1197,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "record",
@@ -1235,7 +1244,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "record",
@@ -1267,7 +1276,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

@@ -22,6 +22,8 @@ export interface InvokeEntry {
   readonly id: number
   readonly state: string
   readonly src: string
+  /** The `as` of the invoke it runs, present exactly when its state has several invokes. */
+  readonly as?: string
 }
 
 /** A call the run has taken and not answered yet: a pending call. */
@@ -208,6 +210,8 @@ export type CoreRecord =
     readonly invoke: number
     readonly state: string
     readonly src: string
+    /** The invoke's `as`, present exactly when its state has several invokes. */
+    readonly as?: string
     readonly args: { readonly [param: string]: Json }
   }
   | { readonly kind: "invoke.cancelled"; readonly invoke: number; readonly state: string; readonly src: string }

@@ -57,7 +57,7 @@ export interface UploaderDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "packages/effect/test/charts/emits.road",
@@ -292,39 +292,42 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "upload",
-              "to": null,
-              "as": "up",
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "size"
-                  ],
-                  "type": "int",
-                  "text": "size"
-                },
-                {
-                  "kind": "lit",
-                  "value": 4,
-                  "type": "int",
-                  "text": "4"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "upload",
+                "to": null,
+                "as": "up",
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "size"
+                    ],
+                    "type": "int",
+                    "text": "size"
+                  },
+                  {
+                    "kind": "lit",
+                    "value": 4,
+                    "type": "int",
+                    "text": "4"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 25,
+                  "col": 5,
+                  "endLine": 27,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 25,
-                "col": 5,
-                "endLine": 27,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": "up"
                 },
                 "group": 0,
                 "guard": null,
@@ -412,27 +415,29 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "ticks",
-              "to": null,
-              "as": "clock",
-              "args": [
-                {
-                  "kind": "lit",
-                  "value": 1000,
-                  "type": "duration",
-                  "text": "1s"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "ticks",
+                "to": null,
+                "as": "clock",
+                "args": [
+                  {
+                    "kind": "lit",
+                    "value": 1000,
+                    "type": "duration",
+                    "text": "1s"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 32,
+                  "col": 5,
+                  "endLine": 32,
+                  "endCol": 30
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 32,
-                "col": 5,
-                "endLine": 32,
-                "endCol": 30
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
@@ -525,7 +530,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -567,7 +572,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -582,7 +587,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

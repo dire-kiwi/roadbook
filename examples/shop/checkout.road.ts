@@ -46,7 +46,7 @@ export interface CheckoutDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "examples/shop/checkout.road",
@@ -662,41 +662,44 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "chargeCard",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "order"
-                  ],
-                  "type": "Order",
-                  "text": "order"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "user"
-                  ],
-                  "type": "User",
-                  "text": "user"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "chargeCard",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "order"
+                    ],
+                    "type": "Order",
+                    "text": "order"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "user"
+                    ],
+                    "type": "User",
+                    "text": "user"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 13,
+                  "col": 5,
+                  "endLine": 20,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 13,
-                "col": 5,
-                "endLine": 20,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -729,6 +732,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "CardDeclined"
                 },
                 "group": 1,
@@ -762,6 +766,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "GatewayUnavailable"
                 },
                 "group": 2,
@@ -803,6 +808,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "GatewayUnavailable"
                 },
                 "group": 2,
@@ -867,7 +873,7 @@ const ir: unknown = {
               }
             ],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -924,7 +930,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -952,7 +958,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -980,7 +986,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": {
@@ -993,7 +999,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

@@ -32,7 +32,7 @@ export interface DeskDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "packages/effect/test/charts/durable-calls.road",
@@ -232,7 +232,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -332,7 +332,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -476,7 +476,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -518,7 +518,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": null,
             "fail": null
@@ -526,7 +526,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -620,38 +620,41 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "call",
-              "src": "hold",
-              "to": {
-                "kind": "ref",
-                "name": "desk",
-                "machine": "Desk",
-                "state": null
-              },
-              "as": null,
-              "args": [
-                {
+            "invokes": [
+              {
+                "kind": "call",
+                "src": "hold",
+                "to": {
                   "kind": "ref",
-                  "path": [
-                    "n"
-                  ],
-                  "type": "int",
-                  "text": "n"
+                  "name": "desk",
+                  "machine": "Desk",
+                  "state": null
+                },
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "n"
+                    ],
+                    "type": "int",
+                    "text": "n"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 48,
+                  "col": 5,
+                  "endLine": 51,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 48,
-                "col": 5,
-                "endLine": 51,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -684,6 +687,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "Unanswered"
                 },
                 "group": 1,
@@ -740,7 +744,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -755,7 +759,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -849,49 +853,52 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "machine",
-              "src": "Asker",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "desk"
-                  ],
-                  "type": "ref Desk",
-                  "text": "desk"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "id"
-                  ],
-                  "type": "string",
-                  "text": "id"
-                },
-                {
-                  "kind": "ref",
-                  "path": [
-                    "n"
-                  ],
-                  "type": "int",
-                  "text": "n"
+            "invokes": [
+              {
+                "kind": "machine",
+                "src": "Asker",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "desk"
+                    ],
+                    "type": "ref Desk",
+                    "text": "desk"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "id"
+                    ],
+                    "type": "string",
+                    "text": "id"
+                  },
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "n"
+                    ],
+                    "type": "int",
+                    "text": "n"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 64,
+                  "col": 5,
+                  "endLine": 66,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 64,
-                "col": 5,
-                "endLine": 66,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -941,7 +948,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "ref",
@@ -956,7 +963,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

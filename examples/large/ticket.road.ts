@@ -227,7 +227,7 @@ export interface SupportTicketDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "examples/large/ticket.road",
@@ -1441,33 +1441,36 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "classify",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "ticket"
-                      ],
-                      "type": "Ticket",
-                      "text": "ticket"
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "classify",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "ticket"
+                        ],
+                        "type": "Ticket",
+                        "text": "ticket"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 53,
+                      "col": 7,
+                      "endLine": 59,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 53,
-                    "col": 7,
-                    "endLine": 59,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -1526,6 +1529,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "ClassifierUnavailable"
                     },
                     "group": 1,
@@ -1567,6 +1571,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "ClassifierUnavailable"
                     },
                     "group": 1,
@@ -1631,7 +1636,7 @@ const ir: unknown = {
                   }
                 ],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -1688,7 +1693,7 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -1797,7 +1802,7 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [],
                 "output": null,
                 "fail": null
@@ -1839,7 +1844,7 @@ const ir: unknown = {
                   }
                 ],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [],
                 "output": null,
                 "fail": null
@@ -1847,7 +1852,7 @@ const ir: unknown = {
             ],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1902,41 +1907,44 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "routeTicket",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "ticket"
-                      ],
-                      "type": "Ticket",
-                      "text": "ticket"
-                    },
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "category"
-                      ],
-                      "type": "Category",
-                      "text": "category"
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "routeTicket",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "ticket"
+                        ],
+                        "type": "Ticket",
+                        "text": "ticket"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "category"
+                        ],
+                        "type": "Category",
+                        "text": "category"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 93,
+                      "col": 7,
+                      "endLine": 96,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 93,
-                    "col": 7,
-                    "endLine": 96,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -1969,6 +1977,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "NoAgentAvailable"
                     },
                     "group": 1,
@@ -2006,7 +2015,7 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -2082,7 +2091,7 @@ const ir: unknown = {
                   }
                 ],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [],
                 "output": null,
                 "fail": null
@@ -2090,7 +2099,7 @@ const ir: unknown = {
             ],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -2287,7 +2296,7 @@ const ir: unknown = {
                     "states": [],
                     "entry": [],
                     "exit": [],
-                    "invoke": null,
+                    "invokes": [],
                     "transitions": [
                       {
                         "trigger": {
@@ -2481,7 +2490,7 @@ const ir: unknown = {
                         "states": [],
                         "entry": [],
                         "exit": [],
-                        "invoke": null,
+                        "invokes": [],
                         "transitions": [
                           {
                             "trigger": {
@@ -2549,7 +2558,7 @@ const ir: unknown = {
                         "states": [],
                         "entry": [],
                         "exit": [],
-                        "invoke": null,
+                        "invokes": [],
                         "transitions": [
                           {
                             "trigger": {
@@ -2617,7 +2626,7 @@ const ir: unknown = {
                         "states": [],
                         "entry": [],
                         "exit": [],
-                        "invoke": null,
+                        "invokes": [],
                         "transitions": [],
                         "output": null,
                         "fail": null
@@ -2625,7 +2634,7 @@ const ir: unknown = {
                     ],
                     "entry": [],
                     "exit": [],
-                    "invoke": null,
+                    "invokes": [],
                     "transitions": [
                       {
                         "trigger": {
@@ -2692,7 +2701,7 @@ const ir: unknown = {
                     "states": [],
                     "entry": [],
                     "exit": [],
-                    "invoke": null,
+                    "invokes": [],
                     "transitions": [
                       {
                         "trigger": {
@@ -2775,7 +2784,7 @@ const ir: unknown = {
                 ],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -2852,7 +2861,7 @@ const ir: unknown = {
                       }
                     ],
                     "exit": [],
-                    "invoke": null,
+                    "invokes": [],
                     "transitions": [
                       {
                         "trigger": {
@@ -2920,7 +2929,7 @@ const ir: unknown = {
                       }
                     ],
                     "exit": [],
-                    "invoke": null,
+                    "invokes": [],
                     "transitions": [
                       {
                         "trigger": {
@@ -2981,33 +2990,36 @@ const ir: unknown = {
                         "states": [],
                         "entry": [],
                         "exit": [],
-                        "invoke": {
-                          "kind": "task",
-                          "src": "fileBug",
-                          "to": null,
-                          "as": null,
-                          "args": [
-                            {
-                              "kind": "ref",
-                              "path": [
-                                "ticket"
-                              ],
-                              "type": "Ticket",
-                              "text": "ticket"
+                        "invokes": [
+                          {
+                            "kind": "task",
+                            "src": "fileBug",
+                            "to": null,
+                            "as": null,
+                            "args": [
+                              {
+                                "kind": "ref",
+                                "path": [
+                                  "ticket"
+                                ],
+                                "type": "Ticket",
+                                "text": "ticket"
+                              }
+                            ],
+                            "span": {
+                              "file": 0,
+                              "line": 173,
+                              "col": 11,
+                              "endLine": 179,
+                              "endCol": 12
                             }
-                          ],
-                          "span": {
-                            "file": 0,
-                            "line": 173,
-                            "col": 11,
-                            "endLine": 179,
-                            "endCol": 12
                           }
-                        },
+                        ],
                         "transitions": [
                           {
                             "trigger": {
-                              "kind": "invoke.done"
+                              "kind": "invoke.done",
+                              "as": null
                             },
                             "group": 0,
                             "guard": null,
@@ -3040,6 +3052,7 @@ const ir: unknown = {
                           {
                             "trigger": {
                               "kind": "invoke.fail",
+                              "as": null,
                               "error": "TrackerUnavailable"
                             },
                             "group": 1,
@@ -3095,6 +3108,7 @@ const ir: unknown = {
                           {
                             "trigger": {
                               "kind": "invoke.fail",
+                              "as": null,
                               "error": "TrackerUnavailable"
                             },
                             "group": 1,
@@ -3188,7 +3202,7 @@ const ir: unknown = {
                           }
                         ],
                         "exit": [],
-                        "invoke": null,
+                        "invokes": [],
                         "transitions": [
                           {
                             "trigger": {
@@ -3237,7 +3251,7 @@ const ir: unknown = {
                         "states": [],
                         "entry": [],
                         "exit": [],
-                        "invoke": null,
+                        "invokes": [],
                         "transitions": [
                           {
                             "trigger": {
@@ -3299,7 +3313,7 @@ const ir: unknown = {
                         "states": [],
                         "entry": [],
                         "exit": [],
-                        "invoke": null,
+                        "invokes": [],
                         "transitions": [],
                         "output": null,
                         "fail": null
@@ -3307,7 +3321,7 @@ const ir: unknown = {
                     ],
                     "entry": [],
                     "exit": [],
-                    "invoke": null,
+                    "invokes": [],
                     "transitions": [
                       {
                         "trigger": {
@@ -3335,7 +3349,7 @@ const ir: unknown = {
                 ],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -3425,33 +3439,36 @@ const ir: unknown = {
                         "states": [],
                         "entry": [],
                         "exit": [],
-                        "invoke": {
-                          "kind": "task",
-                          "src": "verifyFix",
-                          "to": null,
-                          "as": null,
-                          "args": [
-                            {
-                              "kind": "ref",
-                              "path": [
-                                "ticket"
-                              ],
-                              "type": "Ticket",
-                              "text": "ticket"
+                        "invokes": [
+                          {
+                            "kind": "task",
+                            "src": "verifyFix",
+                            "to": null,
+                            "as": null,
+                            "args": [
+                              {
+                                "kind": "ref",
+                                "path": [
+                                  "ticket"
+                                ],
+                                "type": "Ticket",
+                                "text": "ticket"
+                              }
+                            ],
+                            "span": {
+                              "file": 0,
+                              "line": 204,
+                              "col": 11,
+                              "endLine": 209,
+                              "endCol": 12
                             }
-                          ],
-                          "span": {
-                            "file": 0,
-                            "line": 204,
-                            "col": 11,
-                            "endLine": 209,
-                            "endCol": 12
                           }
-                        },
+                        ],
                         "transitions": [
                           {
                             "trigger": {
-                              "kind": "invoke.done"
+                              "kind": "invoke.done",
+                              "as": null
                             },
                             "group": 0,
                             "guard": {
@@ -3477,7 +3494,8 @@ const ir: unknown = {
                           },
                           {
                             "trigger": {
-                              "kind": "invoke.done"
+                              "kind": "invoke.done",
+                              "as": null
                             },
                             "group": 0,
                             "guard": null,
@@ -3543,7 +3561,7 @@ const ir: unknown = {
                         "states": [],
                         "entry": [],
                         "exit": [],
-                        "invoke": null,
+                        "invokes": [],
                         "transitions": [],
                         "output": null,
                         "fail": null
@@ -3551,7 +3569,7 @@ const ir: unknown = {
                     ],
                     "entry": [],
                     "exit": [],
-                    "invoke": null,
+                    "invokes": [],
                     "transitions": [],
                     "output": null,
                     "fail": null
@@ -3586,33 +3604,36 @@ const ir: unknown = {
                         "states": [],
                         "entry": [],
                         "exit": [],
-                        "invoke": {
-                          "kind": "task",
-                          "src": "draftResolution",
-                          "to": null,
-                          "as": null,
-                          "args": [
-                            {
-                              "kind": "ref",
-                              "path": [
-                                "ticket"
-                              ],
-                              "type": "Ticket",
-                              "text": "ticket"
+                        "invokes": [
+                          {
+                            "kind": "task",
+                            "src": "draftResolution",
+                            "to": null,
+                            "as": null,
+                            "args": [
+                              {
+                                "kind": "ref",
+                                "path": [
+                                  "ticket"
+                                ],
+                                "type": "Ticket",
+                                "text": "ticket"
+                              }
+                            ],
+                            "span": {
+                              "file": 0,
+                              "line": 219,
+                              "col": 11,
+                              "endLine": 221,
+                              "endCol": 12
                             }
-                          ],
-                          "span": {
-                            "file": 0,
-                            "line": 219,
-                            "col": 11,
-                            "endLine": 221,
-                            "endCol": 12
                           }
-                        },
+                        ],
                         "transitions": [
                           {
                             "trigger": {
-                              "kind": "invoke.done"
+                              "kind": "invoke.done",
+                              "as": null
                             },
                             "group": 0,
                             "guard": null,
@@ -3662,7 +3683,7 @@ const ir: unknown = {
                         "states": [],
                         "entry": [],
                         "exit": [],
-                        "invoke": null,
+                        "invokes": [],
                         "transitions": [],
                         "output": null,
                         "fail": null
@@ -3670,7 +3691,7 @@ const ir: unknown = {
                     ],
                     "entry": [],
                     "exit": [],
-                    "invoke": null,
+                    "invokes": [],
                     "transitions": [],
                     "output": null,
                     "fail": null
@@ -3678,7 +3699,7 @@ const ir: unknown = {
                 ],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -3742,7 +3763,7 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -3856,7 +3877,7 @@ const ir: unknown = {
                   }
                 ],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -3924,7 +3945,7 @@ const ir: unknown = {
             ],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -4096,33 +4117,36 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "machine",
-                  "src": "SatisfactionSurvey",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "ticket"
-                      ],
-                      "type": "Ticket",
-                      "text": "ticket"
+                "invokes": [
+                  {
+                    "kind": "machine",
+                    "src": "SatisfactionSurvey",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "ticket"
+                        ],
+                        "type": "Ticket",
+                        "text": "ticket"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 252,
+                      "col": 7,
+                      "endLine": 254,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 252,
-                    "col": 7,
-                    "endLine": 254,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -4172,7 +4196,7 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [],
                 "output": null,
                 "fail": null
@@ -4180,7 +4204,7 @@ const ir: unknown = {
             ],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -4221,7 +4245,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -4273,7 +4297,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -4323,7 +4347,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -4373,7 +4397,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -4423,7 +4447,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -4473,7 +4497,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -4523,7 +4547,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -4573,7 +4597,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -4610,7 +4634,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
@@ -4725,33 +4749,36 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "sendSurvey",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "ticket"
-                  ],
-                  "type": "Ticket",
-                  "text": "ticket"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "sendSurvey",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "ticket"
+                    ],
+                    "type": "Ticket",
+                    "text": "ticket"
+                  }
+                ],
+                "span": {
+                  "file": 2,
+                  "line": 12,
+                  "col": 5,
+                  "endLine": 15,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 2,
-                "line": 12,
-                "col": 5,
-                "endLine": 15,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -4784,6 +4811,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "MailBounced"
                 },
                 "group": 1,
@@ -4821,7 +4849,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -4868,33 +4896,36 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "pollSurvey",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "surveyId"
-                  ],
-                  "type": "string",
-                  "text": "surveyId"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "pollSurvey",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "surveyId"
+                    ],
+                    "type": "string",
+                    "text": "surveyId"
+                  }
+                ],
+                "span": {
+                  "file": 2,
+                  "line": 22,
+                  "col": 5,
+                  "endLine": 28,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 2,
-                "line": 22,
-                "col": 5,
-                "endLine": 28,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -4927,6 +4958,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "NotAnsweredYet"
                 },
                 "group": 1,
@@ -4995,6 +5027,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "NotAnsweredYet"
                 },
                 "group": 1,
@@ -5032,7 +5065,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "record",
@@ -5079,7 +5112,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "record",
@@ -5111,7 +5144,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null

@@ -84,7 +84,7 @@ export interface PaymentWebhookDef extends Roadbook.MachineDef {
 }
 
 const ir: unknown = {
-  "irVersion": "0.10",
+  "irVersion": "0.11",
   "sources": [
     {
       "path": "examples/webhook/webhook.road",
@@ -584,7 +584,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -675,33 +675,36 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "parsePayload",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "body"
-                  ],
-                  "type": "string",
-                  "text": "body"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "parsePayload",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "body"
+                    ],
+                    "type": "string",
+                    "text": "body"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 26,
+                  "col": 5,
+                  "endLine": 29,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 26,
-                "col": 5,
-                "endLine": 29,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -734,6 +737,7 @@ const ir: unknown = {
               {
                 "trigger": {
                   "kind": "invoke.fail",
+                  "as": null,
                   "error": "MalformedPayload"
                 },
                 "group": 1,
@@ -771,34 +775,37 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "alreadyProcessed",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "payment",
-                    "id"
-                  ],
-                  "type": "string",
-                  "text": "payment.id"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "alreadyProcessed",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "payment",
+                      "id"
+                    ],
+                    "type": "string",
+                    "text": "payment.id"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 34,
+                  "col": 5,
+                  "endLine": 39,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 34,
-                "col": 5,
-                "endLine": 39,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": {
@@ -824,7 +831,8 @@ const ir: unknown = {
               },
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -875,7 +883,7 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -998,43 +1006,46 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "markOrderPaid",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "payment",
-                        "orderId"
-                      ],
-                      "type": "string",
-                      "text": "payment.orderId"
-                    },
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "payment",
-                        "amountCents"
-                      ],
-                      "type": "int",
-                      "text": "payment.amountCents"
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "markOrderPaid",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "payment",
+                          "orderId"
+                        ],
+                        "type": "string",
+                        "text": "payment.orderId"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "payment",
+                          "amountCents"
+                        ],
+                        "type": "int",
+                        "text": "payment.amountCents"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 57,
+                      "col": 7,
+                      "endLine": 63,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 57,
-                    "col": 7,
-                    "endLine": 63,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -1054,6 +1065,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "DatabaseBusy"
                     },
                     "group": 1,
@@ -1095,6 +1107,7 @@ const ir: unknown = {
                   {
                     "trigger": {
                       "kind": "invoke.fail",
+                      "as": null,
                       "error": "DatabaseBusy"
                     },
                     "group": 1,
@@ -1159,7 +1172,7 @@ const ir: unknown = {
                   }
                 ],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -1241,7 +1254,7 @@ const ir: unknown = {
                   }
                 ],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [
                   {
                     "trigger": {
@@ -1282,43 +1295,46 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": {
-                  "kind": "task",
-                  "src": "recordRefund",
-                  "to": null,
-                  "as": null,
-                  "args": [
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "payment",
-                        "orderId"
-                      ],
-                      "type": "string",
-                      "text": "payment.orderId"
-                    },
-                    {
-                      "kind": "ref",
-                      "path": [
-                        "payment",
-                        "amountCents"
-                      ],
-                      "type": "int",
-                      "text": "payment.amountCents"
+                "invokes": [
+                  {
+                    "kind": "task",
+                    "src": "recordRefund",
+                    "to": null,
+                    "as": null,
+                    "args": [
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "payment",
+                          "orderId"
+                        ],
+                        "type": "string",
+                        "text": "payment.orderId"
+                      },
+                      {
+                        "kind": "ref",
+                        "path": [
+                          "payment",
+                          "amountCents"
+                        ],
+                        "type": "int",
+                        "text": "payment.amountCents"
+                      }
+                    ],
+                    "span": {
+                      "file": 0,
+                      "line": 78,
+                      "col": 7,
+                      "endLine": 80,
+                      "endCol": 8
                     }
-                  ],
-                  "span": {
-                    "file": 0,
-                    "line": 78,
-                    "col": 7,
-                    "endLine": 80,
-                    "endCol": 8
                   }
-                },
+                ],
                 "transitions": [
                   {
                     "trigger": {
-                      "kind": "invoke.done"
+                      "kind": "invoke.done",
+                      "as": null
                     },
                     "group": 0,
                     "guard": null,
@@ -1389,7 +1405,7 @@ const ir: unknown = {
                 "states": [],
                 "entry": [],
                 "exit": [],
-                "invoke": null,
+                "invokes": [],
                 "transitions": [],
                 "output": null,
                 "fail": null
@@ -1397,7 +1413,7 @@ const ir: unknown = {
             ],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [
               {
                 "trigger": {
@@ -1438,34 +1454,37 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": {
-              "kind": "task",
-              "src": "markProcessed",
-              "to": null,
-              "as": null,
-              "args": [
-                {
-                  "kind": "ref",
-                  "path": [
-                    "payment",
-                    "id"
-                  ],
-                  "type": "string",
-                  "text": "payment.id"
+            "invokes": [
+              {
+                "kind": "task",
+                "src": "markProcessed",
+                "to": null,
+                "as": null,
+                "args": [
+                  {
+                    "kind": "ref",
+                    "path": [
+                      "payment",
+                      "id"
+                    ],
+                    "type": "string",
+                    "text": "payment.id"
+                  }
+                ],
+                "span": {
+                  "file": 0,
+                  "line": 87,
+                  "col": 5,
+                  "endLine": 89,
+                  "endCol": 6
                 }
-              ],
-              "span": {
-                "file": 0,
-                "line": 87,
-                "col": 5,
-                "endLine": 89,
-                "endCol": 6
               }
-            },
+            ],
             "transitions": [
               {
                 "trigger": {
-                  "kind": "invoke.done"
+                  "kind": "invoke.done",
+                  "as": null
                 },
                 "group": 0,
                 "guard": null,
@@ -1502,7 +1521,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1529,7 +1548,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1569,7 +1588,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1609,7 +1628,7 @@ const ir: unknown = {
             "states": [],
             "entry": [],
             "exit": [],
-            "invoke": null,
+            "invokes": [],
             "transitions": [],
             "output": {
               "kind": "call",
@@ -1636,7 +1655,7 @@ const ir: unknown = {
         ],
         "entry": [],
         "exit": [],
-        "invoke": null,
+        "invokes": [],
         "transitions": [],
         "output": null,
         "fail": null
